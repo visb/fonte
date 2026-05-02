@@ -1,0 +1,49 @@
+import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Building2, Home, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+
+export function AppLayout() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <div className="flex h-screen">
+      <aside className="w-64 border-r bg-card flex flex-col">
+        <div className="p-6 border-b">
+          <h1 className="text-xl font-bold">adm.fonte</h1>
+        </div>
+        <nav className="flex-1 p-4 space-y-1">
+          <Link
+            to="/"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors"
+          >
+            <Home size={16} />
+            Dashboard
+          </Link>
+          <Link
+            to="/houses"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors"
+          >
+            <Building2 size={16} />
+            Casas
+          </Link>
+        </nav>
+        <div className="p-4 border-t">
+          <Button variant="ghost" className="w-full justify-start gap-3" onClick={handleLogout}>
+            <LogOut size={16} />
+            Sair
+          </Button>
+        </div>
+      </aside>
+      <main className="flex-1 overflow-auto p-8">
+        <Outlet />
+      </main>
+    </div>
+  );
+}

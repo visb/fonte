@@ -6,6 +6,8 @@ import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Login } from '@/pages/Login';
 import { Dashboard } from '@/pages/Dashboard';
 import { HousesPage } from '@/pages/houses/HousesPage';
+import { ResidentsPage } from '@/pages/residents/ResidentsPage';
+import { NewResidentPage } from '@/pages/residents/NewResidentPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +35,8 @@ export default function App() {
             >
               <Route index element={<Dashboard />} />
               <Route path="houses" element={<HousesPage />} />
+              <Route path="residents" element={<ResidentsPage />} />
+              <Route path="residents/new" element={<NewResidentPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -9,7 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { ResidentStatus } from '@fonte/types';
+import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { User } from '../user/user.entity';
 import { House } from '../house/house.entity';
 
@@ -49,6 +49,66 @@ export class Resident {
 
   @Column({ name: 'exit_date', type: 'date', nullable: true })
   exitDate: Date | null;
+
+  // --- Admission fields ---
+
+  get age(): number | null {
+    if (!this.birthDate) return null;
+    const today = new Date();
+    const birth = new Date(this.birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  }
+
+  @Column({ type: 'enum', enum: Gender, nullable: true })
+  gender: Gender | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  rg: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  address: string | null;
+
+  @Column({ name: 'contact_phone', nullable: true, type: 'varchar' })
+  contactPhone: string | null;
+
+  @Column({ name: 'marital_status', type: 'enum', enum: MaritalStatus, nullable: true })
+  maritalStatus: MaritalStatus | null;
+
+  @Column({ type: 'integer', default: 0 })
+  children: number;
+
+  @Column({ nullable: true, type: 'varchar' })
+  occupation: string | null;
+
+  @Column({ name: 'guardian_id', nullable: true, type: 'uuid' })
+  guardianId: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  education: string | null;
+
+  @Column({ name: 'health_issues', nullable: true, type: 'varchar' })
+  healthIssues: string | null;
+
+  @Column({ name: 'continuous_medication', nullable: true, type: 'varchar' })
+  continuousMedication: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  religion: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  addiction: string | null;
+
+  @Column({ nullable: true, type: 'integer' })
+  weight: number | null;
+
+  @Column({ nullable: true, type: 'integer' })
+  height: number | null;
+
+  @Column({ name: 'family_investment', nullable: true, type: 'varchar' })
+  familyInvestment: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

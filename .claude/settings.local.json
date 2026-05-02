@@ -17,7 +17,12 @@
       "Bash(curl -s -X POST http://localhost:3000/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@fonte.com\",\"password\":\"secret\"}')",
       "Bash(node *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/api/v1/houses)",
-      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/v1/houses -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzZDA2YWEwOC1kMmYwLTQzMWEtYTgwMS1kYzNhNWJmNTk1ZDAiLCJyb2xlIjoiQURNSU4iLCJwcm9maWxlVHlwZSI6IlNUQUZGIiwiaWF0IjoxNzc3NzQzNzU1LCJleHAiOjE3NzgzNDg1NTV9.1CinbP4LdDHXovMcLfnupos0_mnVn90DMtaTkhOSDMo')"
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/v1/houses -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzZDA2YWEwOC1kMmYwLTQzMWEtYTgwMS1kYzNhNWJmNTk1ZDAiLCJyb2xlIjoiQURNSU4iLCJwcm9maWxlVHlwZSI6IlNUQUZGIiwiaWF0IjoxNzc3NzQzNzU1LCJleHAiOjE3NzgzNDg1NTV9.1CinbP4LdDHXovMcLfnupos0_mnVn90DMtaTkhOSDMo')",
+      "Bash(Get-ChildItem -Path \"C:\\\\code\\\\fonte\\\\services\\\\api\" -Recurse -Force)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(pnpm *)",
+      "Bash(npx vite *)",
+      "Bash(Remove-Item *)"
     ]
   }
 }

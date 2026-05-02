@@ -9,9 +9,11 @@
     "test:api": "pnpm --filter api test",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "docker:reset": "docker compose down -v && docker compose up -d"
+    "docker:reset": "docker compose down -v && docker compose up -d",
+    "dev:adm": "pnpm --filter adm.fonte dev",
+    "seed:api": "pnpm --filter api seed"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["bcrypt", "@nestjs/core"]
+    "onlyBuiltDependencies": ["bcrypt", "@nestjs/core", "esbuild"]
   }
 }

@@ -1,10 +1,12 @@
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { Building2, Home, LogOut } from 'lucide-react';
+import { Building2, Home, LogOut, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/hooks/useTheme';
 import { Button } from '@/components/ui/button';
 
 export function AppLayout() {
   const { logout } = useAuth();
+  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -15,8 +17,11 @@ export function AppLayout() {
   return (
     <div className="flex h-screen">
       <aside className="w-64 border-r bg-card flex flex-col">
-        <div className="p-6 border-b">
+        <div className="p-6 border-b flex items-center justify-between">
           <h1 className="text-xl font-bold">adm.fonte</h1>
+          <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </Button>
         </div>
         <nav className="flex-1 p-4 space-y-1">
           <Link

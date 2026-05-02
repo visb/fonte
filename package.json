@@ -10,7 +10,7 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:reset": "docker compose down -v && docker compose up -d",
-    "dev:adm": "pnpm --filter adm.fonte dev",
+    "dev:adm": "pnpm build:types && pnpm --filter adm.fonte dev",
     "seed:api": "pnpm --filter api seed"
   },
   "pnpm": {

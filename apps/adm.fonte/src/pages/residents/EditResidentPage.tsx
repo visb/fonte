@@ -1,10 +1,10 @@
-import { useNavigate, Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft } from 'lucide-react';
-import { maskCPF, maskRG, maskPhone, withMask } from './masks';
 import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -12,15 +12,42 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { maskCPF, maskRG, maskPhone, withMask } from './masks';
 
 interface House {
   id: string;
   name: string;
 }
 
+interface ResidentDetail {
+  id: string;
+  name: string;
+  houseId: string;
+  birthDate: string | null;
+  cpf: string | null;
+  rg: string | null;
+  gender: string | null;
+  address: string | null;
+  status: ResidentStatus;
+  entryDate: string | null;
+  contactPhone: string | null;
+  maritalStatus: string | null;
+  children: number;
+  occupation: string | null;
+  education: string | null;
+  religion: string | null;
+  addiction: string | null;
+  healthIssues: string | null;
+  continuousMedication: string | null;
+  weight: number | null;
+  height: number | null;
+  familyInvestment: string | null;
+}
+
 const schema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   houseId: z.string().min(1, 'Casa é obrigatória'),
+  status: z.nativeEnum(ResidentStatus),
   birthDate: z.string().optional(),
   cpf: z.string().optional(),
   rg: z.string().optional(),
@@ -43,15 +70,13 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const today = new Date().toISOString().split('T')[0];
-
-
-const fetchHouses = () => api.get<House[]>('/houses').then((r) => r.data);
-
 function buildPayload(data: FormData): Record<string, unknown> {
-  const payload: Record<string, unknown> = { status: ResidentStatus.ACTIVE };
+  const payload: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
-    if (value === '' || value === undefined) continue;
+    if (value === '' || value === undefined) {
+      payload[key] = null;
+      continue;
+    }
     if (key === 'children' || key === 'weight' || key === 'height') {
       payload[key] = Number(value);
     } else {
@@ -60,6 +85,37 @@ function buildPayload(data: FormData): Record<string, unknown> {
   }
   return payload;
 }
+
+function toFormValues(r: ResidentDetail): FormData {
+  const dateStr = (v: string | null) => (v ? v.split('T')[0] : '');
+  const numStr = (v: number | null | undefined) => (v != null ? String(v) : '');
+  return {
+    name: r.name,
+    houseId: r.houseId,
+    status: r.status,
+    birthDate: dateStr(r.birthDate),
+    cpf: maskCPF(r.cpf ?? ''),
+    rg: maskRG(r.rg ?? ''),
+    gender: r.gender ?? '',
+    address: r.address ?? '',
+    entryDate: dateStr(r.entryDate),
+    contactPhone: maskPhone(r.contactPhone ?? ''),
+    maritalStatus: r.maritalStatus ?? '',
+    children: numStr(r.children),
+    occupation: r.occupation ?? '',
+    education: r.education ?? '',
+    religion: r.religion ?? '',
+    addiction: r.addiction ?? '',
+    healthIssues: r.healthIssues ?? '',
+    continuousMedication: r.continuousMedication ?? '',
+    weight: numStr(r.weight),
+    height: numStr(r.height),
+    familyInvestment: r.familyInvestment ?? '',
+  };
+}
+
+const fetchHouses = () => api.get<House[]>('/houses').then((r) => r.data);
+const fetchResident = (id: string) => api.get<ResidentDetail>(`/residents/${id}`).then((r) => r.data);
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -89,20 +145,32 @@ function Field({
   );
 }
 
-export function NewResidentPage() {
+export function EditResidentPage() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const { data: resident, isLoading: loadingResident } = useQuery({
+    queryKey: ['residents', id],
+    queryFn: () => fetchResident(id!),
+    enabled: !!id,
+  });
 
   const { data: houses = [] } = useQuery({ queryKey: ['houses'], queryFn: fetchHouses });
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
-  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { entryDate: today } });
+  } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  useEffect(() => {
+    if (resident) reset(toFormValues(resident));
+  }, [resident, reset]);
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) => api.post('/residents', buildPayload(data)),
+    mutationFn: (data: FormData) => api.patch(`/residents/${id}`, buildPayload(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['residents'] });
       queryClient.invalidateQueries({ queryKey: ['houses'] });
@@ -112,6 +180,8 @@ export function NewResidentPage() {
 
   const onSubmit = (data: FormData) => mutation.mutate(data);
 
+  if (loadingResident) return <p className="text-muted-foreground">Carregando...</p>;
+
   return (
     <div className="max-w-2xl">
       <div className="flex items-center gap-3 mb-6">
@@ -120,7 +190,7 @@ export function NewResidentPage() {
             <ArrowLeft size={16} />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">Novo acolhimento</h1>
+        <h1 className="text-2xl font-bold">Editar acolhimento</h1>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
@@ -161,6 +231,16 @@ export function NewResidentPage() {
           </Field>
           <Field label="Data de entrada">
             <Input type="date" {...register('entryDate')} />
+          </Field>
+          <Field label="Status">
+            <Select {...register('status')}>
+              <option value={ResidentStatus.PRE_ADMISSION}>Pré-admissão</option>
+              <option value={ResidentStatus.ACTIVE}>Ativo</option>
+              <option value={ResidentStatus.DISCIPLINE}>Disciplina</option>
+              <option value={ResidentStatus.TEMP_LEAVE}>Saída temporária</option>
+              <option value={ResidentStatus.DISCHARGED}>Alta</option>
+              <option value={ResidentStatus.EVADED}>Evasão</option>
+            </Select>
           </Field>
           <Field label="Endereço" full>
             <Input {...register('address')} placeholder="Rua, número, bairro, cidade" />
@@ -228,7 +308,7 @@ export function NewResidentPage() {
             <Link to="/residents">Cancelar</Link>
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Salvando...' : 'Registrar acolhimento'}
+            {isSubmitting ? 'Salvando...' : 'Salvar alterações'}
           </Button>
         </div>
       </form>

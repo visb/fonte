@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { ResidentStatus } from '@fonte/types';
 import { api } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
@@ -74,6 +74,7 @@ const fetchResidents = () => api.get<Resident[]>('/residents').then((r) => r.dat
 const deleteResident = (id: string) => api.delete(`/residents/${id}`);
 
 export function ResidentsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<Resident | null>(null);
 
@@ -138,14 +139,23 @@ export function ResidentsPage() {
               </TableCell>
               <TableCell>{computeAge(resident.birthDate) ?? '—'}</TableCell>
               <TableCell>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => setDeleteTarget(resident)}
-                >
-                  <Trash2 size={16} />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => navigate(`/residents/${resident.id}/edit`)}
+                  >
+                    <Pencil size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleteTarget(resident)}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

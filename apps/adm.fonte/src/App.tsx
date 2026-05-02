@@ -8,6 +8,7 @@ import { Dashboard } from '@/pages/Dashboard';
 import { HousesPage } from '@/pages/houses/HousesPage';
 import { ResidentsPage } from '@/pages/residents/ResidentsPage';
 import { NewResidentPage } from '@/pages/residents/NewResidentPage';
+import { EditResidentPage } from '@/pages/residents/EditResidentPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="houses" element={<HousesPage />} />
               <Route path="residents" element={<ResidentsPage />} />
               <Route path="residents/new" element={<NewResidentPage />} />
+              <Route path="residents/:id/edit" element={<EditResidentPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

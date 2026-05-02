@@ -12,8 +12,33 @@ export class HouseService {
     private houseRepository: Repository<House>,
   ) {}
 
-  findAll(): Promise<House[]> {
-    return this.houseRepository.find({ order: { name: 'ASC' } });
+  async findAll(): Promise<Array<House & { activeResidentsCount: number; staffCount: number }>> {
+    const [houses, residentCounts, staffCounts] = await Promise.all([
+      this.houseRepository.find({ order: { name: 'ASC' } }),
+      this.houseRepository.manager.query<Array<{ houseId: string; count: string }>>(
+        `SELECT house_id AS "houseId", COUNT(id)::int AS count
+         FROM residents
+         WHERE status = $1 AND deleted_at IS NULL
+         GROUP BY house_id`,
+        ['ACTIVE'],
+      ),
+      this.houseRepository.manager.query<Array<{ houseId: string; count: string }>>(
+        `SELECT house_id AS "houseId", COUNT(id)::int AS count
+         FROM staff
+         WHERE deleted_at IS NULL
+         GROUP BY house_id`,
+      ),
+    ]);
+
+    const residentMap = new Map(residentCounts.map((c) => [c.houseId, Number(c.count)]));
+    const staffMap = new Map(staffCounts.map((c) => [c.houseId, Number(c.count)]));
+
+    return houses.map((h) =>
+      Object.assign(h, {
+        activeResidentsCount: residentMap.get(h.id) ?? 0,
+        staffCount: staffMap.get(h.id) ?? 0,
+      }),
+    );
   }
 
   async findOne(id: string): Promise<House> {

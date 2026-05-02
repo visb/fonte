@@ -37,21 +37,29 @@ import {
 interface House {
   id: string;
   name: string;
+  capacity: number | null;
+  activeResidentsCount: number;
+  staffCount: number;
   createdAt: string;
   updatedAt: string;
 }
 
 const houseSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
+  capacity: z.coerce.number().int().min(1).optional().or(z.literal('')),
 });
 type HouseFormData = z.infer<typeof houseSchema>;
 
 const fetchHouses = () => api.get<House[]>('/houses').then((r) => r.data);
 const createHouse = (data: HouseFormData) =>
-  api.post<House>('/houses', data).then((r) => r.data);
+  api.post<House>('/houses', sanitize(data)).then((r) => r.data);
 const updateHouse = ({ id, ...data }: { id: string } & HouseFormData) =>
-  api.patch<House>(`/houses/${id}`, data).then((r) => r.data);
+  api.patch<House>(`/houses/${id}`, sanitize(data)).then((r) => r.data);
 const deleteHouse = (id: string) => api.delete(`/houses/${id}`);
+
+function sanitize(data: HouseFormData) {
+  return { ...data, capacity: data.capacity === '' || data.capacity === undefined ? null : data.capacity };
+}
 
 export function HousesPage() {
   const queryClient = useQueryClient();
@@ -97,20 +105,20 @@ export function HousesPage() {
 
   const openCreate = () => {
     setEditingHouse(null);
-    reset({ name: '' });
+    reset({ name: '', capacity: '' });
     setDialogOpen(true);
   };
 
   const openEdit = (house: House) => {
     setEditingHouse(house);
-    reset({ name: house.name });
+    reset({ name: house.name, capacity: house.capacity ?? '' });
     setDialogOpen(true);
   };
 
   const closeDialog = () => {
     setDialogOpen(false);
     setEditingHouse(null);
-    reset({ name: '' });
+    reset({ name: '', capacity: '' });
   };
 
   const onSubmit = (data: HouseFormData) => {
@@ -138,6 +146,7 @@ export function HousesPage() {
         <TableHeader>
           <TableRow>
             <TableHead>Nome</TableHead>
+            <TableHead>Ocupação</TableHead>
             <TableHead>Criada em</TableHead>
             <TableHead className="w-24">Ações</TableHead>
           </TableRow>
@@ -145,7 +154,7 @@ export function HousesPage() {
         <TableBody>
           {houses.length === 0 && (
             <TableRow>
-              <TableCell colSpan={3} className="text-center text-muted-foreground">
+              <TableCell colSpan={4} className="text-center text-muted-foreground">
                 Nenhuma casa cadastrada.
               </TableCell>
             </TableRow>
@@ -153,6 +162,11 @@ export function HousesPage() {
           {houses.map((house) => (
             <TableRow key={house.id}>
               <TableCell className="font-medium">{house.name}</TableCell>
+              <TableCell>
+                {house.capacity != null
+                  ? `${house.activeResidentsCount} / ${house.capacity - house.staffCount}`
+                  : house.activeResidentsCount}
+              </TableCell>
               <TableCell>
                 {new Date(house.createdAt).toLocaleDateString('pt-BR')}
               </TableCell>
@@ -188,6 +202,19 @@ export function HousesPage() {
                 <Input id="name" {...register('name')} placeholder="Ex: Casa da Paz" />
                 {errors.name && (
                   <p className="text-sm text-destructive">{errors.name.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="capacity">Capacidade</Label>
+                <Input
+                  id="capacity"
+                  type="number"
+                  min={1}
+                  {...register('capacity')}
+                  placeholder="Ex: 20"
+                />
+                {errors.capacity && (
+                  <p className="text-sm text-destructive">{errors.capacity.message}</p>
                 )}
               </div>
             </div>

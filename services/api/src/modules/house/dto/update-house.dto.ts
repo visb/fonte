@@ -1,8 +1,13 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateHouseDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   name?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  capacity?: number | null;
 }

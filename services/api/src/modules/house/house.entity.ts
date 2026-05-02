@@ -15,6 +15,9 @@ export class House {
   @Column()
   name: string;
 
+  @Column({ nullable: true, type: 'integer' })
+  capacity: number | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -1,0 +1,17 @@
+{
+  "name": "fonte",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build:types": "pnpm --filter @fonte/types build",
+    "dev:api": "pnpm build:types && pnpm --filter api dev",
+    "build:api": "pnpm --filter api build",
+    "test:api": "pnpm --filter api test",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:reset": "docker compose down -v && docker compose up -d"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["bcrypt", "@nestjs/core"]
+  }
+}

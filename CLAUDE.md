@@ -28,6 +28,34 @@ packages/
 
 ---
 
+## Comandos
+
+```bash
+# Setup inicial (uma vez)
+docker compose up -d       # sobe postgres (porta 5432, cria fonte_dev e fonte_test)
+pnpm install
+
+# Dev (backend) — compila @fonte/types antes de subir automaticamente
+pnpm dev:api
+
+# Migrations (executar de dentro de services/api ou com --filter)
+pnpm --filter api migration:generate src/database/migrations/NomeDaMigration
+pnpm --filter api migration:run
+pnpm --filter api migration:revert
+
+# Testes
+pnpm test:api
+pnpm --filter api test:cov
+
+# Build
+pnpm build:types           # necessário antes de build:api se types mudou
+pnpm build:api
+```
+
+> **Atenção:** `pnpm dev:api` já roda `build:types` automaticamente. Se mudar `packages/types/src/index.ts`, basta reiniciar o dev server.
+
+---
+
 ## Stack
 
 - **Backend**: NestJS + PostgreSQL + JWT

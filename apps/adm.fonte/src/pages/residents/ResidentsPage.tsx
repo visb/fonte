@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Building2, CalendarDays, Pencil, Plus, Trash2 } from 'lucide-react';
 import { ResidentStatus } from '@fonte/types';
 import { api } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 
 interface Resident {
   id: string;
@@ -106,61 +98,61 @@ export function ResidentsPage() {
         </Button>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nome</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Casa</TableHead>
-            <TableHead>Entrada</TableHead>
-            <TableHead>Idade</TableHead>
-            <TableHead className="w-16">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {residents.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                Nenhum acolhido cadastrado.
-              </TableCell>
-            </TableRow>
-          )}
+      {residents.length === 0 ? (
+        <p className="text-center text-muted-foreground py-12">Nenhum acolhido cadastrado.</p>
+      ) : (
+        <div className="space-y-3">
           {residents.map((resident) => (
-            <TableRow key={resident.id}>
-              <TableCell className="font-medium">{resident.name}</TableCell>
-              <TableCell>
-                <Badge variant={STATUS_VARIANT[resident.status]}>
-                  {STATUS_LABELS[resident.status]}
-                </Badge>
-              </TableCell>
-              <TableCell>{resident.house?.name ?? '—'}</TableCell>
-              <TableCell>
-                {resident.entryDate ? formatLocalDate(resident.entryDate) : '—'}
-              </TableCell>
-              <TableCell>{computeAge(resident.birthDate) ?? '—'}</TableCell>
-              <TableCell>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => navigate(`/residents/${resident.id}/edit`)}
-                  >
-                    <Pencil size={16} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setDeleteTarget(resident)}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+            <div
+              key={resident.id}
+              className="flex w-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-accent/50 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold truncate">{resident.name}</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
+                  {resident.house && (
+                    <span className="flex items-center gap-1">
+                      <Building2 size={13} />
+                      {resident.house.name}
+                    </span>
+                  )}
+                  {resident.entryDate && (
+                    <span className="flex items-center gap-1">
+                      <CalendarDays size={13} />
+                      {formatLocalDate(resident.entryDate)}
+                    </span>
+                  )}
+                  {computeAge(resident.birthDate) != null && (
+                    <span>{computeAge(resident.birthDate)} anos</span>
+                  )}
                 </div>
-              </TableCell>
-            </TableRow>
+              </div>
+              <Badge variant={STATUS_VARIANT[resident.status]}>
+                {STATUS_LABELS[resident.status]}
+              </Badge>
+              <div className="flex gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(`/residents/${resident.id}/edit`)}
+                  title="Editar"
+                >
+                  <Pencil size={16} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setDeleteTarget(resident)}
+                  title="Excluir"
+                >
+                  <Trash2 size={16} />
+                </Button>
+              </div>
+            </div>
           ))}
-        </TableBody>
-      </Table>
+        </div>
+      )}
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

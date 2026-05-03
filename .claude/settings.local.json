@@ -24,7 +24,8 @@
       "Bash(npx vite *)",
       "Bash(Remove-Item *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\code\\\\fonte\\\\apps\\\\adm.fonte\" -Recurse | Where-Object { $_.PSIsContainer } | Select-Object -First 50 FullName)"
     ]
   }
 }

@@ -258,7 +258,7 @@ export function HousesPage() {
               className="flex w-full overflow-hidden rounded-lg border bg-card cursor-pointer hover:bg-accent/50 transition-colors"
               onClick={() => navigate(`/houses/${house.id}`)}
             >
-              <div className="w-36 shrink-0 bg-muted">
+              <div className="w-20 sm:w-36 shrink-0 bg-muted">
                 {house.thumbnailUrl ? (
                   <img
                     src={`${API_ORIGIN}${house.thumbnailUrl}`}
@@ -272,7 +272,7 @@ export function HousesPage() {
                 )}
               </div>
 
-              <div className="flex flex-1 items-center gap-6 px-5 py-4 min-w-0">
+              <div className="flex flex-1 items-center gap-3 sm:gap-6 px-3 sm:px-5 py-4 min-w-0">
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-base truncate">
                     {house.name}
@@ -301,7 +301,7 @@ export function HousesPage() {
 
                 {(house.generalCapacity != null ||
                   house.staffCapacity != null) && (
-                  <div className="flex gap-4 shrink-0 text-center">
+                  <div className="hidden sm:flex gap-4 shrink-0 text-center">
                     <div>
                       <p className="text-xl font-bold leading-none">
                         {Math.max(
@@ -386,7 +386,7 @@ export function HousesPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="generalCapacity">Cap. filhos</Label>
                   <Input
@@ -418,8 +418,8 @@ export function HousesPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2 space-y-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="col-span-1 sm:col-span-2 space-y-2">
                   <Label htmlFor="city">Cidade</Label>
                   <Input
                     id="city"

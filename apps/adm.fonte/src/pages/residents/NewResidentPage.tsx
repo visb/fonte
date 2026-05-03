@@ -81,7 +81,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className={full ? 'col-span-2 space-y-1.5' : 'space-y-1.5'}>
+    <div className={full ? 'col-span-full space-y-1.5' : 'space-y-1.5'}>
       <Label>{label}</Label>
       {children}
       {error && <p className="text-xs text-destructive">{error}</p>}
@@ -125,7 +125,7 @@ export function NewResidentPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
         <SectionTitle>Identificação</SectionTitle>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Nome completo *" error={errors.name?.message} full>
             <Input {...register('name')} placeholder="Nome do acolhido" />
           </Field>
@@ -148,7 +148,7 @@ export function NewResidentPage() {
         </div>
 
         <SectionTitle>Admissão</SectionTitle>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Casa *" error={errors.houseId?.message}>
             <Select {...register('houseId')}>
               <option value="">Selecione a casa</option>
@@ -171,7 +171,7 @@ export function NewResidentPage() {
         </div>
 
         <SectionTitle>Perfil social</SectionTitle>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Estado civil">
             <Select {...register('maritalStatus')}>
               <option value="">Selecione</option>
@@ -198,7 +198,7 @@ export function NewResidentPage() {
         </div>
 
         <SectionTitle>Saúde</SectionTitle>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Problemas de saúde" full>
             <Textarea {...register('healthIssues')} placeholder="Descreva condições de saúde relevantes" />
           </Field>
@@ -214,7 +214,7 @@ export function NewResidentPage() {
         </div>
 
         <SectionTitle>Família</SectionTitle>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Investimento familiar" full>
             <Textarea
               {...register('familyInvestment')}

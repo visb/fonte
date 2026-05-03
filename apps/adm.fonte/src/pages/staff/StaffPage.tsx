@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Building2, Mail, Pencil, Phone, Plus, Trash2 } from 'lucide-react';
 import { Role } from '@fonte/types';
 import { api } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 
 interface Staff {
   id: string;
@@ -81,59 +73,62 @@ export function StaffPage() {
         </Button>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nome</TableHead>
-            <TableHead>Função</TableHead>
-            <TableHead>Casa</TableHead>
-            <TableHead>E-mail</TableHead>
-            <TableHead>Telefone</TableHead>
-            <TableHead className="w-20">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {staff.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                Nenhum servo cadastrado.
-              </TableCell>
-            </TableRow>
-          )}
+      {staff.length === 0 ? (
+        <p className="text-center text-muted-foreground py-12">Nenhum servo cadastrado.</p>
+      ) : (
+        <div className="space-y-3">
           {staff.map((s) => (
-            <TableRow key={s.id}>
-              <TableCell className="font-medium">{s.name}</TableCell>
-              <TableCell>
-                <Badge variant={ROLE_VARIANT[s.user.role] ?? 'secondary'}>
-                  {ROLE_LABEL[s.user.role] ?? s.user.role}
-                </Badge>
-              </TableCell>
-              <TableCell>{s.house?.name ?? '—'}</TableCell>
-              <TableCell className="text-muted-foreground">{s.user.email}</TableCell>
-              <TableCell>{s.phone ?? '—'}</TableCell>
-              <TableCell>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => navigate(`/staff/${s.id}/edit`)}
-                  >
-                    <Pencil size={16} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setDeleteTarget(s)}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+            <div
+              key={s.id}
+              className="flex w-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-accent/50 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold truncate">{s.name}</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
+                  {s.house && (
+                    <span className="flex items-center gap-1">
+                      <Building2 size={13} />
+                      {s.house.name}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <Mail size={13} />
+                    {s.user.email}
+                  </span>
+                  {s.phone && (
+                    <span className="flex items-center gap-1">
+                      <Phone size={13} />
+                      {s.phone}
+                    </span>
+                  )}
                 </div>
-              </TableCell>
-            </TableRow>
+              </div>
+              <Badge variant={ROLE_VARIANT[s.user.role] ?? 'secondary'}>
+                {ROLE_LABEL[s.user.role] ?? s.user.role}
+              </Badge>
+              <div className="flex gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(`/staff/${s.id}/edit`)}
+                  title="Editar"
+                >
+                  <Pencil size={16} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setDeleteTarget(s)}
+                  title="Excluir"
+                >
+                  <Trash2 size={16} />
+                </Button>
+              </div>
+            </div>
           ))}
-        </TableBody>
-      </Table>
+        </div>
+      )}
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

@@ -139,7 +139,7 @@ export function HouseDetailPage() {
         <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
           Informações
         </h2>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
           {house.address && (
             <>
               <span className="text-muted-foreground">Endereço</span>
@@ -231,7 +231,7 @@ export function HouseDetailPage() {
             Nenhuma foto cadastrada.
           </p>
         ) : (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {house.photos.map((photo) => (
               <div
                 key={photo.id}

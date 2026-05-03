@@ -25,7 +25,11 @@
       "Bash(Remove-Item *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\code\\\\fonte\\\\apps\\\\adm.fonte\" -Recurse | Where-Object { $_.PSIsContainer } | Select-Object -First 50 FullName)"
+      "PowerShell(Get-ChildItem -Path \"C:\\\\code\\\\fonte\\\\apps\\\\adm.fonte\" -Recurse | Where-Object { $_.PSIsContainer } | Select-Object -First 50 FullName)",
+      "Bash(xargs grep *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\code\\\\fonte\" -Directory | Where-Object { $_.Name -notmatch 'node_modules|\\\\.git' })",
+      "Bash(git *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\code\\\\fonte\" -Recurse -Directory)"
     ]
   }
 }

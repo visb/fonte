@@ -56,6 +56,12 @@ pnpm build:api
 
 ---
 
+## Convenção de Commits
+
+Consulte CONTRIBUTING.md para as convenções de commit
+
+---
+
 ## Stack
 
 - **Backend**: NestJS + PostgreSQL + JWT

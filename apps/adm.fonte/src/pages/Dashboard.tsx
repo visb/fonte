@@ -1,19 +1,14 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Home, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
-
-const API_ORIGIN =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace('/api/v1', '') ??
-  'http://localhost:3000';
 
 interface House {
   id: string;
   name: string;
   generalCapacity: number | null;
   staffCapacity: number | null;
-  thumbnailUrl: string | null;
   activeResidentsCount: number;
   staffCount: number;
 }
@@ -64,42 +59,25 @@ export function Dashboard() {
                 <button
                   key={house.id}
                   onClick={() => navigate(`/houses/${house.id}`)}
-                  className="shrink-0 w-44 rounded-lg border bg-card hover:bg-accent/50 transition-colors overflow-hidden text-left"
+                  className="shrink-0 w-40 rounded-lg border bg-card hover:bg-accent/50 transition-colors text-left p-3 space-y-2"
                 >
-                  <div className="h-20 bg-muted">
-                    {house.thumbnailUrl ? (
-                      <img
-                        src={`${API_ORIGIN}${house.thumbnailUrl}`}
-                        alt={house.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                        <Home size={24} />
-                      </div>
-                    )}
+                  <p className="font-semibold text-sm truncate">{house.name}</p>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold leading-none">{vagas ?? '—'}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">vagas</p>
                   </div>
-                  <div className="p-3">
-                    <p className="font-semibold text-sm truncate mb-2">{house.name}</p>
-                    <div className="flex justify-between text-center">
-                      <div>
-                        <p className="text-lg font-bold leading-none">
-                          {vagas ?? '—'}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">vagas</p>
-                      </div>
-                      <div>
-                        <p className="text-lg font-bold leading-none">
-                          {house.activeResidentsCount}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">filhos</p>
-                      </div>
-                      <div>
-                        <p className="text-lg font-bold leading-none">
-                          {house.staffCount}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">servos</p>
-                      </div>
+                  <div className="flex justify-around text-center">
+                    <div>
+                      <p className="text-base font-semibold leading-none">
+                        {house.activeResidentsCount}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">filhos</p>
+                    </div>
+                    <div>
+                      <p className="text-base font-semibold leading-none">
+                        {house.staffCount}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">servos</p>
                     </div>
                   </div>
                 </button>

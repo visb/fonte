@@ -1,9 +1,14 @@
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { ArrowLeft, ImagePlus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +19,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const API_ORIGIN =
   (import.meta.env.VITE_API_URL as string | undefined)?.replace(
@@ -21,10 +33,47 @@ const API_ORIGIN =
     "",
   ) ?? "http://localhost:3000";
 
-interface Staff {
+const BR_STATES = [
+  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA",
+  "MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN",
+  "RS","RO","RR","SC","SP","SE","TO",
+];
+
+const houseSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  generalCapacity: z.coerce.number().int().min(1).optional().or(z.literal("")),
+  staffCapacity: z.coerce.number().int().min(1).optional().or(z.literal("")),
+  address: z.string().optional().or(z.literal("")),
+  city: z.string().optional().or(z.literal("")),
+  state: z.string().length(2).optional().or(z.literal("")),
+  coordinatorId: z.string().uuid().optional().or(z.literal("")),
+  phone: z.string().optional().or(z.literal("")),
+});
+type HouseFormData = z.infer<typeof houseSchema>;
+
+function sanitize(data: HouseFormData) {
+  return {
+    ...data,
+    generalCapacity:
+      data.generalCapacity === "" || data.generalCapacity === undefined
+        ? null
+        : data.generalCapacity,
+    staffCapacity:
+      data.staffCapacity === "" || data.staffCapacity === undefined
+        ? null
+        : data.staffCapacity,
+    address: data.address === "" ? null : data.address,
+    city: data.city === "" ? null : data.city,
+    state: data.state === "" ? null : data.state,
+    coordinatorId: data.coordinatorId === "" ? null : data.coordinatorId,
+    phone: data.phone === "" ? null : data.phone,
+  };
+}
+
+interface StaffItem {
   id: string;
   name: string;
-  phone: string | null;
+  houseId: string;
 }
 
 interface HousePhoto {
@@ -43,7 +92,7 @@ interface House {
   city: string | null;
   state: string | null;
   coordinatorId: string | null;
-  coordinator: Staff | null;
+  coordinator: { id: string; name: string; phone: string | null } | null;
   phone: string | null;
   photos: HousePhoto[];
   activeResidentsCount: number;
@@ -53,11 +102,12 @@ interface House {
 const fetchHouse = (id: string) =>
   api.get<House>(`/houses/${id}`).then((r) => r.data);
 
+const fetchStaff = () =>
+  api.get<StaffItem[]>("/staff").then((r) => r.data);
+
 const uploadPhoto = ({ id, file }: { id: string; file: File }) => {
   const form = new FormData();
   form.append("file", file);
-  // Content-Type: undefined remove o padrão 'application/json' da instância axios,
-  // deixando o browser gerar 'multipart/form-data; boundary=...' corretamente
   return api
     .post<HousePhoto>(`/houses/${id}/photos`, form, {
       headers: { "Content-Type": undefined },
@@ -73,6 +123,9 @@ const deletePhoto = ({
   photoId: string;
 }) => api.delete(`/houses/${houseId}/photos/${photoId}`);
 
+const updateHouse = ({ id, ...data }: { id: string } & HouseFormData) =>
+  api.patch<House>(`/houses/${id}`, sanitize(data)).then((r) => r.data);
+
 export function HouseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -80,6 +133,14 @@ export function HouseDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deleteTarget, setDeleteTarget] = useState<HousePhoto | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<HouseFormData>({ resolver: zodResolver(houseSchema) });
 
   const {
     data: house,
@@ -89,6 +150,12 @@ export function HouseDetailPage() {
     queryKey: ["houses", id],
     queryFn: () => fetchHouse(id!),
     enabled: !!id,
+  });
+
+  const { data: staffList = [] } = useQuery({
+    queryKey: ["staff"],
+    queryFn: fetchStaff,
+    enabled: editOpen,
   });
 
   const uploadMutation = useMutation({
@@ -114,6 +181,30 @@ export function HouseDetailPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: updateHouse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["houses", id] });
+      queryClient.invalidateQueries({ queryKey: ["houses"] });
+      setEditOpen(false);
+    },
+  });
+
+  const openEdit = () => {
+    if (!house) return;
+    reset({
+      name: house.name,
+      generalCapacity: house.generalCapacity ?? "",
+      staffCapacity: house.staffCapacity ?? "",
+      address: house.address ?? "",
+      city: house.city ?? "",
+      state: house.state ?? "",
+      coordinatorId: house.coordinatorId ?? "",
+      phone: house.phone ?? "",
+    });
+    setEditOpen(true);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && id) {
@@ -122,9 +213,16 @@ export function HouseDetailPage() {
     e.target.value = "";
   };
 
+  const onSubmit = (data: HouseFormData) => {
+    if (id) updateMutation.mutate({ id, ...data });
+  };
+
   if (isLoading) return <p className="text-muted-foreground">Carregando...</p>;
   if (isError || !house)
     return <p className="text-destructive">Casa não encontrada.</p>;
+
+  const hasCapacity =
+    house.generalCapacity != null || house.staffCapacity != null;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -136,37 +234,31 @@ export function HouseDetailPage() {
       </div>
 
       <div className="rounded-lg border p-5 space-y-3">
-        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-          Informações
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+            Informações
+          </h2>
+          <Button variant="ghost" size="sm" onClick={openEdit}>
+            <Pencil size={14} className="mr-2" />
+            Editar
+          </Button>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
-          {house.address && (
-            <>
-              <span className="text-muted-foreground">Endereço</span>
-              <span>{house.address}</span>
-            </>
-          )}
-          {(house.city || house.state) && (
-            <>
-              <span className="text-muted-foreground">Cidade / UF</span>
-              <span>
-                {[house.city, house.state].filter(Boolean).join(" — ")}
-              </span>
-            </>
-          )}
-          {house.phone && (
-            <>
-              <span className="text-muted-foreground">Telefone</span>
-              <span>{house.phone}</span>
-            </>
-          )}
-          {house.coordinator && (
-            <>
-              <span className="text-muted-foreground">Coordenador</span>
-              <span>{house.coordinator.name}</span>
-            </>
-          )}
-          {(house.generalCapacity != null || house.staffCapacity != null) && (
+          <span className="text-muted-foreground">Endereço</span>
+          <span>{house.address || "—"}</span>
+
+          <span className="text-muted-foreground">Cidade / UF</span>
+          <span>
+            {[house.city, house.state].filter(Boolean).join(" — ") || "—"}
+          </span>
+
+          <span className="text-muted-foreground">Telefone</span>
+          <span>{house.phone || "—"}</span>
+
+          <span className="text-muted-foreground">Coordenador</span>
+          <span>{house.coordinator?.name || "—"}</span>
+
+          {hasCapacity && (
             <>
               <span className="text-muted-foreground">Ocupação</span>
               <div className="flex gap-6">
@@ -235,7 +327,7 @@ export function HouseDetailPage() {
             {house.photos.map((photo) => (
               <div
                 key={photo.id}
-                className="relative group rounded-md overflow-hidden aspect-video bg-muted"
+                className="relative rounded-md overflow-hidden aspect-video bg-muted"
               >
                 <img
                   src={`${API_ORIGIN}${photo.url}`}
@@ -244,7 +336,7 @@ export function HouseDetailPage() {
                 />
                 <button
                   onClick={() => setDeleteTarget(photo)}
-                  className="absolute top-1 right-1 p-1 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 p-1 rounded bg-black/60 text-white transition-opacity"
                   title="Remover foto"
                 >
                   <Trash2 size={14} />
@@ -263,8 +355,7 @@ export function HouseDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover foto</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover esta foto? Esta ação não pode ser
-              desfeita.
+              Tem certeza que deseja remover esta foto?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -282,6 +373,126 @@ export function HouseDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={editOpen} onOpenChange={(open) => !open && setEditOpen(false)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Casa</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome *</Label>
+                <Input
+                  id="name"
+                  {...register("name")}
+                  placeholder="Ex: Casa da Paz"
+                />
+                {errors.name && (
+                  <p className="text-sm text-destructive">
+                    {errors.name.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="generalCapacity">Cap. filhos</Label>
+                  <Input
+                    id="generalCapacity"
+                    type="number"
+                    min={1}
+                    {...register("generalCapacity")}
+                    placeholder="Ex: 15"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="staffCapacity">Cap. servos</Label>
+                  <Input
+                    id="staffCapacity"
+                    type="number"
+                    min={1}
+                    {...register("staffCapacity")}
+                    placeholder="Ex: 5"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Endereço</Label>
+                <Input
+                  id="address"
+                  {...register("address")}
+                  placeholder="Ex: Rua das Flores, 123"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="col-span-1 sm:col-span-2 space-y-2">
+                  <Label htmlFor="city">Cidade</Label>
+                  <Input
+                    id="city"
+                    {...register("city")}
+                    placeholder="Ex: São Paulo"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">UF</Label>
+                  <select
+                    id="state"
+                    {...register("state")}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="">—</option>
+                    {BR_STATES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  {...register("phone")}
+                  placeholder="Ex: (11) 99999-9999"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="coordinatorId">Coordenador</Label>
+                <select
+                  id="coordinatorId"
+                  {...register("coordinatorId")}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Sem coordenador</option>
+                  {staffList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSubmitting || updateMutation.isPending}>
+                Salvar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

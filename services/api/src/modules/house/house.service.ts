@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { mkdir, unlink } from 'fs/promises';
-import { join } from 'path';
+import { mkdir, rename } from 'fs/promises';
+import { basename, dirname, join } from 'path';
 import { House } from './house.entity';
 import { HousePhoto } from './house-photo.entity';
 import { CreateHouseDto } from './dto/create-house.dto';
@@ -123,7 +123,9 @@ export class HouseService implements OnModuleInit {
     });
     if (!photo) throw new NotFoundException(`Photo ${photoId} not found`);
     try {
-      await unlink(photo.path);
+      const dir = dirname(photo.path);
+      const filename = basename(photo.path);
+      await rename(photo.path, join(dir, `~${filename}`));
     } catch {
       // arquivo pode não existir no disco — continua com remoção do registro
     }

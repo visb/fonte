@@ -105,7 +105,8 @@ export function ResidentsPage() {
           {residents.map((resident) => (
             <div
               key={resident.id}
-              className="flex w-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-accent/50 transition-colors"
+              className="flex w-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer"
+              onClick={() => navigate(`/residents/${resident.id}`)}
             >
               <div className="flex-1 min-w-0">
                 <p className="font-semibold truncate">{resident.name}</p>
@@ -130,7 +131,7 @@ export function ResidentsPage() {
               <Badge variant={STATUS_VARIANT[resident.status]}>
                 {STATUS_LABELS[resident.status]}
               </Badge>
-              <div className="flex gap-1 shrink-0">
+              <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <Button
                   variant="ghost"
                   size="icon"

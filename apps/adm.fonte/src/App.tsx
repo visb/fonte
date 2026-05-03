@@ -10,6 +10,7 @@ import { HousesPage } from '@/pages/houses/HousesPage';
 import { HouseDetailPage } from '@/pages/houses/HouseDetailPage';
 import { ResidentsPage } from '@/pages/residents/ResidentsPage';
 import { NewResidentPage } from '@/pages/residents/NewResidentPage';
+import { ResidentDetailPage } from '@/pages/residents/ResidentDetailPage';
 import { EditResidentPage } from '@/pages/residents/EditResidentPage';
 import { StaffPage } from '@/pages/staff/StaffPage';
 import { NewStaffPage } from '@/pages/staff/NewStaffPage';
@@ -53,6 +54,7 @@ export default function App() {
               <Route path="houses/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><HouseDetailPage /></ProtectedRoute>} />
               <Route path="residents" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ResidentsPage /></ProtectedRoute>} />
               <Route path="residents/new" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><NewResidentPage /></ProtectedRoute>} />
+              <Route path="residents/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ResidentDetailPage /></ProtectedRoute>} />
               <Route path="residents/:id/edit" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><EditResidentPage /></ProtectedRoute>} />
               <Route path="staff" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><StaffPage /></ProtectedRoute>} />
               <Route path="staff/new" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><NewStaffPage /></ProtectedRoute>} />

@@ -63,8 +63,8 @@ export function Dashboard() {
                 >
                   <p className="font-semibold text-sm truncate">{house.name}</p>
                   <div className="text-center">
-                    <p className="text-2xl font-bold leading-none">{vagas ?? '—'}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">vagas</p>
+                    <p className="text-4xl font-bold leading-none">{vagas ?? '—'}</p>
+                    <p className="text-sm text-muted-foreground mt-1">vagas</p>
                   </div>
                   <div className="flex justify-around text-center">
                     <div>

@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ImagePlus, Loader2, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api';
-import { Button } from '@/components/ui/button';
+import { useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,11 +13,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
 
 const API_ORIGIN =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace('/api/v1', '') ??
-  'http://localhost:3000';
+  (import.meta.env.VITE_API_URL as string | undefined)?.replace(
+    "/api/v1",
+    "",
+  ) ?? "http://localhost:3000";
 
 interface Staff {
   id: string;
@@ -52,16 +54,23 @@ const fetchHouse = (id: string) =>
 
 const uploadPhoto = ({ id, file }: { id: string; file: File }) => {
   const form = new FormData();
-  form.append('file', file);
+  form.append("file", file);
   // Content-Type: undefined remove o padrão 'application/json' da instância axios,
   // deixando o browser gerar 'multipart/form-data; boundary=...' corretamente
-  return api.post<HousePhoto>(`/houses/${id}/photos`, form, {
-    headers: { 'Content-Type': undefined },
-  }).then((r) => r.data);
+  return api
+    .post<HousePhoto>(`/houses/${id}/photos`, form, {
+      headers: { "Content-Type": undefined },
+    })
+    .then((r) => r.data);
 };
 
-const deletePhoto = ({ houseId, photoId }: { houseId: string; photoId: string }) =>
-  api.delete(`/houses/${houseId}/photos/${photoId}`);
+const deletePhoto = ({
+  houseId,
+  photoId,
+}: {
+  houseId: string;
+  photoId: string;
+}) => api.delete(`/houses/${houseId}/photos/${photoId}`);
 
 export function HouseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -71,8 +80,12 @@ export function HouseDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState<HousePhoto | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const { data: house, isLoading, isError } = useQuery({
-    queryKey: ['houses', id],
+  const {
+    data: house,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["houses", id],
     queryFn: () => fetchHouse(id!),
     enabled: !!id,
   });
@@ -81,19 +94,21 @@ export function HouseDetailPage() {
     mutationFn: uploadPhoto,
     onSuccess: () => {
       setUploadError(null);
-      queryClient.invalidateQueries({ queryKey: ['houses', id] });
+      queryClient.invalidateQueries({ queryKey: ["houses", id] });
     },
     onError: (err: unknown) => {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setUploadError(msg ?? 'Erro ao enviar foto. Verifique o arquivo e tente novamente.');
+      const msg = (err as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message;
+      setUploadError(
+        msg ?? "Erro ao enviar foto. Verifique o arquivo e tente novamente.",
+      );
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deletePhoto,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['houses', id] });
+      queryClient.invalidateQueries({ queryKey: ["houses", id] });
       setDeleteTarget(null);
     },
   });
@@ -103,16 +118,17 @@ export function HouseDetailPage() {
     if (file && id) {
       uploadMutation.mutate({ id, file });
     }
-    e.target.value = '';
+    e.target.value = "";
   };
 
   if (isLoading) return <p className="text-muted-foreground">Carregando...</p>;
-  if (isError || !house) return <p className="text-destructive">Casa não encontrada.</p>;
+  if (isError || !house)
+    return <p className="text-destructive">Casa não encontrada.</p>;
 
   return (
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/houses')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/houses")}>
           <ArrowLeft size={18} />
         </Button>
         <h1 className="text-2xl font-bold flex-1">{house.name}</h1>
@@ -133,7 +149,7 @@ export function HouseDetailPage() {
             <>
               <span className="text-muted-foreground">Cidade / UF</span>
               <span>
-                {[house.city, house.state].filter(Boolean).join(' — ')}
+                {[house.city, house.state].filter(Boolean).join(" — ")}
               </span>
             </>
           )}
@@ -153,7 +169,8 @@ export function HouseDetailPage() {
             <>
               <span className="text-muted-foreground">Ocupação</span>
               <span>
-                {house.activeResidentsCount} / {house.capacity - house.staffCount} vagas
+                {house.activeResidentsCount + house.staffCount} /{" "}
+                {house.capacity} ocupação
               </span>
             </>
           )}
@@ -197,7 +214,10 @@ export function HouseDetailPage() {
         ) : (
           <div className="grid grid-cols-3 gap-3">
             {house.photos.map((photo) => (
-              <div key={photo.id} className="relative group rounded-md overflow-hidden aspect-video bg-muted">
+              <div
+                key={photo.id}
+                className="relative group rounded-md overflow-hidden aspect-video bg-muted"
+              >
                 <img
                   src={`${API_ORIGIN}${photo.url}`}
                   alt={photo.filename}
@@ -224,7 +244,8 @@ export function HouseDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover foto</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover esta foto? Esta ação não pode ser desfeita.
+              Tem certeza que deseja remover esta foto? Esta ação não pode ser
+              desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

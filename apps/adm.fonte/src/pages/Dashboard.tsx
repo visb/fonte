@@ -61,7 +61,7 @@ export function Dashboard() {
                   onClick={() => navigate(`/houses/${house.id}`)}
                   className="shrink-0 w-40 rounded-lg border bg-card hover:bg-accent/50 transition-colors text-left p-3 space-y-2"
                 >
-                  <p className="font-semibold text-sm truncate">{house.name}</p>
+                  <p className="font-semibold text-sm truncate text-center">{house.name}</p>
                   <div className="text-center">
                     <p className="text-4xl font-bold leading-none">{vagas ?? '—'}</p>
                     <p className="text-sm text-muted-foreground mt-1">vagas</p>

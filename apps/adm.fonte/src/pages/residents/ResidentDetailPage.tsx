@@ -29,7 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { maskCPF, maskPhone, maskRG } from './masks';
+import { maskCPF, maskPhone, maskRG, withMask } from './masks';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -465,7 +465,7 @@ export function ResidentDetailPage() {
                 <Label htmlFor="rel-phone">Telefone</Label>
                 <Input
                   id="rel-phone"
-                  {...register('phone')}
+                  {...withMask(register('phone'), maskPhone)}
                   placeholder="(00) 00000-0000"
                 />
               </div>

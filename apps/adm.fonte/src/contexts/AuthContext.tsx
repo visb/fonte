@@ -5,12 +5,13 @@ interface AuthContextValue {
   token: string | null;
   isAuthenticated: boolean;
   mustChangePassword: boolean;
+  role: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   onPasswordChanged: (newToken: string) => void;
 }
 
-function decodeToken(token: string): { mustChangePassword?: boolean } {
+function decodeToken(token: string): { mustChangePassword?: boolean; role?: string } {
   try {
     return JSON.parse(atob(token.split('.')[1]));
   } catch {
@@ -25,7 +26,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.getItem(TOKEN_STORAGE_KEY),
   );
 
-  const mustChangePassword = token ? (decodeToken(token).mustChangePassword ?? false) : false;
+  const decoded = token ? decodeToken(token) : {};
+  const mustChangePassword = decoded.mustChangePassword ?? false;
+  const role = decoded.role ?? null;
 
   const login = useCallback(async (email: string, password: string) => {
     const { data } = await api.post<{ accessToken: string }>('/auth/login', {
@@ -47,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, isAuthenticated: token !== null, mustChangePassword, login, logout, onPasswordChanged }}>
+    <AuthContext.Provider value={{ token, isAuthenticated: token !== null, mustChangePassword, role, login, logout, onPasswordChanged }}>
       {children}
     </AuthContext.Provider>
   );

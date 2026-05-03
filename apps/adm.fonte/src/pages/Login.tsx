@@ -3,6 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
+import { Role } from '@fonte/types';
+import { TOKEN_STORAGE_KEY } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,12 +19,12 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export function Login() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, logout, isAuthenticated, role } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/', { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (isAuthenticated && role !== Role.OPERATOR) navigate('/', { replace: true });
+  }, [isAuthenticated, role, navigate]);
 
   const {
     register,
@@ -34,6 +36,14 @@ export function Login() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       await login(data.email, data.password);
+      // React state not yet updated — decode token directly to check role
+      const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+      const payload = token ? JSON.parse(atob(token.split('.')[1])) : {};
+      if (payload.role === Role.OPERATOR) {
+        logout();
+        setError('root', { message: 'Acesso não permitido para este perfil.' });
+        return;
+      }
       navigate('/');
     } catch {
       setError('root', { message: 'Credenciais inválidas' });

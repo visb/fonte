@@ -56,45 +56,6 @@ pnpm build:api
 
 ---
 
-## Convenção de Commits
-
-Use o padrão Conventional Commits para registrar claramente o que foi alterado e em qual parte do monorepo.
-
-Formato obrigatório:
-
-`type(scope): descrição curta`
-
-- `type` deve ser um dos valores abaixo.
-- `scope` deve indicar o app/service/package afetado, por exemplo `apps/adm`, `services/api`, `packages/types`, `apps/ops`.
-- `descrição curta` deve ser objetiva e em português.
-
-Tipos permitidos:
-
-- `feat` — nova funcionalidade
-- `fix` — correção de bug
-- `chore` — tarefas de infraestrutura ou manutenção
-- `docs` — documentação
-- `style` — formatação ou estilo sem mudança de comportamento
-- `refactor` — refatoração de código sem alterar funcionalidade
-- `perf` — melhoria de desempenho
-- `test` — testes
-- `build` — dependências e build
-- `ci` — integração contínua / pipeline
-- `revert` — reverter commit anterior
-
-Quando usar corpo e rodapé:
-
-- Inclua corpo se precisar explicar motivo, contexto ou detalhes da implementação.
-- Use rodapé para referências de issue, breaking changes ou notas de release.
-
-Exemplos:
-
-- `feat(services/api): adicionar endpoint de login para usuários`
-- `fix(apps/adm): corrigir validação de formulário de residente`
-- `chore(packages/types): atualizar tipagens compartilhadas`
-
----
-
 ## Stack
 
 - **Backend**: NestJS + PostgreSQL + JWT

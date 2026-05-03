@@ -20,8 +20,11 @@ export class House {
   @Column()
   name: string;
 
-  @Column({ nullable: true, type: 'integer' })
-  capacity: number | null;
+  @Column({ name: 'general_capacity', nullable: true, type: 'integer' })
+  generalCapacity: number | null;
+
+  @Column({ name: 'staff_capacity', nullable: true, type: 'integer' })
+  staffCapacity: number | null;
 
   @Column({ nullable: true, type: 'varchar' })
   address: string | null;

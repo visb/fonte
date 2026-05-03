@@ -72,7 +72,8 @@ interface Staff {
 interface House {
   id: string;
   name: string;
-  capacity: number | null;
+  generalCapacity: number | null;
+  staffCapacity: number | null;
   address: string | null;
   city: string | null;
   state: string | null;
@@ -88,7 +89,8 @@ interface House {
 
 const houseSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
-  capacity: z.coerce.number().int().min(1).optional().or(z.literal("")),
+  generalCapacity: z.coerce.number().int().min(1).optional().or(z.literal("")),
+  staffCapacity: z.coerce.number().int().min(1).optional().or(z.literal("")),
   address: z.string().optional().or(z.literal("")),
   city: z.string().optional().or(z.literal("")),
   state: z.string().length(2).optional().or(z.literal("")),
@@ -108,10 +110,14 @@ const deleteHouse = (id: string) => api.delete(`/houses/${id}`);
 function sanitize(data: HouseFormData) {
   return {
     ...data,
-    capacity:
-      data.capacity === "" || data.capacity === undefined
+    generalCapacity:
+      data.generalCapacity === "" || data.generalCapacity === undefined
         ? null
-        : data.capacity,
+        : data.generalCapacity,
+    staffCapacity:
+      data.staffCapacity === "" || data.staffCapacity === undefined
+        ? null
+        : data.staffCapacity,
     address: data.address === "" ? null : data.address,
     city: data.city === "" ? null : data.city,
     state: data.state === "" ? null : data.state,
@@ -177,7 +183,8 @@ export function HousesPage() {
     setEditingHouse(null);
     reset({
       name: "",
-      capacity: "",
+      generalCapacity: "",
+      staffCapacity: "",
       address: "",
       city: "",
       state: "",
@@ -191,7 +198,8 @@ export function HousesPage() {
     setEditingHouse(house);
     reset({
       name: house.name,
-      capacity: house.capacity ?? "",
+      generalCapacity: house.generalCapacity ?? "",
+      staffCapacity: house.staffCapacity ?? "",
       address: house.address ?? "",
       city: house.city ?? "",
       state: house.state ?? "",
@@ -206,7 +214,8 @@ export function HousesPage() {
     setEditingHouse(null);
     reset({
       name: "",
-      capacity: "",
+      generalCapacity: "",
+      staffCapacity: "",
       address: "",
       city: "",
       state: "",
@@ -290,17 +299,39 @@ export function HousesPage() {
                   </div>
                 </div>
 
-                {house.capacity != null && (
-                  <div className="text-center shrink-0">
-                    <p className="text-xl font-bold leading-none">
-                      {house.activeResidentsCount + house.staffCount}
-                      <span className="text-sm font-normal text-muted-foreground">
-                        /{house.capacity}
-                      </span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      ocupação
-                    </p>
+                {(house.generalCapacity != null ||
+                  house.staffCapacity != null) && (
+                  <div className="flex gap-4 shrink-0 text-center">
+                    <div>
+                      <p className="text-xl font-bold leading-none">
+                        {Math.max(
+                          0,
+                          (house.generalCapacity ?? 0) +
+                            (house.staffCapacity ?? 0) -
+                            house.staffCount -
+                            house.activeResidentsCount,
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        vagas
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold leading-none">
+                        {house.activeResidentsCount}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        filhos
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold leading-none">
+                        {house.staffCount}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        servos
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -355,15 +386,27 @@ export function HousesPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="capacity">Capacidade</Label>
-                <Input
-                  id="capacity"
-                  type="number"
-                  min={1}
-                  {...register("capacity")}
-                  placeholder="Ex: 20"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="generalCapacity">Cap. filhos</Label>
+                  <Input
+                    id="generalCapacity"
+                    type="number"
+                    min={1}
+                    {...register("generalCapacity")}
+                    placeholder="Ex: 15"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="staffCapacity">Cap. servos</Label>
+                  <Input
+                    id="staffCapacity"
+                    type="number"
+                    min={1}
+                    {...register("staffCapacity")}
+                    placeholder="Ex: 5"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

@@ -18,7 +18,12 @@ export class UpdateHouseDto {
   @IsOptional()
   @IsInt()
   @Min(1)
-  capacity?: number | null;
+  generalCapacity?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  staffCapacity?: number | null;
 
   @IsOptional()
   @IsString()

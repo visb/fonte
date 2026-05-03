@@ -37,7 +37,7 @@ export class HouseService implements OnModuleInit {
         ['ACTIVE'],
       ),
       this.houseRepository.manager.query<Array<{ houseId: string; count: string }>>(
-        `SELECT house_id AS "houseId", COUNT(id)::int AS count
+        `SELECT house_id AS "houseId", COUNT(DISTINCT id)::int AS count
          FROM staff
          WHERE deleted_at IS NULL
          GROUP BY house_id`,
@@ -73,7 +73,7 @@ export class HouseService implements OnModuleInit {
         [id, 'ACTIVE'],
       ),
       this.houseRepository.manager.query<Array<{ count: string }>>(
-        `SELECT COUNT(id)::int AS count FROM staff WHERE house_id = $1 AND deleted_at IS NULL`,
+        `SELECT COUNT(DISTINCT id)::int AS count FROM staff WHERE house_id = $1 AND deleted_at IS NULL`,
         [id],
       ),
     ]);

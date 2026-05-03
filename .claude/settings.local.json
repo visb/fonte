@@ -23,7 +23,8 @@
       "Bash(pnpm *)",
       "Bash(npx vite *)",
       "Bash(Remove-Item *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }

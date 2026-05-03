@@ -37,7 +37,8 @@ interface HousePhoto {
 interface House {
   id: string;
   name: string;
-  capacity: number | null;
+  generalCapacity: number | null;
+  staffCapacity: number | null;
   address: string | null;
   city: string | null;
   state: string | null;
@@ -165,13 +166,31 @@ export function HouseDetailPage() {
               <span>{house.coordinator.name}</span>
             </>
           )}
-          {house.capacity != null && (
+          {(house.generalCapacity != null || house.staffCapacity != null) && (
             <>
               <span className="text-muted-foreground">Ocupação</span>
-              <span>
-                {house.activeResidentsCount + house.staffCount} /{" "}
-                {house.capacity} ocupação
-              </span>
+              <div className="flex gap-6">
+                <div className="text-center">
+                  <p className="font-semibold">
+                    {Math.max(
+                      0,
+                      (house.generalCapacity ?? 0) +
+                        (house.staffCapacity ?? 0) -
+                        house.staffCount -
+                        house.activeResidentsCount,
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">vagas</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold">{house.activeResidentsCount}</p>
+                  <p className="text-xs text-muted-foreground">filhos</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold">{house.staffCount}</p>
+                  <p className="text-xs text-muted-foreground">servos</p>
+                </div>
+              </div>
             </>
           )}
         </div>

@@ -56,6 +56,45 @@ pnpm build:api
 
 ---
 
+## Convenção de Commits
+
+Use o padrão Conventional Commits para registrar claramente o que foi alterado e em qual parte do monorepo.
+
+Formato obrigatório:
+
+`type(scope): descrição curta`
+
+- `type` deve ser um dos valores abaixo.
+- `scope` deve indicar o app/service/package afetado, por exemplo `apps/adm`, `services/api`, `packages/types`, `apps/ops`.
+- `descrição curta` deve ser objetiva e em português.
+
+Tipos permitidos:
+
+- `feat` — nova funcionalidade
+- `fix` — correção de bug
+- `chore` — tarefas de infraestrutura ou manutenção
+- `docs` — documentação
+- `style` — formatação ou estilo sem mudança de comportamento
+- `refactor` — refatoração de código sem alterar funcionalidade
+- `perf` — melhoria de desempenho
+- `test` — testes
+- `build` — dependências e build
+- `ci` — integração contínua / pipeline
+- `revert` — reverter commit anterior
+
+Quando usar corpo e rodapé:
+
+- Inclua corpo se precisar explicar motivo, contexto ou detalhes da implementação.
+- Use rodapé para referências de issue, breaking changes ou notas de release.
+
+Exemplos:
+
+- `feat(services/api): adicionar endpoint de login para usuários`
+- `fix(apps/adm): corrigir validação de formulário de residente`
+- `chore(packages/types): atualizar tipagens compartilhadas`
+
+---
+
 ## Stack
 
 - **Backend**: NestJS + PostgreSQL + JWT
@@ -70,6 +109,7 @@ pnpm build:api
 Organizado por módulos de domínio em `src/modules/`. Cada módulo contém: `controller`, `service`, `repository`, `dto`, `entity`.
 
 **Módulos:**
+
 - `auth` — JWT, login, guard por role
 - `user` — identidade centralizada (credenciais, role, is_active)
 - `house` — unidades físicas da comunidade
@@ -82,6 +122,7 @@ Organizado por módulos de domínio em `src/modules/`. Cada módulo contém: `co
 - `storeroom` — dispensa por casa
 
 **Regras arquiteturais:**
+
 - Nenhum acesso ao banco fora do `repository`
 - Nenhuma regra de negócio no `controller`
 - `Services` não dependem de outros módulos diretamente sem interface
@@ -93,11 +134,11 @@ Organizado por módulos de domínio em `src/modules/`. Cada módulo contém: `co
 
 Autenticação centralizada em `User`. As entidades de domínio guardam a FK:
 
-| Entidade | `user_id`  | Quando é preenchido                         |
-| -------- | ---------- | ------------------------------------------- |
-| Staff    | sempre     | No cadastro do colaborador                  |
-| Relative | nullable   | Quando o familiar receber acesso ao portal  |
-| Resident | nullable   | Quando o interno receber acesso ao kiosk    |
+| Entidade | `user_id` | Quando é preenchido                        |
+| -------- | --------- | ------------------------------------------ |
+| Staff    | sempre    | No cadastro do colaborador                 |
+| Relative | nullable  | Quando o familiar receber acesso ao portal |
+| Resident | nullable  | Quando o interno receber acesso ao kiosk   |
 
 Roles: `ADMIN`, `COORDINATOR`, `OPERATOR` → exclusivos de Staff. `RELATIVE`, `RESIDENT` → fases futuras.
 

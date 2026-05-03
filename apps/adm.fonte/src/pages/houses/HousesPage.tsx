@@ -87,10 +87,15 @@ interface House {
   updatedAt: string;
 }
 
+const optionalCapacity = z.preprocess(
+  (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
+  z.number().int().min(1).optional(),
+);
+
 const houseSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
-  generalCapacity: z.coerce.number().int().min(1).optional().or(z.literal("")),
-  staffCapacity: z.coerce.number().int().min(1).optional().or(z.literal("")),
+  generalCapacity: optionalCapacity,
+  staffCapacity: optionalCapacity,
   address: z.string().optional().or(z.literal("")),
   city: z.string().optional().or(z.literal("")),
   state: z.string().length(2).optional().or(z.literal("")),

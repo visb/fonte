@@ -8,6 +8,7 @@ export interface JwtPayload {
   sub: string;
   role: Role;
   profileType: ProfileType;
+  mustChangePassword: boolean;
 }
 
 @Injectable()
@@ -25,6 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       userId: payload.sub,
       role: payload.role,
       profileType: payload.profileType,
+      mustChangePassword: payload.mustChangePassword,
     };
   }
 }

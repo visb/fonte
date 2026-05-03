@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { MustChangePasswordGuard } from './common/guards/must-change-password.guard';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { getDatabaseConfig } from './config/database.config';
@@ -30,6 +32,9 @@ import { StoreroomModule } from './modules/storeroom/storeroom.module';
     IncidentModule,
     MinistryModule,
     StoreroomModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: MustChangePasswordGuard },
   ],
 })
 export class AppModule {}

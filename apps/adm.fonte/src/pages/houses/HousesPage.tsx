@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Home, MapPin, Pencil, Phone, Plus, Trash2, User } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,19 +26,34 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+
+const API_ORIGIN =
+  (import.meta.env.VITE_API_URL as string | undefined)?.replace('/api/v1', '') ??
+  'http://localhost:3000';
+
+const BR_STATES = [
+  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
+  'MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN',
+  'RS','RO','RR','SC','SP','SE','TO',
+];
+
+interface Staff {
+  id: string;
+  name: string;
+  houseId: string;
+}
 
 interface House {
   id: string;
   name: string;
   capacity: number | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  coordinatorId: string | null;
+  coordinator: Staff | null;
+  phone: string | null;
+  thumbnailUrl: string | null;
   activeResidentsCount: number;
   staffCount: number;
   createdAt: string;
@@ -47,10 +63,16 @@ interface House {
 const houseSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   capacity: z.coerce.number().int().min(1).optional().or(z.literal('')),
+  address: z.string().optional().or(z.literal('')),
+  city: z.string().optional().or(z.literal('')),
+  state: z.string().length(2).optional().or(z.literal('')),
+  coordinatorId: z.string().uuid().optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
 });
 type HouseFormData = z.infer<typeof houseSchema>;
 
 const fetchHouses = () => api.get<House[]>('/houses').then((r) => r.data);
+const fetchStaff = () => api.get<Staff[]>('/staff').then((r) => r.data);
 const createHouse = (data: HouseFormData) =>
   api.post<House>('/houses', sanitize(data)).then((r) => r.data);
 const updateHouse = ({ id, ...data }: { id: string } & HouseFormData) =>
@@ -58,10 +80,19 @@ const updateHouse = ({ id, ...data }: { id: string } & HouseFormData) =>
 const deleteHouse = (id: string) => api.delete(`/houses/${id}`);
 
 function sanitize(data: HouseFormData) {
-  return { ...data, capacity: data.capacity === '' || data.capacity === undefined ? null : data.capacity };
+  return {
+    ...data,
+    capacity: data.capacity === '' || data.capacity === undefined ? null : data.capacity,
+    address: data.address === '' ? null : data.address,
+    city: data.city === '' ? null : data.city,
+    state: data.state === '' ? null : data.state,
+    coordinatorId: data.coordinatorId === '' ? null : data.coordinatorId,
+    phone: data.phone === '' ? null : data.phone,
+  };
 }
 
 export function HousesPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
@@ -77,6 +108,12 @@ export function HousesPage() {
   const { data: houses = [], isLoading, isError } = useQuery({
     queryKey: ['houses'],
     queryFn: fetchHouses,
+  });
+
+  const { data: staffList = [] } = useQuery({
+    queryKey: ['staff'],
+    queryFn: fetchStaff,
+    enabled: dialogOpen,
   });
 
   const createMutation = useMutation({
@@ -105,20 +142,28 @@ export function HousesPage() {
 
   const openCreate = () => {
     setEditingHouse(null);
-    reset({ name: '', capacity: '' });
+    reset({ name: '', capacity: '', address: '', city: '', state: '', coordinatorId: '', phone: '' });
     setDialogOpen(true);
   };
 
   const openEdit = (house: House) => {
     setEditingHouse(house);
-    reset({ name: house.name, capacity: house.capacity ?? '' });
+    reset({
+      name: house.name,
+      capacity: house.capacity ?? '',
+      address: house.address ?? '',
+      city: house.city ?? '',
+      state: house.state ?? '',
+      coordinatorId: house.coordinatorId ?? '',
+      phone: house.phone ?? '',
+    });
     setDialogOpen(true);
   };
 
   const closeDialog = () => {
     setDialogOpen(false);
     setEditingHouse(null);
-    reset({ name: '', capacity: '' });
+    reset({ name: '', capacity: '', address: '', city: '', state: '', coordinatorId: '', phone: '' });
   };
 
   const onSubmit = (data: HouseFormData) => {
@@ -142,37 +187,69 @@ export function HousesPage() {
         </Button>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nome</TableHead>
-            <TableHead>Ocupação</TableHead>
-            <TableHead>Criada em</TableHead>
-            <TableHead className="w-24">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {houses.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center text-muted-foreground">
-                Nenhuma casa cadastrada.
-              </TableCell>
-            </TableRow>
-          )}
+      {houses.length === 0 ? (
+        <p className="text-center text-muted-foreground py-12">Nenhuma casa cadastrada.</p>
+      ) : (
+        <div className="space-y-3">
           {houses.map((house) => (
-            <TableRow key={house.id}>
-              <TableCell className="font-medium">{house.name}</TableCell>
-              <TableCell>
-                {house.capacity != null
-                  ? `${house.activeResidentsCount} / ${house.capacity - house.staffCount}`
-                  : house.activeResidentsCount}
-              </TableCell>
-              <TableCell>
-                {new Date(house.createdAt).toLocaleDateString('pt-BR')}
-              </TableCell>
-              <TableCell>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(house)}>
+            <div
+              key={house.id}
+              className="flex w-full overflow-hidden rounded-lg border bg-card cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={() => navigate(`/houses/${house.id}`)}
+            >
+              <div className="w-36 shrink-0 bg-muted">
+                {house.thumbnailUrl ? (
+                  <img
+                    src={`${API_ORIGIN}${house.thumbnailUrl}`}
+                    alt={house.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                    <Home size={28} />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-1 items-center gap-6 px-5 py-4 min-w-0">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-base truncate">{house.name}</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
+                    {(house.city || house.state) && (
+                      <span className="flex items-center gap-1">
+                        <MapPin size={13} />
+                        {[house.city, house.state].filter(Boolean).join(' — ')}
+                      </span>
+                    )}
+                    {house.coordinator && (
+                      <span className="flex items-center gap-1">
+                        <User size={13} />
+                        {house.coordinator.name}
+                      </span>
+                    )}
+                    {house.phone && (
+                      <span className="flex items-center gap-1">
+                        <Phone size={13} />
+                        {house.phone}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {house.capacity != null && (
+                  <div className="text-center shrink-0">
+                    <p className="text-xl font-bold leading-none">
+                      {house.activeResidentsCount}
+                      <span className="text-sm font-normal text-muted-foreground">
+                        /{house.capacity - house.staffCount}
+                      </span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">vagas</p>
+                  </div>
+                )}
+
+                <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" onClick={() => openEdit(house)} title="Editar">
                     <Pencil size={16} />
                   </Button>
                   <Button
@@ -180,30 +257,32 @@ export function HousesPage() {
                     size="icon"
                     className="text-destructive hover:text-destructive"
                     onClick={() => setDeleteTarget(house)}
+                    title="Excluir"
                   >
                     <Trash2 size={16} />
                   </Button>
                 </div>
-              </TableCell>
-            </TableRow>
+              </div>
+            </div>
           ))}
-        </TableBody>
-      </Table>
+        </div>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingHouse ? 'Editar Casa' : 'Nova Casa'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
+                <Label htmlFor="name">Nome *</Label>
                 <Input id="name" {...register('name')} placeholder="Ex: Casa da Paz" />
                 {errors.name && (
                   <p className="text-sm text-destructive">{errors.name.message}</p>
                 )}
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="capacity">Capacidade</Label>
                 <Input
@@ -213,9 +292,50 @@ export function HousesPage() {
                   {...register('capacity')}
                   placeholder="Ex: 20"
                 />
-                {errors.capacity && (
-                  <p className="text-sm text-destructive">{errors.capacity.message}</p>
-                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Endereço</Label>
+                <Input id="address" {...register('address')} placeholder="Ex: Rua das Flores, 123" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="city">Cidade</Label>
+                  <Input id="city" {...register('city')} placeholder="Ex: São Paulo" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">UF</Label>
+                  <select
+                    id="state"
+                    {...register('state')}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="">—</option>
+                    {BR_STATES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone</Label>
+                <Input id="phone" {...register('phone')} placeholder="Ex: (11) 99999-9999" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="coordinatorId">Coordenador</Label>
+                <select
+                  id="coordinatorId"
+                  {...register('coordinatorId')}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Sem coordenador</option>
+                  {staffList.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <DialogFooter>

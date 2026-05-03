@@ -1,16 +1,25 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   HttpCode,
   HttpStatus,
+  MaxFileSizeValidator,
   Param,
+  ParseFilePipe,
   ParseUUIDPipe,
   Patch,
   Post,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Request } from 'express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
 import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -18,7 +27,24 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateHouseDto } from './dto/create-house.dto';
 import { UpdateHouseDto } from './dto/update-house.dto';
 import { House } from './house.entity';
+import { HousePhoto } from './house-photo.entity';
 import { HouseService } from './house.service';
+
+const photoOptions = {
+  storage: diskStorage({
+    destination: join(process.cwd(), 'uploads', 'houses'),
+    filename: (_req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
+    },
+  }),
+  fileFilter: (_req: Request, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new BadRequestException('Apenas imagens são permitidas'), false);
+    }
+    cb(null, true);
+  },
+};
 
 @Controller('houses')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -57,5 +83,31 @@ export class HouseController {
   @Roles(Role.ADMIN)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.houseService.remove(id);
+  }
+
+  @Post(':id/photos')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  @UseInterceptors(FileInterceptor('file', photoOptions))
+  addPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
+        exceptionFactory: () => new BadRequestException('Arquivo muito grande: máximo 5 MB'),
+      }),
+    )
+    file: Express.Multer.File,
+  ): Promise<HousePhoto> {
+    return this.houseService.addPhoto(id, file);
+  }
+
+  @Delete(':id/photos/:photoId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  removePhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+  ): Promise<void> {
+    return this.houseService.removePhoto(id, photoId);
   }
 }

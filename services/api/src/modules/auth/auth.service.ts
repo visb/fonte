@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { Role, ProfileType } from '@fonte/types';
@@ -25,13 +25,27 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
-    const payload: JwtPayload = {
-      sub: user.id,
-      role: user.role,
-      profileType: this.resolveProfileType(user.role),
-    };
+    return { accessToken: this.signToken(user.id, user.role, user.mustChangePassword) };
+  }
 
-    return { accessToken: this.jwtService.sign(payload) };
+  async changePassword(userId: string, newPassword: string): Promise<{ accessToken: string }> {
+    const user = await this.userService.findById(userId);
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await this.userService.updatePassword(userId, hash);
+
+    return { accessToken: this.signToken(userId, user.role, false) };
+  }
+
+  private signToken(userId: string, role: Role, mustChangePassword: boolean): string {
+    const payload: JwtPayload = {
+      sub: userId,
+      role,
+      profileType: this.resolveProfileType(role),
+      mustChangePassword,
+    };
+    return this.jwtService.sign(payload);
   }
 
   private resolveProfileType(role: Role): ProfileType {

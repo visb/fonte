@@ -9,7 +9,7 @@
     "prebuild": "pnpm --filter @fonte/types build",
     "build": "nest build && cp -r ../../node_modules dist/",
     "dev": "nest start --watch",
-    "start": "node dist/main",
+    "start": "npx typeorm-ts-node-commonjs migration:run -d dist/database/data-source.js && node dist/main",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",

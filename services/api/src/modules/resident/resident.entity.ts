@@ -110,6 +110,9 @@ export class Resident {
   @Column({ name: 'family_investment', nullable: true, type: 'varchar' })
   familyInvestment: string | null;
 
+  @Column({ name: 'photo_url', nullable: true, type: 'varchar' })
+  photoUrl: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, Paperclip, Pencil, Phone, Plus, Trash2, User } from 'lucide-react';
+import { photoUrl } from '@/lib/api';
 import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -58,6 +59,7 @@ interface ResidentDetail {
   weight: number | null;
   height: number | null;
   familyInvestment: string | null;
+  photoUrl: string | null;
 }
 
 interface Relative {
@@ -203,6 +205,7 @@ export function ResidentDetailPage() {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [addRelativeOpen, setAddRelativeOpen] = useState(false);
   const [deleteRelativeTarget, setDeleteRelativeTarget] = useState<Relative | null>(null);
 
@@ -256,6 +259,23 @@ export function ResidentDetailPage() {
         <Button variant="ghost" size="icon" onClick={() => navigate('/residents')}>
           <ArrowLeft size={18} />
         </Button>
+        <div
+          className={cn(
+            'w-12 h-12 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden',
+            resident.photoUrl && 'cursor-pointer hover:opacity-80 transition-opacity',
+          )}
+          onClick={() => resident.photoUrl && setPhotoModalOpen(true)}
+        >
+          {resident.photoUrl ? (
+            <img
+              src={photoUrl(resident.photoUrl)!}
+              alt={resident.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <User size={22} className="text-muted-foreground" />
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold truncate">{resident.name}</h1>
@@ -437,6 +457,17 @@ export function ResidentDetailPage() {
           <p>Documentos e arquivos do acolhido serão exibidos aqui.</p>
         </div>
       )}
+
+      {/* ── Dialog: foto ampliada ───────────────────────────────────────────── */}
+      <Dialog open={photoModalOpen} onOpenChange={setPhotoModalOpen}>
+        <DialogContent className="max-w-sm p-2">
+          <img
+            src={photoUrl(resident.photoUrl)!}
+            alt={resident.name}
+            className="w-full rounded-md object-contain max-h-[80vh]"
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* ── Dialog: adicionar familiar ───────────────────────────────────────── */}
       <Dialog open={addRelativeOpen} onOpenChange={(open) => !open && setAddRelativeOpen(false)}>

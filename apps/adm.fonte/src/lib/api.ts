@@ -25,3 +25,11 @@ api.interceptors.response.use(
 );
 
 export const TOKEN_STORAGE_KEY = TOKEN_KEY;
+
+export function photoUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  const origin =
+    (import.meta.env.VITE_API_URL as string | undefined)?.replace('/api/v1', '') ??
+    'http://localhost:3000';
+  return `${origin}${path}`;
+}

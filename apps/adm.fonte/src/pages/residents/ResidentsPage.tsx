@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, CalendarDays, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Building2, CalendarDays, Pencil, Plus, Trash2, User } from 'lucide-react';
 import { ResidentStatus } from '@fonte/types';
-import { api } from '@/lib/api';
+import { api, photoUrl } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,7 @@ interface Resident {
   status: ResidentStatus;
   house: { id: string; name: string };
   entryDate: string | null;
+  photoUrl: string | null;
 }
 
 const STATUS_LABELS: Record<ResidentStatus, string> = {
@@ -64,6 +65,19 @@ function computeAge(birthDate: string | null): number | null {
 
 const fetchResidents = () => api.get<Resident[]>('/residents').then((r) => r.data);
 const deleteResident = (id: string) => api.delete(`/residents/${id}`);
+
+function Avatar({ url, name }: { url: string | null; name: string }) {
+  const src = photoUrl(url);
+  return (
+    <div className="w-10 h-10 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+      {src ? (
+        <img src={src} alt={name} className="w-full h-full object-cover" />
+      ) : (
+        <User size={18} className="text-muted-foreground" />
+      )}
+    </div>
+  );
+}
 
 export function ResidentsPage() {
   const navigate = useNavigate();
@@ -108,6 +122,7 @@ export function ResidentsPage() {
               className="flex w-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer"
               onClick={() => navigate(`/residents/${resident.id}`)}
             >
+              <Avatar url={resident.photoUrl} name={resident.name} />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold truncate">{resident.name}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">

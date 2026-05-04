@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -7,6 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import { maskCPF, maskRG, maskPhone, withMask } from './masks';
 import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { api } from '@/lib/api';
+import { AvatarUpload } from '@/components/AvatarUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,7 +46,6 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 const today = new Date().toISOString().split('T')[0];
-
 
 const fetchHouses = () => api.get<House[]>('/houses').then((r) => r.data);
 
@@ -92,6 +93,7 @@ function Field({
 export function NewResidentPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const pendingPhotoRef = useRef<Blob | null>(null);
 
   const { data: houses = [] } = useQuery({ queryKey: ['houses'], queryFn: fetchHouses });
 
@@ -102,7 +104,18 @@ export function NewResidentPage() {
   } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { entryDate: today } });
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) => api.post('/residents', buildPayload(data)),
+    mutationFn: async (data: FormData) => {
+      const { data: resident } = await api.post<{ id: string }>('/residents', buildPayload(data));
+      const photo = pendingPhotoRef.current;
+      if (photo) {
+        const fd = new window.FormData();
+        fd.append('file', photo, 'photo.jpg');
+        await api.post(`/residents/${resident.id}/photo`, fd, {
+          headers: { 'Content-Type': undefined },
+        });
+      }
+      return resident;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['residents'] });
       queryClient.invalidateQueries({ queryKey: ['houses'] });
@@ -125,6 +138,11 @@ export function NewResidentPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
         <SectionTitle>Identificação</SectionTitle>
+
+        <div className="col-span-full flex justify-center pb-2">
+          <AvatarUpload onBlobChange={(blob) => { pendingPhotoRef.current = blob; }} />
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Nome completo *" error={errors.name?.message} full>
             <Input {...register('name')} placeholder="Nome do acolhido" />

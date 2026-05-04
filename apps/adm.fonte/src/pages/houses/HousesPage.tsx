@@ -116,13 +116,8 @@ function sanitize(data: HouseFormData) {
   return {
     ...data,
     generalCapacity:
-      data.generalCapacity === "" || data.generalCapacity === undefined
-        ? null
-        : data.generalCapacity,
-    staffCapacity:
-      data.staffCapacity === "" || data.staffCapacity === undefined
-        ? null
-        : data.staffCapacity,
+      data.generalCapacity === undefined ? null : data.generalCapacity,
+    staffCapacity: data.staffCapacity === undefined ? null : data.staffCapacity,
     address: data.address === "" ? null : data.address,
     city: data.city === "" ? null : data.city,
     state: data.state === "" ? null : data.state,
@@ -188,8 +183,8 @@ export function HousesPage() {
     setEditingHouse(null);
     reset({
       name: "",
-      generalCapacity: "",
-      staffCapacity: "",
+      generalCapacity: undefined,
+      staffCapacity: undefined,
       address: "",
       city: "",
       state: "",
@@ -203,8 +198,8 @@ export function HousesPage() {
     setEditingHouse(house);
     reset({
       name: house.name,
-      generalCapacity: house.generalCapacity ?? "",
-      staffCapacity: house.staffCapacity ?? "",
+      generalCapacity: house.generalCapacity ?? undefined,
+      staffCapacity: house.staffCapacity ?? undefined,
       address: house.address ?? "",
       city: house.city ?? "",
       state: house.state ?? "",
@@ -219,8 +214,8 @@ export function HousesPage() {
     setEditingHouse(null);
     reset({
       name: "",
-      generalCapacity: "",
-      staffCapacity: "",
+      generalCapacity: undefined,
+      staffCapacity: undefined,
       address: "",
       city: "",
       state: "",

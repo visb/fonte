@@ -34,9 +34,33 @@ const API_ORIGIN =
   ) ?? "http://localhost:3000";
 
 const BR_STATES = [
-  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA",
-  "MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN",
-  "RS","RO","RR","SC","SP","SE","TO",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
 ];
 
 const optionalCapacity = z.preprocess(
@@ -60,13 +84,8 @@ function sanitize(data: HouseFormData) {
   return {
     ...data,
     generalCapacity:
-      data.generalCapacity === "" || data.generalCapacity === undefined
-        ? null
-        : data.generalCapacity,
-    staffCapacity:
-      data.staffCapacity === "" || data.staffCapacity === undefined
-        ? null
-        : data.staffCapacity,
+      data.generalCapacity === undefined ? null : data.generalCapacity,
+    staffCapacity: data.staffCapacity === undefined ? null : data.staffCapacity,
     address: data.address === "" ? null : data.address,
     city: data.city === "" ? null : data.city,
     state: data.state === "" ? null : data.state,
@@ -107,8 +126,7 @@ interface House {
 const fetchHouse = (id: string) =>
   api.get<House>(`/houses/${id}`).then((r) => r.data);
 
-const fetchStaff = () =>
-  api.get<StaffItem[]>("/staff").then((r) => r.data);
+const fetchStaff = () => api.get<StaffItem[]>("/staff").then((r) => r.data);
 
 const uploadPhoto = ({ id, file }: { id: string; file: File }) => {
   const form = new FormData();
@@ -199,8 +217,8 @@ export function HouseDetailPage() {
     if (!house) return;
     reset({
       name: house.name,
-      generalCapacity: house.generalCapacity ?? "",
-      staffCapacity: house.staffCapacity ?? "",
+      generalCapacity: house.generalCapacity ?? undefined,
+      staffCapacity: house.staffCapacity ?? undefined,
       address: house.address ?? "",
       city: house.city ?? "",
       state: house.state ?? "",
@@ -379,7 +397,10 @@ export function HouseDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={editOpen} onOpenChange={(open) => !open && setEditOpen(false)}>
+      <Dialog
+        open={editOpen}
+        onOpenChange={(open) => !open && setEditOpen(false)}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Editar Casa</DialogTitle>
@@ -491,7 +512,10 @@ export function HouseDetailPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting || updateMutation.isPending}>
+              <Button
+                type="submit"
+                disabled={isSubmitting || updateMutation.isPending}
+              >
                 Salvar
               </Button>
             </DialogFooter>

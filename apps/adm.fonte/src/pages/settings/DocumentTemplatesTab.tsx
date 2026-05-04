@@ -48,24 +48,66 @@ interface DocumentTemplate {
 }
 
 const VARIABLES: { key: string; label: string; description: string }[] = [
-  { key: "{{name}}", label: "Nome completo", description: "Nome completo do acolhido" },
-  { key: "{{cpf}}", label: "CPF", description: "CPF formatado (000.000.000-00)" },
+  {
+    key: "{{name}}",
+    label: "Nome completo",
+    description: "Nome completo do acolhido",
+  },
+  {
+    key: "{{cpf}}",
+    label: "CPF",
+    description: "CPF formatado (000.000.000-00)",
+  },
   { key: "{{rg}}", label: "RG", description: "Registro Geral do acolhido" },
-  { key: "{{birthDate}}", label: "Data de nascimento", description: "Data de nascimento no formato dd/mm/aaaa" },
-  { key: "{{age}}", label: "Idade", description: "Idade atual calculada em anos" },
-  { key: "{{maritalStatus}}", label: "Estado civil", description: "Solteiro(a), Casado(a) ou Divorciado(a)" },
-  { key: "{{address}}", label: "Endereço", description: "Endereço residencial do acolhido" },
-  { key: "{{phone}}", label: "Telefone", description: "Telefone de contato do acolhido" },
-  { key: "{{house}}", label: "Nome da casa", description: "Nome da unidade de acolhimento" },
-  { key: "{{entryDate}}", label: "Data de entrada", description: "Data de entrada na comunidade (dd/mm/aaaa)" },
-  { key: "{{date}}", label: "Data de hoje", description: "Data atual no momento da impressão (dd/mm/aaaa)" },
+  {
+    key: "{{birthDate}}",
+    label: "Data de nascimento",
+    description: "Data de nascimento no formato dd/mm/aaaa",
+  },
+  {
+    key: "{{age}}",
+    label: "Idade",
+    description: "Idade atual calculada em anos",
+  },
+  {
+    key: "{{maritalStatus}}",
+    label: "Estado civil",
+    description: "Solteiro(a), Casado(a) ou Divorciado(a)",
+  },
+  {
+    key: "{{address}}",
+    label: "Endereço",
+    description: "Endereço residencial do acolhido",
+  },
+  {
+    key: "{{phone}}",
+    label: "Telefone",
+    description: "Telefone de contato do acolhido",
+  },
+  {
+    key: "{{house}}",
+    label: "Nome da casa",
+    description: "Nome da unidade de acolhimento",
+  },
+  {
+    key: "{{entryDate}}",
+    label: "Data de entrada",
+    description: "Data de entrada na comunidade (dd/mm/aaaa)",
+  },
+  {
+    key: "{{date}}",
+    label: "Data de hoje",
+    description: "Data atual no momento da impressão (dd/mm/aaaa)",
+  },
 ];
 
 export function DocumentTemplatesTab() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<DocumentTemplate | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<DocumentTemplate | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DocumentTemplate | null>(
+    null,
+  );
   const [newName, setNewName] = useState("");
 
   const { data: templates = [] } = useQuery({
@@ -88,7 +130,8 @@ export function DocumentTemplatesTab() {
     mutationFn: (id: string) => api.delete(`/document-templates/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["document-templates"] });
-      if (editing && deleteTarget && editing.id === deleteTarget.id) setEditing(null);
+      if (editing && deleteTarget && editing.id === deleteTarget.id)
+        setEditing(null);
       setDeleteTarget(null);
     },
   });
@@ -108,9 +151,13 @@ export function DocumentTemplatesTab() {
             Voltar
           </Button>
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <span className="font-semibold text-sm truncate">{editing.name}</span>
+            <span className="font-semibold text-sm truncate">
+              {editing.name}
+            </span>
             {editing.isRequired && (
-              <Badge variant="secondary" className="text-xs shrink-0">Acolhimento</Badge>
+              <Badge variant="secondary" className="text-xs shrink-0">
+                Acolhimento
+              </Badge>
             )}
           </div>
         </div>
@@ -130,9 +177,16 @@ export function DocumentTemplatesTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Templates com badge <strong>Acolhimento</strong> aparecem automaticamente na aba de Anexos do acolhido.
+          Templates com badge <strong>Acolhimento</strong> aparecem
+          automaticamente na aba de Anexos do acolhido.
         </p>
-        <Button size="sm" onClick={() => { setNewName(""); setCreateOpen(true); }}>
+        <Button
+          size="sm"
+          onClick={() => {
+            setNewName("");
+            setCreateOpen(true);
+          }}
+        >
           <Plus size={14} className="mr-1.5" />
           Novo template
         </Button>
@@ -154,11 +208,14 @@ export function DocumentTemplatesTab() {
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm truncate">{t.name}</span>
                   {t.isRequired && (
-                    <Badge variant="secondary" className="text-xs shrink-0">Acolhimento</Badge>
+                    <Badge variant="secondary" className="text-xs shrink-0">
+                      Acolhimento
+                    </Badge>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Atualizado em {new Date(t.updatedAt).toLocaleDateString("pt-BR")}
+                  Atualizado em{" "}
+                  {new Date(t.updatedAt).toLocaleDateString("pt-BR")}
                 </p>
               </div>
               <Button
@@ -178,7 +235,10 @@ export function DocumentTemplatesTab() {
       )}
 
       {/* Dialog: novo template */}
-      <Dialog open={createOpen} onOpenChange={(open) => !open && setCreateOpen(false)}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => !open && setCreateOpen(false)}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Novo template</DialogTitle>
@@ -217,15 +277,18 @@ export function DocumentTemplatesTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir template</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir <strong>{deleteTarget?.name}</strong>?
-              Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir{" "}
+              <strong>{deleteTarget?.name}</strong>? Esta ação não pode ser
+              desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              onClick={() =>
+                deleteTarget && deleteMutation.mutate(deleteTarget.id)
+              }
             >
               Excluir
             </AlertDialogAction>
@@ -249,8 +312,14 @@ function TemplateEditor({
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const mutation = useMutation({
-    mutationFn: (data: { name: string; content: string; isRequired: boolean }) =>
-      api.put<DocumentTemplate>(`/document-templates/${template.id}`, data).then((r) => r.data),
+    mutationFn: (data: {
+      name: string;
+      content: string;
+      isRequired: boolean;
+    }) =>
+      api
+        .put<DocumentTemplate>(`/document-templates/${template.id}`, data)
+        .then((r) => r.data),
     onSuccess: (updated) => onSaved(updated),
   });
 
@@ -265,7 +334,7 @@ function TemplateEditor({
 
   useEffect(() => {
     if (editor && template.content && editor.getHTML() !== template.content) {
-      editor.commands.setContent(template.content, false);
+      editor.commands.setContent(template.content);
     }
   }, [editor, template.content]);
 
@@ -279,7 +348,11 @@ function TemplateEditor({
     if (!file || !editor) return;
     const reader = new FileReader();
     reader.onload = () => {
-      editor.chain().focus().setImage({ src: reader.result as string }).run();
+      editor
+        .chain()
+        .focus()
+        .setImage({ src: reader.result as string })
+        .run();
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -299,7 +372,9 @@ function TemplateEditor({
       {/* Nome e flag de acolhimento */}
       <div className="flex items-center gap-3">
         <div className="flex-1">
-          <Label htmlFor="template-name" className="text-xs mb-1 block">Nome do template</Label>
+          <Label htmlFor="template-name" className="text-xs mb-1 block">
+            Nome do template
+          </Label>
           <Input
             id="template-name"
             value={name}
@@ -315,7 +390,10 @@ function TemplateEditor({
             onChange={(e) => setIsRequired(e.target.checked)}
             className="h-4 w-4 cursor-pointer"
           />
-          <Label htmlFor="is-required" className="text-sm cursor-pointer whitespace-nowrap">
+          <Label
+            htmlFor="is-required"
+            className="text-sm cursor-pointer whitespace-nowrap"
+          >
             Exigir no acolhimento
           </Label>
         </div>
@@ -325,7 +403,9 @@ function TemplateEditor({
       <div className="flex flex-wrap items-center gap-1 rounded-md border bg-muted/30 p-1">
         <ToolbarButton
           active={editor.isActive("heading", { level: 2 })}
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 2 }).run()
+          }
           title="Título"
         >
           <Heading2 size={14} />
@@ -408,7 +488,10 @@ function TemplateEditor({
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={mutation.isPending || !name.trim()}>
+        <Button
+          onClick={handleSave}
+          disabled={mutation.isPending || !name.trim()}
+        >
           {mutation.isPending ? "Salvando..." : "Salvar template"}
         </Button>
       </div>

@@ -11,89 +11,62 @@ import {
   ListOrdered,
   Heading2,
   ImageIcon,
+  Plus,
+  Trash2,
+  ChevronLeft,
 } from "lucide-react";
-import { DocumentType } from "@fonte/types";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 interface DocumentTemplate {
   id: string;
-  type: DocumentType;
+  name: string;
   content: string;
+  isRequired: boolean;
   updatedAt: string;
 }
 
-const DOCUMENT_LABELS: Record<DocumentType, string> = {
-  [DocumentType.IMAGE_AUTHORIZATION]: "Termo de Autorização de Uso de Imagem",
-  [DocumentType.COMMUNITY_RULES]: "Regras de Permanência na Comunidade",
-  [DocumentType.FAMILY_RULES]: "Regras para as Famílias",
-};
-
 const VARIABLES: { key: string; label: string; description: string }[] = [
-  {
-    key: "{{name}}",
-    label: "Nome completo",
-    description: "Nome completo do acolhido",
-  },
-  {
-    key: "{{cpf}}",
-    label: "CPF",
-    description: "CPF formatado (000.000.000-00)",
-  },
+  { key: "{{name}}", label: "Nome completo", description: "Nome completo do acolhido" },
+  { key: "{{cpf}}", label: "CPF", description: "CPF formatado (000.000.000-00)" },
   { key: "{{rg}}", label: "RG", description: "Registro Geral do acolhido" },
-  {
-    key: "{{birthDate}}",
-    label: "Data de nascimento",
-    description: "Data de nascimento no formato dd/mm/aaaa",
-  },
-  {
-    key: "{{age}}",
-    label: "Idade",
-    description: "Idade atual calculada em anos",
-  },
-  {
-    key: "{{maritalStatus}}",
-    label: "Estado civil",
-    description: "Solteiro(a), Casado(a) ou Divorciado(a)",
-  },
-  {
-    key: "{{address}}",
-    label: "Endereço",
-    description: "Endereço residencial do acolhido",
-  },
-  {
-    key: "{{phone}}",
-    label: "Telefone",
-    description: "Telefone de contato do acolhido",
-  },
-  {
-    key: "{{house}}",
-    label: "Nome da casa",
-    description: "Nome da unidade de acolhimento",
-  },
-  {
-    key: "{{entryDate}}",
-    label: "Data de entrada",
-    description: "Data de entrada na comunidade (dd/mm/aaaa)",
-  },
-  {
-    key: "{{date}}",
-    label: "Data de hoje",
-    description: "Data atual no momento da impressão (dd/mm/aaaa)",
-  },
-];
-
-const ALL_TYPES: DocumentType[] = [
-  DocumentType.IMAGE_AUTHORIZATION,
-  DocumentType.COMMUNITY_RULES,
-  DocumentType.FAMILY_RULES,
+  { key: "{{birthDate}}", label: "Data de nascimento", description: "Data de nascimento no formato dd/mm/aaaa" },
+  { key: "{{age}}", label: "Idade", description: "Idade atual calculada em anos" },
+  { key: "{{maritalStatus}}", label: "Estado civil", description: "Solteiro(a), Casado(a) ou Divorciado(a)" },
+  { key: "{{address}}", label: "Endereço", description: "Endereço residencial do acolhido" },
+  { key: "{{phone}}", label: "Telefone", description: "Telefone de contato do acolhido" },
+  { key: "{{house}}", label: "Nome da casa", description: "Nome da unidade de acolhimento" },
+  { key: "{{entryDate}}", label: "Data de entrada", description: "Data de entrada na comunidade (dd/mm/aaaa)" },
+  { key: "{{date}}", label: "Data de hoje", description: "Data atual no momento da impressão (dd/mm/aaaa)" },
 ];
 
 export function DocumentTemplatesTab() {
-  const [activeType, setActiveType] = useState<DocumentType>(
-    DocumentType.IMAGE_AUTHORIZATION,
-  );
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState<DocumentTemplate | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DocumentTemplate | null>(null);
+  const [newName, setNewName] = useState("");
 
   const { data: templates = [] } = useQuery({
     queryKey: ["document-templates"],
@@ -101,45 +74,184 @@ export function DocumentTemplatesTab() {
       api.get<DocumentTemplate[]>("/document-templates").then((r) => r.data),
   });
 
-  const activeTemplate = templates.find((t) => t.type === activeType);
+  const createMutation = useMutation({
+    mutationFn: (name: string) =>
+      api.post("/document-templates", { name, content: "", isRequired: false }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["document-templates"] });
+      setCreateOpen(false);
+      setNewName("");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/document-templates/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["document-templates"] });
+      if (editing && deleteTarget && editing.id === deleteTarget.id) setEditing(null);
+      setDeleteTarget(null);
+    },
+  });
+
+  const handleCreate = () => {
+    const name = newName.trim();
+    if (!name) return;
+    createMutation.mutate(name);
+  };
+
+  if (editing) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
+            <ChevronLeft size={16} className="mr-1" />
+            Voltar
+          </Button>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="font-semibold text-sm truncate">{editing.name}</span>
+            {editing.isRequired && (
+              <Badge variant="secondary" className="text-xs shrink-0">Acolhimento</Badge>
+            )}
+          </div>
+        </div>
+        <TemplateEditor
+          key={editing.id}
+          template={editing}
+          onSaved={(updated) => {
+            setEditing(updated);
+            queryClient.invalidateQueries({ queryKey: ["document-templates"] });
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {ALL_TYPES.map((type) => (
-          <button
-            key={type}
-            onClick={() => setActiveType(type)}
-            className={cn(
-              "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-              activeType === type
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-accent",
-            )}
-          >
-            {DOCUMENT_LABELS[type]}
-          </button>
-        ))}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Templates com badge <strong>Acolhimento</strong> aparecem automaticamente na aba de Anexos do acolhido.
+        </p>
+        <Button size="sm" onClick={() => { setNewName(""); setCreateOpen(true); }}>
+          <Plus size={14} className="mr-1.5" />
+          Novo template
+        </Button>
       </div>
 
-      {activeTemplate && (
-        <TemplateEditor key={activeTemplate.type} template={activeTemplate} />
+      {templates.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          Nenhum template cadastrado.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {templates.map((t) => (
+            <div
+              key={t.id}
+              className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={() => setEditing(t)}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm truncate">{t.name}</span>
+                  {t.isRequired && (
+                    <Badge variant="secondary" className="text-xs shrink-0">Acolhimento</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Atualizado em {new Date(t.updatedAt).toLocaleDateString("pt-BR")}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-destructive hover:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteTarget(t);
+                }}
+              >
+                <Trash2 size={15} />
+              </Button>
+            </div>
+          ))}
+        </div>
       )}
+
+      {/* Dialog: novo template */}
+      <Dialog open={createOpen} onOpenChange={(open) => !open && setCreateOpen(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Novo template</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            <Label htmlFor="new-template-name">Nome do documento</Label>
+            <Input
+              id="new-template-name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Ex: Termo de Confidencialidade"
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={!newName.trim() || createMutation.isPending}
+            >
+              {createMutation.isPending ? "Criando..." : "Criar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AlertDialog: deletar template */}
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir template</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deleteTarget?.name}</strong>?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-function TemplateEditor({ template }: { template: DocumentTemplate }) {
-  const queryClient = useQueryClient();
+function TemplateEditor({
+  template,
+  onSaved,
+}: {
+  template: DocumentTemplate;
+  onSaved: (updated: DocumentTemplate) => void;
+}) {
   const [copied, setCopied] = useState<string | null>(null);
+  const [name, setName] = useState(template.name);
+  const [isRequired, setIsRequired] = useState(template.isRequired);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const mutation = useMutation({
-    mutationFn: (content: string) =>
-      api.put(`/document-templates/${template.type}`, { content }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["document-templates"] });
-    },
+    mutationFn: (data: { name: string; content: string; isRequired: boolean }) =>
+      api.put<DocumentTemplate>(`/document-templates/${template.id}`, data).then((r) => r.data),
+    onSuccess: (updated) => onSaved(updated),
   });
 
   const editor = useEditor({
@@ -159,28 +271,22 @@ function TemplateEditor({ template }: { template: DocumentTemplate }) {
 
   const handleSave = useCallback(() => {
     if (!editor) return;
-    mutation.mutate(editor.getHTML());
-  }, [editor, mutation]);
+    mutation.mutate({ name, content: editor.getHTML(), isRequired });
+  }, [editor, mutation, name, isRequired]);
 
   const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !editor) return;
     const reader = new FileReader();
     reader.onload = () => {
-      editor
-        .chain()
-        .focus()
-        .setImage({ src: reader.result as string })
-        .run();
+      editor.chain().focus().setImage({ src: reader.result as string }).run();
     };
     reader.readAsDataURL(file);
     e.target.value = "";
   };
 
   const insertVariable = (key: string) => {
-    if (editor) {
-      editor.chain().focus().insertContent(key).run();
-    }
+    if (editor) editor.chain().focus().insertContent(key).run();
     navigator.clipboard.writeText(key).catch(() => {});
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);
@@ -190,13 +296,36 @@ function TemplateEditor({ template }: { template: DocumentTemplate }) {
 
   return (
     <div className="space-y-3">
+      {/* Nome e flag de acolhimento */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1">
+          <Label htmlFor="template-name" className="text-xs mb-1 block">Nome do template</Label>
+          <Input
+            id="template-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="flex items-center gap-2 pt-5">
+          <input
+            id="is-required"
+            type="checkbox"
+            checked={isRequired}
+            onChange={(e) => setIsRequired(e.target.checked)}
+            className="h-4 w-4 cursor-pointer"
+          />
+          <Label htmlFor="is-required" className="text-sm cursor-pointer whitespace-nowrap">
+            Exigir no acolhimento
+          </Label>
+        </div>
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1 rounded-md border bg-muted/30 p-1">
         <ToolbarButton
           active={editor.isActive("heading", { level: 2 })}
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 2 }).run()
-          }
+          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           title="Título"
         >
           <Heading2 size={14} />
@@ -279,7 +408,7 @@ function TemplateEditor({ template }: { template: DocumentTemplate }) {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={mutation.isPending}>
+        <Button onClick={handleSave} disabled={mutation.isPending || !name.trim()}>
           {mutation.isPending ? "Salvando..." : "Salvar template"}
         </Button>
       </div>

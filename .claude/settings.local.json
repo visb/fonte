@@ -37,7 +37,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\code\\\\fonte\" -Directory)",
       "Bash(Select-Object -ExpandProperty Name)",
       "Bash(npx --no tsc --noEmit)",
-      "Bash(npx puppeteer *)"
+      "Bash(npx puppeteer *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\code\\\\fonte\" -Recurse -Directory -Name)",
+      "Bash(Select-Object -First 30)"
     ]
   }
 }

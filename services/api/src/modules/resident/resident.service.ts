@@ -3,13 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { mkdir, rename, unlink } from 'fs/promises';
 import { basename, dirname, join } from 'path';
-import { DocumentType } from '@fonte/types';
 import { Resident } from './resident.entity';
 
 export interface ResidentDocumentView {
   id: string;
   residentId: string;
-  type: DocumentType;
+  templateId: string;
+  templateName: string;
   signed: boolean;
   signedFileUrl: string | null;
   signedAt: Date | null;
@@ -91,7 +91,8 @@ export class ResidentService implements OnModuleInit {
   async findDocuments(residentId: string): Promise<ResidentDocumentView[]> {
     const docs = await this.docRepository.find({
       where: { residentId },
-      order: { type: 'ASC' },
+      relations: ['template'],
+      order: { template: { name: 'ASC' } },
     });
     const now = Date.now();
     return docs.map((doc) => {
@@ -101,7 +102,8 @@ export class ResidentService implements OnModuleInit {
       return {
         id: doc.id,
         residentId: doc.residentId,
-        type: doc.type,
+        templateId: doc.templateId,
+        templateName: doc.template?.name ?? '',
         signed: !!doc.signedFileUrl,
         signedFileUrl: doc.signedFileUrl,
         signedAt: doc.signedFileUrl ? doc.updatedAt : null,
@@ -112,12 +114,12 @@ export class ResidentService implements OnModuleInit {
 
   async uploadSignedDocument(
     residentId: string,
-    type: DocumentType,
+    templateId: string,
     file: Express.Multer.File,
   ): Promise<ResidentDocument> {
     await this.findOne(residentId);
 
-    const existing = await this.docRepository.findOne({ where: { residentId, type } });
+    const existing = await this.docRepository.findOne({ where: { residentId, templateId } });
 
     if (existing?.signedFileUrl) {
       const filename = basename(existing.signedFileUrl);
@@ -136,7 +138,7 @@ export class ResidentService implements OnModuleInit {
       return this.docRepository.findOne({ where: { id: existing.id } }) as Promise<ResidentDocument>;
     }
 
-    const doc = this.docRepository.create({ residentId, type, signedFileUrl });
+    const doc = this.docRepository.create({ residentId, templateId, signedFileUrl });
     return this.docRepository.save(doc);
   }
 

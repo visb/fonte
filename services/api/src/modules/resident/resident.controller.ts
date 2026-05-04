@@ -21,7 +21,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
-import { DocumentType, Role } from '@fonte/types';
+import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -140,28 +140,28 @@ export class ResidentController {
     return this.residentService.findDocuments(id);
   }
 
-  @Get(':id/documents/:type/render')
+  @Get(':id/documents/:templateId/render')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
   async renderDocument(
     @Param('id', ParseUUIDPipe) id: string,
-    @Param('type') type: string,
+    @Param('templateId', ParseUUIDPipe) templateId: string,
     @Res() res: Response,
   ): Promise<void> {
     const resident = await this.residentService.findOne(id);
-    const html = await this.documentTemplateService.renderForResident(type as DocumentType, resident);
+    const html = await this.documentTemplateService.renderForResident(templateId, resident);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   }
 
-  @Get(':id/documents/:type/pdf')
+  @Get(':id/documents/:templateId/pdf')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
   async downloadPdf(
     @Param('id', ParseUUIDPipe) id: string,
-    @Param('type') type: string,
+    @Param('templateId', ParseUUIDPipe) templateId: string,
     @Res() res: Response,
   ): Promise<void> {
     const resident = await this.residentService.findOne(id);
-    const { buffer, filename } = await this.documentTemplateService.generatePdf(type as DocumentType, resident);
+    const { buffer, filename } = await this.documentTemplateService.generatePdf(templateId, resident);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(buffer);
@@ -199,12 +199,12 @@ export class ResidentController {
     return this.residentService.removeAttachment(id, attachmentId);
   }
 
-  @Post(':id/documents/:type/signed')
+  @Post(':id/documents/:templateId/signed')
   @Roles(Role.ADMIN, Role.COORDINATOR)
   @UseInterceptors(FileInterceptor('file', signedDocOptions))
   uploadSignedDocument(
     @Param('id', ParseUUIDPipe) id: string,
-    @Param('type') type: string,
+    @Param('templateId', ParseUUIDPipe) templateId: string,
     @UploadedFile(
       new ParseFilePipe({
         validators: [new MaxFileSizeValidator({ maxSize: 20 * 1024 * 1024 })],
@@ -213,6 +213,6 @@ export class ResidentController {
     )
     file: Express.Multer.File,
   ): Promise<ResidentDocument> {
-    return this.residentService.uploadSignedDocument(id, type as DocumentType, file);
+    return this.residentService.uploadSignedDocument(id, templateId, file);
   }
 }

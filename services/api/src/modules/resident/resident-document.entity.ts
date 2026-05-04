@@ -7,8 +7,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { DocumentType } from '@fonte/types';
 import { Resident } from './resident.entity';
+import { DocumentTemplate } from '../document-template/document-template.entity';
 
 @Entity('resident_documents')
 export class ResidentDocument {
@@ -22,8 +22,12 @@ export class ResidentDocument {
   @Column({ name: 'resident_id' })
   residentId: string;
 
-  @Column({ type: 'enum', enum: DocumentType })
-  type: DocumentType;
+  @ManyToOne(() => DocumentTemplate, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'template_id' })
+  template: DocumentTemplate;
+
+  @Column({ name: 'template_id' })
+  templateId: string;
 
   @Column({ name: 'signed_file_url', nullable: true, type: 'varchar' })
   signedFileUrl: string | null;

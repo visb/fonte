@@ -1,16 +1,9 @@
-import { Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Browser } from 'puppeteer';
-import { DocumentType } from '@fonte/types';
 import { Resident } from '../resident/resident.entity';
 import { DocumentTemplate } from './document-template.entity';
-
-const DOCUMENT_TITLE: Record<DocumentType, string> = {
-  [DocumentType.IMAGE_AUTHORIZATION]: 'Termo de Autorização de Uso de Imagem',
-  [DocumentType.COMMUNITY_RULES]:     'Regras de Permanência na Comunidade',
-  [DocumentType.FAMILY_RULES]:        'Regras para as Famílias',
-};
 
 @Injectable()
 export class DocumentTemplateService implements OnModuleDestroy {
@@ -37,9 +30,10 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return this.browserPromise;
   }
 
-  async generatePdf(type: DocumentType, resident: Resident): Promise<{ buffer: Buffer; filename: string }> {
-    const html = await this.renderForResident(type, resident);
-    const filename = this.slugify(`${resident.name} ${DOCUMENT_TITLE[type]}`) + '.pdf';
+  async generatePdf(templateId: string, resident: Resident): Promise<{ buffer: Buffer; filename: string }> {
+    const template = await this.findOne(templateId);
+    const html = await this.renderForResident(templateId, resident);
+    const filename = this.slugify(`${resident.name} ${template.name}`) + '.pdf';
     const browser = await this.getBrowser();
     const page = await browser.newPage();
     try {
@@ -63,25 +57,41 @@ export class DocumentTemplateService implements OnModuleDestroy {
   }
 
   findAll(): Promise<DocumentTemplate[]> {
-    return this.repo.find({ order: { type: 'ASC' } });
+    return this.repo.find({ order: { name: 'ASC' } });
   }
 
-  async findOne(type: DocumentType): Promise<DocumentTemplate> {
-    const template = await this.repo.findOne({ where: { type } });
-    if (!template) throw new NotFoundException(`Template ${type} not found`);
+  async findOne(id: string): Promise<DocumentTemplate> {
+    const template = await this.repo.findOne({ where: { id } });
+    if (!template) throw new NotFoundException(`Template ${id} not found`);
     return template;
   }
 
-  async update(type: DocumentType, content: string): Promise<DocumentTemplate> {
-    const template = await this.findOne(type);
-    await this.repo.update(template.id, { content });
-    return this.findOne(type);
+  async create(name: string, content: string, isRequired = false): Promise<DocumentTemplate> {
+    const existing = await this.repo.findOne({ where: { name } });
+    if (existing) throw new ConflictException(`Template com nome "${name}" já existe`);
+    const template = this.repo.create({ name, content, isRequired });
+    return this.repo.save(template);
   }
 
-  async renderForResident(type: DocumentType, resident: Resident): Promise<string> {
-    const template = await this.findOne(type);
+  async update(id: string, data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired'>>): Promise<DocumentTemplate> {
+    await this.findOne(id);
+    if (data.name) {
+      const conflict = await this.repo.findOne({ where: { name: data.name } });
+      if (conflict && conflict.id !== id) throw new ConflictException(`Template com nome "${data.name}" já existe`);
+    }
+    await this.repo.update(id, data);
+    return this.findOne(id);
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.findOne(id);
+    await this.repo.delete(id);
+  }
+
+  async renderForResident(templateId: string, resident: Resident): Promise<string> {
+    const template = await this.findOne(templateId);
     const content = this.applyVariables(template.content, resident);
-    return this.wrapPage(DOCUMENT_TITLE[type], content);
+    return this.wrapPage(template.name, content);
   }
 
   private applyVariables(content: string, resident: Resident): string {

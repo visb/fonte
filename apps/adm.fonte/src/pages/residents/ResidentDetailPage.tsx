@@ -4,9 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Download, ExternalLink, FileText, Loader2, Paperclip, Pencil, Phone, Plus, Trash2, Upload, User } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Download, ExternalLink, FileText, Loader2, Paperclip, Pencil, Phone, Plus, Trash2, Upload, User } from 'lucide-react';
 import { api, photoUrl } from '@/lib/api';
-import { DocumentType, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
+import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { maskCPF, maskPhone, maskRG, withMask } from './masks';
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -68,10 +74,17 @@ interface Relative {
   relationship: string | null;
 }
 
+interface DocumentTemplate {
+  id: string;
+  name: string;
+  isRequired: boolean;
+}
+
 interface ResidentDocument {
   id: string;
   residentId: string;
-  type: DocumentType;
+  templateId: string;
+  templateName: string;
   signed: boolean;
   signedFileUrl: string | null;
   signedAt: string | null;
@@ -200,6 +213,9 @@ const fetchDocuments = (residentId: string) =>
 const fetchAttachments = (residentId: string) =>
   api.get<ResidentAttachment[]>(`/residents/${residentId}/attachments`).then((r) => r.data);
 
+const fetchTemplates = () =>
+  api.get<DocumentTemplate[]>('/document-templates').then((r) => r.data);
+
 const createRelative = (data: RelativeFormData & { residentId: string }) =>
   api.post<Relative>('/relatives', {
     name: data.name,
@@ -263,6 +279,12 @@ export function ResidentDetailPage() {
     queryKey: ['resident-attachments', id],
     queryFn: () => fetchAttachments(id!),
     enabled: !!id && activeTab === 'attachments',
+  });
+
+  const { data: templates = [] } = useQuery({
+    queryKey: ['document-templates'],
+    queryFn: fetchTemplates,
+    enabled: activeTab === 'attachments',
   });
 
   const addRelativeMutation = useMutation({
@@ -493,6 +515,7 @@ export function ResidentDetailPage() {
           residentName={resident.name}
           signedDocs={signedDocs}
           attachments={attachments}
+          templates={templates}
           onDocumentUploaded={() => queryClient.invalidateQueries({ queryKey: ['resident-documents', id] })}
           onAttachmentChanged={() => queryClient.invalidateQueries({ queryKey: ['resident-attachments', id] })}
         />
@@ -604,23 +627,12 @@ function slugify(text: string): string {
     .replace(/^-|-$/g, '');
 }
 
-const DOCUMENT_LABELS: Record<DocumentType, string> = {
-  [DocumentType.IMAGE_AUTHORIZATION]: 'Termo de Autorização de Uso de Imagem',
-  [DocumentType.COMMUNITY_RULES]:     'Regras de Permanência na Comunidade',
-  [DocumentType.FAMILY_RULES]:        'Regras para as Famílias',
-};
-
-const ALL_DOCUMENT_TYPES: DocumentType[] = [
-  DocumentType.IMAGE_AUTHORIZATION,
-  DocumentType.COMMUNITY_RULES,
-  DocumentType.FAMILY_RULES,
-];
-
 function AttachmentsTab({
   residentId,
   residentName,
   signedDocs,
   attachments,
+  templates,
   onDocumentUploaded,
   onAttachmentChanged,
 }: {
@@ -628,26 +640,51 @@ function AttachmentsTab({
   residentName: string;
   signedDocs: ResidentDocument[];
   attachments: ResidentAttachment[];
+  templates: DocumentTemplate[];
   onDocumentUploaded: () => void;
   onAttachmentChanged: () => void;
 }) {
-  const docByType = Object.fromEntries(signedDocs.map((d) => [d.type, d])) as Partial<Record<DocumentType, ResidentDocument>>;
+  const docByTemplate = Object.fromEntries(signedDocs.map((d) => [d.templateId, d]));
+  const requiredTemplates = templates.filter((t) => t.isRequired);
+  const optionalTemplates = templates.filter((t) => !t.isRequired);
 
   return (
     <div className="space-y-6">
+      {/* Documentos de acolhimento */}
       <div className="space-y-3">
-        {ALL_DOCUMENT_TYPES.map((type) => (
-          <DocumentCard
-            key={type}
-            type={type}
-            residentId={residentId}
-            residentName={residentName}
-            signedDoc={docByType[type] ?? null}
-            onUploaded={onDocumentUploaded}
-          />
-        ))}
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Documentos de acolhimento
+          </h3>
+          {optionalTemplates.length > 0 && (
+            <GenerateDocumentMenu
+              templates={optionalTemplates}
+              residentId={residentId}
+              residentName={residentName}
+            />
+          )}
+        </div>
+
+        {requiredTemplates.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">
+            Nenhum template marcado como obrigatório no acolhimento.
+          </p>
+        ) : (
+          requiredTemplates.map((template) => (
+            <DocumentCard
+              key={template.id}
+              templateId={template.id}
+              templateName={template.name}
+              residentId={residentId}
+              residentName={residentName}
+              signedDoc={docByTemplate[template.id] ?? null}
+              onUploaded={onDocumentUploaded}
+            />
+          ))
+        )}
       </div>
 
+      {/* Outros anexos */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -669,6 +706,60 @@ function AttachmentsTab({
         )}
       </div>
     </div>
+  );
+}
+
+function GenerateDocumentMenu({
+  templates,
+  residentId,
+  residentName,
+}: {
+  templates: DocumentTemplate[];
+  residentId: string;
+  residentName: string;
+}) {
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const downloadPdf = async (template: DocumentTemplate) => {
+    setDownloading(template.id);
+    try {
+      const res = await api.get<Blob>(`/residents/${residentId}/documents/${template.id}/pdf`, {
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${slugify(`${residentName} ${template.name}`)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" disabled={downloading !== null}>
+          {downloading !== null ? (
+            <Loader2 size={14} className="animate-spin mr-1.5" />
+          ) : (
+            <FileText size={14} className="mr-1.5" />
+          )}
+          Gerar documento
+          <ChevronDown size={14} className="ml-1.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {templates.map((t) => (
+          <DropdownMenuItem key={t.id} onClick={() => downloadPdf(t)}>
+            {t.name}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -771,13 +862,15 @@ function AttachmentRow({
 }
 
 function DocumentCard({
-  type,
+  templateId,
+  templateName,
   residentId,
   signedDoc,
   onUploaded,
   residentName,
 }: {
-  type: DocumentType;
+  templateId: string;
+  templateName: string;
   residentId: string;
   signedDoc: ResidentDocument | null;
   onUploaded: () => void;
@@ -789,7 +882,7 @@ function DocumentCard({
     mutationFn: async (file: File) => {
       const fd = new window.FormData();
       fd.append('file', file);
-      await api.post(`/residents/${residentId}/documents/${type}/signed`, fd, {
+      await api.post(`/residents/${residentId}/documents/${templateId}/signed`, fd, {
         headers: { 'Content-Type': undefined },
       });
     },
@@ -802,13 +895,13 @@ function DocumentCard({
     e.target.value = '';
   };
 
-  const pdfFilename = `${slugify(`${residentName} ${DOCUMENT_LABELS[type]}`)}.pdf`;
+  const pdfFilename = `${slugify(`${residentName} ${templateName}`)}.pdf`;
 
   const [downloading, setDownloading] = useState(false);
   const downloadPdf = async () => {
     setDownloading(true);
     try {
-      const res = await api.get<Blob>(`/residents/${residentId}/documents/${type}/pdf`, {
+      const res = await api.get<Blob>(`/residents/${residentId}/documents/${templateId}/pdf`, {
         responseType: 'blob',
       });
       const url = URL.createObjectURL(res.data);
@@ -825,7 +918,6 @@ function DocumentCard({
   };
 
   const wasSigned = signedDoc?.signed ?? false;
-  const signedUrl = signedDoc?.signedFileUrl ? photoUrl(signedDoc.signedFileUrl) : null;
   const withinWindow = signedDoc?.withinWindow ?? false;
   const signedAt = signedDoc?.signedAt
     ? new Date(signedDoc.signedAt).toLocaleString('pt-BR', {
@@ -844,7 +936,7 @@ function DocumentCard({
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{DOCUMENT_LABELS[type]}</p>
+        <p className="font-medium text-sm truncate">{templateName}</p>
         <p className="text-xs text-muted-foreground truncate">{pdfFilename}</p>
         <div className="mt-0.5">
           {wasSigned ? (
@@ -863,7 +955,6 @@ function DocumentCard({
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
-        {/* Baixar PDF — sempre disponível */}
         <Button variant="outline" size="sm" disabled={downloading} onClick={downloadPdf}>
           {downloading ? (
             <Loader2 size={14} className="animate-spin mr-1.5" />
@@ -873,7 +964,6 @@ function DocumentCard({
           <span className="hidden sm:inline">Baixar PDF</span>
         </Button>
 
-        {/* Enviar/Substituir — só disponível enquanto dentro da janela ou nunca enviado */}
         {(!wasSigned || withinWindow) && (
           <Button
             variant="ghost"

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, ImagePlus, Loader2, Pencil, Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, photoUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,12 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const API_ORIGIN =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace(
-    "/api/v1",
-    "",
-  ) ?? "http://localhost:3000";
 
 const BR_STATES = [
   "AC",
@@ -353,7 +347,7 @@ export function HouseDetailPage() {
                 className="relative rounded-md overflow-hidden aspect-video bg-muted"
               >
                 <img
-                  src={`${API_ORIGIN}${photo.url}`}
+                  src={photoUrl(photo.url)!}
                   alt={photo.filename}
                   className="w-full h-full object-cover"
                 />

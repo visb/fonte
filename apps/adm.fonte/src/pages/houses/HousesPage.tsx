@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Home, MapPin, Pencil, Phone, Plus, Trash2, User } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, photoUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,12 +26,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-const API_ORIGIN =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace(
-    "/api/v1",
-    "",
-  ) ?? "http://localhost:3000";
 
 const BR_STATES = [
   "AC",
@@ -261,7 +255,7 @@ export function HousesPage() {
               <div className="w-20 sm:w-36 shrink-0 bg-muted">
                 {house.thumbnailUrl ? (
                   <img
-                    src={`${API_ORIGIN}${house.thumbnailUrl}`}
+                    src={photoUrl(house.thumbnailUrl)!}
                     alt={house.name}
                     className="w-full h-full object-cover"
                   />

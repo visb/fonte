@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import type { Browser } from 'puppeteer';
 import { DocumentType } from '@fonte/types';
 import { Resident } from '../resident/resident.entity';
 import { DocumentTemplate } from './document-template.entity';
@@ -12,11 +13,54 @@ const DOCUMENT_TITLE: Record<DocumentType, string> = {
 };
 
 @Injectable()
-export class DocumentTemplateService {
+export class DocumentTemplateService implements OnModuleDestroy {
   constructor(
     @InjectRepository(DocumentTemplate)
     private repo: Repository<DocumentTemplate>,
   ) {}
+
+  private browserPromise: Promise<Browser> | null = null;
+
+  async onModuleDestroy() {
+    if (this.browserPromise) {
+      const browser = await this.browserPromise.catch(() => null);
+      await browser?.close();
+    }
+  }
+
+  private getBrowser(): Promise<Browser> {
+    if (!this.browserPromise) {
+      this.browserPromise = import('puppeteer').then((p) =>
+        p.default.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] }),
+      );
+    }
+    return this.browserPromise;
+  }
+
+  async generatePdf(type: DocumentType, resident: Resident): Promise<{ buffer: Buffer; filename: string }> {
+    const html = await this.renderForResident(type, resident);
+    const filename = this.slugify(`${resident.name} ${DOCUMENT_TITLE[type]}`) + '.pdf';
+    const browser = await this.getBrowser();
+    const page = await browser.newPage();
+    try {
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '40px', bottom: '40px', left: '40px', right: '40px' } });
+      return { buffer: Buffer.from(pdf), filename };
+    } finally {
+      await page.close();
+    }
+  }
+
+  private slugify(text: string): string {
+    return text
+      .normalize('NFD')
+      .split('')
+      .filter((c) => c.charCodeAt(0) < 0x0300 || c.charCodeAt(0) > 0x036f)
+      .join('')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
 
   findAll(): Promise<DocumentTemplate[]> {
     return this.repo.find({ order: { type: 'ASC' } });

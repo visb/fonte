@@ -153,6 +153,20 @@ export class ResidentController {
     res.send(html);
   }
 
+  @Get(':id/documents/:type/pdf')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  async downloadPdf(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('type') type: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const resident = await this.residentService.findOne(id);
+    const { buffer, filename } = await this.documentTemplateService.generatePdf(type as DocumentType, resident);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  }
+
   @Get(':id/attachments')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
   getAttachments(@Param('id', ParseUUIDPipe) id: string): Promise<ResidentAttachment[]> {

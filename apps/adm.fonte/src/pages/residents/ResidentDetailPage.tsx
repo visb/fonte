@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, ExternalLink, FileText, Loader2, Paperclip, Pencil, Phone, Plus, Trash2, Upload, User } from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink, FileText, Loader2, Paperclip, Pencil, Phone, Plus, Trash2, Upload, User } from 'lucide-react';
 import { api, photoUrl } from '@/lib/api';
 import { DocumentType, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { cn } from '@/lib/utils';
@@ -490,6 +490,7 @@ export function ResidentDetailPage() {
       {activeTab === 'attachments' && (
         <AttachmentsTab
           residentId={id!}
+          residentName={resident.name}
           signedDocs={signedDocs}
           attachments={attachments}
           onDocumentUploaded={() => queryClient.invalidateQueries({ queryKey: ['resident-documents', id] })}
@@ -592,6 +593,17 @@ export function ResidentDetailPage() {
 
 // ─── Attachments tab ─────────────────────────────────────────────────────────
 
+function slugify(text: string): string {
+  return text
+    .normalize('NFD')
+    .split('')
+    .filter((c) => c.charCodeAt(0) < 0x0300 || c.charCodeAt(0) > 0x036f)
+    .join('')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 const DOCUMENT_LABELS: Record<DocumentType, string> = {
   [DocumentType.IMAGE_AUTHORIZATION]: 'Termo de Autorização de Uso de Imagem',
   [DocumentType.COMMUNITY_RULES]:     'Regras de Permanência na Comunidade',
@@ -606,12 +618,14 @@ const ALL_DOCUMENT_TYPES: DocumentType[] = [
 
 function AttachmentsTab({
   residentId,
+  residentName,
   signedDocs,
   attachments,
   onDocumentUploaded,
   onAttachmentChanged,
 }: {
   residentId: string;
+  residentName: string;
   signedDocs: ResidentDocument[];
   attachments: ResidentAttachment[];
   onDocumentUploaded: () => void;
@@ -627,6 +641,7 @@ function AttachmentsTab({
             key={type}
             type={type}
             residentId={residentId}
+            residentName={residentName}
             signedDoc={docByType[type] ?? null}
             onUploaded={onDocumentUploaded}
           />
@@ -760,11 +775,13 @@ function DocumentCard({
   residentId,
   signedDoc,
   onUploaded,
+  residentName,
 }: {
   type: DocumentType;
   residentId: string;
   signedDoc: ResidentDocument | null;
   onUploaded: () => void;
+  residentName: string;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -785,14 +802,26 @@ function DocumentCard({
     e.target.value = '';
   };
 
-  const openDocument = async () => {
-    const { data: html } = await api.get<string>(
-      `/residents/${residentId}/documents/${type}/render`,
-      { responseType: 'text' },
-    );
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank', 'noreferrer');
+  const pdfFilename = `${slugify(`${residentName} ${DOCUMENT_LABELS[type]}`)}.pdf`;
+
+  const [downloading, setDownloading] = useState(false);
+  const downloadPdf = async () => {
+    setDownloading(true);
+    try {
+      const res = await api.get<Blob>(`/residents/${residentId}/documents/${type}/pdf`, {
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = pdfFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const wasSigned = signedDoc?.signed ?? false;
@@ -816,6 +845,7 @@ function DocumentCard({
 
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate">{DOCUMENT_LABELS[type]}</p>
+        <p className="text-xs text-muted-foreground truncate">{pdfFilename}</p>
         <div className="mt-0.5">
           {wasSigned ? (
             <Badge variant="outline" className="text-xs text-green-600 border-green-200">
@@ -833,22 +863,15 @@ function DocumentCard({
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
-        {/* Abrir: PDF assinado se já enviado; template HTML se ainda não enviado */}
-        {wasSigned ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open(signedUrl!, '_blank', 'noreferrer')}
-          >
-            <ExternalLink size={14} className="mr-1.5" />
-            Abrir
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" onClick={openDocument}>
-            <ExternalLink size={14} className="mr-1.5" />
-            Abrir
-          </Button>
-        )}
+        {/* Baixar PDF — sempre disponível */}
+        <Button variant="outline" size="sm" disabled={downloading} onClick={downloadPdf}>
+          {downloading ? (
+            <Loader2 size={14} className="animate-spin mr-1.5" />
+          ) : (
+            <Download size={14} className="mr-1.5" />
+          )}
+          <span className="hidden sm:inline">Baixar PDF</span>
+        </Button>
 
         {/* Enviar/Substituir — só disponível enquanto dentro da janela ou nunca enviado */}
         {(!wasSigned || withinWindow) && (

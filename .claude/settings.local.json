@@ -36,7 +36,8 @@
       "Bash(Select-Object Name)",
       "Bash(Get-ChildItem -Path \"C:\\\\code\\\\fonte\" -Directory)",
       "Bash(Select-Object -ExpandProperty Name)",
-      "Bash(npx --no tsc --noEmit)"
+      "Bash(npx --no tsc --noEmit)",
+      "Bash(npx puppeteer *)"
     ]
   }
 }

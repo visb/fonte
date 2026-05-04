@@ -14,6 +14,7 @@ import { RoutineModule } from './modules/routine/routine.module';
 import { IncidentModule } from './modules/incident/incident.module';
 import { MinistryModule } from './modules/ministry/ministry.module';
 import { StoreroomModule } from './modules/storeroom/storeroom.module';
+import { DocumentTemplateModule } from './modules/document-template/document-template.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { StoreroomModule } from './modules/storeroom/storeroom.module';
     IncidentModule,
     MinistryModule,
     StoreroomModule,
+    DocumentTemplateModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },

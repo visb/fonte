@@ -116,10 +116,10 @@ export function NewResidentPage() {
       }
       return resident;
     },
-    onSuccess: () => {
+    onSuccess: (resident) => {
       queryClient.invalidateQueries({ queryKey: ['residents'] });
       queryClient.invalidateQueries({ queryKey: ['houses'] });
-      navigate('/residents');
+      navigate(`/residents/${resident.id}`, { state: { tab: 'attachments' } });
     },
   });
 

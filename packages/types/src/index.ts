@@ -31,3 +31,9 @@ export enum MaritalStatus {
   MARRIED = 'MARRIED',
   DIVORCED = 'DIVORCED',
 }
+
+export enum DocumentType {
+  IMAGE_AUTHORIZATION = 'IMAGE_AUTHORIZATION',
+  COMMUNITY_RULES     = 'COMMUNITY_RULES',
+  FAMILY_RULES        = 'FAMILY_RULES',
+}

@@ -8,6 +8,8 @@ services:
       POSTGRES_USER: fonte
       POSTGRES_PASSWORD: fonte
       POSTGRES_DB: fonte_dev
+      TZ: UTC
+      PGTZ: UTC
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql

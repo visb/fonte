@@ -1,13 +1,12 @@
-import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Paperclip, Pencil, Phone, Plus, Trash2, User } from 'lucide-react';
-import { photoUrl } from '@/lib/api';
-import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
-import { api } from '@/lib/api';
+import { ArrowLeft, ExternalLink, FileText, Loader2, Paperclip, Pencil, Phone, Plus, Trash2, Upload, User } from 'lucide-react';
+import { api, photoUrl } from '@/lib/api';
+import { DocumentType, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -67,6 +66,24 @@ interface Relative {
   name: string;
   phone: string | null;
   relationship: string | null;
+}
+
+interface ResidentDocument {
+  id: string;
+  residentId: string;
+  type: DocumentType;
+  signed: boolean;
+  signedFileUrl: string | null;
+  signedAt: string | null;
+  withinWindow: boolean;
+}
+
+interface ResidentAttachment {
+  id: string;
+  residentId: string;
+  filename: string;
+  fileUrl: string;
+  createdAt: string;
 }
 
 // ─── labels ───────────────────────────────────────────────────────────────────
@@ -177,6 +194,12 @@ const fetchResident = (id: string) =>
 const fetchRelatives = (residentId: string) =>
   api.get<Relative[]>(`/relatives?residentId=${residentId}`).then((r) => r.data);
 
+const fetchDocuments = (residentId: string) =>
+  api.get<ResidentDocument[]>(`/residents/${residentId}/documents`).then((r) => r.data);
+
+const fetchAttachments = (residentId: string) =>
+  api.get<ResidentAttachment[]>(`/residents/${residentId}/attachments`).then((r) => r.data);
+
 const createRelative = (data: RelativeFormData & { residentId: string }) =>
   api.post<Relative>('/relatives', {
     name: data.name,
@@ -202,9 +225,11 @@ type TabId = (typeof TABS)[number]['id'];
 export function ResidentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const initialTab = (location.state as { tab?: TabId } | null)?.tab ?? 'overview';
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [addRelativeOpen, setAddRelativeOpen] = useState(false);
   const [deleteRelativeTarget, setDeleteRelativeTarget] = useState<Relative | null>(null);
@@ -226,6 +251,18 @@ export function ResidentDetailPage() {
     queryKey: ['relatives', id],
     queryFn: () => fetchRelatives(id!),
     enabled: !!id,
+  });
+
+  const { data: signedDocs = [] } = useQuery({
+    queryKey: ['resident-documents', id],
+    queryFn: () => fetchDocuments(id!),
+    enabled: !!id && activeTab === 'attachments',
+  });
+
+  const { data: attachments = [] } = useQuery({
+    queryKey: ['resident-attachments', id],
+    queryFn: () => fetchAttachments(id!),
+    enabled: !!id && activeTab === 'attachments',
   });
 
   const addRelativeMutation = useMutation({
@@ -451,11 +488,13 @@ export function ResidentDetailPage() {
 
       {/* ── Anexos ──────────────────────────────────────────────────────────── */}
       {activeTab === 'attachments' && (
-        <div className="py-12 text-center text-muted-foreground text-sm space-y-1">
-          <Paperclip size={28} className="mx-auto mb-2 opacity-30" />
-          <p className="font-medium">Em desenvolvimento</p>
-          <p>Documentos e arquivos do acolhido serão exibidos aqui.</p>
-        </div>
+        <AttachmentsTab
+          residentId={id!}
+          signedDocs={signedDocs}
+          attachments={attachments}
+          onDocumentUploaded={() => queryClient.invalidateQueries({ queryKey: ['resident-documents', id] })}
+          onAttachmentChanged={() => queryClient.invalidateQueries({ queryKey: ['resident-attachments', id] })}
+        />
       )}
 
       {/* ── Dialog: foto ampliada ───────────────────────────────────────────── */}
@@ -547,6 +586,298 @@ export function ResidentDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+// ─── Attachments tab ─────────────────────────────────────────────────────────
+
+const DOCUMENT_LABELS: Record<DocumentType, string> = {
+  [DocumentType.IMAGE_AUTHORIZATION]: 'Termo de Autorização de Uso de Imagem',
+  [DocumentType.COMMUNITY_RULES]:     'Regras de Permanência na Comunidade',
+  [DocumentType.FAMILY_RULES]:        'Regras para as Famílias',
+};
+
+const ALL_DOCUMENT_TYPES: DocumentType[] = [
+  DocumentType.IMAGE_AUTHORIZATION,
+  DocumentType.COMMUNITY_RULES,
+  DocumentType.FAMILY_RULES,
+];
+
+function AttachmentsTab({
+  residentId,
+  signedDocs,
+  attachments,
+  onDocumentUploaded,
+  onAttachmentChanged,
+}: {
+  residentId: string;
+  signedDocs: ResidentDocument[];
+  attachments: ResidentAttachment[];
+  onDocumentUploaded: () => void;
+  onAttachmentChanged: () => void;
+}) {
+  const docByType = Object.fromEntries(signedDocs.map((d) => [d.type, d])) as Partial<Record<DocumentType, ResidentDocument>>;
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        {ALL_DOCUMENT_TYPES.map((type) => (
+          <DocumentCard
+            key={type}
+            type={type}
+            residentId={residentId}
+            signedDoc={docByType[type] ?? null}
+            onUploaded={onDocumentUploaded}
+          />
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Outros anexos
+          </h3>
+          <AttachmentUploadButton residentId={residentId} onUploaded={onAttachmentChanged} />
+        </div>
+
+        {attachments.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">Nenhum anexo adicionado.</p>
+        ) : (
+          attachments.map((a) => (
+            <AttachmentRow
+              key={a.id}
+              attachment={a}
+              onDeleted={onAttachmentChanged}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AttachmentUploadButton({
+  residentId,
+  onUploaded,
+}: {
+  residentId: string;
+  onUploaded: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const mutation = useMutation({
+    mutationFn: async (file: File) => {
+      const fd = new window.FormData();
+      fd.append('file', file);
+      await api.post(`/residents/${residentId}/attachments`, fd, {
+        headers: { 'Content-Type': undefined },
+      });
+    },
+    onSuccess: onUploaded,
+  });
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={mutation.isPending}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        {mutation.isPending ? (
+          <Loader2 size={14} className="animate-spin mr-1.5" />
+        ) : (
+          <Upload size={14} className="mr-1.5" />
+        )}
+        Adicionar anexo
+      </Button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) mutation.mutate(file);
+          e.target.value = '';
+        }}
+      />
+    </>
+  );
+}
+
+function AttachmentRow({
+  attachment,
+  onDeleted,
+}: {
+  attachment: ResidentAttachment;
+  onDeleted: () => void;
+}) {
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      api.delete(`/residents/${attachment.residentId}/attachments/${attachment.id}`),
+    onSuccess: onDeleted,
+  });
+
+  const date = new Date(attachment.createdAt).toLocaleDateString('pt-BR');
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
+      <Paperclip size={16} className="text-muted-foreground shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{attachment.filename}</p>
+        <p className="text-xs text-muted-foreground">{date}</p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => window.open(photoUrl(attachment.fileUrl)!, '_blank', 'noreferrer')}
+        >
+          <ExternalLink size={14} className="mr-1.5" />
+          Abrir
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+          disabled={deleteMutation.isPending}
+          onClick={() => deleteMutation.mutate()}
+        >
+          {deleteMutation.isPending ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Trash2 size={14} />
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function DocumentCard({
+  type,
+  residentId,
+  signedDoc,
+  onUploaded,
+}: {
+  type: DocumentType;
+  residentId: string;
+  signedDoc: ResidentDocument | null;
+  onUploaded: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const fd = new window.FormData();
+      fd.append('file', file);
+      await api.post(`/residents/${residentId}/documents/${type}/signed`, fd, {
+        headers: { 'Content-Type': undefined },
+      });
+    },
+    onSuccess: onUploaded,
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadMutation.mutate(file);
+    e.target.value = '';
+  };
+
+  const openDocument = async () => {
+    const { data: html } = await api.get<string>(
+      `/residents/${residentId}/documents/${type}/render`,
+      { responseType: 'text' },
+    );
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noreferrer');
+  };
+
+  const wasSigned = signedDoc?.signed ?? false;
+  const signedUrl = signedDoc?.signedFileUrl ? photoUrl(signedDoc.signedFileUrl) : null;
+  const withinWindow = signedDoc?.withinWindow ?? false;
+  const signedAt = signedDoc?.signedAt
+    ? new Date(signedDoc.signedAt).toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
+
+  return (
+    <div className="flex items-center gap-4 rounded-lg border bg-card px-4 py-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
+        <FileText size={18} className="text-muted-foreground" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm truncate">{DOCUMENT_LABELS[type]}</p>
+        <div className="mt-0.5">
+          {wasSigned ? (
+            <Badge variant="outline" className="text-xs text-green-600 border-green-200">
+              Assinado
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs text-muted-foreground">
+              Pendente assinatura
+            </Badge>
+          )}
+          {signedAt && (
+            <p className="text-xs text-muted-foreground mt-0.5">{signedAt}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Abrir: PDF assinado se já enviado; template HTML se ainda não enviado */}
+        {wasSigned ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(signedUrl!, '_blank', 'noreferrer')}
+          >
+            <ExternalLink size={14} className="mr-1.5" />
+            Abrir
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" onClick={openDocument}>
+            <ExternalLink size={14} className="mr-1.5" />
+            Abrir
+          </Button>
+        )}
+
+        {/* Enviar/Substituir — só disponível enquanto dentro da janela ou nunca enviado */}
+        {(!wasSigned || withinWindow) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={uploadMutation.isPending}
+            onClick={() => fileInputRef.current?.click()}
+            title={wasSigned ? 'Substituir documento assinado' : 'Enviar documento assinado'}
+          >
+            {uploadMutation.isPending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Upload size={14} />
+            )}
+            <span className="ml-1.5 hidden sm:inline">
+              {wasSigned ? 'Substituir' : 'Enviar assinado'}
+            </span>
+          </Button>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { Building2, Home, LogOut, Menu, Moon, Sun, UserCog, Users, X } from 'lucide-react';
+import { Building2, Home, LogOut, Menu, Moon, Settings, Sun, UserCog, Users, X } from 'lucide-react';
 import { Role } from '@fonte/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -81,6 +81,12 @@ export function AppLayout() {
             <Link to="/staff" onClick={closeSidebar} className={navLinkClass}>
               <UserCog size={16} />
               Servos
+            </Link>
+          )}
+          {isAdminOrCoordinator && (
+            <Link to="/settings" onClick={closeSidebar} className={navLinkClass}>
+              <Settings size={16} />
+              Configurações
             </Link>
           )}
         </nav>

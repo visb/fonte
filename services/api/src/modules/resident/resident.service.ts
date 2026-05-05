@@ -1,8 +1,6 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { mkdir, rename, unlink } from 'fs/promises';
-import { basename, dirname, join } from 'path';
 import { Resident } from './resident.entity';
 
 export interface ResidentDocumentView {
@@ -19,9 +17,10 @@ import { ResidentAttachment } from './resident-attachment.entity';
 import { ResidentDocument } from './resident-document.entity';
 import { CreateResidentDto } from './dto/create-resident.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
-export class ResidentService implements OnModuleInit {
+export class ResidentService {
   constructor(
     @InjectRepository(Resident)
     private residentRepository: Repository<Resident>,
@@ -29,13 +28,8 @@ export class ResidentService implements OnModuleInit {
     private docRepository: Repository<ResidentDocument>,
     @InjectRepository(ResidentAttachment)
     private attachmentRepository: Repository<ResidentAttachment>,
+    private storageService: StorageService,
   ) {}
-
-  async onModuleInit() {
-    await mkdir(join(process.cwd(), 'uploads', 'residents'), { recursive: true });
-    await mkdir(join(process.cwd(), 'uploads', 'documents'), { recursive: true });
-    await mkdir(join(process.cwd(), 'uploads', 'attachments'), { recursive: true });
-  }
 
   findAll(): Promise<Resident[]> {
     return this.residentRepository.find({
@@ -72,17 +66,11 @@ export class ResidentService implements OnModuleInit {
   async uploadPhoto(residentId: string, file: Express.Multer.File): Promise<Resident> {
     const resident = await this.findOne(residentId);
     if (resident.photoUrl) {
-      const filename = basename(resident.photoUrl);
-      const fullPath = join(process.cwd(), 'uploads', 'residents', filename);
-      try {
-        await rename(fullPath, join(dirname(fullPath), `~${filename}`));
-      } catch {
-        // arquivo pode não existir no disco
-      }
+      await this.storageService.delete(resident.photoUrl);
     }
-    await this.residentRepository.update(residentId, {
-      photoUrl: `/uploads/residents/${file.filename}`,
-    });
+    const filename = this.storageService.uniqueFilename(file.originalname);
+    const url = await this.storageService.upload('residents', filename, file.buffer, file.mimetype);
+    await this.residentRepository.update(residentId, { photoUrl: url });
     return this.findOne(residentId);
   }
 
@@ -122,16 +110,11 @@ export class ResidentService implements OnModuleInit {
     const existing = await this.docRepository.findOne({ where: { residentId, templateId } });
 
     if (existing?.signedFileUrl) {
-      const filename = basename(existing.signedFileUrl);
-      const oldPath = join(process.cwd(), 'uploads', 'documents', filename);
-      try {
-        await rename(oldPath, join(dirname(oldPath), `~${filename}`));
-      } catch {
-        // arquivo pode não existir no disco
-      }
+      await this.storageService.delete(existing.signedFileUrl);
     }
 
-    const signedFileUrl = `/uploads/documents/${file.filename}`;
+    const filename = this.storageService.uniqueFilename(file.originalname, 'signed_');
+    const signedFileUrl = await this.storageService.upload('documents', filename, file.buffer, file.mimetype);
 
     if (existing) {
       await this.docRepository.update(existing.id, { signedFileUrl });
@@ -155,11 +138,9 @@ export class ResidentService implements OnModuleInit {
     originalFilename: string,
   ): Promise<ResidentAttachment> {
     await this.findOne(residentId);
-    const attachment = this.attachmentRepository.create({
-      residentId,
-      filename: originalFilename,
-      fileUrl: `/uploads/attachments/${file.filename}`,
-    });
+    const filename = this.storageService.uniqueFilename(originalFilename);
+    const fileUrl = await this.storageService.upload('attachments', filename, file.buffer, file.mimetype);
+    const attachment = this.attachmentRepository.create({ residentId, filename: originalFilename, fileUrl });
     return this.attachmentRepository.save(attachment);
   }
 
@@ -168,11 +149,7 @@ export class ResidentService implements OnModuleInit {
       where: { id: attachmentId, residentId },
     });
     if (!attachment) throw new NotFoundException(`Attachment ${attachmentId} not found`);
-    try {
-      await unlink(join(process.cwd(), 'uploads', 'attachments', basename(attachment.fileUrl)));
-    } catch {
-      // arquivo pode não existir no disco
-    }
+    await this.storageService.delete(attachment.fileUrl);
     await this.attachmentRepository.delete(attachmentId);
   }
 }

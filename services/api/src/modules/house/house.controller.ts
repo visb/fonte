@@ -17,9 +17,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { Request } from 'express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { memoryStorage } from 'multer';
 import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -36,14 +34,8 @@ import { HouseRule } from './house-rule.entity';
 import { HouseService } from './house.service';
 
 const photoOptions = {
-  storage: diskStorage({
-    destination: join(process.cwd(), 'uploads', 'houses'),
-    filename: (_req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
-    },
-  }),
-  fileFilter: (_req: Request, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
+  storage: memoryStorage(),
+  fileFilter: (_req: unknown, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
     if (!file.mimetype.startsWith('image/')) {
       return cb(new BadRequestException('Apenas imagens são permitidas'), false);
     }

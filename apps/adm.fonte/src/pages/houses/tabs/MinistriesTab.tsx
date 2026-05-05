@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -27,6 +27,7 @@ interface HouseMinistryItem {
   ministryId: string;
   ministryName: string;
   leaderId: string | null;
+  leaderType: "STAFF" | "RESIDENT" | null;
   leaderName: string | null;
 }
 
@@ -35,13 +36,132 @@ interface Ministry {
   name: string;
 }
 
-interface StaffItem {
+interface PersonItem {
   id: string;
   name: string;
 }
 
+interface LeaderOption {
+  id: string;
+  name: string;
+  type: "STAFF" | "RESIDENT";
+}
+
+interface SelectedLeader {
+  id: string;
+  type: "STAFF" | "RESIDENT";
+}
+
 const SELECT_CLASS =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+function LeaderAutocomplete({
+  selectedId,
+  selectedType,
+  onSelect,
+  staff,
+  residents,
+}: {
+  selectedId: string | null;
+  selectedType: "STAFF" | "RESIDENT" | null;
+  onSelect: (id: string | null, type: "STAFF" | "RESIDENT" | null) => void;
+  staff: PersonItem[];
+  residents: PersonItem[];
+}) {
+  const allOptions: LeaderOption[] = [
+    ...staff.map((s) => ({ id: s.id, name: s.name, type: "STAFF" as const })),
+    ...residents.map((r) => ({ id: r.id, name: r.name, type: "RESIDENT" as const })),
+  ];
+
+  const selectedName =
+    selectedId && selectedType
+      ? (allOptions.find((o) => o.id === selectedId && o.type === selectedType)?.name ?? "")
+      : "";
+
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = query
+    ? allOptions.filter((o) => o.name.toLowerCase().includes(query.toLowerCase()))
+    : allOptions;
+
+  const handleSelect = (id: string | null, type: "STAFF" | "RESIDENT" | null) => {
+    onSelect(id, type);
+    setOpen(false);
+    setQuery("");
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div
+        className={`${SELECT_CLASS} cursor-pointer`}
+        onClick={() => setOpen(true)}
+      >
+        {open ? (
+          <input
+            autoFocus
+            className="w-full outline-none bg-transparent"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar..."
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span className={selectedName ? "" : "text-muted-foreground"}>
+            {selectedName || "Sem líder"}
+          </span>
+        )}
+      </div>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg">
+          <div className="max-h-48 overflow-y-auto py-1">
+            <button
+              type="button"
+              className="w-full px-3 py-1.5 text-sm text-left text-muted-foreground hover:bg-accent"
+              onMouseDown={() => handleSelect(null, null)}
+            >
+              Sem líder
+            </button>
+            {filtered.length === 0 && (
+              <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum resultado</p>
+            )}
+            {filtered.map((o) => (
+              <button
+                key={`${o.type}-${o.id}`}
+                type="button"
+                className="w-full flex items-center justify-between px-3 py-1.5 text-sm text-left hover:bg-accent"
+                onMouseDown={() => handleSelect(o.id, o.type)}
+              >
+                <span>{o.name}</span>
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                    o.type === "STAFF"
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-green-100 text-green-700"
+                  }`}
+                >
+                  {o.type === "STAFF" ? "Servo" : "Filho"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function MinistriesTab({ houseId }: { houseId: string }) {
   const queryClient = useQueryClient();
@@ -49,7 +169,7 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
   const [editTarget, setEditTarget] = useState<HouseMinistryItem | null>(null);
   const [removeTarget, setRemoveTarget] = useState<HouseMinistryItem | null>(null);
   const [selectedMinistryId, setSelectedMinistryId] = useState("");
-  const [selectedLeaderId, setSelectedLeaderId] = useState("");
+  const [selectedLeader, setSelectedLeader] = useState<SelectedLeader | null>(null);
 
   const { data: houseMinistries = [], isLoading } = useQuery({
     queryKey: ["houses", houseId, "ministries"],
@@ -61,33 +181,47 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
 
   const { data: allMinistries = [] } = useQuery({
     queryKey: ["ministries"],
-    queryFn: () =>
-      api.get<Ministry[]>("/ministries").then((r) => r.data),
+    queryFn: () => api.get<Ministry[]>("/ministries").then((r) => r.data),
     enabled: addOpen,
   });
 
   const { data: houseStaff = [] } = useQuery({
     queryKey: ["houses", houseId, "staff"],
     queryFn: () =>
-      api.get<StaffItem[]>(`/houses/${houseId}/staff`).then((r) => r.data),
+      api.get<PersonItem[]>(`/houses/${houseId}/staff`).then((r) => r.data),
+    enabled: addOpen || !!editTarget,
+  });
+
+  const { data: houseResidents = [] } = useQuery({
+    queryKey: ["houses", houseId, "residents"],
+    queryFn: () =>
+      api.get<PersonItem[]>(`/houses/${houseId}/residents`).then((r) => r.data),
     enabled: addOpen || !!editTarget,
   });
 
   const addMutation = useMutation({
-    mutationFn: (data: { ministryId: string; leaderId?: string }) =>
+    mutationFn: (data: { ministryId: string; leaderId?: string; leaderType?: "STAFF" | "RESIDENT" }) =>
       api.post(`/houses/${houseId}/ministries`, data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["houses", houseId, "ministries"] });
       setAddOpen(false);
       setSelectedMinistryId("");
-      setSelectedLeaderId("");
+      setSelectedLeader(null);
     },
   });
 
   const updateLeaderMutation = useMutation({
-    mutationFn: ({ hmId, leaderId }: { hmId: string; leaderId: string | null }) =>
+    mutationFn: ({
+      hmId,
+      leaderId,
+      leaderType,
+    }: {
+      hmId: string;
+      leaderId: string | null;
+      leaderType: "STAFF" | "RESIDENT" | null;
+    }) =>
       api
-        .patch(`/houses/${houseId}/ministries/${hmId}`, { leaderId })
+        .patch(`/houses/${houseId}/ministries/${hmId}`, { leaderId, leaderType })
         .then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["houses", houseId, "ministries"] });
@@ -111,7 +245,8 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
     if (!selectedMinistryId) return;
     addMutation.mutate({
       ministryId: selectedMinistryId,
-      leaderId: selectedLeaderId || undefined,
+      leaderId: selectedLeader?.id || undefined,
+      leaderType: selectedLeader?.type || undefined,
     });
   };
 
@@ -119,7 +254,8 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
     if (!editTarget) return;
     updateLeaderMutation.mutate({
       hmId: editTarget.id,
-      leaderId: selectedLeaderId || null,
+      leaderId: selectedLeader?.id ?? null,
+      leaderType: selectedLeader?.type ?? null,
     });
   };
 
@@ -131,13 +267,13 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
         <div className="flex justify-end">
           <Button size="sm" onClick={() => setAddOpen(true)}>
             <Plus size={14} className="mr-2" />
-            Adicionar ministério
+            Adicionar setor
           </Button>
         </div>
 
         {houseMinistries.length === 0 ? (
           <p className="text-muted-foreground text-sm text-center py-8">
-            Nenhum ministério associado a esta casa.
+            Nenhum setor associado a esta casa.
           </p>
         ) : (
           <div className="space-y-2">
@@ -149,7 +285,7 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
                 <div>
                   <p className="font-medium text-sm">{hm.ministryName}</p>
                   <p className="text-xs text-muted-foreground">
-                    Líder: {hm.leaderName ?? "Não definido"}
+                    Responsável: {hm.leaderName ?? "Não definido"}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
@@ -157,10 +293,14 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    title="Editar líder"
+                    title="Editar responsável"
                     onClick={() => {
                       setEditTarget(hm);
-                      setSelectedLeaderId(hm.leaderId ?? "");
+                      setSelectedLeader(
+                        hm.leaderId && hm.leaderType
+                          ? { id: hm.leaderId, type: hm.leaderType }
+                          : null,
+                      );
                     }}
                   >
                     <Pencil size={13} />
@@ -169,7 +309,7 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-destructive hover:text-destructive"
-                    title="Remover ministério"
+                    title="Remover setor"
                     onClick={() => setRemoveTarget(hm)}
                   >
                     <Trash2 size={13} />
@@ -185,11 +325,11 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
       <Dialog open={addOpen} onOpenChange={(open) => !open && setAddOpen(false)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Adicionar Ministério</DialogTitle>
+            <DialogTitle>Adicionar Setor</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Ministério *</Label>
+              <Label>Setor *</Label>
               <select
                 value={selectedMinistryId}
                 onChange={(e) => setSelectedMinistryId(e.target.value)}
@@ -204,24 +344,21 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
               </select>
               {availableMinistries.length === 0 && allMinistries.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Todos os ministérios já foram adicionados.
+                  Todos os setores já foram adicionados.
                 </p>
               )}
             </div>
             <div className="space-y-2">
-              <Label>Líder (opcional)</Label>
-              <select
-                value={selectedLeaderId}
-                onChange={(e) => setSelectedLeaderId(e.target.value)}
-                className={SELECT_CLASS}
-              >
-                <option value="">Sem líder</option>
-                {houseStaff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              <Label>Responsável (opcional)</Label>
+              <LeaderAutocomplete
+                selectedId={selectedLeader?.id ?? null}
+                selectedType={selectedLeader?.type ?? null}
+                onSelect={(id, type) =>
+                  setSelectedLeader(id && type ? { id, type } : null)
+                }
+                staff={houseStaff}
+                residents={houseResidents}
+              />
             </div>
           </div>
           <DialogFooter>
@@ -245,22 +382,19 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Editar Líder — {editTarget?.ministryName}</DialogTitle>
+            <DialogTitle>Editar Responsável — {editTarget?.ministryName}</DialogTitle>
           </DialogHeader>
           <div className="space-y-2 py-2">
-            <Label>Líder</Label>
-            <select
-              value={selectedLeaderId}
-              onChange={(e) => setSelectedLeaderId(e.target.value)}
-              className={SELECT_CLASS}
-            >
-              <option value="">Sem líder</option>
-              {houseStaff.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <Label>Responsável</Label>
+            <LeaderAutocomplete
+              selectedId={selectedLeader?.id ?? null}
+              selectedType={selectedLeader?.type ?? null}
+              onSelect={(id, type) =>
+                setSelectedLeader(id && type ? { id, type } : null)
+              }
+              staff={houseStaff}
+              residents={houseResidents}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditTarget(null)}>
@@ -283,9 +417,9 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover ministério</AlertDialogTitle>
+            <AlertDialogTitle>Remover setor</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover o ministério{" "}
+              Tem certeza que deseja remover o setor{" "}
               <strong>{removeTarget?.ministryName}</strong> desta casa?
             </AlertDialogDescription>
           </AlertDialogHeader>

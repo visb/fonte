@@ -21,7 +21,7 @@ const TABS = [
   { id: "overview", label: "Visão Geral" },
   { id: "residents", label: "Filhos" },
   { id: "staff", label: "Servos" },
-  { id: "ministries", label: "Ministérios" },
+  { id: "ministries", label: "Setores" },
   { id: "storeroom", label: "Dispensa" },
   { id: "rules", label: "Regras" },
 ] as const;

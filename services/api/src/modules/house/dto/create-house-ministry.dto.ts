@@ -1,4 +1,4 @@
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsIn, IsOptional, IsUUID } from 'class-validator';
 
 export class CreateHouseMinistryDto {
   @IsUUID()
@@ -7,4 +7,8 @@ export class CreateHouseMinistryDto {
   @IsUUID()
   @IsOptional()
   leaderId?: string;
+
+  @IsIn(['STAFF', 'RESIDENT'])
+  @IsOptional()
+  leaderType?: 'STAFF' | 'RESIDENT';
 }

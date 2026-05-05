@@ -11,12 +11,14 @@
     "docker:down": "docker compose down",
     "docker:reset": "docker compose down -v && docker compose up -d",
     "dev:adm": "pnpm build:types && pnpm --filter adm.fonte dev",
+    "dev:ops": "pnpm build:types && pnpm --filter ops.fonte start",
     "seed:api": "pnpm --filter api seed"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "bcrypt",
       "@nestjs/core",
+      "@swc/core",
+      "bcrypt",
       "esbuild"
     ]
   }

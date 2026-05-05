@@ -42,7 +42,10 @@
       "Bash(Select-Object -First 30)",
       "PowerShell(head *)",
       "Bash(dir \"C:\\\\code\\\\fonte\\\\apps\")",
-      "Bash(Select-String \"@fonte/types\")"
+      "Bash(Select-String \"@fonte/types\")",
+      "Bash(findstr -i \"nativewind\\\\|expo-router\\\\|async-storage\\\\|react-native \")",
+      "Bash(Select-String \"nativewind|expo-router|async-storage|react-native \")",
+      "Bash(Get-ChildItem -Path \"C:\\\\code\\\\fonte\\\\services\\\\api\\\\src\\\\modules\" -Recurse -Directory)"
     ]
   }
 }

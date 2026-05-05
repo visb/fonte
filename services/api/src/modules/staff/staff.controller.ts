@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateStaffDto } from './dto/create-staff.dto';
@@ -24,6 +25,11 @@ import { StaffService } from './staff.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StaffController {
   constructor(private staffService: StaffService) {}
+
+  @Get('me')
+  getMe(@CurrentUser() user: AuthenticatedUser): Promise<Staff> {
+    return this.staffService.findByUserId(user.userId);
+  }
 
   @Get()
   @Roles(Role.ADMIN, Role.COORDINATOR)

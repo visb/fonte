@@ -10,7 +10,6 @@ import {
 } from 'typeorm';
 import { House } from './house.entity';
 import { Ministry } from '../ministry/ministry.entity';
-import { Staff } from '../staff/staff.entity';
 
 @Entity('house_ministries')
 @Unique(['houseId', 'ministryId'])
@@ -35,9 +34,8 @@ export class HouseMinistry {
   @Column({ name: 'leader_id', nullable: true, type: 'uuid' })
   leaderId: string | null;
 
-  @ManyToOne(() => Staff, { eager: false, nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'leader_id' })
-  leader: Staff | null;
+  @Column({ name: 'leader_type', nullable: true, type: 'varchar', length: 10 })
+  leaderType: 'STAFF' | 'RESIDENT' | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

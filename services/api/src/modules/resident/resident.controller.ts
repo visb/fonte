@@ -19,8 +19,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { memoryStorage } from 'multer';
 import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -35,13 +34,7 @@ import { Resident } from './resident.entity';
 import { ResidentService } from './resident.service';
 
 const photoOptions = {
-  storage: diskStorage({
-    destination: join(process.cwd(), 'uploads', 'residents'),
-    filename: (_req: unknown, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
-    },
-  }),
+  storage: memoryStorage(),
   fileFilter: (_req: unknown, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
     if (!file.mimetype.startsWith('image/')) {
       return cb(new BadRequestException('Apenas imagens são permitidas'), false);
@@ -51,23 +44,11 @@ const photoOptions = {
 };
 
 const attachmentOptions = {
-  storage: diskStorage({
-    destination: join(process.cwd(), 'uploads', 'attachments'),
-    filename: (_req: unknown, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
-    },
-  }),
+  storage: memoryStorage(),
 };
 
 const signedDocOptions = {
-  storage: diskStorage({
-    destination: join(process.cwd(), 'uploads', 'documents'),
-    filename: (_req: unknown, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      cb(null, `signed_${uniqueSuffix}${extname(file.originalname)}`);
-    },
-  }),
+  storage: memoryStorage(),
   fileFilter: (_req: unknown, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
     if (file.mimetype !== 'application/pdf') {
       return cb(new BadRequestException('Apenas PDFs são permitidos'), false);

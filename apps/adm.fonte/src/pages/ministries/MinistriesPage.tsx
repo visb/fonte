@@ -104,10 +104,10 @@ export function MinistriesPage() {
   return (
     <div className="max-w-xl space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Ministérios</h1>
+        <h1 className="text-2xl font-bold">Setores</h1>
         <Button size="sm" onClick={openCreate}>
           <Plus size={14} className="mr-1.5" />
-          Novo ministério
+          Novo setor
         </Button>
       </div>
 
@@ -118,7 +118,7 @@ export function MinistriesPage() {
         </div>
       ) : ministries.length === 0 ? (
         <p className="text-center text-muted-foreground text-sm py-12">
-          Nenhum ministério cadastrado.
+          Nenhum setor cadastrado.
         </p>
       ) : (
         <div className="space-y-2">
@@ -157,7 +157,7 @@ export function MinistriesPage() {
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editTarget ? 'Editar ministério' : 'Novo ministério'}</DialogTitle>
+            <DialogTitle>{editTarget ? 'Editar setor' : 'Novo setor'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-2 py-4">
@@ -165,7 +165,7 @@ export function MinistriesPage() {
               <Input
                 id="ministry-name"
                 {...register('name')}
-                placeholder="Ex: Louvor, Intercessão..."
+                placeholder="Ex: Cozinha, Horta, Manutenção..."
                 autoFocus
               />
               {errors.name && (
@@ -195,7 +195,7 @@ export function MinistriesPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir ministério</AlertDialogTitle>
+            <AlertDialogTitle>Excluir setor</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir <strong>{deleteTarget?.name}</strong>?
             </AlertDialogDescription>

@@ -20,6 +20,15 @@ export class StaffService {
     private userRepository: Repository<User>,
   ) {}
 
+  async findByUserId(userId: string): Promise<Staff> {
+    const staff = await this.staffRepository.findOne({
+      where: { userId },
+      relations: ['user', 'house'],
+    });
+    if (!staff) throw new NotFoundException(`Staff profile not found for user ${userId}`);
+    return staff;
+  }
+
   findAll(): Promise<Staff[]> {
     return this.staffRepository.find({
       order: { name: 'ASC' },

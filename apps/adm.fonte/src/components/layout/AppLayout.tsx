@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { Building2, Home, LogOut, Menu, Moon, Settings, Sun, UserCog, Users, X, Church } from 'lucide-react';
+import { Briefcase, Building2, Home, LogOut, Menu, Moon, Settings, Sun, UserCog, Users, X } from 'lucide-react';
 import { Role } from '@fonte/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -85,8 +85,8 @@ export function AppLayout() {
           )}
           {isAdminOrCoordinator && (
             <Link to="/ministries" onClick={closeSidebar} className={navLinkClass}>
-              <Church size={16} />
-              Ministérios
+              <Briefcase size={16} />
+              Setores
             </Link>
           )}
           {isAdminOrCoordinator && (

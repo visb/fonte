@@ -2,12 +2,9 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { mkdir, rename } from 'fs/promises';
-import { basename, dirname, join } from 'path';
 import { House } from './house.entity';
 import { HouseMinistry } from './house-ministry.entity';
 import { HousePhoto } from './house-photo.entity';
@@ -17,9 +14,10 @@ import { CreateHouseMinistryDto } from './dto/create-house-ministry.dto';
 import { CreateHouseRuleDto } from './dto/create-house-rule.dto';
 import { UpdateHouseDto } from './dto/update-house.dto';
 import { UpdateHouseMinistryDto } from './dto/update-house-ministry.dto';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
-export class HouseService implements OnModuleInit {
+export class HouseService {
   constructor(
     @InjectRepository(House)
     private houseRepository: Repository<House>,
@@ -29,11 +27,8 @@ export class HouseService implements OnModuleInit {
     private houseMinistryRepo: Repository<HouseMinistry>,
     @InjectRepository(HouseRule)
     private houseRuleRepo: Repository<HouseRule>,
+    private storageService: StorageService,
   ) {}
-
-  async onModuleInit() {
-    await mkdir(join(process.cwd(), 'uploads', 'houses'), { recursive: true });
-  }
 
   async findAll(): Promise<
     Array<House & { activeResidentsCount: number; staffCount: number; thumbnailUrl: string | null }>
@@ -122,11 +117,13 @@ export class HouseService implements OnModuleInit {
   async addPhoto(houseId: string, file: Express.Multer.File): Promise<HousePhoto> {
     const count = await this.houseRepository.count({ where: { id: houseId } });
     if (!count) throw new NotFoundException(`House ${houseId} not found`);
+    const filename = this.storageService.uniqueFilename(file.originalname);
+    const url = await this.storageService.upload('houses', filename, file.buffer, file.mimetype);
     const photo = this.photoRepository.create({
       houseId,
       filename: file.originalname,
-      path: file.path,
-      url: `/uploads/houses/${file.filename}`,
+      path: url,
+      url,
     });
     return this.photoRepository.save(photo);
   }
@@ -136,13 +133,7 @@ export class HouseService implements OnModuleInit {
       where: { id: photoId, houseId },
     });
     if (!photo) throw new NotFoundException(`Photo ${photoId} not found`);
-    try {
-      const dir = dirname(photo.path);
-      const filename = basename(photo.path);
-      await rename(photo.path, join(dir, `~${filename}`));
-    } catch {
-      // arquivo pode não existir no disco — continua com remoção do registro
-    }
+    await this.storageService.delete(photo.url);
     await this.photoRepository.delete(photoId);
   }
 
@@ -176,15 +167,21 @@ export class HouseService implements OnModuleInit {
   // ─── Ministries ─────────────────────────────────────────────────────────────
 
   async findMinistries(houseId: string): Promise<
-    Array<{ id: string; ministryId: string; ministryName: string; leaderId: string | null; leaderName: string | null }>
+    Array<{ id: string; ministryId: string; ministryName: string; leaderId: string | null; leaderType: string | null; leaderName: string | null }>
   > {
     await this.assertHouseExists(houseId);
     return this.houseRepository.manager.query(
       `SELECT hm.id, m.id AS "ministryId", m.name AS "ministryName",
-              s.id AS "leaderId", s.name AS "leaderName"
+              hm.leader_id AS "leaderId", hm.leader_type AS "leaderType",
+              CASE
+                WHEN hm.leader_type = 'STAFF'    THEN s.name
+                WHEN hm.leader_type = 'RESIDENT' THEN r.name
+                ELSE NULL
+              END AS "leaderName"
        FROM house_ministries hm
        JOIN ministries m ON m.id = hm.ministry_id AND m.deleted_at IS NULL
-       LEFT JOIN staff s ON s.id = hm.leader_id AND s.deleted_at IS NULL
+       LEFT JOIN staff     s ON s.id = hm.leader_id AND hm.leader_type = 'STAFF'    AND s.deleted_at IS NULL
+       LEFT JOIN residents r ON r.id = hm.leader_id AND hm.leader_type = 'RESIDENT' AND r.deleted_at IS NULL
        WHERE hm.house_id = $1
        ORDER BY m.name`,
       [houseId],
@@ -209,6 +206,7 @@ export class HouseService implements OnModuleInit {
         houseId,
         ministryId: dto.ministryId,
         leaderId: dto.leaderId ?? null,
+        leaderType: dto.leaderType ?? null,
       }),
     );
   }
@@ -217,6 +215,7 @@ export class HouseService implements OnModuleInit {
     const hm = await this.houseMinistryRepo.findOne({ where: { id: hmId, houseId } });
     if (!hm) throw new NotFoundException(`HouseMinistry ${hmId} not found`);
     hm.leaderId = dto.leaderId;
+    hm.leaderType = dto.leaderType;
     return this.houseMinistryRepo.save(hm);
   }
 

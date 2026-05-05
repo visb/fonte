@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Phone } from "lucide-react";
+import { Pencil, Phone } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 
 interface StaffItem {
@@ -9,6 +10,7 @@ interface StaffItem {
 }
 
 export function StaffTab({ houseId }: { houseId: string }) {
+  const navigate = useNavigate();
   const { data: staff = [], isLoading } = useQuery({
     queryKey: ["houses", houseId, "staff"],
     queryFn: () =>
@@ -32,12 +34,21 @@ export function StaffTab({ houseId }: { houseId: string }) {
           className="flex items-center justify-between rounded-lg border p-3"
         >
           <p className="font-medium text-sm">{s.name}</p>
-          {s.phone && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <Phone size={12} />
-              {s.phone}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {s.phone && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Phone size={12} />
+                {s.phone}
+              </span>
+            )}
+            <button
+              onClick={() => navigate(`/staff/${s.id}/edit`)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              title="Editar servo"
+            >
+              <Pencil size={14} />
+            </button>
+          </div>
         </div>
       ))}
     </div>

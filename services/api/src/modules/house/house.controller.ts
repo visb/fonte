@@ -25,9 +25,14 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateHouseDto } from './dto/create-house.dto';
+import { CreateHouseMinistryDto } from './dto/create-house-ministry.dto';
+import { CreateHouseRuleDto } from './dto/create-house-rule.dto';
 import { UpdateHouseDto } from './dto/update-house.dto';
+import { UpdateHouseMinistryDto } from './dto/update-house-ministry.dto';
 import { House } from './house.entity';
+import { HouseMinistry } from './house-ministry.entity';
 import { HousePhoto } from './house-photo.entity';
+import { HouseRule } from './house-rule.entity';
 import { HouseService } from './house.service';
 
 const photoOptions = {
@@ -109,5 +114,85 @@ export class HouseController {
     @Param('photoId', ParseUUIDPipe) photoId: string,
   ): Promise<void> {
     return this.houseService.removePhoto(id, photoId);
+  }
+
+  // ─── Residents ──────────────────────────────────────────────────────────────
+
+  @Get(':id/residents')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  findResidents(@Param('id', ParseUUIDPipe) id: string) {
+    return this.houseService.findResidents(id);
+  }
+
+  // ─── Staff ──────────────────────────────────────────────────────────────────
+
+  @Get(':id/staff')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  findHouseStaff(@Param('id', ParseUUIDPipe) id: string) {
+    return this.houseService.findStaffForHouse(id);
+  }
+
+  // ─── Ministries ─────────────────────────────────────────────────────────────
+
+  @Get(':id/ministries')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  findMinistries(@Param('id', ParseUUIDPipe) id: string) {
+    return this.houseService.findMinistries(id);
+  }
+
+  @Post(':id/ministries')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  addMinistry(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateHouseMinistryDto,
+  ): Promise<HouseMinistry> {
+    return this.houseService.addMinistry(id, dto);
+  }
+
+  @Patch(':id/ministries/:hmId')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  updateMinistry(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('hmId', ParseUUIDPipe) hmId: string,
+    @Body() dto: UpdateHouseMinistryDto,
+  ): Promise<HouseMinistry> {
+    return this.houseService.updateMinistry(id, hmId, dto);
+  }
+
+  @Delete(':id/ministries/:hmId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  removeMinistry(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('hmId', ParseUUIDPipe) hmId: string,
+  ): Promise<void> {
+    return this.houseService.removeMinistry(id, hmId);
+  }
+
+  // ─── Rules ──────────────────────────────────────────────────────────────────
+
+  @Get(':id/rules')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  findRules(@Param('id', ParseUUIDPipe) id: string) {
+    return this.houseService.findRules(id);
+  }
+
+  @Post(':id/rules')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  createRule(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateHouseRuleDto,
+  ): Promise<HouseRule> {
+    return this.houseService.createRule(id, dto);
+  }
+
+  @Delete(':id/rules/:ruleId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  removeRule(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('ruleId', ParseUUIDPipe) ruleId: string,
+  ): Promise<void> {
+    return this.houseService.removeRule(id, ruleId);
   }
 }

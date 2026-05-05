@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useGoBack } from '@/lib/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -149,7 +150,7 @@ function Field({
 
 export function EditResidentPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const goBack = useGoBack('/residents');
   const queryClient = useQueryClient();
   const pendingPhotoRef = useRef<Blob | null>(null);
 
@@ -187,7 +188,7 @@ export function EditResidentPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['residents'] });
       queryClient.invalidateQueries({ queryKey: ['houses'] });
-      navigate('/residents');
+      goBack();
     },
   });
 
@@ -198,10 +199,8 @@ export function EditResidentPage() {
   return (
     <div className="max-w-2xl">
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" asChild>
-          <Link to="/residents">
-            <ArrowLeft size={16} />
-          </Link>
+        <Button variant="ghost" size="icon" onClick={goBack}>
+          <ArrowLeft size={16} />
         </Button>
         <h1 className="text-2xl font-bold">Editar acolhimento</h1>
       </div>
@@ -325,8 +324,8 @@ export function EditResidentPage() {
         </div>
 
         <div className="flex justify-end gap-3 pt-6">
-          <Button type="button" variant="outline" asChild>
-            <Link to="/residents">Cancelar</Link>
+          <Button type="button" variant="outline" onClick={goBack}>
+            Cancelar
           </Button>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Salvando...' : 'Salvar alterações'}

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+import { useGoBack } from "@/lib/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
@@ -30,8 +30,10 @@ type TabId = (typeof TABS)[number]["id"];
 
 export function HouseDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const goBack = useGoBack("/houses");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get("tab") as TabId | null) ?? "overview";
+  const setActiveTab = (tab: TabId) => setSearchParams({ tab }, { replace: true });
 
   const {
     data: house,
@@ -50,7 +52,7 @@ export function HouseDetailPage() {
   return (
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/houses")}>
+        <Button variant="ghost" size="icon" onClick={goBack}>
           <ArrowLeft size={18} />
         </Button>
         <h1 className="text-2xl font-bold flex-1">{house.name}</h1>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGoBack } from '@/lib/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,6 +42,7 @@ const SELECT_CLASS =
 
 export function NewStaffPage() {
   const navigate = useNavigate();
+  const goBack = useGoBack('/staff');
   const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -83,7 +85,7 @@ export function NewStaffPage() {
   return (
     <div className="max-w-lg">
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/staff')}>
+        <Button variant="ghost" size="icon" onClick={goBack}>
           <ArrowLeft size={18} />
         </Button>
         <h1 className="text-2xl font-bold">Novo Servo</h1>
@@ -171,7 +173,7 @@ export function NewStaffPage() {
         </div>
 
         <div className="flex gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={() => navigate('/staff')}>
+          <Button type="button" variant="outline" onClick={goBack}>
             Cancelar
           </Button>
           <Button type="submit" disabled={isSubmitting || mutation.isPending}>

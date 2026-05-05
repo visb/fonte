@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { useGoBack } from "@/lib/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,7 +41,7 @@ const SELECT_CLASS =
 
 export function EditStaffPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const goBack = useGoBack("/staff");
   const queryClient = useQueryClient();
 
   const { data: houses = [] } = useQuery<House[]>({
@@ -84,7 +85,7 @@ export function EditStaffPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
-      navigate("/staff");
+      goBack();
     },
   });
 
@@ -93,7 +94,7 @@ export function EditStaffPage() {
   return (
     <div className="max-w-lg">
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/staff")}>
+        <Button variant="ghost" size="icon" onClick={goBack}>
           <ArrowLeft size={18} />
         </Button>
         <h1 className="text-2xl font-bold">Editar Servo</h1>
@@ -170,7 +171,7 @@ export function EditStaffPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/staff")}
+            onClick={goBack}
           >
             Cancelar
           </Button>

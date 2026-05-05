@@ -119,7 +119,7 @@ export function NewResidentPage() {
     onSuccess: (resident) => {
       queryClient.invalidateQueries({ queryKey: ['residents'] });
       queryClient.invalidateQueries({ queryKey: ['houses'] });
-      navigate(`/residents/${resident.id}`, { state: { tab: 'attachments' } });
+      navigate(`/residents/${resident.id}?tab=attachments`);
     },
   });
 

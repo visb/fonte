@@ -13,7 +13,7 @@ Monorepo com backend NestJS centralizado e múltiplos frontends (web/mobile).
 ```
 apps/
   adm.fonte/       ← web (React) — gestão administrativa
-  ops.fonte/       ← mobile (Expo) — operadores da casa
+  ops.fonte/       ← pwa Expo  — operadores da casa
   ff.fonte/        ← mobile (Expo) — familiares (fase 2)
   resident.fonte/  ← mobile (Expo) — internos em modo kiosk (fase 2)
 

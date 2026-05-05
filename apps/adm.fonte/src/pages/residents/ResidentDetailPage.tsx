@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useGoBack } from '@/lib/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -240,12 +241,12 @@ type TabId = (typeof TABS)[number]['id'];
 
 export function ResidentDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const goBack = useGoBack('/residents');
   const queryClient = useQueryClient();
 
-  const initialTab = (location.state as { tab?: TabId } | null)?.tab ?? 'overview';
-  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get('tab') as TabId | null) ?? 'overview';
+  const setActiveTab = (tab: TabId) => setSearchParams({ tab }, { replace: true });
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [addRelativeOpen, setAddRelativeOpen] = useState(false);
   const [deleteRelativeTarget, setDeleteRelativeTarget] = useState<Relative | null>(null);
@@ -315,7 +316,7 @@ export function ResidentDetailPage() {
     <div className="max-w-2xl space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/residents')}>
+        <Button variant="ghost" size="icon" onClick={goBack}>
           <ArrowLeft size={18} />
         </Button>
         <div

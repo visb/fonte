@@ -32,3 +32,15 @@ export enum MaritalStatus {
   DIVORCED = 'DIVORCED',
 }
 
+export enum IncidentSeverity {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  CRITICAL = 'CRITICAL',
+}
+
+export enum MovementType {
+  IN = 'IN',
+  OUT = 'OUT',
+}
+

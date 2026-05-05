@@ -39,7 +39,10 @@
       "Bash(npx --no tsc --noEmit)",
       "Bash(npx puppeteer *)",
       "Bash(Get-ChildItem -Path \"C:\\\\code\\\\fonte\" -Recurse -Directory -Name)",
-      "Bash(Select-Object -First 30)"
+      "Bash(Select-Object -First 30)",
+      "PowerShell(head *)",
+      "Bash(dir \"C:\\\\code\\\\fonte\\\\apps\")",
+      "Bash(Select-String \"@fonte/types\")"
     ]
   }
 }

@@ -14,11 +14,11 @@ export default function AppLayout() {
     <Tabs
       screenOptions={{
         headerShown: true,
-        tabBarActiveTintColor: "#2563eb",
-        tabBarInactiveTintColor: "#6b7280",
-        tabBarStyle: { borderTopColor: "#e5e7eb" },
-        headerStyle: { backgroundColor: "#fff" },
-        headerTintColor: "#111827",
+        tabBarActiveTintColor: "#fff",
+        tabBarInactiveTintColor: "#d1d5db",
+        tabBarStyle: { backgroundColor: "#272950", borderTopColor: "#272950" },
+        headerStyle: { backgroundColor: "#272950" },
+        headerTintColor: "#fff",
         headerTitleStyle: { fontWeight: "600" },
       }}
     >

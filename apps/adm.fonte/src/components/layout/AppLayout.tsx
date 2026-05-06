@@ -1,11 +1,23 @@
-import { useState } from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { Briefcase, Building2, Home, LogOut, Menu, Moon, Settings, Sun, UserCog, Users, X } from 'lucide-react';
-import { Role } from '@fonte/types';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/hooks/useTheme';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { Link, Outlet, useNavigate } from "react-router-dom";
+import {
+  Briefcase,
+  Building2,
+  Home,
+  LogOut,
+  Menu,
+  Moon,
+  Settings,
+  Sun,
+  UserCog,
+  Users,
+  X,
+} from "lucide-react";
+import { Role } from "@fonte/types";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/hooks/useTheme";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function AppLayout() {
   const { logout, role } = useAuth();
@@ -18,11 +30,11 @@ export function AppLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const navLinkClass =
-    'flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors';
+    "flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors";
 
   return (
     <div className="flex h-screen">
@@ -37,16 +49,21 @@ export function AppLayout() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-30 w-64 border-r bg-card flex flex-col transition-transform duration-200',
-          'md:relative md:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          "fixed inset-y-0 left-0 z-30 w-64 border-r bg-card flex flex-col transition-transform duration-200",
+          "md:relative md:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="p-6 border-b flex items-center justify-between">
           <h1 className="text-xl font-bold">adm.fonte</h1>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={toggle} aria-label="Alternar tema">
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggle}
+              aria-label="Alternar tema"
+            >
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </Button>
             <Button
               variant="ghost"
@@ -72,7 +89,11 @@ export function AppLayout() {
             </Link>
           )}
           {isAdminOrCoordinator && (
-            <Link to="/residents" onClick={closeSidebar} className={navLinkClass}>
+            <Link
+              to="/residents"
+              onClick={closeSidebar}
+              className={navLinkClass}
+            >
               <Users size={16} />
               Filhos
             </Link>
@@ -84,13 +105,21 @@ export function AppLayout() {
             </Link>
           )}
           {isAdminOrCoordinator && (
-            <Link to="/ministries" onClick={closeSidebar} className={navLinkClass}>
+            <Link
+              to="/ministries"
+              onClick={closeSidebar}
+              className={navLinkClass}
+            >
               <Briefcase size={16} />
               Ministérios
             </Link>
           )}
           {isAdminOrCoordinator && (
-            <Link to="/settings" onClick={closeSidebar} className={navLinkClass}>
+            <Link
+              to="/settings"
+              onClick={closeSidebar}
+              className={navLinkClass}
+            >
               <Settings size={16} />
               Configurações
             </Link>
@@ -98,7 +127,11 @@ export function AppLayout() {
         </nav>
 
         <div className="p-4 border-t">
-          <Button variant="ghost" className="w-full justify-start gap-3" onClick={handleLogout}>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3"
+            onClick={handleLogout}
+          >
             <LogOut size={16} />
             Sair
           </Button>

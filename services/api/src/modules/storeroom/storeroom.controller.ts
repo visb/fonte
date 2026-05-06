@@ -35,7 +35,7 @@ export class StoreroomController {
   }
 
   @Post('items')
-  @Roles(Role.ADMIN, Role.COORDINATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
   createItem(@Body() dto: CreateItemDto) {
     return this.service.createItem(dto);
   }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   View,
   Text,
@@ -7,29 +7,34 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-} from 'react-native';
-import { router } from 'expo-router';
-import { useAuth } from '@/lib/auth';
+} from "react-native";
+import { router } from "expo-router";
+import { useAuth, MustChangePasswordError } from "@/lib/auth";
 
 export default function LoginScreen() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
     if (!email || !password) {
-      setError('Preencha e-mail e senha.');
+      setError("Preencha e-mail e senha.");
       return;
     }
-    setError('');
+    setError("");
     setLoading(true);
     try {
       await login(email, password);
-      router.replace('/(app)');
-    } catch {
-      setError('E-mail ou senha incorretos.');
+      router.replace("/(app)");
+    } catch (err) {
+      console.log("1");
+      if (err.response.data.error === "MUST_CHANGE_PASSWORD") {
+        router.replace("/(auth)/change-password");
+      } else {
+        setError("E-mail ou senha incorretos.");
+      }
     } finally {
       setLoading(false);
     }
@@ -38,15 +43,19 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-white"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View className="flex-1 justify-center px-6">
         <Text className="text-3xl font-bold text-gray-900 mb-1">ops.fonte</Text>
-        <Text className="text-base text-gray-500 mb-10">Plataforma operacional</Text>
+        <Text className="text-base text-gray-500 mb-10">
+          Plataforma operacional
+        </Text>
 
         <View className="space-y-4">
           <View>
-            <Text className="text-sm font-medium text-gray-700 mb-1.5">E-mail</Text>
+            <Text className="text-sm font-medium text-gray-700 mb-1.5">
+              E-mail
+            </Text>
             <TextInput
               className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
               placeholder="seu@email.com"
@@ -59,7 +68,9 @@ export default function LoginScreen() {
           </View>
 
           <View>
-            <Text className="text-sm font-medium text-gray-700 mb-1.5">Senha</Text>
+            <Text className="text-sm font-medium text-gray-700 mb-1.5">
+              Senha
+            </Text>
             <TextInput
               className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
               placeholder="••••••••"
@@ -70,9 +81,7 @@ export default function LoginScreen() {
             />
           </View>
 
-          {error ? (
-            <Text className="text-sm text-red-600">{error}</Text>
-          ) : null}
+          {error ? <Text className="text-sm text-red-600">{error}</Text> : null}
 
           <TouchableOpacity
             className="bg-blue-600 rounded-lg py-3.5 items-center mt-2"

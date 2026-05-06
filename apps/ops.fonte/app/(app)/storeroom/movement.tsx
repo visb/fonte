@@ -14,7 +14,24 @@ import { MovementType } from '@fonte/types';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 
-const today = new Date().toISOString().split('T')[0];
+function formatDateBR(iso: string): string {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function maskDateBR(text: string): string {
+  const digits = text.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+function toISODate(dateBR: string): string {
+  const [d, m, y] = dateBR.split('/');
+  return `${y}-${m}-${d}`;
+}
+
+const today = formatDateBR(new Date().toISOString().split('T')[0]);
 
 interface StoreroomItem {
   id: string;
@@ -33,6 +50,11 @@ export default function MovementScreen() {
   const [notes, setNotes] = useState('');
   const [date, setDate] = useState(today);
 
+  const [search, setSearch] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showNewItemForm, setShowNewItemForm] = useState(false);
+  const [newItemUnit, setNewItemUnit] = useState('');
+
   const { data: items = [] } = useQuery<StoreroomItem[]>({
     queryKey: ['storeroom-items', staff?.houseId],
     queryFn: () =>
@@ -42,6 +64,36 @@ export default function MovementScreen() {
 
   const selectedItem = items.find((i) => i.id === itemId);
 
+  const filteredItems = search.trim()
+    ? items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()))
+    : items;
+
+  const showCreateOption = search.trim().length > 0 && filteredItems.length === 0;
+
+  const createItemMutation = useMutation({
+    mutationFn: () =>
+      api
+        .post('/storerooms/items', {
+          name: search.trim(),
+          unit: newItemUnit.trim(),
+          houseId: staff!.houseId,
+        })
+        .then((r) => r.data as StoreroomItem),
+    onSuccess: (newItem) => {
+      queryClient.invalidateQueries({ queryKey: ['storeroom-items'] });
+      setItemId(newItem.id);
+      setSearch(newItem.name);
+      setShowNewItemForm(false);
+      setNewItemUnit('');
+      setShowDropdown(false);
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message;
+      Alert.alert('Erro', msg ?? 'Não foi possível cadastrar o item.');
+    },
+  });
+
   const mutation = useMutation({
     mutationFn: () =>
       api.post('/storerooms/movements', {
@@ -49,25 +101,47 @@ export default function MovementScreen() {
         type,
         quantity: parseFloat(quantity),
         responsibleId: staff!.id,
-        date,
+        date: toISODate(date),
         notes: notes || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['storeroom-items'] });
       queryClient.invalidateQueries({ queryKey: ['storeroom-movements'] });
-      Alert.alert('Sucesso', 'Movimentação registrada.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      router.replace({
+        pathname: '/(app)/storeroom',
+        params: { successMsg: 'Movimentação registrada com sucesso.' },
+      });
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message;
       Alert.alert('Erro', msg ?? 'Não foi possível registrar a movimentação.');
     },
   });
 
+  function selectItem(item: StoreroomItem) {
+    setItemId(item.id);
+    setSearch(item.name);
+    setShowDropdown(false);
+    setShowNewItemForm(false);
+  }
+
+  function handleSearchChange(text: string) {
+    setSearch(text);
+    setItemId('');
+    setShowDropdown(true);
+    setShowNewItemForm(false);
+  }
+
   function handleSubmit() {
-    if (!itemId) { Alert.alert('Atenção', 'Selecione um item.'); return; }
-    if (!quantity || parseFloat(quantity) <= 0) { Alert.alert('Atenção', 'Informe a quantidade.'); return; }
+    if (!itemId) {
+      Alert.alert('Atenção', 'Selecione um item.');
+      return;
+    }
+    if (!quantity || parseFloat(quantity) <= 0) {
+      Alert.alert('Atenção', 'Informe a quantidade.');
+      return;
+    }
     mutation.mutate();
   }
 
@@ -92,7 +166,12 @@ export default function MovementScreen() {
                 <Text
                   className="text-sm font-semibold"
                   style={{
-                    color: type === t ? (t === MovementType.IN ? '#16a34a' : '#dc2626') : '#6b7280',
+                    color:
+                      type === t
+                        ? t === MovementType.IN
+                          ? '#16a34a'
+                          : '#dc2626'
+                        : '#6b7280',
                   }}
                 >
                   {t === MovementType.IN ? '↑ Entrada' : '↓ Saída'}
@@ -104,29 +183,105 @@ export default function MovementScreen() {
 
         <View>
           <Text className="text-sm font-medium text-gray-700 mb-1.5">Item</Text>
-          <View className="border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
-            <TouchableOpacity className="px-4 py-3" onPress={() => setItemId('')}>
-              <Text className={`text-sm ${itemId ? 'text-gray-900' : 'text-gray-400'}`}>
-                {selectedItem ? `${selectedItem.name} (${Number(selectedItem.currentQuantity)} ${selectedItem.unit})` : 'Selecione um item'}
-              </Text>
-            </TouchableOpacity>
-            {items.map((i) => (
-              <TouchableOpacity
-                key={i.id}
-                className={`px-4 py-2.5 border-t border-gray-200 ${itemId === i.id ? 'bg-blue-50' : ''}`}
-                onPress={() => setItemId(i.id)}
-              >
-                <Text className={`text-sm ${itemId === i.id ? 'text-blue-600 font-medium' : 'text-gray-700'}`}>
-                  {i.name} — {Number(i.currentQuantity)} {i.unit}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TextInput
+            className={`border rounded-lg px-4 py-3 text-sm text-gray-900 bg-gray-50 ${
+              itemId ? 'border-blue-400' : 'border-gray-300'
+            }`}
+            placeholder="Buscar item..."
+            value={search}
+            onChangeText={handleSearchChange}
+            onFocus={() => setShowDropdown(true)}
+          />
+          {selectedItem && !showDropdown && (
+            <Text className="text-xs text-gray-500 mt-1">
+              {Number(selectedItem.currentQuantity)} {selectedItem.unit} em estoque
+            </Text>
+          )}
+          {showDropdown && (
+            <View className="border border-gray-200 rounded-lg mt-1 bg-white overflow-hidden">
+              {filteredItems.map((i) => (
+                <TouchableOpacity
+                  key={i.id}
+                  className="px-4 py-3 border-b border-gray-100"
+                  onPress={() => selectItem(i)}
+                >
+                  <Text className="text-sm text-gray-800">{i.name}</Text>
+                  <Text className="text-xs text-gray-400 mt-0.5">
+                    {Number(i.currentQuantity)} {i.unit} em estoque
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              {showCreateOption && (
+                <TouchableOpacity
+                  className="px-4 py-3"
+                  onPress={() => {
+                    setShowDropdown(false);
+                    setShowNewItemForm(true);
+                  }}
+                >
+                  <Text className="text-sm text-blue-600 font-medium">
+                    + Cadastrar "{search.trim()}"
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {!showCreateOption && filteredItems.length === 0 && (
+                <View className="px-4 py-3">
+                  <Text className="text-sm text-gray-400">Nenhum item encontrado.</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
+
+        {showNewItemForm && (
+          <View className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+            <Text className="text-sm font-medium text-gray-700 mb-3">
+              Novo item:{' '}
+              <Text className="font-semibold text-gray-900">{search.trim()}</Text>
+            </Text>
+            <Text className="text-sm text-gray-600 mb-1.5">Unidade de medida</Text>
+            <TextInput
+              className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 bg-white mb-3"
+              placeholder="Ex: kg, L, unid., cx..."
+              value={newItemUnit}
+              onChangeText={setNewItemUnit}
+              autoFocus
+            />
+            <View className="flex-row gap-2">
+              <TouchableOpacity
+                className="flex-1 py-2.5 rounded-lg border border-gray-300 items-center bg-white"
+                onPress={() => {
+                  setShowNewItemForm(false);
+                  setNewItemUnit('');
+                }}
+              >
+                <Text className="text-sm text-gray-600">Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="flex-1 py-2.5 rounded-lg bg-blue-600 items-center"
+                onPress={() => {
+                  if (!newItemUnit.trim()) {
+                    Alert.alert('Atenção', 'Informe a unidade de medida.');
+                    return;
+                  }
+                  createItemMutation.mutate();
+                }}
+                disabled={createItemMutation.isPending}
+              >
+                {createItemMutation.isPending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text className="text-sm font-semibold text-white">Cadastrar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         <View>
           <Text className="text-sm font-medium text-gray-700 mb-1.5">
-            Quantidade ({selectedItem?.unit ?? 'unid.'}) <Text className="text-red-500">*</Text>
+            Quantidade ({selectedItem?.unit ?? 'unid.'}){' '}
+            <Text className="text-red-500">*</Text>
           </Text>
           <TextInput
             className="border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 bg-gray-50"
@@ -142,13 +297,17 @@ export default function MovementScreen() {
           <TextInput
             className="border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 bg-gray-50"
             value={date}
-            onChangeText={setDate}
-            placeholder="AAAA-MM-DD"
+            onChangeText={(t) => setDate(maskDateBR(t))}
+            placeholder="DD/MM/AAAA"
+            keyboardType="numeric"
+            maxLength={10}
           />
         </View>
 
         <View>
-          <Text className="text-sm font-medium text-gray-700 mb-1.5">Observações (opcional)</Text>
+          <Text className="text-sm font-medium text-gray-700 mb-1.5">
+            Observações (opcional)
+          </Text>
           <TextInput
             className="border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 bg-gray-50"
             placeholder="Ex: compra do mercado, uso na cozinha..."
@@ -166,7 +325,9 @@ export default function MovementScreen() {
         </View>
 
         <TouchableOpacity
-          className={`rounded-lg py-3.5 items-center mt-2 ${type === MovementType.IN ? 'bg-green-600' : 'bg-red-600'}`}
+          className={`rounded-lg py-3.5 items-center mt-2 ${
+            type === MovementType.IN ? 'bg-green-600' : 'bg-red-600'
+          }`}
           onPress={handleSubmit}
           disabled={mutation.isPending}
         >

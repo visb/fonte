@@ -267,13 +267,13 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
         <div className="flex justify-end">
           <Button size="sm" onClick={() => setAddOpen(true)}>
             <Plus size={14} className="mr-2" />
-            Adicionar setor
+            Adicionar ministério
           </Button>
         </div>
 
         {houseMinistries.length === 0 ? (
           <p className="text-muted-foreground text-sm text-center py-8">
-            Nenhum setor associado a esta casa.
+            Nenhum ministério associado a esta casa.
           </p>
         ) : (
           <div className="space-y-2">
@@ -309,7 +309,7 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-destructive hover:text-destructive"
-                    title="Remover setor"
+                    title="Remover ministério"
                     onClick={() => setRemoveTarget(hm)}
                   >
                     <Trash2 size={13} />
@@ -344,7 +344,7 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
               </select>
               {availableMinistries.length === 0 && allMinistries.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Todos os setores já foram adicionados.
+                  Todos os ministérios já foram adicionados.
                 </p>
               )}
             </div>
@@ -417,9 +417,9 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover setor</AlertDialogTitle>
+            <AlertDialogTitle>Remover ministério</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover o setor{" "}
+              Tem certeza que deseja remover o ministério{" "}
               <strong>{removeTarget?.ministryName}</strong> desta casa?
             </AlertDialogDescription>
           </AlertDialogHeader>

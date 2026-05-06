@@ -86,7 +86,7 @@ export function AppLayout() {
           {isAdminOrCoordinator && (
             <Link to="/ministries" onClick={closeSidebar} className={navLinkClass}>
               <Briefcase size={16} />
-              Setores
+              Ministérios
             </Link>
           )}
           {isAdminOrCoordinator && (

@@ -104,10 +104,10 @@ export function MinistriesPage() {
   return (
     <div className="max-w-xl space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Setores</h1>
+        <h1 className="text-2xl font-bold">Ministérios</h1>
         <Button size="sm" onClick={openCreate}>
           <Plus size={14} className="mr-1.5" />
-          Novo setor
+          Novo ministério
         </Button>
       </div>
 
@@ -118,7 +118,7 @@ export function MinistriesPage() {
         </div>
       ) : ministries.length === 0 ? (
         <p className="text-center text-muted-foreground text-sm py-12">
-          Nenhum setor cadastrado.
+          Nenhum ministério cadastrado.
         </p>
       ) : (
         <div className="space-y-2">
@@ -157,7 +157,7 @@ export function MinistriesPage() {
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editTarget ? 'Editar setor' : 'Novo setor'}</DialogTitle>
+            <DialogTitle>{editTarget ? 'Editar ministério' : 'Novo ministério'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-2 py-4">
@@ -195,7 +195,7 @@ export function MinistriesPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir setor</AlertDialogTitle>
+            <AlertDialogTitle>Excluir ministério</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir <strong>{deleteTarget?.name}</strong>?
             </AlertDialogDescription>

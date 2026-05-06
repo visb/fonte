@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ImagePlus, Loader2, Pencil, Trash2 } from "lucide-react";
-import { api, photoUrl } from "@/lib/api";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,33 +62,7 @@ function sanitize(data: HouseFormData) {
   };
 }
 
-interface StaffItem {
-  id: string;
-  name: string;
-}
-
-interface HousePhoto {
-  id: string;
-  filename: string;
-  url: string;
-  createdAt: string;
-}
-
-interface House {
-  id: string;
-  name: string;
-  generalCapacity: number | null;
-  staffCapacity: number | null;
-  address: string | null;
-  city: string | null;
-  state: string | null;
-  coordinatorId: string | null;
-  coordinator: { id: string; name: string; phone: string | null } | null;
-  phone: string | null;
-  photos: HousePhoto[];
-  activeResidentsCount: number;
-  staffCount: number;
-}
+import type { House, Staff } from '@fonte/api-client';
 
 export function OverviewTab({ houseId }: { houseId: string }) {
   const queryClient = useQueryClient();
@@ -106,12 +80,12 @@ export function OverviewTab({ houseId }: { houseId: string }) {
 
   const { data: house } = useQuery({
     queryKey: ["houses", houseId],
-    queryFn: () => api.get<House>(`/houses/${houseId}`).then((r) => r.data),
+    queryFn: () => api.houses.getById(houseId),
   });
 
   const { data: staffList = [] } = useQuery({
     queryKey: ["staff"],
-    queryFn: () => api.get<StaffItem[]>("/staff").then((r) => r.data),
+    queryFn: () => api.staff.list(),
     enabled: editOpen,
   });
 
@@ -119,11 +93,7 @@ export function OverviewTab({ houseId }: { houseId: string }) {
     mutationFn: ({ file }: { file: File }) => {
       const form = new FormData();
       form.append("file", file);
-      return api
-        .post<HousePhoto>(`/houses/${houseId}/photos`, form, {
-          headers: { "Content-Type": undefined },
-        })
-        .then((r) => r.data);
+      return api.houses.addPhoto(houseId, form);
     },
     onSuccess: () => {
       setUploadError(null);
@@ -140,7 +110,7 @@ export function OverviewTab({ houseId }: { houseId: string }) {
 
   const deleteMutation = useMutation({
     mutationFn: (photoId: string) =>
-      api.delete(`/houses/${houseId}/photos/${photoId}`),
+      api.houses.deletePhoto(houseId, photoId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["houses", houseId] });
       setDeleteTarget(null);
@@ -149,7 +119,7 @@ export function OverviewTab({ houseId }: { houseId: string }) {
 
   const updateMutation = useMutation({
     mutationFn: (data: HouseFormData) =>
-      api.patch<House>(`/houses/${houseId}`, sanitize(data)).then((r) => r.data),
+      api.houses.update(houseId, sanitize(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["houses", houseId] });
       queryClient.invalidateQueries({ queryKey: ["houses"] });
@@ -281,7 +251,7 @@ export function OverviewTab({ houseId }: { houseId: string }) {
                 className="relative rounded-md overflow-hidden aspect-video bg-muted"
               >
                 <img
-                  src={photoUrl(photo.url)!}
+                  src={api.photoUrl(photo.url)!}
                   alt={photo.filename}
                   className="w-full h-full object-cover"
                 />

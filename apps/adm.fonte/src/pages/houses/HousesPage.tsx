@@ -5,7 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Home, MapPin, Pencil, Phone, Plus, Trash2, User } from "lucide-react";
-import { api, photoUrl } from "@/lib/api";
+import { api } from "@/lib/api";
+import type { House } from "@fonte/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,30 +58,6 @@ const BR_STATES = [
   "TO",
 ];
 
-interface Staff {
-  id: string;
-  name: string;
-  houseId: string;
-}
-
-interface House {
-  id: string;
-  name: string;
-  generalCapacity: number | null;
-  staffCapacity: number | null;
-  address: string | null;
-  city: string | null;
-  state: string | null;
-  coordinatorId: string | null;
-  coordinator: Staff | null;
-  phone: string | null;
-  thumbnailUrl: string | null;
-  activeResidentsCount: number;
-  staffCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
 const optionalCapacity = z.preprocess(
   (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
   z.number().int().min(1).optional(),
@@ -98,13 +75,12 @@ const houseSchema = z.object({
 });
 type HouseFormData = z.infer<typeof houseSchema>;
 
-const fetchHouses = () => api.get<House[]>("/houses").then((r) => r.data);
-const fetchStaff = () => api.get<Staff[]>("/staff").then((r) => r.data);
-const createHouse = (data: HouseFormData) =>
-  api.post<House>("/houses", sanitize(data)).then((r) => r.data);
+const fetchHouses = () => api.houses.list();
+const fetchStaff = () => api.staff.list();
+const createHouse = (data: HouseFormData) => api.houses.create(sanitize(data));
 const updateHouse = ({ id, ...data }: { id: string } & HouseFormData) =>
-  api.patch<House>(`/houses/${id}`, sanitize(data)).then((r) => r.data);
-const deleteHouse = (id: string) => api.delete(`/houses/${id}`);
+  api.houses.update(id, sanitize(data));
+const deleteHouse = (id: string) => api.houses.delete(id);
 
 function sanitize(data: HouseFormData) {
   return {
@@ -255,7 +231,7 @@ export function HousesPage() {
               <div className="w-20 sm:w-36 shrink-0 bg-muted">
                 {house.thumbnailUrl ? (
                   <img
-                    src={photoUrl(house.thumbnailUrl)!}
+                    src={api.photoUrl(house.thumbnailUrl)!}
                     alt={house.name}
                     className="w-full h-full object-cover"
                   />

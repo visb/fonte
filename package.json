@@ -4,14 +4,15 @@
   "private": true,
   "scripts": {
     "build:types": "pnpm --filter @fonte/types build",
+    "build:api-client": "pnpm --filter @fonte/api-client build",
     "dev:api": "pnpm build:types && pnpm --filter api dev",
     "build:api": "pnpm build:types && pnpm --filter api build",
     "test:api": "pnpm --filter api test",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:reset": "docker compose down -v && docker compose up -d",
-    "dev:adm": "pnpm build:types && pnpm --filter adm.fonte dev",
-    "dev:ops": "pnpm build:types && pnpm --filter ops.fonte start",
+    "dev:adm": "pnpm build:types && pnpm build:api-client && pnpm --filter adm.fonte dev",
+    "dev:ops": "pnpm build:types && pnpm build:api-client && pnpm --filter ops.fonte start",
     "seed:api": "pnpm --filter api seed"
   },
   "pnpm": {

@@ -24,12 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-interface HouseRule {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-}
+import type { HouseRule } from '@fonte/api-client';
 
 export function RulesTab({ houseId }: { houseId: string }) {
   const queryClient = useQueryClient();
@@ -40,13 +35,12 @@ export function RulesTab({ houseId }: { houseId: string }) {
 
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ["houses", houseId, "rules"],
-    queryFn: () =>
-      api.get<HouseRule[]>(`/houses/${houseId}/rules`).then((r) => r.data),
+    queryFn: () => api.houses.listRules(houseId),
   });
 
   const createMutation = useMutation({
     mutationFn: (data: { title: string; content: string }) =>
-      api.post<HouseRule>(`/houses/${houseId}/rules`, data).then((r) => r.data),
+      api.houses.createRule(houseId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["houses", houseId, "rules"] });
       setAddOpen(false);
@@ -57,7 +51,7 @@ export function RulesTab({ houseId }: { houseId: string }) {
 
   const removeMutation = useMutation({
     mutationFn: (ruleId: string) =>
-      api.delete(`/houses/${houseId}/rules/${ruleId}`),
+      api.houses.deleteRule(houseId, ruleId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["houses", houseId, "rules"] });
       setRemoveTarget(null);

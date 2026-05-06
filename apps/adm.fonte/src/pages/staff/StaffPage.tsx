@@ -17,13 +17,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-interface Staff {
-  id: string;
-  name: string;
-  phone: string | null;
-  house: { id: string; name: string } | null;
-  user: { email: string; role: Role };
-}
+import type { Staff } from '@fonte/api-client';
 
 const ROLE_LABEL: Record<string, string> = {
   [Role.ADMIN]: 'Administrador',
@@ -37,8 +31,8 @@ const ROLE_VARIANT: Record<string, 'destructive' | 'info' | 'secondary'> = {
   [Role.OPERATOR]: 'secondary',
 };
 
-const fetchStaff = () => api.get<Staff[]>('/staff').then((r) => r.data);
-const deleteStaff = (id: string) => api.delete(`/staff/${id}`);
+const fetchStaff = () => api.staff.list();
+const deleteStaff = (id: string) => api.staff.delete(id);
 
 export function StaffPage() {
   const navigate = useNavigate();

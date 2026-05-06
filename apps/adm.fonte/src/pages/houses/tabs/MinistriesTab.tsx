@@ -22,19 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
-interface HouseMinistryItem {
-  id: string;
-  ministryId: string;
-  ministryName: string;
-  leaderId: string | null;
-  leaderType: "STAFF" | "RESIDENT" | null;
-  leaderName: string | null;
-}
-
-interface Ministry {
-  id: string;
-  name: string;
-}
+import type { HouseMinistry, Ministry } from '@fonte/api-client';
 
 interface PersonItem {
   id: string;
@@ -166,42 +154,37 @@ function LeaderAutocomplete({
 export function MinistriesTab({ houseId }: { houseId: string }) {
   const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<HouseMinistryItem | null>(null);
-  const [removeTarget, setRemoveTarget] = useState<HouseMinistryItem | null>(null);
+  const [editTarget, setEditTarget] = useState<HouseMinistry | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<HouseMinistry | null>(null);
   const [selectedMinistryId, setSelectedMinistryId] = useState("");
   const [selectedLeader, setSelectedLeader] = useState<SelectedLeader | null>(null);
 
   const { data: houseMinistries = [], isLoading } = useQuery({
     queryKey: ["houses", houseId, "ministries"],
-    queryFn: () =>
-      api
-        .get<HouseMinistryItem[]>(`/houses/${houseId}/ministries`)
-        .then((r) => r.data),
+    queryFn: () => api.houses.listMinistries(houseId),
   });
 
   const { data: allMinistries = [] } = useQuery({
     queryKey: ["ministries"],
-    queryFn: () => api.get<Ministry[]>("/ministries").then((r) => r.data),
+    queryFn: () => api.ministries.list(),
     enabled: addOpen,
   });
 
   const { data: houseStaff = [] } = useQuery({
     queryKey: ["houses", houseId, "staff"],
-    queryFn: () =>
-      api.get<PersonItem[]>(`/houses/${houseId}/staff`).then((r) => r.data),
+    queryFn: () => api.houses.listStaff(houseId),
     enabled: addOpen || !!editTarget,
   });
 
   const { data: houseResidents = [] } = useQuery({
     queryKey: ["houses", houseId, "residents"],
-    queryFn: () =>
-      api.get<PersonItem[]>(`/houses/${houseId}/residents`).then((r) => r.data),
+    queryFn: () => api.houses.listResidents(houseId),
     enabled: addOpen || !!editTarget,
   });
 
   const addMutation = useMutation({
     mutationFn: (data: { ministryId: string; leaderId?: string; leaderType?: "STAFF" | "RESIDENT" }) =>
-      api.post(`/houses/${houseId}/ministries`, data).then((r) => r.data),
+      api.houses.addMinistry(houseId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["houses", houseId, "ministries"] });
       setAddOpen(false);
@@ -220,9 +203,7 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
       leaderId: string | null;
       leaderType: "STAFF" | "RESIDENT" | null;
     }) =>
-      api
-        .patch(`/houses/${houseId}/ministries/${hmId}`, { leaderId, leaderType })
-        .then((r) => r.data),
+      api.houses.updateMinistry(houseId, hmId, { leaderId, leaderType }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["houses", houseId, "ministries"] });
       setEditTarget(null);
@@ -231,7 +212,7 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
 
   const removeMutation = useMutation({
     mutationFn: (hmId: string) =>
-      api.delete(`/houses/${houseId}/ministries/${hmId}`),
+      api.houses.removeMinistry(houseId, hmId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["houses", houseId, "ministries"] });
       setRemoveTarget(null);

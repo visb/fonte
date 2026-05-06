@@ -12,11 +12,6 @@ import { MinistriesTab } from "./tabs/MinistriesTab";
 import { StoreroomTab } from "./tabs/StoreroomTab";
 import { RulesTab } from "./tabs/RulesTab";
 
-interface House {
-  id: string;
-  name: string;
-}
-
 const TABS = [
   { id: "overview", label: "Visão Geral" },
   { id: "residents", label: "Filhos" },
@@ -41,7 +36,7 @@ export function HouseDetailPage() {
     isError,
   } = useQuery({
     queryKey: ["houses", id],
-    queryFn: () => api.get<House>(`/houses/${id}`).then((r) => r.data),
+    queryFn: () => api.houses.getById(id!),
     enabled: !!id,
   });
 

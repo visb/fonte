@@ -13,18 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { maskPhone, withMask } from "../residents/masks";
 
-interface House {
-  id: string;
-  name: string;
-}
-
-interface Staff {
-  id: string;
-  name: string;
-  phone: string | null;
-  houseId: string;
-  user: { email: string; role: Role };
-}
+import type { Staff } from '@fonte/api-client';
 
 const schema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -44,14 +33,14 @@ export function EditStaffPage() {
   const goBack = useGoBack("/staff");
   const queryClient = useQueryClient();
 
-  const { data: houses = [] } = useQuery<House[]>({
+  const { data: houses = [] } = useQuery({
     queryKey: ["houses"],
-    queryFn: () => api.get<House[]>("/houses").then((r) => r.data),
+    queryFn: () => api.houses.list(),
   });
 
-  const { data: staff, isLoading } = useQuery<Staff>({
+  const { data: staff, isLoading } = useQuery({
     queryKey: ["staff", id],
-    queryFn: () => api.get<Staff>(`/staff/${id}`).then((r) => r.data),
+    queryFn: () => api.staff.getById(id!),
     enabled: !!id,
   });
 
@@ -76,7 +65,7 @@ export function EditStaffPage() {
 
   const mutation = useMutation({
     mutationFn: (data: FormData) =>
-      api.patch(`/staff/${id}`, {
+      api.staff.update(id!, {
         name: data.name,
         email: data.email,
         role: data.role,

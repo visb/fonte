@@ -31,12 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const role = decoded.role ?? null;
 
   const login = useCallback(async (email: string, password: string) => {
-    const { data } = await api.post<{ accessToken: string }>('/auth/login', {
-      email,
-      password,
-    });
-    localStorage.setItem(TOKEN_STORAGE_KEY, data.accessToken);
-    setToken(data.accessToken);
+    const { accessToken } = await api.auth.login({ email, password });
+    localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+    setToken(accessToken);
   }, []);
 
   const logout = useCallback(() => {

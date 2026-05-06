@@ -1,35 +1,12 @@
-import axios from 'axios';
+import { createApiClient } from '@fonte/api-client';
 
-const TOKEN_KEY = 'fonte_token';
-
-export const api = axios.create({
+export const api = createApiClient({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1',
-  headers: { 'Content-Type': 'application/json' },
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
+  getToken: () => localStorage.getItem('fonte_token'),
+  onUnauthorized: () => {
+    localStorage.removeItem('fonte_token');
+    window.location.href = '/login';
   },
-);
+});
 
-export const TOKEN_STORAGE_KEY = TOKEN_KEY;
-
-export function photoUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
-  const origin =
-    (import.meta.env.VITE_API_URL as string | undefined)?.replace('/api/v1', '') ??
-    'http://localhost:3000';
-  return `${origin}${path}`;
-}
+export const TOKEN_STORAGE_KEY = 'fonte_token';

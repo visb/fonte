@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, ChevronDown, Download, ExternalLink, FileText, Loader2, Paperclip, Pencil, Phone, Plus, Trash2, Upload, User } from 'lucide-react';
-import { api, photoUrl } from '@/lib/api';
+import { api } from '@/lib/api';
 import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -38,67 +38,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { maskCPF, maskPhone, maskRG, withMask } from './masks';
 
+import type {
+  Resident,
+  Relative,
+  DocumentTemplate,
+  ResidentDocument,
+  ResidentAttachment,
+} from '@fonte/api-client';
+
 // ─── types ────────────────────────────────────────────────────────────────────
 
-interface ResidentDetail {
-  id: string;
-  name: string;
-  status: ResidentStatus;
-  house: { id: string; name: string } | null;
-  houseId: string;
-  birthDate: string | null;
-  cpf: string | null;
-  rg: string | null;
-  gender: string | null;
-  address: string | null;
-  entryDate: string | null;
-  exitDate: string | null;
-  contactPhone: string | null;
-  maritalStatus: string | null;
-  children: number;
-  occupation: string | null;
-  education: string | null;
-  religion: string | null;
-  addiction: string | null;
-  healthIssues: string | null;
-  continuousMedication: string | null;
-  weight: number | null;
-  height: number | null;
-  familyInvestment: string | null;
-  photoUrl: string | null;
-}
-
-interface Relative {
-  id: string;
-  name: string;
-  phone: string | null;
-  relationship: string | null;
-}
-
-interface DocumentTemplate {
-  id: string;
-  name: string;
-  isRequired: boolean;
-}
-
-interface ResidentDocument {
-  id: string;
-  residentId: string;
-  templateId: string;
-  templateName: string;
-  signed: boolean;
-  signedFileUrl: string | null;
-  signedAt: string | null;
-  withinWindow: boolean;
-}
-
-interface ResidentAttachment {
-  id: string;
-  residentId: string;
-  filename: string;
-  fileUrl: string;
-  createdAt: string;
-}
+type ResidentDetail = Resident;
 
 // ─── labels ───────────────────────────────────────────────────────────────────
 
@@ -202,30 +152,25 @@ type RelativeFormData = z.infer<typeof relativeSchema>;
 
 // ─── api calls ────────────────────────────────────────────────────────────────
 
-const fetchResident = (id: string) =>
-  api.get<ResidentDetail>(`/residents/${id}`).then((r) => r.data);
+const fetchResident = (id: string) => api.residents.getById(id);
 
-const fetchRelatives = (residentId: string) =>
-  api.get<Relative[]>(`/relatives?residentId=${residentId}`).then((r) => r.data);
+const fetchRelatives = (residentId: string) => api.relatives.listByResident(residentId);
 
-const fetchDocuments = (residentId: string) =>
-  api.get<ResidentDocument[]>(`/residents/${residentId}/documents`).then((r) => r.data);
+const fetchDocuments = (residentId: string) => api.residents.getDocuments(residentId);
 
-const fetchAttachments = (residentId: string) =>
-  api.get<ResidentAttachment[]>(`/residents/${residentId}/attachments`).then((r) => r.data);
+const fetchAttachments = (residentId: string) => api.residents.getAttachments(residentId);
 
-const fetchTemplates = () =>
-  api.get<DocumentTemplate[]>('/document-templates').then((r) => r.data);
+const fetchTemplates = () => api.documentTemplates.list();
 
 const createRelative = (data: RelativeFormData & { residentId: string }) =>
-  api.post<Relative>('/relatives', {
+  api.relatives.create({
     name: data.name,
     residentId: data.residentId,
     phone: data.phone || null,
     relationship: data.relationship || null,
-  }).then((r) => r.data);
+  });
 
-const deleteRelative = (id: string) => api.delete(`/relatives/${id}`);
+const deleteRelative = (id: string) => api.relatives.delete(id);
 
 // ─── tabs ─────────────────────────────────────────────────────────────────────
 
@@ -328,7 +273,7 @@ export function ResidentDetailPage() {
         >
           {resident.photoUrl ? (
             <img
-              src={photoUrl(resident.photoUrl)!}
+              src={api.photoUrl(resident.photoUrl)!}
               alt={resident.name}
               className="w-full h-full object-cover"
             />
@@ -526,7 +471,7 @@ export function ResidentDetailPage() {
       <Dialog open={photoModalOpen} onOpenChange={setPhotoModalOpen}>
         <DialogContent className="max-w-sm p-2">
           <img
-            src={photoUrl(resident.photoUrl)!}
+            src={api.photoUrl(resident.photoUrl)!}
             alt={resident.name}
             className="w-full rounded-md object-contain max-h-[80vh]"
           />
@@ -724,10 +669,8 @@ function GenerateDocumentMenu({
   const downloadPdf = async (template: DocumentTemplate) => {
     setDownloading(template.id);
     try {
-      const res = await api.get<Blob>(`/residents/${residentId}/documents/${template.id}/pdf`, {
-        responseType: 'blob',
-      });
-      const url = URL.createObjectURL(res.data);
+      const blob = await api.residents.downloadDocumentPdf(residentId, template.id);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `${slugify(`${residentName} ${template.name}`)}.pdf`;
@@ -777,9 +720,7 @@ function AttachmentUploadButton({
     mutationFn: async (file: File) => {
       const fd = new window.FormData();
       fd.append('file', file);
-      await api.post(`/residents/${residentId}/attachments`, fd, {
-        headers: { 'Content-Type': undefined },
-      });
+      await api.residents.addAttachment(residentId, fd);
     },
     onSuccess: onUploaded,
   });
@@ -822,7 +763,7 @@ function AttachmentRow({
 }) {
   const deleteMutation = useMutation({
     mutationFn: () =>
-      api.delete(`/residents/${attachment.residentId}/attachments/${attachment.id}`),
+      api.residents.deleteAttachment(attachment.residentId, attachment.id),
     onSuccess: onDeleted,
   });
 
@@ -839,7 +780,7 @@ function AttachmentRow({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => window.open(photoUrl(attachment.fileUrl)!, '_blank', 'noreferrer')}
+          onClick={() => window.open(api.photoUrl(attachment.fileUrl)!, '_blank', 'noreferrer')}
         >
           <ExternalLink size={14} className="mr-1.5" />
           Abrir
@@ -883,9 +824,7 @@ function DocumentCard({
     mutationFn: async (file: File) => {
       const fd = new window.FormData();
       fd.append('file', file);
-      await api.post(`/residents/${residentId}/documents/${templateId}/signed`, fd, {
-        headers: { 'Content-Type': undefined },
-      });
+      await api.residents.uploadSignedDocument(residentId, templateId, fd);
     },
     onSuccess: onUploaded,
   });
@@ -902,10 +841,8 @@ function DocumentCard({
   const downloadPdf = async () => {
     setDownloading(true);
     try {
-      const res = await api.get<Blob>(`/residents/${residentId}/documents/${templateId}/pdf`, {
-        responseType: 'blob',
-      });
-      const url = URL.createObjectURL(res.data);
+      const blob = await api.residents.downloadDocumentPdf(residentId, templateId);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = pdfFilename;

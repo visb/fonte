@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft } from 'lucide-react';
 import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
-import { api, photoUrl } from '@/lib/api';
+import { api } from '@/lib/api';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,36 +16,9 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { maskCPF, maskRG, maskPhone, withMask } from './masks';
 
-interface House {
-  id: string;
-  name: string;
-}
+import type { Resident } from '@fonte/api-client';
 
-interface ResidentDetail {
-  id: string;
-  name: string;
-  houseId: string;
-  birthDate: string | null;
-  cpf: string | null;
-  rg: string | null;
-  gender: string | null;
-  address: string | null;
-  status: ResidentStatus;
-  entryDate: string | null;
-  contactPhone: string | null;
-  maritalStatus: string | null;
-  children: number;
-  occupation: string | null;
-  education: string | null;
-  religion: string | null;
-  addiction: string | null;
-  healthIssues: string | null;
-  continuousMedication: string | null;
-  weight: number | null;
-  height: number | null;
-  familyInvestment: string | null;
-  photoUrl: string | null;
-}
+type ResidentDetail = Resident;
 
 const schema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -117,8 +90,8 @@ function toFormValues(r: ResidentDetail): FormData {
   };
 }
 
-const fetchHouses = () => api.get<House[]>('/houses').then((r) => r.data);
-const fetchResident = (id: string) => api.get<ResidentDetail>(`/residents/${id}`).then((r) => r.data);
+const fetchHouses = () => api.houses.list();
+const fetchResident = (id: string) => api.residents.getById(id);
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -175,14 +148,12 @@ export function EditResidentPage() {
 
   const mutation = useMutation({
     mutationFn: async (data: FormData) => {
-      await api.patch(`/residents/${id}`, buildPayload(data));
+      await api.residents.update(id!, buildPayload(data) as Parameters<typeof api.residents.update>[1]);
       const photo = pendingPhotoRef.current;
       if (photo) {
         const fd = new window.FormData();
         fd.append('file', photo, 'photo.jpg');
-        await api.post(`/residents/${id}/photo`, fd, {
-          headers: { 'Content-Type': undefined },
-        });
+        await api.residents.uploadPhoto(id!, fd);
       }
     },
     onSuccess: () => {
@@ -210,7 +181,7 @@ export function EditResidentPage() {
 
         <div className="col-span-full flex justify-center pb-2">
           <AvatarUpload
-            currentUrl={photoUrl(resident?.photoUrl)}
+            currentUrl={api.photoUrl(resident?.photoUrl ?? null)}
             onBlobChange={(blob) => { pendingPhotoRef.current = blob; }}
           />
         </div>

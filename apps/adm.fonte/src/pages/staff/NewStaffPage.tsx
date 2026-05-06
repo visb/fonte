@@ -13,11 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { maskPhone, withMask } from '../residents/masks';
 
-interface House {
-  id: string;
-  name: string;
-}
-
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
 
 function generatePassword(len = 12) {
@@ -47,9 +42,9 @@ export function NewStaffPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data: houses = [] } = useQuery<House[]>({
+  const { data: houses = [] } = useQuery({
     queryKey: ['houses'],
-    queryFn: () => api.get<House[]>('/houses').then((r) => r.data),
+    queryFn: () => api.houses.list(),
   });
 
   const {
@@ -66,7 +61,7 @@ export function NewStaffPage() {
 
   const mutation = useMutation({
     mutationFn: (data: FormData) =>
-      api.post('/staff', {
+      api.staff.create({
         ...data,
         phone: data.phone || null,
       }),

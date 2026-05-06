@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { StaffMe } from '@fonte/api-client';
 import { api } from './api';
 
 export class MustChangePasswordError extends Error {
@@ -9,16 +10,9 @@ export class MustChangePasswordError extends Error {
   }
 }
 
-interface StaffProfile {
-  id: string;
-  name: string;
-  houseId: string;
-  house: { id: string; name: string } | null;
-}
-
 interface AuthState {
   token: string | null;
-  staff: StaffProfile | null;
+  staff: StaffMe | null;
   isLoading: boolean;
 }
 
@@ -34,14 +28,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ token: null, staff: null, isLoading: true });
 
   useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem('token'),
-      AsyncStorage.getItem('staff'),
-    ])
+    Promise.all([AsyncStorage.getItem('token'), AsyncStorage.getItem('staff')])
       .then(([token, staffJson]) => {
         setState({
           token,
-          staff: staffJson ? (JSON.parse(staffJson) as StaffProfile) : null,
+          staff: staffJson ? (JSON.parse(staffJson) as StaffMe) : null,
           isLoading: false,
         });
       })
@@ -51,13 +42,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function login(email: string, password: string) {
-    const { data } = await api.post<{ accessToken: string }>('/auth/login', { email, password });
-    await AsyncStorage.setItem('token', data.accessToken);
+    const { accessToken } = await api.auth.login({ email, password });
+    await AsyncStorage.setItem('token', accessToken);
 
     try {
-      const { data: staff } = await api.get<StaffProfile>('/staff/me');
+      const staff = await api.staff.me();
       await AsyncStorage.setItem('staff', JSON.stringify(staff));
-      setState({ token: data.accessToken, staff, isLoading: false });
+      setState({ token: accessToken, staff, isLoading: false });
     } catch (err: any) {
       if (err?.response?.data?.error === 'MUST_CHANGE_PASSWORD') {
         throw new MustChangePasswordError();
@@ -67,12 +58,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function changePassword(newPassword: string) {
-    const { data } = await api.post<{ accessToken: string }>('/auth/change-password', { newPassword });
-    await AsyncStorage.setItem('token', data.accessToken);
+    const { accessToken } = await api.auth.changePassword({ newPassword });
+    await AsyncStorage.setItem('token', accessToken);
 
-    const { data: staff } = await api.get<StaffProfile>('/staff/me');
+    const staff = await api.staff.me();
     await AsyncStorage.setItem('staff', JSON.stringify(staff));
-    setState({ token: data.accessToken, staff, isLoading: false });
+    setState({ token: accessToken, staff, isLoading: false });
   }
 
   async function logout() {

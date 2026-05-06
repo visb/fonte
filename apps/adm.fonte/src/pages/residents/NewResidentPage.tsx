@@ -15,11 +15,6 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
-interface House {
-  id: string;
-  name: string;
-}
-
 const schema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   houseId: z.string().min(1, 'Casa é obrigatória'),
@@ -47,7 +42,7 @@ type FormData = z.infer<typeof schema>;
 
 const today = new Date().toISOString().split('T')[0];
 
-const fetchHouses = () => api.get<House[]>('/houses').then((r) => r.data);
+const fetchHouses = () => api.houses.list();
 
 function buildPayload(data: FormData): Record<string, unknown> {
   const payload: Record<string, unknown> = { status: ResidentStatus.ACTIVE };
@@ -105,14 +100,12 @@ export function NewResidentPage() {
 
   const mutation = useMutation({
     mutationFn: async (data: FormData) => {
-      const { data: resident } = await api.post<{ id: string }>('/residents', buildPayload(data));
+      const resident = await api.residents.create(buildPayload(data) as Parameters<typeof api.residents.create>[0]);
       const photo = pendingPhotoRef.current;
       if (photo) {
         const fd = new window.FormData();
         fd.append('file', photo, 'photo.jpg');
-        await api.post(`/residents/${resident.id}/photo`, fd, {
-          headers: { 'Content-Type': undefined },
-        });
+        await api.residents.uploadPhoto(resident.id, fd);
       }
       return resident;
     },

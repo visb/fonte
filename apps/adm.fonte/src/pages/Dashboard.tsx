@@ -4,16 +4,7 @@ import { UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 
-interface House {
-  id: string;
-  name: string;
-  generalCapacity: number | null;
-  staffCapacity: number | null;
-  activeResidentsCount: number;
-  staffCount: number;
-}
-
-const fetchHouses = () => api.get<House[]>('/houses').then((r) => r.data);
+const fetchHouses = () => api.houses.list();
 
 export function Dashboard() {
   const navigate = useNavigate();

@@ -12,6 +12,7 @@
   "dependencies": {
     "@babel/runtime": "^7.29.2",
     "@expo/vector-icons": "^14.0.0",
+    "@fonte/api-client": "workspace:*",
     "@fonte/types": "workspace:*",
     "@hookform/resolvers": "^3.9.0",
     "@react-native-async-storage/async-storage": "1.23.1",

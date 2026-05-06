@@ -10,8 +10,7 @@ export default function DashboardScreen() {
 
   const { data: residents = [] } = useQuery({
     queryKey: ['residents-count', staff?.houseId],
-    queryFn: () =>
-      api.get(`/houses/${staff?.houseId}/residents`).then((r) => r.data),
+    queryFn: () => api.residents.listByHouse(staff!.houseId),
     enabled: !!staff?.houseId,
   });
 

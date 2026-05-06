@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { User } from "lucide-react";
-import { api, photoUrl } from "@/lib/api";
+import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,30 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-interface ResidentItem {
-  id: string;
-  name: string;
-  status: string;
-  entryDate: string | null;
-  photoUrl: string | null;
-}
-
-interface ResidentDetail {
-  id: string;
-  name: string;
-  status: string;
-  birthDate: string | null;
-  cpf: string | null;
-  rg: string | null;
-  contactPhone: string | null;
-  entryDate: string | null;
-  addiction: string | null;
-  healthIssues: string | null;
-  continuousMedication: string | null;
-  photoUrl: string | null;
-  maritalStatus: string | null;
-  occupation: string | null;
-}
+import type { Resident } from '@fonte/api-client';
 
 const STATUS_LABEL: Record<string, string> = {
   PRE_ADMISSION: "Pré-admissão",
@@ -78,14 +55,12 @@ export function ResidentsTab({ houseId }: { houseId: string }) {
 
   const { data: residents = [], isLoading } = useQuery({
     queryKey: ["houses", houseId, "residents"],
-    queryFn: () =>
-      api.get<ResidentItem[]>(`/houses/${houseId}/residents`).then((r) => r.data),
+    queryFn: () => api.houses.listResidents(houseId),
   });
 
   const { data: detail } = useQuery({
     queryKey: ["residents", selectedId],
-    queryFn: () =>
-      api.get<ResidentDetail>(`/residents/${selectedId}`).then((r) => r.data),
+    queryFn: () => api.residents.getById(selectedId!),
     enabled: !!selectedId,
   });
 
@@ -135,7 +110,7 @@ export function ResidentsTab({ houseId }: { houseId: string }) {
               <div className="flex items-center gap-4">
                 {detail.photoUrl ? (
                   <img
-                    src={photoUrl(detail.photoUrl)!}
+                    src={api.photoUrl(detail.photoUrl)!}
                     alt={detail.name}
                     className="w-16 h-16 rounded-full object-cover shrink-0"
                   />

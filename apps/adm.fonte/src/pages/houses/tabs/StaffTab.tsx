@@ -3,18 +3,11 @@ import { Pencil, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 
-interface StaffItem {
-  id: string;
-  name: string;
-  phone: string | null;
-}
-
 export function StaffTab({ houseId }: { houseId: string }) {
   const navigate = useNavigate();
   const { data: staff = [], isLoading } = useQuery({
     queryKey: ["houses", houseId, "staff"],
-    queryFn: () =>
-      api.get<StaffItem[]>(`/houses/${houseId}/staff`).then((r) => r.data),
+    queryFn: () => api.houses.listStaff(houseId),
   });
 
   if (isLoading) return <p className="text-muted-foreground">Carregando...</p>;

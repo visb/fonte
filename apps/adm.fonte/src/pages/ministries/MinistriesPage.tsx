@@ -26,18 +26,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-interface Ministry {
-  id: string;
-  name: string;
-}
-
 const schema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
 });
 type FormData = z.infer<typeof schema>;
 
-const fetchMinistries = () =>
-  api.get<Ministry[]>('/ministries').then((r) => r.data);
+import type { Ministry } from '@fonte/api-client';
+
+const fetchMinistries = () => api.ministries.list();
 
 export function MinistriesPage() {
   const queryClient = useQueryClient();
@@ -55,7 +51,7 @@ export function MinistriesPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) => api.post<Ministry>('/ministries', data),
+    mutationFn: (data: FormData) => api.ministries.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ministries'] });
       setDialogOpen(false);
@@ -65,7 +61,7 @@ export function MinistriesPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FormData }) =>
-      api.patch<Ministry>(`/ministries/${id}`, data),
+      api.ministries.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ministries'] });
       setEditTarget(null);
@@ -74,7 +70,7 @@ export function MinistriesPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/ministries/${id}`),
+    mutationFn: (id: string) => api.ministries.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ministries'] });
       setDeleteTarget(null);

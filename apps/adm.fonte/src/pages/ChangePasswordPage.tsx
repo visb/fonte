@@ -37,11 +37,9 @@ export function ChangePasswordPage() {
 
   const mutation = useMutation({
     mutationFn: (data: FormData) =>
-      api.post<{ accessToken: string }>('/auth/change-password', {
-        newPassword: data.newPassword,
-      }),
-    onSuccess: ({ data }) => {
-      onPasswordChanged(data.accessToken);
+      api.auth.changePassword({ newPassword: data.newPassword }),
+    onSuccess: (result) => {
+      onPasswordChanged(result.accessToken);
       navigate('/', { replace: true });
     },
   });

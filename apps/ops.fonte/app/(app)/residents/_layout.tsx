@@ -1,4 +1,6 @@
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
+import { TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ResidentsLayout() {
   return (
@@ -10,7 +12,17 @@ export default function ResidentsLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Filhos' }} />
-      <Stack.Screen name="[id]" options={{ title: 'Detalhe' }} />
+      <Stack.Screen
+        name="[id]"
+        options={{
+          title: 'Detalhe',
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.navigate('/(app)/residents')} style={{ marginRight: 8 }}>
+              <Ionicons name="arrow-back" size={24} color="#111827" />
+            </TouchableOpacity>
+          ),
+        }}
+      />
     </Stack>
   );
 }

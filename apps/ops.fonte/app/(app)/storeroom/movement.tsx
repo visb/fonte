@@ -33,13 +33,6 @@ function toISODate(dateBR: string): string {
 
 const today = formatDateBR(new Date().toISOString().split('T')[0]);
 
-interface StoreroomItem {
-  id: string;
-  name: string;
-  unit: string;
-  currentQuantity: number;
-}
-
 export default function MovementScreen() {
   const { staff } = useAuth();
   const queryClient = useQueryClient();
@@ -55,10 +48,9 @@ export default function MovementScreen() {
   const [showNewItemForm, setShowNewItemForm] = useState(false);
   const [newItemUnit, setNewItemUnit] = useState('');
 
-  const { data: items = [] } = useQuery<StoreroomItem[]>({
+  const { data: items = [] } = useQuery({
     queryKey: ['storeroom-items', staff?.houseId],
-    queryFn: () =>
-      api.get(`/storerooms/items?houseId=${staff?.houseId}`).then((r) => r.data),
+    queryFn: () => api.storeroom.listItems({ houseId: staff!.houseId }),
     enabled: !!staff?.houseId,
   });
 
@@ -72,13 +64,11 @@ export default function MovementScreen() {
 
   const createItemMutation = useMutation({
     mutationFn: () =>
-      api
-        .post('/storerooms/items', {
-          name: search.trim(),
-          unit: newItemUnit.trim(),
-          houseId: staff!.houseId,
-        })
-        .then((r) => r.data as StoreroomItem),
+      api.storeroom.createItem({
+        name: search.trim(),
+        unit: newItemUnit.trim(),
+        houseId: staff!.houseId,
+      }),
     onSuccess: (newItem) => {
       queryClient.invalidateQueries({ queryKey: ['storeroom-items'] });
       setItemId(newItem.id);
@@ -96,7 +86,7 @@ export default function MovementScreen() {
 
   const mutation = useMutation({
     mutationFn: () =>
-      api.post('/storerooms/movements', {
+      api.storeroom.createMovement({
         itemId,
         type,
         quantity: parseFloat(quantity),

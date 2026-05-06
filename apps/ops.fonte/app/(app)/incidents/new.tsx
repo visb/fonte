@@ -34,14 +34,13 @@ export default function NewIncidentScreen() {
 
   const { data: residents = [] } = useQuery<{ id: string; name: string }[]>({
     queryKey: ['residents', staff?.houseId],
-    queryFn: () =>
-      api.get(`/houses/${staff?.houseId}/residents`).then((r) => r.data),
+    queryFn: () => api.residents.listByHouse(staff!.houseId),
     enabled: !!staff?.houseId,
   });
 
   const mutation = useMutation({
     mutationFn: () =>
-      api.post('/incidents', {
+      api.incidents.create({
         date,
         severity,
         description,

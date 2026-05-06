@@ -23,7 +23,7 @@ export default function ResidentDetailScreen() {
 
   const { data: resident, isLoading } = useQuery({
     queryKey: ['residents', id],
-    queryFn: () => api.get(`/residents/${id}`).then((r) => r.data),
+    queryFn: () => api.residents.getById(id!),
     enabled: !!id,
   });
 

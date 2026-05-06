@@ -1,31 +1,31 @@
-import { Tabs, router } from 'expo-router';
-import { useEffect } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/lib/auth';
+import { Tabs, router } from "expo-router";
+import { useEffect } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@/lib/auth";
 
 export default function AppLayout() {
   const { token, isLoading } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && !token) router.replace('/(auth)/login');
+    if (!isLoading && !token) router.replace("/(auth)/login");
   }, [token, isLoading]);
 
   return (
     <Tabs
       screenOptions={{
         headerShown: true,
-        tabBarActiveTintColor: '#2563eb',
-        tabBarInactiveTintColor: '#6b7280',
-        tabBarStyle: { borderTopColor: '#e5e7eb' },
-        headerStyle: { backgroundColor: '#fff' },
-        headerTintColor: '#111827',
-        headerTitleStyle: { fontWeight: '600' },
+        tabBarActiveTintColor: "#2563eb",
+        tabBarInactiveTintColor: "#6b7280",
+        tabBarStyle: { borderTopColor: "#e5e7eb" },
+        headerStyle: { backgroundColor: "#fff" },
+        headerTintColor: "#111827",
+        headerTitleStyle: { fontWeight: "600" },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Início',
+          title: "Início",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -34,17 +34,20 @@ export default function AppLayout() {
       <Tabs.Screen
         name="residents"
         options={{
-          title: 'Filhos',
+          title: "Filhos",
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),
         }}
+        listeners={{
+          tabPress: () => router.navigate("/(app)/residents"),
+        }}
       />
       <Tabs.Screen
         name="incidents"
         options={{
-          title: 'Ocorrências',
+          title: "Ocorrências",
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="warning-outline" size={size} color={color} />
@@ -54,7 +57,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="storeroom"
         options={{
-          title: 'Dispensa',
+          title: "Dispensa",
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cube-outline" size={size} color={color} />

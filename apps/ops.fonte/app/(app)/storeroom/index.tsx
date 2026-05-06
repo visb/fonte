@@ -14,13 +14,6 @@ import Animated, {
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 
-interface StoreroomItem {
-  id: string;
-  name: string;
-  unit: string;
-  currentQuantity: number;
-}
-
 function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(-12);
@@ -80,10 +73,9 @@ export default function StoreroomScreen() {
   const { staff } = useAuth();
   const { successMsg } = useLocalSearchParams<{ successMsg?: string }>();
 
-  const { data: items = [], isLoading } = useQuery<StoreroomItem[]>({
+  const { data: items = [], isLoading } = useQuery({
     queryKey: ['storeroom-items', staff?.houseId],
-    queryFn: () =>
-      api.get(`/storerooms/items?houseId=${staff?.houseId}`).then((r) => r.data),
+    queryFn: () => api.storeroom.listItems({ houseId: staff!.houseId }),
     enabled: !!staff?.houseId,
   });
 

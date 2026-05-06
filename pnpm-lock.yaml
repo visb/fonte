@@ -10,6 +10,9 @@ importers:
 
   apps/adm.fonte:
     dependencies:
+      '@fonte/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@fonte/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -122,6 +125,9 @@ importers:
       '@expo/vector-icons':
         specifier: ^14.0.0
         version: 14.1.0(expo-font@13.0.4(expo@52.0.49(@babel/core@7.29.0)(@babel/preset-env@7.29.5(@babel/core@7.29.0))(@expo/metro-runtime@4.0.1(react-native@0.76.6(@babel/core@7.29.0)(@babel/preset-env@7.29.5(@babel/core@7.29.0))(@types/react@18.3.28)(react@18.3.1)))(react-native@0.76.6(@babel/core@7.29.0)(@babel/preset-env@7.29.5(@babel/core@7.29.0))(@types/react@18.3.28)(react@18.3.1))(react@18.3.1))(react@18.3.1))(react-native@0.76.6(@babel/core@7.29.0)(@babel/preset-env@7.29.5(@babel/core@7.29.0))(@types/react@18.3.28)(react@18.3.1))(react@18.3.1)
+      '@fonte/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@fonte/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -203,6 +209,19 @@ importers:
         version: 18.3.28
       typescript:
         specifier: ^5.3.3
+        version: 5.9.3
+
+  packages/api-client:
+    dependencies:
+      '@fonte/types':
+        specifier: workspace:*
+        version: link:../types
+      axios:
+        specifier: ^1.7.7
+        version: 1.16.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
         version: 5.9.3
 
   packages/types:

@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, CalendarDays, Pencil, Plus, Trash2, User } from 'lucide-react';
 import { ResidentStatus } from '@fonte/types';
-import { api, photoUrl } from '@/lib/api';
+import { api } from '@/lib/api';
+import type { Resident } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,16 +17,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-
-interface Resident {
-  id: string;
-  name: string;
-  birthDate: string | null;
-  status: ResidentStatus;
-  house: { id: string; name: string };
-  entryDate: string | null;
-  photoUrl: string | null;
-}
 
 const STATUS_LABELS: Record<ResidentStatus, string> = {
   [ResidentStatus.PRE_ADMISSION]: 'Pré-admissão',
@@ -63,11 +54,11 @@ function computeAge(birthDate: string | null): number | null {
   return age;
 }
 
-const fetchResidents = () => api.get<Resident[]>('/residents').then((r) => r.data);
-const deleteResident = (id: string) => api.delete(`/residents/${id}`);
+const fetchResidents = () => api.residents.list();
+const deleteResident = (id: string) => api.residents.delete(id);
 
 function Avatar({ url, name }: { url: string | null; name: string }) {
-  const src = photoUrl(url);
+  const src = api.photoUrl(url);
   return (
     <div className="w-10 h-10 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
       {src ? (

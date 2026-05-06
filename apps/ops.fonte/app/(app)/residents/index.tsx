@@ -44,8 +44,7 @@ export default function ResidentsScreen() {
 
   const { data: residents = [], isLoading } = useQuery<Resident[]>({
     queryKey: ['residents', staff?.houseId],
-    queryFn: () =>
-      api.get(`/houses/${staff?.houseId}/residents`).then((r) => r.data),
+    queryFn: () => api.residents.listByHouse(staff!.houseId),
     enabled: !!staff?.houseId,
   });
 

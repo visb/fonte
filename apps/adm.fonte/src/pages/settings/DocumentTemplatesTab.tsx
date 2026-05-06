@@ -39,13 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-interface DocumentTemplate {
-  id: string;
-  name: string;
-  content: string;
-  isRequired: boolean;
-  updatedAt: string;
-}
+import type { DocumentTemplate } from '@fonte/api-client';
 
 const VARIABLES: { key: string; label: string; description: string }[] = [
   {
@@ -112,13 +106,12 @@ export function DocumentTemplatesTab() {
 
   const { data: templates = [] } = useQuery({
     queryKey: ["document-templates"],
-    queryFn: () =>
-      api.get<DocumentTemplate[]>("/document-templates").then((r) => r.data),
+    queryFn: () => api.documentTemplates.list(),
   });
 
   const createMutation = useMutation({
     mutationFn: (name: string) =>
-      api.post("/document-templates", { name, content: "", isRequired: false }),
+      api.documentTemplates.create({ name, content: "", isRequired: false }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["document-templates"] });
       setCreateOpen(false);
@@ -127,7 +120,7 @@ export function DocumentTemplatesTab() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/document-templates/${id}`),
+    mutationFn: (id: string) => api.documentTemplates.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["document-templates"] });
       if (editing && deleteTarget && editing.id === deleteTarget.id)
@@ -312,14 +305,8 @@ function TemplateEditor({
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const mutation = useMutation({
-    mutationFn: (data: {
-      name: string;
-      content: string;
-      isRequired: boolean;
-    }) =>
-      api
-        .put<DocumentTemplate>(`/document-templates/${template.id}`, data)
-        .then((r) => r.data),
+    mutationFn: (data: { name: string; content: string; isRequired: boolean }) =>
+      api.documentTemplates.update(template.id, data),
     onSuccess: (updated) => onSaved(updated),
   });
 

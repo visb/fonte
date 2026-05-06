@@ -22,8 +22,7 @@ export default function IncidentsScreen() {
 
   const { data: incidents = [], isLoading } = useQuery({
     queryKey: ['incidents', staff?.houseId],
-    queryFn: () =>
-      api.get(`/incidents?houseId=${staff?.houseId}`).then((r) => r.data),
+    queryFn: () => api.incidents.list({ houseId: staff!.houseId }),
     enabled: !!staff?.houseId,
   });
 

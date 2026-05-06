@@ -49,7 +49,10 @@
       "Bash(netstat -ano)",
       "Bash(tasklist *)",
       "Bash(cmd *)",
-      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.get\\('devDependencies',{}\\).items\\(\\) if 'babel' in k.lower\\(\\)}, indent=2\\)\\)\")"
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.get\\('devDependencies',{}\\).items\\(\\) if 'babel' in k.lower\\(\\)}, indent=2\\)\\)\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\code\\\\fonte\" -Recurse -Directory -Filter \"*routine*\" -ErrorAction SilentlyContinue)",
+      "Bash(Get-ChildItem -Path \"C:\\\\code\\\\fonte\\\\apps\\\\ops.fonte\" -Recurse)",
+      "Bash(Sort-Object)"
     ]
   }
 }

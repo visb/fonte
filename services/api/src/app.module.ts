@@ -10,7 +10,6 @@ import { HouseModule } from './modules/house/house.module';
 import { StaffModule } from './modules/staff/staff.module';
 import { ResidentModule } from './modules/resident/resident.module';
 import { RelativeModule } from './modules/relative/relative.module';
-import { RoutineModule } from './modules/routine/routine.module';
 import { IncidentModule } from './modules/incident/incident.module';
 import { MinistryModule } from './modules/ministry/ministry.module';
 import { StoreroomModule } from './modules/storeroom/storeroom.module';
@@ -30,7 +29,6 @@ import { StorageModule } from './modules/storage/storage.module';
     StaffModule,
     ResidentModule,
     RelativeModule,
-    RoutineModule,
     IncidentModule,
     MinistryModule,
     StoreroomModule,

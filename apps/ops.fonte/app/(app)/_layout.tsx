@@ -42,16 +42,6 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="routines"
-        options={{
-          title: 'Rotina',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="clipboard-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="incidents"
         options={{
           title: 'Ocorrências',

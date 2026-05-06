@@ -5,22 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 
-const today = new Date().toISOString().split('T')[0];
-
-function formatDate(iso: string) {
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-
 export default function DashboardScreen() {
   const { staff } = useAuth();
-
-  const { data: routines = [] } = useQuery({
-    queryKey: ['routines', 'today', staff?.houseId],
-    queryFn: () =>
-      api.get(`/routines?houseId=${staff?.houseId}&date=${today}`).then((r) => r.data),
-    enabled: !!staff?.houseId,
-  });
 
   const { data: residents = [] } = useQuery({
     queryKey: ['residents-count', staff?.houseId],
@@ -30,13 +16,6 @@ export default function DashboardScreen() {
   });
 
   const actions = [
-    {
-      label: 'Nova rotina',
-      icon: 'clipboard-outline' as const,
-      color: '#2563eb',
-      bg: '#eff6ff',
-      route: '/(app)/routines/new',
-    },
     {
       label: 'Nova ocorrência',
       icon: 'warning-outline' as const,
@@ -76,10 +55,6 @@ export default function DashboardScreen() {
             <Text className="text-3xl font-bold text-gray-900">{residents.length}</Text>
             <Text className="text-sm text-gray-500 mt-0.5">Filhos na casa</Text>
           </View>
-          <View className="flex-1 bg-white rounded-xl border border-gray-100 p-4">
-            <Text className="text-3xl font-bold text-gray-900">{routines.length}</Text>
-            <Text className="text-sm text-gray-500 mt-0.5">Rotinas hoje</Text>
-          </View>
         </View>
 
         <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
@@ -102,24 +77,6 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           ))}
         </View>
-
-        {routines.length > 0 && (
-          <>
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-6 mb-3">
-              Rotinas de hoje — {formatDate(today)}
-            </Text>
-            <View className="space-y-2">
-              {routines.slice(0, 5).map((r: { id: string; responsible: { name: string }; description: string }) => (
-                <View key={r.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3">
-                  <Text className="text-xs text-gray-500 mb-0.5">{r.responsible?.name}</Text>
-                  <Text className="text-sm text-gray-800" numberOfLines={2}>
-                    {r.description}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
       </View>
     </ScrollView>
   );

@@ -45,7 +45,11 @@
       "Bash(Select-String \"@fonte/types\")",
       "Bash(findstr -i \"nativewind\\\\|expo-router\\\\|async-storage\\\\|react-native \")",
       "Bash(Select-String \"nativewind|expo-router|async-storage|react-native \")",
-      "Bash(Get-ChildItem -Path \"C:\\\\code\\\\fonte\\\\services\\\\api\\\\src\\\\modules\" -Recurse -Directory)"
+      "Bash(Get-ChildItem -Path \"C:\\\\code\\\\fonte\\\\services\\\\api\\\\src\\\\modules\" -Recurse -Directory)",
+      "Bash(netstat -ano)",
+      "Bash(tasklist *)",
+      "Bash(cmd *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.get\\('devDependencies',{}\\).items\\(\\) if 'babel' in k.lower\\(\\)}, indent=2\\)\\)\")"
     ]
   }
 }

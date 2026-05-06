@@ -10,6 +10,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@babel/runtime": "^7.29.2",
     "@expo/vector-icons": "^14.0.0",
     "@fonte/types": "workspace:*",
     "@hookform/resolvers": "^3.9.0",

@@ -1,4 +1,11 @@
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  RefreshControl,
+} from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,18 +14,25 @@ import { api } from "@/lib/api";
 
 export default function DashboardScreen() {
   const { staff } = useAuth();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data: residents = [] } = useQuery({
+  const { data: residents = [], refetch: refetchResidents } = useQuery({
     queryKey: ["residents-count", staff?.houseId],
     queryFn: () => api.residents.listByHouse(staff!.houseId),
     enabled: !!staff?.houseId,
   });
 
-  const { data: incidents = [] } = useQuery({
+  const { data: incidents = [], refetch: refetchIncidents } = useQuery({
     queryKey: ["incidents-today", staff?.houseId],
     queryFn: () => api.incidents.list({ houseId: staff!.houseId }),
     enabled: !!staff?.houseId,
   });
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([refetchResidents(), refetchIncidents()]);
+    setIsRefreshing(false);
+  };
 
   const todayIncidentsCount = incidents.filter((incident) => {
     const incidentDate = new Date(incident.date).toISOString().split("T")[0];
@@ -51,7 +65,12 @@ export default function DashboardScreen() {
   ];
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
+    <ScrollView
+      className="flex-1 bg-gray-50"
+      refreshControl={
+        <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+      }
+    >
       <View className="bg-[#272950] px-4 pt-6 pb-4 border-b border-gray-100">
         <Text className="text-white text-sm">Bem-vindo,</Text>
         <Text className="text-2xl font-bold text-white">

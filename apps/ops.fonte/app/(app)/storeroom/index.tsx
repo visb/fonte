@@ -1,8 +1,15 @@
-import { useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Pressable } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Pressable,
+} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,11 +17,17 @@ import Animated, {
   withDelay,
   withSequence,
   runOnJS,
-} from 'react-native-reanimated';
-import { useAuth } from '@/lib/auth';
-import { api } from '@/lib/api';
+} from "react-native-reanimated";
+import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
 
-function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+function SuccessBanner({
+  message,
+  onDismiss,
+}: {
+  message: string;
+  onDismiss: () => void;
+}) {
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(-12);
   const dismissRef = useRef(onDismiss);
@@ -24,9 +37,12 @@ function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () 
     translateY.value = withTiming(0, { duration: 250 });
     opacity.value = withSequence(
       withTiming(1, { duration: 250 }),
-      withDelay(3500, withTiming(0, { duration: 300 }, (finished) => {
-        if (finished) runOnJS(dismissRef.current)();
-      })),
+      withDelay(
+        3500,
+        withTiming(0, { duration: 300 }, (finished) => {
+          if (finished) runOnJS(dismissRef.current)();
+        }),
+      ),
     );
   }, []);
 
@@ -46,9 +62,9 @@ function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () 
       style={[
         style,
         {
-          backgroundColor: '#16a34a',
-          flexDirection: 'row',
-          alignItems: 'center',
+          backgroundColor: "#16a34a",
+          flexDirection: "row",
+          alignItems: "center",
           marginHorizontal: 16,
           marginTop: 12,
           marginBottom: 4,
@@ -59,7 +75,15 @@ function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () 
       ]}
     >
       <Ionicons name="checkmark-circle" size={18} color="#fff" />
-      <Text style={{ flex: 1, color: '#fff', fontSize: 14, fontWeight: '500', marginLeft: 8 }}>
+      <Text
+        style={{
+          flex: 1,
+          color: "#fff",
+          fontSize: 14,
+          fontWeight: "500",
+          marginLeft: 8,
+        }}
+      >
         {message}
       </Text>
       <Pressable onPress={handleDismiss} hitSlop={8}>
@@ -72,17 +96,28 @@ function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () 
 export default function StoreroomScreen() {
   const { staff } = useAuth();
   const { successMsg } = useLocalSearchParams<{ successMsg?: string }>();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data: items = [], isLoading } = useQuery({
-    queryKey: ['storeroom-items', staff?.houseId],
+  const {
+    data: items = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["storeroom-items", staff?.houseId],
     queryFn: () => api.storeroom.listItems({ houseId: staff!.houseId }),
     enabled: !!staff?.houseId,
   });
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
+  };
+
   const lowStock = items.filter((i) => Number(i.currentQuantity) <= 5);
 
   function dismissBanner() {
-    router.setParams({ successMsg: '' });
+    router.setParams({ successMsg: "" });
   }
 
   return (
@@ -99,11 +134,14 @@ export default function StoreroomScreen() {
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
           ListHeaderComponent={
             lowStock.length > 0 ? (
               <View className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-4">
                 <Text className="text-sm font-semibold text-orange-700 mb-1">
-                  Estoque baixo ({lowStock.length} {lowStock.length === 1 ? 'item' : 'itens'})
+                  Estoque baixo ({lowStock.length}{" "}
+                  {lowStock.length === 1 ? "item" : "itens"})
                 </Text>
                 {lowStock.map((i) => (
                   <Text key={i.id} className="text-xs text-orange-600">
@@ -125,14 +163,18 @@ export default function StoreroomScreen() {
                 <Ionicons name="cube-outline" size={20} color="#16a34a" />
               </View>
               <View className="flex-1">
-                <Text className="text-sm font-semibold text-gray-900">{item.name}</Text>
+                <Text className="text-sm font-semibold text-gray-900">
+                  {item.name}
+                </Text>
                 <Text className="text-xs text-gray-500 mt-0.5">
                   {Number(item.currentQuantity)} {item.unit}
                 </Text>
               </View>
               {Number(item.currentQuantity) <= 5 && (
                 <View className="bg-orange-50 rounded-full px-2 py-0.5">
-                  <Text className="text-xs text-orange-600 font-medium">Baixo</Text>
+                  <Text className="text-xs text-orange-600 font-medium">
+                    Baixo
+                  </Text>
                 </View>
               )}
             </View>
@@ -142,7 +184,7 @@ export default function StoreroomScreen() {
 
       <TouchableOpacity
         className="absolute bottom-6 right-6 bg-green-600 w-14 h-14 rounded-full items-center justify-center shadow-md"
-        onPress={() => router.push('/(app)/storeroom/movement')}
+        onPress={() => router.push("/(app)/storeroom/movement")}
       >
         <Ionicons name="swap-vertical" size={24} color="#fff" />
       </TouchableOpacity>

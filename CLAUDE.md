@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides high-signal guidance for Claude Code when working in this repository. Keep it short: detailed context lives in `docs/ai/` and should be opened only when relevant.
 
 ---
 
@@ -8,127 +8,84 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Plataforma operacional da comunidade terapêutica **Fonte de Misericórdia**.
 
-Monorepo com backend NestJS centralizado e múltiplos frontends (web/mobile).
+Monorepo pnpm com backend NestJS centralizado e múltiplos frontends.
 
 ```
 apps/
-  adm.fonte/       ← web (React) — gestão administrativa
-  ops.fonte/       ← pwa Expo  — operadores da casa
-  ff.fonte/        ← mobile (Expo) — familiares (fase 2)
-  resident.fonte/  ← mobile (Expo) — internos em modo kiosk (fase 2)
-
+  adm.fonte/       ← web React/Vite — gestão administrativa
+  ops.fonte/       ← Expo/React Native — operadores da casa
+  ff.fonte/        ← mobile Expo — familiares (fase 2)
+  resident.fonte/  ← mobile Expo — internos em kiosk (fase 2)
 services/
   api/             ← backend NestJS
-
 packages/
-  shared/
-  ui/
-  types/
+  api-client/      ← cliente HTTP compartilhado
+  types/           ← contratos/tipos compartilhados
 ```
 
 ---
 
-## Comandos
+## Leia sob demanda
+
+- `docs/ai/project-map.md` — onde encontrar cada tipo de mudança.
+- `docs/ai/backend-guide.md` — padrões do backend, módulos, auth e migrations.
+- `docs/ai/frontend-guide.md` — padrões dos apps `adm.fonte` e `ops.fonte`.
+- `docs/ai/workflow-guide.md` — comandos e validação por tipo de mudança.
+- `BUSINESS_RULES.md` — regras de negócio e permissões por role.
+- `CONTRIBUTING.md` — convenção de commits.
+
+Abra apenas os guias necessários para a tarefa atual para não sobrecarregar contexto.
+
+---
+
+## Comandos essenciais
 
 ```bash
-# Setup inicial (uma vez)
-docker compose up -d       # sobe postgres (porta 5432, cria fonte_dev e fonte_test)
 pnpm install
-
-# Dev (backend) — compila @fonte/types antes de subir automaticamente
+pnpm docker:up
 pnpm dev:api
-
-# Migrations (executar de dentro de services/api ou com --filter)
-pnpm --filter api migration:generate src/database/migrations/NomeDaMigration
-pnpm --filter api migration:run
-pnpm --filter api migration:revert
-
-# Testes
-pnpm test:api
-pnpm --filter api test:cov
-
-# Build
-pnpm build:types           # necessário antes de build:api se types mudou
+pnpm dev:adm
+pnpm dev:ops
+pnpm build:types
+pnpm build:api-client
 pnpm build:api
+pnpm test:api
 ```
 
-> **Atenção:** `pnpm dev:api` já roda `build:types` automaticamente. Se mudar `packages/types/src/index.ts`, basta reiniciar o dev server.
+`pnpm dev:api`, `pnpm dev:adm` e `pnpm dev:ops` já recompilam dependências compartilhadas necessárias. Se alterar `packages/types/src/index.ts`, rode `pnpm build:types` ou reinicie o dev server.
 
 ---
 
-## Convenção de Commits
+## Regras arquiteturais obrigatórias
 
-Consulte CONTRIBUTING.md para as convenções de commit
-
----
-
-## Stack
-
-- **Backend**: NestJS + PostgreSQL + JWT
-- **Web**: React
-- **Mobile**: React Native (Expo)
-- **Banco**: PostgreSQL único, snake_case, UUID v4, soft delete via `deleted_at`
+- Nenhum acesso ao banco fora da camada/padrão de persistência do módulo.
+- Nenhuma regra de negócio no controller.
+- Services não devem depender diretamente de outros módulos sem interface/contrato claro.
+- DTO obrigatório para entrada/saída externa, validado com `class-validator`.
+- Banco PostgreSQL único, snake_case, UUID v4, soft delete via `deleted_at`.
+- Não editar migrations antigas para mudar comportamento; criar nova migration.
 
 ---
 
-## Arquitetura do Backend (`services/api`)
+## Regras de negócio críticas
 
-Organizado por módulos de domínio em `src/modules/`. Cada módulo contém: `controller`, `service`, `repository`, `dto`, `entity`.
+Consulte `BUSINESS_RULES.md` antes de tocar nestes fluxos:
 
-**Módulos:**
-
-- `auth` — JWT, login, guard por role
-- `user` — identidade centralizada (credenciais, role, is_active)
-- `house` — unidades físicas da comunidade
-- `staff` — colaboradores internos; sempre tem `user_id`
-- `resident` — internos; `user_id` nullable (preenchido ao liberar acesso kiosk)
-- `relative` — familiares; `user_id` nullable (preenchido ao liberar portal)
-- `routine` — registros operacionais diários
-- `incident` — ocorrências disciplinares/médicas
-- `ministry` — setores funcionais
-- `storeroom` — dispensa por casa
-
-**Regras arquiteturais:**
-
-- Nenhum acesso ao banco fora do `repository`
-- Nenhuma regra de negócio no `controller`
-- `Services` não dependem de outros módulos diretamente sem interface
-- DTO obrigatório para entrada/saída, validado com `class-validator`
+- Resident deve ter `house_id` e pelo menos um Relative cadastrado.
+- Staff deve ter `house_id`.
+- Status de Resident só muda por transição validada em service.
+- RoutineEntry não pode ser editada após 24h.
+- Incident não pode ser deletado.
+- Alta exige status `ACTIVE` ou `DISCIPLINE` + `exit_date`.
+- Storeroom não tem estorno; correções são feitas por novo lançamento.
+- `resident.fonte`: limite de 25 min/dia por interno, controlado pelo backend.
 
 ---
 
-## Modelo de Identidade (User + Perfis)
+## Identidade e auth
 
-Autenticação centralizada em `User`. As entidades de domínio guardam a FK:
-
-| Entidade | `user_id` | Quando é preenchido                        |
-| -------- | --------- | ------------------------------------------ |
-| Staff    | sempre    | No cadastro do colaborador                 |
-| Relative | nullable  | Quando o familiar receber acesso ao portal |
-| Resident | nullable  | Quando o interno receber acesso ao kiosk   |
-
-Roles: `ADMIN`, `COORDINATOR`, `OPERATOR` → exclusivos de Staff. `RELATIVE`, `RESIDENT` → fases futuras.
-
-Token JWT carrega: `user_id`, `role`, `profile_type` (STAFF | RELATIVE | RESIDENT).
-
----
-
-## Status do Interno (Resident)
-
-`PRE_ADMISSION` → `ACTIVE` ↔ `DISCIPLINE` ↔ `TEMP_LEAVE` → `DISCHARGED` / `EVADED`
-
-Transições controladas via service. Nunca alterar `status` diretamente sem validação.
-
----
-
-## Regras de Negócio Críticas
-
-- Resident deve ter `house_id` e pelo menos um Relative cadastrado
-- Staff deve ter `house_id`
-- RoutineEntry não pode ser editada após 24h
-- Incident não pode ser deletado
-- Alta exige `status` ACTIVE ou DISCIPLINE + registro de `exit_date`
-- Storeroom: sem estorno — correções via novo lançamento
-- resident.fonte: limite de 25 min/dia por interno, controlado pelo backend
-
-Consulte `BUSINESS_RULES.md` para a tabela completa de permissões por role.
+- Autenticação centralizada em `User`.
+- `Staff.user_id` é obrigatório; `Relative.user_id` e `Resident.user_id` são preenchidos quando recebem acesso.
+- Roles `ADMIN`, `COORDINATOR`, `OPERATOR` são exclusivas de Staff.
+- Roles `RELATIVE`, `RESIDENT` são fases futuras.
+- JWT carrega `user_id`, `role`, `profile_type` (`STAFF` | `RELATIVE` | `RESIDENT`).

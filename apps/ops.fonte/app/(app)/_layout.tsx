@@ -17,7 +17,10 @@ export default function AppLayout() {
         tabBarActiveTintColor: "#fff",
         tabBarInactiveTintColor: "#d1d5db",
         tabBarStyle: { backgroundColor: "#272950", borderTopColor: "#272950" },
-        headerStyle: { backgroundColor: "#272950" },
+        headerStyle: {
+          backgroundColor: "#272950",
+          shadowColor: "transparent",
+        },
         headerTintColor: "#fff",
         headerTitleStyle: { fontWeight: "600" },
       }}
@@ -25,7 +28,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Início",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),

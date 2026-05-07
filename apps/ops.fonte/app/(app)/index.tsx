@@ -52,15 +52,13 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView className="flex-1 bg-gray-50">
-      <View className="bg-white px-4 pt-6 pb-4 border-b border-gray-100">
-        <Text className="text-gray-500 text-sm">Bem-vindo,</Text>
-        <Text className="text-2xl font-bold text-gray-900">
+      <View className="bg-[#272950] px-4 pt-6 pb-4 border-b border-gray-100">
+        <Text className="text-white text-sm">Bem-vindo,</Text>
+        <Text className="text-2xl font-bold text-white">
           {staff?.name ?? "—"}
         </Text>
         {staff?.house && (
-          <Text className="text-sm text-blue-600 mt-0.5">
-            {staff.house.name}
-          </Text>
+          <Text className="text-sm text-white mt-0.5">{staff.house.name}</Text>
         )}
       </View>
 

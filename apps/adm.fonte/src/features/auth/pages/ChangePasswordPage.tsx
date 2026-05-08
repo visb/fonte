@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff } from 'lucide-react';
-import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChangePassword } from '../hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,14 +35,7 @@ export function ChangePasswordPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      api.auth.changePassword({ newPassword: data.newPassword }),
-    onSuccess: (result) => {
-      onPasswordChanged(result.accessToken);
-      navigate('/', { replace: true });
-    },
-  });
+  const mutation = useChangePassword();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -61,7 +53,9 @@ export function ChangePasswordPage() {
           </p>
         )}
 
-        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+        <form onSubmit={handleSubmit((d) => mutation.mutate(d.newPassword, {
+          onSuccess: (result) => { onPasswordChanged(result.accessToken); navigate('/', { replace: true }); },
+        }))} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="newPassword">Nova senha</Label>
             <div className="relative">

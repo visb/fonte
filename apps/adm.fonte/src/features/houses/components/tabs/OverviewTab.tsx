@@ -1,10 +1,8 @@
 import { useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ImagePlus, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { queryKeys } from '@/lib/queryKeys';
 import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,12 +14,13 @@ import {
 } from '@/components/ui/dialog';
 import { houseSchema, sanitizeHouseData, type HouseFormData } from '../../constants';
 import { HouseFormFields } from '../HouseFormFields';
+import { useHouseById, useUpdateHouse, useUploadHousePhoto, useDeleteHousePhoto } from '../../hooks/useHouses';
+import { useStaff } from '@/features/staff/hooks/useStaff';
 import type { House } from '@fonte/api-client';
 
 type HousePhoto = House['photos'][number];
 
 export function OverviewTab({ houseId }: { houseId: string }) {
-  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deleteTarget, setDeleteTarget] = useState<HousePhoto | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -30,48 +29,12 @@ export function OverviewTab({ houseId }: { houseId: string }) {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
     useForm<HouseFormData>({ resolver: zodResolver(houseSchema) });
 
-  const { data: house } = useQuery({
-    queryKey: queryKeys.houses.detail(houseId),
-    queryFn: () => api.houses.getById(houseId),
-  });
+  const { data: house } = useHouseById(houseId);
+  const { data: staffList = [] } = useStaff({ enabled: editOpen });
 
-  const { data: staffList = [] } = useQuery({
-    queryKey: queryKeys.staff.all,
-    queryFn: () => api.staff.list(),
-    enabled: editOpen,
-  });
-
-  const uploadMutation = useMutation({
-    mutationFn: (file: File) => {
-      const form = new FormData();
-      form.append('file', file);
-      return api.houses.addPhoto(houseId, form);
-    },
-    onSuccess: () => {
-      setUploadError(null);
-      queryClient.invalidateQueries({ queryKey: queryKeys.houses.detail(houseId) });
-    },
-    onError: (err: unknown) => {
-      setUploadError(getErrorMessage(err, 'Erro ao enviar foto. Verifique o arquivo e tente novamente.'));
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (photoId: string) => api.houses.deletePhoto(houseId, photoId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.houses.detail(houseId) });
-      setDeleteTarget(null);
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (data: HouseFormData) => api.houses.update(houseId, sanitizeHouseData(data)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.houses.detail(houseId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.houses.all });
-      setEditOpen(false);
-    },
-  });
+  const uploadMutation = useUploadHousePhoto(houseId);
+  const deleteMutation = useDeleteHousePhoto(houseId);
+  const updateMutation = useUpdateHouse(houseId);
 
   const openEdit = () => {
     if (!house) return;
@@ -138,15 +101,33 @@ export function OverviewTab({ houseId }: { houseId: string }) {
       <div className="rounded-lg border p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Galeria de Fotos</h2>
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadMutation.isPending}>
-            {uploadMutation.isPending ? <Loader2 size={14} className="mr-2 animate-spin" /> : <ImagePlus size={14} className="mr-2" />}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadMutation.isPending}
+          >
+            {uploadMutation.isPending
+              ? <Loader2 size={14} className="mr-2 animate-spin" />
+              : <ImagePlus size={14} className="mr-2" />}
             Adicionar foto
           </Button>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) uploadMutation.mutate(file);
-            e.target.value = '';
-          }} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                uploadMutation.mutate(file, {
+                  onSuccess: () => setUploadError(null),
+                  onError: (err) => setUploadError(getErrorMessage(err, 'Erro ao enviar foto.')),
+                });
+              }
+              e.target.value = '';
+            }}
+          />
         </div>
         {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
         {house.photos.length === 0 ? (
@@ -179,7 +160,7 @@ export function OverviewTab({ houseId }: { houseId: string }) {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })}
             >
               Remover
             </AlertDialogAction>
@@ -192,7 +173,7 @@ export function OverviewTab({ houseId }: { houseId: string }) {
           <DialogHeader>
             <DialogTitle>Editar Casa</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit((data) => updateMutation.mutate(data))}>
+          <form onSubmit={handleSubmit((data) => updateMutation.mutate(sanitizeHouseData(data), { onSuccess: () => setEditOpen(false) }))}>
             <HouseFormFields register={register} errors={errors} staffList={staffList} />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>

@@ -4,8 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Home, MapPin, Pencil, Phone, Plus, Trash2, User } from 'lucide-react';
 import { api } from '@/lib/api';
-import { queryKeys } from '@/lib/queryKeys';
-import { useQuery } from '@tanstack/react-query';
 import type { House } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -22,6 +20,7 @@ import {
 import { houseSchema, sanitizeHouseData, type HouseFormData } from '../constants';
 import { HouseFormFields } from '../components/HouseFormFields';
 import { useHouses, useCreateHouse, useUpdateHouse, useDeleteHouse } from '../hooks/useHouses';
+import { useStaff } from '@/features/staff/hooks/useStaff';
 
 export function HousesPage() {
   const navigate = useNavigate();
@@ -34,11 +33,7 @@ export function HousesPage() {
 
   const { data: houses = [], isLoading, isError, refetch } = useHouses();
 
-  const { data: staffList = [] } = useQuery({
-    queryKey: queryKeys.staff.all,
-    queryFn: () => api.staff.list(),
-    enabled: dialogOpen,
-  });
+  const { data: staffList = [] } = useStaff({ enabled: dialogOpen });
 
   const createMutation = useCreateHouse();
   const updateMutation = useUpdateHouse(editingHouse?.id ?? '');

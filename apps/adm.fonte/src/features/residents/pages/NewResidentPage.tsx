@@ -4,9 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react';
 import { ResidentStatus } from '@fonte/types';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { queryKeys } from '@/lib/queryKeys';
+import { useHouses } from '@/features/houses/hooks/useHouses';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -20,10 +18,7 @@ export function NewResidentPage() {
   const navigate = useNavigate();
   const pendingPhotoRef = useRef<Blob | null>(null);
 
-  const { data: houses = [], isLoading: loadingHouses } = useQuery({
-    queryKey: queryKeys.houses.all,
-    queryFn: () => api.houses.list(),
-  });
+  const { data: houses = [], isLoading: loadingHouses } = useHouses();
 
   const {
     register,

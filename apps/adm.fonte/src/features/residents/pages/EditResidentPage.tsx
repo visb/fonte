@@ -4,9 +4,8 @@ import { useGoBack } from '@/lib/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { queryKeys } from '@/lib/queryKeys';
+import { useHouses } from '@/features/houses/hooks/useHouses';
+import { useResidentById } from '../hooks/useResidents';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -24,16 +23,8 @@ export function EditResidentPage() {
   const goBack = useGoBack('/residents');
   const pendingPhotoRef = useRef<Blob | null>(null);
 
-  const { data: resident, isLoading: loadingResident } = useQuery({
-    queryKey: queryKeys.residents.detail(id!),
-    queryFn: () => api.residents.getById(id!),
-    enabled: !!id,
-  });
-
-  const { data: houses = [] } = useQuery({
-    queryKey: queryKeys.houses.all,
-    queryFn: () => api.houses.list(),
-  });
+  const { data: resident, isLoading: loadingResident } = useResidentById(id!);
+  const { data: houses = [] } = useHouses();
 
   const {
     register,

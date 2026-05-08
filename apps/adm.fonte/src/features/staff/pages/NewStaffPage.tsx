@@ -4,17 +4,15 @@ import { useGoBack } from '@/lib/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Copy, Eye, EyeOff } from 'lucide-react';
 import { Role } from '@fonte/types';
-import { api } from '@/lib/api';
-import { queryKeys } from '@/lib/queryKeys';
 import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { maskPhone, withMask } from '@/features/residents/lib/masks';
 import { useCreateStaff } from '../hooks/useStaff';
+import { useHouses } from '@/features/houses/hooks/useHouses';
 
 const SELECT_CLASS =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
@@ -40,10 +38,7 @@ export function NewStaffPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data: houses = [] } = useQuery({
-    queryKey: queryKeys.houses.all,
-    queryFn: () => api.houses.list(),
-  });
+  const { data: houses = [] } = useHouses();
 
   const { register, handleSubmit, setValue, getValues, formState: { errors, isSubmitting } } =
     useForm<FormData>({ resolver: zodResolver(schema) });

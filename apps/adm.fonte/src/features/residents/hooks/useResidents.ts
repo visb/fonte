@@ -111,3 +111,57 @@ export function useDeleteRelative(residentId: string) {
     },
   });
 }
+
+export function useResidentDocuments(residentId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.residents.documents(residentId),
+    queryFn: () => api.residents.getDocuments(residentId),
+    enabled: (options?.enabled ?? true) && !!residentId,
+  });
+}
+
+export function useResidentAttachments(residentId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.residents.attachments(residentId),
+    queryFn: () => api.residents.getAttachments(residentId),
+    enabled: (options?.enabled ?? true) && !!residentId,
+  });
+}
+
+export function useAddAttachment(residentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const fd = new window.FormData();
+      fd.append('file', file);
+      return api.residents.addAttachment(residentId, fd);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.attachments(residentId) });
+    },
+  });
+}
+
+export function useDeleteAttachment(residentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (attachmentId: string) => api.residents.deleteAttachment(residentId, attachmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.attachments(residentId) });
+    },
+  });
+}
+
+export function useUploadSignedDocument(residentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ templateId, file }: { templateId: string; file: File }) => {
+      const fd = new window.FormData();
+      fd.append('file', file);
+      return api.residents.uploadSignedDocument(residentId, templateId, fd);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.documents(residentId) });
+    },
+  });
+}

@@ -3,10 +3,11 @@ import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import type { CreateStaffInput, UpdateStaffInput } from '@fonte/api-client';
 
-export function useStaff() {
+export function useStaff(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.staff.all,
     queryFn: () => api.staff.list(),
+    enabled: options?.enabled ?? true,
   });
 }
 

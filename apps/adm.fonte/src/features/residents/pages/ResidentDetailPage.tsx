@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useGoBack } from '@/lib/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,7 +9,6 @@ import {
   Loader2, Paperclip, Pencil, Phone, Plus, Trash2, Upload, User,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { queryKeys } from '@/lib/queryKeys';
 import { Gender, MaritalStatus } from '@fonte/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +31,9 @@ import { maskCPF, maskPhone, maskRG, withMask } from '../lib/masks';
 import { RESIDENT_STATUS_LABELS, RESIDENT_STATUS_VARIANT } from '../constants';
 import {
   useResidentById, useResidentRelatives, useAddRelative, useDeleteRelative,
+  useResidentDocuments, useResidentAttachments, useAddAttachment, useDeleteAttachment, useUploadSignedDocument,
 } from '../hooks/useResidents';
+import { useDocumentTemplates } from '@/features/settings/hooks/useDocumentTemplates';
 
 import type { Relative, DocumentTemplate, ResidentDocument, ResidentAttachment } from '@fonte/api-client';
 
@@ -111,8 +111,6 @@ type TabId = (typeof TABS)[number]['id'];
 export function ResidentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const goBack = useGoBack('/residents');
-  const queryClient = useQueryClient();
-
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as TabId | null) ?? 'overview';
   const setActiveTab = (tab: TabId) => setSearchParams({ tab }, { replace: true });
@@ -126,23 +124,10 @@ export function ResidentDetailPage() {
   const { data: resident, isLoading, isError } = useResidentById(id!);
   const { data: relatives = [], isLoading: loadingRelatives } = useResidentRelatives(id!);
 
-  const { data: signedDocs = [] } = useQuery({
-    queryKey: queryKeys.residents.documents(id!),
-    queryFn: () => api.residents.getDocuments(id!),
-    enabled: !!id && activeTab === 'attachments',
-  });
-
-  const { data: attachments = [] } = useQuery({
-    queryKey: queryKeys.residents.attachments(id!),
-    queryFn: () => api.residents.getAttachments(id!),
-    enabled: !!id && activeTab === 'attachments',
-  });
-
-  const { data: templates = [] } = useQuery({
-    queryKey: queryKeys.documentTemplates.all,
-    queryFn: () => api.documentTemplates.list(),
-    enabled: activeTab === 'attachments',
-  });
+  const isAttachmentsTab = activeTab === 'attachments';
+  const { data: signedDocs = [] } = useResidentDocuments(id!, { enabled: isAttachmentsTab });
+  const { data: attachments = [] } = useResidentAttachments(id!, { enabled: isAttachmentsTab });
+  const { data: templates = [] } = useDocumentTemplates({ enabled: isAttachmentsTab });
 
   const addRelativeMutation = useAddRelative(id!);
   const deleteRelativeMutation = useDeleteRelative(id!);
@@ -326,8 +311,6 @@ export function ResidentDetailPage() {
           signedDocs={signedDocs}
           attachments={attachments}
           templates={templates}
-          onDocumentUploaded={() => queryClient.invalidateQueries({ queryKey: queryKeys.residents.documents(id!) })}
-          onAttachmentChanged={() => queryClient.invalidateQueries({ queryKey: queryKeys.residents.attachments(id!) })}
         />
       )}
 
@@ -403,15 +386,13 @@ function slugify(text: string): string {
 }
 
 function AttachmentsTab({
-  residentId, residentName, signedDocs, attachments, templates, onDocumentUploaded, onAttachmentChanged,
+  residentId, residentName, signedDocs, attachments, templates,
 }: {
   residentId: string;
   residentName: string;
   signedDocs: ResidentDocument[];
   attachments: ResidentAttachment[];
   templates: DocumentTemplate[];
-  onDocumentUploaded: () => void;
-  onAttachmentChanged: () => void;
 }) {
   const docByTemplate = Object.fromEntries(signedDocs.map((d) => [d.templateId, d]));
   const requiredTemplates = templates.filter((t) => t.isRequired);
@@ -440,7 +421,6 @@ function AttachmentsTab({
               residentId={residentId}
               residentName={residentName}
               signedDoc={docByTemplate[template.id] ?? null}
-              onUploaded={onDocumentUploaded}
             />
           ))
         )}
@@ -451,14 +431,14 @@ function AttachmentsTab({
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Outros anexos
           </h3>
-          <AttachmentUploadButton residentId={residentId} onUploaded={onAttachmentChanged} />
+          <AttachmentUploadButton residentId={residentId} />
         </div>
 
         {attachments.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">Nenhum anexo adicionado.</p>
         ) : (
           attachments.map((a) => (
-            <AttachmentRow key={a.id} attachment={a} onDeleted={onAttachmentChanged} />
+            <AttachmentRow key={a.id} attachment={a} />
           ))
         )}
       </div>
@@ -508,17 +488,9 @@ function GenerateDocumentMenu({ templates, residentId, residentName }: {
   );
 }
 
-function AttachmentUploadButton({ residentId, onUploaded }: { residentId: string; onUploaded: () => void }) {
+function AttachmentUploadButton({ residentId }: { residentId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const mutation = useMutation({
-    mutationFn: async (file: File) => {
-      const fd = new window.FormData();
-      fd.append('file', file);
-      await api.residents.addAttachment(residentId, fd);
-    },
-    onSuccess: onUploaded,
-  });
+  const mutation = useAddAttachment(residentId);
 
   return (
     <>
@@ -535,11 +507,8 @@ function AttachmentUploadButton({ residentId, onUploaded }: { residentId: string
   );
 }
 
-function AttachmentRow({ attachment, onDeleted }: { attachment: ResidentAttachment; onDeleted: () => void }) {
-  const deleteMutation = useMutation({
-    mutationFn: () => api.residents.deleteAttachment(attachment.residentId, attachment.id),
-    onSuccess: onDeleted,
-  });
+function AttachmentRow({ attachment }: { attachment: ResidentAttachment }) {
+  const deleteMutation = useDeleteAttachment(attachment.residentId);
   const date = new Date(attachment.createdAt).toLocaleDateString('pt-BR');
 
   return (
@@ -554,7 +523,7 @@ function AttachmentRow({ attachment, onDeleted }: { attachment: ResidentAttachme
           <ExternalLink size={14} className="mr-1.5" />
           Abrir
         </Button>
-        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate()}>
+        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(attachment.id)}>
           {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
         </Button>
       </div>
@@ -562,25 +531,16 @@ function AttachmentRow({ attachment, onDeleted }: { attachment: ResidentAttachme
   );
 }
 
-function DocumentCard({ templateId, templateName, residentId, signedDoc, onUploaded, residentName }: {
+function DocumentCard({ templateId, templateName, residentId, signedDoc, residentName }: {
   templateId: string;
   templateName: string;
   residentId: string;
   signedDoc: ResidentDocument | null;
-  onUploaded: () => void;
   residentName: string;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [downloading, setDownloading] = useState(false);
-
-  const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const fd = new window.FormData();
-      fd.append('file', file);
-      await api.residents.uploadSignedDocument(residentId, templateId, fd);
-    },
-    onSuccess: onUploaded,
-  });
+  const uploadMutation = useUploadSignedDocument(residentId);
 
   const pdfFilename = `${slugify(`${residentName} ${templateName}`)}.pdf`;
 
@@ -637,7 +597,7 @@ function DocumentCard({ templateId, templateName, residentId, signedDoc, onUploa
         )}
         <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) uploadMutation.mutate(file);
+          if (file) uploadMutation.mutate({ templateId, file });
           e.target.value = '';
         }} />
       </div>

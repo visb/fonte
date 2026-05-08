@@ -4,18 +4,16 @@ import { useGoBack } from '@/lib/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import { Role } from '@fonte/types';
-import { api } from '@/lib/api';
-import { queryKeys } from '@/lib/queryKeys';
 import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { maskPhone, withMask } from '@/features/residents/lib/masks';
-import { useUpdateStaff } from '../hooks/useStaff';
+import { useUpdateStaff, useStaffById } from '../hooks/useStaff';
+import { useHouses } from '@/features/houses/hooks/useHouses';
 
 const SELECT_CLASS =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
@@ -33,16 +31,8 @@ export function EditStaffPage() {
   const { id } = useParams<{ id: string }>();
   const goBack = useGoBack('/staff');
 
-  const { data: houses = [] } = useQuery({
-    queryKey: queryKeys.houses.all,
-    queryFn: () => api.houses.list(),
-  });
-
-  const { data: staff, isLoading } = useQuery({
-    queryKey: queryKeys.staff.detail(id!),
-    queryFn: () => api.staff.getById(id!),
-    enabled: !!id,
-  });
+  const { data: houses = [] } = useHouses();
+  const { data: staff, isLoading } = useStaffById(id!);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
     useForm<FormData>({ resolver: zodResolver(schema) });

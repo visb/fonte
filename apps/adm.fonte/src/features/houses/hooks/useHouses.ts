@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import type { CreateHouseInput, UpdateHouseInput } from '@fonte/api-client';
-
 export function useHouses() {
   return useQuery({
     queryKey: queryKeys.houses.all,
@@ -61,6 +60,30 @@ export function useDeleteHouse() {
     mutationFn: (id: string) => api.houses.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.houses.all });
+    },
+  });
+}
+
+export function useUploadHousePhoto(houseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      return api.houses.addPhoto(houseId, form);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.houses.detail(houseId) });
+    },
+  });
+}
+
+export function useDeleteHousePhoto(houseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (photoId: string) => api.houses.deletePhoto(houseId, photoId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.houses.detail(houseId) });
     },
   });
 }

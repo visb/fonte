@@ -3,7 +3,6 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Image from "@tiptap/extension-image";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Bold,
   Italic,
@@ -15,8 +14,6 @@ import {
   Trash2,
   ChevronLeft,
 } from "lucide-react";
-import { api } from "@/lib/api";
-import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { DocumentTemplate } from '@fonte/api-client';
-import { useDocumentTemplates } from "../hooks/useDocumentTemplates";
+import { useDocumentTemplates, useCreateDocumentTemplate, useDeleteDocumentTemplate, useUpdateDocumentTemplate } from "../hooks/useDocumentTemplates";
 
 const VARIABLES: { key: string; label: string; description: string }[] = [
   { key: "{{name}}", label: "Nome completo", description: "Nome completo do acolhido" },
@@ -48,37 +45,27 @@ const VARIABLES: { key: string; label: string; description: string }[] = [
 ];
 
 export function DocumentTemplatesTab() {
-  const queryClient = useQueryClient();
   const [editing, setEditing] = useState<DocumentTemplate | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DocumentTemplate | null>(null);
   const [newName, setNewName] = useState("");
 
   const { data: templates = [] } = useDocumentTemplates();
-
-  const createMutation = useMutation({
-    mutationFn: (name: string) =>
-      api.documentTemplates.create({ name, content: "", isRequired: false }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.documentTemplates.all });
-      setCreateOpen(false);
-      setNewName("");
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.documentTemplates.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.documentTemplates.all });
-      if (editing && deleteTarget && editing.id === deleteTarget.id) setEditing(null);
-      setDeleteTarget(null);
-    },
-  });
+  const createMutation = useCreateDocumentTemplate();
+  const deleteMutation = useDeleteDocumentTemplate();
 
   const handleCreate = () => {
     const name = newName.trim();
     if (!name) return;
-    createMutation.mutate(name);
+    createMutation.mutate(
+      { name, content: "", isRequired: false },
+      {
+        onSuccess: () => {
+          setCreateOpen(false);
+          setNewName("");
+        },
+      },
+    );
   };
 
   if (editing) {
@@ -99,10 +86,7 @@ export function DocumentTemplatesTab() {
         <TemplateEditor
           key={editing.id}
           template={editing}
-          onSaved={(updated) => {
-            setEditing(updated);
-            queryClient.invalidateQueries({ queryKey: queryKeys.documentTemplates.all });
-          }}
+          onSaved={(updated) => setEditing(updated)}
         />
       </div>
     );
@@ -191,7 +175,12 @@ export function DocumentTemplatesTab() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id, {
+                onSuccess: () => {
+                  if (editing?.id === deleteTarget.id) setEditing(null);
+                  setDeleteTarget(null);
+                },
+              })}
             >
               Excluir
             </AlertDialogAction>
@@ -214,11 +203,7 @@ function TemplateEditor({
   const [isRequired, setIsRequired] = useState(template.isRequired);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  const mutation = useMutation({
-    mutationFn: (data: { name: string; content: string; isRequired: boolean }) =>
-      api.documentTemplates.update(template.id, data),
-    onSuccess: (updated) => onSaved(updated),
-  });
+  const updateMutation = useUpdateDocumentTemplate();
 
   const editor = useEditor({
     extensions: [
@@ -237,8 +222,11 @@ function TemplateEditor({
 
   const handleSave = useCallback(() => {
     if (!editor) return;
-    mutation.mutate({ name, content: editor.getHTML(), isRequired });
-  }, [editor, mutation, name, isRequired]);
+    updateMutation.mutate(
+      { id: template.id, data: { name, content: editor.getHTML(), isRequired } },
+      { onSuccess: (updated) => onSaved(updated) },
+    );
+  }, [editor, updateMutation, template.id, name, isRequired, onSaved]);
 
   const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -333,7 +321,7 @@ function TemplateEditor({
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={mutation.isPending || !name.trim()}>
+        <Button onClick={handleSave} disabled={updateMutation.isPending || !name.trim()}>
           {mutation.isPending ? "Salvando..." : "Salvar template"}
         </Button>
       </div>

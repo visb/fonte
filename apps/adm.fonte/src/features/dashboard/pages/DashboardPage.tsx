@@ -1,17 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
-import { queryKeys } from '@/lib/queryKeys';
+import { useHouses } from '@/features/houses/hooks/useHouses';
 
 export function DashboardPage() {
   const navigate = useNavigate();
 
-  const { data: houses = [] } = useQuery({
-    queryKey: queryKeys.houses.all,
-    queryFn: () => api.houses.list(),
-  });
+  const { data: houses = [] } = useHouses();
 
   return (
     <div className="space-y-8">

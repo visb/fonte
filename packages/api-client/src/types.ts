@@ -239,6 +239,10 @@ export interface StoreroomItem {
   unit: string;
   houseId: string;
   currentQuantity: number;
+  weeklyAverageUsage: number | null;
+  weeklyAverageCalculatedAt: string | null;
+  weeklyAverageWindowStart: string | null;
+  weeklyAverageWindowEnd: string | null;
 }
 
 export interface CreateItemInput {

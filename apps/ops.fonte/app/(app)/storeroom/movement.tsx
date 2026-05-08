@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,41 +7,180 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MovementType } from '@fonte/types';
+import type { StoreroomItem } from '@fonte/api-client';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 
-function formatDateBR(iso: string): string {
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
+const MONTHS_PT = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+
+const ITEM_H = 44;
+
+function daysInMonth(month: number, year: number): number {
+  return new Date(year, month + 1, 0).getDate();
 }
 
-function maskDateBR(text: string): string {
-  const digits = text.replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+function formatDateBR(date: Date): string {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return `${d}/${m}/${date.getFullYear()}`;
 }
 
-function toISODate(dateBR: string): string {
-  const [d, m, y] = dateBR.split('/');
-  return `${y}-${m}-${d}`;
+function toISODate(date: Date): string {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return `${date.getFullYear()}-${m}-${d}`;
 }
 
-const today = formatDateBR(new Date().toISOString().split('T')[0]);
+function PickerColumn({
+  items,
+  selectedIndex,
+  onChange,
+}: {
+  items: string[];
+  selectedIndex: number;
+  onChange: (i: number) => void;
+}) {
+  const ref = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    setTimeout(() => {
+      ref.current?.scrollTo({ y: selectedIndex * ITEM_H, animated: false });
+    }, 50);
+  }, []);
+
+  function onScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+    onChange(Math.max(0, Math.min(idx, items.length - 1)));
+  }
+
+  return (
+    <ScrollView
+      ref={ref}
+      style={{ height: ITEM_H * 5, flex: 1 }}
+      contentContainerStyle={{ paddingVertical: ITEM_H * 2 }}
+      snapToInterval={ITEM_H}
+      decelerationRate="fast"
+      showsVerticalScrollIndicator={false}
+      onMomentumScrollEnd={onScrollEnd}
+      onScrollEndDrag={onScrollEnd}
+    >
+      {items.map((label, i) => (
+        <View
+          key={i}
+          style={{ height: ITEM_H, justifyContent: 'center', alignItems: 'center' }}
+        >
+          <Text style={{ fontSize: 16, color: '#111827' }}>{label}</Text>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+function DatePickerModal({
+  visible,
+  date,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  date: Date;
+  onConfirm: (d: Date) => void;
+  onCancel: () => void;
+}) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const years = Array.from({ length: 6 }, (_, i) => String(currentYear - 5 + i));
+
+  const [day, setDay] = useState(date.getDate() - 1);
+  const [month, setMonth] = useState(date.getMonth());
+  const [year, setYear] = useState(years.indexOf(String(date.getFullYear())));
+
+  const yearNum = parseInt(years[year] ?? String(currentYear));
+  const dayCount = daysInMonth(month, yearNum);
+  const days = Array.from({ length: dayCount }, (_, i) => String(i + 1).padStart(2, '0'));
+  const safeDay = Math.min(day, dayCount - 1);
+
+  function confirm() {
+    const d = new Date(yearNum, month, safeDay + 1);
+    onConfirm(d);
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <TouchableOpacity
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
+        activeOpacity={1}
+        onPress={onCancel}
+      >
+        <TouchableOpacity activeOpacity={1}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827', textAlign: 'center', marginBottom: 8 }}>
+              Selecionar data
+            </Text>
+
+            {/* selection highlight */}
+            <View style={{ position: 'relative' }}>
+              <View
+                style={{
+                  position: 'absolute',
+                  top: ITEM_H * 2,
+                  left: 0,
+                  right: 0,
+                  height: ITEM_H,
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: 8,
+                }}
+                pointerEvents="none"
+              />
+              <View style={{ flexDirection: 'row' }}>
+                <PickerColumn items={days} selectedIndex={safeDay} onChange={setDay} />
+                <PickerColumn items={MONTHS_PT} selectedIndex={month} onChange={setMonth} />
+                <PickerColumn items={years} selectedIndex={year} onChange={setYear} />
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#d1d5db', alignItems: 'center' }}
+                onPress={onCancel}
+              >
+                <Text style={{ color: '#374151', fontWeight: '500' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: '#2563eb', alignItems: 'center' }}
+                onPress={confirm}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
 
 export default function MovementScreen() {
   const { staff } = useAuth();
   const queryClient = useQueryClient();
 
   const [itemId, setItemId] = useState('');
-  const [type, setType] = useState<MovementType>(MovementType.OUT);
+  const [type, setType] = useState<MovementType>(MovementType.IN);
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [search, setSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -138,6 +277,7 @@ export default function MovementScreen() {
   return (
     <ScrollView className="flex-1 bg-white" keyboardShouldPersistTaps="handled">
       <View className="px-4 py-5 space-y-5">
+        {/* Tipo */}
         <View>
           <Text className="text-sm font-medium text-gray-700 mb-2">Tipo</Text>
           <View className="flex-row gap-3">
@@ -153,24 +293,38 @@ export default function MovementScreen() {
                 }`}
                 onPress={() => setType(t)}
               >
-                <Text
-                  className="text-sm font-semibold"
-                  style={{
-                    color:
+                <View className="flex-row items-center gap-1.5">
+                  <Ionicons
+                    name={t === MovementType.IN ? 'arrow-up-outline' : 'arrow-down-outline'}
+                    size={20}
+                    color={
                       type === t
                         ? t === MovementType.IN
                           ? '#16a34a'
                           : '#dc2626'
-                        : '#6b7280',
-                  }}
-                >
-                  {t === MovementType.IN ? '↑ Entrada' : '↓ Saída'}
-                </Text>
+                        : '#9ca3af'
+                    }
+                  />
+                  <Text
+                    className="text-sm font-semibold"
+                    style={{
+                      color:
+                        type === t
+                          ? t === MovementType.IN
+                            ? '#16a34a'
+                            : '#dc2626'
+                          : '#6b7280',
+                    }}
+                  >
+                    {t === MovementType.IN ? 'Entrada' : 'Saída'}
+                  </Text>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
+        {/* Item */}
         <View>
           <Text className="text-sm font-medium text-gray-700 mb-1.5">Item</Text>
           <TextInput
@@ -223,6 +377,7 @@ export default function MovementScreen() {
           )}
         </View>
 
+        {/* Novo item */}
         {showNewItemForm && (
           <View className="border border-blue-200 rounded-lg p-4 bg-blue-50">
             <Text className="text-sm font-medium text-gray-700 mb-3">
@@ -268,6 +423,7 @@ export default function MovementScreen() {
           </View>
         )}
 
+        {/* Quantidade */}
         <View>
           <Text className="text-sm font-medium text-gray-700 mb-1.5">
             Quantidade ({selectedItem?.unit ?? 'unid.'}){' '}
@@ -282,18 +438,28 @@ export default function MovementScreen() {
           />
         </View>
 
+        {/* Data */}
         <View>
           <Text className="text-sm font-medium text-gray-700 mb-1.5">Data</Text>
-          <TextInput
-            className="border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 bg-gray-50"
-            value={date}
-            onChangeText={(t) => setDate(maskDateBR(t))}
-            placeholder="DD/MM/AAAA"
-            keyboardType="numeric"
-            maxLength={10}
+          <TouchableOpacity
+            className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row justify-between items-center"
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text className="text-sm text-gray-900">{formatDateBR(date)}</Text>
+            <Ionicons name="calendar-outline" size={18} color="#9ca3af" />
+          </TouchableOpacity>
+          <DatePickerModal
+            visible={showDatePicker}
+            date={date}
+            onConfirm={(d) => {
+              setDate(d);
+              setShowDatePicker(false);
+            }}
+            onCancel={() => setShowDatePicker(false)}
           />
         </View>
 
+        {/* Observações */}
         <View>
           <Text className="text-sm font-medium text-gray-700 mb-1.5">
             Observações (opcional)
@@ -309,6 +475,7 @@ export default function MovementScreen() {
           />
         </View>
 
+        {/* Responsável */}
         <View className="bg-gray-50 rounded-lg px-4 py-3">
           <Text className="text-xs text-gray-500">Responsável</Text>
           <Text className="text-sm font-medium text-gray-800 mt-0.5">{staff?.name}</Text>

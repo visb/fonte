@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { MustChangePasswordGuard } from './common/guards/must-change-password.guard';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { getDatabaseConfig } from './config/database.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
@@ -23,6 +24,7 @@ import { StorageModule } from './modules/storage/storage.module';
       inject: [ConfigService],
       useFactory: getDatabaseConfig,
     }),
+    ScheduleModule.forRoot(),
     AuthModule,
     UserModule,
     HouseModule,

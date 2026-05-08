@@ -1,0 +1,31 @@
+export const queryKeys = {
+  houses: {
+    all: ['houses'] as const,
+    detail: (id: string) => ['houses', id] as const,
+    ministries: (id: string) => ['houses', id, 'ministries'] as const,
+    staff: (id: string) => ['houses', id, 'staff'] as const,
+    residents: (id: string) => ['houses', id, 'residents'] as const,
+    rules: (id: string) => ['houses', id, 'rules'] as const,
+  },
+  residents: {
+    all: ['residents'] as const,
+    detail: (id: string) => ['residents', id] as const,
+    relatives: (id: string) => ['relatives', id] as const,
+    documents: (id: string) => ['resident-documents', id] as const,
+    attachments: (id: string) => ['resident-attachments', id] as const,
+  },
+  staff: {
+    all: ['staff'] as const,
+    detail: (id: string) => ['staff', id] as const,
+  },
+  ministries: {
+    all: ['ministries'] as const,
+  },
+  documentTemplates: {
+    all: ['document-templates'] as const,
+  },
+  storeroom: {
+    byHouse: (houseId: string) => ['storeroom', houseId] as const,
+    movementsByHouse: (houseId: string) => ['storeroom-movements', houseId] as const,
+  },
+} as const;

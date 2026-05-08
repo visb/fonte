@@ -9,6 +9,7 @@ import {
 import { useLocalSearchParams, Stack } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 
 function Row({ label, value }: { label: string; value?: string | null }) {
   return (
@@ -34,7 +35,7 @@ export default function ResidentDetailScreen() {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ["residents", id],
+    queryKey: queryKeys.residents.detail(id!),
     queryFn: () => api.residents.getById(id!),
     enabled: !!id,
   });

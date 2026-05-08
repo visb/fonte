@@ -4,20 +4,20 @@ import { Role } from '@fonte/types';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
-import { Login } from '@/pages/Login';
-import { Dashboard } from '@/pages/Dashboard';
-import { HousesPage } from '@/pages/houses/HousesPage';
-import { HouseDetailPage } from '@/pages/houses/HouseDetailPage';
-import { ResidentsPage } from '@/pages/residents/ResidentsPage';
-import { NewResidentPage } from '@/pages/residents/NewResidentPage';
-import { ResidentDetailPage } from '@/pages/residents/ResidentDetailPage';
-import { EditResidentPage } from '@/pages/residents/EditResidentPage';
-import { StaffPage } from '@/pages/staff/StaffPage';
-import { NewStaffPage } from '@/pages/staff/NewStaffPage';
-import { EditStaffPage } from '@/pages/staff/EditStaffPage';
-import { ChangePasswordPage } from '@/pages/ChangePasswordPage';
-import { MinistriesPage } from '@/pages/ministries/MinistriesPage';
-import { SettingsPage } from '@/pages/settings/SettingsPage';
+import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { ChangePasswordPage } from '@/features/auth/pages/ChangePasswordPage';
+import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
+import { HousesPage } from '@/features/houses/pages/HousesPage';
+import { HouseDetailPage } from '@/features/houses/pages/HouseDetailPage';
+import { ResidentsPage } from '@/features/residents/pages/ResidentsPage';
+import { NewResidentPage } from '@/features/residents/pages/NewResidentPage';
+import { ResidentDetailPage } from '@/features/residents/pages/ResidentDetailPage';
+import { EditResidentPage } from '@/features/residents/pages/EditResidentPage';
+import { StaffPage } from '@/features/staff/pages/StaffPage';
+import { NewStaffPage } from '@/features/staff/pages/NewStaffPage';
+import { EditStaffPage } from '@/features/staff/pages/EditStaffPage';
+import { MinistriesPage } from '@/features/ministries/pages/MinistriesPage';
+import { SettingsPage } from '@/features/settings/pages/SettingsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,7 +34,7 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route
               path="/change-password"
               element={
@@ -51,7 +51,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Dashboard />} />
+              <Route index element={<DashboardPage />} />
               <Route path="houses" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><HousesPage /></ProtectedRoute>} />
               <Route path="houses/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><HouseDetailPage /></ProtectedRoute>} />
               <Route path="residents" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ResidentsPage /></ProtectedRoute>} />

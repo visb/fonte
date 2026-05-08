@@ -8,50 +8,17 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
-import { api } from "@/lib/api";
-
-const STATUS_LABELS: Record<string, string> = {
-  PRE_ADMISSION: "Pré-admissão",
-  ACTIVE: "Ativo",
-  DISCIPLINE: "Disciplina",
-  TEMP_LEAVE: "Saída temp.",
-  DISCHARGED: "Alta",
-  EVADED: "Evasão",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  PRE_ADMISSION: "#6b7280",
-  ACTIVE: "#16a34a",
-  DISCIPLINE: "#ca8a04",
-  TEMP_LEAVE: "#2563eb",
-  DISCHARGED: "#9333ea",
-  EVADED: "#dc2626",
-};
-
-interface Resident {
-  id: string;
-  name: string;
-  status: string;
-  house: { name: string } | null;
-}
+import { STATUS_CONFIG } from "@/lib/constants";
+import { useResidentsByHouse } from "@/features/residents/hooks/useResidents";
 
 export default function ResidentsScreen() {
   const { staff } = useAuth();
   const [search, setSearch] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const {
-    data: residents = [],
-    isLoading,
-    refetch,
-  } = useQuery<Resident[]>({
-    queryKey: ["residents", staff?.houseId],
-    queryFn: () => api.residents.listByHouse(staff!.houseId),
-    enabled: !!staff?.houseId,
-  });
+  const { data: residents = [], isLoading, refetch } = useResidentsByHouse(staff?.houseId);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -115,13 +82,13 @@ export default function ResidentsScreen() {
               </View>
               <View
                 className="rounded-full px-2 py-0.5"
-                style={{ backgroundColor: `${STATUS_COLORS[item.status]}20` }}
+                style={{ backgroundColor: `${STATUS_CONFIG[item.status]?.color ?? '#6b7280'}20` }}
               >
                 <Text
                   className="text-xs font-medium"
-                  style={{ color: STATUS_COLORS[item.status] }}
+                  style={{ color: STATUS_CONFIG[item.status]?.color ?? '#6b7280' }}
                 >
-                  {STATUS_LABELS[item.status] ?? item.status}
+                  {STATUS_CONFIG[item.status]?.label ?? item.status}
                 </Text>
               </View>
             </TouchableOpacity>

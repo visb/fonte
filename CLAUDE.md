@@ -56,6 +56,95 @@ pnpm test:api
 
 ---
 
+## Arquitetura dos frontends (adm.fonte e ops.fonte)
+
+### Estrutura feature-based
+
+Cada domínio vive em `src/features/<domínio>/` com subpastas fixas:
+
+```
+features/
+  <domínio>/
+    hooks/       ← useQuery e useMutation encapsulados
+    components/  ← componentes de apresentação reutilizáveis
+    pages/       ← orquestração; sem lógica de negócio ou fetch direto
+    constants.ts ← labels, variantes, configs de exibição
+```
+
+Páginas só importam hooks e componentes — nunca `useQuery`/`useMutation` diretamente.
+
+### Query keys
+
+Todas as query keys ficam em `src/lib/queryKeys.ts` (adm) ou `lib/queryKeys.ts` (ops). Nunca usar strings literais como `['residents']` fora deste arquivo.
+
+```ts
+// correto
+useQuery({ queryKey: queryKeys.residents.all, ... })
+
+// proibido
+useQuery({ queryKey: ['residents'], ... })
+```
+
+### Hooks
+
+Um hook por responsabilidade. Queries e mutations do mesmo recurso ficam no mesmo arquivo.
+
+```ts
+// features/houses/hooks/useHouses.ts
+export function useHouses() { ... }
+export function useHouseById(id) { ... }
+export function useHouseStaff(houseId, options?) { ... }   // options.enabled para lazy fetch
+export function useCreateHouse() { ... }
+```
+
+Hooks que precisam de fetch condicional aceitam `options?: { enabled?: boolean }` — padrão `true`.
+
+### Formulários
+
+Todos os formulários usam `react-hook-form` + `zod`. Nunca `useState` manual para campos de form.
+
+```ts
+const schema = z.object({ name: z.string().min(1) });
+const { register, handleSubmit, formState: { errors } } = useForm({
+  resolver: zodResolver(schema),
+});
+```
+
+Em React Native usar `Controller` para todos os inputs (TextInput não suporta `register`).
+
+### Erros de API
+
+Usar `getErrorMessage(error, fallback?)` de `src/lib/errors.ts` (adm) / `lib/errors.ts` (ops). Nunca fazer cast manual de `error` para extrair mensagem.
+
+### Dialogs e modais
+
+Cada dialog é um componente separado que:
+- Recebe só o mínimo necessário para se identificar (`open`/`target`, `onClose`, `houseId` etc.)
+- Busca seus próprios dados internamente via hooks, com `enabled` atrelado ao estado de abertura
+- Gerencia seu próprio estado de formulário
+- Chama sua própria mutation
+
+```ts
+// correto — dialog autossuficiente
+export function AddMinistryDialog({ open, onClose, houseId }: Props) {
+  const { data: staff = [] } = useHouseStaff(houseId, { enabled: open });
+  const mutation = useAddMinistry(houseId);
+  ...
+}
+
+// evitar — prop drilling de dados que só o dialog usa
+<AddMinistryDialog staff={staff} residents={residents} availableMinistries={...} />
+```
+
+### Componentes de estado
+
+Sempre usar os componentes compartilhados — nunca `ActivityIndicator` ou texto inline para loading/empty/error:
+
+- `adm.fonte`: `LoadingState`, `EmptyState`, `ErrorState` de `@/components/shared/`
+- `ops.fonte`: ainda inline (componentes compartilhados pendentes)
+
+---
+
 ## Regras arquiteturais obrigatórias
 
 - Nenhum acesso ao banco fora da camada/padrão de persistência do módulo.

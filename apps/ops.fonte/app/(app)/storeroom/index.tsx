@@ -10,7 +10,6 @@ import {
   ScrollView,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { MovementType } from "@fonte/types";
 import type { StoreroomItem, StoreroomMovement } from "@fonte/api-client";
@@ -23,7 +22,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { useAuth } from "@/lib/auth";
-import { api } from "@/lib/api";
+import { useStoreroomItems, useStoreroomMovements } from "@/features/storeroom/hooks/useStoreroom";
 
 const MOVEMENT_HISTORY_LIMIT = 30;
 
@@ -141,11 +140,7 @@ function ItemDetailsModal({
     data: movements = [],
     isLoading,
     isError,
-  } = useQuery({
-    queryKey: ["storeroom-movements", item?.id],
-    queryFn: () => api.storeroom.listMovements({ itemId: item!.id }),
-    enabled: visible && !!item?.id,
-  });
+  } = useStoreroomMovements(visible ? item?.id : undefined);
 
   const latestMovements = useMemo(
     () => movements.slice(0, MOVEMENT_HISTORY_LIMIT),
@@ -385,15 +380,7 @@ export default function StoreroomScreen() {
   const [selectedItem, setSelectedItem] = useState<StoreroomItem | null>(null);
   const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
 
-  const {
-    data: items = [],
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["storeroom-items", staff?.houseId],
-    queryFn: () => api.storeroom.listItems({ houseId: staff!.houseId }),
-    enabled: !!staff?.houseId,
-  });
+  const { data: items = [], isLoading, refetch } = useStoreroomItems(staff?.houseId);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

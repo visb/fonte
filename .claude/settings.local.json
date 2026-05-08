@@ -58,7 +58,9 @@
       "PowerShell(cd \"C:\\\\code\\\\fonte\" ; ls -Recurse packages/types/ | Where-Object {$_.PSIsContainer -eq $false} | Select-Object -ExpandProperty FullName)",
       "PowerShell(cd \"C:\\\\code\\\\fonte\" ; ls -Recurse apps/ops.fonte/lib/ 2>/dev/null | Where-Object {$_.PSIsContainer -eq $false} | Select-Object -ExpandProperty FullName)",
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
-      "Bash(npx expo *)"
+      "Bash(npx expo *)",
+      "PowerShell(tree *)",
+      "Bash(Write-Host \"Removidos: Login.tsx e ChangePasswordPage.tsx\")"
     ]
   }
 }

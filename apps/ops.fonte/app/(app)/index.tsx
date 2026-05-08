@@ -7,26 +7,17 @@ import {
   RefreshControl,
 } from "react-native";
 import { router } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
-import { api } from "@/lib/api";
+import { useResidentCountByHouse } from "@/features/residents/hooks/useResidents";
+import { useIncidentsToday } from "@/features/incidents/hooks/useIncidents";
 
 export default function DashboardScreen() {
   const { staff } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data: residents = [], refetch: refetchResidents } = useQuery({
-    queryKey: ["residents-count", staff?.houseId],
-    queryFn: () => api.residents.listByHouse(staff!.houseId),
-    enabled: !!staff?.houseId,
-  });
-
-  const { data: incidents = [], refetch: refetchIncidents } = useQuery({
-    queryKey: ["incidents-today", staff?.houseId],
-    queryFn: () => api.incidents.list({ houseId: staff!.houseId }),
-    enabled: !!staff?.houseId,
-  });
+  const { data: residents = [], refetch: refetchResidents } = useResidentCountByHouse(staff?.houseId);
+  const { data: incidents = [], refetch: refetchIncidents } = useIncidentsToday(staff?.houseId);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

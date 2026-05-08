@@ -7,23 +7,10 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
-import { api } from "@/lib/api";
-
-const SEVERITY_LABEL: Record<string, string> = {
-  LOW: "Baixa",
-  MEDIUM: "Média",
-  HIGH: "Alta",
-  CRITICAL: "Crítica",
-};
-const SEVERITY_COLOR: Record<string, string> = {
-  LOW: "#16a34a",
-  MEDIUM: "#ca8a04",
-  HIGH: "#ea580c",
-  CRITICAL: "#dc2626",
-};
+import { SEVERITY_CONFIG } from "@/lib/constants";
+import { useIncidents } from "@/features/incidents/hooks/useIncidents";
 
 function fmt(iso: string) {
   const [y, m, d] = iso.split("-");
@@ -34,15 +21,7 @@ export default function IncidentsScreen() {
   const { staff } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const {
-    data: incidents = [],
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["incidents", staff?.houseId],
-    queryFn: () => api.incidents.list({ houseId: staff!.houseId }),
-    enabled: !!staff?.houseId,
-  });
+  const { data: incidents = [], isLoading, refetch } = useIncidents(staff?.houseId);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -86,14 +65,14 @@ export default function IncidentsScreen() {
                 <View
                   className="rounded-full px-2 py-0.5"
                   style={{
-                    backgroundColor: `${SEVERITY_COLOR[item.severity]}20`,
+                    backgroundColor: `${SEVERITY_CONFIG[item.severity as keyof typeof SEVERITY_CONFIG]?.color ?? '#6b7280'}20`,
                   }}
                 >
                   <Text
                     className="text-xs font-medium"
-                    style={{ color: SEVERITY_COLOR[item.severity] }}
+                    style={{ color: SEVERITY_CONFIG[item.severity as keyof typeof SEVERITY_CONFIG]?.color ?? '#6b7280' }}
                   >
-                    {SEVERITY_LABEL[item.severity] ?? item.severity}
+                    {SEVERITY_CONFIG[item.severity as keyof typeof SEVERITY_CONFIG]?.label ?? item.severity}
                   </Text>
                 </View>
               </View>

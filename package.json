@@ -13,6 +13,7 @@
     "docker:reset": "docker compose down -v && docker compose up -d",
     "dev:adm": "pnpm build:types && pnpm build:api-client && pnpm --filter adm.fonte dev",
     "dev:ops": "pnpm build:types && pnpm build:api-client && pnpm --filter ops.fonte start",
+    "build:ops": "pnpm build:types && pnpm build:api-client && pnpm --filter ops.fonte build:web",
     "seed:api": "pnpm --filter api seed"
   },
   "pnpm": {

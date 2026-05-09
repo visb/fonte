@@ -29,8 +29,7 @@ export default function LoginScreen() {
       await login(email, password);
       router.replace("/(app)");
     } catch (err) {
-      console.log("1");
-      if (err.response.data.error === "MUST_CHANGE_PASSWORD") {
+      if (err instanceof MustChangePasswordError) {
         router.replace("/(auth)/change-password");
       } else {
         setError("E-mail ou senha incorretos.");

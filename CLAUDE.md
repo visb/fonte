@@ -105,7 +105,11 @@ Todos os formulários usam `react-hook-form` + `zod`. Nunca `useState` manual pa
 
 ```ts
 const schema = z.object({ name: z.string().min(1) });
-const { register, handleSubmit, formState: { errors } } = useForm({
+const {
+  register,
+  handleSubmit,
+  formState: { errors },
+} = useForm({
   resolver: zodResolver(schema),
 });
 ```
@@ -119,6 +123,7 @@ Usar `getErrorMessage(error, fallback?)` de `src/lib/errors.ts` (adm) / `lib/err
 ### Dialogs e modais
 
 Cada dialog é um componente separado que:
+
 - Recebe só o mínimo necessário para se identificar (`open`/`target`, `onClose`, `houseId` etc.)
 - Busca seus próprios dados internamente via hooks, com `enabled` atrelado ao estado de abertura
 - Gerencia seu próprio estado de formulário
@@ -135,6 +140,10 @@ export function AddMinistryDialog({ open, onClose, houseId }: Props) {
 // evitar — prop drilling de dados que só o dialog usa
 <AddMinistryDialog staff={staff} residents={residents} availableMinistries={...} />
 ```
+
+### Componentes
+
+Componentes devem ter responsabilidade unica.
 
 ### Componentes de estado
 

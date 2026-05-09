@@ -17,3 +17,11 @@ export function useResidentCountByHouse(houseId: string | undefined) {
     enabled: !!houseId,
   });
 }
+
+export function useResidentById(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.residents.detail(id!),
+    queryFn: () => api.residents.getById(id!),
+    enabled: !!id,
+  });
+}

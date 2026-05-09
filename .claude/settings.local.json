@@ -60,7 +60,9 @@
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(npx expo *)",
       "PowerShell(tree *)",
-      "Bash(Write-Host \"Removidos: Login.tsx e ChangePasswordPage.tsx\")"
+      "Bash(Write-Host \"Removidos: Login.tsx e ChangePasswordPage.tsx\")",
+      "Bash(Get-ChildItem *)",
+      "PowerShell(cd C:\\\\code\\\\fonte\\\\apps\\\\ops.fonte; npx tsc --noEmit 2>&1 | Where-Object { $_ -notmatch \"login.tsx\" })"
     ]
   }
 }

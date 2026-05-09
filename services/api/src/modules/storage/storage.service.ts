@@ -65,7 +65,6 @@ export class StorageService implements OnModuleInit {
           Key: key,
           Body: buffer,
           ContentType: mimetype,
-          ACL: "public-read",
         }),
       );
       return `${this.publicBaseUrl}/${key}`;

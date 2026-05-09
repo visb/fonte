@@ -11,19 +11,18 @@ export class StorageService implements OnModuleInit {
   private publicBaseUrl: string | null = null;
 
   constructor(private config: ConfigService) {
-    const bucketName = config.get<string>('STORAGE_BUCKET_NAME');
-    const endpoint = config.get<string>('STORAGE_BUCKET_ENDPOINT');
+    const bucketName = config.get<string>('AWS_S3_BUCKET_NAME');
+    const endpoint = config.get<string>('AWS_ENDPOINT_URL');
 
     if (bucketName && endpoint) {
       this.bucketName = bucketName;
-      this.publicBaseUrl =
-        config.get<string>('STORAGE_PUBLIC_URL') ?? `${endpoint}/${bucketName}`;
+      this.publicBaseUrl = `${endpoint}/${bucketName}`;
       this.s3 = new S3Client({
         endpoint,
-        region: config.get<string>('STORAGE_REGION') ?? 'auto',
+        region: config.get<string>('AWS_DEFAULT_REGION') ?? 'auto',
         credentials: {
-          accessKeyId: config.get<string>('STORAGE_ACCESS_KEY_ID') ?? '',
-          secretAccessKey: config.get<string>('STORAGE_SECRET_ACCESS_KEY') ?? '',
+          accessKeyId: config.get<string>('AWS_ACCESS_KEY_ID') ?? '',
+          secretAccessKey: config.get<string>('AWS_SECRET_ACCESS_KEY') ?? '',
         },
         forcePathStyle: true,
       });

@@ -322,7 +322,7 @@ function TemplateEditor({
 
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={updateMutation.isPending || !name.trim()}>
-          {mutation.isPending ? "Salvando..." : "Salvar template"}
+          {updateMutation.isPending ? "Salvando..." : "Salvar template"}
         </Button>
       </div>
     </div>

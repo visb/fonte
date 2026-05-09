@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Building2, CalendarDays, Pencil, Plus, Trash2, User } from 'lucide-react';
-import { ResidentStatus } from '@fonte/types';
 import { api } from '@/lib/api';
 import type { Resident } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';

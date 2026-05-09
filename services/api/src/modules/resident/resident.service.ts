@@ -33,7 +33,7 @@ export class ResidentService {
 
   findAll(): Promise<Resident[]> {
     return this.residentRepository.find({
-      relations: ['house'],
+      relations: ['house', 'ministry'],
       order: { name: 'ASC' },
     });
   }
@@ -41,7 +41,7 @@ export class ResidentService {
   async findOne(id: string): Promise<Resident> {
     const resident = await this.residentRepository.findOne({
       where: { id },
-      relations: ['house'],
+      relations: ['house', 'ministry'],
     });
     if (!resident) throw new NotFoundException(`Resident ${id} not found`);
     return resident;

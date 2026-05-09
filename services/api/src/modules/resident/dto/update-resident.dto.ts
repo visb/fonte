@@ -106,4 +106,8 @@ export class UpdateResidentDto {
   @IsOptional()
   @IsString()
   familyInvestment?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  ministryId?: string | null;
 }

@@ -161,6 +161,8 @@ export interface Resident {
   photoUrl: string | null;
   house: { id: string; name: string } | null;
   houseId: string;
+  ministry: { id: string; name: string } | null;
+  ministryId: string | null;
 }
 
 export interface CreateResidentInput {
@@ -187,6 +189,7 @@ export interface CreateResidentInput {
   weight?: number | null;
   height?: number | null;
   familyInvestment?: string | null;
+  ministryId?: string | null;
 }
 
 export type UpdateResidentInput = Partial<CreateResidentInput>;

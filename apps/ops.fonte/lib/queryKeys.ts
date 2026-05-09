@@ -3,6 +3,13 @@ export const queryKeys = {
     byHouse: (houseId: string) => ['residents', houseId] as const,
     countByHouse: (houseId: string) => ['residents-count', houseId] as const,
     detail: (id: string) => ['resident', id] as const,
+    attachments: (id: string) => ['resident-attachments', id] as const,
+  },
+  relatives: {
+    byResident: (residentId: string) => ['relatives', residentId] as const,
+  },
+  houses: {
+    ministries: (houseId: string) => ['house-ministries', houseId] as const,
   },
   incidents: {
     all: ['incidents'] as const,

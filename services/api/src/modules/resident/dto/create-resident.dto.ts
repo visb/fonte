@@ -104,4 +104,8 @@ export class CreateResidentDto {
   @IsOptional()
   @IsString()
   familyInvestment?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  ministryId?: string | null;
 }

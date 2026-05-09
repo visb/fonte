@@ -25,3 +25,25 @@ export function useResidentById(id: string | undefined) {
     enabled: !!id,
   });
 }
+
+export function useResidentRelatives(
+  residentId: string | undefined,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.relatives.byResident(residentId!),
+    queryFn: () => api.relatives.listByResident(residentId!),
+    enabled: (options?.enabled ?? true) && !!residentId,
+  });
+}
+
+export function useResidentAttachments(
+  residentId: string | undefined,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.residents.attachments(residentId!),
+    queryFn: () => api.residents.getAttachments(residentId!),
+    enabled: (options?.enabled ?? true) && !!residentId,
+  });
+}

@@ -176,10 +176,7 @@ export function DocumentTemplatesTab() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id, {
-                onSuccess: () => {
-                  if (editing?.id === deleteTarget.id) setEditing(null);
-                  setDeleteTarget(null);
-                },
+                onSuccess: () => setDeleteTarget(null),
               })}
             >
               Excluir

@@ -2,9 +2,11 @@ import { Injectable, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import { extname, join } from "path";
 
@@ -72,6 +74,24 @@ export class StorageService implements OnModuleInit {
     const dest = join(process.cwd(), "uploads", folder, filename);
     await writeFile(dest, buffer);
     return `/uploads/${folder}/${filename}`;
+  }
+
+  isS3Mode(): boolean {
+    return this.s3 !== null;
+  }
+
+  isS3Url(url: string): boolean {
+    return !!this.publicBaseUrl && url.startsWith(this.publicBaseUrl + "/");
+  }
+
+  async signUrl(url: string, expiresIn = 86400): Promise<string> {
+    if (!this.s3 || !this.bucketName || !this.publicBaseUrl) return url;
+    const key = url.slice(this.publicBaseUrl.length + 1);
+    return getSignedUrl(
+      this.s3,
+      new GetObjectCommand({ Bucket: this.bucketName, Key: key }),
+      { expiresIn },
+    );
   }
 
   async delete(fileUrl: string): Promise<void> {

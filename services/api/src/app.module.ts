@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { StorageUrlInterceptor } from './modules/storage/storage-url.interceptor';
 import { MustChangePasswordGuard } from './common/guards/must-change-password.guard';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -39,6 +40,7 @@ import { StorageModule } from './modules/storage/storage.module';
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },
+    { provide: APP_INTERCEPTOR, useClass: StorageUrlInterceptor },
   ],
 })
 export class AppModule {}

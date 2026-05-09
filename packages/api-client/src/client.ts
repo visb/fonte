@@ -47,6 +47,7 @@ export function createApiClient(config: ApiClientConfig) {
     documentTemplates: createDocumentTemplatesModule(http),
     photoUrl: (path: string | null | undefined): string | null => {
       if (!path) return null;
+      if (path.startsWith('http://') || path.startsWith('https://')) return path;
       const origin = config.baseURL.replace(/\/api\/v\d+\/?$/, '');
       return `${origin}${path}`;
     },

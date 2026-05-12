@@ -16,7 +16,6 @@ import { EditResidentPage } from '@/features/residents/pages/EditResidentPage';
 import { StaffPage } from '@/features/staff/pages/StaffPage';
 import { NewStaffPage } from '@/features/staff/pages/NewStaffPage';
 import { EditStaffPage } from '@/features/staff/pages/EditStaffPage';
-import { MinistriesPage } from '@/features/ministries/pages/MinistriesPage';
 import { SettingsPage } from '@/features/settings/pages/SettingsPage';
 
 const queryClient = new QueryClient({
@@ -61,7 +60,6 @@ export default function App() {
               <Route path="staff" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><StaffPage /></ProtectedRoute>} />
               <Route path="staff/new" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><NewStaffPage /></ProtectedRoute>} />
               <Route path="staff/:id/edit" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><EditStaffPage /></ProtectedRoute>} />
-              <Route path="ministries" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><MinistriesPage /></ProtectedRoute>} />
               <Route path="settings" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><SettingsPage /></ProtectedRoute>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

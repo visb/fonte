@@ -23,15 +23,14 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateHouseDto } from './dto/create-house.dto';
-import { CreateHouseMinistryDto } from './dto/create-house-ministry.dto';
 import { CreateHouseRuleDto } from './dto/create-house-rule.dto';
 import { UpdateHouseDto } from './dto/update-house.dto';
-import { UpdateHouseMinistryDto } from './dto/update-house-ministry.dto';
 import { House } from './house.entity';
-import { HouseMinistry } from './house-ministry.entity';
 import { HousePhoto } from './house-photo.entity';
 import { HouseRule } from './house-rule.entity';
 import { HouseService } from './house.service';
+import { MinistryService } from '../ministry/ministry.service';
+import { CreateMinistryDto } from '../ministry/dto/create-ministry.dto';
 
 const photoOptions = {
   storage: memoryStorage(),
@@ -46,7 +45,10 @@ const photoOptions = {
 @Controller('houses')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class HouseController {
-  constructor(private houseService: HouseService) {}
+  constructor(
+    private houseService: HouseService,
+    private ministryService: MinistryService,
+  ) {}
 
   @Get()
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
@@ -129,36 +131,16 @@ export class HouseController {
   @Get(':id/ministries')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
   findMinistries(@Param('id', ParseUUIDPipe) id: string) {
-    return this.houseService.findMinistries(id);
+    return this.ministryService.findByHouse(id);
   }
 
   @Post(':id/ministries')
-  @Roles(Role.ADMIN, Role.COORDINATOR)
-  addMinistry(
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  createMinistry(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: CreateHouseMinistryDto,
-  ): Promise<HouseMinistry> {
-    return this.houseService.addMinistry(id, dto);
-  }
-
-  @Patch(':id/ministries/:hmId')
-  @Roles(Role.ADMIN, Role.COORDINATOR)
-  updateMinistry(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Param('hmId', ParseUUIDPipe) hmId: string,
-    @Body() dto: UpdateHouseMinistryDto,
-  ): Promise<HouseMinistry> {
-    return this.houseService.updateMinistry(id, hmId, dto);
-  }
-
-  @Delete(':id/ministries/:hmId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(Role.ADMIN, Role.COORDINATOR)
-  removeMinistry(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Param('hmId', ParseUUIDPipe) hmId: string,
-  ): Promise<void> {
-    return this.houseService.removeMinistry(id, hmId);
+    @Body() dto: CreateMinistryDto,
+  ) {
+    return this.ministryService.create(id, dto);
   }
 
   // ─── Rules ──────────────────────────────────────────────────────────────────

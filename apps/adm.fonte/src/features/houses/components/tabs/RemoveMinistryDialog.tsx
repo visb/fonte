@@ -20,7 +20,7 @@ export function RemoveMinistryDialog({ ministry, onClose, houseId }: Props) {
         <AlertDialogHeader>
           <AlertDialogTitle>Remover ministério</AlertDialogTitle>
           <AlertDialogDescription>
-            Tem certeza que deseja remover o ministério <strong>{ministry?.ministryName}</strong> desta casa?
+            Tem certeza que deseja remover o ministério <strong>{ministry?.name}</strong> desta casa?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

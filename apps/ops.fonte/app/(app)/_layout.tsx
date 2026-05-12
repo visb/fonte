@@ -59,6 +59,20 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="ministries"
+        options={{
+          title: "Ministérios",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-circle-outline" size={size} color={color} />
+          ),
+        }}
+        listeners={{
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tabPress: () => router.navigate("/(app)/ministries" as any),
+        }}
+      />
+      <Tabs.Screen
         name="storeroom"
         options={{
           title: "Dispensa",

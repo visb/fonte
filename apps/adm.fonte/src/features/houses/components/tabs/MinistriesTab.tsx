@@ -24,19 +24,25 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
         <div className="flex justify-end">
           <Button size="sm" onClick={() => setAddOpen(true)}>
             <Plus size={14} className="mr-2" />
-            Adicionar ministério
+            Novo ministério
           </Button>
         </div>
 
         {houseMinistries.length === 0 ? (
-          <EmptyState title="Nenhum ministério associado a esta casa." />
+          <EmptyState title="Nenhum ministério cadastrado para esta casa." />
         ) : (
           <div className="space-y-2">
             {houseMinistries.map((hm) => (
               <div key={hm.id} className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <p className="font-medium text-sm">{hm.ministryName}</p>
-                  <p className="text-xs text-muted-foreground">Responsável: {hm.leaderName ?? 'Não definido'}</p>
+                  <p className="font-medium text-sm">{hm.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Responsável: {hm.leaderName ?? 'Não definido'}
+                    {' · '}
+                    {hm.filhoCount} {hm.filhoCount === 1 ? 'filho' : 'filhos'}
+                    {' · '}
+                    {hm.servoCount} {hm.servoCount === 1 ? 'servo' : 'servos'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar responsável"

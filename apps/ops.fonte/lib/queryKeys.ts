@@ -11,6 +11,11 @@ export const queryKeys = {
   houses: {
     ministries: (houseId: string) => ['house-ministries', houseId] as const,
   },
+  ministries: {
+    byHouse: (houseId: string) => ['ministries', houseId] as const,
+    detail: (id: string) => ['ministry', id] as const,
+    tasks: (id: string) => ['ministry-tasks', id] as const,
+  },
   incidents: {
     all: ['incidents'] as const,
     byHouse: (houseId: string) => ['incidents', houseId] as const,

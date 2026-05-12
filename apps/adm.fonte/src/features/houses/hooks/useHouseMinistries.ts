@@ -9,11 +9,31 @@ export function useHouseMinistriesList(houseId: string) {
   });
 }
 
-export function useAddMinistry(houseId: string) {
+export function useCreateHouseMinistry(houseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { ministryId: string; leaderId?: string; leaderType?: 'STAFF' | 'RESIDENT' }) =>
-      api.houses.addMinistry(houseId, data),
+    mutationFn: async ({
+      name,
+      leaderId,
+      leaderType,
+      residentIds = [],
+    }: {
+      name: string;
+      leaderId?: string | null;
+      leaderType?: 'STAFF' | 'RESIDENT' | null;
+      residentIds?: string[];
+    }) => {
+      const ministry = await api.houses.addMinistry(houseId, { name });
+      const followUps: Promise<unknown>[] = [];
+      if (leaderId && leaderType) {
+        followUps.push(api.ministries.update(ministry.id, { leaderId, leaderType }));
+      }
+      for (const residentId of residentIds) {
+        followUps.push(api.ministries.addResident(ministry.id, residentId));
+      }
+      await Promise.all(followUps);
+      return ministry;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.houses.ministries(houseId) }),
   });
 }
@@ -21,8 +41,15 @@ export function useAddMinistry(houseId: string) {
 export function useUpdateMinistryLeader(houseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ hmId, leaderId, leaderType }: { hmId: string; leaderId: string | null; leaderType: 'STAFF' | 'RESIDENT' | null }) =>
-      api.houses.updateMinistry(houseId, hmId, { leaderId, leaderType }),
+    mutationFn: ({
+      ministryId,
+      leaderId,
+      leaderType,
+    }: {
+      ministryId: string;
+      leaderId: string | null;
+      leaderType: 'STAFF' | 'RESIDENT' | null;
+    }) => api.ministries.update(ministryId, { leaderId, leaderType }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.houses.ministries(houseId) }),
   });
 }
@@ -30,7 +57,7 @@ export function useUpdateMinistryLeader(houseId: string) {
 export function useRemoveMinistry(houseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (hmId: string) => api.houses.removeMinistry(houseId, hmId),
+    mutationFn: (ministryId: string) => api.ministries.delete(ministryId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.houses.ministries(houseId) }),
   });
 }

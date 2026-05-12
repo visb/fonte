@@ -6,7 +6,6 @@ import type {
   HousePhoto,
   HouseMinistry,
   AddMinistryInput,
-  UpdateMinistryAssignmentInput,
   HouseRule,
   CreateHouseRuleInput,
   Resident,
@@ -36,11 +35,7 @@ export function createHousesModule(http: AxiosInstance) {
     listMinistries: (id: string) =>
       http.get<HouseMinistry[]>(`/houses/${id}/ministries`).then((r) => r.data),
     addMinistry: (id: string, data: AddMinistryInput) =>
-      http.post(`/houses/${id}/ministries`, data).then((r) => r.data),
-    updateMinistry: (id: string, hmId: string, data: UpdateMinistryAssignmentInput) =>
-      http.patch(`/houses/${id}/ministries/${hmId}`, data).then((r) => r.data),
-    removeMinistry: (id: string, hmId: string) =>
-      http.delete(`/houses/${id}/ministries/${hmId}`),
+      http.post<HouseMinistry>(`/houses/${id}/ministries`, data).then((r) => r.data),
     listRules: (id: string) =>
       http.get<HouseRule[]>(`/houses/${id}/rules`).then((r) => r.data),
     createRule: (id: string, data: CreateHouseRuleInput) =>

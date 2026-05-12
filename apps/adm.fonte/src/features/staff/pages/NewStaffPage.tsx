@@ -22,14 +22,20 @@ function generatePassword(len = 12) {
   return Array.from({ length: len }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join('');
 }
 
-const schema = z.object({
-  name: z.string().min(1, 'Nome é obrigatório'),
-  email: z.string().email('E-mail inválido'),
-  password: z.string().min(6),
-  role: z.enum([Role.ADMIN, Role.COORDINATOR, Role.OPERATOR], { required_error: 'Função é obrigatória' }),
-  houseId: z.string().min(1, 'Casa é obrigatória'),
-  phone: z.string().optional().or(z.literal('')),
-});
+const schema = z
+  .object({
+    name: z.string().min(1, 'Nome é obrigatório'),
+    email: z.string().email('E-mail inválido'),
+    password: z.string().min(6),
+    role: z.enum([Role.ADMIN, Role.COORDINATOR, Role.OPERATOR], { required_error: 'Função é obrigatória' }),
+    servesInGroup: z.boolean(),
+    houseId: z.string().optional().or(z.literal('')),
+    phone: z.string().optional().or(z.literal('')),
+  })
+  .refine((d) => d.servesInGroup || !!d.houseId, {
+    message: 'Casa é obrigatória para servos da casa',
+    path: ['houseId'],
+  });
 type FormData = z.infer<typeof schema>;
 
 export function NewStaffPage() {
@@ -40,16 +46,27 @@ export function NewStaffPage() {
 
   const { data: houses = [] } = useHouses();
 
-  const { register, handleSubmit, setValue, getValues, formState: { errors, isSubmitting } } =
-    useForm<FormData>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, setValue, getValues, watch, formState: { errors, isSubmitting } } =
+    useForm<FormData>({
+      resolver: zodResolver(schema),
+      defaultValues: { servesInGroup: false },
+    });
 
   useEffect(() => { setValue('password', generatePassword()); }, [setValue]);
 
+  const servesInGroup = watch('servesInGroup');
   const createMutation = useCreateStaff();
 
   const onSubmit = (data: FormData) => {
     createMutation.mutate(
-      { ...data, phone: data.phone || null },
+      {
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        role: data.role,
+        houseId: data.servesInGroup ? null : (data.houseId || null),
+        phone: data.phone || null,
+      },
       { onSuccess: () => navigate('/staff') },
     );
   };
@@ -116,14 +133,37 @@ export function NewStaffPage() {
           {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="houseId">Casa *</Label>
-          <select id="houseId" {...register('houseId')} className={SELECT_CLASS}>
-            <option value="">Selecione...</option>
-            {houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
-          </select>
-          {errors.houseId && <p className="text-sm text-destructive">{errors.houseId.message}</p>}
+        {/* Casa / Grupo switch */}
+        <div className="space-y-3">
+          <Label>Tipo de serviço *</Label>
+          <div className="flex rounded-lg border border-input overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setValue('servesInGroup', false)}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${!servesInGroup ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-accent'}`}
+            >
+              Serve na Casa
+            </button>
+            <button
+              type="button"
+              onClick={() => { setValue('servesInGroup', true); setValue('houseId', ''); }}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${servesInGroup ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-accent'}`}
+            >
+              Serve no Grupo de Apoio
+            </button>
+          </div>
         </div>
+
+        {!servesInGroup && (
+          <div className="space-y-2">
+            <Label htmlFor="houseId">Casa *</Label>
+            <select id="houseId" {...register('houseId')} className={SELECT_CLASS}>
+              <option value="">Selecione...</option>
+              {houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+            {errors.houseId && <p className="text-sm text-destructive">{errors.houseId.message}</p>}
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="phone">Telefone</Label>

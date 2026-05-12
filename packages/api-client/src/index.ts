@@ -41,4 +41,12 @@ export type {
   DocumentTemplate,
   CreateDocumentTemplateInput,
   UpdateDocumentTemplateInput,
+  SupportGroup,
+  CreateSupportGroupInput,
+  UpdateSupportGroupInput,
+  SupportGroupMeeting,
+  SupportGroupMeetingDetail,
+  SupportGroupCheckin,
+  CreateMeetingInput,
+  AddCheckinInput,
 } from './types.js';

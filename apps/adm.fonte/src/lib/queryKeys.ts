@@ -24,6 +24,11 @@ export const queryKeys = {
   documentTemplates: {
     all: ['document-templates'] as const,
   },
+  supportGroups: {
+    all: ['support-groups'] as const,
+    detail: (id: string) => ['support-groups', id] as const,
+    meetings: (id: string) => ['support-groups', id, 'meetings'] as const,
+  },
   storeroom: {
     byHouse: (houseId: string) => ['storeroom', houseId] as const,
     movementsByHouse: (houseId: string) => ['storeroom-movements', houseId] as const,

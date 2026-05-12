@@ -30,12 +30,12 @@ export class Staff {
   @Column({ name: 'user_id' })
   userId: string;
 
-  @ManyToOne(() => House, { eager: false })
+  @ManyToOne(() => House, { eager: false, nullable: true })
   @JoinColumn({ name: 'house_id' })
-  house: House;
+  house: House | null;
 
-  @Column({ name: 'house_id' })
-  houseId: string;
+  @Column({ name: 'house_id', nullable: true, type: 'uuid' })
+  houseId: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -50,7 +50,7 @@ Observação: `CLAUDE.md` define a regra arquitetural de não acessar banco fora
 Não altere estes comportamentos sem conferir `BUSINESS_RULES.md`:
 
 - `Resident` precisa de `house_id` e pelo menos um familiar/responsável.
-- `Staff` precisa de `house_id`.
+- `Staff` com `house_id` serve na casa; `house_id = null` serve no grupo de apoio (sem casa associada).
 - Transições de status de `Resident` são controladas por service.
 - `RoutineEntry` não pode ser editada após 24h.
 - `Incident` não pode ser deletada.

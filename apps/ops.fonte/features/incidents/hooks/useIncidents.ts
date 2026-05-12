@@ -12,7 +12,7 @@ interface CreateIncidentInput {
   residentId: string | null;
 }
 
-export function useIncidents(houseId: string | undefined) {
+export function useIncidents(houseId: string | null | undefined) {
   return useQuery({
     queryKey: queryKeys.incidents.byHouse(houseId!),
     queryFn: () => api.incidents.list({ houseId: houseId! }),
@@ -20,7 +20,7 @@ export function useIncidents(houseId: string | undefined) {
   });
 }
 
-export function useIncidentsToday(houseId: string | undefined) {
+export function useIncidentsToday(houseId: string | null | undefined) {
   return useQuery({
     queryKey: queryKeys.incidents.todayByHouse(houseId!),
     queryFn: () => api.incidents.list({ houseId: houseId! }),

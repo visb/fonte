@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 
-export function useHouseResidentsForMinistry(houseId: string | undefined) {
+export function useHouseResidentsForMinistry(houseId: string | null | undefined) {
   return useQuery({
     queryKey: ['house-residents-for-ministry', houseId!],
     queryFn: () => api.houses.listResidents(houseId!),
@@ -10,7 +10,7 @@ export function useHouseResidentsForMinistry(houseId: string | undefined) {
   });
 }
 
-export function useHouseStaffForMinistry(houseId: string | undefined) {
+export function useHouseStaffForMinistry(houseId: string | null | undefined) {
   return useQuery({
     queryKey: ['house-staff-for-ministry', houseId!],
     queryFn: () => api.houses.listStaff(houseId!),
@@ -18,7 +18,7 @@ export function useHouseStaffForMinistry(houseId: string | undefined) {
   });
 }
 
-export function useMinistries(houseId: string | undefined) {
+export function useMinistries(houseId: string | null | undefined) {
   return useQuery({
     queryKey: queryKeys.ministries.byHouse(houseId!),
     queryFn: () => api.houses.listMinistries(houseId!),

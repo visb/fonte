@@ -27,4 +27,10 @@ export const queryKeys = {
     allMovements: ['storeroom-movements'] as const,
     movements: (itemId: string) => ['storeroom-movements', itemId] as const,
   },
+  supportGroups: {
+    all: ['support-groups'] as const,
+    allMeetings: ['support-group-meetings'] as const,
+    meetings: (groupId: string) => ['support-group-meetings', groupId] as const,
+    meetingDetail: (id: string) => ['support-group-meeting', id] as const,
+  },
 } as const;

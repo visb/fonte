@@ -61,7 +61,7 @@ export class StaffService {
     const staff = this.staffRepository.create({
       name: dto.name,
       phone: dto.phone ?? null,
-      houseId: dto.houseId,
+      houseId: dto.houseId ?? null,
       userId: savedUser.id,
     });
     return this.staffRepository.save(staff);

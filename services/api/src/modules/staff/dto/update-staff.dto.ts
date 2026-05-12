@@ -6,6 +6,7 @@ import {
   IsString,
   IsUUID,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { Role } from '@fonte/types';
 
@@ -20,8 +21,9 @@ export class UpdateStaffDto {
   phone?: string | null;
 
   @IsOptional()
+  @ValidateIf((o) => o.houseId !== null)
   @IsUUID()
-  houseId?: string;
+  houseId?: string | null;
 
   @IsOptional()
   @IsEmail()

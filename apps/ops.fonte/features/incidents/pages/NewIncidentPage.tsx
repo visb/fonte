@@ -54,7 +54,7 @@ export function NewIncidentPage() {
         date: data.date,
         severity: data.severity,
         description: data.description,
-        houseId: staff!.houseId,
+        houseId: staff!.houseId!,
         responsibleId: staff!.id,
         residentId: data.residentId || null,
       },

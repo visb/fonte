@@ -85,7 +85,10 @@ export class StaffService {
       userUpdates.email = email;
     }
     if (role !== undefined) userUpdates.role = role;
-    if (password) userUpdates.passwordHash = await bcrypt.hash(password, 10);
+    if (password) {
+      userUpdates.passwordHash = await bcrypt.hash(password, 10);
+      userUpdates.mustChangePassword = true;
+    }
 
     if (Object.keys(userUpdates).length) {
       await this.userRepository.update(staff.userId, userUpdates);

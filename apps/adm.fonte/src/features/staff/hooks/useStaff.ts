@@ -40,6 +40,16 @@ export function useUpdateStaff(id: string) {
   });
 }
 
+export function useResetStaffPassword(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (password: string) => api.staff.update(id, { password }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.staff.all });
+    },
+  });
+}
+
 export function useDeleteStaff() {
   const queryClient = useQueryClient();
   return useMutation({

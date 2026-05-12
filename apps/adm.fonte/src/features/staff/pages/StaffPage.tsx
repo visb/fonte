@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Building2, Mail, Pencil, Phone, Plus, Trash2 } from 'lucide-react';
+import { Building2, KeyRound, Mail, Pencil, Phone, Plus, Trash2 } from 'lucide-react';
 import { Role } from '@fonte/types';
 import type { Staff } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useStaff, useDeleteStaff } from '../hooks/useStaff';
+import { ResetPasswordDialog } from '../components/ResetPasswordDialog';
 
 const ROLE_LABEL: Record<string, string> = {
   [Role.ADMIN]: 'Administrador',
@@ -30,6 +31,7 @@ const ROLE_VARIANT: Record<string, 'destructive' | 'info' | 'secondary'> = {
 export function StaffPage() {
   const navigate = useNavigate();
   const [deleteTarget, setDeleteTarget] = useState<Staff | null>(null);
+  const [resetTarget, setResetTarget] = useState<Staff | null>(null);
 
   const { data: staff = [], isLoading, isError, refetch } = useStaff();
   const deleteMutation = useDeleteStaff();
@@ -85,6 +87,9 @@ export function StaffPage() {
                 <Button variant="ghost" size="icon" onClick={() => navigate(`/staff/${s.id}/edit`)} title="Editar">
                   <Pencil size={16} />
                 </Button>
+                <Button variant="ghost" size="icon" onClick={() => setResetTarget(s)} title="Resetar senha">
+                  <KeyRound size={16} />
+                </Button>
                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(s)} title="Excluir">
                   <Trash2 size={16} />
                 </Button>
@@ -93,6 +98,12 @@ export function StaffPage() {
           ))}
         </div>
       )}
+
+      <ResetPasswordDialog
+        open={!!resetTarget}
+        onClose={() => setResetTarget(null)}
+        staff={resetTarget}
+      />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

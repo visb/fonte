@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import {
-  Briefcase,
   Building2,
   Home,
   LogOut,
@@ -102,16 +101,6 @@ export function AppLayout() {
             <Link to="/staff" onClick={closeSidebar} className={navLinkClass}>
               <UserCog size={16} />
               Servos
-            </Link>
-          )}
-          {isAdminOrCoordinator && (
-            <Link
-              to="/ministries"
-              onClick={closeSidebar}
-              className={navLinkClass}
-            >
-              <Briefcase size={16} />
-              Ministérios
             </Link>
           )}
           {isAdminOrCoordinator && (

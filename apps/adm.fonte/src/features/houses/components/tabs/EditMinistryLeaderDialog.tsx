@@ -33,7 +33,7 @@ export function EditMinistryLeaderDialog({ ministry, onClose, houseId }: Props) 
   function handleSubmit() {
     if (!ministry) return;
     mutation.mutate(
-      { hmId: ministry.id, leaderId: leader?.id ?? null, leaderType: leader?.type ?? null },
+      { ministryId: ministry.id, leaderId: leader?.id ?? null, leaderType: leader?.type ?? null },
       { onSuccess: onClose },
     );
   }
@@ -42,7 +42,7 @@ export function EditMinistryLeaderDialog({ ministry, onClose, houseId }: Props) 
     <Dialog open={!!ministry} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Editar Responsável — {ministry?.ministryName}</DialogTitle>
+          <DialogTitle>Editar Responsável — {ministry?.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-2 py-2">
           <Label>Responsável</Label>

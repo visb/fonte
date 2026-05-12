@@ -1,19 +1,15 @@
 import {
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { House } from './house.entity';
-import { HouseMinistry } from './house-ministry.entity';
 import { HousePhoto } from './house-photo.entity';
 import { HouseRule } from './house-rule.entity';
 import { CreateHouseDto } from './dto/create-house.dto';
-import { CreateHouseMinistryDto } from './dto/create-house-ministry.dto';
 import { CreateHouseRuleDto } from './dto/create-house-rule.dto';
 import { UpdateHouseDto } from './dto/update-house.dto';
-import { UpdateHouseMinistryDto } from './dto/update-house-ministry.dto';
 import { StorageService } from '../storage/storage.service';
 
 @Injectable()
@@ -23,8 +19,6 @@ export class HouseService {
     private houseRepository: Repository<House>,
     @InjectRepository(HousePhoto)
     private photoRepository: Repository<HousePhoto>,
-    @InjectRepository(HouseMinistry)
-    private houseMinistryRepo: Repository<HouseMinistry>,
     @InjectRepository(HouseRule)
     private houseRuleRepo: Repository<HouseRule>,
     private storageService: StorageService,
@@ -164,67 +158,6 @@ export class HouseService {
     );
   }
 
-  // ─── Ministries ─────────────────────────────────────────────────────────────
-
-  async findMinistries(houseId: string): Promise<
-    Array<{ id: string; ministryId: string; ministryName: string; leaderId: string | null; leaderType: string | null; leaderName: string | null }>
-  > {
-    await this.assertHouseExists(houseId);
-    return this.houseRepository.manager.query(
-      `SELECT hm.id, m.id AS "ministryId", m.name AS "ministryName",
-              hm.leader_id AS "leaderId", hm.leader_type AS "leaderType",
-              CASE
-                WHEN hm.leader_type = 'STAFF'    THEN s.name
-                WHEN hm.leader_type = 'RESIDENT' THEN r.name
-                ELSE NULL
-              END AS "leaderName"
-       FROM house_ministries hm
-       JOIN ministries m ON m.id = hm.ministry_id AND m.deleted_at IS NULL
-       LEFT JOIN staff     s ON s.id = hm.leader_id AND hm.leader_type = 'STAFF'    AND s.deleted_at IS NULL
-       LEFT JOIN residents r ON r.id = hm.leader_id AND hm.leader_type = 'RESIDENT' AND r.deleted_at IS NULL
-       WHERE hm.house_id = $1
-       ORDER BY m.name`,
-      [houseId],
-    );
-  }
-
-  async addMinistry(houseId: string, dto: CreateHouseMinistryDto): Promise<HouseMinistry> {
-    await this.assertHouseExists(houseId);
-    const [ministryCount] = await this.houseRepository.manager.query<[{ count: number }]>(
-      `SELECT COUNT(*)::int AS count FROM ministries WHERE id = $1 AND deleted_at IS NULL`,
-      [dto.ministryId],
-    );
-    if (!ministryCount.count) throw new NotFoundException(`Ministry ${dto.ministryId} not found`);
-
-    const existing = await this.houseMinistryRepo.findOne({
-      where: { houseId, ministryId: dto.ministryId },
-    });
-    if (existing) throw new ConflictException('Ministry already added to this house');
-
-    return this.houseMinistryRepo.save(
-      this.houseMinistryRepo.create({
-        houseId,
-        ministryId: dto.ministryId,
-        leaderId: dto.leaderId ?? null,
-        leaderType: dto.leaderType ?? null,
-      }),
-    );
-  }
-
-  async updateMinistry(houseId: string, hmId: string, dto: UpdateHouseMinistryDto): Promise<HouseMinistry> {
-    const hm = await this.houseMinistryRepo.findOne({ where: { id: hmId, houseId } });
-    if (!hm) throw new NotFoundException(`HouseMinistry ${hmId} not found`);
-    hm.leaderId = dto.leaderId;
-    hm.leaderType = dto.leaderType;
-    return this.houseMinistryRepo.save(hm);
-  }
-
-  async removeMinistry(houseId: string, hmId: string): Promise<void> {
-    const hm = await this.houseMinistryRepo.findOne({ where: { id: hmId, houseId } });
-    if (!hm) throw new NotFoundException(`HouseMinistry ${hmId} not found`);
-    await this.houseMinistryRepo.delete(hmId);
-  }
-
   // ─── Rules ──────────────────────────────────────────────────────────────────
 
   async findRules(houseId: string): Promise<HouseRule[]> {
@@ -245,7 +178,7 @@ export class HouseService {
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
-  private async assertHouseExists(houseId: string): Promise<void> {
+  async assertHouseExists(houseId: string): Promise<void> {
     const count = await this.houseRepository.count({ where: { id: houseId } });
     if (!count) throw new NotFoundException(`House ${houseId} not found`);
   }

@@ -102,9 +102,9 @@ export function ChangeMinistryModal({
                 {ministries.map((hm) => (
                   <MinistryOption
                     key={hm.id}
-                    label={hm.ministryName}
-                    selected={selectedMinistryId === hm.ministryId}
-                    onPress={() => setSelectedMinistryId(hm.ministryId)}
+                    label={hm.name}
+                    selected={selectedMinistryId === hm.id}
+                    onPress={() => setSelectedMinistryId(hm.id)}
                   />
                 ))}
               </>

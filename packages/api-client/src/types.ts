@@ -65,22 +65,16 @@ export type UpdateHouseInput = Partial<CreateHouseInput>;
 
 export interface HouseMinistry {
   id: string;
-  ministryId: string;
-  ministryName: string;
+  name: string;
   leaderId: string | null;
   leaderType: 'STAFF' | 'RESIDENT' | null;
   leaderName: string | null;
+  filhoCount: number;
+  servoCount: number;
 }
 
 export interface AddMinistryInput {
-  ministryId: string;
-  leaderId?: string | null;
-  leaderType?: 'STAFF' | 'RESIDENT' | null;
-}
-
-export interface UpdateMinistryAssignmentInput {
-  leaderId: string | null;
-  leaderType: 'STAFF' | 'RESIDENT' | null;
+  name: string;
 }
 
 export interface HouseRule {
@@ -287,12 +281,50 @@ export interface Ministry {
   name: string;
 }
 
+export interface MinistryMember {
+  id: string;
+  name: string;
+  role: 'FILHO' | 'SERVO';
+}
+
+export interface MinistryDetail {
+  id: string;
+  name: string;
+  houseId: string;
+  leaderId: string | null;
+  leaderType: 'STAFF' | 'RESIDENT' | null;
+  leaderName: string | null;
+  members: MinistryMember[];
+}
+
+export interface MinistryTask {
+  id: string;
+  title: string;
+  completed: boolean;
+  repetition: 'NONE' | 'DAILY';
+  completedAt: string | null;
+  createdAt: string;
+}
+
 export interface CreateMinistryInput {
   name: string;
 }
 
 export interface UpdateMinistryInput {
   name?: string;
+  leaderId?: string | null;
+  leaderType?: 'STAFF' | 'RESIDENT' | null;
+}
+
+export interface CreateMinistryTaskInput {
+  title: string;
+  repetition?: 'NONE' | 'DAILY';
+}
+
+export interface UpdateMinistryTaskInput {
+  title?: string;
+  completed?: boolean;
+  repetition?: 'NONE' | 'DAILY';
 }
 
 // ─── Relative ────────────────────────────────────────────────────────────────

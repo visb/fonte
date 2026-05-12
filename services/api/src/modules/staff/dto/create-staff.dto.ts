@@ -6,6 +6,7 @@ import {
   IsString,
   IsUUID,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { Role } from '@fonte/types';
 
@@ -24,8 +25,10 @@ export class CreateStaffDto {
   @IsIn([Role.ADMIN, Role.COORDINATOR, Role.OPERATOR])
   role: Role;
 
+  @IsOptional()
+  @ValidateIf((o) => o.houseId !== null)
   @IsUUID()
-  houseId: string;
+  houseId?: string | null;
 
   @IsOptional()
   @IsString()

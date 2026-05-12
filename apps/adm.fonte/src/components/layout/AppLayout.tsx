@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import {
   Building2,
+  HandHeart,
   Home,
   LogOut,
   Menu,
@@ -101,6 +102,16 @@ export function AppLayout() {
             <Link to="/staff" onClick={closeSidebar} className={navLinkClass}>
               <UserCog size={16} />
               Servos
+            </Link>
+          )}
+          {isAdminOrCoordinator && (
+            <Link
+              to="/support-groups"
+              onClick={closeSidebar}
+              className={navLinkClass}
+            >
+              <HandHeart size={16} />
+              Grupos de Apoio
             </Link>
           )}
           {isAdminOrCoordinator && (

@@ -8,6 +8,7 @@ import { createHousesModule } from './modules/houses.js';
 import { createMinistriesModule } from './modules/ministries.js';
 import { createRelativesModule } from './modules/relatives.js';
 import { createDocumentTemplatesModule } from './modules/document-templates.js';
+import { createSupportGroupsModule } from './modules/support-groups.js';
 
 export interface ApiClientConfig {
   baseURL: string;
@@ -45,6 +46,7 @@ export function createApiClient(config: ApiClientConfig) {
     ministries: createMinistriesModule(http),
     relatives: createRelativesModule(http),
     documentTemplates: createDocumentTemplatesModule(http),
+    supportGroups: createSupportGroupsModule(http),
     photoUrl: (path: string | null | undefined): string | null => {
       if (!path) return null;
       if (path.startsWith('http://') || path.startsWith('https://')) return path;

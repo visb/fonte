@@ -79,7 +79,7 @@ export function MovementPage() {
 
   function handleCreateNewItem(unit: string) {
     createItemMutation.mutate(
-      { name: search.trim(), unit, houseId: staff!.houseId },
+      { name: search.trim(), unit, houseId: staff!.houseId! },
       {
         onSuccess: (newItem) => {
           setValue("itemId", newItem.id);

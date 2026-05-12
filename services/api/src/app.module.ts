@@ -17,6 +17,7 @@ import { MinistryModule } from './modules/ministry/ministry.module';
 import { StoreroomModule } from './modules/storeroom/storeroom.module';
 import { DocumentTemplateModule } from './modules/document-template/document-template.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { SupportGroupModule } from './modules/support-group/support-group.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { StorageModule } from './modules/storage/storage.module';
     StoreroomModule,
     DocumentTemplateModule,
     StorageModule,
+    SupportGroupModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },

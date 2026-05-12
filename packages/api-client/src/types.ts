@@ -95,7 +95,7 @@ export interface Staff {
   id: string;
   name: string;
   phone: string | null;
-  houseId: string;
+  houseId: string | null;
   house: { id: string; name: string } | null;
   user: { email: string; role: Role };
 }
@@ -104,7 +104,7 @@ export interface StaffMe {
   id: string;
   name: string;
   phone: string | null;
-  houseId: string;
+  houseId: string | null;
   house: { id: string; name: string } | null;
   user: { email: string; role: Role };
 }
@@ -114,14 +114,14 @@ export interface CreateStaffInput {
   email: string;
   password: string;
   role: Role;
-  houseId: string;
+  houseId?: string | null;
   phone?: string | null;
 }
 
 export interface UpdateStaffInput {
   name?: string;
   phone?: string | null;
-  houseId?: string;
+  houseId?: string | null;
   email?: string;
   role?: Role;
   password?: string;
@@ -341,6 +341,67 @@ export interface CreateRelativeInput {
   residentId: string;
   phone?: string | null;
   relationship?: string | null;
+}
+
+// ─── Support Group ────────────────────────────────────────────────────────────
+
+export interface SupportGroup {
+  id: string;
+  name: string;
+  churchName: string;
+  address: string;
+  coordinatorId: string | null;
+  coordinatorName: string | null;
+  dayOfWeek: number;
+  createdAt: string;
+}
+
+export interface CreateSupportGroupInput {
+  name: string;
+  churchName: string;
+  address: string;
+  coordinatorId?: string | null;
+  dayOfWeek: number;
+}
+
+export type UpdateSupportGroupInput = Partial<CreateSupportGroupInput>;
+
+export interface SupportGroupMeeting {
+  id: string;
+  supportGroupId: string;
+  supportGroupName: string;
+  date: string;
+  notes: string | null;
+  checkinToken: string;
+  checkinCount: number;
+  createdAt: string;
+}
+
+export interface SupportGroupMeetingDetail {
+  id: string;
+  supportGroupId: string;
+  supportGroupName: string;
+  date: string;
+  notes: string | null;
+  checkinToken: string;
+  checkins: SupportGroupCheckin[];
+}
+
+export interface SupportGroupCheckin {
+  id: string;
+  meetingId: string;
+  residentId: string;
+  residentName: string;
+  checkedInAt: string;
+}
+
+export interface CreateMeetingInput {
+  date: string;
+  notes?: string | null;
+}
+
+export interface AddCheckinInput {
+  residentId: string;
 }
 
 // ─── Document Template ───────────────────────────────────────────────────────

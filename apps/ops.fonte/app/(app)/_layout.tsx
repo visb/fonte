@@ -82,6 +82,20 @@ export default function AppLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="support-groups"
+        options={{
+          title: "Apoio",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="heart-circle-outline" size={size} color={color} />
+          ),
+        }}
+        listeners={{
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tabPress: () => router.navigate("/(app)/support-groups" as any),
+        }}
+      />
     </Tabs>
   );
 }

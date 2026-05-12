@@ -18,7 +18,7 @@ interface CreateItemInput {
   houseId: string;
 }
 
-export function useStoreroomItems(houseId: string | undefined) {
+export function useStoreroomItems(houseId: string | null | undefined) {
   return useQuery({
     queryKey: queryKeys.storeroom.items(houseId!),
     queryFn: () => api.storeroom.listItems({ houseId: houseId! }),

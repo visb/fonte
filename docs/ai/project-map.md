@@ -26,6 +26,9 @@
 | Autenticação frontend | `apps/adm.fonte/src/contexts/AuthContext.tsx`, `apps/ops.fonte/lib/auth.tsx` |
 | Configuração de API frontend | `apps/adm.fonte/src/lib/api.ts`, `apps/ops.fonte/lib/api.ts` |
 | Banco/migrations | `services/api/src/database/*` |
+| Grupos de apoio (backend) | `services/api/src/modules/support-group/` |
+| Grupos de apoio (adm) | `apps/adm.fonte/src/features/support-groups/` |
+| Grupos de apoio (ops checkin) | `apps/ops.fonte/features/support-groups/` |
 
 ## Fluxo de dependência
 

@@ -6,3 +6,4 @@ coverage/
 .turbo/
 *.tsbuildinfo
 todo.md
+.claude/settings.local.json

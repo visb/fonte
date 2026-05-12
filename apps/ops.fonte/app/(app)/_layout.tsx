@@ -53,6 +53,7 @@ export default function AppLayout() {
         options={{
           title: "Ocorrências",
           headerShown: false,
+          href: null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="warning-outline" size={size} color={color} />
           ),

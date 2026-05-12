@@ -9,9 +9,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
@@ -121,6 +120,11 @@ export function MeetingDetailPage() {
           headerStyle: { backgroundColor: '#272950' },
           headerTintColor: '#fff',
           headerTitleStyle: { fontWeight: '600' },
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} style={{ marginLeft: 4, marginRight: 8 }}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </Pressable>
+          ),
         }}
       />
 

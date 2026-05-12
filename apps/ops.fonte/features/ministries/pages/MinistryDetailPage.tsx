@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import {
@@ -147,6 +147,11 @@ export function MinistryDetailPage() {
           headerStyle: { backgroundColor: '#272950' },
           headerTintColor: '#fff',
           headerTitleStyle: { fontWeight: '600' },
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} style={{ marginLeft: 4, marginRight: 8 }}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </Pressable>
+          ),
         }}
       />
 

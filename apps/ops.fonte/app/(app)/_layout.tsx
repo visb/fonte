@@ -4,7 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
 
 export default function AppLayout() {
-  const { token, isLoading } = useAuth();
+  const { token, isLoading, staff } = useAuth();
+  const isSupportGroupServant = !!staff && !staff.houseId;
 
   useEffect(() => {
     if (!isLoading && !token) router.replace("/(auth)/login");
@@ -16,7 +17,9 @@ export default function AppLayout() {
         headerShown: true,
         tabBarActiveTintColor: "#fff",
         tabBarInactiveTintColor: "#d1d5db",
-        tabBarStyle: { backgroundColor: "#272950", borderTopColor: "#272950" },
+        tabBarStyle: isSupportGroupServant
+          ? { display: 'none' }
+          : { backgroundColor: "#272950", borderTopColor: "#272950" },
         headerStyle: {
           backgroundColor: "#272950",
           shadowColor: "transparent",
@@ -30,6 +33,7 @@ export default function AppLayout() {
         options={{
           title: "Início",
           headerShown: false,
+          href: isSupportGroupServant ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -40,6 +44,7 @@ export default function AppLayout() {
         options={{
           title: "Filhos",
           headerShown: false,
+          href: isSupportGroupServant ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),
@@ -64,6 +69,7 @@ export default function AppLayout() {
         options={{
           title: "Ministérios",
           headerShown: false,
+          href: isSupportGroupServant ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-circle-outline" size={size} color={color} />
           ),
@@ -78,6 +84,7 @@ export default function AppLayout() {
         options={{
           title: "Dispensa",
           headerShown: false,
+          href: isSupportGroupServant ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cube-outline" size={size} color={color} />
           ),
@@ -88,6 +95,7 @@ export default function AppLayout() {
         options={{
           title: "Apoio",
           headerShown: false,
+          href: isSupportGroupServant ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="heart-circle-outline" size={size} color={color} />
           ),

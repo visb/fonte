@@ -8,9 +8,11 @@ import { Repository } from 'typeorm';
 import { SupportGroup } from './support-group.entity';
 import { SupportGroupMeeting } from './support-group-meeting.entity';
 import { SupportGroupCheckin } from './support-group-checkin.entity';
+import { SupportGroupRelativeCheckin } from './support-group-relative-checkin.entity';
 import { CreateSupportGroupDto } from './dto/create-support-group.dto';
 import { UpdateSupportGroupDto } from './dto/update-support-group.dto';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
+import { Relative } from '../relative/relative.entity';
 
 @Injectable()
 export class SupportGroupService {
@@ -21,6 +23,10 @@ export class SupportGroupService {
     private meetingRepo: Repository<SupportGroupMeeting>,
     @InjectRepository(SupportGroupCheckin)
     private checkinRepo: Repository<SupportGroupCheckin>,
+    @InjectRepository(SupportGroupRelativeCheckin)
+    private relativeCheckinRepo: Repository<SupportGroupRelativeCheckin>,
+    @InjectRepository(Relative)
+    private relativeRepo: Repository<Relative>,
   ) {}
 
   // ─── Groups ──────────────────────────────────────────────────────────────────
@@ -260,5 +266,33 @@ export class SupportGroupService {
     const checkin = await this.checkinRepo.findOne({ where: { id: checkinId, meetingId } });
     if (!checkin) throw new NotFoundException(`Checkin ${checkinId} not found`);
     await this.checkinRepo.delete(checkinId);
+  }
+
+  async addRelativeCheckin(
+    relativeUserId: string,
+    token: string,
+  ): Promise<{ id: string; meetingId: string; relativeId: string; relativeName: string; checkedInAt: Date }> {
+    const relative = await this.relativeRepo.findOne({ where: { userId: relativeUserId } });
+    if (!relative) throw new NotFoundException('Perfil de familiar não encontrado');
+
+    const meeting = await this.meetingRepo.findOne({ where: { checkinToken: token } });
+    if (!meeting) throw new NotFoundException('Reunião não encontrada para este token');
+
+    const existing = await this.relativeCheckinRepo.findOne({
+      where: { meetingId: meeting.id, relativeId: relative.id },
+    });
+    if (existing) throw new ConflictException('Check-in já registrado para esta reunião');
+
+    const checkin = await this.relativeCheckinRepo.save(
+      this.relativeCheckinRepo.create({ meetingId: meeting.id, relativeId: relative.id }),
+    );
+
+    return {
+      id: checkin.id,
+      meetingId: checkin.meetingId,
+      relativeId: checkin.relativeId,
+      relativeName: relative.name,
+      checkedInAt: checkin.checkedInAt,
+    };
   }
 }

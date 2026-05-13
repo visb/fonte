@@ -1,5 +1,5 @@
 import type { AxiosInstance } from 'axios';
-import type { Conversation, Message, SendMessageInput } from '../types.js';
+import type { Conversation, DirectConversation, Message, SendDirectMessageInput, SendMessageInput, StaffThreadSummary } from '../types.js';
 
 export function createMessagesModule(http: AxiosInstance) {
   return {
@@ -19,5 +19,13 @@ export function createMessagesModule(http: AxiosInstance) {
       http.patch<Message>(`/messages/${id}/approve`).then((r) => r.data),
     reject: (id: string): Promise<Message> =>
       http.patch<Message>(`/messages/${id}/reject`).then((r) => r.data),
+    getHouseStaffThreads: (): Promise<StaffThreadSummary[]> =>
+      http.get<StaffThreadSummary[]>('/messages/house-staff-threads').then((r) => r.data),
+    getDirectConversations: (): Promise<DirectConversation[]> =>
+      http.get<DirectConversation[]>('/messages/direct-conversations').then((r) => r.data),
+    getDirectThread: (staffId: string, relativeId: string): Promise<Message[]> =>
+      http.get<Message[]>(`/messages/direct/${staffId}/${relativeId}`).then((r) => r.data),
+    sendDirect: (data: SendDirectMessageInput): Promise<Message> =>
+      http.post<Message>('/messages/direct', data).then((r) => r.data),
   };
 }

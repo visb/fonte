@@ -1,7 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
-import type { CreateResidentInput, GenerateResidentAccessInput, UpdateResidentInput } from '@fonte/api-client';
+import type {
+  CreateResidentInput,
+  GenerateResidentAccessInput,
+  GenerateRelativeAccessInput,
+  UpdateResidentInput,
+} from '@fonte/api-client';
 
 export function useResidents() {
   return useQuery({
@@ -167,6 +172,24 @@ export function useDeleteAttachment(residentId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.residents.attachments(residentId) });
     },
+  });
+}
+
+export function useGenerateRelativeAccess(relativeId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: GenerateRelativeAccessInput) =>
+      api.relatives.generateAccess(relativeId, data),
+    onSuccess: (_data, _vars, _ctx) => {
+      queryClient.invalidateQueries({ queryKey: ['relatives'] });
+    },
+  });
+}
+
+export function useResetRelativePassword(relativeId: string) {
+  return useMutation({
+    mutationFn: (password: string) =>
+      api.relatives.resetPassword(relativeId, { password }),
   });
 }
 

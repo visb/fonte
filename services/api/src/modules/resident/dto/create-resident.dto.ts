@@ -8,6 +8,7 @@ import {
   IsUUID,
   Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 
 export class CreateResidentDto {
@@ -61,6 +62,7 @@ export class CreateResidentDto {
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Transform(({ value }) => value ?? 0)
   children?: number;
 
   @IsOptional()

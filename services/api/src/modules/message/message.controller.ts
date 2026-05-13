@@ -14,6 +14,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { SendMessageDto } from './dto/send-message.dto';
+import { SendDirectMessageDto } from './dto/send-direct-message.dto';
 import { MessageService } from './message.service';
 
 @Controller('messages')
@@ -28,13 +29,13 @@ export class MessageController {
   }
 
   @Get('my-conversations')
-  @Roles(Role.RESIDENT)
+  @Roles(Role.RESIDENT, Role.RELATIVE)
   getMyConversations(@CurrentUser() user: AuthenticatedUser) {
-    return this.service.getMyConversations(user.userId);
+    return this.service.getMyConversations(user.userId, user.role);
   }
 
   @Get('conversations/:residentId/:relativeId')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RESIDENT)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RESIDENT, Role.RELATIVE)
   getThread(
     @CurrentUser() user: AuthenticatedUser,
     @Param('residentId', ParseUUIDPipe) residentId: string,
@@ -50,9 +51,37 @@ export class MessageController {
   }
 
   @Post()
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RESIDENT)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RESIDENT, Role.RELATIVE)
   send(@CurrentUser() user: AuthenticatedUser, @Body() dto: SendMessageDto) {
     return this.service.send(user.userId, user.profileType, dto);
+  }
+
+  @Get('house-staff-threads')
+  @Roles(Role.RELATIVE)
+  getHouseStaffThreads(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.getHouseStaffThreads(user.userId);
+  }
+
+  @Get('direct-conversations')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  getDirectConversations(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.getDirectConversations(user.userId);
+  }
+
+  @Get('direct/:staffId/:relativeId')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RELATIVE)
+  getDirectThread(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('staffId', ParseUUIDPipe) staffId: string,
+    @Param('relativeId', ParseUUIDPipe) relativeId: string,
+  ) {
+    return this.service.getDirectThread(user.userId, user.role, staffId, relativeId);
+  }
+
+  @Post('direct')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RELATIVE)
+  sendDirect(@CurrentUser() user: AuthenticatedUser, @Body() dto: SendDirectMessageDto) {
+    return this.service.sendDirect(user.userId, user.profileType, dto);
   }
 
   @Patch(':id/approve')

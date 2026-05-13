@@ -10,7 +10,7 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
-import { useConversations, useMyConversations, usePendingMessages } from '../hooks/useMessages';
+import { useConversations, useDirectConversations, useMyConversations, usePendingMessages } from '../hooks/useMessages';
 import type { Conversation } from '@fonte/api-client';
 
 function ConversationItem({
@@ -52,6 +52,7 @@ function StaffMessagesPage() {
   const [refreshing, setRefreshing] = useState(false);
   const { data: conversations = [], refetch } = useConversations();
   const { data: pending = [] } = usePendingMessages();
+  const { data: directConversations = [] } = useDirectConversations();
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -84,6 +85,23 @@ function StaffMessagesPage() {
           <Ionicons name="chevron-forward" size={16} color="#d97706" />
         </TouchableOpacity>
       )}
+      <TouchableOpacity
+        onPress={() => router.push('/(app)/messages/direct' as never)}
+        className="bg-white border-b border-gray-100 px-4 py-3 flex-row items-center"
+      >
+        <View className="w-9 h-9 rounded-full bg-[#272950]/10 items-center justify-center mr-3">
+          <Ionicons name="chatbubble-ellipses-outline" size={18} color="#272950" />
+        </View>
+        <View className="flex-1">
+          <Text className="text-sm font-semibold text-gray-900">Conversas diretas</Text>
+          <Text className="text-xs text-gray-400 mt-0.5">
+            {directConversations.length > 0
+              ? `${directConversations.length} conversa(s) com familiares`
+              : 'Mensagens diretas com familiares'}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color="#d1d5db" />
+      </TouchableOpacity>
 
       <FlatList
         data={sections}

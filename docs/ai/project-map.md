@@ -7,6 +7,7 @@
 - `services/api` — API NestJS centralizada.
 - `apps/adm.fonte` — app web administrativo em React/Vite.
 - `apps/ops.fonte` — PWA/mobile Expo para operadores da casa.
+- `apps/app.fonte` — app mobile Expo para familiares (role RELATIVE).
 - `packages/types` — tipos compartilhados entre backend, frontends e cliente HTTP.
 - `packages/api-client` — cliente HTTP compartilhado usado pelos frontends.
 - `BUSINESS_RULES.md` — regras de negócio e permissões por role.
@@ -31,9 +32,13 @@
 | Grupos de apoio (ops checkin) | `apps/ops.fonte/features/support-groups/` |
 | Acesso de resident (gerar/resetar senha) | `apps/adm.fonte/src/features/residents/components/GenerateResidentAccessDialog.tsx` |
 | Sessão/timer de uso de resident | `services/api/src/modules/resident-session/` |
-| Mensagens entre residents e familiares | `services/api/src/modules/message/`, `apps/ops.fonte/features/messages/` |
-| Lista de pedidos (wishlist) | `services/api/src/modules/wishlist/`, `apps/ops.fonte/features/wishlist/` |
+| Mensagens entre residents e familiares | `services/api/src/modules/message/`, `apps/ops.fonte/features/messages/`, `apps/app.fonte/features/messages/` |
+| Lista de pedidos (wishlist) | `services/api/src/modules/wishlist/`, `apps/ops.fonte/features/wishlist/`, `apps/app.fonte/features/wishlist/` |
 | Timer limitado no ops.fonte | `apps/ops.fonte/lib/UsageTimerContext.tsx`, `apps/ops.fonte/components/TimeLimitedScreen.tsx` |
+| Auth familiar (gerar/resetar senha) | `apps/adm.fonte/src/features/residents/components/GenerateRelativeAccessDialog.tsx` |
+| App familiar — auth, home, mensagens | `apps/app.fonte/lib/auth.tsx`, `apps/app.fonte/features/home/`, `apps/app.fonte/features/messages/` |
+| App familiar — pedidos, check-in | `apps/app.fonte/features/wishlist/`, `apps/app.fonte/features/checkin/` |
+| Check-in de familiar em grupo de apoio | `services/api/src/modules/support-group/support-group-relative-checkin.entity.ts` |
 
 ## Fluxo de dependência
 

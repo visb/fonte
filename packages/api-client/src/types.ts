@@ -106,6 +106,7 @@ export interface Staff {
 
 export interface StaffMe {
   id: string;
+  userId: string;
   name: string;
   phone: string | null;
   houseId: string | null;
@@ -357,6 +358,24 @@ export interface Relative {
   name: string;
   phone: string | null;
   relationship: string | null;
+  userId: string | null;
+}
+
+export interface RelativeMe {
+  id: string;
+  userId: string;
+  name: string;
+  phone: string | null;
+  relationship: string | null;
+  residentId: string;
+  residentName: string;
+  houseId: string;
+  houseName: string;
+  houseAddress: string | null;
+  houseCity: string | null;
+  housePhone: string | null;
+  coordinatorName: string | null;
+  coordinatorPhone: string | null;
 }
 
 export interface CreateRelativeInput {
@@ -364,6 +383,29 @@ export interface CreateRelativeInput {
   residentId: string;
   phone?: string | null;
   relationship?: string | null;
+}
+
+export interface GenerateRelativeAccessInput {
+  email: string;
+  password: string;
+}
+
+export interface ResetRelativePasswordInput {
+  password: string;
+}
+
+// ─── Support Group Relative Checkin ──────────────────────────────────────────
+
+export interface SupportGroupRelativeCheckin {
+  id: string;
+  meetingId: string;
+  relativeId: string;
+  relativeName: string;
+  checkedInAt: string;
+}
+
+export interface RelativeCheckinInput {
+  token: string;
 }
 
 // ─── Support Group ────────────────────────────────────────────────────────────
@@ -460,8 +502,9 @@ export interface UsageSessionToday {
 
 export interface Message {
   id: string;
-  residentId: string;
+  residentId: string | null;
   relativeId: string;
+  staffId: string | null;
   senderUserId: string;
   senderName: string;
   content: string;
@@ -481,8 +524,30 @@ export interface Conversation {
   pendingCount: number;
 }
 
+export interface DirectConversation {
+  staffId: string;
+  staffName: string;
+  relativeId: string;
+  relativeName: string;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+}
+
+export interface StaffThreadSummary {
+  staffId: string;
+  staffName: string;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+}
+
 export interface SendMessageInput {
   residentId: string;
+  relativeId: string;
+  content: string;
+}
+
+export interface SendDirectMessageInput {
+  staffId: string;
   relativeId: string;
   content: string;
 }

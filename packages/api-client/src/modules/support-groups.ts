@@ -6,8 +6,10 @@ import type {
   SupportGroupMeeting,
   SupportGroupMeetingDetail,
   SupportGroupCheckin,
+  SupportGroupRelativeCheckin,
   CreateMeetingInput,
   AddCheckinInput,
+  RelativeCheckinInput,
 } from '../types.js';
 
 export function createSupportGroupsModule(http: AxiosInstance) {
@@ -35,5 +37,8 @@ export function createSupportGroupsModule(http: AxiosInstance) {
       http.post<SupportGroupCheckin>(`/support-groups/meetings/${meetingId}/checkins`, data).then((r) => r.data),
     removeCheckin: (meetingId: string, checkinId: string) =>
       http.delete(`/support-groups/meetings/${meetingId}/checkins/${checkinId}`),
+
+    addRelativeCheckin: (data: RelativeCheckinInput): Promise<SupportGroupRelativeCheckin> =>
+      http.post<SupportGroupRelativeCheckin>('/support-groups/relative-checkin', data).then((r) => r.data),
   };
 }

@@ -1,10 +1,11 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
-import { WishlistStatus } from '@fonte/types';
+import { Role, WishlistStatus } from '@fonte/types';
 import { WishlistItem } from './wishlist-item.entity';
 import { AddWishlistItemDto } from './dto/add-wishlist-item.dto';
 import { Resident } from '../resident/resident.entity';
+import { Relative } from '../relative/relative.entity';
 
 @Injectable()
 export class WishlistService {
@@ -13,6 +14,8 @@ export class WishlistService {
     private itemRepository: Repository<WishlistItem>,
     @InjectRepository(Resident)
     private residentRepository: Repository<Resident>,
+    @InjectRepository(Relative)
+    private relativeRepository: Repository<Relative>,
   ) {}
 
   async findAll(residentId: string): Promise<WishlistItem[]> {
@@ -20,6 +23,15 @@ export class WishlistService {
       where: { residentId, deletedAt: IsNull() },
       order: { createdAt: 'ASC' },
     });
+  }
+
+  async findAllForCaller(callerUserId: string, callerRole: string, residentId: string): Promise<WishlistItem[]> {
+    if (callerRole === Role.RELATIVE) {
+      const relative = await this.relativeRepository.findOne({ where: { userId: callerUserId } });
+      if (!relative || relative.residentId !== residentId) throw new ForbiddenException();
+      return this.findApproved(residentId);
+    }
+    return this.findAll(residentId);
   }
 
   async findApproved(residentId: string): Promise<WishlistItem[]> {

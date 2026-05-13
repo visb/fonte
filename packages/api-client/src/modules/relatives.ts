@@ -1,12 +1,24 @@
 import type { AxiosInstance } from 'axios';
-import type { Relative, CreateRelativeInput } from '../types.js';
+import type {
+  Relative,
+  RelativeMe,
+  CreateRelativeInput,
+  GenerateRelativeAccessInput,
+  ResetRelativePasswordInput,
+} from '../types.js';
 
 export function createRelativesModule(http: AxiosInstance) {
   return {
-    listByResident: (residentId: string) =>
+    me: (): Promise<RelativeMe> =>
+      http.get<RelativeMe>('/relatives/me').then((r) => r.data),
+    listByResident: (residentId: string): Promise<Relative[]> =>
       http.get<Relative[]>('/relatives', { params: { residentId } }).then((r) => r.data),
-    create: (data: CreateRelativeInput) =>
+    create: (data: CreateRelativeInput): Promise<Relative> =>
       http.post<Relative>('/relatives', data).then((r) => r.data),
     delete: (id: string) => http.delete(`/relatives/${id}`),
+    generateAccess: (id: string, data: GenerateRelativeAccessInput): Promise<Relative> =>
+      http.post<Relative>(`/relatives/${id}/access`, data).then((r) => r.data),
+    resetPassword: (id: string, data: ResetRelativePasswordInput): Promise<void> =>
+      http.post<void>(`/relatives/${id}/access/reset-password`, data).then(() => undefined),
   };
 }

@@ -9,6 +9,7 @@ import {
 import { MessageStatus } from '@fonte/types';
 import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
+import { Staff } from '../staff/staff.entity';
 import { User } from '../user/user.entity';
 
 @Entity('messages')
@@ -16,12 +17,19 @@ export class Message {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Resident, { eager: false })
+  @ManyToOne(() => Resident, { eager: false, nullable: true })
   @JoinColumn({ name: 'resident_id' })
-  resident: Resident;
+  resident: Resident | null;
 
-  @Column({ name: 'resident_id' })
-  residentId: string;
+  @Column({ name: 'resident_id', nullable: true, type: 'uuid' })
+  residentId: string | null;
+
+  @ManyToOne(() => Staff, { eager: false, nullable: true })
+  @JoinColumn({ name: 'staff_id' })
+  staff: Staff | null;
+
+  @Column({ name: 'staff_id', nullable: true, type: 'uuid' })
+  staffId: string | null;
 
   @ManyToOne(() => Relative, { eager: false })
   @JoinColumn({ name: 'relative_id' })

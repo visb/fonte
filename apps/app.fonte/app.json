@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "app.fonte",
+    "slug": "app-fonte",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "app-fonte",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#7c3aed"
+      },
+      "package": "org.fonte.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir acesso à câmera para escanear QR codes de check-in."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -12,6 +12,8 @@ export default function MessagesLayout() {
       <Stack.Screen name="index" options={{ title: 'Mensagens' }} />
       <Stack.Screen name="moderation" options={{ title: 'Moderação' }} />
       <Stack.Screen name="[residentId]/[relativeId]" options={{ title: 'Conversa' }} />
+      <Stack.Screen name="direct/index" options={{ title: 'Conversas Diretas' }} />
+      <Stack.Screen name="direct/[relativeId]" options={{ title: 'Conversa Direta' }} />
     </Stack>
   );
 }

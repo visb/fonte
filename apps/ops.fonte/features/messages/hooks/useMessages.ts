@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { SendMessageInput } from '@fonte/api-client';
+import type { SendDirectMessageInput, SendMessageInput } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 
@@ -60,6 +60,34 @@ export function useRejectMessage() {
     mutationFn: (id: string) => api.messages.reject(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.messages.pending });
+    },
+  });
+}
+
+export function useDirectConversations() {
+  return useQuery({
+    queryKey: queryKeys.messages.directConversations,
+    queryFn: () => api.messages.getDirectConversations(),
+  });
+}
+
+export function useDirectThread(staffId: string, relativeId: string) {
+  return useQuery({
+    queryKey: queryKeys.messages.directThread(staffId, relativeId),
+    queryFn: () => api.messages.getDirectThread(staffId, relativeId),
+    enabled: !!staffId && !!relativeId,
+  });
+}
+
+export function useSendDirectMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SendDirectMessageInput) => api.messages.sendDirect(data),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.messages.directThread(vars.staffId, vars.relativeId),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.messages.directConversations });
     },
   });
 }

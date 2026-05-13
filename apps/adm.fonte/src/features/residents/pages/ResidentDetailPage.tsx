@@ -35,6 +35,8 @@ import {
 } from '../hooks/useResidents';
 import { GenerateResidentAccessDialog } from '../components/GenerateResidentAccessDialog';
 import { ResetResidentPasswordDialog } from '../components/ResetResidentPasswordDialog';
+import { GenerateRelativeAccessDialog } from '../components/GenerateRelativeAccessDialog';
+import { ResetRelativePasswordDialog } from '../components/ResetRelativePasswordDialog';
 import { useDocumentTemplates } from '@/features/settings/hooks/useDocumentTemplates';
 
 import type { Relative, DocumentTemplate, ResidentDocument, ResidentAttachment } from '@fonte/api-client';
@@ -121,6 +123,8 @@ export function ResidentDetailPage() {
   const [deleteRelativeTarget, setDeleteRelativeTarget] = useState<Relative | null>(null);
   const [generateAccessOpen, setGenerateAccessOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [relativeAccessTarget, setRelativeAccessTarget] = useState<Relative | null>(null);
+  const [relativeResetTarget, setRelativeResetTarget] = useState<Relative | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
     useForm<RelativeFormData>({ resolver: zodResolver(relativeSchema) });
@@ -323,16 +327,42 @@ export function ResidentDetailPage() {
                           {maskPhone(relative.phone)}
                         </span>
                       )}
+                      {relative.userId ? (
+                        <span className="text-green-600">App ativo</span>
+                      ) : (
+                        <span>Sem acesso</span>
+                      )}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 text-destructive hover:text-destructive"
-                    onClick={() => setDeleteRelativeTarget(relative)}
-                  >
-                    <Trash2 size={15} />
-                  </Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {relative.userId ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Resetar senha"
+                        onClick={() => setRelativeResetTarget(relative)}
+                      >
+                        <KeyRound size={15} />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Gerar acesso ao app"
+                        onClick={() => setRelativeAccessTarget(relative)}
+                      >
+                        <KeyRound size={15} />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleteRelativeTarget(relative)}
+                    >
+                      <Trash2 size={15} />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -414,6 +444,16 @@ export function ResidentDetailPage() {
         open={resetPasswordOpen}
         onClose={() => setResetPasswordOpen(false)}
         resident={resident ? { id: resident.id, name: resident.name } : null}
+      />
+      <GenerateRelativeAccessDialog
+        open={!!relativeAccessTarget}
+        onClose={() => setRelativeAccessTarget(null)}
+        relative={relativeAccessTarget}
+      />
+      <ResetRelativePasswordDialog
+        open={!!relativeResetTarget}
+        onClose={() => setRelativeResetTarget(null)}
+        relative={relativeResetTarget}
       />
     </div>
   );

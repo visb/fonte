@@ -32,12 +32,12 @@ export class WishlistController {
   }
 
   @Get(':residentId')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RESIDENT)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RESIDENT, Role.RELATIVE)
   getItems(
     @CurrentUser() user: AuthenticatedUser,
     @Param('residentId', ParseUUIDPipe) residentId: string,
   ) {
-    return this.service.findAll(residentId);
+    return this.service.findAllForCaller(user.userId, user.role, residentId);
   }
 
   @Post(':residentId/items')

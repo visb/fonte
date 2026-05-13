@@ -38,6 +38,8 @@ export const queryKeys = {
     myConversations: ['messages-my-conversations'] as const,
     thread: (residentId: string, relativeId: string) => ['messages-thread', residentId, relativeId] as const,
     pending: ['messages-pending'] as const,
+    directConversations: ['messages-direct-conversations'] as const,
+    directThread: (staffId: string, relativeId: string) => ['messages-direct-thread', staffId, relativeId] as const,
   },
   wishlist: {
     items: (residentId: string) => ['wishlist', residentId] as const,

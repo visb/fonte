@@ -13,4 +13,10 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
+config.resolver.blockList = [
+  /apps[/\\]app\.fonte[/\\].*/,
+  /apps[/\\]adm\.fonte[/\\].*/,
+  /apps[/\\]resident\.fonte[/\\].*/,
+];
+
 module.exports = withNativeWind(config, { input: './global.css' });

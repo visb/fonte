@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@fonte/types';
+import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -20,6 +21,7 @@ import { CreateSupportGroupDto } from './dto/create-support-group.dto';
 import { UpdateSupportGroupDto } from './dto/update-support-group.dto';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { AddCheckinDto } from './dto/add-checkin.dto';
+import { AddRelativeCheckinDto } from './dto/add-relative-checkin.dto';
 
 @Controller('support-groups')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -110,5 +112,14 @@ export class SupportGroupController {
     @Param('checkinId', ParseUUIDPipe) checkinId: string,
   ): Promise<void> {
     return this.service.removeCheckin(meetingId, checkinId);
+  }
+
+  @Post('relative-checkin')
+  @Roles(Role.RELATIVE)
+  addRelativeCheckin(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: AddRelativeCheckinDto,
+  ) {
+    return this.service.addRelativeCheckin(user.userId, dto.token);
   }
 }

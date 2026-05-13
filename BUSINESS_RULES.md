@@ -115,7 +115,8 @@ Para registrar alta:
 
 - Servos podem conversar com familiares de todos os filhos da casa
 - Residentes podem conversar apenas com seus próprios familiares
-- Mensagens enviadas por residents têm status PENDING_APPROVAL até servo aprovar
+- Familiares (RELATIVE) podem conversar apenas com seu próprio filho
+- Mensagens enviadas por residents ou familiares têm status PENDING_APPROVAL até servo aprovar
 - Mensagens enviadas por servos têm status APPROVED automaticamente
 - Servos visualizam painel de moderação com mensagens pendentes
 - Cada conversa é uma thread por par (resident, familiar)
@@ -186,7 +187,31 @@ Autenticação é centralizada na entidade `User`. Cada entidade que precisar de
 
 ---
 
-## 12. Exclusão
+## 12. app.fonte (Familiares)
+
+App mobile para familiares (role `RELATIVE`) de residentes.
+
+### Acesso
+- Familiar recebe login (email + senha) gerado por ADMIN ou COORDINATOR no adm.fonte
+- Senha pode ser resetada por ADMIN, COORDINATOR ou OPERATOR
+- No primeiro login, familiar deve trocar a senha (`mustChangePassword = true`)
+
+### Permissões
+- RELATIVE vê apenas dados do seu próprio filho
+- RELATIVE pode enviar mensagens apenas no thread do seu filho
+- Mensagens enviadas por RELATIVE → `PENDING_APPROVAL` (moderadas por servo)
+- RELATIVE vê apenas itens `APPROVED` da lista de pedidos do seu filho (read-only)
+- RELATIVE pode registrar check-in em grupos de apoio via token QR
+
+### Check-in de grupo de apoio
+- Familiar escaneia QR code da reunião (que contém o `checkinToken`)
+- Backend registra `SupportGroupRelativeCheckin` com `(meetingId, relativeId)`
+- Check-in duplicado na mesma reunião gera erro de conflito
+- Histórico salvo em `support_group_relative_checkins`
+
+---
+
+## 13. Exclusão
 
 Sistema utiliza soft delete:
 

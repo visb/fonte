@@ -14,7 +14,7 @@ Monorepo pnpm com backend NestJS centralizado e múltiplos frontends.
 apps/
   adm.fonte/       ← web React/Vite — gestão administrativa
   ops.fonte/       ← Expo/React Native — operadores da casa
-  ff.fonte/        ← mobile Expo — familiares (fase 2)
+  app.fonte/       ← Expo/React Native — familiares (role RELATIVE)
   resident.fonte/  ← mobile Expo — internos em kiosk (fase 2)
 services/
   api/             ← backend NestJS

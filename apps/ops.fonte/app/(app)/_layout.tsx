@@ -80,14 +80,10 @@ export default function AppLayout() {
         options={{
           title: "Ministérios",
           headerShown: false,
-          href: (isSupportGroupServant || isResident) ? null : undefined,
+          href: null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-circle-outline" size={size} color={color} />
           ),
-        }}
-        listeners={{
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          tabPress: () => router.navigate("/(app)/ministries" as any),
         }}
       />
       <Tabs.Screen
@@ -95,7 +91,7 @@ export default function AppLayout() {
         options={{
           title: "Dispensa",
           headerShown: false,
-          href: (isSupportGroupServant || isResident) ? null : undefined,
+          href: null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cube-outline" size={size} color={color} />
           ),

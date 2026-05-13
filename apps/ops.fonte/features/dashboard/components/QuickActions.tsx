@@ -11,18 +11,25 @@ const ACTIONS = [
     route: "/(app)/incidents/new",
   },
   {
-    label: "Movimentar dispensa",
-    icon: "cube-outline" as const,
-    color: "#16a34a",
-    bg: "#f0fdf4",
-    route: "/(app)/storeroom/movement",
-  },
-  {
     label: "Ver filhos",
     icon: "people-outline" as const,
     color: "#9333ea",
     bg: "#faf5ff",
     route: "/(app)/residents",
+  },
+  {
+    label: "Ministérios",
+    icon: "people-circle-outline" as const,
+    color: "#0369a1",
+    bg: "#f0f9ff",
+    route: "/(app)/ministries",
+  },
+  {
+    label: "Dispensa",
+    icon: "cube-outline" as const,
+    color: "#16a34a",
+    bg: "#f0fdf4",
+    route: "/(app)/storeroom",
   },
 ];
 

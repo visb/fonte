@@ -1,6 +1,9 @@
 import type { AxiosInstance } from 'axios';
 import type {
+  GenerateResidentAccessInput,
   Resident,
+  ResidentMe,
+  ResetResidentPasswordInput,
   CreateResidentInput,
   UpdateResidentInput,
   ResidentDocument,
@@ -46,5 +49,10 @@ export function createResidentsModule(http: AxiosInstance) {
           headers: { 'Content-Type': undefined },
         })
         .then((r) => r.data),
+    me: (): Promise<ResidentMe> => http.get<ResidentMe>('/residents/me').then((r) => r.data),
+    generateAccess: (id: string, data: GenerateResidentAccessInput): Promise<Resident> =>
+      http.post<Resident>(`/residents/${id}/access`, data).then((r) => r.data),
+    resetPassword: (id: string, data: ResetResidentPasswordInput): Promise<void> =>
+      http.post(`/residents/${id}/access/reset-password`, data).then(() => undefined),
   };
 }

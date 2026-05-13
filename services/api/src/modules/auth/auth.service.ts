@@ -13,7 +13,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async login(dto: LoginDto): Promise<{ accessToken: string }> {
+  async login(dto: LoginDto): Promise<{ accessToken: string; profileType: ProfileType }> {
     const user = await this.userService.findByEmail(dto.email);
 
     if (!user || !user.isActive) {
@@ -25,17 +25,19 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
-    return { accessToken: this.signToken(user.id, user.role, user.mustChangePassword) };
+    const profileType = this.resolveProfileType(user.role);
+    return { accessToken: this.signToken(user.id, user.role, user.mustChangePassword), profileType };
   }
 
-  async changePassword(userId: string, newPassword: string): Promise<{ accessToken: string }> {
+  async changePassword(userId: string, newPassword: string): Promise<{ accessToken: string; profileType: ProfileType }> {
     const user = await this.userService.findById(userId);
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
     const hash = await bcrypt.hash(newPassword, 10);
     await this.userService.updatePassword(userId, hash);
 
-    return { accessToken: this.signToken(userId, user.role, false) };
+    const profileType = this.resolveProfileType(user.role);
+    return { accessToken: this.signToken(userId, user.role, false), profileType };
   }
 
   private signToken(userId: string, role: Role, mustChangePassword: boolean): string {

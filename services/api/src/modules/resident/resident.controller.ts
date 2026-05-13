@@ -21,15 +21,18 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { Role } from '@fonte/types';
+import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { DocumentTemplateService } from '../document-template/document-template.service';
 import { CreateResidentDto } from './dto/create-resident.dto';
+import { GenerateAccessDto } from './dto/generate-access.dto';
+import { ResetResidentPasswordDto } from './dto/reset-resident-password.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
 import { ResidentAttachment } from './resident-attachment.entity';
 import { ResidentDocument } from './resident-document.entity';
-import { ResidentDocumentView } from './resident.service';
+import { ResidentDocumentView, ResidentMeView } from './resident.service';
 import { Resident } from './resident.entity';
 import { ResidentService } from './resident.service';
 
@@ -71,6 +74,12 @@ export class ResidentController {
     return this.residentService.findAll();
   }
 
+  @Get('me')
+  @Roles(Role.RESIDENT)
+  getMe(@CurrentUser() user: AuthenticatedUser): Promise<ResidentMeView> {
+    return this.residentService.findMe(user.userId);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
   findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Resident> {
@@ -97,6 +106,25 @@ export class ResidentController {
   @Roles(Role.ADMIN)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.residentService.remove(id);
+  }
+
+  @Post(':id/access')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  generateAccess(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: GenerateAccessDto,
+  ): Promise<Resident> {
+    return this.residentService.generateAccess(id, dto.email, dto.password);
+  }
+
+  @Post(':id/access/reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  resetPassword(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ResetResidentPasswordDto,
+  ): Promise<void> {
+    return this.residentService.resetPassword(id, dto.password);
   }
 
   @Post(':id/photo')

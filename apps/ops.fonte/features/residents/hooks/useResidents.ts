@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 
@@ -34,6 +34,13 @@ export function useResidentRelatives(
     queryKey: queryKeys.relatives.byResident(residentId!),
     queryFn: () => api.relatives.listByResident(residentId!),
     enabled: (options?.enabled ?? true) && !!residentId,
+  });
+}
+
+export function useResetResidentPassword(residentId: string) {
+  return useMutation({
+    mutationFn: (password: string) =>
+      api.residents.resetPassword(residentId, { password }),
   });
 }
 

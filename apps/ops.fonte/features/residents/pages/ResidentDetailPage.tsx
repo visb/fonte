@@ -17,6 +17,7 @@ import {
   useResidentAttachments,
 } from '../hooks/useResidents';
 import { ChangeMinistryModal } from '../components/ChangeMinistryModal';
+import { ResetResidentPasswordModal } from '../components/ResetResidentPasswordModal';
 import { resolveAssetUrl } from '@/lib/api';
 
 const TABS = ['Visão Geral', 'Acompanhamento', 'Familiares', 'Anexos'] as const;
@@ -50,6 +51,7 @@ export function ResidentDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('Visão Geral');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [ministryModalOpen, setMinistryModalOpen] = useState(false);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
 
   const { data: resident, isLoading, refetch } = useResidentById(id);
 
@@ -166,6 +168,26 @@ export function ResidentDetailPage() {
                 label="Medicação contínua"
                 value={resident.continuousMedication}
               />
+
+              <SectionLabel>Acesso Digital</SectionLabel>
+              <View className="py-2.5 border-b border-gray-100 flex-row items-center">
+                {resident.userId ? (
+                  <>
+                    <Text className="text-sm text-gray-500 w-36">Status</Text>
+                    <Text className="text-sm text-gray-900 flex-1">Ativo</Text>
+                    <TouchableOpacity
+                      onPress={() => setResetPasswordOpen(true)}
+                      className="ml-2"
+                    >
+                      <Text className="text-sm text-blue-600 font-medium">
+                        Resetar senha
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <Text className="text-sm text-gray-400">Sem acesso gerado (use o adm)</Text>
+                )}
+              </View>
             </View>
           )}
 
@@ -293,6 +315,14 @@ export function ResidentDetailPage() {
           residentId={id!}
           houseId={resident.houseId}
           currentMinistryId={resident.ministryId}
+        />
+      )}
+      {resident.userId && (
+        <ResetResidentPasswordModal
+          visible={resetPasswordOpen}
+          onClose={() => setResetPasswordOpen(false)}
+          residentId={id!}
+          residentName={resident.name}
         />
       )}
     </>

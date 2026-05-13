@@ -2,16 +2,17 @@ import { Tabs, router } from "expo-router";
 import { useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
+import { UsageTimerProvider } from "@/lib/UsageTimerContext";
 
 export default function AppLayout() {
-  const { token, isLoading, staff } = useAuth();
+  const { token, isLoading, staff, isResident } = useAuth();
   const isSupportGroupServant = !!staff && !staff.houseId;
 
   useEffect(() => {
     if (!isLoading && !token) router.replace("/(auth)/login");
   }, [token, isLoading]);
 
-  return (
+  const tabs = (
     <Tabs
       screenOptions={{
         headerShown: true,
@@ -33,7 +34,17 @@ export default function AppLayout() {
         options={{
           title: "Início",
           headerShown: false,
-          href: isSupportGroupServant ? null : undefined,
+          href: (isSupportGroupServant || isResident) ? null : undefined,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="resident-home"
+        options={{
+          title: "Início",
+          href: isResident ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -44,7 +55,7 @@ export default function AppLayout() {
         options={{
           title: "Filhos",
           headerShown: false,
-          href: isSupportGroupServant ? null : undefined,
+          href: (isSupportGroupServant || isResident) ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),
@@ -69,7 +80,7 @@ export default function AppLayout() {
         options={{
           title: "Ministérios",
           headerShown: false,
-          href: isSupportGroupServant ? null : undefined,
+          href: (isSupportGroupServant || isResident) ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-circle-outline" size={size} color={color} />
           ),
@@ -84,7 +95,7 @@ export default function AppLayout() {
         options={{
           title: "Dispensa",
           headerShown: false,
-          href: isSupportGroupServant ? null : undefined,
+          href: (isSupportGroupServant || isResident) ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cube-outline" size={size} color={color} />
           ),
@@ -105,6 +116,42 @@ export default function AppLayout() {
           tabPress: () => router.navigate("/(app)/support-groups" as any),
         }}
       />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: "Mensagens",
+          headerShown: false,
+          href: isSupportGroupServant ? null : undefined,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles-outline" size={size} color={color} />
+          ),
+        }}
+        listeners={{
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tabPress: () => router.navigate("/(app)/messages" as any),
+        }}
+      />
+      <Tabs.Screen
+        name="wishlist"
+        options={{
+          title: "Pedidos",
+          headerShown: false,
+          href: isSupportGroupServant ? null : undefined,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="gift-outline" size={size} color={color} />
+          ),
+        }}
+        listeners={{
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tabPress: () => router.navigate("/(app)/wishlist" as any),
+        }}
+      />
     </Tabs>
   );
+
+  if (isResident) {
+    return <UsageTimerProvider>{tabs}</UsageTimerProvider>;
+  }
+
+  return tabs;
 }

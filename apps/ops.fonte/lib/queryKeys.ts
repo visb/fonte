@@ -33,4 +33,14 @@ export const queryKeys = {
     meetings: (groupId: string) => ['support-group-meetings', groupId] as const,
     meetingDetail: (id: string) => ['support-group-meeting', id] as const,
   },
+  messages: {
+    conversations: ['messages-conversations'] as const,
+    myConversations: ['messages-my-conversations'] as const,
+    thread: (residentId: string, relativeId: string) => ['messages-thread', residentId, relativeId] as const,
+    pending: ['messages-pending'] as const,
+  },
+  wishlist: {
+    items: (residentId: string) => ['wishlist', residentId] as const,
+    pending: ['wishlist-pending'] as const,
+  },
 } as const;

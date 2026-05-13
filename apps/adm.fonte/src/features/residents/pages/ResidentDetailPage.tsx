@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   ArrowLeft, ChevronDown, Download, ExternalLink, FileText,
-  Loader2, Paperclip, Pencil, Phone, Plus, Trash2, Upload, User,
+  KeyRound, Loader2, Paperclip, Pencil, Phone, Plus, Trash2, Upload, User,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Gender, MaritalStatus } from '@fonte/types';
@@ -33,6 +33,8 @@ import {
   useResidentById, useResidentRelatives, useAddRelative, useDeleteRelative,
   useResidentDocuments, useResidentAttachments, useAddAttachment, useDeleteAttachment, useUploadSignedDocument,
 } from '../hooks/useResidents';
+import { GenerateResidentAccessDialog } from '../components/GenerateResidentAccessDialog';
+import { ResetResidentPasswordDialog } from '../components/ResetResidentPasswordDialog';
 import { useDocumentTemplates } from '@/features/settings/hooks/useDocumentTemplates';
 
 import type { Relative, DocumentTemplate, ResidentDocument, ResidentAttachment } from '@fonte/api-client';
@@ -117,6 +119,8 @@ export function ResidentDetailPage() {
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [addRelativeOpen, setAddRelativeOpen] = useState(false);
   const [deleteRelativeTarget, setDeleteRelativeTarget] = useState<Relative | null>(null);
+  const [generateAccessOpen, setGenerateAccessOpen] = useState(false);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
     useForm<RelativeFormData>({ resolver: zodResolver(relativeSchema) });
@@ -247,6 +251,38 @@ export function ResidentDetailPage() {
           <InfoGrid>
             <InfoRow label="Investimento familiar" value={val(resident.familyInvestment)} full />
           </InfoGrid>
+
+          <SectionTitle>Acesso Digital</SectionTitle>
+          <div className="flex items-center justify-between py-2">
+            {resident.userId ? (
+              <>
+                <div className="text-sm">
+                  <span className="text-muted-foreground">E-mail: </span>
+                  <span>{resident.user?.email ?? '—'}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setResetPasswordOpen(true)}
+                >
+                  <KeyRound size={14} className="mr-2" />
+                  Resetar Senha
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">Sem acesso gerado.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setGenerateAccessOpen(true)}
+                >
+                  <KeyRound size={14} className="mr-2" />
+                  Gerar Acesso
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -368,6 +404,17 @@ export function ResidentDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <GenerateResidentAccessDialog
+        open={generateAccessOpen}
+        onClose={() => setGenerateAccessOpen(false)}
+        resident={resident ? { id: resident.id, name: resident.name } : null}
+      />
+      <ResetResidentPasswordDialog
+        open={resetPasswordOpen}
+        onClose={() => setResetPasswordOpen(false)}
+        resident={resident ? { id: resident.id, name: resident.name } : null}
+      />
     </div>
   );
 }

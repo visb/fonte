@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
-import type { CreateResidentInput, UpdateResidentInput } from '@fonte/api-client';
+import type { CreateResidentInput, GenerateResidentAccessInput, UpdateResidentInput } from '@fonte/api-client';
 
 export function useResidents() {
   return useQuery({
@@ -75,6 +75,24 @@ export function useDeleteResident() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.residents.all });
     },
+  });
+}
+
+export function useGenerateResidentAccess(residentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: GenerateResidentAccessInput) =>
+      api.residents.generateAccess(residentId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(residentId) });
+    },
+  });
+}
+
+export function useResetResidentPassword(residentId: string) {
+  return useMutation({
+    mutationFn: (password: string) =>
+      api.residents.resetPassword(residentId, { password }),
   });
 }
 

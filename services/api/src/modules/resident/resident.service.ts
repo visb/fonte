@@ -1,7 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+import { Role } from '@fonte/types';
 import { Resident } from './resident.entity';
+import { User } from '../user/user.entity';
 
 export interface ResidentDocumentView {
   id: string;
@@ -19,6 +22,14 @@ import { CreateResidentDto } from './dto/create-resident.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
 import { StorageService } from '../storage/storage.service';
 
+export interface ResidentMeView {
+  id: string;
+  name: string;
+  houseId: string;
+  userId: string;
+  photoUrl: string | null;
+}
+
 @Injectable()
 export class ResidentService {
   constructor(
@@ -28,12 +39,14 @@ export class ResidentService {
     private docRepository: Repository<ResidentDocument>,
     @InjectRepository(ResidentAttachment)
     private attachmentRepository: Repository<ResidentAttachment>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
     private storageService: StorageService,
   ) {}
 
   findAll(): Promise<Resident[]> {
     return this.residentRepository.find({
-      relations: ['house', 'ministry'],
+      relations: ['house', 'ministry', 'user'],
       order: { name: 'ASC' },
     });
   }
@@ -41,7 +54,7 @@ export class ResidentService {
   async findOne(id: string): Promise<Resident> {
     const resident = await this.residentRepository.findOne({
       where: { id },
-      relations: ['house', 'ministry'],
+      relations: ['house', 'ministry', 'user'],
     });
     if (!resident) throw new NotFoundException(`Resident ${id} not found`);
     return resident;
@@ -61,6 +74,52 @@ export class ResidentService {
   async remove(id: string): Promise<void> {
     await this.findOne(id);
     await this.residentRepository.softDelete(id);
+  }
+
+  async findMe(userId: string): Promise<ResidentMeView> {
+    const resident = await this.residentRepository.findOne({
+      where: { userId },
+      relations: ['house'],
+    });
+    if (!resident) throw new NotFoundException('Perfil de interno não encontrado');
+    return {
+      id: resident.id,
+      name: resident.name,
+      houseId: resident.houseId,
+      userId: resident.userId!,
+      photoUrl: resident.photoUrl,
+    };
+  }
+
+  async generateAccess(id: string, email: string, password: string): Promise<Resident> {
+    const resident = await this.findOne(id);
+    if (resident.userId) throw new ConflictException('Acesso já gerado para este interno');
+
+    const existing = await this.userRepository.findOne({ where: { email } });
+    if (existing) throw new ConflictException('E-mail já cadastrado');
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = this.userRepository.create({
+      email,
+      passwordHash,
+      role: Role.RESIDENT,
+      mustChangePassword: true,
+    });
+    const savedUser = await this.userRepository.save(user);
+    await this.residentRepository.update(id, { userId: savedUser.id });
+    return this.findOne(id);
+  }
+
+  async resetPassword(id: string, password: string): Promise<void> {
+    const resident = await this.residentRepository.findOne({
+      where: { id },
+      relations: ['user'],
+    });
+    if (!resident) throw new NotFoundException(`Resident ${id} not found`);
+    if (!resident.userId || !resident.user) throw new NotFoundException('Acesso não gerado para este interno');
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await this.userRepository.update(resident.userId, { passwordHash, mustChangePassword: true });
   }
 
   async uploadPhoto(residentId: string, file: Express.Multer.File): Promise<Resident> {

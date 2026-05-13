@@ -1,14 +1,17 @@
 import axios from 'axios';
 import { createAuthModule } from './modules/auth.js';
 import { createResidentsModule } from './modules/residents.js';
+import { createResidentSessionsModule } from './modules/resident-sessions.js';
 import { createStaffModule } from './modules/staff.js';
 import { createIncidentsModule } from './modules/incidents.js';
 import { createStoreroomModule } from './modules/storeroom.js';
 import { createHousesModule } from './modules/houses.js';
 import { createMinistriesModule } from './modules/ministries.js';
+import { createMessagesModule } from './modules/messages.js';
 import { createRelativesModule } from './modules/relatives.js';
 import { createDocumentTemplatesModule } from './modules/document-templates.js';
 import { createSupportGroupsModule } from './modules/support-groups.js';
+import { createWishlistModule } from './modules/wishlist.js';
 
 export interface ApiClientConfig {
   baseURL: string;
@@ -39,14 +42,17 @@ export function createApiClient(config: ApiClientConfig) {
   return {
     auth: createAuthModule(http),
     residents: createResidentsModule(http),
+    residentSessions: createResidentSessionsModule(http),
     staff: createStaffModule(http),
     incidents: createIncidentsModule(http),
     storeroom: createStoreroomModule(http),
     houses: createHousesModule(http),
     ministries: createMinistriesModule(http),
+    messages: createMessagesModule(http),
     relatives: createRelativesModule(http),
     documentTemplates: createDocumentTemplatesModule(http),
     supportGroups: createSupportGroupsModule(http),
+    wishlist: createWishlistModule(http),
     photoUrl: (path: string | null | undefined): string | null => {
       if (!path) return null;
       if (path.startsWith('http://') || path.startsWith('https://')) return path;

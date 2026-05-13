@@ -29,6 +29,11 @@
 | Grupos de apoio (backend) | `services/api/src/modules/support-group/` |
 | Grupos de apoio (adm) | `apps/adm.fonte/src/features/support-groups/` |
 | Grupos de apoio (ops checkin) | `apps/ops.fonte/features/support-groups/` |
+| Acesso de resident (gerar/resetar senha) | `apps/adm.fonte/src/features/residents/components/GenerateResidentAccessDialog.tsx` |
+| Sessão/timer de uso de resident | `services/api/src/modules/resident-session/` |
+| Mensagens entre residents e familiares | `services/api/src/modules/message/`, `apps/ops.fonte/features/messages/` |
+| Lista de pedidos (wishlist) | `services/api/src/modules/wishlist/`, `apps/ops.fonte/features/wishlist/` |
+| Timer limitado no ops.fonte | `apps/ops.fonte/lib/UsageTimerContext.tsx`, `apps/ops.fonte/components/TimeLimitedScreen.tsx` |
 
 ## Fluxo de dependência
 

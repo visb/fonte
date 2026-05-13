@@ -15,7 +15,7 @@ Arquivos de entrada:
 
 Módulos atuais em `src/app.module.ts`:
 
-- `auth`, `user`, `house`, `staff`, `resident`, `relative`, `incident`, `ministry`, `storeroom`, `document-template`, `storage`.
+- `auth`, `user`, `house`, `staff`, `resident`, `relative`, `incident`, `ministry`, `storeroom`, `document-template`, `storage`, `support-group`, `resident-session`, `message`, `wishlist`.
 
 ## Padrão de módulo
 
@@ -44,6 +44,14 @@ Observação: `CLAUDE.md` define a regra arquitetural de não acessar banco fora
 - Migrations ficam em `services/api/src/database/migrations`.
 - Não edite migrations antigas já existentes para mudar comportamento; crie uma nova migration.
 - Execute migrations com os scripts do package `api` ou com `pnpm --filter api`.
+
+## Resident — acesso e módulos
+
+- `Resident.userId` é nullable; preenchido quando ADMIN/COORDINATOR gera acesso via `POST /residents/:id/access`.
+- O JWT de resident carrega `role: RESIDENT` e `profileType: RESIDENT`.
+- Módulo `resident-session`: rastreia uso diário do resident em segundos (`resident_usage_sessions`). Heartbeat via `POST /resident-sessions/heartbeat` é atômico (upsert SQL com `LEAST`) e retorna o total atualizado — suporta múltiplos devices simultâneos sem race condition.
+- Módulo `message`: mensagens resident↔familiar com fluxo de moderação. Mensagens de resident nascem como `PENDING_APPROVAL`; servant aprova/rejeita.
+- Módulo `wishlist`: lista de pedidos para visita. Itens criados por resident nascem como `PENDING_APPROVAL`. Rejeição suporta motivo opcional (`rejection_reason`). Remoção de item aprovado vira `isRemovalRequested = true` até servant aprovar (soft delete).
 
 ## Regras críticas de domínio
 

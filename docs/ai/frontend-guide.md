@@ -51,6 +51,21 @@ Padrões:
 - Preserve o fluxo de senha obrigatória quando tocar em login/troca de senha.
 - Use o cliente compartilhado para manter paridade com `adm.fonte`.
 
+### Modo Resident no ops.fonte
+
+Residents (role `RESIDENT`) fazem login no ops.fonte com acesso restrito:
+
+- `lib/auth.tsx` detecta `profileType: RESIDENT` na resposta de login e busca `api.residents.me()` em vez de `api.staff.me()`. O estado `AuthContext` expõe `resident: ResidentMe | null` e `isResident: boolean`.
+- `app/(app)/_layout.tsx` oculta todas as tabs normais para residents (`href: null`), exibindo apenas: **Início** (`resident-home`), **Mensagens** e **Pedidos**.
+- Para residents o layout envolve as tabs com `UsageTimerProvider` (`lib/UsageTimerContext.tsx`), que:
+  - Busca `getToday()` uma única vez no mount (sem re-fetch por navegação entre telas).
+  - Usa `Date.now()` para medir tempo real — sem drift de `setInterval`.
+  - Envia heartbeat a cada 10 s com os segundos decorridos; o backend retorna o total acumulado (incluindo outros devices) e o contexto sincroniza o estado local.
+  - Faz resync completo via `getToday()` a cada 60 s para pegar uso de outros devices.
+  - Flush automático ao navegar para fora das telas cronometradas.
+- `components/TimeLimitedScreen.tsx` consome `useUsageTimerContext()` (não cria timer próprio). Exibe banner de countdown e bloqueia a tela quando limite atingido.
+- Telas de Mensagens e Pedidos envolvem seu conteúdo em `TimeLimitedScreen` quando `isResident`. A tela Início (`resident-home`) fica fora — navegar para ela para o timer.
+
 ## Tipos compartilhados
 
 `packages/types/src/index.ts` é o contrato comum. Ao alterar tipos:

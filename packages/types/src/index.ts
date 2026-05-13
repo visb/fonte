@@ -1,3 +1,26 @@
+// ─── Resident Session ─────────────────────────────────────────────────────────
+
+export interface ResidentUsageSession {
+  secondsUsed: number;
+  limitSeconds: number;
+}
+
+// ─── Messages ─────────────────────────────────────────────────────────────────
+
+export enum MessageStatus {
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
+// ─── Wishlist ─────────────────────────────────────────────────────────────────
+
+export enum WishlistStatus {
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
 // ─── Support Groups ───────────────────────────────────────────────────────────
 
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;

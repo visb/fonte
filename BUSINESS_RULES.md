@@ -98,6 +98,42 @@ Para registrar alta:
 
 ---
 
+## 8.1. Acesso de Resident no ops.fonte
+
+- Residents podem fazer login no ops.fonte com email + senha
+- Acesso gerado manualmente por ADMIN ou COORDINATOR no adm.fonte
+- Senha pode ser resetada por ADMIN, COORDINATOR ou OPERATOR
+- Residents só têm acesso a: Módulo Mensagens e Módulo Lista de Pedidos
+- Limite diário de 1200 segundos (20 min) por interno para uso destes módulos
+- Timer exibido no topo das telas; acesso bloqueado quando limite é atingido
+- Limite reseta automaticamente à meia-noite (baseado em data)
+- Apenas ADMIN e COORDINATOR podem resetar o timer manualmente
+
+---
+
+## 8.2. Módulo Mensagens
+
+- Servos podem conversar com familiares de todos os filhos da casa
+- Residentes podem conversar apenas com seus próprios familiares
+- Mensagens enviadas por residents têm status PENDING_APPROVAL até servo aprovar
+- Mensagens enviadas por servos têm status APPROVED automaticamente
+- Servos visualizam painel de moderação com mensagens pendentes
+- Cada conversa é uma thread por par (resident, familiar)
+
+---
+
+## 8.3. Módulo Lista de Pedidos
+
+- Residents gerenciam lista de itens desejados para visita familiar
+- Items adicionados/removidos por resident ficam em PENDING_APPROVAL
+- Servant aprova (torna visível para família) ou rejeita cada item; ao rejeitar pode informar motivo (texto livre, opcional)
+- Remoção: resident solicita; servant aprova a remoção (soft delete)
+- Servants visualizam painel de moderação com todas as listas pendentes
+- Resident visualiza seus itens separados em abas: Aprovados, Pendentes, Recusados
+- Motivo de recusa exibido ao resident na aba Recusados quando informado
+
+---
+
 ## 9. User e Acesso
 
 ### Modelo de identidade

@@ -2,7 +2,10 @@ import type {
   ResidentStatus,
   Gender,
   MaritalStatus,
+  MessageStatus,
+  ProfileType,
   Role,
+  WishlistStatus,
   IncidentSeverity,
   MovementType,
 } from '@fonte/types';
@@ -16,6 +19,7 @@ export interface LoginInput {
 
 export interface LoginResponse {
   accessToken: string;
+  profileType: ProfileType;
 }
 
 export interface ChangePasswordInput {
@@ -133,6 +137,8 @@ export interface Resident {
   id: string;
   name: string;
   status: ResidentStatus;
+  userId: string | null;
+  user: { email: string } | null;
   birthDate: string | null;
   cpf: string | null;
   rg: string | null;
@@ -187,6 +193,23 @@ export interface CreateResidentInput {
 }
 
 export type UpdateResidentInput = Partial<CreateResidentInput>;
+
+export interface ResidentMe {
+  id: string;
+  name: string;
+  houseId: string;
+  userId: string;
+  photoUrl: string | null;
+}
+
+export interface GenerateResidentAccessInput {
+  email: string;
+  password: string;
+}
+
+export interface ResetResidentPasswordInput {
+  password: string;
+}
 
 export interface ResidentDocument {
   id: string;
@@ -424,4 +447,72 @@ export interface UpdateDocumentTemplateInput {
   name?: string;
   content?: string;
   isRequired?: boolean;
+}
+
+// ─── Resident Session ─────────────────────────────────────────────────────────
+
+export interface UsageSessionToday {
+  secondsUsed: number;
+  limitSeconds: number;
+}
+
+// ─── Messages ─────────────────────────────────────────────────────────────────
+
+export interface Message {
+  id: string;
+  residentId: string;
+  relativeId: string;
+  senderUserId: string;
+  senderName: string;
+  content: string;
+  status: MessageStatus;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  createdAt: string;
+}
+
+export interface Conversation {
+  residentId: string;
+  residentName: string;
+  relativeId: string;
+  relativeName: string;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+  pendingCount: number;
+}
+
+export interface SendMessageInput {
+  residentId: string;
+  relativeId: string;
+  content: string;
+}
+
+// ─── Wishlist ─────────────────────────────────────────────────────────────────
+
+export interface WishlistItem {
+  id: string;
+  residentId: string;
+  description: string;
+  quantity: number;
+  status: WishlistStatus;
+  isRemovalRequested: boolean;
+  rejectionReason: string | null;
+  createdByUserId: string;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AddWishlistItemInput {
+  description: string;
+  quantity?: number;
+}
+
+export interface RejectWishlistItemInput {
+  reason?: string;
+}
+
+export interface WishlistPendingItem extends WishlistItem {
+  residentName: string;
 }

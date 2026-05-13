@@ -18,6 +18,9 @@ import { StoreroomModule } from './modules/storeroom/storeroom.module';
 import { DocumentTemplateModule } from './modules/document-template/document-template.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { SupportGroupModule } from './modules/support-group/support-group.module';
+import { ResidentSessionModule } from './modules/resident-session/resident-session.module';
+import { MessageModule } from './modules/message/message.module';
+import { WishlistModule } from './modules/wishlist/wishlist.module';
 
 @Module({
   imports: [
@@ -39,6 +42,9 @@ import { SupportGroupModule } from './modules/support-group/support-group.module
     DocumentTemplateModule,
     StorageModule,
     SupportGroupModule,
+    ResidentSessionModule,
+    MessageModule,
+    WishlistModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },

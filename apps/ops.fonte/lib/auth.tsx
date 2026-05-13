@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { StaffMe } from '@fonte/api-client';
+import type { ResidentMe, StaffMe } from '@fonte/api-client';
+import { ProfileType } from '@fonte/types';
 import { api } from './api';
 
 export class MustChangePasswordError extends Error {
@@ -13,10 +14,12 @@ export class MustChangePasswordError extends Error {
 interface AuthState {
   token: string | null;
   staff: StaffMe | null;
+  resident: ResidentMe | null;
   isLoading: boolean;
 }
 
 interface AuthContextValue extends AuthState {
+  isResident: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
@@ -25,32 +28,51 @@ interface AuthContextValue extends AuthState {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>({ token: null, staff: null, isLoading: true });
+  const [state, setState] = useState<AuthState>({
+    token: null,
+    staff: null,
+    resident: null,
+    isLoading: true,
+  });
 
   useEffect(() => {
-    Promise.all([AsyncStorage.getItem('token'), AsyncStorage.getItem('staff')])
-      .then(([token, staffJson]) => {
+    Promise.all([
+      AsyncStorage.getItem('token'),
+      AsyncStorage.getItem('staff'),
+      AsyncStorage.getItem('resident'),
+    ])
+      .then(([token, staffJson, residentJson]) => {
         setState({
           token,
           staff: staffJson ? (JSON.parse(staffJson) as StaffMe) : null,
+          resident: residentJson ? (JSON.parse(residentJson) as ResidentMe) : null,
           isLoading: false,
         });
       })
       .catch(() => {
-        setState({ token: null, staff: null, isLoading: false });
+        setState({ token: null, staff: null, resident: null, isLoading: false });
       });
   }, []);
 
   async function login(email: string, password: string) {
-    const { accessToken } = await api.auth.login({ email, password });
+    const { accessToken, profileType } = await api.auth.login({ email, password });
     await AsyncStorage.setItem('token', accessToken);
 
     try {
-      const staff = await api.staff.me();
-      await AsyncStorage.setItem('staff', JSON.stringify(staff));
-      setState({ token: accessToken, staff, isLoading: false });
-    } catch (err: any) {
-      if (err?.response?.data?.error === 'MUST_CHANGE_PASSWORD') {
+      if (profileType === ProfileType.RESIDENT) {
+        const resident = await api.residents.me();
+        await AsyncStorage.setItem('resident', JSON.stringify(resident));
+        await AsyncStorage.removeItem('staff');
+        setState({ token: accessToken, staff: null, resident, isLoading: false });
+      } else {
+        const staff = await api.staff.me();
+        await AsyncStorage.setItem('staff', JSON.stringify(staff));
+        await AsyncStorage.removeItem('resident');
+        setState({ token: accessToken, staff, resident: null, isLoading: false });
+      }
+    } catch (err: unknown) {
+      const anyErr = err as { response?: { data?: { error?: string } } };
+      if (anyErr?.response?.data?.error === 'MUST_CHANGE_PASSWORD') {
         throw new MustChangePasswordError();
       }
       throw err;
@@ -58,21 +80,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function changePassword(newPassword: string) {
-    const { accessToken } = await api.auth.changePassword({ newPassword });
+    const { accessToken, profileType } = await api.auth.changePassword({ newPassword });
     await AsyncStorage.setItem('token', accessToken);
 
-    const staff = await api.staff.me();
-    await AsyncStorage.setItem('staff', JSON.stringify(staff));
-    setState({ token: accessToken, staff, isLoading: false });
+    if (profileType === ProfileType.RESIDENT) {
+      const resident = await api.residents.me();
+      await AsyncStorage.setItem('resident', JSON.stringify(resident));
+      setState((s) => ({ ...s, token: accessToken, resident, isLoading: false }));
+    } else {
+      const staff = await api.staff.me();
+      await AsyncStorage.setItem('staff', JSON.stringify(staff));
+      setState((s) => ({ ...s, token: accessToken, staff, isLoading: false }));
+    }
   }
 
   async function logout() {
-    await AsyncStorage.multiRemove(['token', 'staff']);
-    setState({ token: null, staff: null, isLoading: false });
+    await AsyncStorage.multiRemove(['token', 'staff', 'resident']);
+    setState({ token: null, staff: null, resident: null, isLoading: false });
   }
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, changePassword }}>
+    <AuthContext.Provider
+      value={{ ...state, isResident: !!state.resident && !state.staff, login, logout, changePassword }}
+    >
       {children}
     </AuthContext.Provider>
   );

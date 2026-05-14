@@ -71,7 +71,9 @@ export class StorageService implements OnModuleInit {
       );
       return `${this.publicBaseUrl}/${key}`;
     }
-    const dest = join(process.cwd(), "uploads", folder, filename);
+    const dir = join(process.cwd(), "uploads", folder);
+    await mkdir(dir, { recursive: true });
+    const dest = join(dir, filename);
     await writeFile(dest, buffer);
     return `/uploads/${folder}/${filename}`;
   }

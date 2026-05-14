@@ -4,7 +4,7 @@ import { queryKeys } from '@/lib/queryKeys';
 
 export function useHouseResidentsForMinistry(houseId: string | null | undefined) {
   return useQuery({
-    queryKey: ['house-residents-for-ministry', houseId!],
+    queryKey: queryKeys.ministries.houseResidents(houseId!),
     queryFn: () => api.houses.listResidents(houseId!),
     enabled: !!houseId,
   });
@@ -12,7 +12,7 @@ export function useHouseResidentsForMinistry(houseId: string | null | undefined)
 
 export function useHouseStaffForMinistry(houseId: string | null | undefined) {
   return useQuery({
-    queryKey: ['house-staff-for-ministry', houseId!],
+    queryKey: queryKeys.ministries.houseStaff(houseId!),
     queryFn: () => api.houses.listStaff(houseId!),
     enabled: !!houseId,
   });

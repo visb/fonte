@@ -56,7 +56,7 @@ pnpm test:api
 
 ---
 
-## Arquitetura dos frontends (adm.fonte e ops.fonte)
+## Arquitetura dos frontends (adm.fonte, ops.fonte e app.fonte)
 
 ### Estrutura feature-based
 
@@ -71,7 +71,7 @@ features/
     constants.ts ← labels, variantes, configs de exibição
 ```
 
-Páginas só importam hooks e componentes — nunca `useQuery`/`useMutation` diretamente.
+Páginas só importam hooks e componentes — nunca `useQuery`/`useMutation` ou `useForm` diretamente. Estado de formulário vive no dialog/componente, não na page.
 
 ### Query keys
 
@@ -101,7 +101,7 @@ Hooks que precisam de fetch condicional aceitam `options?: { enabled?: boolean }
 
 ### Formulários
 
-Todos os formulários usam `react-hook-form` + `zod`. Nunca `useState` manual para campos de form.
+Todos os formulários usam `react-hook-form` + `zod`. Nunca `useState` manual para campos de form. Isso inclui telas de autenticação (login, change-password).
 
 ```ts
 const schema = z.object({ name: z.string().min(1) });
@@ -118,7 +118,7 @@ Em React Native usar `Controller` para todos os inputs (TextInput não suporta `
 
 ### Erros de API
 
-Usar `getErrorMessage(error, fallback?)` de `src/lib/errors.ts` (adm) / `lib/errors.ts` (ops). Nunca fazer cast manual de `error` para extrair mensagem.
+Usar `getErrorMessage(error, fallback?)` de `src/lib/errors.ts` (adm) / `lib/errors.ts` (ops, app). Nunca fazer cast manual de `error` para extrair mensagem.
 
 ### Dialogs e modais
 
@@ -150,7 +150,7 @@ Componentes devem ter responsabilidade unica.
 Sempre usar os componentes compartilhados — nunca `ActivityIndicator` ou texto inline para loading/empty/error:
 
 - `adm.fonte`: `LoadingState`, `EmptyState`, `ErrorState` de `@/components/shared/`
-- `ops.fonte`: ainda inline (componentes compartilhados pendentes)
+- `ops.fonte` e `app.fonte`: componentes compartilhados pendentes — criar e adotar quando tocar esses apps
 
 ---
 

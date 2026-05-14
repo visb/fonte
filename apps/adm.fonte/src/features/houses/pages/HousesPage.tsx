@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Home, MapPin, Pencil, Phone, Plus, Trash2, User } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { House } from '@fonte/api-client';
@@ -11,16 +9,11 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
-import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { houseSchema, sanitizeHouseData, type HouseFormData } from '../constants';
-import { HouseFormFields } from '../components/HouseFormFields';
-import { useHouses, useCreateHouse, useUpdateHouse, useDeleteHouse } from '../hooks/useHouses';
-import { useStaff } from '@/features/staff/hooks/useStaff';
+import { HouseDialog } from '../components/HouseDialog';
+import { useHouses, useDeleteHouse } from '../hooks/useHouses';
 
 export function HousesPage() {
   const navigate = useNavigate();
@@ -28,57 +21,12 @@ export function HousesPage() {
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<House | null>(null);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
-    useForm<HouseFormData>({ resolver: zodResolver(houseSchema) });
-
   const { data: houses = [], isLoading, isError, refetch } = useHouses();
-
-  const { data: staffList = [] } = useStaff({ enabled: dialogOpen });
-
-  const createMutation = useCreateHouse();
-  const updateMutation = useUpdateHouse(editingHouse?.id ?? '');
   const deleteMutation = useDeleteHouse();
 
-  const emptyForm: HouseFormData = {
-    name: '', generalCapacity: undefined, staffCapacity: undefined,
-    address: '', city: '', state: '', coordinatorId: '', phone: '',
-  };
-
-  const openCreate = () => {
-    setEditingHouse(null);
-    reset(emptyForm);
-    setDialogOpen(true);
-  };
-
-  const openEdit = (house: House) => {
-    setEditingHouse(house);
-    reset({
-      name: house.name,
-      generalCapacity: house.generalCapacity ?? undefined,
-      staffCapacity: house.staffCapacity ?? undefined,
-      address: house.address ?? '',
-      city: house.city ?? '',
-      state: house.state ?? '',
-      coordinatorId: house.coordinatorId ?? '',
-      phone: house.phone ?? '',
-    });
-    setDialogOpen(true);
-  };
-
-  const closeDialog = () => {
-    setDialogOpen(false);
-    setEditingHouse(null);
-    reset(emptyForm);
-  };
-
-  const onSubmit = (data: HouseFormData) => {
-    const payload = sanitizeHouseData(data);
-    if (editingHouse) {
-      updateMutation.mutate(payload, { onSuccess: closeDialog });
-    } else {
-      createMutation.mutate(payload, { onSuccess: closeDialog });
-    }
-  };
+  const openCreate = () => { setEditingHouse(null); setDialogOpen(true); };
+  const openEdit = (house: House) => { setEditingHouse(house); setDialogOpen(true); };
+  const closeDialog = () => { setDialogOpen(false); setEditingHouse(null); };
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState onRetry={refetch} />;
@@ -173,22 +121,7 @@ export function HousesPage() {
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editingHouse ? 'Editar Casa' : 'Nova Casa'}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <HouseFormFields register={register} errors={errors} staffList={staffList} />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
-              <Button type="submit" disabled={isSubmitting || createMutation.isPending || updateMutation.isPending}>
-                {editingHouse ? 'Salvar' : 'Criar'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <HouseDialog open={dialogOpen} house={editingHouse} onClose={closeDialog} />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

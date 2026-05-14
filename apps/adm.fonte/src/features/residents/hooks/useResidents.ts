@@ -181,7 +181,7 @@ export function useGenerateRelativeAccess(relativeId: string) {
     mutationFn: (data: GenerateRelativeAccessInput) =>
       api.relatives.generateAccess(relativeId, data),
     onSuccess: (_data, _vars, _ctx) => {
-      queryClient.invalidateQueries({ queryKey: ['relatives'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.relativesAll });
     },
   });
 }

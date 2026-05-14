@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { useSupportGroupCheckin } from '../hooks/useCheckin';
+import { getErrorMessage } from '@/lib/errors';
 
 type ScanResult =
   | { kind: 'success'; groupName: string }
@@ -25,9 +26,7 @@ export function CheckinPage() {
       const res = await checkinMutation.mutateAsync(data);
       setResult({ kind: 'success', groupName: res.relativeName });
     } catch (err: unknown) {
-      const anyErr = err as { response?: { data?: { message?: string } } };
-      const msg = anyErr?.response?.data?.message ?? 'QR code inválido ou reunião não encontrada.';
-      setResult({ kind: 'error', message: typeof msg === 'string' ? msg : 'Erro ao registrar check-in.' });
+      setResult({ kind: 'error', message: getErrorMessage(err, 'QR code inválido ou reunião não encontrada.') });
     } finally {
       processingRef.current = false;
     }

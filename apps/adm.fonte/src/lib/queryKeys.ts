@@ -10,6 +10,7 @@ export const queryKeys = {
   residents: {
     all: ['residents'] as const,
     detail: (id: string) => ['residents', id] as const,
+    relativesAll: ['relatives'] as const,
     relatives: (id: string) => ['relatives', id] as const,
     documents: (id: string) => ['resident-documents', id] as const,
     attachments: (id: string) => ['resident-attachments', id] as const,

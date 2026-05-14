@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -188,6 +191,12 @@ export function DocumentTemplatesTab() {
   );
 }
 
+const templateEditorSchema = z.object({
+  name: z.string().min(1),
+  isRequired: z.boolean(),
+});
+type TemplateEditorFormData = z.infer<typeof templateEditorSchema>;
+
 function TemplateEditor({
   template,
   onSaved,
@@ -196,9 +205,16 @@ function TemplateEditor({
   onSaved: (updated: DocumentTemplate) => void;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
-  const [name, setName] = useState(template.name);
-  const [isRequired, setIsRequired] = useState(template.isRequired);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const { register, getValues, reset } = useForm<TemplateEditorFormData>({
+    resolver: zodResolver(templateEditorSchema),
+    defaultValues: { name: template.name, isRequired: template.isRequired },
+  });
+
+  useEffect(() => {
+    reset({ name: template.name, isRequired: template.isRequired });
+  }, [template.id, reset]);
 
   const updateMutation = useUpdateDocumentTemplate();
 
@@ -219,11 +235,12 @@ function TemplateEditor({
 
   const handleSave = useCallback(() => {
     if (!editor) return;
+    const { name, isRequired } = getValues();
     updateMutation.mutate(
       { id: template.id, data: { name, content: editor.getHTML(), isRequired } },
       { onSuccess: (updated) => onSaved(updated) },
     );
-  }, [editor, updateMutation, template.id, name, isRequired, onSaved]);
+  }, [editor, updateMutation, template.id, getValues, onSaved]);
 
   const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -250,14 +267,13 @@ function TemplateEditor({
       <div className="flex items-center gap-3">
         <div className="flex-1">
           <Label htmlFor="template-name" className="text-xs mb-1 block">Nome do template</Label>
-          <Input id="template-name" value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
+          <Input id="template-name" {...register('name')} className="h-8 text-sm" />
         </div>
         <div className="flex items-center gap-2 pt-5">
           <input
             id="is-required"
             type="checkbox"
-            checked={isRequired}
-            onChange={(e) => setIsRequired(e.target.checked)}
+            {...register('isRequired')}
             className="h-4 w-4 cursor-pointer"
           />
           <Label htmlFor="is-required" className="text-sm cursor-pointer whitespace-nowrap">
@@ -318,7 +334,7 @@ function TemplateEditor({
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={updateMutation.isPending || !name.trim()}>
+        <Button onClick={handleSave} disabled={updateMutation.isPending || !getValues('name').trim()}>
           {updateMutation.isPending ? "Salvando..." : "Salvar template"}
         </Button>
       </div>

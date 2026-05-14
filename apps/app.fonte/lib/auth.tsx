@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RelativeMe } from '@fonte/api-client';
 import { api } from './api';
+import { getApiErrorCode } from './errors';
 
 export class MustChangePasswordError extends Error {
   constructor() {
@@ -57,8 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem('relative', JSON.stringify(relative));
       setState({ token: accessToken, relative, isLoading: false });
     } catch (err: unknown) {
-      const anyErr = err as { response?: { data?: { error?: string } } };
-      if (anyErr?.response?.data?.error === 'MUST_CHANGE_PASSWORD') {
+      if (getApiErrorCode(err) === 'MUST_CHANGE_PASSWORD') {
         // Keep token in AsyncStorage so changePassword() can authenticate
         throw new MustChangePasswordError();
       }

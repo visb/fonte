@@ -103,12 +103,6 @@ export function MinistryDetailPage() {
     [allStaff, memberStaffIds, staffSearch],
   );
 
-  const allStaffForLeader = useMemo(
-    () =>
-      allStaff.filter((s) => s.name.toLowerCase().includes('')),
-    [allStaff],
-  );
-
   function handleCreateTask() {
     if (!newTaskTitle.trim()) return;
     createTask.mutate(
@@ -383,7 +377,7 @@ export function MinistryDetailPage() {
               >
                 <Text className="text-sm text-gray-500">— Sem líder</Text>
               </TouchableOpacity>
-              {allStaffForLeader.map((s) => (
+              {allStaff.map((s) => (
                 <TouchableOpacity
                   key={s.id}
                   className={`py-3 px-4 rounded-xl border ${

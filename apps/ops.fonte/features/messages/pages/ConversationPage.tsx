@@ -59,7 +59,6 @@ export function ConversationPage() {
   const { data: messages = [] } = useMessageThread(residentId, relativeId);
   const sendMutation = useSendMessage();
 
-  const myUserId = staff?.user?.email ? undefined : resident?.userId;
   const myUserIdFromStaff = staff ? undefined : resident?.userId;
 
   const handleSend = () => {

@@ -16,6 +16,7 @@ import { Stack } from 'expo-router';
 import type { SupportGroup, SupportGroupMeeting } from '@fonte/api-client';
 import { DAY_OF_WEEK_LABELS } from '@fonte/types';
 import { useAllMeetings, useCreateMeeting, useSupportGroups } from '../hooks/useSupportGroups';
+import { DatePickerModal } from '@/components/DatePickerModal';
 
 function nextMeetingDate(dayOfWeek: number): string {
   const today = new Date();
@@ -36,6 +37,7 @@ function isToday(dateStr: string): boolean {
 
 export function SupportGroupsPage() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<SupportGroup | null>(null);
   const [date, setDate] = useState('');
   const [notes, setNotes] = useState('');
@@ -197,12 +199,15 @@ export function SupportGroupsPage() {
 
               <View>
                 <Text className="text-sm font-medium text-gray-700 mb-1.5">Data *</Text>
-                <TextInput
-                  className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900"
-                  placeholder="AAAA-MM-DD"
-                  value={date}
-                  onChangeText={setDate}
-                />
+                <TouchableOpacity
+                  className="border border-gray-300 rounded-lg px-3 py-2.5 flex-row items-center justify-between"
+                  onPress={() => setDatePickerOpen(true)}
+                >
+                  <Text className={`text-sm ${date ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {date ? formatDate(date) : 'Selecionar data'}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={18} color="#6b7280" />
+                </TouchableOpacity>
               </View>
 
               <View>
@@ -241,6 +246,13 @@ export function SupportGroupsPage() {
           </View>
         </View>
       </Modal>
+
+      <DatePickerModal
+        visible={datePickerOpen}
+        value={date}
+        onClose={() => setDatePickerOpen(false)}
+        onChange={setDate}
+      />
     </>
   );
 }

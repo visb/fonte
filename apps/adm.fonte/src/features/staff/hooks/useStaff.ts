@@ -32,7 +32,14 @@ export function useCreateStaff() {
 export function useUpdateStaff(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: UpdateStaffInput) => api.staff.update(id, data),
+    mutationFn: async ({ data, photo }: { data: UpdateStaffInput; photo?: Blob | null }) => {
+      await api.staff.update(id, data);
+      if (photo) {
+        const fd = new window.FormData();
+        fd.append('file', photo, 'photo.jpg');
+        await api.staff.uploadPhoto(id, fd);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.staff.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.staff.detail(id) });

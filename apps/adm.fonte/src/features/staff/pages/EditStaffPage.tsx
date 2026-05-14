@@ -1,5 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { api } from '@/lib/api';
+import { AvatarUpload } from '@/components/AvatarUpload';
 import { useGoBack } from '@/lib/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -42,6 +44,7 @@ type FormData = z.infer<typeof schema>;
 export function EditStaffPage() {
   const { id } = useParams<{ id: string }>();
   const goBack = useGoBack('/staff');
+  const pendingPhotoRef = useRef<Blob | null>(null);
 
   const { data: houses = [] } = useHouses();
   const { data: supportGroups = [] } = useSupportGroups();
@@ -70,12 +73,15 @@ export function EditStaffPage() {
   const onSubmit = (data: FormData) => {
     updateMutation.mutate(
       {
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        houseId: data.servesInGroup ? null : (data.houseId || null),
-        supportGroupId: data.servesInGroup ? (data.supportGroupId || null) : null,
-        phone: data.phone || null,
+        data: {
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          houseId: data.servesInGroup ? null : (data.houseId || null),
+          supportGroupId: data.servesInGroup ? (data.supportGroupId || null) : null,
+          phone: data.phone || null,
+        },
+        photo: pendingPhotoRef.current,
       },
       { onSuccess: () => goBack() },
     );
@@ -99,6 +105,13 @@ export function EditStaffPage() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div className="flex justify-center pb-2">
+          <AvatarUpload
+            currentUrl={api.photoUrl(staff?.photoUrl ?? null)}
+            onBlobChange={(blob) => { pendingPhotoRef.current = blob; }}
+          />
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="name">Nome *</Label>
           <Input id="name" {...register('name')} />

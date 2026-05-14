@@ -38,6 +38,9 @@ export class Staff {
   @Column({ name: 'house_id', nullable: true, type: 'uuid' })
   houseId: string | null;
 
+  @Column({ name: 'photo_url', nullable: true, type: 'varchar' })
+  photoUrl: string | null;
+
   @ManyToOne(() => SupportGroup, { eager: false, nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'support_group_id' })
   supportGroup: SupportGroup | null;

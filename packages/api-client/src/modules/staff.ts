@@ -9,6 +9,10 @@ export function createStaffModule(http: AxiosInstance) {
     create: (data: CreateStaffInput) => http.post<Staff>('/staff', data).then((r) => r.data),
     update: (id: string, data: UpdateStaffInput) =>
       http.patch<Staff>(`/staff/${id}`, data).then((r) => r.data),
+    uploadPhoto: (id: string, formData: FormData) =>
+      http
+        .post<Staff>(`/staff/${id}/photo`, formData, { headers: { 'Content-Type': undefined } })
+        .then((r) => r.data),
     delete: (id: string) => http.delete(`/staff/${id}`),
   };
 }

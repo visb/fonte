@@ -1,16 +1,23 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   HttpCode,
   HttpStatus,
+  MaxFileSizeValidator,
   Param,
+  ParseFilePipe,
   ParseUUIDPipe,
   Patch,
   Post,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -20,6 +27,16 @@ import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { Staff } from './staff.entity';
 import { StaffService } from './staff.service';
+
+const photoOptions = {
+  storage: memoryStorage(),
+  fileFilter: (_req: unknown, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new BadRequestException('Apenas imagens são permitidas'), false);
+    }
+    cb(null, true);
+  },
+};
 
 @Controller('staff')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -47,6 +64,22 @@ export class StaffController {
   @Roles(Role.ADMIN)
   create(@Body() dto: CreateStaffDto): Promise<Staff> {
     return this.staffService.create(dto);
+  }
+
+  @Post(':id/photo')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  @UseInterceptors(FileInterceptor('file', photoOptions))
+  uploadPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
+        exceptionFactory: () => new BadRequestException('Arquivo muito grande: máximo 5 MB'),
+      }),
+    )
+    file: Express.Multer.File,
+  ): Promise<Staff> {
+    return this.staffService.uploadPhoto(id, file);
   }
 
   @Patch(':id')

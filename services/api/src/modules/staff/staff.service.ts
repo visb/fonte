@@ -10,6 +10,7 @@ import { Staff } from './staff.entity';
 import { User } from '../user/user.entity';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class StaffService {
@@ -18,6 +19,7 @@ export class StaffService {
     private staffRepository: Repository<Staff>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private storageService: StorageService,
   ) {}
 
   async findByUserId(userId: string): Promise<Staff> {
@@ -95,6 +97,17 @@ export class StaffService {
       await this.userRepository.update(staff.userId, userUpdates);
     }
 
+    return this.findOne(id);
+  }
+
+  async uploadPhoto(id: string, file: Express.Multer.File): Promise<Staff> {
+    const staff = await this.findOne(id);
+    if (staff.photoUrl) {
+      await this.storageService.delete(staff.photoUrl);
+    }
+    const filename = this.storageService.uniqueFilename(file.originalname);
+    const url = await this.storageService.upload('staff', filename, file.buffer, file.mimetype);
+    await this.staffRepository.update(id, { photoUrl: url });
     return this.findOne(id);
   }
 

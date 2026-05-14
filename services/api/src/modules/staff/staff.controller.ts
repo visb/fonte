@@ -6,9 +6,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  MaxFileSizeValidator,
   Param,
-  ParseFilePipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -28,15 +26,7 @@ import { UpdateStaffDto } from './dto/update-staff.dto';
 import { Staff } from './staff.entity';
 import { StaffService } from './staff.service';
 
-const photoOptions = {
-  storage: memoryStorage(),
-  fileFilter: (_req: unknown, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
-    if (!file.mimetype.startsWith('image/')) {
-      return cb(new BadRequestException('Apenas imagens são permitidas'), false);
-    }
-    cb(null, true);
-  },
-};
+const photoOptions = { storage: memoryStorage() };
 
 @Controller('staff')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -71,14 +61,11 @@ export class StaffController {
   @UseInterceptors(FileInterceptor('file', photoOptions))
   uploadPhoto(
     @Param('id', ParseUUIDPipe) id: string,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
-        exceptionFactory: () => new BadRequestException('Arquivo muito grande: máximo 5 MB'),
-      }),
-    )
-    file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File | undefined,
   ): Promise<Staff> {
+    if (!file) throw new BadRequestException('Nenhum arquivo enviado');
+    if (!file.mimetype.startsWith('image/')) throw new BadRequestException('Apenas imagens são permitidas');
+    if (file.size > 5 * 1024 * 1024) throw new BadRequestException('Arquivo muito grande: máximo 5 MB');
     return this.staffService.uploadPhoto(id, file);
   }
 

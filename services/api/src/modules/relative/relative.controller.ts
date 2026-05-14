@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -7,10 +8,15 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { Role } from '@fonte/types';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -19,8 +25,11 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateRelativeDto } from './dto/create-relative.dto';
 import { GenerateRelativeAccessDto } from './dto/generate-relative-access.dto';
 import { ResetRelativePasswordDto } from './dto/reset-relative-password.dto';
+import { UpdateRelativeMeDto } from './dto/update-relative-me.dto';
 import { Relative } from './relative.entity';
 import { RelativeMeView, RelativeService } from './relative.service';
+
+const photoOptions = { storage: memoryStorage() };
 
 @Controller('relatives')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -31,6 +40,28 @@ export class RelativeController {
   @Roles(Role.RELATIVE)
   findMe(@CurrentUser() user: AuthenticatedUser): Promise<RelativeMeView> {
     return this.relativeService.findMe(user.userId);
+  }
+
+  @Patch('me')
+  @Roles(Role.RELATIVE)
+  updateMe(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateRelativeMeDto,
+  ): Promise<RelativeMeView> {
+    return this.relativeService.updateMe(user.userId, dto);
+  }
+
+  @Post('me/photo')
+  @Roles(Role.RELATIVE)
+  @UseInterceptors(FileInterceptor('file', photoOptions))
+  uploadPhoto(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<RelativeMeView> {
+    if (!file) throw new BadRequestException('Nenhum arquivo enviado');
+    if (!file.mimetype.startsWith('image/')) throw new BadRequestException('Apenas imagens são permitidas');
+    if (file.size > 5 * 1024 * 1024) throw new BadRequestException('Arquivo muito grande: máximo 5 MB');
+    return this.relativeService.uploadPhoto(user.userId, file);
   }
 
   @Get()

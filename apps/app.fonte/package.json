@@ -22,6 +22,7 @@
     "expo-camera": "~16.0.0",
     "expo-constants": "~17.0.3",
     "expo-font": "~13.0.1",
+    "expo-image-picker": "^55.0.20",
     "expo-linking": "~7.0.3",
     "expo-router": "~4.0.9",
     "expo-splash-screen": "~0.29.13",

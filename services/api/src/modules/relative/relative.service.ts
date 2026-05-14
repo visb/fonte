@@ -5,14 +5,17 @@ import * as bcrypt from 'bcrypt';
 import { Role } from '@fonte/types';
 import { Relative } from './relative.entity';
 import { CreateRelativeDto } from './dto/create-relative.dto';
+import { UpdateRelativeMeDto } from './dto/update-relative-me.dto';
 import { Resident } from '../resident/resident.entity';
 import { User } from '../user/user.entity';
+import { StorageService } from '../storage/storage.service';
 
 export interface RelativeMeView {
   id: string;
   userId: string;
   name: string;
   phone: string | null;
+  photoUrl: string | null;
   relationship: string | null;
   residentId: string;
   residentName: string;
@@ -34,6 +37,7 @@ export class RelativeService {
     private residentRepository: Repository<Resident>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private storageService: StorageService,
   ) {}
 
   findByResident(residentId: string): Promise<Relative[]> {
@@ -59,6 +63,7 @@ export class RelativeService {
       userId: relative.userId!,
       name: relative.name,
       phone: relative.phone,
+      photoUrl: relative.photoUrl,
       relationship: relative.relationship,
       residentId: resident.id,
       residentName: resident.name,
@@ -70,6 +75,25 @@ export class RelativeService {
       coordinatorName: coordinator?.name ?? null,
       coordinatorPhone: coordinator?.phone ?? null,
     };
+  }
+
+  async updateMe(userId: string, dto: UpdateRelativeMeDto): Promise<RelativeMeView> {
+    const relative = await this.relativeRepository.findOne({ where: { userId } });
+    if (!relative) throw new NotFoundException('Perfil de familiar não encontrado');
+    await this.relativeRepository.update(relative.id, dto);
+    return this.findMe(userId);
+  }
+
+  async uploadPhoto(userId: string, file: Express.Multer.File): Promise<RelativeMeView> {
+    const relative = await this.relativeRepository.findOne({ where: { userId } });
+    if (!relative) throw new NotFoundException('Perfil de familiar não encontrado');
+    if (relative.photoUrl) {
+      await this.storageService.delete(relative.photoUrl);
+    }
+    const filename = this.storageService.uniqueFilename(file.originalname);
+    const url = await this.storageService.upload('relatives', filename, file.buffer, file.mimetype);
+    await this.relativeRepository.update(relative.id, { photoUrl: url });
+    return this.findMe(userId);
   }
 
   create(dto: CreateRelativeDto): Promise<Relative> {

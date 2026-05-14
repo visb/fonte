@@ -21,6 +21,7 @@ interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
+  refreshRelative: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -76,13 +77,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, token: accessToken, relative }));
   }
 
+  async function refreshRelative() {
+    const relative = await api.relatives.me();
+    await AsyncStorage.setItem('relative', JSON.stringify(relative));
+    setState((s) => ({ ...s, relative }));
+  }
+
   async function logout() {
     await AsyncStorage.multiRemove(['token', 'relative']);
     setState({ token: null, relative: null, isLoading: false });
   }
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, changePassword }}>
+    <AuthContext.Provider value={{ ...state, login, logout, changePassword, refreshRelative }}>
       {children}
     </AuthContext.Provider>
   );

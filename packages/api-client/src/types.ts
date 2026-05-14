@@ -371,6 +371,7 @@ export interface RelativeMe {
   userId: string;
   name: string;
   phone: string | null;
+  photoUrl: string | null;
   relationship: string | null;
   residentId: string;
   residentName: string;
@@ -381,6 +382,11 @@ export interface RelativeMe {
   housePhone: string | null;
   coordinatorName: string | null;
   coordinatorPhone: string | null;
+}
+
+export interface UpdateRelativeMeInput {
+  name?: string;
+  phone?: string | null;
 }
 
 export interface CreateRelativeInput {

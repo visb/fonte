@@ -1,5 +1,6 @@
 export const queryKeys = {
   residents: {
+    all: ['residents'] as const,
     byHouse: (houseId: string) => ['residents', houseId] as const,
     countByHouse: (houseId: string) => ['residents-count', houseId] as const,
     detail: (id: string) => ['resident', id] as const,

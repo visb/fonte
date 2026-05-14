@@ -17,9 +17,8 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import QRCodeGenerator from 'qrcode';
 import type { SupportGroupCheckin } from '@fonte/api-client';
-import { useAuth } from '@/lib/auth';
 import { useMeetingDetail, useAddCheckin, useRemoveCheckin } from '../hooks/useSupportGroups';
-import { useResidentsByHouse } from '@/features/residents/hooks/useResidents';
+import { useAllResidents } from '@/features/residents/hooks/useResidents';
 
 function formatDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-');
@@ -28,14 +27,13 @@ function formatDate(dateStr: string): string {
 
 export function MeetingDetailPage() {
   const { meetingId } = useLocalSearchParams<{ meetingId: string }>();
-  const { staff } = useAuth();
 
   const [qrVisible, setQrVisible] = useState(false);
   const [search, setSearch] = useState('');
   const qrRef = useRef<{ toDataURL: (cb: (data: string) => void) => void } | null>(null);
 
   const { data: meeting, isLoading } = useMeetingDetail(meetingId);
-  const { data: residents = [] } = useResidentsByHouse(staff?.houseId ?? undefined);
+  const { data: residents = [] } = useAllResidents();
   const addCheckin = useAddCheckin(meetingId ?? '');
   const removeCheckin = useRemoveCheckin(meetingId ?? '');
 

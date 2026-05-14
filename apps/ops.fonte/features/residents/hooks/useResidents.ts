@@ -2,6 +2,13 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 
+export function useAllResidents() {
+  return useQuery({
+    queryKey: queryKeys.residents.all,
+    queryFn: () => api.residents.list(),
+  });
+}
+
 export function useResidentsByHouse(houseId: string | null | undefined) {
   return useQuery({
     queryKey: queryKeys.residents.byHouse(houseId!),

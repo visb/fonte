@@ -101,6 +101,8 @@ export interface Staff {
   phone: string | null;
   houseId: string | null;
   house: { id: string; name: string } | null;
+  supportGroupId: string | null;
+  supportGroup: { id: string; name: string } | null;
   user: { email: string; role: Role };
 }
 
@@ -120,6 +122,7 @@ export interface CreateStaffInput {
   password: string;
   role: Role;
   houseId?: string | null;
+  supportGroupId?: string | null;
   phone?: string | null;
 }
 
@@ -127,6 +130,7 @@ export interface UpdateStaffInput {
   name?: string;
   phone?: string | null;
   houseId?: string | null;
+  supportGroupId?: string | null;
   email?: string;
   role?: Role;
   password?: string;

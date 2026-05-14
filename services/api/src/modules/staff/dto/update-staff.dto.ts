@@ -26,6 +26,11 @@ export class UpdateStaffDto {
   houseId?: string | null;
 
   @IsOptional()
+  @ValidateIf((o) => o.supportGroupId !== null)
+  @IsUUID()
+  supportGroupId?: string | null;
+
+  @IsOptional()
   @IsEmail()
   email?: string;
 

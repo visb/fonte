@@ -14,6 +14,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { maskPhone, withMask } from '@/features/residents/lib/masks';
 import { useUpdateStaff, useStaffById } from '../hooks/useStaff';
 import { useHouses } from '@/features/houses/hooks/useHouses';
+import { useSupportGroups } from '@/features/support-groups/hooks/useSupportGroups';
 
 const SELECT_CLASS =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
@@ -25,11 +26,16 @@ const schema = z
     role: z.enum([Role.ADMIN, Role.COORDINATOR, Role.OPERATOR]),
     servesInGroup: z.boolean(),
     houseId: z.string().optional().or(z.literal('')),
+    supportGroupId: z.string().optional().or(z.literal('')),
     phone: z.string().optional().or(z.literal('')),
   })
   .refine((d) => d.servesInGroup || !!d.houseId, {
     message: 'Casa é obrigatória para servos da casa',
     path: ['houseId'],
+  })
+  .refine((d) => !d.servesInGroup || !!d.supportGroupId, {
+    message: 'Grupo de apoio é obrigatório',
+    path: ['supportGroupId'],
   });
 type FormData = z.infer<typeof schema>;
 
@@ -38,6 +44,7 @@ export function EditStaffPage() {
   const goBack = useGoBack('/staff');
 
   const { data: houses = [] } = useHouses();
+  const { data: supportGroups = [] } = useSupportGroups();
   const { data: staff, isLoading } = useStaffById(id!);
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } =
@@ -51,6 +58,7 @@ export function EditStaffPage() {
         role: staff.user.role as FormData['role'],
         servesInGroup: !staff.houseId,
         houseId: staff.houseId ?? '',
+        supportGroupId: staff.supportGroupId ?? '',
         phone: staff.phone ?? '',
       });
     }
@@ -66,6 +74,7 @@ export function EditStaffPage() {
         email: data.email,
         role: data.role,
         houseId: data.servesInGroup ? null : (data.houseId || null),
+        supportGroupId: data.servesInGroup ? (data.supportGroupId || null) : null,
         phone: data.phone || null,
       },
       { onSuccess: () => goBack() },
@@ -118,7 +127,7 @@ export function EditStaffPage() {
           <div className="flex rounded-lg border border-input overflow-hidden">
             <button
               type="button"
-              onClick={() => setValue('servesInGroup', false)}
+              onClick={() => { setValue('servesInGroup', false); setValue('supportGroupId', ''); }}
               className={`flex-1 py-2 text-sm font-medium transition-colors ${!servesInGroup ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-accent'}`}
             >
               Serve na Casa
@@ -141,6 +150,17 @@ export function EditStaffPage() {
               {houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
             {errors.houseId && <p className="text-sm text-destructive">{errors.houseId.message}</p>}
+          </div>
+        )}
+
+        {servesInGroup && (
+          <div className="space-y-2">
+            <Label htmlFor="supportGroupId">Grupo de Apoio *</Label>
+            <select id="supportGroupId" {...register('supportGroupId')} className={SELECT_CLASS}>
+              <option value="">Selecione...</option>
+              {supportGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+            {errors.supportGroupId && <p className="text-sm text-destructive">{errors.supportGroupId.message}</p>}
           </div>
         )}
 

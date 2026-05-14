@@ -31,6 +31,11 @@ export class CreateStaffDto {
   houseId?: string | null;
 
   @IsOptional()
+  @ValidateIf((o) => o.supportGroupId !== null)
+  @IsUUID()
+  supportGroupId?: string | null;
+
+  @IsOptional()
   @IsString()
   phone?: string | null;
 }

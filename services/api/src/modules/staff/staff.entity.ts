@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { User } from '../user/user.entity';
 import { House } from '../house/house.entity';
+import { SupportGroup } from '../support-group/support-group.entity';
 
 @Entity('staff')
 export class Staff {
@@ -36,6 +37,13 @@ export class Staff {
 
   @Column({ name: 'house_id', nullable: true, type: 'uuid' })
   houseId: string | null;
+
+  @ManyToOne(() => SupportGroup, { eager: false, nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'support_group_id' })
+  supportGroup: SupportGroup | null;
+
+  @Column({ name: 'support_group_id', nullable: true, type: 'uuid' })
+  supportGroupId: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

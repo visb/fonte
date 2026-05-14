@@ -32,14 +32,14 @@ export class StaffService {
   findAll(): Promise<Staff[]> {
     return this.staffRepository.find({
       order: { name: 'ASC' },
-      relations: ['user', 'house'],
+      relations: ['user', 'house', 'supportGroup'],
     });
   }
 
   async findOne(id: string): Promise<Staff> {
     const staff = await this.staffRepository.findOne({
       where: { id },
-      relations: ['user', 'house'],
+      relations: ['user', 'house', 'supportGroup'],
     });
     if (!staff) throw new NotFoundException(`Staff ${id} not found`);
     return staff;
@@ -62,6 +62,7 @@ export class StaffService {
       name: dto.name,
       phone: dto.phone ?? null,
       houseId: dto.houseId ?? null,
+      supportGroupId: dto.supportGroupId ?? null,
       userId: savedUser.id,
     });
     return this.staffRepository.save(staff);

@@ -378,6 +378,7 @@ export interface RelativeMe {
   relationship: string | null;
   residentId: string;
   residentName: string;
+  residentPhotoUrl: string | null;
   houseId: string;
   houseName: string;
   houseAddress: string | null;

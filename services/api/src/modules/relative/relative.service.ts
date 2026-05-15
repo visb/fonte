@@ -19,6 +19,7 @@ export interface RelativeMeView {
   relationship: string | null;
   residentId: string;
   residentName: string;
+  residentPhotoUrl: string | null;
   houseId: string;
   houseName: string;
   houseAddress: string | null;
@@ -67,6 +68,7 @@ export class RelativeService {
       relationship: relative.relationship,
       residentId: resident.id,
       residentName: resident.name,
+      residentPhotoUrl: resident.photoUrl ?? null,
       houseId: house?.id ?? '',
       houseName: house?.name ?? '',
       houseAddress: house?.address ?? null,

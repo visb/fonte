@@ -27,11 +27,16 @@ function ResidentThreadItem() {
 
   return (
     <Pressable
-      onPress={() => router.push('/(app)/messages/resident' as never)}
+      onPress={() =>
+        router.push({
+          pathname: '/(app)/messages/resident' as never,
+          params: { partnerName: relative.residentName, partnerPhotoUrl: relative.residentPhotoUrl ?? '' },
+        } as never)
+      }
       className="bg-white border-b border-gray-100 px-4 py-3 flex-row items-center"
     >
-      <View className="w-10 h-10 rounded-full bg-violet-100 items-center justify-center mr-3">
-        <Ionicons name="person-outline" size={20} color="#4c1d95" />
+      <View className="mr-3">
+        <PartnerAvatar photoUrl={relative.residentPhotoUrl} fallbackColor="#ede9fe" />
       </View>
       <View className="flex-1 min-w-0">
         <Text className="text-sm font-semibold text-gray-900">{relative.residentName}</Text>

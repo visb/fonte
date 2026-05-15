@@ -21,6 +21,7 @@ export default function AppLayout() {
         tabBarActiveTintColor: '#fff',
         tabBarInactiveTintColor: INACTIVE,
         tabBarStyle: { backgroundColor: HEADER_BG, borderTopColor: HEADER_BG },
+        tabBarLabelPosition: 'below-icon',
         headerStyle: { backgroundColor: HEADER_BG, shadowColor: 'transparent' },
         headerTintColor: '#fff',
         headerTitleStyle: { fontWeight: '600' },

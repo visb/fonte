@@ -142,6 +142,16 @@ export default function AppLayout() {
           tabPress: () => router.navigate("/(app)/wishlist" as any),
         }}
       />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Perfil",
+          href: isSupportGroupServant ? null : undefined,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-circle-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 

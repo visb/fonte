@@ -16,6 +16,7 @@ export type {
   StaffMe,
   CreateStaffInput,
   UpdateStaffInput,
+  UpdateStaffMeInput,
   Resident,
   ResidentMe,
   GenerateResidentAccessInput,

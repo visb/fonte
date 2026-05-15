@@ -50,6 +50,10 @@ export function createResidentsModule(http: AxiosInstance) {
         })
         .then((r) => r.data),
     me: (): Promise<ResidentMe> => http.get<ResidentMe>('/residents/me').then((r) => r.data),
+    uploadPhotoMe: (formData: FormData): Promise<ResidentMe> =>
+      http
+        .post<ResidentMe>('/residents/me/photo', formData, { headers: { 'Content-Type': undefined } })
+        .then((r) => r.data),
     generateAccess: (id: string, data: GenerateResidentAccessInput): Promise<Resident> =>
       http.post<Resident>(`/residents/${id}/access`, data).then((r) => r.data),
     resetPassword: (id: string, data: ResetResidentPasswordInput): Promise<void> =>

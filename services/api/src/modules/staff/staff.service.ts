@@ -10,6 +10,7 @@ import { Staff } from './staff.entity';
 import { User } from '../user/user.entity';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
+import { UpdateStaffMeDto } from './dto/update-staff-me.dto';
 import { StorageService } from '../storage/storage.service';
 
 @Injectable()
@@ -109,6 +110,28 @@ export class StaffService {
     const url = await this.storageService.upload('staff', filename, file.buffer, file.mimetype);
     await this.staffRepository.update(id, { photoUrl: url });
     return this.findOne(id);
+  }
+
+  async updateMe(userId: string, dto: UpdateStaffMeDto): Promise<Staff> {
+    const staff = await this.findByUserId(userId);
+    const { email, ...staffFields } = dto;
+
+    if (Object.keys(staffFields).length) {
+      await this.staffRepository.update(staff.id, staffFields);
+    }
+
+    if (email !== undefined) {
+      const existing = await this.userRepository.findOne({ where: { email } });
+      if (existing && existing.id !== staff.userId) throw new ConflictException('E-mail já cadastrado');
+      await this.userRepository.update(staff.userId, { email });
+    }
+
+    return this.findByUserId(userId);
+  }
+
+  async uploadPhotoMe(userId: string, file: Express.Multer.File): Promise<Staff> {
+    const staff = await this.findByUserId(userId);
+    return this.uploadPhoto(staff.id, file);
   }
 
   async remove(id: string): Promise<void> {

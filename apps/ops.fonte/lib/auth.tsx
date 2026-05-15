@@ -23,6 +23,8 @@ interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
+  refreshStaff: () => Promise<void>;
+  refreshResident: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -94,6 +96,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function refreshStaff() {
+    const updated = await api.staff.me();
+    await AsyncStorage.setItem('staff', JSON.stringify(updated));
+    setState((s) => ({ ...s, staff: updated }));
+  }
+
+  async function refreshResident() {
+    const updated = await api.residents.me();
+    await AsyncStorage.setItem('resident', JSON.stringify(updated));
+    setState((s) => ({ ...s, resident: updated }));
+  }
+
   async function logout() {
     await AsyncStorage.multiRemove(['token', 'staff', 'resident']);
     setState({ token: null, staff: null, resident: null, isLoading: false });
@@ -101,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ ...state, isResident: !!state.resident && !state.staff, login, logout, changePassword }}
+      value={{ ...state, isResident: !!state.resident && !state.staff, login, logout, changePassword, refreshStaff, refreshResident }}
     >
       {children}
     </AuthContext.Provider>

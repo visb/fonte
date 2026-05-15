@@ -80,6 +80,22 @@ export class ResidentController {
     return this.residentService.findMe(user.userId);
   }
 
+  @Post('me/photo')
+  @Roles(Role.RESIDENT)
+  @UseInterceptors(FileInterceptor('file', photoOptions))
+  uploadPhotoMe(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
+        exceptionFactory: () => new BadRequestException('Arquivo muito grande: máximo 5 MB'),
+      }),
+    )
+    file: Express.Multer.File,
+  ): Promise<ResidentMeView> {
+    return this.residentService.uploadPhotoMe(user.userId, file);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
   findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Resident> {

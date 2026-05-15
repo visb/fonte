@@ -113,9 +113,14 @@ export function SupportGroupsPage() {
             <Text className="text-white font-semibold text-sm">{staff?.name}</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={logout} hitSlop={8}>
-          <Ionicons name="log-out-outline" size={24} color="#fff" />
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-4">
+          <TouchableOpacity onPress={() => router.push('/(app)/profile' as never)} hitSlop={8}>
+            <Ionicons name="person-circle-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} hitSlop={8}>
+            <Ionicons name="log-out-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View className="flex-1 bg-gray-50">

@@ -23,6 +23,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
+import { UpdateStaffMeDto } from './dto/update-staff-me.dto';
 import { Staff } from './staff.entity';
 import { StaffService } from './staff.service';
 
@@ -36,6 +37,23 @@ export class StaffController {
   @Get('me')
   getMe(@CurrentUser() user: AuthenticatedUser): Promise<Staff> {
     return this.staffService.findByUserId(user.userId);
+  }
+
+  @Patch('me')
+  updateMe(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateStaffMeDto): Promise<Staff> {
+    return this.staffService.updateMe(user.userId, dto);
+  }
+
+  @Post('me/photo')
+  @UseInterceptors(FileInterceptor('file', photoOptions))
+  uploadPhotoMe(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<Staff> {
+    if (!file) throw new BadRequestException('Nenhum arquivo enviado');
+    if (!file.mimetype.startsWith('image/')) throw new BadRequestException('Apenas imagens são permitidas');
+    if (file.size > 5 * 1024 * 1024) throw new BadRequestException('Arquivo muito grande: máximo 5 MB');
+    return this.staffService.uploadPhotoMe(user.userId, file);
   }
 
   @Get()

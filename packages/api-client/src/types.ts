@@ -140,6 +140,12 @@ export interface UpdateStaffInput {
   password?: string;
 }
 
+export interface UpdateStaffMeInput {
+  name?: string;
+  phone?: string | null;
+  email?: string;
+}
+
 // ─── Resident ────────────────────────────────────────────────────────────────
 
 export interface Resident {

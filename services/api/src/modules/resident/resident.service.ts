@@ -122,6 +122,13 @@ export class ResidentService {
     await this.userRepository.update(resident.userId, { passwordHash, mustChangePassword: true });
   }
 
+  async uploadPhotoMe(userId: string, file: Express.Multer.File): Promise<ResidentMeView> {
+    const resident = await this.residentRepository.findOne({ where: { userId } });
+    if (!resident) throw new NotFoundException('Perfil de interno não encontrado');
+    await this.uploadPhoto(resident.id, file);
+    return this.findMe(userId);
+  }
+
   async uploadPhoto(residentId: string, file: Express.Multer.File): Promise<Resident> {
     const resident = await this.findOne(residentId);
     if (resident.photoUrl) {

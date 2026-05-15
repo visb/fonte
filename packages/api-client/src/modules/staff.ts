@@ -1,9 +1,13 @@
 import type { AxiosInstance } from 'axios';
-import type { Staff, StaffMe, CreateStaffInput, UpdateStaffInput } from '../types.js';
+import type { Staff, StaffMe, CreateStaffInput, UpdateStaffInput, UpdateStaffMeInput } from '../types.js';
 
 export function createStaffModule(http: AxiosInstance) {
   return {
     me: () => http.get<StaffMe>('/staff/me').then((r) => r.data),
+    updateMe: (data: UpdateStaffMeInput): Promise<StaffMe> =>
+      http.patch<StaffMe>('/staff/me', data).then((r) => r.data),
+    uploadPhotoMe: (formData: FormData): Promise<StaffMe> =>
+      http.post<StaffMe>('/staff/me/photo', formData, { headers: { 'Content-Type': undefined } }).then((r) => r.data),
     list: () => http.get<Staff[]>('/staff').then((r) => r.data),
     getById: (id: string) => http.get<Staff>(`/staff/${id}`).then((r) => r.data),
     create: (data: CreateStaffInput) => http.post<Staff>('/staff', data).then((r) => r.data),

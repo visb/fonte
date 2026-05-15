@@ -536,6 +536,7 @@ export interface Conversation {
   residentName: string;
   relativeId: string;
   relativeName: string;
+  relativePhotoUrl: string | null;
   lastMessage: string | null;
   lastMessageAt: string | null;
   pendingCount: number;
@@ -546,6 +547,7 @@ export interface DirectConversation {
   staffName: string;
   relativeId: string;
   relativeName: string;
+  relativePhotoUrl: string | null;
   lastMessage: string | null;
   lastMessageAt: string | null;
 }
@@ -553,6 +555,7 @@ export interface DirectConversation {
 export interface StaffThreadSummary {
   staffId: string;
   staffName: string;
+  staffPhotoUrl: string | null;
   lastMessage: string | null;
   lastMessageAt: string | null;
 }

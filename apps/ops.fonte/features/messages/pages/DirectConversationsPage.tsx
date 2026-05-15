@@ -1,23 +1,36 @@
 import { useState } from 'react';
-import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
+import { FlatList, Image, Pressable, RefreshControl, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/lib/auth';
+import { resolveAssetUrl } from '@/lib/api';
 import { useDirectConversations } from '../hooks/useMessages';
 import type { DirectConversation } from '@fonte/api-client';
+
+function PartnerAvatar({ photoUrl }: { photoUrl: string | null }) {
+  const uri = resolveAssetUrl(photoUrl);
+  if (uri) {
+    return <Image source={{ uri }} style={{ width: 40, height: 40, borderRadius: 20 }} />;
+  }
+  return (
+    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(39,41,80,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name="person-outline" size={20} color="#272950" />
+    </View>
+  );
+}
 
 function DirectConversationItem({ item }: { item: DirectConversation }) {
   return (
     <Pressable
       onPress={() =>
-        router.push(
-          `/(app)/messages/direct/${item.relativeId}` as never,
-        )
+        router.push({
+          pathname: '/(app)/messages/direct/[relativeId]' as never,
+          params: { relativeId: item.relativeId, partnerName: item.relativeName, partnerPhotoUrl: item.relativePhotoUrl ?? '' },
+        } as never)
       }
       className="bg-white border-b border-gray-100 px-4 py-3 flex-row items-center"
     >
-      <View className="w-10 h-10 rounded-full bg-[#272950]/10 items-center justify-center mr-3">
-        <Ionicons name="person-outline" size={20} color="#272950" />
+      <View className="mr-3">
+        <PartnerAvatar photoUrl={item.relativePhotoUrl} />
       </View>
       <View className="flex-1 min-w-0">
         <Text className="text-sm font-semibold text-gray-900">{item.relativeName}</Text>

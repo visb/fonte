@@ -32,6 +32,7 @@ export interface ConversationView {
   residentName: string;
   relativeId: string;
   relativeName: string;
+  relativePhotoUrl: string | null;
   lastMessage: string | null;
   lastMessageAt: Date | null;
   pendingCount: number;
@@ -42,6 +43,7 @@ export interface DirectConversationView {
   staffName: string;
   relativeId: string;
   relativeName: string;
+  relativePhotoUrl: string | null;
   lastMessage: string | null;
   lastMessageAt: Date | null;
 }
@@ -49,6 +51,7 @@ export interface DirectConversationView {
 export interface StaffThreadView {
   staffId: string;
   staffName: string;
+  staffPhotoUrl: string | null;
   lastMessage: string | null;
   lastMessageAt: Date | null;
 }
@@ -125,6 +128,7 @@ export class MessageService {
         residentName: resident?.name ?? '',
         relativeId: relative.id,
         relativeName: relative.name,
+        relativePhotoUrl: relative.photoUrl ?? null,
         lastMessage: this.lastMessageLabel(lastMsg),
         lastMessageAt: lastMsg?.createdAt ?? null,
         pendingCount,
@@ -151,6 +155,7 @@ export class MessageService {
           residentName: relative.resident?.name ?? '',
           relativeId: relative.id,
           relativeName: relative.name,
+          relativePhotoUrl: relative.photoUrl ?? null,
           lastMessage: this.lastMessageLabel(lastMsg),
           lastMessageAt: lastMsg?.createdAt ?? null,
           pendingCount: 0,
@@ -175,6 +180,7 @@ export class MessageService {
         residentName: resident.name,
         relativeId: relative.id,
         relativeName: relative.name,
+        relativePhotoUrl: relative.photoUrl ?? null,
         lastMessage: this.lastMessageLabel(lastMsg),
         lastMessageAt: lastMsg?.createdAt ?? null,
         pendingCount: 0,
@@ -327,6 +333,7 @@ export class MessageService {
       result.push({
         staffId: s.id,
         staffName: s.name,
+        staffPhotoUrl: s.photoUrl ?? null,
         lastMessage: this.lastMessageLabel(lastMsg),
         lastMessageAt: lastMsg?.createdAt ?? null,
       });
@@ -358,6 +365,7 @@ export class MessageService {
         staffName: staff.name,
         relativeId,
         relativeName: relative.name,
+        relativePhotoUrl: relative.photoUrl ?? null,
         lastMessage: this.lastMessageLabel(lastMsg),
         lastMessageAt: lastMsg?.createdAt ?? null,
       });

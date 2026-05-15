@@ -1,11 +1,25 @@
-import { View, Text, FlatList, Pressable, RefreshControl } from 'react-native';
+import { View, Text, Image, FlatList, Pressable, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
+import { api } from '@/lib/api';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { useHouseStaffThreads } from '../hooks/useMessages';
 import type { StaffThreadSummary } from '@fonte/api-client';
+
+function PartnerAvatar({ photoUrl, size = 40, fallbackColor = '#f3f4f6' }: { photoUrl: string | null; size?: number; fallbackColor?: string }) {
+  const uri = api.photoUrl(photoUrl);
+  const radius = size / 2;
+  if (uri) {
+    return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: radius }} />;
+  }
+  return (
+    <View style={{ width: size, height: size, borderRadius: radius, backgroundColor: fallbackColor, alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name="person-outline" size={size * 0.5} color="#6b7280" />
+    </View>
+  );
+}
 
 function ResidentThreadItem() {
   const { relative } = useAuth();
@@ -34,13 +48,13 @@ function StaffThreadItem({ item }: { item: StaffThreadSummary }) {
       onPress={() =>
         router.push({
           pathname: '/(app)/messages/[staffId]' as never,
-          params: { staffId: item.staffId, name: item.staffName },
+          params: { staffId: item.staffId, name: item.staffName, photoUrl: item.staffPhotoUrl ?? '' },
         } as never)
       }
       className="bg-white border-b border-gray-100 px-4 py-3 flex-row items-center"
     >
-      <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3">
-        <Ionicons name="person-circle-outline" size={22} color="#6b7280" />
+      <View className="mr-3">
+        <PartnerAvatar photoUrl={item.staffPhotoUrl} fallbackColor="#f3f4f6" />
       </View>
       <View className="flex-1 min-w-0">
         <Text className="text-sm font-semibold text-gray-900">{item.staffName}</Text>

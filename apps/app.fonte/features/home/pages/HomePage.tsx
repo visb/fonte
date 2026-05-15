@@ -1,6 +1,7 @@
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
+import { api } from '@/lib/api';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { useRelativeMe } from '../hooks/useRelativeMe';
@@ -21,13 +22,19 @@ export function HomePage() {
   if (isLoading) return <LoadingState />;
   if (isError || !me) return <ErrorState onRetry={refetch} />;
 
+  const photoUri = api.photoUrl(me.photoUrl);
+
   return (
     <ScrollView className="flex-1 bg-gray-50">
       <View className="bg-violet-700 px-5 pt-8 pb-10">
         <View className="flex-row items-center gap-3">
-          <View className="w-14 h-14 rounded-full bg-violet-500 items-center justify-center">
-            <Ionicons name="person" size={28} color="#fff" />
-          </View>
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} className="w-14 h-14 rounded-full" />
+          ) : (
+            <View className="w-14 h-14 rounded-full bg-violet-500 items-center justify-center">
+              <Ionicons name="person" size={28} color="#fff" />
+            </View>
+          )}
           <View className="flex-1">
             <Text className="text-xl font-bold text-white">{me.name}</Text>
             {me.relationship && (

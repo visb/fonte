@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MessageStatus, ProfileType, Role } from '@fonte/types';
@@ -17,7 +17,10 @@ export interface MessageView {
   staffId: string | null;
   senderUserId: string;
   senderName: string;
-  content: string;
+  recipientName: string;
+  content: string | null;
+  attachmentUrl: string | null;
+  attachmentType: string | null;
   status: MessageStatus;
   approvedByUserId: string | null;
   approvedAt: Date | null;
@@ -65,7 +68,7 @@ export class MessageService {
     private userRepository: Repository<User>,
   ) {}
 
-  private toView(msg: Message & { senderName?: string }): MessageView {
+  private toView(msg: Message & { senderName?: string; recipientName?: string }): MessageView {
     return {
       id: msg.id,
       residentId: msg.residentId,
@@ -73,12 +76,24 @@ export class MessageService {
       staffId: msg.staffId,
       senderUserId: msg.senderUserId,
       senderName: msg.senderName ?? '',
+      recipientName: msg.recipientName ?? '',
       content: msg.content,
+      attachmentUrl: msg.attachmentUrl,
+      attachmentType: msg.attachmentType,
       status: msg.status,
       approvedByUserId: msg.approvedByUserId,
       approvedAt: msg.approvedAt,
       createdAt: msg.createdAt,
     };
+  }
+
+  private lastMessageLabel(msg: Message | null): string | null {
+    if (!msg) return null;
+    if (msg.content) return msg.content;
+    if (msg.attachmentType === 'image') return '📷 Imagem';
+    if (msg.attachmentType === 'audio') return '🎵 Áudio';
+    if (msg.attachmentType === 'document') return '📄 Documento';
+    return null;
   }
 
   async getConversations(staffUserId: string): Promise<ConversationView[]> {
@@ -110,7 +125,7 @@ export class MessageService {
         residentName: resident?.name ?? '',
         relativeId: relative.id,
         relativeName: relative.name,
-        lastMessage: lastMsg?.content ?? null,
+        lastMessage: this.lastMessageLabel(lastMsg),
         lastMessageAt: lastMsg?.createdAt ?? null,
         pendingCount,
       });
@@ -136,7 +151,7 @@ export class MessageService {
           residentName: relative.resident?.name ?? '',
           relativeId: relative.id,
           relativeName: relative.name,
-          lastMessage: lastMsg?.content ?? null,
+          lastMessage: this.lastMessageLabel(lastMsg),
           lastMessageAt: lastMsg?.createdAt ?? null,
           pendingCount: 0,
         },
@@ -160,7 +175,7 @@ export class MessageService {
         residentName: resident.name,
         relativeId: relative.id,
         relativeName: relative.name,
-        lastMessage: lastMsg?.content ?? null,
+        lastMessage: this.lastMessageLabel(lastMsg),
         lastMessageAt: lastMsg?.createdAt ?? null,
         pendingCount: 0,
       });
@@ -233,18 +248,30 @@ export class MessageService {
       order: { createdAt: 'ASC' },
     });
 
-    const userIds = [...new Set(messages.map((m) => m.senderUserId))];
-    const residentList = await this.residentRepository.find({ where: userIds.map((id) => ({ userId: id })) });
-    const relativeList = await this.relativeRepository.find({ where: userIds.map((id) => ({ userId: id })) });
-    const nameMap = new Map<string, string>();
-    for (const r of residentList) {
-      if (r.userId) nameMap.set(r.userId, r.name);
-    }
-    for (const r of relativeList) {
-      if (r.userId) nameMap.set(r.userId, r.name);
-    }
+    const senderUserIds = [...new Set(messages.map((m) => m.senderUserId))];
+    const residentBySender = await this.residentRepository.find({ where: senderUserIds.map((id) => ({ userId: id })) });
+    const relativeBySender = await this.relativeRepository.find({ where: senderUserIds.map((id) => ({ userId: id })) });
 
-    return messages.map((m) => this.toView({ ...m, senderName: nameMap.get(m.senderUserId) ?? '' }));
+    const senderNameMap = new Map<string, string>();
+    for (const r of residentBySender) if (r.userId) senderNameMap.set(r.userId, r.name);
+    for (const r of relativeBySender) if (r.userId) senderNameMap.set(r.userId, r.name);
+
+    const senderIsRelativeSet = new Set(relativeBySender.filter((r) => r.userId).map((r) => r.userId!));
+
+    const residentIdToName = new Map(residents.map((r) => [r.id, r.name]));
+
+    const relativeIds = [...new Set(messages.map((m) => m.relativeId))];
+    const allRelatives = await this.relativeRepository.find({ where: relativeIds.map((id) => ({ id })) });
+    const relativeIdToName = new Map(allRelatives.map((r) => [r.id, r.name]));
+
+    return messages.map((m) => {
+      const senderName = senderNameMap.get(m.senderUserId) ?? '';
+      const senderIsRelative = senderIsRelativeSet.has(m.senderUserId);
+      const recipientName = senderIsRelative
+        ? (residentIdToName.get(m.residentId ?? '') ?? '')
+        : (relativeIdToName.get(m.relativeId) ?? '');
+      return this.toView({ ...m, senderName, recipientName });
+    });
   }
 
   async send(senderUserId: string, profileType: string, dto: SendMessageDto): Promise<MessageView> {
@@ -263,6 +290,8 @@ export class MessageService {
       }
     }
 
+    if (!dto.content?.trim() && !dto.attachmentUrl) throw new BadRequestException('Mensagem vazia');
+
     const relative = await this.relativeRepository.findOne({ where: { id: dto.relativeId } });
     if (!relative || relative.residentId !== dto.residentId) throw new NotFoundException('Familiar não encontrado');
 
@@ -271,7 +300,9 @@ export class MessageService {
       residentId: dto.residentId,
       relativeId: dto.relativeId,
       senderUserId,
-      content: dto.content,
+      content: dto.content?.trim() || null,
+      attachmentUrl: dto.attachmentUrl ?? null,
+      attachmentType: dto.attachmentType ?? null,
       status,
     });
     const saved = await this.messageRepository.save(message);
@@ -296,7 +327,7 @@ export class MessageService {
       result.push({
         staffId: s.id,
         staffName: s.name,
-        lastMessage: lastMsg?.content ?? null,
+        lastMessage: this.lastMessageLabel(lastMsg),
         lastMessageAt: lastMsg?.createdAt ?? null,
       });
     }
@@ -327,7 +358,7 @@ export class MessageService {
         staffName: staff.name,
         relativeId,
         relativeName: relative.name,
-        lastMessage: lastMsg?.content ?? null,
+        lastMessage: this.lastMessageLabel(lastMsg),
         lastMessageAt: lastMsg?.createdAt ?? null,
       });
     }
@@ -387,12 +418,16 @@ export class MessageService {
       if (!resident || resident.houseId !== staff.houseId) throw new ForbiddenException('Familiar não pertence à mesma casa');
     }
 
+    if (!dto.content?.trim() && !dto.attachmentUrl) throw new BadRequestException('Mensagem vazia');
+
     const message = this.messageRepository.create({
       staffId: dto.staffId,
       relativeId: dto.relativeId,
       residentId: null,
       senderUserId,
-      content: dto.content,
+      content: dto.content?.trim() || null,
+      attachmentUrl: dto.attachmentUrl ?? null,
+      attachmentType: dto.attachmentType ?? null,
       status: MessageStatus.APPROVED,
     });
     const saved = await this.messageRepository.save(message);

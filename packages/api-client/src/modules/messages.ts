@@ -1,6 +1,11 @@
 import type { AxiosInstance } from 'axios';
 import type { Conversation, DirectConversation, Message, SendDirectMessageInput, SendMessageInput, StaffThreadSummary } from '../types.js';
 
+export interface UploadAttachmentResult {
+  url: string;
+  type: string;
+}
+
 export function createMessagesModule(http: AxiosInstance) {
   return {
     getConversations: (): Promise<Conversation[]> =>
@@ -27,5 +32,11 @@ export function createMessagesModule(http: AxiosInstance) {
       http.get<Message[]>(`/messages/direct/${staffId}/${relativeId}`).then((r) => r.data),
     sendDirect: (data: SendDirectMessageInput): Promise<Message> =>
       http.post<Message>('/messages/direct', data).then((r) => r.data),
+    uploadAttachment: (formData: FormData): Promise<UploadAttachmentResult> =>
+      http
+        .post<UploadAttachmentResult>('/messages/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        .then((r) => r.data),
   };
 }

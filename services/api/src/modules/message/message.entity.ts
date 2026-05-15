@@ -45,8 +45,14 @@ export class Message {
   @Column({ name: 'sender_user_id' })
   senderUserId: string;
 
-  @Column({ type: 'text' })
-  content: string;
+  @Column({ type: 'text', nullable: true })
+  content: string | null;
+
+  @Column({ name: 'attachment_url', type: 'text', nullable: true })
+  attachmentUrl: string | null;
+
+  @Column({ name: 'attachment_type', type: 'varchar', length: 10, nullable: true })
+  attachmentType: string | null;
 
   @Column({ type: 'enum', enum: MessageStatus, default: MessageStatus.PENDING_APPROVAL })
   status: MessageStatus;

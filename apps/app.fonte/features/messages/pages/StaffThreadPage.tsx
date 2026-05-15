@@ -48,7 +48,7 @@ export function StaffThreadPage({ staffId }: Props) {
         />
       )}
       <MessageInput
-        onSend={(content) => sendMutation.mutate(content)}
+        onSend={(payload) => sendMutation.mutate(payload)}
         disabled={sendMutation.isPending}
       />
     </View>

@@ -45,7 +45,7 @@ export function MessagesPage() {
         />
       )}
       <MessageInput
-        onSend={(content) => sendMutation.mutate(content)}
+        onSend={(payload) => sendMutation.mutate(payload)}
         disabled={sendMutation.isPending}
       />
     </View>

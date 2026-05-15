@@ -518,7 +518,10 @@ export interface Message {
   staffId: string | null;
   senderUserId: string;
   senderName: string;
-  content: string;
+  recipientName: string;
+  content: string | null;
+  attachmentUrl: string | null;
+  attachmentType: string | null;
   status: MessageStatus;
   approvedByUserId: string | null;
   approvedAt: string | null;
@@ -554,13 +557,17 @@ export interface StaffThreadSummary {
 export interface SendMessageInput {
   residentId: string;
   relativeId: string;
-  content: string;
+  content?: string;
+  attachmentUrl?: string;
+  attachmentType?: string;
 }
 
 export interface SendDirectMessageInput {
   staffId: string;
   relativeId: string;
-  content: string;
+  content?: string;
+  attachmentUrl?: string;
+  attachmentType?: string;
 }
 
 // ─── Wishlist ─────────────────────────────────────────────────────────────────

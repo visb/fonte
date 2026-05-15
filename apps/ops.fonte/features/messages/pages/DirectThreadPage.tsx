@@ -1,17 +1,19 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import {
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
+import { resolveAssetUrl } from '@/lib/api';
 import { useDirectThread, useSendDirectMessage } from '../hooks/useMessages';
+import { MessageInput } from '../components/MessageInput';
+import { AudioPlayer } from '../components/AudioPlayer';
 import type { Message } from '@fonte/api-client';
 
 function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean }) {
@@ -21,13 +23,29 @@ function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean })
         <Text className="text-xs text-gray-400 mb-0.5 ml-1">{message.senderName}</Text>
       )}
       <View
-        className={`rounded-2xl px-3 py-2 ${
+        className={`rounded-2xl overflow-hidden ${
           isOwn ? 'bg-[#272950]' : 'bg-white border border-gray-100'
         }`}
       >
-        <Text className={`text-sm ${isOwn ? 'text-white' : 'text-gray-900'}`}>
-          {message.content}
-        </Text>
+        {message.attachmentType === 'image' && message.attachmentUrl ? (
+          <Image
+            source={{ uri: resolveAssetUrl(message.attachmentUrl) ?? message.attachmentUrl }}
+            style={{ width: 200, height: 200 }}
+            resizeMode="cover"
+          />
+        ) : message.attachmentType === 'audio' && message.attachmentUrl ? (
+          <AudioPlayer url={resolveAssetUrl(message.attachmentUrl) ?? message.attachmentUrl} isOwn={isOwn} />
+        ) : message.attachmentType === 'document' ? (
+          <View className="flex-row items-center gap-2 px-3 py-2">
+            <Ionicons name="document-text-outline" size={18} color={isOwn ? '#a5b4fc' : '#4f46e5'} />
+            <Text className={`text-sm ${isOwn ? 'text-indigo-200' : 'text-indigo-700'}`}>Documento</Text>
+          </View>
+        ) : null}
+        {message.content ? (
+          <Text className={`text-sm px-3 py-2 ${isOwn ? 'text-white' : 'text-gray-900'}`}>
+            {message.content}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -36,19 +54,11 @@ function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean })
 export function DirectThreadPage() {
   const { relativeId } = useLocalSearchParams<{ relativeId: string }>();
   const { staff } = useAuth();
-  const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
 
   const staffId = staff?.id ?? '';
   const { data: messages = [] } = useDirectThread(staffId, relativeId);
   const sendMutation = useSendDirectMessage();
-
-  const handleSend = () => {
-    const content = text.trim();
-    if (!content) return;
-    setText('');
-    sendMutation.mutate({ staffId, relativeId, content });
-  };
 
   return (
     <KeyboardAvoidingView
@@ -71,25 +81,10 @@ export function DirectThreadPage() {
           </View>
         }
       />
-
-      <View className="bg-white border-t border-gray-100 px-4 py-3 flex-row items-end gap-2">
-        <TextInput
-          className="flex-1 bg-gray-100 rounded-2xl px-4 py-2 text-sm max-h-24"
-          value={text}
-          onChangeText={setText}
-          placeholder="Escreva uma mensagem..."
-          multiline
-          returnKeyType="send"
-          onSubmitEditing={handleSend}
-        />
-        <Pressable
-          onPress={handleSend}
-          disabled={!text.trim() || sendMutation.isPending}
-          className="w-9 h-9 rounded-full bg-[#272950] items-center justify-center"
-        >
-          <Ionicons name="send" size={16} color="#fff" />
-        </Pressable>
-      </View>
+      <MessageInput
+        onSend={(payload) => sendMutation.mutate({ staffId, relativeId, payload })}
+        disabled={sendMutation.isPending}
+      />
     </KeyboardAvoidingView>
   );
 }

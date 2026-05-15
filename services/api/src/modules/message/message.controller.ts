@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -6,21 +7,38 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { Role } from '@fonte/types';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { StorageService } from '../storage/storage.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { SendDirectMessageDto } from './dto/send-direct-message.dto';
 import { MessageService } from './message.service';
 
+const ALLOWED_MIMETYPES = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'audio/mpeg', 'audio/mp4', 'audio/m4a', 'audio/ogg', 'audio/wav', 'audio/webm', 'audio/aac',
+  'application/pdf', 'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+
 @Controller('messages')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class MessageController {
-  constructor(private service: MessageService) {}
+  constructor(
+    private service: MessageService,
+    private storage: StorageService,
+  ) {}
 
   @Get('conversations')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
@@ -48,6 +66,21 @@ export class MessageController {
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
   getPending(@CurrentUser() user: AuthenticatedUser) {
     return this.service.getPending(user.userId);
+  }
+
+  @Post('upload')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RESIDENT, Role.RELATIVE)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } }))
+  async uploadAttachment(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Arquivo não enviado');
+    if (!ALLOWED_MIMETYPES.has(file.mimetype)) throw new BadRequestException('Tipo de arquivo não permitido');
+
+    const type = file.mimetype.startsWith('image/') ? 'image'
+      : file.mimetype.startsWith('audio/') ? 'audio'
+      : 'document';
+    const filename = this.storage.uniqueFilename(file.originalname);
+    const url = await this.storage.upload('messages', filename, file.buffer, file.mimetype);
+    return { url, type };
   }
 
   @Post()

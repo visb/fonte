@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, IsNull, Repository } from 'typeorm';
 import { MessageStatus, ProfileType, Role } from '@fonte/types';
 import { Message } from './message.entity';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -9,6 +9,9 @@ import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
 import { Staff } from '../staff/staff.entity';
 import { User } from '../user/user.entity';
+import { SupportGroup } from '../support-group/support-group.entity';
+import { SupportGroupMeeting } from '../support-group/support-group-meeting.entity';
+import { SupportGroupRelativeCheckin } from '../support-group/support-group-relative-checkin.entity';
 
 export interface MessageView {
   id: string;
@@ -67,6 +70,12 @@ export class MessageService {
     private relativeRepository: Repository<Relative>,
     @InjectRepository(Staff)
     private staffRepository: Repository<Staff>,
+    @InjectRepository(SupportGroup)
+    private sgRepo: Repository<SupportGroup>,
+    @InjectRepository(SupportGroupMeeting)
+    private sgMeetingRepo: Repository<SupportGroupMeeting>,
+    @InjectRepository(SupportGroupRelativeCheckin)
+    private sgRelativeCheckinRepo: Repository<SupportGroupRelativeCheckin>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {}
@@ -320,12 +329,33 @@ export class MessageService {
     if (!relative) throw new NotFoundException('Familiar não encontrado');
 
     const resident = await this.residentRepository.findOne({ where: { id: relative.residentId } });
-    if (!resident || !resident.houseId) return [];
 
-    const staffList = await this.staffRepository.find({ where: { houseId: resident.houseId } });
+    const houseStaff = resident?.houseId
+      ? await this.staffRepository.find({ where: { houseId: resident.houseId } })
+      : [];
+
+    const checkins = await this.sgRelativeCheckinRepo.find({ where: { relativeId: relative.id } });
+    const meetingIds = [...new Set(checkins.map((c) => c.meetingId))];
+    let servants: Staff[] = [];
+    if (meetingIds.length > 0) {
+      const meetings = await this.sgMeetingRepo.find({ where: meetingIds.map((id) => ({ id })) });
+      const supportGroupIds = [...new Set(meetings.map((m) => m.supportGroupId))];
+      if (supportGroupIds.length > 0) {
+        servants = await this.staffRepository.find({ where: supportGroupIds.map((id) => ({ supportGroupId: id })) });
+      }
+    }
+
+    const allGroups = await this.sgRepo.find({ where: { coordinatorId: Not(IsNull()) } });
+    const coordinatorIds = allGroups.map((g) => g.coordinatorId).filter((id): id is string => id !== null);
+    const coordinators = coordinatorIds.length > 0
+      ? await this.staffRepository.find({ where: coordinatorIds.map((id) => ({ id })) })
+      : [];
+
+    const staffMap = new Map<string, Staff>();
+    for (const s of [...houseStaff, ...servants, ...coordinators]) staffMap.set(s.id, s);
 
     const result: StaffThreadView[] = [];
-    for (const s of staffList) {
+    for (const s of staffMap.values()) {
       const lastMsg = await this.messageRepository.findOne({
         where: { staffId: s.id, relativeId: relative.id },
         order: { createdAt: 'DESC' },
@@ -338,12 +368,18 @@ export class MessageService {
         lastMessageAt: lastMsg?.createdAt ?? null,
       });
     }
-    return result;
+
+    return result.sort((a, b) => {
+      if (!a.lastMessageAt && !b.lastMessageAt) return 0;
+      if (!a.lastMessageAt) return 1;
+      if (!b.lastMessageAt) return -1;
+      return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+    });
   }
 
   async getDirectConversations(staffUserId: string): Promise<DirectConversationView[]> {
     const staff = await this.staffRepository.findOne({ where: { userId: staffUserId } });
-    if (!staff || !staff.houseId) return [];
+    if (!staff || (!staff.houseId && !staff.supportGroupId)) return [];
 
     const rawRows = await this.messageRepository
       .createQueryBuilder('m')
@@ -413,17 +449,41 @@ export class MessageService {
       const resident = await this.residentRepository.findOne({ where: { id: relative.residentId } });
       if (!resident) throw new ForbiddenException();
 
-      const staff = await this.staffRepository.findOne({ where: { id: dto.staffId, houseId: resident.houseId } });
-      if (!staff) throw new ForbiddenException('Servo não pertence à mesma casa');
+      const staff = await this.staffRepository.findOne({ where: { id: dto.staffId } });
+      if (!staff) throw new ForbiddenException('Servo não encontrado');
+
+      if (staff.houseId) {
+        if (staff.houseId !== resident.houseId) throw new ForbiddenException('Servo não pertence à mesma casa');
+      } else if (staff.supportGroupId) {
+        const checkins = await this.sgRelativeCheckinRepo.find({ where: { relativeId: relative.id } });
+        const meetingIds = checkins.map((c) => c.meetingId);
+        const hasAttended = meetingIds.length > 0
+          && await this.sgMeetingRepo.findOne({ where: meetingIds.map((mid) => ({ id: mid, supportGroupId: staff.supportGroupId! })) }) !== null;
+        if (!hasAttended) throw new ForbiddenException('Familiar não participou de reunião deste grupo');
+      } else {
+        const isCoordinator = await this.sgRepo.findOne({ where: { coordinatorId: staff.id } }) !== null;
+        if (!isCoordinator) throw new ForbiddenException();
+      }
     } else {
       const staff = await this.staffRepository.findOne({ where: { userId: senderUserId } });
-      if (!staff || staff.id !== dto.staffId || !staff.houseId) throw new ForbiddenException();
+      if (!staff || staff.id !== dto.staffId) throw new ForbiddenException();
 
       const relative = await this.relativeRepository.findOne({ where: { id: dto.relativeId } });
       if (!relative) throw new NotFoundException('Familiar não encontrado');
 
-      const resident = await this.residentRepository.findOne({ where: { id: relative.residentId } });
-      if (!resident || resident.houseId !== staff.houseId) throw new ForbiddenException('Familiar não pertence à mesma casa');
+      if (staff.houseId) {
+        const resident = await this.residentRepository.findOne({ where: { id: relative.residentId } });
+        if (!resident || resident.houseId !== staff.houseId) throw new ForbiddenException('Familiar não pertence à mesma casa');
+      } else if (staff.supportGroupId) {
+        const checkins = await this.sgRelativeCheckinRepo.find({ where: { relativeId: relative.id } });
+        const meetingIds = checkins.map((c) => c.meetingId);
+        const hasAttended = meetingIds.length > 0
+          && await this.sgMeetingRepo.findOne({ where: meetingIds.map((mid) => ({ id: mid, supportGroupId: staff.supportGroupId! })) }) !== null;
+        if (!hasAttended) throw new ForbiddenException('Familiar não participou de reunião deste grupo');
+      } else {
+        const isCoordinator = await this.sgRepo.findOne({ where: { coordinatorId: staff.id } }) !== null;
+        if (!isCoordinator) throw new ForbiddenException();
+      }
     }
 
     if (!dto.content?.trim() && !dto.attachmentUrl) throw new BadRequestException('Mensagem vazia');

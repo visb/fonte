@@ -98,7 +98,7 @@ export function ConversationListPage() {
           {staffThreads.length > 0 && (
             <View className="px-4 py-2 bg-gray-50 border-b border-gray-100">
               <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                Servos da casa
+                Conversas com servos
               </Text>
             </View>
           )}

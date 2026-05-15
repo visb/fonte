@@ -1,10 +1,10 @@
 import { View, Text, Image, FlatList, Pressable, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { useRelativeMe } from '@/features/home/hooks/useRelativeMe';
 import { useHouseStaffThreads } from '../hooks/useMessages';
 import type { StaffThreadSummary } from '@fonte/api-client';
 
@@ -22,24 +22,24 @@ function PartnerAvatar({ photoUrl, size = 40, fallbackColor = '#f3f4f6' }: { pho
 }
 
 function ResidentThreadItem() {
-  const { relative } = useAuth();
-  if (!relative) return null;
+  const { data: me } = useRelativeMe();
+  if (!me) return null;
 
   return (
     <Pressable
       onPress={() =>
         router.push({
           pathname: '/(app)/messages/resident' as never,
-          params: { partnerName: relative.residentName, partnerPhotoUrl: relative.residentPhotoUrl ?? '' },
+          params: { partnerName: me.residentName, partnerPhotoUrl: me.residentPhotoUrl ?? '' },
         } as never)
       }
       className="bg-white border-b border-gray-100 px-4 py-3 flex-row items-center"
     >
       <View className="mr-3">
-        <PartnerAvatar photoUrl={relative.residentPhotoUrl} fallbackColor="#ede9fe" />
+        <PartnerAvatar photoUrl={me.residentPhotoUrl} fallbackColor="#ede9fe" />
       </View>
       <View className="flex-1 min-w-0">
-        <Text className="text-sm font-semibold text-gray-900">{relative.residentName}</Text>
+        <Text className="text-sm font-semibold text-gray-900">{me.residentName}</Text>
         <Text className="text-xs text-gray-400 mt-0.5">Seu familiar</Text>
       </View>
       <Ionicons name="chevron-forward" size={16} color="#d1d5db" />

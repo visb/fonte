@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -10,11 +11,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack } from 'expo-router';
 import type { SupportGroup, SupportGroupMeeting } from '@fonte/api-client';
 import { DAY_OF_WEEK_LABELS } from '@fonte/types';
+import { useAuth } from '@/lib/auth';
+import { resolveAssetUrl } from '@/lib/api';
 import { useAllMeetings, useCreateMeeting, useSupportGroups } from '../hooks/useSupportGroups';
 import { DatePickerModal } from '@/components/DatePickerModal';
 
@@ -36,6 +38,7 @@ function isToday(dateStr: string): boolean {
 }
 
 export function SupportGroupsPage() {
+  const { staff, logout } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<SupportGroup | null>(null);
@@ -87,16 +90,33 @@ export function SupportGroupsPage() {
     );
   }
 
+  const photoUri = resolveAssetUrl(staff?.photoUrl ?? null);
+
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: 'Grupos de Apoio',
-          headerStyle: { backgroundColor: '#272950' },
-          headerTintColor: '#fff',
-          headerTitleStyle: { fontWeight: '600' },
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <View className="bg-[#272950] px-4 pt-12 pb-4 flex-row items-center justify-between">
+        <View className="flex-row items-center gap-3">
+          {photoUri ? (
+            <Image
+              source={{ uri: photoUri }}
+              className="w-11 h-11 rounded-full"
+            />
+          ) : (
+            <View className="w-11 h-11 rounded-full bg-white/20 items-center justify-center">
+              <Ionicons name="person" size={22} color="#fff" />
+            </View>
+          )}
+          <View>
+            <Text className="text-white/70 text-xs">Bem-vindo,</Text>
+            <Text className="text-white font-semibold text-sm">{staff?.name}</Text>
+          </View>
+        </View>
+        <TouchableOpacity onPress={logout} hitSlop={8}>
+          <Ionicons name="log-out-outline" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
       <View className="flex-1 bg-gray-50">
         {isLoading ? (

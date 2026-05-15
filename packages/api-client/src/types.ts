@@ -112,8 +112,11 @@ export interface StaffMe {
   userId: string;
   name: string;
   phone: string | null;
+  photoUrl: string | null;
   houseId: string | null;
   house: { id: string; name: string } | null;
+  supportGroupId: string | null;
+  supportGroup: { id: string; name: string } | null;
   user: { email: string; role: Role };
 }
 

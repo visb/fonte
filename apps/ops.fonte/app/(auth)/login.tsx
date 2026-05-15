@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,11 +12,15 @@ import { router } from "expo-router";
 import { useAuth, MustChangePasswordError } from "@/lib/auth";
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, token } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (token) router.replace("/(app)");
+  }, [token]);
 
   async function handleLogin() {
     if (!email || !password) {
@@ -27,7 +31,6 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(email, password);
-      router.replace("/(app)");
     } catch (err) {
       if (err instanceof MustChangePasswordError) {
         router.replace("/(auth)/change-password");

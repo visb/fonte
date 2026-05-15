@@ -17,6 +17,9 @@ import { StaffPage } from '@/features/staff/pages/StaffPage';
 import { NewStaffPage } from '@/features/staff/pages/NewStaffPage';
 import { EditStaffPage } from '@/features/staff/pages/EditStaffPage';
 import { SettingsPage } from '@/features/settings/pages/SettingsPage';
+import { DocumentTemplatesPage } from '@/features/settings/pages/DocumentTemplatesPage';
+import { PermissionsPage } from '@/features/settings/pages/PermissionsPage';
+import { ChildAppSettingsPage } from '@/features/settings/pages/ChildAppSettingsPage';
 import { SupportGroupsPage } from '@/features/support-groups/pages/SupportGroupsPage';
 
 const queryClient = new QueryClient({
@@ -61,7 +64,11 @@ export default function App() {
               <Route path="staff" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><StaffPage /></ProtectedRoute>} />
               <Route path="staff/new" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><NewStaffPage /></ProtectedRoute>} />
               <Route path="staff/:id/edit" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><EditStaffPage /></ProtectedRoute>} />
-              <Route path="settings" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><SettingsPage /></ProtectedRoute>} />
+              <Route path="settings" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><SettingsPage /></ProtectedRoute>}>
+                <Route path="templates" element={<DocumentTemplatesPage />} />
+                <Route path="permissions" element={<PermissionsPage />} />
+                <Route path="app-filhos" element={<ChildAppSettingsPage />} />
+              </Route>
               <Route path="support-groups" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><SupportGroupsPage /></ProtectedRoute>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

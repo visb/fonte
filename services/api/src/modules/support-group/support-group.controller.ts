@@ -93,6 +93,24 @@ export class SupportGroupController {
     return this.service.findMeetingDetail(meetingId);
   }
 
+  @Get('meetings/:meetingId/relative-checkins')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  findMeetingRelativeCheckins(@Param('meetingId', ParseUUIDPipe) meetingId: string) {
+    return this.service.findMeetingRelativeCheckins(meetingId);
+  }
+
+  @Get('relatives/:relativeId/checkin-history')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  findRelativeCheckinHistory(@Param('relativeId', ParseUUIDPipe) relativeId: string) {
+    return this.service.findRelativeCheckinHistory(relativeId);
+  }
+
+  @Get('residents/:residentId/checkin-history')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  findResidentCheckinHistory(@Param('residentId', ParseUUIDPipe) residentId: string) {
+    return this.service.findResidentCheckinHistory(residentId);
+  }
+
   // ─── Checkins ─────────────────────────────────────────────────────────────────
 
   @Post('meetings/:meetingId/checkins')

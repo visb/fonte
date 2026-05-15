@@ -8,6 +8,8 @@ import type {
   WishlistStatus,
   IncidentSeverity,
   MovementType,
+  StaffPermissionType,
+  TimerResetFrequency,
 } from '@fonte/types';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -118,6 +120,7 @@ export interface StaffMe {
   supportGroupId: string | null;
   supportGroup: { id: string; name: string } | null;
   user: { email: string; role: Role };
+  permissions: StaffPermissionType[];
 }
 
 export interface CreateStaffInput {
@@ -415,6 +418,19 @@ export interface ResetRelativePasswordInput {
   password: string;
 }
 
+// ─── Staff Permissions ────────────────────────────────────────────────────────
+
+export interface StaffPermission {
+  id: string;
+  staffId: string;
+  permissionType: StaffPermissionType;
+  createdAt: string;
+}
+
+export interface AddStaffPermissionInput {
+  type: StaffPermissionType;
+}
+
 // ─── Support Group Relative Checkin ──────────────────────────────────────────
 
 export interface SupportGroupRelativeCheckin {
@@ -460,7 +476,22 @@ export interface SupportGroupMeeting {
   notes: string | null;
   checkinToken: string;
   checkinCount: number;
+  relativeCheckinCount: number;
   createdAt: string;
+}
+
+export interface MeetingRelativeCheckin {
+  id: string;
+  relativeId: string;
+  relativeName: string;
+  residentId: string;
+  residentName: string;
+}
+
+export interface RelativeCheckinHistoryItem {
+  meetingId: string;
+  date: string;
+  groupName: string;
 }
 
 export interface SupportGroupMeetingDetail {
@@ -510,6 +541,20 @@ export interface UpdateDocumentTemplateInput {
   name?: string;
   content?: string;
   isRequired?: boolean;
+}
+
+// ─── App Settings ─────────────────────────────────────────────────────────────
+
+export interface AppSettings {
+  id: string;
+  timerResetFrequency: TimerResetFrequency;
+  dailyUsageMinutes: number;
+  updatedAt: string;
+}
+
+export interface UpdateAppSettingsInput {
+  timerResetFrequency?: TimerResetFrequency;
+  dailyUsageMinutes?: number;
 }
 
 // ─── Resident Session ─────────────────────────────────────────────────────────

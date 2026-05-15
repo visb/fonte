@@ -81,3 +81,18 @@ export enum MovementType {
   OUT = 'OUT',
 }
 
+// ─── Staff Permissions ─────────────────────────────────────────────────────────
+
+export enum StaffPermissionType {
+  MODERATE_MESSAGES = 'MODERATE_MESSAGES',
+  SEND_MESSAGES_TO_FAMILIES = 'SEND_MESSAGES_TO_FAMILIES',
+}
+
+// ─── App Settings ─────────────────────────────────────────────────────────────
+
+export enum TimerResetFrequency {
+  DAILY = 'DAILY',
+  WEEKLY = 'WEEKLY',
+  BIWEEKLY = 'BIWEEKLY',
+}
+

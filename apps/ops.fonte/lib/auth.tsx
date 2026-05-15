@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ResidentMe, StaffMe } from '@fonte/api-client';
-import { ProfileType } from '@fonte/types';
+import { ProfileType, StaffPermissionType } from '@fonte/types';
 import { api } from './api';
 
 export class MustChangePasswordError extends Error {
@@ -20,6 +20,8 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   isResident: boolean;
+  canSendMessagesToFamilies: boolean;
+  canModerateMessages: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
@@ -115,7 +117,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ ...state, isResident: !!state.resident && !state.staff, login, logout, changePassword, refreshStaff, refreshResident }}
+      value={{
+        ...state,
+        isResident: !!state.resident && !state.staff,
+        canSendMessagesToFamilies: !!state.staff?.permissions?.includes(StaffPermissionType.SEND_MESSAGES_TO_FAMILIES),
+        canModerateMessages: !!state.staff?.permissions?.includes(StaffPermissionType.MODERATE_MESSAGES),
+        login,
+        logout,
+        changePassword,
+        refreshStaff,
+        refreshResident,
+      }}
     >
       {children}
     </AuthContext.Provider>

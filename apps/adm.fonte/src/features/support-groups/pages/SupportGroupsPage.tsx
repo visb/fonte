@@ -12,23 +12,37 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useSupportGroups, useDeleteSupportGroup, useSupportGroupMeetings } from '../hooks/useSupportGroups';
 import { SupportGroupDialog } from '../components/SupportGroupDialog';
+import { MeetingFamiliesModal } from '../components/MeetingFamiliesModal';
 
 function MeetingHistory({ groupId }: { groupId: string }) {
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
   const { data: meetings = [], isLoading } = useSupportGroupMeetings(groupId);
 
-  if (isLoading) return <p className="text-xs text-muted-foreground py-2">Carregando...</p>;
-  if (meetings.length === 0) return <p className="text-xs text-muted-foreground py-2">Nenhuma reunião registrada.</p>;
+  if (isLoading) return <LoadingState />;
+  if (meetings.length === 0) return <EmptyState title="Nenhuma reunião registrada." />;
 
   return (
-    <div className="space-y-1 mt-2">
-      {meetings.map((m: SupportGroupMeeting) => (
-        <div key={m.id} className="flex items-center justify-between text-xs text-muted-foreground border rounded px-3 py-1.5">
-          <span>{new Date(m.date + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
-          <span>{m.checkinCount} {m.checkinCount === 1 ? 'família' : 'famílias'}</span>
-          {m.notes && <span className="italic truncate max-w-[120px]">{m.notes}</span>}
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="space-y-1 mt-2">
+        {meetings.map((m: SupportGroupMeeting) => (
+          <div key={m.id} className="flex items-center justify-between text-xs text-muted-foreground border rounded px-3 py-1.5">
+            <span>{new Date(m.date + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+            <button
+              className="hover:text-foreground hover:underline transition-colors"
+              onClick={() => setSelectedMeetingId(m.id)}
+            >
+              {m.checkinCount} {m.checkinCount === 1 ? 'família' : 'famílias'}
+            </button>
+            {m.notes && <span className="italic truncate max-w-[120px]">{m.notes}</span>}
+          </div>
+        ))}
+      </div>
+
+      <MeetingFamiliesModal
+        meetingId={selectedMeetingId}
+        onClose={() => setSelectedMeetingId(null)}
+      />
+    </>
   );
 }
 

@@ -69,4 +69,10 @@ export type {
   SupportGroupCheckin,
   CreateMeetingInput,
   AddCheckinInput,
+  MeetingRelativeCheckin,
+  RelativeCheckinHistoryItem,
+  StaffPermission,
+  AddStaffPermissionInput,
+  AppSettings,
+  UpdateAppSettingsInput,
 } from './types.js';

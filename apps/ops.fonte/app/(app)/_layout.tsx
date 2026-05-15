@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { UsageTimerProvider } from "@/lib/UsageTimerContext";
 
 export default function AppLayout() {
-  const { token, isLoading, staff, isResident } = useAuth();
+  const { token, isLoading, staff, isResident, canSendMessagesToFamilies, canModerateMessages } = useAuth();
   const isSupportGroupServant = !!staff && !staff.houseId;
 
   useEffect(() => {
@@ -117,7 +117,7 @@ export default function AppLayout() {
         options={{
           title: "Mensagens",
           headerShown: false,
-          href: isSupportGroupServant ? null : undefined,
+          href: (isSupportGroupServant || (!canSendMessagesToFamilies && !canModerateMessages)) ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles-outline" size={size} color={color} />
           ),
@@ -132,7 +132,7 @@ export default function AppLayout() {
         options={{
           title: "Pedidos",
           headerShown: false,
-          href: isSupportGroupServant ? null : undefined,
+          href: (isSupportGroupServant || !canModerateMessages) ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="gift-outline" size={size} color={color} />
           ),

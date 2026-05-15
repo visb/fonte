@@ -21,6 +21,7 @@ import { SupportGroupModule } from './modules/support-group/support-group.module
 import { ResidentSessionModule } from './modules/resident-session/resident-session.module';
 import { MessageModule } from './modules/message/message.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
+import { AppSettingsModule } from './modules/app-settings/app-settings.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { WishlistModule } from './modules/wishlist/wishlist.module';
     ResidentSessionModule,
     MessageModule,
     WishlistModule,
+    AppSettingsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },

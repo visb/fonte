@@ -12,8 +12,18 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { resolveAssetUrl } from '@/lib/api';
-import { useConversations, useDirectConversations, useMyConversations, usePendingMessages } from '../hooks/useMessages';
+import { useConversations, useMyConversations, usePendingMessages } from '../hooks/useMessages';
+import { ModerationPage } from './ModerationPage';
+import { DirectConversationsPage } from './DirectConversationsPage';
 import type { Conversation } from '@fonte/api-client';
+
+type TabKey = 'direct' | 'residents' | 'moderate';
+
+const TAB_LABELS: Record<TabKey, string> = {
+  direct: 'Mensagens diretas',
+  residents: 'Filhos',
+  moderate: 'Moderar',
+};
 
 function PartnerAvatar({ photoUrl }: { photoUrl: string | null }) {
   const uri = resolveAssetUrl(photoUrl);
@@ -62,11 +72,9 @@ function ConversationItem({
   );
 }
 
-function StaffMessagesPage() {
+function ResidentsTab() {
   const [refreshing, setRefreshing] = useState(false);
   const { data: conversations = [], refetch } = useConversations();
-  const { data: pending = [] } = usePendingMessages();
-  const { data: directConversations = [] } = useDirectConversations();
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -74,83 +82,91 @@ function StaffMessagesPage() {
     setRefreshing(false);
   };
 
-  const grouped = conversations.reduce<Record<string, Conversation[]>>((acc, c) => {
-    if (!acc[c.residentName]) acc[c.residentName] = [];
-    acc[c.residentName].push(c);
-    return acc;
-  }, {});
+  const sections = Object.entries(
+    conversations.reduce<Record<string, Conversation[]>>((acc, c) => {
+      if (!acc[c.residentName]) acc[c.residentName] = [];
+      acc[c.residentName].push(c);
+      return acc;
+    }, {}),
+  ).map(([residentName, items]) => ({ residentName, items }));
 
-  const sections = Object.entries(grouped).map(([residentName, items]) => ({
-    residentName,
-    items,
-  }));
+  return (
+    <FlatList
+      data={sections}
+      keyExtractor={(s) => s.residentName}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+      renderItem={({ item: section }) => (
+        <View>
+          <View className="px-4 py-2 bg-gray-100">
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              {section.residentName}
+            </Text>
+          </View>
+          {section.items.map((conv) => (
+            <ConversationItem
+              key={`${conv.residentId}-${conv.relativeId}`}
+              item={conv}
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/messages/[residentId]/[relativeId]' as never,
+                  params: { residentId: conv.residentId, relativeId: conv.relativeId, partnerName: conv.relativeName, partnerPhotoUrl: conv.relativePhotoUrl ?? '' },
+                } as never)
+              }
+            />
+          ))}
+        </View>
+      )}
+      ListEmptyComponent={
+        <View className="flex-1 items-center justify-center py-20">
+          <Ionicons name="chatbubbles-outline" size={40} color="#d1d5db" />
+          <Text className="text-base font-medium text-gray-400 mt-4">Nenhuma conversa ainda</Text>
+        </View>
+      }
+    />
+  );
+}
+
+function StaffMessagesPage() {
+  const { canModerateMessages, canSendMessagesToFamilies } = useAuth();
+  const { data: pending = [] } = usePendingMessages();
+
+  const availableTabs: TabKey[] = [
+    ...(canSendMessagesToFamilies ? (['direct'] as TabKey[]) : []),
+    ...(canModerateMessages ? (['residents', 'moderate'] as TabKey[]) : []),
+  ];
+
+  const [activeTab, setActiveTab] = useState<TabKey>(availableTabs[0] ?? 'direct');
+  const showTabs = availableTabs.length > 1;
 
   return (
     <View className="flex-1 bg-gray-50">
-      {pending.length > 0 && (
-        <TouchableOpacity
-          onPress={() => router.push('/(app)/messages/moderation' as never)}
-          className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex-row items-center"
-        >
-          <Ionicons name="alert-circle-outline" size={18} color="#d97706" />
-          <Text className="text-sm text-amber-700 ml-2 flex-1">
-            {pending.length} mensagem(s) aguardando aprovação
-          </Text>
-          <Ionicons name="chevron-forward" size={16} color="#d97706" />
-        </TouchableOpacity>
+      {showTabs && (
+        <View className="flex-row bg-white border-b border-gray-100">
+          {availableTabs.map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              className="flex-1 py-3 items-center"
+              style={activeTab === tab ? { borderBottomWidth: 2, borderBottomColor: '#272950' } : undefined}
+            >
+              <View className="flex-row items-center gap-1.5">
+                <Text className={`text-sm font-medium ${activeTab === tab ? 'text-[#272950]' : 'text-gray-400'}`}>
+                  {TAB_LABELS[tab]}
+                </Text>
+                {tab === 'moderate' && pending.length > 0 && (
+                  <View className="bg-amber-500 rounded-full min-w-4 h-4 items-center justify-center px-1">
+                    <Text className="text-white text-xs font-bold">{pending.length}</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
       )}
-      <TouchableOpacity
-        onPress={() => router.push('/(app)/messages/direct' as never)}
-        className="bg-white border-b border-gray-100 px-4 py-3 flex-row items-center"
-      >
-        <View className="w-9 h-9 rounded-full bg-[#272950]/10 items-center justify-center mr-3">
-          <Ionicons name="chatbubble-ellipses-outline" size={18} color="#272950" />
-        </View>
-        <View className="flex-1">
-          <Text className="text-sm font-semibold text-gray-900">Conversas diretas</Text>
-          <Text className="text-xs text-gray-400 mt-0.5">
-            {directConversations.length > 0
-              ? `${directConversations.length} conversa(s) com familiares`
-              : 'Mensagens diretas com familiares'}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={16} color="#d1d5db" />
-      </TouchableOpacity>
 
-      <FlatList
-        data={sections}
-        keyExtractor={(s) => s.residentName}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        renderItem={({ item: section }) => (
-          <View>
-            <View className="px-4 py-2 bg-gray-100">
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                {section.residentName}
-              </Text>
-            </View>
-            {section.items.map((conv) => (
-              <ConversationItem
-                key={`${conv.residentId}-${conv.relativeId}`}
-                item={conv}
-                onPress={() =>
-                  router.push({
-                    pathname: '/(app)/messages/[residentId]/[relativeId]' as never,
-                    params: { residentId: conv.residentId, relativeId: conv.relativeId, partnerName: conv.relativeName, partnerPhotoUrl: conv.relativePhotoUrl ?? '' },
-                  } as never)
-                }
-              />
-            ))}
-          </View>
-        )}
-        ListEmptyComponent={
-          <View className="flex-1 items-center justify-center py-20">
-            <Ionicons name="chatbubbles-outline" size={40} color="#d1d5db" />
-            <Text className="text-base font-medium text-gray-400 mt-4">
-              Nenhuma conversa ainda
-            </Text>
-          </View>
-        }
-      />
+      {activeTab === 'direct' && <DirectConversationsPage />}
+      {activeTab === 'residents' && <ResidentsTab />}
+      {activeTab === 'moderate' && <ModerationPage />}
     </View>
   );
 }

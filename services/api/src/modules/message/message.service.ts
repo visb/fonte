@@ -1,13 +1,14 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, IsNull, Repository } from 'typeorm';
-import { MessageStatus, ProfileType, Role } from '@fonte/types';
+import { MessageStatus, ProfileType, Role, StaffPermissionType } from '@fonte/types';
 import { Message } from './message.entity';
 import { SendMessageDto } from './dto/send-message.dto';
 import { SendDirectMessageDto } from './dto/send-direct-message.dto';
 import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
 import { Staff } from '../staff/staff.entity';
+import { StaffPermission } from '../staff/staff-permission.entity';
 import { User } from '../user/user.entity';
 import { SupportGroup } from '../support-group/support-group.entity';
 import { SupportGroupMeeting } from '../support-group/support-group-meeting.entity';
@@ -78,7 +79,14 @@ export class MessageService {
     private sgRelativeCheckinRepo: Repository<SupportGroupRelativeCheckin>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(StaffPermission)
+    private permissionRepository: Repository<StaffPermission>,
   ) {}
+
+  private async staffWithPermission(staffId: string, type: StaffPermissionType): Promise<boolean> {
+    const count = await this.permissionRepository.count({ where: { staffId, permissionType: type } });
+    return count > 0;
+  }
 
   private toView(msg: Message & { senderName?: string; recipientName?: string }): MessageView {
     return {
@@ -253,6 +261,8 @@ export class MessageService {
   async getPending(staffUserId: string): Promise<MessageView[]> {
     const staff = await this.staffRepository.findOne({ where: { userId: staffUserId } });
     if (!staff || !staff.houseId) return [];
+    const canModerate = await this.staffWithPermission(staff.id, StaffPermissionType.MODERATE_MESSAGES);
+    if (!canModerate) return [];
 
     const residents = await this.residentRepository.find({ where: { houseId: staff.houseId } });
     const residentIds = residents.map((r) => r.id);
@@ -354,8 +364,18 @@ export class MessageService {
     const staffMap = new Map<string, Staff>();
     for (const s of [...houseStaff, ...servants, ...coordinators]) staffMap.set(s.id, s);
 
+    const staffIds = [...staffMap.keys()];
+    const permittedIds = staffIds.length > 0
+      ? new Set(
+          (await this.permissionRepository.find({
+            where: staffIds.map((id) => ({ staffId: id, permissionType: StaffPermissionType.SEND_MESSAGES_TO_FAMILIES })),
+          })).map((p) => p.staffId),
+        )
+      : new Set<string>();
+
     const result: StaffThreadView[] = [];
     for (const s of staffMap.values()) {
+      if (!permittedIds.has(s.id)) continue;
       const lastMsg = await this.messageRepository.findOne({
         where: { staffId: s.id, relativeId: relative.id },
         order: { createdAt: 'DESC' },
@@ -503,6 +523,11 @@ export class MessageService {
   }
 
   async approve(staffUserId: string, messageId: string): Promise<MessageView> {
+    const staff = await this.staffRepository.findOne({ where: { userId: staffUserId } });
+    if (!staff || !(await this.staffWithPermission(staff.id, StaffPermissionType.MODERATE_MESSAGES))) {
+      throw new ForbiddenException('Sem permissão para moderar mensagens');
+    }
+
     const message = await this.messageRepository.findOne({ where: { id: messageId } });
     if (!message) throw new NotFoundException('Mensagem não encontrada');
 
@@ -515,6 +540,11 @@ export class MessageService {
   }
 
   async reject(staffUserId: string, messageId: string): Promise<MessageView> {
+    const staff = await this.staffRepository.findOne({ where: { userId: staffUserId } });
+    if (!staff || !(await this.staffWithPermission(staff.id, StaffPermissionType.MODERATE_MESSAGES))) {
+      throw new ForbiddenException('Sem permissão para moderar mensagens');
+    }
+
     const message = await this.messageRepository.findOne({ where: { id: messageId } });
     if (!message) throw new NotFoundException('Mensagem não encontrada');
 

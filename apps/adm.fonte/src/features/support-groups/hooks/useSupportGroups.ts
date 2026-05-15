@@ -42,3 +42,35 @@ export function useSupportGroupMeetings(groupId: string | null) {
     enabled: !!groupId,
   });
 }
+
+export function useSupportGroupMeetingDetail(meetingId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.supportGroups.meetingDetail(meetingId!),
+    queryFn: () => api.supportGroups.getMeeting(meetingId!),
+    enabled: !!meetingId,
+  });
+}
+
+export function useMeetingRelativeCheckins(meetingId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.supportGroups.relativeCheckins(meetingId!),
+    queryFn: () => api.supportGroups.getMeetingRelativeCheckins(meetingId!),
+    enabled: !!meetingId,
+  });
+}
+
+export function useRelativeCheckinHistory(relativeId: string | null, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.supportGroups.relativeHistory(relativeId!),
+    queryFn: () => api.supportGroups.getRelativeCheckinHistory(relativeId!),
+    enabled: (options?.enabled ?? true) && !!relativeId,
+  });
+}
+
+export function useResidentCheckinHistory(residentId: string | null, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.supportGroups.residentHistory(residentId!),
+    queryFn: () => api.supportGroups.getResidentCheckinHistory(residentId!),
+    enabled: (options?.enabled ?? true) && !!residentId,
+  });
+}

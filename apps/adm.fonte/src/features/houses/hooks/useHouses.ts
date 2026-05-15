@@ -78,6 +78,22 @@ export function useUploadHousePhoto(houseId: string) {
   });
 }
 
+export function useHouseStoreroomItems(houseId: string) {
+  return useQuery({
+    queryKey: queryKeys.storeroom.byHouse(houseId),
+    queryFn: () => api.storeroom.listItems({ houseId }),
+    enabled: !!houseId,
+  });
+}
+
+export function useHouseStoreroomMovements(houseId: string) {
+  return useQuery({
+    queryKey: queryKeys.storeroom.movementsByHouse(houseId),
+    queryFn: () => api.storeroom.listMovements({ houseId }),
+    enabled: !!houseId,
+  });
+}
+
 export function useDeleteHousePhoto(houseId: string) {
   const queryClient = useQueryClient();
   return useMutation({

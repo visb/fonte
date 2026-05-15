@@ -27,8 +27,8 @@ export class WishlistController {
 
   @Get('pending')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
-  getPending() {
-    return this.service.findPending();
+  getPending(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.findPending(user.userId);
   }
 
   @Get(':residentId')

@@ -3,8 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ResidentUsageSession } from './resident-usage-session.entity';
 import { Resident } from '../resident/resident.entity';
-
-const DAILY_LIMIT_SECONDS = 1200;
+import { AppSettingsService } from '../app-settings/app-settings.service';
 
 @Injectable()
 export class ResidentSessionService {
@@ -13,6 +12,7 @@ export class ResidentSessionService {
     private sessionRepository: Repository<ResidentUsageSession>,
     @InjectRepository(Resident)
     private residentRepository: Repository<Resident>,
+    private appSettingsService: AppSettingsService,
   ) {}
 
   private today(): string {
@@ -20,10 +20,11 @@ export class ResidentSessionService {
   }
 
   async getToday(residentId: string): Promise<{ secondsUsed: number; limitSeconds: number }> {
+    const limitSeconds = await this.appSettingsService.getDailyLimitSeconds();
     const session = await this.sessionRepository.findOne({
       where: { residentId, date: this.today() },
     });
-    return { secondsUsed: session?.secondsUsed ?? 0, limitSeconds: DAILY_LIMIT_SECONDS };
+    return { secondsUsed: session?.secondsUsed ?? 0, limitSeconds };
   }
 
   async getTodayByUserId(userId: string): Promise<{ secondsUsed: number; limitSeconds: number }> {
@@ -39,8 +40,9 @@ export class ResidentSessionService {
     const resident = await this.residentRepository.findOne({ where: { userId } });
     if (!resident) throw new NotFoundException('Perfil de interno não encontrado');
 
+    const limitSeconds = await this.appSettingsService.getDailyLimitSeconds();
     const date = this.today();
-    const clamped = Math.min(Math.max(0, seconds), DAILY_LIMIT_SECONDS);
+    const clamped = Math.min(Math.max(0, seconds), limitSeconds);
 
     // Atomic upsert: safe for concurrent requests from multiple devices.
     const result = await this.sessionRepository.query(
@@ -51,10 +53,10 @@ export class ResidentSessionService {
          seconds_used = LEAST(resident_usage_sessions.seconds_used + EXCLUDED.seconds_used, $4),
          updated_at = now()
        RETURNING seconds_used`,
-      [resident.id, date, clamped, DAILY_LIMIT_SECONDS],
+      [resident.id, date, clamped, limitSeconds],
     );
 
-    return { secondsUsed: result[0].seconds_used, limitSeconds: DAILY_LIMIT_SECONDS };
+    return { secondsUsed: result[0].seconds_used, limitSeconds };
   }
 
   async reset(residentId: string): Promise<void> {

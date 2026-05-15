@@ -18,6 +18,10 @@ export const queryKeys = {
   staff: {
     all: ['staff'] as const,
     detail: (id: string) => ['staff', id] as const,
+    permissions: (id: string) => ['staff', id, 'permissions'] as const,
+  },
+  appSettings: {
+    current: ['app-settings'] as const,
   },
   ministries: {
     all: ['ministries'] as const,
@@ -29,6 +33,10 @@ export const queryKeys = {
     all: ['support-groups'] as const,
     detail: (id: string) => ['support-groups', id] as const,
     meetings: (id: string) => ['support-groups', id, 'meetings'] as const,
+    meetingDetail: (meetingId: string) => ['support-groups', 'meeting', meetingId] as const,
+    relativeCheckins: (meetingId: string) => ['support-groups', 'meeting', meetingId, 'relative-checkins'] as const,
+    relativeHistory: (relativeId: string) => ['support-groups', 'relative', relativeId, 'history'] as const,
+    residentHistory: (residentId: string) => ['support-groups', 'resident', residentId, 'history'] as const,
   },
   storeroom: {
     byHouse: (houseId: string) => ['storeroom', houseId] as const,

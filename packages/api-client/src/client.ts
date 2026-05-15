@@ -12,6 +12,7 @@ import { createRelativesModule } from './modules/relatives.js';
 import { createDocumentTemplatesModule } from './modules/document-templates.js';
 import { createSupportGroupsModule } from './modules/support-groups.js';
 import { createWishlistModule } from './modules/wishlist.js';
+import { createAppSettingsModule } from './modules/app-settings.js';
 
 export interface ApiClientConfig {
   baseURL: string;
@@ -53,6 +54,7 @@ export function createApiClient(config: ApiClientConfig) {
     documentTemplates: createDocumentTemplatesModule(http),
     supportGroups: createSupportGroupsModule(http),
     wishlist: createWishlistModule(http),
+    appSettings: createAppSettingsModule(http),
     photoUrl: (path: string | null | undefined): string | null => {
       if (!path) return null;
       if (path.startsWith('http://') || path.startsWith('https://')) return path;

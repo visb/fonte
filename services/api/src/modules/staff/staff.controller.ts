@@ -21,10 +21,13 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { StaffPermissionType } from '@fonte/types';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { UpdateStaffMeDto } from './dto/update-staff-me.dto';
+import { AddPermissionDto } from './dto/add-permission.dto';
 import { Staff } from './staff.entity';
+import { StaffPermission } from './staff-permission.entity';
 import { StaffService } from './staff.service';
 
 const photoOptions = { storage: memoryStorage() };
@@ -101,5 +104,32 @@ export class StaffController {
   @Roles(Role.ADMIN)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.staffService.remove(id);
+  }
+
+  // ─── Permissions ─────────────────────────────────────────────────────────────
+
+  @Get(':id/permissions')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  getPermissions(@Param('id', ParseUUIDPipe) id: string): Promise<StaffPermission[]> {
+    return this.staffService.getPermissions(id);
+  }
+
+  @Post(':id/permissions')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  addPermission(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AddPermissionDto,
+  ): Promise<StaffPermission> {
+    return this.staffService.addPermission(id, dto.type);
+  }
+
+  @Delete(':id/permissions/:type')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  removePermission(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('type') type: StaffPermissionType,
+  ): Promise<void> {
+    return this.staffService.removePermission(id, type);
   }
 }

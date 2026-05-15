@@ -1,11 +1,13 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
-import { Role, WishlistStatus } from '@fonte/types';
+import { Role, StaffPermissionType, WishlistStatus } from '@fonte/types';
 import { WishlistItem } from './wishlist-item.entity';
 import { AddWishlistItemDto } from './dto/add-wishlist-item.dto';
 import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
+import { Staff } from '../staff/staff.entity';
+import { StaffPermission } from '../staff/staff-permission.entity';
 
 @Injectable()
 export class WishlistService {
@@ -16,7 +18,20 @@ export class WishlistService {
     private residentRepository: Repository<Resident>,
     @InjectRepository(Relative)
     private relativeRepository: Repository<Relative>,
+    @InjectRepository(Staff)
+    private staffRepository: Repository<Staff>,
+    @InjectRepository(StaffPermission)
+    private permissionRepository: Repository<StaffPermission>,
   ) {}
+
+  private async assertModeratePermission(staffUserId: string): Promise<void> {
+    const staff = await this.staffRepository.findOne({ where: { userId: staffUserId } });
+    if (!staff) throw new ForbiddenException();
+    const count = await this.permissionRepository.count({
+      where: { staffId: staff.id, permissionType: StaffPermissionType.MODERATE_MESSAGES },
+    });
+    if (count === 0) throw new ForbiddenException('Sem permissão para moderar lista de pedidos');
+  }
 
   async findAll(residentId: string): Promise<WishlistItem[]> {
     return this.itemRepository.find({
@@ -41,7 +56,8 @@ export class WishlistService {
     });
   }
 
-  async findPending(): Promise<(WishlistItem & { residentName: string })[]> {
+  async findPending(staffUserId: string): Promise<(WishlistItem & { residentName: string })[]> {
+    await this.assertModeratePermission(staffUserId);
     const items = await this.itemRepository.find({
       where: { status: WishlistStatus.PENDING_APPROVAL, deletedAt: IsNull() },
       order: { createdAt: 'ASC' },
@@ -80,6 +96,7 @@ export class WishlistService {
   }
 
   async approve(staffUserId: string, itemId: string): Promise<WishlistItem> {
+    await this.assertModeratePermission(staffUserId);
     const item = await this.itemRepository.findOne({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Item não encontrado');
 
@@ -97,6 +114,7 @@ export class WishlistService {
   }
 
   async reject(staffUserId: string, itemId: string, reason?: string): Promise<WishlistItem> {
+    await this.assertModeratePermission(staffUserId);
     const item = await this.itemRepository.findOne({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Item não encontrado');
 

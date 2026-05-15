@@ -126,6 +126,7 @@ export class SupportGroupService {
     notes: string | null;
     checkinToken: string;
     checkinCount: number;
+    relativeCheckinCount: number;
     createdAt: Date;
   }>> {
     const group = await this.groupRepo.findOne({ where: { id: groupId } });
@@ -133,16 +134,18 @@ export class SupportGroupService {
 
     return this.groupRepo.manager.query(
       `SELECT m.id,
-              m.support_group_id  AS "supportGroupId",
-              g.name              AS "supportGroupName",
-              m.date::text        AS "date",
+              m.support_group_id    AS "supportGroupId",
+              g.name                AS "supportGroupName",
+              m.date::text          AS "date",
               m.notes,
-              m.checkin_token     AS "checkinToken",
-              COUNT(c.id)::int    AS "checkinCount",
-              m.created_at        AS "createdAt"
+              m.checkin_token       AS "checkinToken",
+              COUNT(DISTINCT c.id)::int  AS "checkinCount",
+              COUNT(DISTINCT rc.id)::int AS "relativeCheckinCount",
+              m.created_at          AS "createdAt"
        FROM support_group_meetings m
        JOIN support_groups g ON g.id = m.support_group_id
        LEFT JOIN support_group_checkins c ON c.meeting_id = m.id
+       LEFT JOIN support_group_relative_checkins rc ON rc.meeting_id = m.id
        WHERE m.support_group_id = $1
        GROUP BY m.id, g.name
        ORDER BY m.date DESC`,
@@ -158,22 +161,86 @@ export class SupportGroupService {
     notes: string | null;
     checkinToken: string;
     checkinCount: number;
+    relativeCheckinCount: number;
     createdAt: Date;
   }>> {
     return this.groupRepo.manager.query(
       `SELECT m.id,
-              m.support_group_id  AS "supportGroupId",
-              g.name              AS "supportGroupName",
-              m.date::text        AS "date",
+              m.support_group_id    AS "supportGroupId",
+              g.name                AS "supportGroupName",
+              m.date::text          AS "date",
               m.notes,
-              m.checkin_token     AS "checkinToken",
-              COUNT(c.id)::int    AS "checkinCount",
-              m.created_at        AS "createdAt"
+              m.checkin_token       AS "checkinToken",
+              COUNT(DISTINCT c.id)::int  AS "checkinCount",
+              COUNT(DISTINCT rc.id)::int AS "relativeCheckinCount",
+              m.created_at          AS "createdAt"
        FROM support_group_meetings m
        JOIN support_groups g ON g.id = m.support_group_id AND g.deleted_at IS NULL
        LEFT JOIN support_group_checkins c ON c.meeting_id = m.id
+       LEFT JOIN support_group_relative_checkins rc ON rc.meeting_id = m.id
        GROUP BY m.id, g.name
        ORDER BY m.date DESC`,
+    );
+  }
+
+  async findMeetingRelativeCheckins(meetingId: string): Promise<Array<{
+    id: string;
+    relativeId: string;
+    relativeName: string;
+    residentId: string;
+    residentName: string;
+  }>> {
+    const meeting = await this.meetingRepo.findOne({ where: { id: meetingId } });
+    if (!meeting) throw new NotFoundException(`Meeting ${meetingId} not found`);
+
+    return this.groupRepo.manager.query(
+      `SELECT rc.id,
+              rc.relative_id  AS "relativeId",
+              rel.name        AS "relativeName",
+              rel.resident_id AS "residentId",
+              res.name        AS "residentName"
+       FROM support_group_relative_checkins rc
+       JOIN relatives rel ON rel.id = rc.relative_id AND rel.deleted_at IS NULL
+       JOIN residents res ON res.id = rel.resident_id AND res.deleted_at IS NULL
+       WHERE rc.meeting_id = $1
+       ORDER BY res.name ASC`,
+      [meetingId],
+    );
+  }
+
+  async findRelativeCheckinHistory(relativeId: string): Promise<Array<{
+    meetingId: string;
+    date: string;
+    groupName: string;
+  }>> {
+    return this.groupRepo.manager.query(
+      `SELECT m.id          AS "meetingId",
+              m.date::text  AS "date",
+              g.name        AS "groupName"
+       FROM support_group_relative_checkins rc
+       JOIN support_group_meetings m ON m.id = rc.meeting_id
+       JOIN support_groups g ON g.id = m.support_group_id AND g.deleted_at IS NULL
+       WHERE rc.relative_id = $1
+       ORDER BY m.date DESC`,
+      [relativeId],
+    );
+  }
+
+  async findResidentCheckinHistory(residentId: string): Promise<Array<{
+    meetingId: string;
+    date: string;
+    groupName: string;
+  }>> {
+    return this.groupRepo.manager.query(
+      `SELECT m.id          AS "meetingId",
+              m.date::text  AS "date",
+              g.name        AS "groupName"
+       FROM support_group_checkins c
+       JOIN support_group_meetings m ON m.id = c.meeting_id
+       JOIN support_groups g ON g.id = m.support_group_id AND g.deleted_at IS NULL
+       WHERE c.resident_id = $1
+       ORDER BY m.date DESC`,
+      [residentId],
     );
   }
 

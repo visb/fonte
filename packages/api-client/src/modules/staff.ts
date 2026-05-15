@@ -1,5 +1,6 @@
 import type { AxiosInstance } from 'axios';
-import type { Staff, StaffMe, CreateStaffInput, UpdateStaffInput, UpdateStaffMeInput } from '../types.js';
+import type { Staff, StaffMe, CreateStaffInput, UpdateStaffInput, UpdateStaffMeInput, StaffPermission, AddStaffPermissionInput } from '../types.js';
+import type { StaffPermissionType } from '@fonte/types';
 
 export function createStaffModule(http: AxiosInstance) {
   return {
@@ -18,5 +19,12 @@ export function createStaffModule(http: AxiosInstance) {
         .post<Staff>(`/staff/${id}/photo`, formData, { headers: { 'Content-Type': undefined } })
         .then((r) => r.data),
     delete: (id: string) => http.delete(`/staff/${id}`),
+
+    getPermissions: (id: string): Promise<StaffPermission[]> =>
+      http.get<StaffPermission[]>(`/staff/${id}/permissions`).then((r) => r.data),
+    addPermission: (id: string, data: AddStaffPermissionInput): Promise<StaffPermission> =>
+      http.post<StaffPermission>(`/staff/${id}/permissions`, data).then((r) => r.data),
+    removePermission: (id: string, type: StaffPermissionType): Promise<void> =>
+      http.delete(`/staff/${id}/permissions/${type}`).then(() => undefined),
   };
 }

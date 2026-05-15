@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { StaffPermissionType } from '@fonte/types';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import type { CreateStaffInput, UpdateStaffInput } from '@fonte/api-client';
@@ -63,6 +64,34 @@ export function useDeleteStaff() {
     mutationFn: (id: string) => api.staff.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.staff.all });
+    },
+  });
+}
+
+export function useStaffPermissions(staffId: string) {
+  return useQuery({
+    queryKey: queryKeys.staff.permissions(staffId),
+    queryFn: () => api.staff.getPermissions(staffId),
+    enabled: !!staffId,
+  });
+}
+
+export function useAddStaffPermission(staffId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (type: StaffPermissionType) => api.staff.addPermission(staffId, { type }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.staff.permissions(staffId) });
+    },
+  });
+}
+
+export function useRemoveStaffPermission(staffId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (type: StaffPermissionType) => api.staff.removePermission(staffId, type),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.staff.permissions(staffId) });
     },
   });
 }

@@ -67,7 +67,7 @@ export function HouseDetailPage() {
         {activeTab === 'residents' && <ResidentsTab houseId={id!} />}
         {activeTab === 'staff' && <StaffTab houseId={id!} />}
         {activeTab === 'ministries' && <MinistriesTab houseId={id!} />}
-        {activeTab === 'storeroom' && <StoreroomTab />}
+        {activeTab === 'storeroom' && <StoreroomTab houseId={id!} />}
         {activeTab === 'rules' && <RulesTab houseId={id!} />}
       </div>
     </div>

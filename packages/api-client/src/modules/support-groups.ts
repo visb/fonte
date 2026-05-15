@@ -7,6 +7,8 @@ import type {
   SupportGroupMeetingDetail,
   SupportGroupCheckin,
   SupportGroupRelativeCheckin,
+  MeetingRelativeCheckin,
+  RelativeCheckinHistoryItem,
   CreateMeetingInput,
   AddCheckinInput,
   RelativeCheckinInput,
@@ -40,5 +42,12 @@ export function createSupportGroupsModule(http: AxiosInstance) {
 
     addRelativeCheckin: (data: RelativeCheckinInput): Promise<SupportGroupRelativeCheckin> =>
       http.post<SupportGroupRelativeCheckin>('/support-groups/relative-checkin', data).then((r) => r.data),
+
+    getMeetingRelativeCheckins: (meetingId: string): Promise<MeetingRelativeCheckin[]> =>
+      http.get<MeetingRelativeCheckin[]>(`/support-groups/meetings/${meetingId}/relative-checkins`).then((r) => r.data),
+    getRelativeCheckinHistory: (relativeId: string): Promise<RelativeCheckinHistoryItem[]> =>
+      http.get<RelativeCheckinHistoryItem[]>(`/support-groups/relatives/${relativeId}/checkin-history`).then((r) => r.data),
+    getResidentCheckinHistory: (residentId: string): Promise<RelativeCheckinHistoryItem[]> =>
+      http.get<RelativeCheckinHistoryItem[]>(`/support-groups/residents/${residentId}/checkin-history`).then((r) => r.data),
   };
 }

@@ -6,7 +6,9 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { StaffPermissionType } from '@fonte/types';
 import { Staff } from './staff.entity';
+import { StaffPermission } from './staff-permission.entity';
 import { User } from '../user/user.entity';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
@@ -20,16 +22,19 @@ export class StaffService {
     private staffRepository: Repository<Staff>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(StaffPermission)
+    private permissionRepository: Repository<StaffPermission>,
     private storageService: StorageService,
   ) {}
 
-  async findByUserId(userId: string): Promise<Staff> {
+  async findByUserId(userId: string): Promise<Staff & { permissions: StaffPermissionType[] }> {
     const staff = await this.staffRepository.findOne({
       where: { userId },
       relations: ['user', 'house'],
     });
     if (!staff) throw new NotFoundException(`Staff profile not found for user ${userId}`);
-    return staff;
+    const perms = await this.permissionRepository.find({ where: { staffId: staff.id } });
+    return Object.assign(staff, { permissions: perms.map((p) => p.permissionType) });
   }
 
   findAll(): Promise<Staff[]> {
@@ -139,5 +144,30 @@ export class StaffService {
     await this.userRepository.update(staff.userId, { isActive: false });
     await this.userRepository.softDelete(staff.userId);
     await this.staffRepository.softDelete(id);
+  }
+
+  // ─── Permissions ─────────────────────────────────────────────────────────────
+
+  async getPermissions(staffId: string): Promise<StaffPermission[]> {
+    await this.findOne(staffId);
+    return this.permissionRepository.find({ where: { staffId }, order: { permissionType: 'ASC' } });
+  }
+
+  async addPermission(staffId: string, type: StaffPermissionType): Promise<StaffPermission> {
+    await this.findOne(staffId);
+    const existing = await this.permissionRepository.findOne({ where: { staffId, permissionType: type } });
+    if (existing) throw new ConflictException('Permissão já concedida');
+    return this.permissionRepository.save(this.permissionRepository.create({ staffId, permissionType: type }));
+  }
+
+  async removePermission(staffId: string, type: StaffPermissionType): Promise<void> {
+    const perm = await this.permissionRepository.findOne({ where: { staffId, permissionType: type } });
+    if (!perm) throw new NotFoundException('Permissão não encontrada');
+    await this.permissionRepository.delete(perm.id);
+  }
+
+  async hasPermission(staffId: string, type: StaffPermissionType): Promise<boolean> {
+    const count = await this.permissionRepository.count({ where: { staffId, permissionType: type } });
+    return count > 0;
   }
 }

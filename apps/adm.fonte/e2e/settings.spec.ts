@@ -10,13 +10,13 @@ test.describe('Configurações', () => {
   });
 
   test('exibe aba Templates de documentos por padrão', async ({ page }) => {
-    await expect(page.getByText('Templates de documentos')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Templates de documentos' })).toBeVisible();
   });
 
   test('navega para aba Permissões', async ({ page }) => {
     await page.getByRole('link', { name: 'Permissões' }).click();
     await expect(page).toHaveURL('/settings/permissions');
-    await expect(page.getByText('Permissões')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Permissões' })).toBeVisible();
   });
 
   test('navega para aba App para filhos', async ({ page }) => {
@@ -28,6 +28,6 @@ test.describe('Configurações', () => {
     await page.getByRole('link', { name: 'Permissões' }).click();
     await page.getByRole('link', { name: 'Templates de documentos' }).click();
     await expect(page).toHaveURL('/settings/templates');
-    await expect(page.getByText('Templates de documentos')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Templates de documentos' })).toBeVisible();
   });
 });

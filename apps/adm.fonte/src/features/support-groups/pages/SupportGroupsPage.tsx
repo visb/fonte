@@ -95,7 +95,7 @@ export function SupportGroupsPage() {
                     {g.coordinatorName ? ` · ${g.coordinatorName}` : ''}
                   </p>
                 </button>
-                <Button variant="ghost" size="icon" onClick={() => openEdit(g)}>
+                <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(g)}>
                   <Pencil size={15} />
                 </Button>
                 <Button

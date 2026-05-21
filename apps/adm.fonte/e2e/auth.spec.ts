@@ -21,6 +21,8 @@ test.describe('Autenticação', () => {
     await page.goto('/login');
     await page.getByLabel('E-mail').fill('nao-é-email');
     await page.getByLabel('Senha').fill('123456');
+    // Bypass HTML5 native email validation so Zod/RHF can show the error
+    await page.getByLabel('E-mail').evaluate((el) => (el as HTMLInputElement).type = 'text');
     await page.getByRole('button', { name: 'Entrar' }).click();
     await expect(page.getByText('E-mail inválido')).toBeVisible();
   });

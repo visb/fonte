@@ -5,7 +5,9 @@ export const api = createApiClient({
   getToken: () => localStorage.getItem('fonte_token'),
   onUnauthorized: () => {
     localStorage.removeItem('fonte_token');
-    window.location.href = '/login';
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
   },
 });
 

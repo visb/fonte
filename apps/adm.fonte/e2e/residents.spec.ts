@@ -33,7 +33,7 @@ test.describe('Filhos (Residentes)', () => {
   test('navega para detalhe de residente', async ({ page }) => {
     await page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'João Testador' }).first().click();
     await expect(page).toHaveURL(/\/residents\/.+/);
-    await expect(page.getByText('João Testador')).toBeVisible();
+    await expect(page.getByText('João Testador').first()).toBeVisible();
   });
 
   test('edita residente existente', async ({ page }) => {

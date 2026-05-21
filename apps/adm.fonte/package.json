@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "pnpm --filter @fonte/types build && pnpm --filter @fonte/api-client build && tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:test": "vite --mode test --port 5174"
   },
   "dependencies": {
     "@fonte/api-client": "workspace:*",
@@ -37,6 +38,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",

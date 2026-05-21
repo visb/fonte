@@ -1,21 +1,15 @@
 import { useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { ImagePlus, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/shared/EmptyState';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
-import { houseSchema, sanitizeHouseData, type HouseFormData } from '../../constants';
-import { HouseFormFields } from '../HouseFormFields';
-import { useHouseById, useUpdateHouse, useUploadHousePhoto, useDeleteHousePhoto } from '../../hooks/useHouses';
-import { useStaff } from '@/features/staff/hooks/useStaff';
+import { useHouseById, useUploadHousePhoto, useDeleteHousePhoto } from '../../hooks/useHouses';
+import { HouseDialog } from '../HouseDialog';
 import type { House } from '@fonte/api-client';
 
 type HousePhoto = House['photos'][number];
@@ -26,30 +20,9 @@ export function OverviewTab({ houseId }: { houseId: string }) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
-    useForm<HouseFormData>({ resolver: zodResolver(houseSchema) });
-
   const { data: house } = useHouseById(houseId);
-  const { data: staffList = [] } = useStaff({ enabled: editOpen });
-
   const uploadMutation = useUploadHousePhoto(houseId);
   const deleteMutation = useDeleteHousePhoto(houseId);
-  const updateMutation = useUpdateHouse(houseId);
-
-  const openEdit = () => {
-    if (!house) return;
-    reset({
-      name: house.name,
-      generalCapacity: house.generalCapacity ?? undefined,
-      staffCapacity: house.staffCapacity ?? undefined,
-      address: house.address ?? '',
-      city: house.city ?? '',
-      state: house.state ?? '',
-      coordinatorId: house.coordinatorId ?? '',
-      phone: house.phone ?? '',
-    });
-    setEditOpen(true);
-  };
 
   if (!house) return null;
 
@@ -60,7 +33,7 @@ export function OverviewTab({ houseId }: { houseId: string }) {
       <div className="rounded-lg border p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Informações</h2>
-          <Button variant="ghost" size="sm" onClick={openEdit}>
+          <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
             <Pencil size={14} className="mr-2" />
             Editar
           </Button>
@@ -131,7 +104,7 @@ export function OverviewTab({ houseId }: { houseId: string }) {
         </div>
         {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
         {house.photos.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">Nenhuma foto cadastrada.</p>
+          <EmptyState title="Nenhuma foto cadastrada." />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {house.photos.map((photo) => (
@@ -168,20 +141,7 @@ export function OverviewTab({ houseId }: { houseId: string }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={editOpen} onOpenChange={(open) => !open && setEditOpen(false)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Editar Casa</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit((data) => updateMutation.mutate(sanitizeHouseData(data), { onSuccess: () => setEditOpen(false) }))}>
-            <HouseFormFields register={register} errors={errors} staffList={staffList} />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={isSubmitting || updateMutation.isPending}>Salvar</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <HouseDialog open={editOpen} house={house} onClose={() => setEditOpen(false)} />
     </div>
   );
 }

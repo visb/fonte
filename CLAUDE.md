@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides high-signal guidance for Claude Code when working in this repository. Keep it short: detailed context lives in `docs/ai/` and should be opened only when relevant.
+Guidance de alta prioridade para Claude Code neste repositório. Detalhes completos em `docs/ai/`.
 
 ---
 
@@ -34,7 +34,7 @@ packages/
 - `BUSINESS_RULES.md` — regras de negócio e permissões por role.
 - `CONTRIBUTING.md` — convenção de commits.
 
-Abra apenas os guias necessários para a tarefa atual para não sobrecarregar contexto.
+Abra apenas os guias necessários para a tarefa atual.
 
 ---
 
@@ -52,116 +52,180 @@ pnpm build:api
 pnpm test:api
 ```
 
-`pnpm dev:api`, `pnpm dev:adm` e `pnpm dev:ops` já recompilam dependências compartilhadas necessárias. Se alterar `packages/types/src/index.ts`, rode `pnpm build:types` ou reinicie o dev server.
+`pnpm dev:api`, `pnpm dev:adm` e `pnpm dev:ops` já recompilam dependências compartilhadas. Se alterar `packages/types/src/index.ts`, rode `pnpm build:types` ou reinicie o dev server.
 
 ---
 
-## Arquitetura dos frontends (adm.fonte, ops.fonte e app.fonte)
+## Antes de criar qualquer arquivo
+
+1. **Já existe hook para esse recurso?** Verifique `features/<domínio>/hooks/` antes de criar novo.
+2. **Esse componente é reutilizável entre domínios?** Se sim, vai em `components/shared/`; se não, em `features/<domínio>/components/`.
+3. **Já existe chamada HTTP equivalente no `@fonte/api-client`?** Não duplique em cada app.
+4. **Essa lógica pertence ao service ou ao controller?** Controllers só validam entrada e roteiam.
+5. **Já existe migration que cobre essa mudança de schema?** Nunca edite migrations existentes — crie nova.
+
+---
+
+## Nomenclatura
+
+| Tipo | Padrão | Exemplos |
+|---|---|---|
+| Hook de query | `use<Recurso>` / `use<Recurso>ById` | `useResidents`, `useResidentById` |
+| Hook de mutation | `use<Ação><Recurso>` | `useCreateResident`, `useUpdateStaff` |
+| Componente de feature | `<Recurso><Papel>` | `ResidentCard`, `IncidentForm` |
+| Dialog | `<Ação><Recurso>Dialog` | `AddMinistryDialog`, `EditHouseDialog` |
+| Page | `<Recurso>Page` | `ResidentsPage`, `StaffDetailPage` |
+| DTO (backend) | `<Ação><Recurso>Dto` | `CreateResidentDto`, `UpdateStaffDto` |
+
+---
+
+## Arquitetura dos frontends
 
 ### Estrutura feature-based
-
-Cada domínio vive em `src/features/<domínio>/` com subpastas fixas:
 
 ```
 features/
   <domínio>/
     hooks/       ← useQuery e useMutation encapsulados
-    components/  ← componentes de apresentação reutilizáveis
+    components/  ← componentes de apresentação do domínio
     pages/       ← orquestração; sem lógica de negócio ou fetch direto
     constants.ts ← labels, variantes, configs de exibição
 ```
 
-Páginas só importam hooks e componentes — nunca `useQuery`/`useMutation` ou `useForm` diretamente. Estado de formulário vive no dialog/componente, não na page.
+### Query keys — padrão mais violado
 
-### Query keys
-
-Todas as query keys ficam em `src/lib/queryKeys.ts` (adm) ou `lib/queryKeys.ts` (ops). Nunca usar strings literais como `['residents']` fora deste arquivo.
+NUNCA usar string literal como query key fora de `lib/queryKeys.ts`.
 
 ```ts
-// correto
-useQuery({ queryKey: queryKeys.residents.all, ... })
+// ✅ correto
+useQuery({ queryKey: queryKeys.residents.all, queryFn: ... })
 
-// proibido
-useQuery({ queryKey: ['residents'], ... })
+// ❌ proibido
+useQuery({ queryKey: ['residents'], queryFn: ... })
 ```
+
+### Pages não fazem fetch
+
+NUNCA importar `useQuery`, `useMutation` ou `useForm` diretamente em pages.
+
+```ts
+// ✅ correto — page orquestra hooks e componentes
+export function ResidentsPage() {
+  const { data, isLoading } = useResidents();
+  return <ResidentList residents={data} isLoading={isLoading} />;
+}
+
+// ❌ proibido — fetch direto na page
+export function ResidentsPage() {
+  const { data } = useQuery({ queryKey: ['residents'], queryFn: api.residents.list });
+}
+```
+
+### Formulários
+
+SEMPRE usar `react-hook-form` + `zod`. NUNCA `useState` para campos de formulário.
+
+```ts
+// ✅ correto
+const schema = z.object({ name: z.string().min(1) });
+const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
+
+// ❌ proibido
+const [name, setName] = useState('');
+```
+
+Em React Native, SEMPRE usar `Controller` — `TextInput` não suporta `register`.
+
+### Dialogs autossuficientes
+
+NUNCA fazer prop drilling de dados que só o dialog usa.
+
+```ts
+// ✅ correto — dialog busca seus próprios dados
+export function AddMinistryDialog({ open, onClose, houseId }: Props) {
+  const { data: staff = [] } = useHouseStaff(houseId, { enabled: open });
+  const mutation = useAddMinistry(houseId);
+}
+
+// ❌ proibido — prop drilling
+<AddMinistryDialog staff={staff} residents={residents} availableMinistries={ministries} />
+```
+
+### Erros de API
+
+SEMPRE usar `getErrorMessage(error, fallback?)` de `lib/errors.ts`. NUNCA fazer cast manual.
+
+```ts
+// ✅ correto
+toast.error(getErrorMessage(error, 'Erro ao salvar'));
+
+// ❌ proibido
+toast.error((error as any).response?.data?.message ?? 'Erro');
+```
+
+### Componentes de estado
+
+SEMPRE usar componentes compartilhados para loading/empty/error.
+
+```ts
+// ✅ correto (adm.fonte)
+if (isLoading) return <LoadingState />;
+if (error) return <ErrorState error={error} />;
+if (!data.length) return <EmptyState message="Nenhum resultado" />;
+
+// ❌ proibido
+if (isLoading) return <ActivityIndicator />;
+if (!data.length) return <Text>Nenhum resultado</Text>;
+```
+
+- `adm.fonte`: `LoadingState`, `EmptyState`, `ErrorState` de `@/components/shared/`
+- `ops.fonte` / `app.fonte`: criar e adotar componentes equivalentes ao tocar esses apps
 
 ### Hooks
 
-Um hook por responsabilidade. Queries e mutations do mesmo recurso ficam no mesmo arquivo.
+Um hook por responsabilidade. Queries e mutations do mesmo recurso no mesmo arquivo. Fetch condicional via `options?: { enabled?: boolean }`.
 
 ```ts
 // features/houses/hooks/useHouses.ts
 export function useHouses() { ... }
-export function useHouseById(id) { ... }
-export function useHouseStaff(houseId, options?) { ... }   // options.enabled para lazy fetch
+export function useHouseById(id: string) { ... }
+export function useHouseStaff(houseId: string, options?: { enabled?: boolean }) { ... }
 export function useCreateHouse() { ... }
 ```
 
-Hooks que precisam de fetch condicional aceitam `options?: { enabled?: boolean }` — padrão `true`.
+### Tamanho e decomposição de componentes
 
-### Formulários
+NUNCA deixar componente ultrapassar ~150 linhas. Se passou, quebre.
+NUNCA colocar mais de uma responsabilidade visual num componente.
+SEMPRE perguntar: "essa parte poderia ser um componente com nome próprio?"
 
-Todos os formulários usam `react-hook-form` + `zod`. Nunca `useState` manual para campos de form. Isso inclui telas de autenticação (login, change-password).
+Sinais de que deve quebrar:
+- Mais de um bloco condicional de renderização
+- Lista com item complexo (extraia o item)
+- Seção com título próprio (header, card, row, badge)
+- Lógica de exibição que se repetiria em outra tela
 
-```ts
-const schema = z.object({ name: z.string().min(1) });
-const {
-  register,
-  handleSubmit,
-  formState: { errors },
-} = useForm({
-  resolver: zodResolver(schema),
-});
+Estrutura esperada para page típica:
+```
+Page          → orquestra layout, sem JSX de detalhe
+FeatureCard   → um item da lista
+FeatureHeader → cabeçalho da seção
+FeatureForm   → formulário isolado
 ```
 
-Em React Native usar `Controller` para todos os inputs (TextInput não suporta `register`).
-
-### Erros de API
-
-Usar `getErrorMessage(error, fallback?)` de `src/lib/errors.ts` (adm) / `lib/errors.ts` (ops, app). Nunca fazer cast manual de `error` para extrair mensagem.
-
-### Dialogs e modais
-
-Cada dialog é um componente separado que:
-
-- Recebe só o mínimo necessário para se identificar (`open`/`target`, `onClose`, `houseId` etc.)
-- Busca seus próprios dados internamente via hooks, com `enabled` atrelado ao estado de abertura
-- Gerencia seu próprio estado de formulário
-- Chama sua própria mutation
-
-```ts
-// correto — dialog autossuficiente
-export function AddMinistryDialog({ open, onClose, houseId }: Props) {
-  const { data: staff = [] } = useHouseStaff(houseId, { enabled: open });
-  const mutation = useAddMinistry(houseId);
-  ...
-}
-
-// evitar — prop drilling de dados que só o dialog usa
-<AddMinistryDialog staff={staff} residents={residents} availableMinistries={...} />
-```
-
-### Componentes
-
-Componentes devem ter responsabilidade unica.
-
-### Componentes de estado
-
-Sempre usar os componentes compartilhados — nunca `ActivityIndicator` ou texto inline para loading/empty/error:
-
-- `adm.fonte`: `LoadingState`, `EmptyState`, `ErrorState` de `@/components/shared/`
-- `ops.fonte` e `app.fonte`: componentes compartilhados pendentes — criar e adotar quando tocar esses apps
+NUNCA renderizar `<FlatList>` ou `<Table>` com item inline complexo.
+SEMPRE extrair o item como componente separado (ex: `ResidentRow`, `HouseCard`).
 
 ---
 
-## Regras arquiteturais obrigatórias
+## Regras arquiteturais — backend
 
-- Nenhum acesso ao banco fora da camada/padrão de persistência do módulo.
-- Nenhuma regra de negócio no controller.
-- Services não devem depender diretamente de outros módulos sem interface/contrato claro.
-- DTO obrigatório para entrada/saída externa, validado com `class-validator`.
-- Banco PostgreSQL único, snake_case, UUID v4, soft delete via `deleted_at`.
-- Não editar migrations antigas para mudar comportamento; criar nova migration.
+- NUNCA acessar banco fora da camada de persistência do módulo (repository/entity).
+- NUNCA colocar regra de negócio no controller — só validação de entrada e roteamento.
+- SEMPRE validar entradas externas com DTO + `class-validator`.
+- NUNCA editar migrations existentes para mudar comportamento; crie nova migration.
+- Banco PostgreSQL: snake_case, UUID v4, soft delete via `deleted_at`.
+- Services dependem de outros módulos apenas via interface/contrato claro.
 
 ---
 

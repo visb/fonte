@@ -117,7 +117,7 @@ export default function AppLayout() {
         options={{
           title: "Mensagens",
           headerShown: false,
-          href: (isSupportGroupServant || (!canSendMessagesToFamilies && !canModerateMessages)) ? null : undefined,
+          href: (isSupportGroupServant || (!isResident && !canSendMessagesToFamilies && !canModerateMessages)) ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles-outline" size={size} color={color} />
           ),
@@ -132,7 +132,7 @@ export default function AppLayout() {
         options={{
           title: "Pedidos",
           headerShown: false,
-          href: (isSupportGroupServant || !canModerateMessages) ? null : undefined,
+          href: (isSupportGroupServant || (!isResident && !canModerateMessages)) ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="gift-outline" size={size} color={color} />
           ),

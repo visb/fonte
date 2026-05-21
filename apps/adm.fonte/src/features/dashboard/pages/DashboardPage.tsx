@@ -1,11 +1,10 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHouses } from '@/features/houses/hooks/useHouses';
+import { HouseOccupancyCard } from '../components/HouseOccupancyCard';
 
 export function DashboardPage() {
-  const navigate = useNavigate();
-
   const { data: houses = [] } = useHouses();
 
   return (
@@ -27,47 +26,9 @@ export function DashboardPage() {
             Ocupação das Casas
           </h2>
           <div className="flex gap-3 overflow-x-auto pb-1">
-            {houses.map((house) => {
-              const hasCapacity =
-                house.generalCapacity != null || house.staffCapacity != null;
-              const vagas = hasCapacity
-                ? Math.max(
-                    0,
-                    (house.generalCapacity ?? 0) +
-                      (house.staffCapacity ?? 0) -
-                      house.staffCount -
-                      house.activeResidentsCount,
-                  )
-                : null;
-
-              return (
-                <button
-                  key={house.id}
-                  onClick={() => navigate(`/houses/${house.id}`)}
-                  className="shrink-0 w-40 rounded-lg border bg-card hover:bg-accent/50 transition-colors text-left p-3 space-y-2"
-                >
-                  <p className="font-semibold text-sm truncate text-center">{house.name}</p>
-                  <div className="text-center">
-                    <p className="text-4xl font-bold leading-none">{vagas ?? '—'}</p>
-                    <p className="text-sm text-muted-foreground mt-1">vagas</p>
-                  </div>
-                  <div className="flex justify-around text-center">
-                    <div>
-                      <p className="text-base font-semibold leading-none">
-                        {house.activeResidentsCount}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">filhos</p>
-                    </div>
-                    <div>
-                      <p className="text-base font-semibold leading-none">
-                        {house.staffCount}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">servos</p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+            {houses.map((house) => (
+              <HouseOccupancyCard key={house.id} house={house} />
+            ))}
           </div>
         </div>
       )}

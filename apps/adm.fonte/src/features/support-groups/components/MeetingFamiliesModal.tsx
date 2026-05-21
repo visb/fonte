@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { RelativeCheckinHistoryItem } from '@fonte/api-client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { LoadingState } from '@/components/shared/LoadingState';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { useSupportGroupMeetingDetail, useResidentCheckinHistory } from '../hooks/useSupportGroups';
 
 function ResidentHistoryRow({ residentId }: { residentId: string }) {
   const { data: history = [], isLoading } = useResidentCheckinHistory(residentId);
 
-  if (isLoading) return <p className="text-xs text-muted-foreground py-1 pl-2">Carregando...</p>;
-  if (history.length === 0) return <p className="text-xs text-muted-foreground py-1 pl-2">Nenhuma participação anterior.</p>;
+  if (isLoading) return <LoadingState />;
+  if (history.length === 0) return <EmptyState title="Nenhuma participação anterior." />;
 
   return (
     <div className="pl-2 pt-1 space-y-1">
@@ -48,9 +50,9 @@ export function MeetingFamiliesModal({ meetingId, onClose }: MeetingFamiliesModa
         </DialogHeader>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">Carregando...</p>
+          <LoadingState />
         ) : !meeting || meeting.checkins.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma família registrada nesta reunião.</p>
+          <EmptyState title="Nenhuma família registrada nesta reunião." />
         ) : (
           <div className="divide-y">
             {meeting.checkins.map((checkin) => {

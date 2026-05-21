@@ -1,14 +1,6 @@
 import { useMemo } from "react";
-import {
-  View,
-  Text,
-  Modal,
-  Pressable,
-  ScrollView,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, Modal, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { MovementType } from "@fonte/types";
 import type { StoreroomItem } from "@fonte/api-client";
 import { useStoreroomMovements } from "../hooks/useStoreroom";
 import {
@@ -16,9 +8,9 @@ import {
   formatDateBR,
   formatAutonomy,
   getWeeklyAverage,
-  movementLabel,
 } from "../utils";
 import { MovementChart } from "./MovementChart";
+import { MovementHistoryRow } from "./MovementHistoryRow";
 
 const MOVEMENT_HISTORY_LIMIT = 30;
 
@@ -31,11 +23,9 @@ export function ItemDetailsModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const {
-    data: movements = [],
-    isLoading,
-    isError,
-  } = useStoreroomMovements(visible ? item?.id : undefined);
+  const { data: movements = [], isLoading, isError } = useStoreroomMovements(
+    visible ? item?.id : undefined,
+  );
 
   const latestMovements = useMemo(
     () => movements.slice(0, MOVEMENT_HISTORY_LIMIT),
@@ -52,18 +42,11 @@ export function ItemDetailsModal({
   const hasWeeklyAverage = weeklyAverage > 0;
   const averageWindow =
     item.weeklyAverageWindowStart && item.weeklyAverageWindowEnd
-      ? `${formatDateBR(item.weeklyAverageWindowStart)} a ${formatDateBR(
-          item.weeklyAverageWindowEnd,
-        )}`
+      ? `${formatDateBR(item.weeklyAverageWindowStart)} a ${formatDateBR(item.weeklyAverageWindowEnd)}`
       : null;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 justify-end bg-black/50">
         <Pressable className="flex-1" onPress={onClose} />
         <View className="bg-white rounded-t-3xl max-h-[88%]">
@@ -72,12 +55,8 @@ export function ItemDetailsModal({
               <Ionicons name="cube-outline" size={22} color="#16a34a" />
             </View>
             <View className="flex-1">
-              <Text className="text-lg font-semibold text-gray-900">
-                {item.name}
-              </Text>
-              <Text className="text-xs text-gray-500 mt-0.5">
-                Detalhes da dispensa
-              </Text>
+              <Text className="text-lg font-semibold text-gray-900">{item.name}</Text>
+              <Text className="text-xs text-gray-500 mt-0.5">Detalhes da dispensa</Text>
             </View>
             <Pressable
               className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center"
@@ -88,10 +67,7 @@ export function ItemDetailsModal({
             </Pressable>
           </View>
 
-          <ScrollView
-            className="px-5"
-            contentContainerClassName="py-4"
-          >
+          <ScrollView className="px-5" contentContainerClassName="py-4">
             <View className="flex-row gap-3 mb-3">
               <View className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
                 <Text className="text-xs text-gray-500">Estoque atual</Text>
@@ -100,9 +76,7 @@ export function ItemDetailsModal({
                 </Text>
               </View>
               <View className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
-                <Text className="text-xs text-gray-500">
-                  Autonomia estimada
-                </Text>
+                <Text className="text-xs text-gray-500">Autonomia estimada</Text>
                 <Text className="text-base font-semibold text-gray-900 mt-1">
                   {formatAutonomy(item)}
                 </Text>
@@ -110,18 +84,14 @@ export function ItemDetailsModal({
             </View>
 
             <View className="bg-blue-50 rounded-xl px-4 py-3 mb-5">
-              <Text className="text-xs text-blue-700">
-                Consumo médio semanal
-              </Text>
+              <Text className="text-xs text-blue-700">Consumo médio semanal</Text>
               <Text className="text-base font-semibold text-blue-900 mt-1">
                 {hasWeeklyAverage
                   ? `${formatQuantity(weeklyAverage)} ${item.unit}/sem.`
                   : "Média ainda não calculada"}
               </Text>
               {averageWindow ? (
-                <Text className="text-xs text-blue-700 mt-1">
-                  Janela: {averageWindow}
-                </Text>
+                <Text className="text-xs text-blue-700 mt-1">Janela: {averageWindow}</Text>
               ) : null}
             </View>
 
@@ -164,44 +134,9 @@ export function ItemDetailsModal({
                 </Text>
               ) : (
                 <View className="gap-2">
-                  {latestMovements.map((movement) => {
-                    const isEntry = movement.type === MovementType.IN;
-                    return (
-                      <View
-                        key={movement.id}
-                        className="border border-gray-100 rounded-xl px-4 py-3 bg-white"
-                      >
-                        <View className="flex-row items-center">
-                          <View
-                            className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${
-                              isEntry ? "bg-green-50" : "bg-red-50"
-                            }`}
-                          >
-                            <Ionicons
-                              name={isEntry ? "arrow-up" : "arrow-down"}
-                              size={16}
-                              color={isEntry ? "#16a34a" : "#dc2626"}
-                            />
-                          </View>
-                          <View className="flex-1">
-                            <Text className="text-sm font-semibold text-gray-900">
-                              {movementLabel(movement.type)} de{" "}
-                              {formatQuantity(movement.quantity)} {item.unit}
-                            </Text>
-                            <Text className="text-xs text-gray-500 mt-0.5">
-                              {formatDateBR(movement.date)} •{" "}
-                              {movement.responsible?.name ?? "Sem responsável"}
-                            </Text>
-                          </View>
-                        </View>
-                        {movement.notes ? (
-                          <Text className="text-xs text-gray-500 mt-2 pl-11">
-                            {movement.notes}
-                          </Text>
-                        ) : null}
-                      </View>
-                    );
-                  })}
+                  {latestMovements.map((movement) => (
+                    <MovementHistoryRow key={movement.id} movement={movement} unit={item.unit} />
+                  ))}
                 </View>
               )}
             </View>

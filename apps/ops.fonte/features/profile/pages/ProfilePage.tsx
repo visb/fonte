@@ -1,78 +1,23 @@
-import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@expo/vector-icons';
 import { resolveAssetUrl } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { getErrorMessage } from '@/lib/errors';
-import { useUpdateStaffProfile, useUploadStaffPhoto, useUploadResidentPhoto } from '../hooks/useProfile';
-
-const THEME = '#272950';
-
-const profileSchema = z.object({
-  name: z.string().min(1, 'Nome é obrigatório'),
-  phone: z.string().optional().or(z.literal('')),
-  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
-});
-type ProfileForm = z.infer<typeof profileSchema>;
-
-const passwordSchema = z
-  .object({
-    password: z.string().min(6, 'Mínimo 6 caracteres'),
-    confirm: z.string(),
-  })
-  .refine((d) => d.password === d.confirm, {
-    message: 'As senhas não coincidem',
-    path: ['confirm'],
-  });
-type PasswordForm = z.infer<typeof passwordSchema>;
-
-const INPUT_CLASS = 'border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50';
+import { useUploadStaffPhoto, useUploadResidentPhoto } from '../hooks/useProfile';
+import { ProfileHeader } from '../components/ProfileHeader';
+import { ProfileDataSection } from '../components/ProfileDataSection';
+import { ChangePasswordSection } from '../components/ChangePasswordSection';
 
 export function ProfilePage() {
-  const { staff, resident, isResident, changePassword, refreshStaff, refreshResident } = useAuth();
-  const updateProfile = useUpdateStaffProfile();
+  const { staff, resident, isResident, refreshStaff, refreshResident } = useAuth();
   const uploadStaffPhoto = useUploadStaffPhoto();
   const uploadResidentPhoto = useUploadResidentPhoto();
-
-  const [profileError, setProfileError] = useState('');
-  const [profileSuccess, setProfileSuccess] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-
-  const profileForm = useForm<ProfileForm>({ resolver: zodResolver(profileSchema) });
-  const passwordForm = useForm<PasswordForm>({ resolver: zodResolver(passwordSchema) });
-
-  useEffect(() => {
-    if (staff) {
-      profileForm.reset({
-        name: staff.name,
-        phone: staff.phone ?? '',
-        email: staff.user.email,
-      });
-    }
-  }, [staff]);
 
   const displayName = isResident ? resident?.name : staff?.name;
   const photoUrl = isResident
     ? resolveAssetUrl(resident?.photoUrl ?? null)
     : resolveAssetUrl(staff?.photoUrl ?? null);
   const subtitle = isResident ? 'Filho' : (staff?.house?.name ?? staff?.supportGroup?.name ?? '');
+  const isPhotoUploading = isResident ? uploadResidentPhoto.isPending : uploadStaffPhoto.isPending;
 
   async function handlePickPhoto() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -108,219 +53,25 @@ export function ProfilePage() {
     }
   }
 
-  const onSaveProfile = (data: ProfileForm) => {
-    setProfileError('');
-    setProfileSuccess(false);
-    updateProfile.mutate(
-      {
-        name: data.name,
-        phone: data.phone || null,
-        email: data.email || undefined,
-      },
-      {
-        onSuccess: () => {
-          setProfileSuccess(true);
-          refreshStaff();
-          setTimeout(() => setProfileSuccess(false), 3000);
-        },
-        onError: (err) => setProfileError(getErrorMessage(err, 'Erro ao salvar.')),
-      },
-    );
-  };
-
-  const onChangePassword = async (data: PasswordForm) => {
-    setPasswordError('');
-    setPasswordSuccess(false);
-    try {
-      await changePassword(data.password);
-      setPasswordSuccess(true);
-      passwordForm.reset();
-      setTimeout(() => setPasswordSuccess(false), 3000);
-    } catch (err) {
-      setPasswordError(getErrorMessage(err, 'Erro ao alterar senha.'));
-    }
-  };
-
-  const isPhotoUploading = isResident ? uploadResidentPhoto.isPending : uploadStaffPhoto.isPending;
-
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-gray-50"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-        <View style={{ backgroundColor: THEME }} className="pt-8 pb-12 items-center">
-          <Pressable onPress={handlePickPhoto} className="relative">
-            {photoUrl ? (
-              <Image source={{ uri: photoUrl }} className="w-24 h-24 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
-            ) : (
-              <View className="w-24 h-24 rounded-full items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                <Ionicons name="person" size={44} color="#fff" />
-              </View>
-            )}
-            <View className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white items-center justify-center shadow">
-              {isPhotoUploading ? (
-                <ActivityIndicator size="small" color={THEME} />
-              ) : (
-                <Ionicons name="camera" size={16} color={THEME} />
-              )}
-            </View>
-          </Pressable>
-          <Text className="text-white text-xl font-bold mt-3">{displayName}</Text>
-          {subtitle ? <Text className="text-white/70 text-sm">{subtitle}</Text> : null}
-        </View>
+        <ProfileHeader
+          displayName={displayName}
+          photoUrl={photoUrl}
+          subtitle={subtitle}
+          isPhotoUploading={isPhotoUploading}
+          onPickPhoto={handlePickPhoto}
+        />
 
         <View className="px-4 -mt-5 space-y-4">
-          {!isResident && (
-            <View className="bg-white rounded-2xl shadow-sm p-4">
-              <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-                Meus dados
-              </Text>
-
-              <View className="space-y-3">
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-1.5">Nome</Text>
-                  <Controller
-                    control={profileForm.control}
-                    name="name"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <TextInput
-                        className={INPUT_CLASS}
-                        value={value}
-                        onChangeText={onChange}
-                        onBlur={onBlur}
-                        autoCapitalize="words"
-                      />
-                    )}
-                  />
-                  {profileForm.formState.errors.name && (
-                    <Text className="text-sm text-red-600 mt-1">{profileForm.formState.errors.name.message}</Text>
-                  )}
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-1.5">Telefone</Text>
-                  <Controller
-                    control={profileForm.control}
-                    name="phone"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <TextInput
-                        className={INPUT_CLASS}
-                        value={value}
-                        onChangeText={onChange}
-                        onBlur={onBlur}
-                        keyboardType="phone-pad"
-                        placeholder="(11) 99999-9999"
-                      />
-                    )}
-                  />
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-1.5">E-mail</Text>
-                  <Controller
-                    control={profileForm.control}
-                    name="email"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <TextInput
-                        className={INPUT_CLASS}
-                        value={value}
-                        onChangeText={onChange}
-                        onBlur={onBlur}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                      />
-                    )}
-                  />
-                  {profileForm.formState.errors.email && (
-                    <Text className="text-sm text-red-600 mt-1">{profileForm.formState.errors.email.message}</Text>
-                  )}
-                </View>
-
-                {profileError ? <Text className="text-sm text-red-600">{profileError}</Text> : null}
-                {profileSuccess ? <Text className="text-sm text-green-600">Dados salvos com sucesso!</Text> : null}
-
-                <TouchableOpacity
-                  className="rounded-lg py-3 items-center mt-1"
-                  style={{ backgroundColor: THEME }}
-                  onPress={profileForm.handleSubmit(onSaveProfile)}
-                  disabled={updateProfile.isPending}
-                >
-                  {updateProfile.isPending ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text className="text-white font-semibold text-base">Salvar dados</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
+          {!isResident && staff && (
+            <ProfileDataSection staff={staff} onRefresh={refreshStaff} />
           )}
-
-          <View className="bg-white rounded-2xl shadow-sm p-4">
-            <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-              Alterar senha
-            </Text>
-
-            <View className="space-y-3">
-              <View>
-                <Text className="text-sm font-medium text-gray-700 mb-1.5">Nova senha</Text>
-                <Controller
-                  control={passwordForm.control}
-                  name="password"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      className={INPUT_CLASS}
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      secureTextEntry
-                      placeholder="••••••••"
-                    />
-                  )}
-                />
-                {passwordForm.formState.errors.password && (
-                  <Text className="text-sm text-red-600 mt-1">{passwordForm.formState.errors.password.message}</Text>
-                )}
-              </View>
-
-              <View>
-                <Text className="text-sm font-medium text-gray-700 mb-1.5">Confirmar senha</Text>
-                <Controller
-                  control={passwordForm.control}
-                  name="confirm"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      className={INPUT_CLASS}
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      secureTextEntry
-                      placeholder="••••••••"
-                    />
-                  )}
-                />
-                {passwordForm.formState.errors.confirm && (
-                  <Text className="text-sm text-red-600 mt-1">{passwordForm.formState.errors.confirm.message}</Text>
-                )}
-              </View>
-
-              {passwordError ? <Text className="text-sm text-red-600">{passwordError}</Text> : null}
-              {passwordSuccess ? <Text className="text-sm text-green-600">Senha alterada com sucesso!</Text> : null}
-
-              <TouchableOpacity
-                className="rounded-lg py-3 items-center mt-1"
-                style={{ backgroundColor: THEME }}
-                onPress={passwordForm.handleSubmit(onChangePassword)}
-                disabled={passwordForm.formState.isSubmitting}
-              >
-                {passwordForm.formState.isSubmitting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text className="text-white font-semibold text-base">Alterar senha</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
+          <ChangePasswordSection />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -1,0 +1,20 @@
+appId: org.fonte.ops
+---
+- runFlow: helpers/login-operator.yaml
+- tapOn: "Filhos"
+- assertVisible: "João Testador"
+- tapOn: "Buscar filho..."
+- inputText: "João"
+- assertVisible: "João Testador"
+- hideKeyboard
+- tapOn: "João Testador"
+- assertVisible: "Visão Geral"
+- assertVisible: "Acompanhamento"
+- assertVisible: "Familiares"
+- assertVisible: "Anexos"
+- tapOn: "Familiares"
+- waitForAnimationToEnd
+- assertVisible: "Maria Testadora"
+- tapOn: "Anexos"
+- waitForAnimationToEnd
+- assertVisible: "Nenhum anexo adicionado."

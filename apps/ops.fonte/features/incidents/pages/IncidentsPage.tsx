@@ -49,6 +49,7 @@ export function IncidentsPage() {
       )}
 
       <TouchableOpacity
+        accessibilityLabel="Nova ocorrência"
         className="absolute bottom-6 right-6 bg-red-600 w-14 h-14 rounded-full items-center justify-center shadow-md"
         onPress={() => router.push("/(app)/incidents/new")}
       >

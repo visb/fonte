@@ -345,6 +345,7 @@ export function MinistryDetailPage() {
             )}
 
             <TouchableOpacity
+              accessibilityLabel="Nova tarefa"
               className="absolute bottom-6 right-6 bg-blue-600 w-14 h-14 rounded-full items-center justify-center shadow-md"
               onPress={() => setAddTaskOpen(true)}
             >

@@ -1,0 +1,13 @@
+appId: org.fonte.ops
+---
+- runFlow: helpers/login-operator.yaml
+- tapOn: "Nova ocorrência"
+- assertVisible: "Descreva a ocorrência com detalhes..."
+- tapOn: "Descreva a ocorrência com detalhes..."
+- inputText: "Ocorrência de teste E2E"
+- tapOn: "Média"
+- hideKeyboard
+- tapOn: "Registrar ocorrência"
+- assertVisible: "Ocorrência registrada."
+- tapOn: "OK"
+- assertVisible: "Ações rápidas"

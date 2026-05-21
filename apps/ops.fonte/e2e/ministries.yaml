@@ -1,0 +1,20 @@
+appId: org.fonte.ops
+---
+- runFlow: helpers/login-operator.yaml
+- tapOn: "Ministérios"
+- waitForAnimationToEnd
+- assertVisible: "Cozinha"
+- tapOn: "Cozinha"
+- waitForAnimationToEnd
+- assertVisible: "Visão Geral"
+- assertVisible: "Tarefas"
+- tapOn: "Tarefas"
+- waitForAnimationToEnd
+- assertVisible: "Nenhuma tarefa cadastrada."
+- tapOn: "Nova tarefa"
+- assertVisible: "Nova Tarefa"
+- tapOn: "Título da tarefa"
+- inputText: "Lavar louça"
+- tapOn: "Adicionar"
+- waitForAnimationToEnd
+- assertVisible: "Lavar louça"

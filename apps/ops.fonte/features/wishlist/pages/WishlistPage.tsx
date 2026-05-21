@@ -166,6 +166,7 @@ function ResidentWishlistPage({ residentId }: { residentId: string }) {
       />
 
       <TouchableOpacity
+        accessibilityLabel="Adicionar item"
         onPress={() => setAddOpen(true)}
         className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-[#272950] items-center justify-center shadow-lg"
       >

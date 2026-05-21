@@ -1,0 +1,21 @@
+appId: org.fonte.ops
+---
+- runFlow: helpers/login-operator.yaml
+- tapOn: "Dispensa"
+- waitForAnimationToEnd
+- assertVisible: "Arroz"
+- tapOn: "Movimentar item"
+- waitForAnimationToEnd
+- assertVisible: "Entrada"
+- tapOn: "Entrada"
+- tapOn: "Buscar item..."
+- inputText: "Arroz"
+- waitForAnimationToEnd
+- assertVisible: "Arroz"
+- tapOn: "Arroz"
+- tapOn: "0"
+- inputText: "5"
+- hideKeyboard
+- tapOn: "Registrar entrada"
+- waitForAnimationToEnd
+- assertVisible: "Movimentação registrada com sucesso."

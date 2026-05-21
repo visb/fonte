@@ -1,0 +1,40 @@
+appId: org.fonte.ops
+---
+# --- Cenário 1: login válido ---
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "input-email"
+- inputText: "operator@fonte.com"
+- tapOn:
+    text: "input-senha"
+- inputText: "operator123"
+- tapOn: "Entrar"
+- assertVisible: "Bem-vindo,"
+- assertVisible: "Operador Teste"
+
+# --- Cenário 2: login com credenciais inválidas ---
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "input-email"
+- inputText: "operator@fonte.com"
+- tapOn:
+    text: "input-senha"
+- inputText: "senha_errada"
+- tapOn: "Entrar"
+- assertVisible: "E-mail ou senha incorretos."
+
+# --- Cenário 3: logout ---
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "input-email"
+- inputText: "operator@fonte.com"
+- tapOn:
+    text: "input-senha"
+- inputText: "operator123"
+- tapOn: "Entrar"
+- assertVisible: "Bem-vindo,"
+- tapOn: "Sair"
+- assertVisible: "ops.fonte"

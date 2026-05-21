@@ -8,7 +8,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "build:web": "expo export --platform web"
+    "build:web": "expo export --platform web",
+    "start:test": "EXPO_PUBLIC_API_URL=http://10.0.2.2:3001/api/v1 expo start --android",
+    "test:maestro": "maestro test e2e/"
   },
   "dependencies": {
     "@babel/runtime": "^7.29.2",

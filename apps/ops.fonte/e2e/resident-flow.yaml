@@ -1,0 +1,15 @@
+appId: org.fonte.ops
+---
+- runFlow: helpers/login-resident.yaml
+- assertVisible: "João Testador"
+- assertVisible: "Use as abas abaixo para acessar mensagens e pedidos"
+- tapOn: "Mensagens"
+- waitForAnimationToEnd
+- assertVisible: "Tempo restante hoje"
+- tapOn: "Pedidos"
+- waitForAnimationToEnd
+- assertVisible: "Tempo restante hoje"
+- tapOn: "Início"
+- waitForAnimationToEnd
+- assertVisible: "João Testador"
+- assertVisible: "Use as abas abaixo para acessar mensagens e pedidos"

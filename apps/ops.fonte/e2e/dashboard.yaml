@@ -1,0 +1,13 @@
+appId: org.fonte.ops
+---
+- runFlow: helpers/login-operator.yaml
+- assertVisible: "Bem-vindo,"
+- assertVisible: "Operador Teste"
+- assertVisible: "Casa Teste"
+- assertVisible: "Filhos na casa"
+- assertVisible: "Ocorrências hoje"
+- assertVisible: "Ações rápidas"
+- assertVisible: "Nova ocorrência"
+- assertVisible: "Ver filhos"
+- assertVisible: "Ministérios"
+- assertVisible: "Dispensa"

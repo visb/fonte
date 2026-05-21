@@ -80,6 +80,7 @@ export function StoreroomPage() {
       />
 
       <TouchableOpacity
+        accessibilityLabel="Movimentar item"
         className="absolute bottom-6 right-6 bg-green-600 w-14 h-14 rounded-full items-center justify-center shadow-md"
         onPress={() => router.push("/(app)/storeroom/movement")}
       >

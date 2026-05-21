@@ -1,0 +1,12 @@
+appId: org.fonte.ops
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "input-email"
+- inputText: "resident@teste.com"
+- tapOn:
+    text: "input-senha"
+- inputText: "resident123"
+- tapOn: "Entrar"
+- assertVisible: "João Testador"

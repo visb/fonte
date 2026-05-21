@@ -59,6 +59,7 @@ export default function LoginScreen() {
               E-mail
             </Text>
             <TextInput
+              accessibilityLabel="input-email"
               className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
               placeholder="seu@email.com"
               keyboardType="email-address"
@@ -74,6 +75,7 @@ export default function LoginScreen() {
               Senha
             </Text>
             <TextInput
+              accessibilityLabel="input-senha"
               className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
               placeholder="••••••••"
               secureTextEntry

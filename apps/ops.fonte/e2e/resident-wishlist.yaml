@@ -1,0 +1,17 @@
+appId: org.fonte.ops
+---
+- runFlow: helpers/login-resident.yaml
+- tapOn: "Pedidos"
+- waitForAnimationToEnd
+- assertVisible: "Aprovados"
+- assertVisible: "Pendentes"
+- assertVisible: "Recusados"
+- tapOn: "Adicionar item"
+- assertVisible: "Adicionar item"
+- tapOn: "Ex: Bermuda azul tamanho M"
+- inputText: "Chinelo azul tamanho 42"
+- hideKeyboard
+- tapOn: "Adicionar"
+- waitForAnimationToEnd
+- tapOn: "Pendentes"
+- assertVisible: "Chinelo azul tamanho 42"

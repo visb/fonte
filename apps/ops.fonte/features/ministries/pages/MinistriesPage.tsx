@@ -159,6 +159,7 @@ export function MinistriesPage() {
 
         {/* FAB */}
         <TouchableOpacity
+          accessibilityLabel="Novo ministério"
           className="absolute bottom-6 right-6 w-14 h-14 bg-blue-600 rounded-full items-center justify-center shadow-lg"
           onPress={() => setCreateOpen(true)}
           activeOpacity={0.8}

@@ -1,19 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Pressable, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
+import { AttachmentPreviews } from './AttachmentPreviews';
+import { AttachmentMenuSheet } from './AttachmentMenuSheet';
 
 export interface MessageAttachment {
   uri: string;
@@ -156,41 +148,7 @@ export function MessageInput({ onSend, disabled }: Props) {
 
   return (
     <View style={{ backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
-      {/* Attachment previews */}
-      {attachments.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ paddingHorizontal: 16, paddingTop: 8 }}
-          contentContainerStyle={{ gap: 8 }}
-        >
-          {attachments.map((att, i) => (
-            <View key={i} style={{ position: 'relative' }}>
-              {att.type === 'image' ? (
-                <Image source={{ uri: att.uri }} style={{ width: 64, height: 64, borderRadius: 10 }} />
-              ) : (
-                <View style={{ width: 64, height: 64, borderRadius: 10, backgroundColor: '#eef2ff', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons
-                    name={att.type === 'audio' ? 'musical-notes' : 'document-text-outline'}
-                    size={24}
-                    color={ACCENT}
-                  />
-                </View>
-              )}
-              <TouchableOpacity
-                onPress={() => removeAttachment(i)}
-                style={{
-                  position: 'absolute', top: -6, right: -6,
-                  backgroundColor: '#ef4444', borderRadius: 10,
-                  width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="close" size={12} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
-      )}
+      <AttachmentPreviews attachments={attachments} onRemove={removeAttachment} />
 
       {/* Input row */}
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 16, paddingVertical: 12 }}>
@@ -243,30 +201,13 @@ export function MessageInput({ onSend, disabled }: Props) {
         )}
       </View>
 
-      {/* Menu modal */}
-      <Modal transparent animationType="fade" visible={showMenu} onRequestClose={() => setShowMenu(false)}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowMenu(false)}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
-        </Pressable>
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 16 }}>Enviar</Text>
-          {[
-            { icon: 'camera-outline', label: 'Câmera', onPress: openCamera },
-            { icon: 'images-outline', label: 'Galeria', onPress: openGallery },
-            { icon: 'document-outline', label: 'Documento', onPress: openDocuments },
-          ].map(({ icon, label, onPress }) => (
-            <TouchableOpacity key={label} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 12 }}>
-              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#eef2ff', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={icon as never} size={22} color={ACCENT} />
-              </View>
-              <Text style={{ fontSize: 16, color: '#111827' }}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity onPress={() => setShowMenu(false)} style={{ marginTop: 8, alignItems: 'center', paddingVertical: 12 }}>
-            <Text style={{ color: '#6b7280', fontSize: 15 }}>Cancelar</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+      <AttachmentMenuSheet
+        visible={showMenu}
+        onClose={() => setShowMenu(false)}
+        onCamera={openCamera}
+        onGallery={openGallery}
+        onDocument={openDocuments}
+      />
     </View>
   );
 }

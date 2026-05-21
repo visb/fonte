@@ -14,6 +14,7 @@ import { maskPhone, withMask } from '@/features/residents/lib/masks';
 import { useCreateStaff } from '../hooks/useStaff';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { useSupportGroups } from '@/features/support-groups/hooks/useSupportGroups';
+import { StaffServiceSelector } from '../components/StaffServiceSelector';
 
 const SELECT_CLASS =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
@@ -141,48 +142,17 @@ export function NewStaffPage() {
           {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
         </div>
 
-        {/* Casa / Grupo switch */}
-        <div className="space-y-3">
-          <Label>Tipo de serviço *</Label>
-          <div className="flex rounded-lg border border-input overflow-hidden">
-            <button
-              type="button"
-              onClick={() => { setValue('servesInGroup', false); setValue('supportGroupId', ''); }}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${!servesInGroup ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-accent'}`}
-            >
-              Serve na Casa
-            </button>
-            <button
-              type="button"
-              onClick={() => { setValue('servesInGroup', true); setValue('houseId', ''); }}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${servesInGroup ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-accent'}`}
-            >
-              Serve no Grupo de Apoio
-            </button>
-          </div>
-        </div>
-
-        {!servesInGroup && (
-          <div className="space-y-2">
-            <Label htmlFor="houseId">Casa *</Label>
-            <select id="houseId" {...register('houseId')} className={SELECT_CLASS}>
-              <option value="">Selecione...</option>
-              {houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
-            </select>
-            {errors.houseId && <p className="text-sm text-destructive">{errors.houseId.message}</p>}
-          </div>
-        )}
-
-        {servesInGroup && (
-          <div className="space-y-2">
-            <Label htmlFor="supportGroupId">Grupo de Apoio *</Label>
-            <select id="supportGroupId" {...register('supportGroupId')} className={SELECT_CLASS}>
-              <option value="">Selecione...</option>
-              {supportGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-            {errors.supportGroupId && <p className="text-sm text-destructive">{errors.supportGroupId.message}</p>}
-          </div>
-        )}
+        <StaffServiceSelector
+          servesInGroup={servesInGroup}
+          onSelectHouse={() => { setValue('servesInGroup', false); setValue('supportGroupId', ''); }}
+          onSelectGroup={() => { setValue('servesInGroup', true); setValue('houseId', ''); }}
+          houses={houses}
+          supportGroups={supportGroups}
+          houseIdReg={register('houseId')}
+          supportGroupIdReg={register('supportGroupId')}
+          houseIdError={errors.houseId?.message}
+          supportGroupIdError={errors.supportGroupId?.message}
+        />
 
         <div className="space-y-2">
           <Label htmlFor="phone">Telefone</Label>

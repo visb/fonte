@@ -50,6 +50,7 @@ export type {
   Relative,
   RelativeMe,
   CreateRelativeInput,
+  UpdateRelativeMeInput,
   GenerateRelativeAccessInput,
   ResetRelativePasswordInput,
   SupportGroupRelativeCheckin,

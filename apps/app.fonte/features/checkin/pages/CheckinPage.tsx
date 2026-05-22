@@ -4,6 +4,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { useSupportGroupCheckin } from '../hooks/useCheckin';
 import { getErrorMessage } from '@/lib/errors';
+import { LoadingState } from '@/components/shared/LoadingState';
 
 type ScanResult =
   | { kind: 'success'; groupName: string }
@@ -38,7 +39,7 @@ export function CheckinPage() {
   }
 
   if (!permission) {
-    return <View className="flex-1 items-center justify-center" />;
+    return <LoadingState />;
   }
 
   if (!permission.granted) {

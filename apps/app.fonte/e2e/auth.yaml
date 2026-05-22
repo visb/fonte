@@ -1,0 +1,38 @@
+appId: org.fonte.app
+---
+# --- Cenário 1: login com credenciais válidas ---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Entrar"
+    timeout: 30000
+- tapOn: "fill-test-credentials"
+- tapOn: "Entrar"
+- waitForAnimationToEnd
+- assertVisible: "Casa Teste"
+
+# --- Cenário 2: login com credenciais inválidas ---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Entrar"
+    timeout: 30000
+- tapOn: "fill-test-credentials-invalid"
+- tapOn: "Entrar"
+- waitForAnimationToEnd
+- assertVisible: "E-mail ou senha incorretos."
+
+# --- Cenário 3: login válido e logout ---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Entrar"
+    timeout: 30000
+- tapOn: "fill-test-credentials"
+- tapOn: "Entrar"
+- waitForAnimationToEnd
+- assertVisible: "Casa Teste"
+- tapOn:
+    text: "Sair"
+- waitForAnimationToEnd
+- assertVisible: "app.fonte"

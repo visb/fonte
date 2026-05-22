@@ -101,7 +101,7 @@ export function ProfilePage() {
         onSuccess: () => {
           setProfileSuccess(true);
           refreshRelative();
-          setTimeout(() => setProfileSuccess(false), 3000);
+          setTimeout(() => setProfileSuccess(false), 8000);
         },
         onError: (err) => setProfileError(getErrorMessage(err, 'Erro ao salvar.')),
       },
@@ -174,6 +174,7 @@ export function ProfilePage() {
                   name="name"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <TextInput
+                      accessibilityLabel="input-nome"
                       className={INPUT_CLASS}
                       value={value}
                       onChangeText={onChange}
@@ -211,8 +212,23 @@ export function ProfilePage() {
                 <Text className="text-sm text-red-600">{profileError}</Text>
               ) : null}
               {profileSuccess ? (
-                <Text className="text-sm text-green-600">Dados salvos com sucesso!</Text>
+                <Text accessibilityLabel="profile-save-success" className="text-sm text-green-600">Dados salvos com sucesso!</Text>
               ) : null}
+
+              {__DEV__ && (
+                <>
+                  <TouchableOpacity
+                    accessibilityLabel="fill-test-profile-name"
+                    onPress={() => profileForm.setValue('name', 'Maria Testadora Editada')}
+                    style={{ width: 44, height: 44, opacity: 0.01 }}
+                  />
+                  <TouchableOpacity
+                    accessibilityLabel="fill-test-profile-name-reset"
+                    onPress={() => profileForm.setValue('name', 'Maria Testadora')}
+                    style={{ width: 44, height: 44, opacity: 0.01 }}
+                  />
+                </>
+              )}
 
               <TouchableOpacity
                 className="bg-violet-600 rounded-lg py-3 items-center mt-1"

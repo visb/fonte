@@ -1,0 +1,15 @@
+appId: org.fonte.app
+---
+- runFlow: helpers/login.yaml
+- tapOn: "Mensagens"
+- waitForAnimationToEnd
+- assertVisible: "João Testador"
+- tapOn: "João Testador"
+- waitForAnimationToEnd
+- assertVisible: "Olá, como você está?"
+- tapOn: "fill-test-message"
+- tapOn:
+    text: "Enviar"
+- waitForAnimationToEnd
+- assertVisible: "Mensagem de teste"
+- assertVisible: "status-aguardando"

@@ -41,7 +41,7 @@ export function HomePage() {
               <Text className="text-violet-200 text-sm">{me.relationship}</Text>
             )}
           </View>
-          <TouchableOpacity onPress={logout} className="p-2">
+          <TouchableOpacity onPress={logout} accessibilityLabel="Sair" className="p-2">
             <Ionicons name="log-out-outline" size={22} color="#c4b5fd" />
           </TouchableOpacity>
         </View>

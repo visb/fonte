@@ -216,6 +216,15 @@ export function MessageInput({ onSend, disabled, accentColor = '#7c3aed' }: Prop
           </TouchableOpacity>
         )}
 
+        {/* DEV-only fill button for E2E tests */}
+        {__DEV__ && !isRecording && !text && (
+          <TouchableOpacity
+            accessibilityLabel="fill-test-message"
+            onPress={() => setText('Mensagem de teste')}
+            style={{ width: 44, height: 44, opacity: 0.01 }}
+          />
+        )}
+
         {/* Text input or recording indicator */}
         {isRecording ? (
           <View className="flex-1 flex-row items-center bg-red-50 border border-red-200 rounded-2xl px-4 py-2.5 gap-2">
@@ -243,6 +252,7 @@ export function MessageInput({ onSend, disabled, accentColor = '#7c3aed' }: Prop
           <TouchableOpacity
             onPress={handleSend}
             disabled={!canSend}
+            accessibilityLabel="Enviar"
             style={{
               width: 40,
               height: 40,

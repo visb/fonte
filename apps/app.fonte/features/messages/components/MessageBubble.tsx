@@ -110,7 +110,7 @@ export function MessageBubble({ message, myUserId }: Props) {
             {time}
           </Text>
           {isMine && isPending && (
-            <Text className="text-xs text-violet-200">· aguardando aprovação</Text>
+            <Text accessibilityLabel="status-aguardando" className="text-xs text-violet-200">· aguardando aprovação</Text>
           )}
         </View>
       </View>

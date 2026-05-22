@@ -1,0 +1,16 @@
+appId: org.fonte.app
+---
+- runFlow: helpers/login.yaml
+- tapOn: "Perfil"
+- waitForAnimationToEnd
+- assertVisible: "Salvar dados"
+- assertVisible: "Alterar senha"
+- tapOn: "fill-test-profile-name"
+- tapOn: "Salvar dados"
+- extendedWaitUntil:
+    visible: "profile-save-success"
+    timeout: 10000
+# Reset name back to original so other tests are not affected
+- tapOn: "fill-test-profile-name-reset"
+- tapOn: "Salvar dados"
+- waitForAnimationToEnd

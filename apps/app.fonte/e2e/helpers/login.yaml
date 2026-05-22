@@ -1,0 +1,11 @@
+appId: org.fonte.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Entrar"
+    timeout: 30000
+- tapOn: "fill-test-credentials"
+- tapOn: "Entrar"
+- waitForAnimationToEnd
+- assertVisible: "Casa Teste"

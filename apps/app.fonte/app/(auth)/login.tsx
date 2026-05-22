@@ -20,6 +20,7 @@ export default function LoginScreen() {
     control,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
@@ -53,6 +54,7 @@ export default function LoginScreen() {
               name="email"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
+                  accessibilityLabel="input-email"
                   className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
                   placeholder="seu@email.com"
                   keyboardType="email-address"
@@ -74,6 +76,7 @@ export default function LoginScreen() {
               name="password"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
+                  accessibilityLabel="input-senha"
                   className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
                   placeholder="••••••••"
                   secureTextEntry
@@ -88,6 +91,29 @@ export default function LoginScreen() {
           </View>
 
           {errors.root && <Text className="text-sm text-red-600">{errors.root.message}</Text>}
+
+          {__DEV__ && (
+            <View className="flex-row justify-center gap-4">
+              <TouchableOpacity
+                accessibilityLabel="fill-test-credentials"
+                onPress={() => {
+                  setValue('email', 'familiar@fonte.com');
+                  setValue('password', 'familiar123');
+                }}
+              >
+                <Text className="text-xs text-gray-400">teste válido</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityLabel="fill-test-credentials-invalid"
+                onPress={() => {
+                  setValue('email', 'familiar@fonte.com');
+                  setValue('password', 'senha_errada');
+                }}
+              >
+                <Text className="text-xs text-gray-400">teste inválido</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <TouchableOpacity
             className="bg-violet-600 rounded-lg py-3.5 items-center mt-2"

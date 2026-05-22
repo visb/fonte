@@ -1,0 +1,9 @@
+appId: org.fonte.app
+---
+# Valida que a tela de check-in carrega corretamente.
+# Em dispositivo sem permissão de câmera: assertVisible "Permitir câmera".
+# Em dispositivo com permissão já concedida: assertVisible "Aponte para o QR code".
+- runFlow: helpers/login.yaml
+- tapOn: "Check-in"
+- waitForAnimationToEnd
+- assertVisible: "Aponte para o QR code"

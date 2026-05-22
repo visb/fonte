@@ -1,0 +1,8 @@
+appId: org.fonte.app
+---
+- runFlow: helpers/login.yaml
+- assertVisible: "Maria Testadora"
+- assertVisible: "João Testador"
+- assertVisible: "Casa Teste"
+- assertVisible: "Rua das Flores, 123"
+- assertVisible: "(11) 99999-9999"

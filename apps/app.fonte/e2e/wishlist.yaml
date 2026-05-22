@@ -1,0 +1,6 @@
+appId: org.fonte.app
+---
+- runFlow: helpers/login.yaml
+- tapOn: "Pedidos"
+- waitForAnimationToEnd
+- assertVisible: "Bermuda azul tamanho M"

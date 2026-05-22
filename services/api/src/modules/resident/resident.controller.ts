@@ -12,6 +12,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Res,
   UploadedFile,
   UseGuards,
@@ -28,6 +29,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { DocumentTemplateService } from '../document-template/document-template.service';
 import { CreateResidentDto } from './dto/create-resident.dto';
 import { GenerateAccessDto } from './dto/generate-access.dto';
+import { ListResidentsDto } from './dto/list-residents.dto';
 import { ResetResidentPasswordDto } from './dto/reset-resident-password.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
 import { ResidentAttachment } from './resident-attachment.entity';
@@ -70,8 +72,8 @@ export class ResidentController {
 
   @Get()
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
-  findAll(): Promise<Resident[]> {
-    return this.residentService.findAll();
+  findAll(@Query() dto: ListResidentsDto): Promise<{ data: Resident[]; total: number; page: number; limit: number }> {
+    return this.residentService.findAll(dto);
   }
 
   @Get('me')

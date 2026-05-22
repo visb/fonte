@@ -19,6 +19,7 @@ export interface ResidentDocumentView {
 import { ResidentAttachment } from './resident-attachment.entity';
 import { ResidentDocument } from './resident-document.entity';
 import { CreateResidentDto } from './dto/create-resident.dto';
+import { ListResidentsDto } from './dto/list-residents.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
 import { StorageService } from '../storage/storage.service';
 
@@ -44,11 +45,28 @@ export class ResidentService {
     private storageService: StorageService,
   ) {}
 
-  findAll(): Promise<Resident[]> {
-    return this.residentRepository.find({
-      relations: ['house', 'ministry', 'user'],
-      order: { name: 'ASC' },
-    });
+  async findAll(dto: ListResidentsDto): Promise<{ data: Resident[]; total: number; page: number; limit: number }> {
+    const { page = 1, limit = 20, search, status } = dto;
+
+    const qb = this.residentRepository
+      .createQueryBuilder('resident')
+      .leftJoinAndSelect('resident.house', 'house')
+      .leftJoinAndSelect('resident.ministry', 'ministry')
+      .leftJoinAndSelect('resident.user', 'user')
+      .orderBy('resident.name', 'ASC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (search) {
+      qb.andWhere('LOWER(resident.name) LIKE LOWER(:search)', { search: `%${search}%` });
+    }
+
+    if (status) {
+      qb.andWhere('resident.status = :status', { status });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, total, page, limit };
   }
 
   async findOne(id: string): Promise<Resident> {

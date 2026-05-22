@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { ResidentStatus } from '@fonte/types';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import type {
@@ -8,10 +9,21 @@ import type {
   UpdateResidentInput,
 } from '@fonte/api-client';
 
-export function useResidents() {
-  return useQuery({
-    queryKey: queryKeys.residents.all,
-    queryFn: () => api.residents.list(),
+export function useInfiniteResidents(params: { search?: string; status?: ResidentStatus | '' }) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.residents.list({ search: params.search, status: params.status }),
+    queryFn: ({ pageParam }) =>
+      api.residents.list({
+        page: pageParam as number,
+        limit: 20,
+        search: params.search || undefined,
+        status: (params.status as ResidentStatus) || undefined,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.length * 20;
+      return loaded < lastPage.total ? allPages.length + 1 : undefined;
+    },
   });
 }
 

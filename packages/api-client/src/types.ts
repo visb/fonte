@@ -10,7 +10,10 @@ import type {
   MovementType,
   StaffPermissionType,
   TimerResetFrequency,
+  PaginatedResponse,
 } from '@fonte/types';
+
+export type { PaginatedResponse };
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -227,6 +230,13 @@ export interface GenerateResidentAccessInput {
 
 export interface ResetResidentPasswordInput {
   password: string;
+}
+
+export interface ListResidentsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: ResidentStatus;
 }
 
 export interface ResidentDocument {

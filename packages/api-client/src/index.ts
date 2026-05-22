@@ -76,4 +76,6 @@ export type {
   AddStaffPermissionInput,
   AppSettings,
   UpdateAppSettingsInput,
+  ListResidentsParams,
+  PaginatedResponse,
 } from './types.js';

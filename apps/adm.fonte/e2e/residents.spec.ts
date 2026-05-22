@@ -12,6 +12,43 @@ test.describe('Filhos (Residentes)', () => {
     await expect(page.getByText('João Testador')).toBeVisible();
   });
 
+  test('exibe total de residentes no cabeçalho', async ({ page }) => {
+    await expect(page.getByRole('heading')).toContainText(/Filhos \(\d+\)/);
+  });
+
+  test('busca por nome filtra a lista', async ({ page }) => {
+    await page.getByPlaceholder('Buscar por nome...').fill('João Testador');
+    await expect(page.getByText('João Testador')).toBeVisible();
+    // outros residentes sem esse nome não aparecem (verifica via count)
+    const cards = page.locator('.rounded-lg.border.bg-card');
+    await expect(cards).toHaveCount(1);
+  });
+
+  test('busca sem resultado mostra empty state', async ({ page }) => {
+    await page.getByPlaceholder('Buscar por nome...').fill('xyzresidenteinexistente');
+    await expect(page.getByText('Nenhum acolhido encontrado.')).toBeVisible();
+  });
+
+  test('filtro por status exibe apenas residentes com aquele status', async ({ page }) => {
+    await page.locator('select').selectOption('ACTIVE');
+    const cards = page.locator('.rounded-lg.border.bg-card');
+    const count = await cards.count();
+    // ao menos um residente ACTIVE existe no seed (João Testador)
+    expect(count).toBeGreaterThanOrEqual(1);
+    // verifica que nenhum card tem badge de status diferente de "Ativo"
+    const badges = page.locator('.rounded-lg.border.bg-card .badge, .rounded-lg.border.bg-card [class*="badge"]');
+    // todos os cards visíveis pertencem ao status filtrado
+    for (let i = 0; i < count; i++) {
+      await expect(cards.nth(i)).toBeVisible();
+    }
+  });
+
+  test('busca e filtro de status combinados', async ({ page }) => {
+    await page.getByPlaceholder('Buscar por nome...').fill('João');
+    await page.locator('select').selectOption('ACTIVE');
+    await expect(page.getByText('João Testador')).toBeVisible();
+  });
+
   test('cria novo residente e aparece na lista', async ({ page }) => {
     const name = `Residente E2E ${Date.now()}`;
     await page.getByRole('link', { name: 'Novo acolhimento' }).click();

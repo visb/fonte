@@ -317,7 +317,17 @@
           "name": "List Residents",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/residents", "host": ["{{baseUrl}}"], "path": ["residents"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents?page=1&limit=20&search=&status=",
+              "host": ["{{baseUrl}}"],
+              "path": ["residents"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Página (padrão: 1)" },
+                { "key": "limit", "value": "20", "description": "Itens por página (padrão: 20, máx: 100)" },
+                { "key": "search", "value": "", "description": "Busca parcial por nome (case-insensitive)" },
+                { "key": "status", "value": "", "description": "Filtro por status: PRE_ADMISSION | ACTIVE | DISCIPLINE | TEMP_LEAVE | DISCHARGED | EVADED" }
+              ]
+            }
           }
         },
         {

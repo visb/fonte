@@ -9,6 +9,8 @@ export const queryKeys = {
   },
   residents: {
     all: ['residents'] as const,
+    list: (params: { search?: string; status?: string }) =>
+      ['residents', 'list', params] as const,
     detail: (id: string) => ['residents', id] as const,
     relativesAll: ['relatives'] as const,
     relatives: (id: string) => ['relatives', id] as const,

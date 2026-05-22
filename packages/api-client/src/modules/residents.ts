@@ -1,6 +1,8 @@
 import type { AxiosInstance } from 'axios';
 import type {
   GenerateResidentAccessInput,
+  ListResidentsParams,
+  PaginatedResponse,
   Resident,
   ResidentMe,
   ResetResidentPasswordInput,
@@ -12,7 +14,8 @@ import type {
 
 export function createResidentsModule(http: AxiosInstance) {
   return {
-    list: () => http.get<Resident[]>('/residents').then((r) => r.data),
+    list: (params?: ListResidentsParams) =>
+      http.get<PaginatedResponse<Resident>>('/residents', { params }).then((r) => r.data),
     listByHouse: (houseId: string) =>
       http.get<Resident[]>(`/houses/${houseId}/residents`).then((r) => r.data),
     getById: (id: string) => http.get<Resident>(`/residents/${id}`).then((r) => r.data),

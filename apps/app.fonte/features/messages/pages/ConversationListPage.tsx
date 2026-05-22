@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/api';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { useRelativeMe } from '@/features/home/hooks/useRelativeMe';
 import { useHouseStaffThreads } from '../hooks/useMessages';
 import type { StaffThreadSummary } from '@fonte/api-client';
@@ -106,10 +107,10 @@ export function ConversationListPage() {
       }
       renderItem={({ item }) => <StaffThreadItem item={item} />}
       ListEmptyComponent={
-        <View className="items-center justify-center py-12">
-          <Ionicons name="people-outline" size={32} color="#d1d5db" />
-          <Text className="text-sm text-gray-400 mt-3">Nenhum servo cadastrado na casa</Text>
-        </View>
+        <EmptyState
+          message="Nenhum servo cadastrado na casa"
+          icon={<Ionicons name="people-outline" size={32} color="#d1d5db" />}
+        />
       }
     />
   );

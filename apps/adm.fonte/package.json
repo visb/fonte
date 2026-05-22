@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "pnpm --filter @fonte/types build && pnpm --filter @fonte/api-client build && tsc -b && vite build",
     "preview": "vite preview",
-    "dev:test": "vite --mode test --port 5174"
+    "dev:test": "vite --mode test --port 5174",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fonte/api-client": "workspace:*",

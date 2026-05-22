@@ -49,10 +49,76 @@ pnpm dev:ops
 pnpm build:types
 pnpm build:api-client
 pnpm build:api
-pnpm test:api
 ```
 
 `pnpm dev:api`, `pnpm dev:adm` e `pnpm dev:ops` já recompilam dependências compartilhadas. Se alterar `packages/types/src/index.ts`, rode `pnpm build:types` ou reinicie o dev server.
+
+---
+
+## Rodando a aplicação
+
+### Desenvolvimento (produção local)
+
+Requer três terminais:
+
+```bash
+# terminal 1 — banco de dados
+pnpm docker:up
+
+# terminal 2 — backend
+pnpm dev:api          # http://localhost:3000
+
+# terminal 3 — frontend desejado
+pnpm dev:adm          # http://localhost:5173
+pnpm dev:ops          # http://localhost:8082
+pnpm dev:app          # Expo (QR code no terminal)
+```
+
+### Ambiente de teste
+
+Requer dois terminais:
+
+```bash
+# terminal 1 — prepara banco e sobe API em modo test
+pnpm test:setup       # docker up + seed de teste
+pnpm dev:api:test     # API com NODE_ENV=test
+
+# terminal 2 — frontend em modo test (apenas adm.fonte)
+pnpm dev:adm          # em outro terminal, com a flag de env de teste
+# adm.fonte aponta para http://localhost:5174 em modo test
+```
+
+---
+
+## Testes
+
+### Referência rápida
+
+| Comando | O que roda |
+|---|---|
+| `pnpm test:api` | Unit tests do backend (Jest) |
+| `pnpm test:api:watch` | Unit tests em modo watch |
+| `pnpm test:api:cov` | Unit tests com cobertura |
+| `pnpm test:api:e2e` | E2E do backend (Jest + supertest) |
+| `pnpm test:adm` | E2E do adm.fonte (Playwright) |
+| `pnpm test:ops` | E2E do ops.fonte (Maestro) |
+| `pnpm test:app` | E2E do app.fonte (Maestro) |
+
+### Pré-requisitos por tipo
+
+- **`test:api`** — apenas `pnpm docker:up` com DB de teste disponível.
+- **`test:api:e2e`** — `pnpm test:setup` + `pnpm dev:api:test` rodando.
+- **`test:adm`** — `pnpm test:setup` + `pnpm dev:api:test` + `pnpm dev:adm` rodando na porta 5174.
+- **`test:ops` / `test:app`** — Maestro instalado + emulador/dispositivo conectado + API de teste rodando + Metro bundler rodando (`pnpm dev:ops` ou `pnpm dev:app`). No Android, pode ser necessário `adb reverse tcp:8081 tcp:8081` para o emulador alcançar o Metro.
+
+### Antes de commitar
+
+**SEMPRE** verificar se os testes existentes continuam passando e atualizar os testes afetados pelas mudanças:
+
+1. Se alterou backend: `pnpm test:api` deve passar.
+2. Se alterou fluxo coberto por E2E: rodar o teste correspondente e corrigir se quebrou.
+3. Se adicionou nova feature com fluxo de usuário: criar ou atualizar o spec/yaml do domínio afetado.
+4. Nunca commitar com testes ignorados (`skip`, `only`, `xfail`) sem justificativa explícita no código.
 
 ---
 

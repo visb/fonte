@@ -292,6 +292,7 @@ SEMPRE extrair o item como componente separado (ex: `ResidentRow`, `HouseCard`).
 - NUNCA editar migrations existentes para mudar comportamento; crie nova migration.
 - Banco PostgreSQL: snake_case, UUID v4, soft delete via `deleted_at`.
 - Services dependem de outros módulos apenas via interface/contrato claro.
+- SEMPRE atualizar `fonte-api.postman_collection.json` na raiz ao adicionar, remover ou alterar qualquer endpoint (rota, método, body, params, response). A coleção é a documentação viva da API.
 
 ---
 

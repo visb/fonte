@@ -13,6 +13,12 @@ test.describe('Servos', () => {
     await expect(page.getByText('Coordenador Teste')).toBeVisible();
   });
 
+  test('mostra avatar na listagem de servos', async ({ page }) => {
+    const card = page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'Coordenador Teste' });
+    // Avatar circular visível (foto ou ícone fallback)
+    await expect(card.locator('.rounded-full')).toBeVisible();
+  });
+
   test('cria novo servo e aparece na lista', async ({ page }) => {
     const name = `Servo E2E ${Date.now()}`;
     const email = `servo_e2e_${Date.now()}@fonte.com`;

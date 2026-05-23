@@ -498,6 +498,27 @@
             "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/admissions", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "admissions"] },
             "description": "Retorna histórico de todos os acolhimentos do residente, com nome da casa. Ordem: mais recente primeiro. Roles: ADMIN, COORDINATOR, OPERATOR."
           }
+        },
+        {
+          "name": "Get Resident Follow-Ups",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/follow-ups", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "follow-ups"] },
+            "description": "Lista eventos de acompanhamento do residente. OPERATOR vê apenas accessLevel=ALL. ADMIN/COORDINATOR veem tudo. Ordenado por date DESC, createdAt DESC."
+          }
+        },
+        {
+          "name": "Create Resident Follow-Up",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2025-01-15\",\n  \"type\": \"NOTE\",\n  \"description\": \"Observação sobre o acolhido\",\n  \"accessLevel\": \"ALL\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/follow-ups", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "follow-ups"] },
+            "description": "Registra evento de acompanhamento. staffId extraído do JWT. Types: ADMISSION|READMISSION|DISCHARGE|EVASION|MINISTRY_CHANGE|RELATIVE_ADDED|DOCUMENT_ATTACHED|MONTHLY_CONTRIBUTION|DISCIPLINE|BEHAVIOR_ASSESSMENT|NOTE. AccessLevel: ALL|ADMINISTRATION."
+          }
         }
       ]
     },

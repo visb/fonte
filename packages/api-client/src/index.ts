@@ -80,4 +80,8 @@ export type {
   UpdateAppSettingsInput,
   ListResidentsParams,
   PaginatedResponse,
+  ResidentFollowUp,
+  CreateFollowUpInput,
+  FollowUpType,
+  FollowUpAccessLevel,
 } from './types.js';

@@ -14,6 +14,7 @@ import { ResetResidentPasswordModal } from '../components/ResetResidentPasswordM
 import { ResidentOverviewTab } from '../components/ResidentOverviewTab';
 import { ResidentFamiliesTab } from '../components/ResidentFamiliesTab';
 import { ResidentAttachmentsTab } from '../components/ResidentAttachmentsTab';
+import { ResidentTrackingTab } from '../components/ResidentTrackingTab';
 import { LoadingState } from '@/components/shared/LoadingState';
 
 const TABS = ['Visão Geral', 'Acompanhamento', 'Familiares', 'Anexos'] as const;
@@ -88,13 +89,7 @@ export function ResidentDetailPage() {
           )}
 
           {activeTab === 'Acompanhamento' && (
-            <View className="flex-1 items-center justify-center py-20 px-8">
-              <Ionicons name="time-outline" size={40} color="#d1d5db" />
-              <Text className="text-base font-medium text-gray-400 mt-4">Em desenvolvimento</Text>
-              <Text className="text-sm text-gray-400 mt-1 text-center">
-                Esta seção registrará ocorrências e mudanças de status durante o internamento.
-              </Text>
-            </View>
+            <ResidentTrackingTab residentId={id!} />
           )}
 
           {activeTab === 'Familiares' && (

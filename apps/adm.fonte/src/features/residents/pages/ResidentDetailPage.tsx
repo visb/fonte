@@ -16,6 +16,7 @@ import { OverviewTab } from '../components/tabs/OverviewTab';
 import { RelativesTab } from '../components/tabs/RelativesTab';
 import { AttachmentsTab } from '../components/tabs/AttachmentsTab';
 import { AdmissionsTab } from '../components/tabs/AdmissionsTab';
+import { TrackingTab } from '../components/tabs/TrackingTab';
 
 const TABS = [
   { id: 'overview', label: 'Visão Geral' },
@@ -104,12 +105,7 @@ export function ResidentDetailPage() {
 
       {activeTab === 'overview' && <OverviewTab resident={resident} />}
 
-      {activeTab === 'timeline' && (
-        <div className="py-12 text-center text-muted-foreground text-sm space-y-1">
-          <p className="font-medium">Em desenvolvimento</p>
-          <p>Esta seção registrará ocorrências e mudanças de status durante o internamento.</p>
-        </div>
-      )}
+      {activeTab === 'timeline' && <TrackingTab residentId={id!} />}
 
       {activeTab === 'relatives' && <RelativesTab residentId={id!} />}
 

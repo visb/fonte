@@ -2,10 +2,11 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Role } from '@fonte/types';
+import { FollowUpType, Role } from '@fonte/types';
 import { Resident } from './resident.entity';
 import { Admission } from './admission.entity';
 import { User } from '../user/user.entity';
+import { ResidentFollowUpService } from '../resident-follow-up/resident-follow-up.service';
 
 export interface ResidentDocumentView {
   id: string;
@@ -52,6 +53,7 @@ export class ResidentService {
     @InjectRepository(Admission)
     private admissionRepository: Repository<Admission>,
     private storageService: StorageService,
+    private followUpService: ResidentFollowUpService,
   ) {}
 
   async findAll(dto: ListResidentsDto): Promise<{ data: Resident[]; total: number; page: number; limit: number }> {
@@ -115,12 +117,27 @@ export class ResidentService {
     });
     await this.admissionRepository.save(admission);
 
+    const admissionDate = saved.entryDate
+      ? new Date(saved.entryDate).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    await this.followUpService.createAuto(saved.id, FollowUpType.ADMISSION, admissionDate);
+
     return saved;
   }
 
   async update(id: string, dto: UpdateResidentDto): Promise<Resident> {
-    await this.findOne(id);
+    const before = await this.findOne(id);
     await this.residentRepository.update(id, dto);
+
+    const today = new Date().toISOString().split('T')[0];
+    if (dto.status === 'DISCHARGED' && before.status !== 'DISCHARGED') {
+      await this.followUpService.createAuto(id, FollowUpType.DISCHARGE, today);
+    } else if (dto.status === 'EVADED' && before.status !== 'EVADED') {
+      await this.followUpService.createAuto(id, FollowUpType.EVASION, today);
+    }
+    if (dto.ministryId !== undefined && dto.ministryId !== before.ministryId) {
+      await this.followUpService.createAuto(id, FollowUpType.MINISTRY_CHANGE, today);
+    }
 
     const admissionUpdate = Object.fromEntries(
       Object.entries(dto).filter(([key]) => ResidentService.ADMISSION_FIELDS.has(key)),
@@ -172,6 +189,9 @@ export class ResidentService {
       familyInvestment: dto.familyInvestment ?? null,
     });
     await this.admissionRepository.save(admission);
+
+    const readmitDate = dto.entryDate ?? new Date().toISOString().split('T')[0];
+    await this.followUpService.createAuto(id, FollowUpType.READMISSION, readmitDate as string);
 
     // Resetar campos de admissão no Resident (backward compat)
     const residentUpdate: Partial<Resident> = {
@@ -348,7 +368,9 @@ export class ResidentService {
     const filename = this.storageService.uniqueFilename(originalFilename);
     const fileUrl = await this.storageService.upload('attachments', filename, file.buffer, file.mimetype);
     const attachment = this.attachmentRepository.create({ residentId, filename: originalFilename, fileUrl });
-    return this.attachmentRepository.save(attachment);
+    const saved = await this.attachmentRepository.save(attachment);
+    await this.followUpService.createAuto(residentId, FollowUpType.DOCUMENT_ATTACHED);
+    return saved;
   }
 
   async removeAttachment(residentId: string, attachmentId: string): Promise<void> {

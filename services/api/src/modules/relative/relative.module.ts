@@ -6,9 +6,10 @@ import { RelativeService } from './relative.service';
 import { Resident } from '../resident/resident.entity';
 import { User } from '../user/user.entity';
 import { StorageModule } from '../storage/storage.module';
+import { ResidentFollowUpModule } from '../resident-follow-up/resident-follow-up.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Relative, Resident, User]), StorageModule],
+  imports: [TypeOrmModule.forFeature([Relative, Resident, User]), StorageModule, ResidentFollowUpModule],
   controllers: [RelativeController],
   providers: [RelativeService],
   exports: [RelativeService],

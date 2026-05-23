@@ -14,6 +14,23 @@ jest.mock('@fonte/types', () => ({
     RELATIVE: 'RELATIVE',
     RESIDENT: 'RESIDENT',
   },
+  FollowUpType: {
+    ADMISSION: 'ADMISSION',
+    READMISSION: 'READMISSION',
+    DISCHARGE: 'DISCHARGE',
+    EVASION: 'EVASION',
+    MINISTRY_CHANGE: 'MINISTRY_CHANGE',
+    RELATIVE_ADDED: 'RELATIVE_ADDED',
+    DOCUMENT_ATTACHED: 'DOCUMENT_ATTACHED',
+    MONTHLY_CONTRIBUTION: 'MONTHLY_CONTRIBUTION',
+    DISCIPLINE: 'DISCIPLINE',
+    BEHAVIOR_ASSESSMENT: 'BEHAVIOR_ASSESSMENT',
+    NOTE: 'NOTE',
+  },
+  FollowUpAccessLevel: {
+    ALL: 'ALL',
+    ADMINISTRATION: 'ADMINISTRATION',
+  },
 }));
 
 import { BadRequestException } from '@nestjs/common';
@@ -95,6 +112,7 @@ function makeService(
     userRepo as Repository<User>,
     admissionRepo as Repository<Admission>,
     {} as never, // StorageService
+    { createAuto: jest.fn().mockResolvedValue(undefined) } as never, // ResidentFollowUpService
   );
 }
 

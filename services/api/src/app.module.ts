@@ -22,6 +22,7 @@ import { ResidentSessionModule } from './modules/resident-session/resident-sessi
 import { MessageModule } from './modules/message/message.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { AppSettingsModule } from './modules/app-settings/app-settings.module';
+import { ResidentFollowUpModule } from './modules/resident-follow-up/resident-follow-up.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { AppSettingsModule } from './modules/app-settings/app-settings.module';
     MessageModule,
     WishlistModule,
     AppSettingsModule,
+    ResidentFollowUpModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },

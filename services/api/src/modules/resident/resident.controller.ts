@@ -39,6 +39,8 @@ import { ResidentDocumentView, ResidentMeView } from './resident.service';
 import { Resident } from './resident.entity';
 import { ResidentService } from './resident.service';
 import { ReadmitResidentDto } from './dto/readmit-resident.dto';
+import { ResidentFollowUpService, ResidentFollowUpView } from '../resident-follow-up/resident-follow-up.service';
+import { CreateFollowUpDto } from '../resident-follow-up/dto/create-follow-up.dto';
 
 const photoOptions = {
   storage: memoryStorage(),
@@ -70,6 +72,7 @@ export class ResidentController {
   constructor(
     private residentService: ResidentService,
     private documentTemplateService: DocumentTemplateService,
+    private followUpService: ResidentFollowUpService,
   ) {}
 
   @Get()
@@ -141,6 +144,25 @@ export class ResidentController {
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
   getAdmissions(@Param('id', ParseUUIDPipe) id: string): Promise<Admission[]> {
     return this.residentService.findAdmissions(id);
+  }
+
+  @Get(':id/follow-ups')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  getFollowUps(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ResidentFollowUpView[]> {
+    return this.followUpService.findByResident(id, user.role);
+  }
+
+  @Post(':id/follow-ups')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  createFollowUp(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateFollowUpDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ResidentFollowUpView> {
+    return this.followUpService.create(id, dto, user.userId);
   }
 
   @Post(':id/access')

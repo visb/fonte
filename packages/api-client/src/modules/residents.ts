@@ -1,11 +1,13 @@
 import type { AxiosInstance } from 'axios';
 import type {
   Admission,
+  CreateFollowUpInput,
   GenerateResidentAccessInput,
   ListResidentsParams,
   PaginatedResponse,
   ReadmitResidentInput,
   Resident,
+  ResidentFollowUp,
   ResidentMe,
   ResetResidentPasswordInput,
   CreateResidentInput,
@@ -59,6 +61,12 @@ export function createResidentsModule(http: AxiosInstance) {
 
     getAdmissions: (id: string): Promise<Admission[]> =>
       http.get<Admission[]>(`/residents/${id}/admissions`).then((r) => r.data),
+
+    getFollowUps: (id: string): Promise<ResidentFollowUp[]> =>
+      http.get<ResidentFollowUp[]>(`/residents/${id}/follow-ups`).then((r) => r.data),
+
+    createFollowUp: (id: string, data: CreateFollowUpInput): Promise<ResidentFollowUp> =>
+      http.post<ResidentFollowUp>(`/residents/${id}/follow-ups`, data).then((r) => r.data),
 
     me: (): Promise<ResidentMe> => http.get<ResidentMe>('/residents/me').then((r) => r.data),
     uploadPhotoMe: (formData: FormData): Promise<ResidentMe> =>

@@ -10,6 +10,8 @@ import type {
   MovementType,
   StaffPermissionType,
   TimerResetFrequency,
+  FollowUpType,
+  FollowUpAccessLevel,
   PaginatedResponse,
 } from '@fonte/types';
 
@@ -295,6 +297,30 @@ export interface ReadmitResidentInput {
   weight?: number | null;
   height?: number | null;
   familyInvestment?: string | null;
+}
+
+// ─── Follow Up ───────────────────────────────────────────────────────────────
+
+export type { FollowUpType, FollowUpAccessLevel };
+
+export interface ResidentFollowUp {
+  id: string;
+  residentId: string;
+  date: string;
+  type: FollowUpType;
+  description: string | null;
+  accessLevel: FollowUpAccessLevel;
+  createdById: string | null;
+  createdByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateFollowUpInput {
+  date: string;
+  type: FollowUpType;
+  description?: string;
+  accessLevel: FollowUpAccessLevel;
 }
 
 // ─── Incident ────────────────────────────────────────────────────────────────

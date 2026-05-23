@@ -96,6 +96,40 @@ export enum TimerResetFrequency {
   BIWEEKLY = 'BIWEEKLY',
 }
 
+// ─── Follow Up ───────────────────────────────────────────────────────────────
+
+export enum FollowUpType {
+  ADMISSION = 'ADMISSION',
+  READMISSION = 'READMISSION',
+  DISCHARGE = 'DISCHARGE',
+  EVASION = 'EVASION',
+  MINISTRY_CHANGE = 'MINISTRY_CHANGE',
+  RELATIVE_ADDED = 'RELATIVE_ADDED',
+  DOCUMENT_ATTACHED = 'DOCUMENT_ATTACHED',
+  MONTHLY_CONTRIBUTION = 'MONTHLY_CONTRIBUTION',
+  DISCIPLINE = 'DISCIPLINE',
+  BEHAVIOR_ASSESSMENT = 'BEHAVIOR_ASSESSMENT',
+  NOTE = 'NOTE',
+}
+
+export enum FollowUpAccessLevel {
+  ALL = 'ALL',
+  ADMINISTRATION = 'ADMINISTRATION',
+}
+
+export interface ResidentFollowUp {
+  id: string;
+  residentId: string;
+  date: string;
+  type: FollowUpType;
+  description: string | null;
+  accessLevel: FollowUpAccessLevel;
+  createdById: string | null;
+  createdByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

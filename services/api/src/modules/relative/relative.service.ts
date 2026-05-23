@@ -2,13 +2,14 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Role } from '@fonte/types';
+import { FollowUpType, Role } from '@fonte/types';
 import { Relative } from './relative.entity';
 import { CreateRelativeDto } from './dto/create-relative.dto';
 import { UpdateRelativeMeDto } from './dto/update-relative-me.dto';
 import { Resident } from '../resident/resident.entity';
 import { User } from '../user/user.entity';
 import { StorageService } from '../storage/storage.service';
+import { ResidentFollowUpService } from '../resident-follow-up/resident-follow-up.service';
 
 export interface RelativeMeView {
   id: string;
@@ -39,6 +40,7 @@ export class RelativeService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private storageService: StorageService,
+    private followUpService: ResidentFollowUpService,
   ) {}
 
   findByResident(residentId: string): Promise<Relative[]> {
@@ -98,9 +100,11 @@ export class RelativeService {
     return this.findMe(userId);
   }
 
-  create(dto: CreateRelativeDto): Promise<Relative> {
+  async create(dto: CreateRelativeDto): Promise<Relative> {
     const relative = this.relativeRepository.create(dto);
-    return this.relativeRepository.save(relative);
+    const saved = await this.relativeRepository.save(relative);
+    await this.followUpService.createAuto(dto.residentId, FollowUpType.RELATIVE_ADDED);
+    return saved;
   }
 
   async remove(id: string): Promise<void> {

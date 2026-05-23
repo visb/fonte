@@ -66,7 +66,7 @@ export function ResidentsPage() {
         title={total !== undefined ? `Filhos (${total})` : 'Filhos'}
         actions={
           <Button asChild>
-            <Link to="/residents/new">
+            <Link to="/residents/admission">
               <Plus size={16} className="mr-2" />
               Novo acolhimento
             </Link>

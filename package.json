@@ -16,7 +16,7 @@
     "test:adm": "pnpm --filter adm.fonte test:e2e",
     "dev:api:test": "pnpm build:types && pnpm --filter api start:test",
     "seed:api:test": "pnpm --filter api seed:test",
-    "test:setup": "pnpm docker:up && pnpm --filter api seed:test",
+    "test:setup": "pnpm docker:up && pnpm --filter api migration:run:test && pnpm --filter api seed:test",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:reset": "docker compose down -v && docker compose up -d",

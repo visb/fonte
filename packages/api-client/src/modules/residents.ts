@@ -1,8 +1,10 @@
 import type { AxiosInstance } from 'axios';
 import type {
+  Admission,
   GenerateResidentAccessInput,
   ListResidentsParams,
   PaginatedResponse,
+  ReadmitResidentInput,
   Resident,
   ResidentMe,
   ResetResidentPasswordInput,
@@ -52,6 +54,12 @@ export function createResidentsModule(http: AxiosInstance) {
           headers: { 'Content-Type': undefined },
         })
         .then((r) => r.data),
+    readmit: (id: string, data: ReadmitResidentInput): Promise<Resident> =>
+      http.post<Resident>(`/residents/${id}/readmit`, data).then((r) => r.data),
+
+    getAdmissions: (id: string): Promise<Admission[]> =>
+      http.get<Admission[]>(`/residents/${id}/admissions`).then((r) => r.data),
+
     me: (): Promise<ResidentMe> => http.get<ResidentMe>('/residents/me').then((r) => r.data),
     uploadPhotoMe: (formData: FormData): Promise<ResidentMe> =>
       http

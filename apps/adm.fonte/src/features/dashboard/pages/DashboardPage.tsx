@@ -13,7 +13,7 @@ export function DashboardPage() {
         <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
         <p className="text-muted-foreground mb-6">Bem-vindo ao sistema administrativo.</p>
         <Button asChild>
-          <Link to="/residents/new">
+          <Link to="/residents/admission">
             <UserPlus size={16} className="mr-2" />
             Novo acolhimento
           </Link>

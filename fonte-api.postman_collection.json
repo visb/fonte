@@ -324,7 +324,7 @@
               "query": [
                 { "key": "page", "value": "1", "description": "Página (padrão: 1)" },
                 { "key": "limit", "value": "20", "description": "Itens por página (padrão: 20, máx: 100)" },
-                { "key": "search", "value": "", "description": "Busca parcial por nome (case-insensitive)" },
+                { "key": "search", "value": "", "description": "Busca parcial por nome ou CPF (case-insensitive, ignora pontuação do CPF)" },
                 { "key": "status", "value": "", "description": "Filtro por status: PRE_ADMISSION | ACTIVE | DISCIPLINE | TEMP_LEAVE | DISCHARGED | EVADED" }
               ]
             }
@@ -476,6 +476,27 @@
               "formdata": [{ "key": "file", "type": "file", "src": "" }]
             },
             "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/documents/{{templateId}}/signed", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "documents", "{{templateId}}", "signed"] }
+          }
+        },
+        {
+          "name": "Readmit Resident",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"houseId\": \"{{houseId}}\",\n  \"entryDate\": \"2024-06-01\",\n  \"address\": \"Rua das Flores, 123\",\n  \"contactPhone\": \"(11) 99999-9999\",\n  \"email\": \"joao@email.com\",\n  \"addiction\": \"Álcool\",\n  \"healthIssues\": null,\n  \"continuousMedication\": null,\n  \"weight\": 75,\n  \"height\": 175,\n  \"familyInvestment\": null\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/readmit", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "readmit"] },
+            "description": "Reintroduz acolhido com status DISCHARGED ou EVADED. Cria novo registro de Admission e reseta campos de admissão. Acesso digital anterior é revogado via soft-delete do User. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Get Resident Admissions",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/admissions", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "admissions"] },
+            "description": "Retorna histórico de todos os acolhimentos do residente, com nome da casa. Ordem: mais recente primeiro. Roles: ADMIN, COORDINATOR, OPERATOR."
           }
         }
       ]

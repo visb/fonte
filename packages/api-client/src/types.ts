@@ -260,6 +260,43 @@ export interface ResidentAttachment {
   createdAt: string;
 }
 
+export interface Admission {
+  id: string;
+  residentId: string;
+  houseId: string;
+  house: { id: string; name: string } | null;
+  ministryId: string | null;
+  entryDate: string | null;
+  exitDate: string | null;
+  status: string;
+  healthIssues: string | null;
+  continuousMedication: string | null;
+  weight: number | null;
+  height: number | null;
+  familyInvestment: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReadmitResidentInput {
+  houseId: string;
+  entryDate?: string | null;
+  address?: string | null;
+  contactPhone?: string | null;
+  email?: string | null;
+  maritalStatus?: string | null;
+  children?: number;
+  occupation?: string | null;
+  education?: string | null;
+  religion?: string | null;
+  addiction?: string | null;
+  healthIssues?: string | null;
+  continuousMedication?: string | null;
+  weight?: number | null;
+  height?: number | null;
+  familyInvestment?: string | null;
+}
+
 // ─── Incident ────────────────────────────────────────────────────────────────
 
 export interface Incident {

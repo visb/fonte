@@ -3,9 +3,11 @@ import type { ResidentStatus } from '@fonte/types';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import type {
+  Admission,
   CreateResidentInput,
   GenerateResidentAccessInput,
   GenerateRelativeAccessInput,
+  ReadmitResidentInput,
   UpdateResidentInput,
 } from '@fonte/api-client';
 
@@ -202,6 +204,41 @@ export function useResetRelativePassword(relativeId: string) {
   return useMutation({
     mutationFn: (password: string) =>
       api.relatives.resetPassword(relativeId, { password }),
+  });
+}
+
+export function useResidentAdmissions(residentId: string) {
+  return useQuery<Admission[]>({
+    queryKey: queryKeys.residents.admissions(residentId),
+    queryFn: () => api.residents.getAdmissions(residentId),
+    enabled: !!residentId,
+  });
+}
+
+export function useReadmitResident(residentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      data,
+      photo,
+    }: {
+      data: ReadmitResidentInput;
+      photo?: Blob | null;
+    }) => {
+      const resident = await api.residents.readmit(residentId, data);
+      if (photo) {
+        const fd = new window.FormData();
+        fd.append('file', photo, 'photo.jpg');
+        await api.residents.uploadPhoto(resident.id, fd);
+      }
+      return resident;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(residentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.admissions(residentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.houses.all });
+    },
   });
 }
 

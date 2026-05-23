@@ -1,9 +1,10 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Role } from '@fonte/types';
 import { Resident } from './resident.entity';
+import { Admission } from './admission.entity';
 import { User } from '../user/user.entity';
 
 export interface ResidentDocumentView {
@@ -20,6 +21,7 @@ import { ResidentAttachment } from './resident-attachment.entity';
 import { ResidentDocument } from './resident-document.entity';
 import { CreateResidentDto } from './dto/create-resident.dto';
 import { ListResidentsDto } from './dto/list-residents.dto';
+import { ReadmitResidentDto } from './dto/readmit-resident.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
 import { StorageService } from '../storage/storage.service';
 
@@ -33,6 +35,11 @@ export interface ResidentMeView {
 
 @Injectable()
 export class ResidentService {
+  private static readonly ADMISSION_FIELDS = new Set<string>([
+    'houseId', 'ministryId', 'entryDate', 'exitDate', 'status',
+    'healthIssues', 'continuousMedication', 'weight', 'height', 'familyInvestment',
+  ]);
+
   constructor(
     @InjectRepository(Resident)
     private residentRepository: Repository<Resident>,
@@ -42,6 +49,8 @@ export class ResidentService {
     private attachmentRepository: Repository<ResidentAttachment>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Admission)
+    private admissionRepository: Repository<Admission>,
     private storageService: StorageService,
   ) {}
 
@@ -58,7 +67,16 @@ export class ResidentService {
       .take(limit);
 
     if (search) {
-      qb.andWhere('LOWER(resident.name) LIKE LOWER(:search)', { search: `%${search}%` });
+      const digits = search.replace(/\D/g, '');
+      if (digits.length > 0) {
+        qb.andWhere(
+          `(LOWER(resident.name) LIKE LOWER(:search)
+            OR REPLACE(REPLACE(resident.cpf, '.', ''), '-', '') LIKE :cpfSearch)`,
+          { search: `%${search}%`, cpfSearch: `%${digits}%` },
+        );
+      } else {
+        qb.andWhere('LOWER(resident.name) LIKE LOWER(:search)', { search: `%${search}%` });
+      }
     }
 
     if (status) {
@@ -78,15 +96,120 @@ export class ResidentService {
     return resident;
   }
 
-  create(dto: CreateResidentDto): Promise<Resident> {
+  async create(dto: CreateResidentDto): Promise<Resident> {
     const resident = this.residentRepository.create(dto);
-    return this.residentRepository.save(resident);
+    const saved = await this.residentRepository.save(resident);
+
+    const admission = this.admissionRepository.create({
+      residentId: saved.id,
+      houseId: saved.houseId,
+      ministryId: saved.ministryId ?? null,
+      entryDate: saved.entryDate,
+      exitDate: saved.exitDate ?? null,
+      status: saved.status,
+      healthIssues: saved.healthIssues ?? null,
+      continuousMedication: saved.continuousMedication ?? null,
+      weight: saved.weight ?? null,
+      height: saved.height ?? null,
+      familyInvestment: saved.familyInvestment ?? null,
+    });
+    await this.admissionRepository.save(admission);
+
+    return saved;
   }
 
   async update(id: string, dto: UpdateResidentDto): Promise<Resident> {
     await this.findOne(id);
     await this.residentRepository.update(id, dto);
+
+    const admissionUpdate = Object.fromEntries(
+      Object.entries(dto).filter(([key]) => ResidentService.ADMISSION_FIELDS.has(key)),
+    );
+    if (Object.keys(admissionUpdate).length > 0) {
+      const currentAdmission = await this.admissionRepository.findOne({
+        where: { residentId: id },
+        order: { createdAt: 'DESC' },
+      });
+      if (currentAdmission) {
+        await this.admissionRepository.update(currentAdmission.id, admissionUpdate);
+      }
+    }
+
     return this.findOne(id);
+  }
+
+  async readmit(id: string, dto: ReadmitResidentDto): Promise<Resident> {
+    const resident = await this.findOne(id);
+
+    if (
+      resident.status !== 'DISCHARGED' &&
+      resident.status !== 'EVADED'
+    ) {
+      throw new BadRequestException(
+        'Apenas acolhidos com status Alta ou Evasão podem ser reintroduzidos.',
+      );
+    }
+
+    // Revogar acesso digital do acolhimento anterior
+    if (resident.userId) {
+      await this.residentRepository.update(id, { userId: null });
+      await this.userRepository.softDelete(resident.userId);
+    }
+
+    // Criar novo registro de acolhimento
+    const today = new Date().toISOString().split('T')[0];
+    const admission = this.admissionRepository.create({
+      residentId: id,
+      houseId: dto.houseId,
+      ministryId: null,
+      entryDate: (dto.entryDate ?? today) as unknown as Date,
+      exitDate: null,
+      status: 'PRE_ADMISSION',
+      healthIssues: dto.healthIssues ?? null,
+      continuousMedication: dto.continuousMedication ?? null,
+      weight: dto.weight ?? null,
+      height: dto.height ?? null,
+      familyInvestment: dto.familyInvestment ?? null,
+    });
+    await this.admissionRepository.save(admission);
+
+    // Resetar campos de admissão no Resident (backward compat)
+    const residentUpdate: Partial<Resident> = {
+      houseId: dto.houseId,
+      entryDate: (dto.entryDate ?? today) as unknown as Date,
+      exitDate: null,
+      status: 'PRE_ADMISSION' as Resident['status'],
+      ministryId: null,
+      userId: null,
+      photoUrl: null,
+      healthIssues: dto.healthIssues ?? null,
+      continuousMedication: dto.continuousMedication ?? null,
+      weight: dto.weight ?? null,
+      height: dto.height ?? null,
+      familyInvestment: dto.familyInvestment ?? null,
+    };
+
+    if (dto.address !== undefined) residentUpdate.address = dto.address;
+    if (dto.contactPhone !== undefined) residentUpdate.contactPhone = dto.contactPhone;
+    if (dto.email !== undefined) residentUpdate.email = dto.email;
+    if (dto.maritalStatus !== undefined) residentUpdate.maritalStatus = dto.maritalStatus;
+    if (dto.children !== undefined) residentUpdate.children = dto.children;
+    if (dto.occupation !== undefined) residentUpdate.occupation = dto.occupation;
+    if (dto.education !== undefined) residentUpdate.education = dto.education;
+    if (dto.religion !== undefined) residentUpdate.religion = dto.religion;
+    if (dto.addiction !== undefined) residentUpdate.addiction = dto.addiction;
+
+    await this.residentRepository.update(id, residentUpdate);
+    return this.findOne(id);
+  }
+
+  async findAdmissions(residentId: string): Promise<Admission[]> {
+    await this.findOne(residentId);
+    return this.admissionRepository.find({
+      where: { residentId },
+      relations: ['house'],
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async remove(id: string): Promise<void> {

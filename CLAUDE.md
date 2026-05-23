@@ -84,8 +84,7 @@ pnpm test:setup       # docker up + seed de teste
 pnpm dev:api:test     # API com NODE_ENV=test
 
 # terminal 2 — frontend em modo test (apenas adm.fonte)
-pnpm dev:adm          # em outro terminal, com a flag de env de teste
-# adm.fonte aponta para http://localhost:5174 em modo test
+pnpm --filter adm.fonte dev:test   # porta 5174, aponta para API em 3001 (.env.test)
 ```
 
 ---

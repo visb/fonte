@@ -16,6 +16,7 @@ export const queryKeys = {
     relatives: (id: string) => ['relatives', id] as const,
     documents: (id: string) => ['resident-documents', id] as const,
     attachments: (id: string) => ['resident-attachments', id] as const,
+    admissions: (id: string) => ['resident-admissions', id] as const,
   },
   staff: {
     all: ['staff'] as const,

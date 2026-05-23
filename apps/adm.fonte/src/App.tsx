@@ -11,6 +11,8 @@ import { HousesPage } from '@/features/houses/pages/HousesPage';
 import { HouseDetailPage } from '@/features/houses/pages/HouseDetailPage';
 import { ResidentsPage } from '@/features/residents/pages/ResidentsPage';
 import { NewResidentPage } from '@/features/residents/pages/NewResidentPage';
+import { NewAdmissionGatewayPage } from '@/features/residents/pages/NewAdmissionGatewayPage';
+import { ReadmissionPage } from '@/features/residents/pages/ReadmissionPage';
 import { ResidentDetailPage } from '@/features/residents/pages/ResidentDetailPage';
 import { EditResidentPage } from '@/features/residents/pages/EditResidentPage';
 import { StaffPage } from '@/features/staff/pages/StaffPage';
@@ -58,7 +60,9 @@ export default function App() {
               <Route path="houses" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><HousesPage /></ProtectedRoute>} />
               <Route path="houses/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><HouseDetailPage /></ProtectedRoute>} />
               <Route path="residents" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ResidentsPage /></ProtectedRoute>} />
+              <Route path="residents/admission" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><NewAdmissionGatewayPage /></ProtectedRoute>} />
               <Route path="residents/new" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><NewResidentPage /></ProtectedRoute>} />
+              <Route path="residents/readmit/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ReadmissionPage /></ProtectedRoute>} />
               <Route path="residents/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ResidentDetailPage /></ProtectedRoute>} />
               <Route path="residents/:id/edit" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><EditResidentPage /></ProtectedRoute>} />
               <Route path="staff" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><StaffPage /></ProtectedRoute>} />

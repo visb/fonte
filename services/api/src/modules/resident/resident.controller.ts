@@ -34,9 +34,11 @@ import { ResetResidentPasswordDto } from './dto/reset-resident-password.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
 import { ResidentAttachment } from './resident-attachment.entity';
 import { ResidentDocument } from './resident-document.entity';
+import { Admission } from './admission.entity';
 import { ResidentDocumentView, ResidentMeView } from './resident.service';
 import { Resident } from './resident.entity';
 import { ResidentService } from './resident.service';
+import { ReadmitResidentDto } from './dto/readmit-resident.dto';
 
 const photoOptions = {
   storage: memoryStorage(),
@@ -124,6 +126,21 @@ export class ResidentController {
   @Roles(Role.ADMIN)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.residentService.remove(id);
+  }
+
+  @Post(':id/readmit')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  readmit(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReadmitResidentDto,
+  ): Promise<Resident> {
+    return this.residentService.readmit(id, dto);
+  }
+
+  @Get(':id/admissions')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  getAdmissions(@Param('id', ParseUUIDPipe) id: string): Promise<Admission[]> {
+    return this.residentService.findAdmissions(id);
   }
 
   @Post(':id/access')

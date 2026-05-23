@@ -25,6 +25,8 @@ export type {
   UpdateResidentInput,
   ResidentDocument,
   ResidentAttachment,
+  Admission,
+  ReadmitResidentInput,
   UsageSessionToday,
   Incident,
   CreateIncidentInput,

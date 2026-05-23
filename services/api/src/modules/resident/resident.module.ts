@@ -5,12 +5,13 @@ import { User } from '../user/user.entity';
 import { Resident } from './resident.entity';
 import { ResidentAttachment } from './resident-attachment.entity';
 import { ResidentDocument } from './resident-document.entity';
+import { Admission } from './admission.entity';
 import { ResidentController } from './resident.controller';
 import { ResidentService } from './resident.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Resident, ResidentDocument, ResidentAttachment, User]),
+    TypeOrmModule.forFeature([Resident, ResidentDocument, ResidentAttachment, User, Admission]),
     DocumentTemplateModule,
   ],
   controllers: [ResidentController],

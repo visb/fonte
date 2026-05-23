@@ -16,6 +16,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "migration:generate": "npx typeorm-ts-node-commonjs migration:generate -d src/database/data-source.ts",
     "migration:run": "npx typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts",
+    "migration:run:test": "cross-env NODE_ENV=test npx typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts",
     "migration:revert": "npx typeorm-ts-node-commonjs migration:revert -d src/database/data-source.ts",
     "seed": "npx ts-node src/database/seed.ts",
     "seed:test": "npx ts-node src/database/seed-test.ts",

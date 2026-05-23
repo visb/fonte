@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { ResidentStatus } from '@fonte/types';
 import { useGoBack } from '@/lib/navigation';
-import { ArrowLeft, Pencil, User } from 'lucide-react';
+import { ArrowLeft, Pencil, RefreshCw, User } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -14,12 +15,14 @@ import { useResidentById } from '../hooks/useResidents';
 import { OverviewTab } from '../components/tabs/OverviewTab';
 import { RelativesTab } from '../components/tabs/RelativesTab';
 import { AttachmentsTab } from '../components/tabs/AttachmentsTab';
+import { AdmissionsTab } from '../components/tabs/AdmissionsTab';
 
 const TABS = [
   { id: 'overview', label: 'Visão Geral' },
   { id: 'timeline', label: 'Acompanhamento' },
   { id: 'relatives', label: 'Familiares' },
   { id: 'attachments', label: 'Anexos' },
+  { id: 'admissions', label: 'Histórico' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -66,6 +69,14 @@ export function ResidentDetailPage() {
             <p className="text-sm text-muted-foreground mt-0.5">{resident.house.name}</p>
           )}
         </div>
+        {(resident.status === ResidentStatus.DISCHARGED || resident.status === ResidentStatus.EVADED) && (
+          <Button asChild variant="default" size="sm">
+            <Link to={`/residents/readmit/${id}`}>
+              <RefreshCw size={14} className="mr-2" />
+              Reintroduzir
+            </Link>
+          </Button>
+        )}
         <Button asChild variant="outline" size="sm">
           <Link to={`/residents/${id}/edit`}>
             <Pencil size={14} className="mr-2" />
@@ -103,6 +114,8 @@ export function ResidentDetailPage() {
       {activeTab === 'relatives' && <RelativesTab residentId={id!} />}
 
       {activeTab === 'attachments' && <AttachmentsTab residentId={id!} residentName={resident.name} />}
+
+      {activeTab === 'admissions' && <AdmissionsTab residentId={id!} />}
 
       <Dialog open={photoModalOpen} onOpenChange={setPhotoModalOpen}>
         <DialogContent className="max-w-sm p-2">

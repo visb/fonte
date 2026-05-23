@@ -76,11 +76,14 @@ export function ResidentFormSections({
         <FormField label="Endereço" full>
           <Input {...register('address')} placeholder="Rua, número, bairro, cidade" />
         </FormField>
-        <FormField label="Telefone de contato">
+        <FormField label="Telefone">
           <Input
             {...withMask(register('contactPhone'), maskPhone)}
             placeholder="(00) 00000-0000"
           />
+        </FormField>
+        <FormField label="E-mail" error={errors.email?.message}>
+          <Input {...register('email')} type="email" placeholder="exemplo@email.com" />
         </FormField>
       </div>
 

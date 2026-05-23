@@ -94,7 +94,8 @@ export function OverviewTab({ resident }: Props) {
         <InfoRow label="Casa" value={resident.house?.name ?? '—'} />
         <InfoRow label="Data de entrada" value={formatDate(resident.entryDate)} />
         <InfoRow label="Data de saída" value={formatDate(resident.exitDate)} />
-        <InfoRow label="Telefone de contato" value={val(resident.contactPhone, maskPhone)} />
+        <InfoRow label="Telefone" value={val(resident.contactPhone, maskPhone)} />
+        <InfoRow label="E-mail" value={val(resident.email)} />
         <InfoRow label="Endereço" value={val(resident.address)} full />
       </InfoGrid>
 

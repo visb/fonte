@@ -168,6 +168,7 @@ export interface Resident {
   entryDate: string | null;
   exitDate: string | null;
   contactPhone: string | null;
+  email: string | null;
   maritalStatus: MaritalStatus | null;
   children: number;
   occupation: string | null;
@@ -198,6 +199,7 @@ export interface CreateResidentInput {
   rg?: string | null;
   address?: string | null;
   contactPhone?: string | null;
+  email?: string | null;
   maritalStatus?: MaritalStatus | null;
   children?: number;
   occupation?: string | null;

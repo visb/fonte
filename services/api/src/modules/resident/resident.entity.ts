@@ -82,6 +82,9 @@ export class Resident {
   @Column({ name: 'contact_phone', nullable: true, type: 'varchar' })
   contactPhone: string | null;
 
+  @Column({ nullable: true, type: 'varchar' })
+  email: string | null;
+
   @Column({ name: 'marital_status', type: 'enum', enum: MaritalStatus, nullable: true })
   maritalStatus: MaritalStatus | null;
 

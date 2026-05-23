@@ -1,5 +1,6 @@
 import {
   IsDateString,
+  IsEmail,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -54,6 +55,10 @@ export class CreateResidentDto {
   @IsOptional()
   @IsString()
   contactPhone?: string | null;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string | null;
 
   @IsOptional()
   @IsEnum(MaritalStatus)

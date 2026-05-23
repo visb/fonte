@@ -351,7 +351,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João da Silva\",\n  \"houseId\": \"{{houseId}}\",\n  \"birthDate\": \"1990-01-15\",\n  \"cpf\": \"123.456.789-00\",\n  \"status\": \"ACTIVE\",\n  \"entryDate\": \"2024-01-01\",\n  \"gender\": \"MALE\",\n  \"contactPhone\": \"+5511999999999\",\n  \"addiction\": \"Álcool\"\n}"
+              "raw": "{\n  \"name\": \"João da Silva\",\n  \"houseId\": \"{{houseId}}\",\n  \"birthDate\": \"1990-01-15\",\n  \"cpf\": \"123.456.789-00\",\n  \"status\": \"ACTIVE\",\n  \"entryDate\": \"2024-01-01\",\n  \"gender\": \"MALE\",\n  \"contactPhone\": \"+5511999999999\",\n  \"email\": \"joao@email.com\",\n  \"addiction\": \"Álcool\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/residents", "host": ["{{baseUrl}}"], "path": ["residents"] }
           }

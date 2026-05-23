@@ -1,5 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ResidentStatus } from '@fonte/types';
+import { FollowUpType, FollowUpAccessLevel } from '@fonte/types';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import type {
@@ -11,15 +12,16 @@ import type {
   UpdateResidentInput,
 } from '@fonte/api-client';
 
-export function useInfiniteResidents(params: { search?: string; status?: ResidentStatus | '' }) {
+export function useInfiniteResidents(params: { search?: string; status?: ResidentStatus | ''; overdueContribution?: boolean }) {
   return useInfiniteQuery({
-    queryKey: queryKeys.residents.list({ search: params.search, status: params.status }),
+    queryKey: queryKeys.residents.list({ search: params.search, status: params.status, overdueContribution: params.overdueContribution }),
     queryFn: ({ pageParam }) =>
       api.residents.list({
         page: pageParam as number,
         limit: 20,
         search: params.search || undefined,
         status: (params.status as ResidentStatus) || undefined,
+        overdueContribution: params.overdueContribution || undefined,
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
@@ -238,6 +240,39 @@ export function useReadmitResident(residentId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(residentId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.residents.admissions(residentId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.houses.all });
+    },
+  });
+}
+
+export function useDeclareContribution(residentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      date,
+      description,
+      file,
+    }: {
+      date: string;
+      description?: string;
+      file?: File | null;
+    }) => {
+      const followUp = await api.residents.createFollowUp(residentId, {
+        type: FollowUpType.MONTHLY_CONTRIBUTION,
+        date,
+        accessLevel: FollowUpAccessLevel.ALL,
+        description,
+      });
+      if (file) {
+        const fd = new window.FormData();
+        fd.append('file', file);
+        await api.residents.uploadFollowUpAttachment(residentId, followUp.id, fd);
+      }
+      return followUp;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(residentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.followUps(residentId) });
     },
   });
 }

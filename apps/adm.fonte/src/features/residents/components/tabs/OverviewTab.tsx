@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { KeyRound } from 'lucide-react';
-import { Gender, MaritalStatus } from '@fonte/types';
+import { FamilyInvestment, Gender, MaritalStatus } from '@fonte/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { maskCPF, maskPhone, maskRG } from '../../lib/masks';
+import { FAMILY_INVESTMENT_LABELS } from '../../constants';
 import { GenerateResidentAccessDialog } from '../GenerateResidentAccessDialog';
 import { ResetResidentPasswordDialog } from '../ResetResidentPasswordDialog';
 import type { Resident } from '@fonte/api-client';
@@ -122,7 +123,17 @@ export function OverviewTab({ resident }: Props) {
 
       <SectionTitle>Família</SectionTitle>
       <InfoGrid>
-        <InfoRow label="Investimento familiar" value={val(resident.familyInvestment)} full />
+        <InfoRow
+          label="Investimento familiar"
+          value={resident.familyInvestment
+            ? `${FAMILY_INVESTMENT_LABELS[resident.familyInvestment]}${
+                resident.familyInvestment === FamilyInvestment.NEGOTIATED && resident.familyInvestmentAmount != null
+                  ? ` — R$ ${resident.familyInvestmentAmount}`
+                  : ''
+              }`
+            : '—'}
+          full
+        />
       </InfoGrid>
 
       <SectionTitle>Acesso Digital</SectionTitle>

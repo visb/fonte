@@ -351,7 +351,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João da Silva\",\n  \"houseId\": \"{{houseId}}\",\n  \"birthDate\": \"1990-01-15\",\n  \"cpf\": \"123.456.789-00\",\n  \"status\": \"ACTIVE\",\n  \"entryDate\": \"2024-01-01\",\n  \"gender\": \"MALE\",\n  \"contactPhone\": \"+5511999999999\",\n  \"email\": \"joao@email.com\",\n  \"addiction\": \"Álcool\"\n}"
+              "raw": "{\n  \"name\": \"João da Silva\",\n  \"houseId\": \"{{houseId}}\",\n  \"birthDate\": \"1990-01-15\",\n  \"cpf\": \"123.456.789-00\",\n  \"status\": \"ACTIVE\",\n  \"entryDate\": \"2024-01-01\",\n  \"gender\": \"MALE\",\n  \"contactPhone\": \"+5511999999999\",\n  \"email\": \"joao@email.com\",\n  \"addiction\": \"Álcool\",\n  \"familyInvestment\": \"BASKET_500\",\n  \"familyInvestmentAmount\": null\n}"
             },
             "url": { "raw": "{{baseUrl}}/residents", "host": ["{{baseUrl}}"], "path": ["residents"] }
           }
@@ -485,7 +485,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"houseId\": \"{{houseId}}\",\n  \"entryDate\": \"2024-06-01\",\n  \"address\": \"Rua das Flores, 123\",\n  \"contactPhone\": \"(11) 99999-9999\",\n  \"email\": \"joao@email.com\",\n  \"addiction\": \"Álcool\",\n  \"healthIssues\": null,\n  \"continuousMedication\": null,\n  \"weight\": 75,\n  \"height\": 175,\n  \"familyInvestment\": null\n}"
+              "raw": "{\n  \"houseId\": \"{{houseId}}\",\n  \"entryDate\": \"2024-06-01\",\n  \"address\": \"Rua das Flores, 123\",\n  \"contactPhone\": \"(11) 99999-9999\",\n  \"email\": \"joao@email.com\",\n  \"addiction\": \"Álcool\",\n  \"healthIssues\": null,\n  \"continuousMedication\": null,\n  \"weight\": 75,\n  \"height\": 175,\n  \"familyInvestment\": \"BASKET_500\",\n  \"familyInvestmentAmount\": null\n}"
             },
             "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/readmit", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "readmit"] },
             "description": "Reintroduz acolhido com status DISCHARGED ou EVADED. Cria novo registro de Admission e reseta campos de admissão. Acesso digital anterior é revogado via soft-delete do User. Roles: ADMIN, COORDINATOR."

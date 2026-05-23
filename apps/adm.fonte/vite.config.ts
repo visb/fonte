@@ -10,7 +10,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['@fonte/types'],
+    exclude: ['@fonte/types', '@fonte/api-client'],
   },
   server: {
     port: 5173,

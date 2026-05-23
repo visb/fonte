@@ -165,6 +165,23 @@ export class ResidentController {
     return this.followUpService.create(id, dto, user.userId);
   }
 
+  @Post(':id/follow-ups/:followUpId/attachment')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @UseInterceptors(FileInterceptor('file', attachmentOptions))
+  uploadFollowUpAttachment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('followUpId', ParseUUIDPipe) followUpId: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 20 * 1024 * 1024 })],
+        exceptionFactory: () => new BadRequestException('Arquivo muito grande: máximo 20 MB'),
+      }),
+    )
+    file: Express.Multer.File,
+  ): Promise<ResidentFollowUpView> {
+    return this.followUpService.uploadAttachment(followUpId, id, file);
+  }
+
   @Post(':id/access')
   @Roles(Role.ADMIN, Role.COORDINATOR)
   generateAccess(

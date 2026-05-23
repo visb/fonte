@@ -2,6 +2,7 @@ import { Search } from 'lucide-react';
 import { ResidentStatus } from '@fonte/types';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { RESIDENT_STATUS_LABELS } from '../constants';
 
 interface ResidentsFiltersProps {
@@ -9,6 +10,8 @@ interface ResidentsFiltersProps {
   onSearchChange: (value: string) => void;
   status: ResidentStatus | '';
   onStatusChange: (value: ResidentStatus | '') => void;
+  overdueContribution: boolean;
+  onOverdueContributionChange: (value: boolean) => void;
 }
 
 export function ResidentsFilters({
@@ -16,6 +19,8 @@ export function ResidentsFilters({
   onSearchChange,
   status,
   onStatusChange,
+  overdueContribution,
+  onOverdueContributionChange,
 }: ResidentsFiltersProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-4">
@@ -41,6 +46,15 @@ export function ResidentsFilters({
           </option>
         ))}
       </Select>
+
+      <Button
+        variant={overdueContribution ? 'destructive' : 'outline'}
+        size="sm"
+        onClick={() => onOverdueContributionChange(!overdueContribution)}
+        className="w-full sm:w-auto whitespace-nowrap"
+      >
+        Contribuição em atraso
+      </Button>
     </div>
   );
 }

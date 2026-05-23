@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { FamilyInvestment } from '@fonte/types';
 import { Resident } from './resident.entity';
 import { House } from '../house/house.entity';
 
@@ -53,8 +54,11 @@ export class Admission {
   @Column({ nullable: true, type: 'integer' })
   height: number | null;
 
-  @Column({ name: 'family_investment', nullable: true, type: 'varchar' })
-  familyInvestment: string | null;
+  @Column({ name: 'family_investment', type: 'enum', enum: FamilyInvestment, nullable: true })
+  familyInvestment: FamilyInvestment | null;
+
+  @Column({ name: 'family_investment_amount', type: 'integer', nullable: true })
+  familyInvestmentAmount: number | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

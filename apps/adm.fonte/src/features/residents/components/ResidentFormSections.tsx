@@ -1,10 +1,11 @@
 import { type UseFormRegister } from 'react-hook-form';
-import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
+import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionTitle, FormField } from '@/components/shared/FormField';
 import { maskCPF, maskRG, maskPhone, withMask } from '../lib/masks';
+import { FAMILY_INVESTMENT_LABELS } from '../constants';
 import type { ResidentFormData } from '../lib/residentSchema';
 import type { House } from '@fonte/api-client';
 
@@ -13,6 +14,10 @@ interface ResidentFormSectionsProps {
   errors: Partial<Record<keyof ResidentFormData, { message?: string }>>;
   houses: House[];
   showStatus?: boolean;
+  watchFamilyInvestment?: string | null;
+  showFirstPayment?: boolean;
+  firstPaymentPaid?: boolean;
+  onFirstPaymentChange?: (v: boolean) => void;
 }
 
 export function ResidentFormSections({
@@ -20,7 +25,14 @@ export function ResidentFormSections({
   errors,
   houses,
   showStatus = false,
+  watchFamilyInvestment,
+  showFirstPayment = false,
+  firstPaymentPaid = false,
+  onFirstPaymentChange,
 }: ResidentFormSectionsProps) {
+  const hasPayment = showFirstPayment &&
+    watchFamilyInvestment &&
+    watchFamilyInvestment !== FamilyInvestment.SOCIAL;
   return (
     <>
       <SectionTitle>Identificação</SectionTitle>
@@ -138,12 +150,35 @@ export function ResidentFormSections({
 
       <SectionTitle>Família</SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Investimento familiar" full>
-          <Textarea
-            {...register('familyInvestment')}
-            placeholder="Descreva o envolvimento e apoio da família"
-          />
+        <FormField label="Investimento familiar">
+          <Select {...register('familyInvestment')}>
+            <option value="">Selecione a modalidade</option>
+            {Object.values(FamilyInvestment).map((v) => (
+              <option key={v} value={v}>{FAMILY_INVESTMENT_LABELS[v]}</option>
+            ))}
+          </Select>
         </FormField>
+        {watchFamilyInvestment === FamilyInvestment.NEGOTIATED && (
+          <FormField label="Valor negociado (R$)" error={errors.familyInvestmentAmount?.message}>
+            <Input
+              type="number"
+              min={0}
+              {...register('familyInvestmentAmount')}
+              placeholder="Ex: 350"
+            />
+          </FormField>
+        )}
+        {hasPayment && (
+          <label className="flex items-center gap-2 text-sm cursor-pointer col-span-full pt-1">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-input accent-primary"
+              checked={firstPaymentPaid}
+              onChange={(e) => onFirstPaymentChange?.(e.target.checked)}
+            />
+            Primeira mensalidade já foi paga
+          </label>
+        )}
       </div>
     </>
   );

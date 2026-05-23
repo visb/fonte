@@ -1,8 +1,8 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Gender, MaritalStatus } from '@fonte/types';
+import { FamilyInvestment, FollowUpType, FollowUpAccessLevel, Gender, MaritalStatus } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { AvatarUpload } from '@/components/AvatarUpload';
@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SectionTitle, FormField } from '@/components/shared/FormField';
 import { getErrorMessage } from '@/lib/errors';
 import { maskPhone, maskCPF, maskRG, withMask } from '../lib/masks';
+import { FAMILY_INVESTMENT_LABELS } from '../constants';
 import { useReadmitResident } from '../hooks/useResidents';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 
@@ -32,7 +33,8 @@ const readmitSchema = z.object({
   continuousMedication: z.string().optional(),
   weight: z.string().optional(),
   height: z.string().optional(),
-  familyInvestment: z.string().optional(),
+  familyInvestment: z.nativeEnum(FamilyInvestment).or(z.literal('')).optional().nullable(),
+  familyInvestmentAmount: z.coerce.number().int().min(0).optional().nullable(),
 });
 
 type ReadmitFormData = z.infer<typeof readmitSchema>;
@@ -52,12 +54,14 @@ interface ReadmissionFormProps {
 
 export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionFormProps) {
   const pendingPhotoRef = useRef<Blob | null>(null);
+  const [firstPaymentPaid, setFirstPaymentPaid] = useState(false);
   const { data: houses = [] } = useHouses();
   const mutation = useReadmitResident(resident.id);
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ReadmitFormData>({
     resolver: zodResolver(readmitSchema),
@@ -101,12 +105,28 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
       continuousMedication: toNullable(data.continuousMedication),
       weight: toInt(data.weight),
       height: toInt(data.height),
-      familyInvestment: toNullable(data.familyInvestment),
+      familyInvestment: (toNullable(data.familyInvestment) as FamilyInvestment | null),
+      familyInvestmentAmount: data.familyInvestmentAmount ?? null,
     };
 
     mutation.mutate(
       { data: payload, photo: pendingPhotoRef.current },
-      { onSuccess: (updated) => onSuccess(updated.id) },
+      {
+        onSuccess: async (updated) => {
+          if (firstPaymentPaid) {
+            try {
+              await api.residents.createFollowUp(updated.id, {
+                type: FollowUpType.MONTHLY_CONTRIBUTION,
+                date: data.entryDate || today,
+                accessLevel: FollowUpAccessLevel.ALL,
+              });
+            } catch {
+              // non-critical
+            }
+          }
+          onSuccess(updated.id);
+        },
+      },
     );
   };
 
@@ -234,9 +254,35 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
 
         <SectionTitle>Família</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Investimento familiar" full>
-            <Textarea {...register('familyInvestment')} placeholder="Descreva o envolvimento e apoio da família" />
+          <FormField label="Investimento familiar">
+            <Select {...register('familyInvestment')}>
+              <option value="">Selecione a modalidade</option>
+              {Object.values(FamilyInvestment).map((v) => (
+                <option key={v} value={v}>{FAMILY_INVESTMENT_LABELS[v]}</option>
+              ))}
+            </Select>
           </FormField>
+          {watch('familyInvestment') === FamilyInvestment.NEGOTIATED && (
+            <FormField label="Valor negociado (R$)" error={errors.familyInvestmentAmount?.message}>
+              <Input
+                type="number"
+                min={0}
+                {...register('familyInvestmentAmount')}
+                placeholder="Ex: 350"
+              />
+            </FormField>
+          )}
+          {watch('familyInvestment') && watch('familyInvestment') !== FamilyInvestment.SOCIAL && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer col-span-full pt-1">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-input accent-primary"
+                checked={firstPaymentPaid}
+                onChange={(e) => setFirstPaymentPaid(e.target.checked)}
+              />
+              Primeira mensalidade já foi paga
+            </label>
+          )}
         </div>
 
         {mutation.isError && (

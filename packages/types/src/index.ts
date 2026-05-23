@@ -96,6 +96,15 @@ export enum TimerResetFrequency {
   BIWEEKLY = 'BIWEEKLY',
 }
 
+// ─── Family Investment ────────────────────────────────────────────────────────
+
+export enum FamilyInvestment {
+  BASKET_500 = 'BASKET_500',
+  PAYMENT_700 = 'PAYMENT_700',
+  SOCIAL = 'SOCIAL',
+  NEGOTIATED = 'NEGOTIATED',
+}
+
 // ─── Follow Up ───────────────────────────────────────────────────────────────
 
 export enum FollowUpType {

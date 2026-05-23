@@ -68,6 +68,13 @@ export function createResidentsModule(http: AxiosInstance) {
     createFollowUp: (id: string, data: CreateFollowUpInput): Promise<ResidentFollowUp> =>
       http.post<ResidentFollowUp>(`/residents/${id}/follow-ups`, data).then((r) => r.data),
 
+    uploadFollowUpAttachment: (id: string, followUpId: string, formData: FormData): Promise<ResidentFollowUp> =>
+      http
+        .post<ResidentFollowUp>(`/residents/${id}/follow-ups/${followUpId}/attachment`, formData, {
+          headers: { 'Content-Type': undefined },
+        })
+        .then((r) => r.data),
+
     me: (): Promise<ResidentMe> => http.get<ResidentMe>('/residents/me').then((r) => r.data),
     uploadPhotoMe: (formData: FormData): Promise<ResidentMe> =>
       http

@@ -1,10 +1,10 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react';
-import { ResidentStatus } from '@fonte/types';
+import { FollowUpType, FollowUpAccessLevel, ResidentStatus } from '@fonte/types';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { Button } from '@/components/ui/button';
@@ -18,12 +18,14 @@ const today = new Date().toISOString().split('T')[0];
 export function NewResidentPage() {
   const navigate = useNavigate();
   const pendingPhotoRef = useRef<Blob | null>(null);
+  const [firstPaymentPaid, setFirstPaymentPaid] = useState(false);
 
   const { data: houses = [], isLoading: loadingHouses } = useHouses();
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ResidentFormData>({
     resolver: zodResolver(residentSchema),
@@ -36,7 +38,22 @@ export function NewResidentPage() {
     const payload = { ...buildResidentPayload(data), status: ResidentStatus.ACTIVE };
     createMutation.mutate(
       { data: payload as Parameters<typeof api.residents.create>[0], photo: pendingPhotoRef.current },
-      { onSuccess: (resident) => navigate(`/residents/${resident.id}?tab=attachments`) },
+      {
+        onSuccess: async (resident) => {
+          if (firstPaymentPaid) {
+            try {
+              await api.residents.createFollowUp(resident.id, {
+                type: FollowUpType.MONTHLY_CONTRIBUTION,
+                date: today,
+                accessLevel: FollowUpAccessLevel.ALL,
+              });
+            } catch {
+              // non-critical — continue navigation
+            }
+          }
+          navigate(`/residents/${resident.id}?tab=attachments`);
+        },
+      },
     );
   };
 
@@ -58,7 +75,15 @@ export function NewResidentPage() {
           <AvatarUpload onBlobChange={(blob) => { pendingPhotoRef.current = blob; }} />
         </div>
 
-        <ResidentFormSections register={register} errors={errors} houses={houses} />
+        <ResidentFormSections
+          register={register}
+          errors={errors}
+          houses={houses}
+          watchFamilyInvestment={watch('familyInvestment')}
+          showFirstPayment
+          firstPaymentPaid={firstPaymentPaid}
+          onFirstPaymentChange={setFirstPaymentPaid}
+        />
 
         <div className="flex justify-end gap-3 pt-6">
           <Button type="button" variant="outline" asChild>

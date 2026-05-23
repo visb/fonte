@@ -48,6 +48,9 @@ export class ResidentFollowUp {
   @Column({ name: 'created_by_id', nullable: true, type: 'uuid' })
   createdById: string | null;
 
+  @Column({ name: 'attachment_url', nullable: true, type: 'varchar' })
+  attachmentUrl: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

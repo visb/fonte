@@ -10,7 +10,7 @@ import {
   Min,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
+import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 
 export class UpdateResidentDto {
   @IsOptional()
@@ -111,8 +111,13 @@ export class UpdateResidentDto {
   height?: number | null;
 
   @IsOptional()
-  @IsString()
-  familyInvestment?: string | null;
+  @IsEnum(FamilyInvestment)
+  familyInvestment?: FamilyInvestment | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  familyInvestmentAmount?: number | null;
 
   @IsOptional()
   @IsUUID()

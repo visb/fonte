@@ -1,10 +1,60 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, CalendarDays, Pencil, Trash2, User } from 'lucide-react';
+import { FamilyInvestment, ResidentStatus } from '@fonte/types';
 import { api } from '@/lib/api';
 import type { Resident } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
+import type { BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RESIDENT_STATUS_LABELS, RESIDENT_STATUS_VARIANT } from '../constants';
+import { DeclarePaymentDialog } from './DeclarePaymentDialog';
+
+type BadgeVariant = NonNullable<BadgeProps['variant']>;
+
+const ACTIVE_STATUSES = new Set<ResidentStatus>([
+  ResidentStatus.PRE_ADMISSION,
+  ResidentStatus.ACTIVE,
+  ResidentStatus.DISCIPLINE,
+  ResidentStatus.TEMP_LEAVE,
+]);
+
+function isSameMonth(dateStr: string): boolean {
+  // dateStr may be "YYYY-MM-DD" or a full ISO timestamp — normalise to local midnight
+  const d = new Date(dateStr.slice(0, 10) + 'T00:00:00');
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
+
+function getPaymentBadge(
+  entryDate: string | null,
+  familyInvestment: FamilyInvestment | null,
+  status: ResidentStatus,
+  lastContributionDate: string | null,
+): { label: string; variant: BadgeVariant; clickable: boolean } | null {
+  if (!entryDate || !familyInvestment || familyInvestment === FamilyInvestment.SOCIAL) return null;
+  if (!ACTIVE_STATUSES.has(status)) return null;
+
+  if (lastContributionDate && isSameMonth(lastContributionDate)) {
+    return { label: 'Contribuição paga', variant: 'success', clickable: false };
+  }
+
+  const dueDay = new Date(entryDate + 'T00:00:00').getDate();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const lastDayThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const effectiveDay = Math.min(dueDay, lastDayThisMonth);
+  const dueThisMonth = new Date(today.getFullYear(), today.getMonth(), effectiveDay);
+  const diffDays = Math.round((dueThisMonth.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  const monthStr = String(today.getMonth() + 1).padStart(2, '0');
+  const label = `Vence ${effectiveDay}/${monthStr}`;
+  if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)}d`, variant: 'destructive', clickable: true };
+  if (diffDays <= 7) return { label, variant: 'warning', clickable: true };
+  if (diffDays <= 30) return { label, variant: 'info', clickable: true };
+  return { label, variant: 'success', clickable: true };
+}
 
 function formatLocalDate(iso: string): string {
   const [y, m, d] = iso.split('T')[0].split('-');
@@ -42,48 +92,82 @@ interface Props {
 export function ResidentCard({ resident, onDelete }: Props) {
   const navigate = useNavigate();
   const age = computeAge(resident.birthDate);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+
+  const paymentBadge = getPaymentBadge(
+    resident.entryDate,
+    resident.familyInvestment,
+    resident.status,
+    resident.lastContributionDate,
+  );
 
   return (
-    <div
-      className="flex w-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer"
-      onClick={() => navigate(`/residents/${resident.id}`)}
-    >
-      <ResidentAvatar url={resident.photoUrl} name={resident.name} />
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold truncate">{resident.name}</p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
-          {resident.house && (
-            <span className="flex items-center gap-1">
-              <Building2 size={13} />
-              {resident.house.name}
-            </span>
+    <>
+      <div
+        className="flex w-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer"
+        onClick={() => navigate(`/residents/${resident.id}`)}
+      >
+        <ResidentAvatar url={resident.photoUrl} name={resident.name} />
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold truncate">{resident.name}</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
+            {resident.house && (
+              <span className="flex items-center gap-1">
+                <Building2 size={13} />
+                {resident.house.name}
+              </span>
+            )}
+            {resident.entryDate && (
+              <span className="flex items-center gap-1">
+                <CalendarDays size={13} />
+                {formatLocalDate(resident.entryDate)}
+              </span>
+            )}
+            {age != null && <span>{age} anos</span>}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1 shrink-0">
+          <Badge variant={RESIDENT_STATUS_VARIANT[resident.status]}>
+            {RESIDENT_STATUS_LABELS[resident.status]}
+          </Badge>
+          {paymentBadge && (
+            paymentBadge.clickable ? (
+              <Badge
+                variant={paymentBadge.variant}
+                className="cursor-pointer hover:opacity-80"
+                onClick={(e) => { e.stopPropagation(); setPaymentDialogOpen(true); }}
+                title="Clique para declarar pagamento"
+              >
+                {paymentBadge.label}
+              </Badge>
+            ) : (
+              <Badge variant={paymentBadge.variant}>{paymentBadge.label}</Badge>
+            )
           )}
-          {resident.entryDate && (
-            <span className="flex items-center gap-1">
-              <CalendarDays size={13} />
-              {formatLocalDate(resident.entryDate)}
-            </span>
-          )}
-          {age != null && <span>{age} anos</span>}
+        </div>
+        <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/residents/${resident.id}/edit`)} title="Editar">
+            <Pencil size={16} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-destructive hover:text-destructive"
+            onClick={onDelete}
+            title="Excluir"
+          >
+            <Trash2 size={16} />
+          </Button>
         </div>
       </div>
-      <Badge variant={RESIDENT_STATUS_VARIANT[resident.status]}>
-        {RESIDENT_STATUS_LABELS[resident.status]}
-      </Badge>
-      <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-        <Button variant="ghost" size="icon" onClick={() => navigate(`/residents/${resident.id}/edit`)} title="Editar">
-          <Pencil size={16} />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-destructive hover:text-destructive"
-          onClick={onDelete}
-          title="Excluir"
-        >
-          <Trash2 size={16} />
-        </Button>
-      </div>
-    </div>
+
+      {paymentBadge?.clickable && (
+        <DeclarePaymentDialog
+          open={paymentDialogOpen}
+          onClose={() => setPaymentDialogOpen(false)}
+          resident={{ id: resident.id, name: resident.name }}
+        />
+      )}
+    </>
   );
 }

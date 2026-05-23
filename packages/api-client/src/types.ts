@@ -12,8 +12,11 @@ import type {
   TimerResetFrequency,
   FollowUpType,
   FollowUpAccessLevel,
+  FamilyInvestment,
   PaginatedResponse,
 } from '@fonte/types';
+
+export type { FamilyInvestment };
 
 export type { PaginatedResponse };
 
@@ -181,7 +184,9 @@ export interface Resident {
   continuousMedication: string | null;
   weight: number | null;
   height: number | null;
-  familyInvestment: string | null;
+  familyInvestment: FamilyInvestment | null;
+  familyInvestmentAmount: number | null;
+  lastContributionDate: string | null;
   photoUrl: string | null;
   house: { id: string; name: string } | null;
   houseId: string;
@@ -213,7 +218,8 @@ export interface CreateResidentInput {
   addiction?: string | null;
   weight?: number | null;
   height?: number | null;
-  familyInvestment?: string | null;
+  familyInvestment?: FamilyInvestment | null;
+  familyInvestmentAmount?: number | null;
   ministryId?: string | null;
 }
 
@@ -241,6 +247,7 @@ export interface ListResidentsParams {
   limit?: number;
   search?: string;
   status?: ResidentStatus;
+  overdueContribution?: boolean;
 }
 
 export interface ResidentDocument {
@@ -275,7 +282,8 @@ export interface Admission {
   continuousMedication: string | null;
   weight: number | null;
   height: number | null;
-  familyInvestment: string | null;
+  familyInvestment: FamilyInvestment | null;
+  familyInvestmentAmount: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -296,7 +304,8 @@ export interface ReadmitResidentInput {
   continuousMedication?: string | null;
   weight?: number | null;
   height?: number | null;
-  familyInvestment?: string | null;
+  familyInvestment?: FamilyInvestment | null;
+  familyInvestmentAmount?: number | null;
 }
 
 // ─── Follow Up ───────────────────────────────────────────────────────────────
@@ -310,6 +319,7 @@ export interface ResidentFollowUp {
   type: FollowUpType;
   description: string | null;
   accessLevel: FollowUpAccessLevel;
+  attachmentUrl: string | null;
   createdById: string | null;
   createdByName: string | null;
   createdAt: string;

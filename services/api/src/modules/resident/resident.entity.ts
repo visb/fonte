@@ -9,7 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
+import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { User } from '../user/user.entity';
 import { House } from '../house/house.entity';
 import { Ministry } from '../ministry/ministry.entity';
@@ -118,11 +118,17 @@ export class Resident {
   @Column({ nullable: true, type: 'integer' })
   height: number | null;
 
-  @Column({ name: 'family_investment', nullable: true, type: 'varchar' })
-  familyInvestment: string | null;
+  @Column({ name: 'family_investment', type: 'enum', enum: FamilyInvestment, nullable: true })
+  familyInvestment: FamilyInvestment | null;
+
+  @Column({ name: 'family_investment_amount', type: 'integer', nullable: true })
+  familyInvestmentAmount: number | null;
 
   @Column({ name: 'photo_url', nullable: true, type: 'varchar' })
   photoUrl: string | null;
+
+  // Virtual — populated by service, not persisted
+  lastContributionDate?: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

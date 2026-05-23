@@ -31,6 +31,7 @@ export function EditResidentPage() {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ResidentFormData>({ resolver: zodResolver(residentSchema) });
 
@@ -74,6 +75,7 @@ export function EditResidentPage() {
           errors={errors}
           houses={houses}
           showStatus
+          watchFamilyInvestment={watch('familyInvestment')}
         />
 
         <div className="flex justify-end gap-3 pt-6">

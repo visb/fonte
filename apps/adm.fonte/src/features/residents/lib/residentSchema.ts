@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
+import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { maskCPF, maskRG, maskPhone } from './masks';
 
@@ -25,7 +25,8 @@ export const residentSchema = z.object({
   continuousMedication: z.string().optional(),
   weight: z.string().optional(),
   height: z.string().optional(),
-  familyInvestment: z.string().optional(),
+  familyInvestment: z.nativeEnum(FamilyInvestment).or(z.literal('')).optional().nullable(),
+  familyInvestmentAmount: z.coerce.number().int().min(0).optional().nullable(),
 });
 
 export type ResidentFormData = z.infer<typeof residentSchema>;
@@ -37,7 +38,7 @@ export function buildResidentPayload(data: ResidentFormData): Record<string, unk
       payload[key] = null;
       continue;
     }
-    if (key === 'children' || key === 'weight' || key === 'height') {
+    if (key === 'children' || key === 'weight' || key === 'height' || key === 'familyInvestmentAmount') {
       payload[key] = Number(value);
     } else {
       payload[key] = value;
@@ -71,6 +72,7 @@ export function residentToFormValues(r: Resident): ResidentFormData {
     continuousMedication: r.continuousMedication ?? '',
     weight: numStr(r.weight),
     height: numStr(r.height),
-    familyInvestment: r.familyInvestment ?? '',
+    familyInvestment: (r.familyInvestment as FamilyInvestment) ?? '',
+    familyInvestmentAmount: r.familyInvestmentAmount ?? undefined,
   };
 }

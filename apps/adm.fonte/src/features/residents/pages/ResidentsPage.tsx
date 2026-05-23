@@ -21,6 +21,7 @@ export function ResidentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Resident | null>(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<ResidentStatus | ''>('');
+  const [overdueContribution, setOverdueContribution] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const debouncedSearch = useDebounce(search, 400);
@@ -33,7 +34,7 @@ export function ResidentsPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteResidents({ search: debouncedSearch, status });
+  } = useInfiniteResidents({ search: debouncedSearch, status, overdueContribution });
 
   const deleteMutation = useDeleteResident();
 
@@ -79,6 +80,8 @@ export function ResidentsPage() {
         onSearchChange={setSearch}
         status={status}
         onStatusChange={setStatus}
+        overdueContribution={overdueContribution}
+        onOverdueContributionChange={setOverdueContribution}
       />
 
       {residents.length === 0 ? (

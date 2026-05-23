@@ -1,4 +1,10 @@
 jest.mock('@fonte/types', () => ({
+  FamilyInvestment: {
+    BASKET_500: 'BASKET_500',
+    PAYMENT_700: 'PAYMENT_700',
+    SOCIAL: 'SOCIAL',
+    NEGOTIATED: 'NEGOTIATED',
+  },
   ResidentStatus: {
     PRE_ADMISSION: 'PRE_ADMISSION',
     ACTIVE: 'ACTIVE',
@@ -112,7 +118,10 @@ function makeService(
     userRepo as Repository<User>,
     admissionRepo as Repository<Admission>,
     {} as never, // StorageService
-    { createAuto: jest.fn().mockResolvedValue(undefined) } as never, // ResidentFollowUpService
+    {
+      createAuto: jest.fn().mockResolvedValue(undefined),
+      getLastContributionDates: jest.fn().mockResolvedValue(new Map()),
+    } as never, // ResidentFollowUpService
   );
 }
 

@@ -1,4 +1,4 @@
-import { FollowUpAccessLevel, FollowUpType, ResidentStatus } from '@fonte/types';
+import { FamilyInvestment, FollowUpAccessLevel, FollowUpType, ResidentStatus } from '@fonte/types';
 import type { BadgeProps } from '@/components/ui/badge';
 
 export const RESIDENT_STATUS_LABELS: Record<ResidentStatus, string> = {
@@ -19,6 +19,27 @@ export const RESIDENT_STATUS_VARIANT: Record<ResidentStatus, BadgeVariant> = {
   [ResidentStatus.TEMP_LEAVE]: 'info',
   [ResidentStatus.DISCHARGED]: 'purple',
   [ResidentStatus.EVADED]: 'destructive',
+};
+
+export const FAMILY_INVESTMENT_LABELS: Record<FamilyInvestment, string> = {
+  [FamilyInvestment.BASKET_500]: 'R$ 500 + cestas',
+  [FamilyInvestment.PAYMENT_700]: 'R$ 700',
+  [FamilyInvestment.SOCIAL]: 'Social',
+  [FamilyInvestment.NEGOTIATED]: 'Negociado',
+};
+
+export const FAMILY_INVESTMENT_VARIANT: Record<FamilyInvestment, BadgeVariant> = {
+  [FamilyInvestment.BASKET_500]: 'info',
+  [FamilyInvestment.PAYMENT_700]: 'success',
+  [FamilyInvestment.SOCIAL]: 'secondary',
+  [FamilyInvestment.NEGOTIATED]: 'warning',
+};
+
+/** Valor canônico para modalidades fixas; NEGOTIATED usa familyInvestmentAmount */
+export const FAMILY_INVESTMENT_CANONICAL: Partial<Record<FamilyInvestment, number>> = {
+  [FamilyInvestment.BASKET_500]: 500,
+  [FamilyInvestment.PAYMENT_700]: 700,
+  [FamilyInvestment.SOCIAL]: 0,
 };
 
 export const FOLLOW_UP_TYPE_LABELS: Record<FollowUpType, string> = {

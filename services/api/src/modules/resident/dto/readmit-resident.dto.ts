@@ -7,7 +7,7 @@ import {
   IsUUID,
   Min,
 } from 'class-validator';
-import { MaritalStatus } from '@fonte/types';
+import { FamilyInvestment, MaritalStatus } from '@fonte/types';
 
 export class ReadmitResidentDto {
   @IsUUID()
@@ -73,6 +73,11 @@ export class ReadmitResidentDto {
   height?: number | null;
 
   @IsOptional()
-  @IsString()
-  familyInvestment?: string | null;
+  @IsEnum(FamilyInvestment)
+  familyInvestment?: FamilyInvestment | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  familyInvestmentAmount?: number | null;
 }

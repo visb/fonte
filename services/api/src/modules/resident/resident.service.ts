@@ -2,7 +2,13 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { FollowUpType, Role } from '@fonte/types';
+import { FamilyInvestment, FollowUpType, ResidentStatus, Role } from '@fonte/types';
+
+const CANONICAL_AMOUNTS: Partial<Record<FamilyInvestment, number>> = {
+  [FamilyInvestment.BASKET_500]: 500,
+  [FamilyInvestment.PAYMENT_700]: 700,
+  [FamilyInvestment.SOCIAL]: 0,
+};
 import { Resident } from './resident.entity';
 import { Admission } from './admission.entity';
 import { User } from '../user/user.entity';
@@ -38,7 +44,8 @@ export interface ResidentMeView {
 export class ResidentService {
   private static readonly ADMISSION_FIELDS = new Set<string>([
     'houseId', 'ministryId', 'entryDate', 'exitDate', 'status',
-    'healthIssues', 'continuousMedication', 'weight', 'height', 'familyInvestment',
+    'healthIssues', 'continuousMedication', 'weight', 'height',
+    'familyInvestment', 'familyInvestmentAmount',
   ]);
 
   constructor(
@@ -85,7 +92,39 @@ export class ResidentService {
       qb.andWhere('resident.status = :status', { status });
     }
 
+    if (dto.overdueContribution) {
+      const activeStatuses = [
+        ResidentStatus.PRE_ADMISSION,
+        ResidentStatus.ACTIVE,
+        ResidentStatus.DISCIPLINE,
+        ResidentStatus.TEMP_LEAVE,
+      ];
+      qb.andWhere('resident.familyInvestment IS NOT NULL')
+        .andWhere('resident.familyInvestment != :overdSocial', { overdSocial: FamilyInvestment.SOCIAL })
+        .andWhere('resident.status IN (:...overdActiveStatuses)', { overdActiveStatuses: activeStatuses })
+        .andWhere(
+          `NOT EXISTS (
+            SELECT 1 FROM resident_follow_ups rfu
+            WHERE rfu.resident_id = resident.id
+              AND rfu.type = :overdType
+              AND DATE_TRUNC('month', rfu.date) = DATE_TRUNC('month', CURRENT_DATE)
+              AND rfu.deleted_at IS NULL
+          )`,
+          { overdType: FollowUpType.MONTHLY_CONTRIBUTION },
+        )
+        .andWhere(
+          `LEAST(
+            EXTRACT(DAY FROM resident.entry_date)::int,
+            EXTRACT(DAY FROM (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month - 1 day'))::int
+          ) < EXTRACT(DAY FROM CURRENT_DATE)::int`,
+        );
+    }
+
     const [data, total] = await qb.getManyAndCount();
+    if (data.length > 0) {
+      const map = await this.followUpService.getLastContributionDates(data.map((r) => r.id));
+      for (const r of data) r.lastContributionDate = map.get(r.id) ?? null;
+    }
     return { data, total, page, limit };
   }
 
@@ -95,10 +134,20 @@ export class ResidentService {
       relations: ['house', 'ministry', 'user'],
     });
     if (!resident) throw new NotFoundException(`Resident ${id} not found`);
+    const map = await this.followUpService.getLastContributionDates([id]);
+    resident.lastContributionDate = map.get(id) ?? null;
     return resident;
   }
 
+  private resolveInvestmentAmount<T extends { familyInvestment?: FamilyInvestment | null; familyInvestmentAmount?: number | null }>(dto: T): T {
+    if (dto.familyInvestment && dto.familyInvestment !== FamilyInvestment.NEGOTIATED) {
+      dto.familyInvestmentAmount = CANONICAL_AMOUNTS[dto.familyInvestment] ?? null;
+    }
+    return dto;
+  }
+
   async create(dto: CreateResidentDto): Promise<Resident> {
+    this.resolveInvestmentAmount(dto);
     const resident = this.residentRepository.create(dto);
     const saved = await this.residentRepository.save(resident);
 
@@ -114,6 +163,7 @@ export class ResidentService {
       weight: saved.weight ?? null,
       height: saved.height ?? null,
       familyInvestment: saved.familyInvestment ?? null,
+      familyInvestmentAmount: saved.familyInvestmentAmount ?? null,
     });
     await this.admissionRepository.save(admission);
 
@@ -126,6 +176,7 @@ export class ResidentService {
   }
 
   async update(id: string, dto: UpdateResidentDto): Promise<Resident> {
+    this.resolveInvestmentAmount(dto);
     const before = await this.findOne(id);
     await this.residentRepository.update(id, dto);
 
@@ -156,6 +207,7 @@ export class ResidentService {
   }
 
   async readmit(id: string, dto: ReadmitResidentDto): Promise<Resident> {
+    this.resolveInvestmentAmount(dto);
     const resident = await this.findOne(id);
 
     if (
@@ -187,6 +239,7 @@ export class ResidentService {
       weight: dto.weight ?? null,
       height: dto.height ?? null,
       familyInvestment: dto.familyInvestment ?? null,
+      familyInvestmentAmount: dto.familyInvestmentAmount ?? null,
     });
     await this.admissionRepository.save(admission);
 
@@ -207,6 +260,7 @@ export class ResidentService {
       weight: dto.weight ?? null,
       height: dto.height ?? null,
       familyInvestment: dto.familyInvestment ?? null,
+      familyInvestmentAmount: dto.familyInvestmentAmount ?? null,
     };
 
     if (dto.address !== undefined) residentUpdate.address = dto.address;

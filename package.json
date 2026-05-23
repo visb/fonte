@@ -20,6 +20,7 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:reset": "docker compose down -v && docker compose up -d",
+    "dev:adm:test": "pnpm --filter adm.fonte dev:test",
     "dev:adm": "pnpm build:types && pnpm build:api-client && pnpm --filter adm.fonte dev",
     "dev:ops": "pnpm build:types && pnpm build:api-client && pnpm --filter ops.fonte start -- --port 8082",
     "dev:app": "pnpm build:types && pnpm build:api-client && pnpm --filter app.fonte start",

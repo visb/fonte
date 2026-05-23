@@ -232,6 +232,31 @@ describe('ResidentService.findAll', () => {
     const result = await service.findAll({});
     expect(result.total).toBe(42);
   });
+
+  it('applies overdue contribution filters when overdueContribution=true', async () => {
+    const dto: ListResidentsDto = { overdueContribution: true };
+    await service.findAll(dto);
+
+    const whereCalls: Array<[string, unknown?]> = (qb.andWhere as jest.Mock).mock.calls;
+    const sqls = whereCalls.map(([sql]) => sql as string);
+
+    expect(sqls.some((s) => s.includes('resident.familyInvestment IS NOT NULL'))).toBe(true);
+    expect(sqls.some((s) => s.includes('resident.familyInvestment != :overdSocial'))).toBe(true);
+    expect(sqls.some((s) => s.includes('overdActiveStatuses'))).toBe(true);
+    expect(sqls.some((s) => s.includes('resident_follow_ups'))).toBe(true);
+    expect(sqls.some((s) => s.includes('LEAST'))).toBe(true);
+  });
+
+  it('does not apply overdue contribution filters when overdueContribution is absent', async () => {
+    const dto: ListResidentsDto = {};
+    await service.findAll(dto);
+
+    const whereCalls: string[] = (qb.andWhere as jest.Mock).mock.calls.map((c) => c[0]);
+
+    expect(whereCalls.some((s) => s.includes('familyInvestment'))).toBe(false);
+    expect(whereCalls.some((s) => s.includes('resident_follow_ups'))).toBe(false);
+    expect(whereCalls.some((s) => s.includes('LEAST'))).toBe(false);
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

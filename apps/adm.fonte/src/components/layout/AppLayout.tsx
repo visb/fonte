@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   Building2,
+  ChevronDown,
   HandHeart,
   Home,
   LogOut,
@@ -19,6 +20,81 @@ import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+const navLinkClass =
+  "flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors";
+
+const subNavLinkClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    "block px-3 py-1.5 rounded-md text-sm transition-colors",
+    isActive
+      ? "bg-accent font-medium text-foreground"
+      : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+  );
+
+interface SettingsSubmenuProps {
+  closeSidebar: () => void;
+}
+
+function SettingsSubmenu({ closeSidebar }: SettingsSubmenuProps) {
+  const location = useLocation();
+  const inSettings = location.pathname.startsWith("/settings");
+  const [open, setOpen] = useState(inSettings);
+
+  useEffect(() => {
+    if (!location.pathname.startsWith("/settings")) {
+      setOpen(false);
+    }
+  }, [location.pathname]);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          navLinkClass,
+          "w-full justify-between",
+          inSettings && "bg-accent text-foreground font-medium",
+        )}
+      >
+        <span className="flex items-center gap-3">
+          <Settings size={16} />
+          Configurações
+        </span>
+        <ChevronDown
+          size={14}
+          className={cn("transition-transform", open && "rotate-180")}
+        />
+      </button>
+
+      {open && (
+        <div className="ml-6 mt-1 space-y-1">
+          <NavLink
+            to="/settings/templates"
+            onClick={closeSidebar}
+            className={subNavLinkClass}
+          >
+            Templates de documentos
+          </NavLink>
+          <NavLink
+            to="/settings/permissions"
+            onClick={closeSidebar}
+            className={subNavLinkClass}
+          >
+            Permissões
+          </NavLink>
+          <NavLink
+            to="/settings/app-filhos"
+            onClick={closeSidebar}
+            className={subNavLinkClass}
+          >
+            App para filhos
+          </NavLink>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AppLayout() {
   const { logout, role } = useAuth();
   const { theme, toggle } = useTheme();
@@ -32,9 +108,6 @@ export function AppLayout() {
     logout();
     navigate("/login");
   };
-
-  const navLinkClass =
-    "flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors";
 
   return (
     <div className="flex h-screen">
@@ -89,11 +162,7 @@ export function AppLayout() {
             </Link>
           )}
           {isAdminOrCoordinator && (
-            <Link
-              to="/residents"
-              onClick={closeSidebar}
-              className={navLinkClass}
-            >
+            <Link to="/residents" onClick={closeSidebar} className={navLinkClass}>
               <Users size={16} />
               Filhos
             </Link>
@@ -105,25 +174,12 @@ export function AppLayout() {
             </Link>
           )}
           {isAdminOrCoordinator && (
-            <Link
-              to="/support-groups"
-              onClick={closeSidebar}
-              className={navLinkClass}
-            >
+            <Link to="/support-groups" onClick={closeSidebar} className={navLinkClass}>
               <HandHeart size={16} />
               Grupos de Apoio
             </Link>
           )}
-          {isAdminOrCoordinator && (
-            <Link
-              to="/settings"
-              onClick={closeSidebar}
-              className={navLinkClass}
-            >
-              <Settings size={16} />
-              Configurações
-            </Link>
-          )}
+          {isAdminOrCoordinator && <SettingsSubmenu closeSidebar={closeSidebar} />}
         </nav>
 
         <div className="p-4 border-t">

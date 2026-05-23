@@ -1,10 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { FollowUpAccessLevel, FollowUpType, Role } from '@fonte/types';
+import { FollowUpAccessLevel, FollowUpType, Role, ResidentStatus } from '@fonte/types';
 import { ResidentFollowUp } from './resident-follow-up.entity';
 import { Staff } from '../staff/staff.entity';
+import { Resident } from '../resident/resident.entity';
 import { CreateFollowUpDto } from './dto/create-follow-up.dto';
+
+const STATUS_BY_TYPE: Partial<Record<FollowUpType, ResidentStatus>> = {
+  [FollowUpType.DISCHARGE]: ResidentStatus.DISCHARGED,
+  [FollowUpType.EVASION]: ResidentStatus.EVADED,
+};
 
 export interface ResidentFollowUpView {
   id: string;
@@ -26,6 +32,8 @@ export class ResidentFollowUpService {
     private repo: Repository<ResidentFollowUp>,
     @InjectRepository(Staff)
     private staffRepo: Repository<Staff>,
+    @InjectRepository(Resident)
+    private residentRepo: Repository<Resident>,
   ) {}
 
   async findByResident(residentId: string, role: string): Promise<ResidentFollowUpView[]> {
@@ -63,6 +71,16 @@ export class ResidentFollowUpService {
       createdById: staff?.id ?? null,
     });
     const saved = await this.repo.save(entry);
+
+    // Status-changing events: update resident directly (bypass ResidentService to avoid loop)
+    const newStatus = STATUS_BY_TYPE[dto.type];
+    if (newStatus) {
+      await this.residentRepo.update(residentId, {
+        status: newStatus,
+        exitDate: dto.date as unknown as Date,
+      });
+    }
+
     const loaded = await this.repo.findOne({ where: { id: saved.id }, relations: ['createdBy'] });
     return this.toView(loaded!);
   }

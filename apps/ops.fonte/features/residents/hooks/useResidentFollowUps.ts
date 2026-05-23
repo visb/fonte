@@ -17,6 +17,7 @@ export function useCreateFollowUp(residentId: string) {
     mutationFn: (data: CreateFollowUpInput) => api.residents.createFollowUp(residentId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.residents.followUps(residentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(residentId) });
     },
   });
 }

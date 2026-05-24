@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { FlatList, Image, Pressable, RefreshControl, Text, View } from 'react-native';
+import { FlatList, Image, Pressable, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { resolveAssetUrl } from '@/lib/api';
 import { useDirectConversations } from '../hooks/useMessages';
+import { NewDirectConversationModal } from '../components/NewDirectConversationModal';
 import type { DirectConversation } from '@fonte/api-client';
 
 function PartnerAvatar({ photoUrl }: { photoUrl: string | null }) {
@@ -12,7 +13,16 @@ function PartnerAvatar({ photoUrl }: { photoUrl: string | null }) {
     return <Image source={{ uri }} style={{ width: 40, height: 40, borderRadius: 20 }} />;
   }
   return (
-    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(39,41,80,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(39,41,80,0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
       <Ionicons name="person-outline" size={20} color="#272950" />
     </View>
   );
@@ -24,7 +34,11 @@ function DirectConversationItem({ item }: { item: DirectConversation }) {
       onPress={() =>
         router.push({
           pathname: '/(app)/messages/direct/[relativeId]' as never,
-          params: { relativeId: item.relativeId, partnerName: item.relativeName, partnerPhotoUrl: item.relativePhotoUrl ?? '' },
+          params: {
+            relativeId: item.relativeId,
+            partnerName: item.relativeName,
+            partnerPhotoUrl: item.relativePhotoUrl ?? '',
+          },
         } as never)
       }
       className="bg-white border-b border-gray-100 px-4 py-3 flex-row items-center"
@@ -49,6 +63,7 @@ function DirectConversationItem({ item }: { item: DirectConversation }) {
 
 export function DirectConversationsPage() {
   const [refreshing, setRefreshing] = useState(false);
+  const [showNewModal, setShowNewModal] = useState(false);
   const { data: conversations = [], refetch } = useDirectConversations();
 
   const handleRefresh = async () => {
@@ -58,22 +73,52 @@ export function DirectConversationsPage() {
   };
 
   return (
-    <FlatList
-      data={conversations}
-      keyExtractor={(c) => c.relativeId}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-      renderItem={({ item }) => <DirectConversationItem item={item} />}
-      ListEmptyComponent={
-        <View className="flex-1 items-center justify-center py-20">
-          <Ionicons name="chatbubble-ellipses-outline" size={40} color="#d1d5db" />
-          <Text className="text-base font-medium text-gray-400 mt-4">
-            Nenhuma conversa direta ainda
-          </Text>
-          <Text className="text-sm text-gray-400 mt-1 text-center px-8">
-            Familiares podem iniciar conversas diretas pelo app deles
-          </Text>
-        </View>
-      }
-    />
+    <View style={{ flex: 1 }}>
+      <FlatList
+        data={conversations}
+        keyExtractor={(c) => c.relativeId}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        renderItem={({ item }) => <DirectConversationItem item={item} />}
+        ListEmptyComponent={
+          <View className="flex-1 items-center justify-center py-20">
+            <Ionicons name="chatbubble-ellipses-outline" size={40} color="#d1d5db" />
+            <Text className="text-base font-medium text-gray-400 mt-4">
+              Nenhuma conversa direta ainda
+            </Text>
+            <Text className="text-sm text-gray-400 mt-1 text-center px-8">
+              Toque em + para iniciar uma conversa com um familiar
+            </Text>
+          </View>
+        }
+      />
+
+      {/* FAB */}
+      <TouchableOpacity
+        onPress={() => setShowNewModal(true)}
+        style={{
+          position: 'absolute',
+          bottom: 24,
+          right: 20,
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: '#272950',
+          alignItems: 'center',
+          justifyContent: 'center',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+          elevation: 5,
+        }}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
+
+      <NewDirectConversationModal
+        visible={showNewModal}
+        onClose={() => setShowNewModal(false)}
+      />
+    </View>
   );
 }

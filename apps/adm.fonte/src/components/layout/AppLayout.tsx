@@ -7,6 +7,7 @@ import {
   Home,
   LogOut,
   Menu,
+  MessageSquare,
   Moon,
   Receipt,
   Settings,
@@ -229,6 +230,12 @@ export function AppLayout() {
             <Link to="/support-groups" onClick={closeSidebar} className={navLinkClass}>
               <HandHeart size={16} />
               Grupos de Apoio
+            </Link>
+          )}
+          {isAdminOrCoordinator && (
+            <Link to="/messages" onClick={closeSidebar} className={navLinkClass}>
+              <MessageSquare size={16} />
+              Mensagens
             </Link>
           )}
           {isAdminOrCoordinator && <FaturamentoSubmenu closeSidebar={closeSidebar} />}

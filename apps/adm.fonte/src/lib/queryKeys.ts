@@ -52,4 +52,13 @@ export const queryKeys = {
         ['billing', 'filhos', 'report', params] as const,
     },
   },
+  messages: {
+    all: ['messages'] as const,
+    conversations: ['messages', 'conversations'] as const,
+    directConversations: ['messages', 'direct-conversations'] as const,
+    thread: (residentId: string, relativeId: string) =>
+      ['messages', 'thread', residentId, relativeId] as const,
+    directThread: (staffId: string, relativeId: string) =>
+      ['messages', 'direct-thread', staffId, relativeId] as const,
+  },
 } as const;

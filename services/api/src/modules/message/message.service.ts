@@ -21,12 +21,14 @@ export interface MessageView {
   staffId: string | null;
   senderUserId: string;
   senderName: string;
+  senderProfileType: string;
   recipientName: string;
   content: string | null;
   attachmentUrl: string | null;
   attachmentType: string | null;
   status: MessageStatus;
   approvedByUserId: string | null;
+  approvedByName: string | null;
   approvedAt: Date | null;
   createdAt: Date;
 }
@@ -40,6 +42,8 @@ export interface ConversationView {
   lastMessage: string | null;
   lastMessageAt: Date | null;
   pendingCount: number;
+  houseId: string;
+  houseName: string;
 }
 
 export interface DirectConversationView {
@@ -50,6 +54,8 @@ export interface DirectConversationView {
   relativePhotoUrl: string | null;
   lastMessage: string | null;
   lastMessageAt: Date | null;
+  residentId: string;
+  residentName: string;
 }
 
 export interface StaffThreadView {
@@ -88,7 +94,7 @@ export class MessageService {
     return count > 0;
   }
 
-  private toView(msg: Message & { senderName?: string; recipientName?: string }): MessageView {
+  private toView(msg: Message & { senderName?: string; senderProfileType?: string; recipientName?: string; approvedByName?: string | null }): MessageView {
     return {
       id: msg.id,
       residentId: msg.residentId,
@@ -96,12 +102,14 @@ export class MessageService {
       staffId: msg.staffId,
       senderUserId: msg.senderUserId,
       senderName: msg.senderName ?? '',
+      senderProfileType: msg.senderProfileType ?? '',
       recipientName: msg.recipientName ?? '',
       content: msg.content,
       attachmentUrl: msg.attachmentUrl,
       attachmentType: msg.attachmentType,
       status: msg.status,
       approvedByUserId: msg.approvedByUserId,
+      approvedByName: msg.approvedByName ?? null,
       approvedAt: msg.approvedAt,
       createdAt: msg.createdAt,
     };
@@ -116,11 +124,16 @@ export class MessageService {
     return null;
   }
 
-  async getConversations(staffUserId: string): Promise<ConversationView[]> {
-    const staff = await this.staffRepository.findOne({ where: { userId: staffUserId } });
-    if (!staff || !staff.houseId) return [];
+  async getConversations(staffUserId: string, role: string): Promise<ConversationView[]> {
+    let residents: Resident[];
 
-    const residents = await this.residentRepository.find({ where: { houseId: staff.houseId } });
+    if (role === Role.ADMIN) {
+      residents = await this.residentRepository.find({ relations: ['house'] });
+    } else {
+      const staff = await this.staffRepository.findOne({ where: { userId: staffUserId } });
+      if (!staff || !staff.houseId) return [];
+      residents = await this.residentRepository.find({ where: { houseId: staff.houseId }, relations: ['house'] });
+    }
     const residentIds = residents.map((r) => r.id);
     if (!residentIds.length) return [];
 
@@ -149,6 +162,8 @@ export class MessageService {
         lastMessage: this.lastMessageLabel(lastMsg),
         lastMessageAt: lastMsg?.createdAt ?? null,
         pendingCount,
+        houseId: resident?.houseId ?? '',
+        houseName: (resident as any)?.house?.name ?? '',
       });
     }
     return conversations;
@@ -176,6 +191,8 @@ export class MessageService {
           lastMessage: this.lastMessageLabel(lastMsg),
           lastMessageAt: lastMsg?.createdAt ?? null,
           pendingCount: 0,
+          houseId: '',
+          houseName: '',
         },
       ];
     }
@@ -201,6 +218,8 @@ export class MessageService {
         lastMessage: this.lastMessageLabel(lastMsg),
         lastMessageAt: lastMsg?.createdAt ?? null,
         pendingCount: 0,
+        houseId: '',
+        houseName: '',
       });
     }
     return conversations;
@@ -241,21 +260,34 @@ export class MessageService {
       });
     }
 
-    const userIds = [...new Set(messages.map((m) => m.senderUserId))];
-    const users = await this.userRepository.findByIds(userIds);
-    const staffList = await this.staffRepository.find({ where: userIds.map((id) => ({ userId: id })) });
-    const residents = await this.residentRepository.find({ where: userIds.map((id) => ({ userId: id })) });
-    const relativesList = await this.relativeRepository.find({ where: userIds.map((id) => ({ userId: id })) });
+    const allUserIds = [...new Set([
+      ...messages.map((m) => m.senderUserId),
+      ...messages.map((m) => m.approvedByUserId).filter((id): id is string => id !== null),
+    ])];
+    const users = await this.userRepository.findByIds(allUserIds);
+    const staffList = await this.staffRepository.find({ where: allUserIds.map((id) => ({ userId: id })) });
+    const residents = await this.residentRepository.find({ where: allUserIds.map((id) => ({ userId: id })) });
+    const relativesList = await this.relativeRepository.find({ where: allUserIds.map((id) => ({ userId: id })) });
 
     const nameMap = new Map<string, string>();
+    const profileTypeMap = new Map<string, string>();
     for (const u of users) {
       const staffMatch = staffList.find((s) => s.userId === u.id);
       const residentMatch = residents.find((r) => r.userId === u.id);
       const relativeMatch = relativesList.find((r) => r.userId === u.id);
       nameMap.set(u.id, staffMatch?.name ?? residentMatch?.name ?? relativeMatch?.name ?? u.email);
+      profileTypeMap.set(
+        u.id,
+        residentMatch ? 'RESIDENT' : relativeMatch ? 'RELATIVE' : 'STAFF',
+      );
     }
 
-    return messages.map((m) => this.toView({ ...m, senderName: nameMap.get(m.senderUserId) }));
+    return messages.map((m) => this.toView({
+      ...m,
+      senderName: nameMap.get(m.senderUserId),
+      senderProfileType: profileTypeMap.get(m.senderUserId) ?? 'STAFF',
+      approvedByName: m.approvedByUserId ? (nameMap.get(m.approvedByUserId) ?? null) : null,
+    }));
   }
 
   async getPending(staffUserId: string): Promise<MessageView[]> {
@@ -397,33 +429,72 @@ export class MessageService {
     });
   }
 
-  async getDirectConversations(staffUserId: string): Promise<DirectConversationView[]> {
-    const staff = await this.staffRepository.findOne({ where: { userId: staffUserId } });
-    if (!staff || (!staff.houseId && !staff.supportGroupId)) return [];
+  async getDirectConversations(staffUserId: string, role: string): Promise<DirectConversationView[]> {
+    type RawPair = { staffId: string; relativeId: string };
+    let pairs: RawPair[];
 
-    const rawRows = await this.messageRepository
-      .createQueryBuilder('m')
-      .select('m.relativeId', 'relativeId')
-      .where('m.staffId = :staffId', { staffId: staff.id })
-      .groupBy('m.relativeId')
-      .getRawMany<{ relativeId: string }>();
+    if (role === Role.ADMIN) {
+      pairs = await this.messageRepository
+        .createQueryBuilder('m')
+        .select('m.staffId', 'staffId')
+        .addSelect('m.relativeId', 'relativeId')
+        .where('m.staffId IS NOT NULL')
+        .groupBy('m.staffId')
+        .addGroupBy('m.relativeId')
+        .getRawMany<RawPair>();
+    } else if (role === Role.COORDINATOR) {
+      const coordinator = await this.staffRepository.findOne({ where: { userId: staffUserId } });
+      if (!coordinator?.houseId) return [];
+
+      const houseStaff = await this.staffRepository.find({ where: { houseId: coordinator.houseId } });
+      const staffIds = houseStaff.map((s) => s.id);
+      if (!staffIds.length) return [];
+
+      pairs = await this.messageRepository
+        .createQueryBuilder('m')
+        .select('m.staffId', 'staffId')
+        .addSelect('m.relativeId', 'relativeId')
+        .where('m.staffId IN (:...staffIds)', { staffIds })
+        .groupBy('m.staffId')
+        .addGroupBy('m.relativeId')
+        .getRawMany<RawPair>();
+    } else {
+      // OPERATOR: only own conversations
+      const staff = await this.staffRepository.findOne({ where: { userId: staffUserId } });
+      if (!staff || (!staff.houseId && !staff.supportGroupId)) return [];
+
+      const rows = await this.messageRepository
+        .createQueryBuilder('m')
+        .select('m.relativeId', 'relativeId')
+        .where('m.staffId = :staffId', { staffId: staff.id })
+        .groupBy('m.relativeId')
+        .getRawMany<{ relativeId: string }>();
+
+      pairs = rows.map((r) => ({ staffId: staff.id, relativeId: r.relativeId }));
+    }
 
     const result: DirectConversationView[] = [];
-    for (const { relativeId } of rawRows) {
+    for (const { staffId, relativeId } of pairs) {
+      const staffEntity = await this.staffRepository.findOne({ where: { id: staffId } });
       const relative = await this.relativeRepository.findOne({ where: { id: relativeId } });
-      if (!relative) continue;
+      if (!staffEntity || !relative) continue;
+
+      const resident = await this.residentRepository.findOne({ where: { id: relative.residentId } });
+
       const lastMsg = await this.messageRepository.findOne({
-        where: { staffId: staff.id, relativeId },
+        where: { staffId, relativeId },
         order: { createdAt: 'DESC' },
       });
       result.push({
-        staffId: staff.id,
-        staffName: staff.name,
+        staffId,
+        staffName: staffEntity.name,
         relativeId,
         relativeName: relative.name,
         relativePhotoUrl: relative.photoUrl ?? null,
         lastMessage: this.lastMessageLabel(lastMsg),
         lastMessageAt: lastMsg?.createdAt ?? null,
+        residentId: resident?.id ?? '',
+        residentName: resident?.name ?? '',
       });
     }
     return result;
@@ -536,7 +607,7 @@ export class MessageService {
       approvedByUserId: staffUserId,
       approvedAt: new Date(),
     });
-    return this.toView({ ...message, status: MessageStatus.APPROVED, approvedByUserId: staffUserId, approvedAt: new Date() });
+    return this.toView({ ...message, status: MessageStatus.APPROVED, approvedByUserId: staffUserId, approvedAt: new Date(), approvedByName: staff.name });
   }
 
   async reject(staffUserId: string, messageId: string): Promise<MessageView> {
@@ -553,6 +624,6 @@ export class MessageService {
       approvedByUserId: staffUserId,
       approvedAt: new Date(),
     });
-    return this.toView({ ...message, status: MessageStatus.REJECTED, approvedByUserId: staffUserId, approvedAt: new Date() });
+    return this.toView({ ...message, status: MessageStatus.REJECTED, approvedByUserId: staffUserId, approvedAt: new Date(), approvedByName: staff.name });
   }
 }

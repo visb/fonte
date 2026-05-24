@@ -28,6 +28,7 @@ import { FilhosPage } from '@/features/billing/pages/FilhosPage';
 import { PizzaPage } from '@/features/billing/pages/PizzaPage';
 import { PaoPage } from '@/features/billing/pages/PaoPage';
 import { AssociadosPage } from '@/features/billing/pages/AssociadosPage';
+import { MessagesPage } from '@/features/messages/pages/MessagesPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -79,6 +80,7 @@ export default function App() {
                 <Route path="app-filhos" element={<ChildAppSettingsPage />} />
               </Route>
               <Route path="support-groups" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><SupportGroupsPage /></ProtectedRoute>} />
+              <Route path="messages" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><MessagesPage /></ProtectedRoute>} />
               <Route
                 path="billing"
                 element={

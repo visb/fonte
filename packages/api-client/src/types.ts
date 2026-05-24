@@ -663,12 +663,14 @@ export interface Message {
   staffId: string | null;
   senderUserId: string;
   senderName: string;
+  senderProfileType: string;
   recipientName: string;
   content: string | null;
   attachmentUrl: string | null;
   attachmentType: string | null;
   status: MessageStatus;
   approvedByUserId: string | null;
+  approvedByName: string | null;
   approvedAt: string | null;
   createdAt: string;
 }
@@ -682,6 +684,8 @@ export interface Conversation {
   lastMessage: string | null;
   lastMessageAt: string | null;
   pendingCount: number;
+  houseId: string;
+  houseName: string;
 }
 
 export interface DirectConversation {
@@ -692,6 +696,8 @@ export interface DirectConversation {
   relativePhotoUrl: string | null;
   lastMessage: string | null;
   lastMessageAt: string | null;
+  residentId: string;
+  residentName: string;
 }
 
 export interface StaffThreadSummary {

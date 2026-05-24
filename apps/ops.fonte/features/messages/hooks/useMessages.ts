@@ -100,6 +100,26 @@ export function useDirectConversations() {
   });
 }
 
+export function useHouseRelativesForMessages(houseId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['house-relatives-messages', houseId] as const,
+    queryFn: async () => {
+      const residents = await api.residents.listByHouse(houseId!);
+      const groups = await Promise.all(
+        residents.map((r) =>
+          api.relatives.listByResident(r.id).then((rels) => ({
+            residentId: r.id,
+            residentName: r.name,
+            relatives: rels,
+          })),
+        ),
+      );
+      return groups.filter((g) => g.relatives.length > 0);
+    },
+    enabled: !!houseId,
+  });
+}
+
 export function useDirectThread(staffId: string, relativeId: string) {
   return useQuery({
     queryKey: queryKeys.messages.directThread(staffId, relativeId),

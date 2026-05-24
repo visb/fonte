@@ -43,7 +43,7 @@ export class MessageController {
   @Get('conversations')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
   getConversations(@CurrentUser() user: AuthenticatedUser) {
-    return this.service.getConversations(user.userId);
+    return this.service.getConversations(user.userId, user.role);
   }
 
   @Get('my-conversations')
@@ -98,7 +98,7 @@ export class MessageController {
   @Get('direct-conversations')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
   getDirectConversations(@CurrentUser() user: AuthenticatedUser) {
-    return this.service.getDirectConversations(user.userId);
+    return this.service.getDirectConversations(user.userId, user.role);
   }
 
   @Get('direct/:staffId/:relativeId')

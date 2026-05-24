@@ -122,6 +122,7 @@ function makeService(
       createAuto: jest.fn().mockResolvedValue(undefined),
       getLastContributionDates: jest.fn().mockResolvedValue(new Map()),
     } as never, // ResidentFollowUpService
+    { query: jest.fn().mockResolvedValue([]) } as never, // DataSource
   );
 }
 

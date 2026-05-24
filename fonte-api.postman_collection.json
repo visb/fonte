@@ -331,6 +331,22 @@
           }
         },
         {
+          "name": "Get Contributions Monthly Report",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/residents/contributions/report?month=2026-05",
+              "host": ["{{baseUrl}}"],
+              "path": ["residents", "contributions", "report"],
+              "query": [
+                { "key": "month", "value": "2026-05", "description": "Mês do relatório (YYYY-MM, obrigatório)" },
+                { "key": "houseId", "value": "", "description": "UUID da casa (opcional, filtra por casa)", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
           "name": "Get Resident by ID",
           "request": {
             "method": "GET",

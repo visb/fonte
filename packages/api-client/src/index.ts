@@ -84,4 +84,7 @@ export type {
   CreateFollowUpInput,
   FollowUpType,
   FollowUpAccessLevel,
+  ContributionReportItem,
+  ContributionsReportResponse,
+  GetContributionsReportParams,
 } from './types.js';

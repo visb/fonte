@@ -41,6 +41,8 @@ import { ResidentService } from './resident.service';
 import { ReadmitResidentDto } from './dto/readmit-resident.dto';
 import { ResidentFollowUpService, ResidentFollowUpView } from '../resident-follow-up/resident-follow-up.service';
 import { CreateFollowUpDto } from '../resident-follow-up/dto/create-follow-up.dto';
+import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
+import { ContributionsReportResponse } from '@fonte/types';
 
 const photoOptions = {
   storage: memoryStorage(),
@@ -101,6 +103,12 @@ export class ResidentController {
     file: Express.Multer.File,
   ): Promise<ResidentMeView> {
     return this.residentService.uploadPhotoMe(user.userId, file);
+  }
+
+  @Get('contributions/report')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  getContributionsReport(@Query() dto: GetContributionsReportDto): Promise<ContributionsReportResponse> {
+    return this.residentService.getContributionsReport(dto);
   }
 
   @Get(':id')

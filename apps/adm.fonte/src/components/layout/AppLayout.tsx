@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   Moon,
+  Receipt,
   Settings,
   Sun,
   UserCog,
@@ -88,6 +89,57 @@ function SettingsSubmenu({ closeSidebar }: SettingsSubmenuProps) {
             className={subNavLinkClass}
           >
             App para filhos
+          </NavLink>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FaturamentoSubmenu({ closeSidebar }: SettingsSubmenuProps) {
+  const location = useLocation();
+  const inBilling = location.pathname.startsWith("/billing");
+  const [open, setOpen] = useState(inBilling);
+
+  useEffect(() => {
+    if (!location.pathname.startsWith("/billing")) {
+      setOpen(false);
+    }
+  }, [location.pathname]);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          navLinkClass,
+          "w-full justify-between",
+          inBilling && "bg-accent text-foreground font-medium",
+        )}
+      >
+        <span className="flex items-center gap-3">
+          <Receipt size={16} />
+          Faturamento
+        </span>
+        <ChevronDown
+          size={14}
+          className={cn("transition-transform", open && "rotate-180")}
+        />
+      </button>
+
+      {open && (
+        <div className="ml-6 mt-1 space-y-1">
+          <NavLink to="/billing/filhos" onClick={closeSidebar} className={subNavLinkClass}>
+            Filhos
+          </NavLink>
+          <NavLink to="/billing/pizza" onClick={closeSidebar} className={subNavLinkClass}>
+            Pizza
+          </NavLink>
+          <NavLink to="/billing/pao" onClick={closeSidebar} className={subNavLinkClass}>
+            Pão
+          </NavLink>
+          <NavLink to="/billing/associados" onClick={closeSidebar} className={subNavLinkClass}>
+            Associados
           </NavLink>
         </div>
       )}
@@ -179,6 +231,7 @@ export function AppLayout() {
               Grupos de Apoio
             </Link>
           )}
+          {isAdminOrCoordinator && <FaturamentoSubmenu closeSidebar={closeSidebar} />}
           {isAdminOrCoordinator && <SettingsSubmenu closeSidebar={closeSidebar} />}
         </nav>
 

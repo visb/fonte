@@ -1,8 +1,9 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { FamilyInvestment, FollowUpType, ResidentStatus, Role } from '@fonte/types';
+import { ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, ResidentStatus, Role } from '@fonte/types';
+import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
 const CANONICAL_AMOUNTS: Partial<Record<FamilyInvestment, number>> = {
   [FamilyInvestment.BASKET_500]: 500,
@@ -61,6 +62,7 @@ export class ResidentService {
     private admissionRepository: Repository<Admission>,
     private storageService: StorageService,
     private followUpService: ResidentFollowUpService,
+    private dataSource: DataSource,
   ) {}
 
   async findAll(dto: ListResidentsDto): Promise<{ data: Resident[]; total: number; page: number; limit: number }> {
@@ -434,5 +436,65 @@ export class ResidentService {
     if (!attachment) throw new NotFoundException(`Attachment ${attachmentId} not found`);
     await this.storageService.delete(attachment.fileUrl);
     await this.attachmentRepository.delete(attachmentId);
+  }
+
+  async getContributionsReport(dto: GetContributionsReportDto): Promise<ContributionsReportResponse> {
+    const monthDate = `${dto.month}-01`;
+
+    let sql = `
+      SELECT
+        r.id            AS "residentId",
+        r.name          AS "residentName",
+        r.house_id      AS "houseId",
+        h.name          AS "houseName",
+        r.family_investment             AS "familyInvestment",
+        r.family_investment_amount      AS "expectedAmount",
+        (rfu.id IS NOT NULL)            AS paid,
+        rfu.date                        AS "paidAt"
+      FROM residents r
+      INNER JOIN houses h ON h.id = r.house_id
+      LEFT JOIN resident_follow_ups rfu
+        ON  rfu.resident_id = r.id
+        AND rfu.type = 'MONTHLY_CONTRIBUTION'
+        AND DATE_TRUNC('month', rfu.date) = DATE_TRUNC('month', $1::date)
+        AND rfu.deleted_at IS NULL
+      WHERE r.family_investment IS NOT NULL
+        AND r.family_investment != 'SOCIAL'
+        AND r.status IN ('PRE_ADMISSION','ACTIVE','DISCIPLINE','TEMP_LEAVE')
+        AND r.deleted_at IS NULL
+    `;
+
+    const params: unknown[] = [monthDate];
+
+    if (dto.houseId) {
+      params.push(dto.houseId);
+      sql += ` AND r.house_id = $${params.length}`;
+    }
+
+    sql += ' ORDER BY r.name ASC';
+
+    const rows: ContributionReportItem[] = await this.dataSource.query(sql, params);
+
+    const items: ContributionReportItem[] = rows.map((row) => ({
+      ...row,
+      paid: row.paid === true || (row.paid as unknown) === 't' || (row.paid as unknown) === 'true',
+      expectedAmount: row.expectedAmount != null ? Number(row.expectedAmount) : (CANONICAL_AMOUNTS[row.familyInvestment as FamilyInvestment] ?? 0),
+    }));
+
+    const totalResidents = items.length;
+    const totalPaid = items.filter((i) => i.paid).length;
+    const totalPending = totalResidents - totalPaid;
+    const totalExpectedAmount = items.reduce((sum, i) => sum + (i.expectedAmount ?? 0), 0);
+    const totalCollectedAmount = items.filter((i) => i.paid).reduce((sum, i) => sum + (i.expectedAmount ?? 0), 0);
+
+    return {
+      month: dto.month,
+      items,
+      totalResidents,
+      totalPaid,
+      totalPending,
+      totalExpectedAmount,
+      totalCollectedAmount,
+    };
   }
 }

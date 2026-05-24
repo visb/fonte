@@ -23,6 +23,11 @@ import { DocumentTemplatesPage } from '@/features/settings/pages/DocumentTemplat
 import { PermissionsPage } from '@/features/settings/pages/PermissionsPage';
 import { ChildAppSettingsPage } from '@/features/settings/pages/ChildAppSettingsPage';
 import { SupportGroupsPage } from '@/features/support-groups/pages/SupportGroupsPage';
+import { BillingPage } from '@/features/billing/pages/BillingPage';
+import { FilhosPage } from '@/features/billing/pages/FilhosPage';
+import { PizzaPage } from '@/features/billing/pages/PizzaPage';
+import { PaoPage } from '@/features/billing/pages/PaoPage';
+import { AssociadosPage } from '@/features/billing/pages/AssociadosPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +79,19 @@ export default function App() {
                 <Route path="app-filhos" element={<ChildAppSettingsPage />} />
               </Route>
               <Route path="support-groups" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><SupportGroupsPage /></ProtectedRoute>} />
+              <Route
+                path="billing"
+                element={
+                  <ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}>
+                    <BillingPage />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="filhos" element={<FilhosPage />} />
+                <Route path="pizza" element={<PizzaPage />} />
+                <Route path="pao" element={<PaoPage />} />
+                <Route path="associados" element={<AssociadosPage />} />
+              </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

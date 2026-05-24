@@ -14,6 +14,8 @@ import type {
   UpdateResidentInput,
   ResidentDocument,
   ResidentAttachment,
+  ContributionsReportResponse,
+  GetContributionsReportParams,
 } from '../types.js';
 
 export function createResidentsModule(http: AxiosInstance) {
@@ -74,6 +76,9 @@ export function createResidentsModule(http: AxiosInstance) {
           headers: { 'Content-Type': undefined },
         })
         .then((r) => r.data),
+
+    contributionsReport: (params: GetContributionsReportParams): Promise<ContributionsReportResponse> =>
+      http.get<ContributionsReportResponse>('/residents/contributions/report', { params }).then((r) => r.data),
 
     me: (): Promise<ResidentMe> => http.get<ResidentMe>('/residents/me').then((r) => r.data),
     uploadPhotoMe: (formData: FormData): Promise<ResidentMe> =>

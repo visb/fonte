@@ -139,6 +139,34 @@ export interface ResidentFollowUp {
   updatedAt: string;
 }
 
+// ─── Contributions Report ─────────────────────────────────────────────────────
+
+export interface ContributionReportItem {
+  residentId: string;
+  residentName: string;
+  houseId: string;
+  houseName: string;
+  familyInvestment: FamilyInvestment;
+  expectedAmount: number;
+  paid: boolean;
+  paidAt: string | null;
+}
+
+export interface ContributionsReportResponse {
+  month: string;
+  items: ContributionReportItem[];
+  totalResidents: number;
+  totalPaid: number;
+  totalPending: number;
+  totalExpectedAmount: number;
+  totalCollectedAmount: number;
+}
+
+export interface GetContributionsReportParams {
+  month: string; // YYYY-MM
+  houseId?: string;
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

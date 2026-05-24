@@ -14,7 +14,12 @@ import type {
   FollowUpAccessLevel,
   FamilyInvestment,
   PaginatedResponse,
+  ContributionReportItem,
+  ContributionsReportResponse,
+  GetContributionsReportParams,
 } from '@fonte/types';
+
+export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
 
 export type { FamilyInvestment };
 

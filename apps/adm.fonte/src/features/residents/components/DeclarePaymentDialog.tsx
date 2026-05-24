@@ -39,12 +39,18 @@ interface Props {
   open: boolean;
   onClose: () => void;
   resident: { id: string; name: string };
+  /** Pre-filled date for the target month (YYYY-MM-DD). Defaults to today. */
+  defaultDate?: string;
+  /** Human-readable reference month shown in the dialog, e.g. "Junho/2026". */
+  referenceMonth?: string;
 }
 
-export function DeclarePaymentDialog({ open, onClose, resident }: Props) {
+export function DeclarePaymentDialog({ open, onClose, resident, defaultDate, referenceMonth }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const mutation = useDeclareContribution(resident.id);
+
+  const initDate = () => defaultDate ?? todayIso();
 
   const {
     register,
@@ -53,11 +59,11 @@ export function DeclarePaymentDialog({ open, onClose, resident }: Props) {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { date: todayIso(), paymentMethod: '', notes: '' },
+    defaultValues: { date: initDate(), paymentMethod: '', notes: '' },
   });
 
   const handleClose = () => {
-    reset({ date: todayIso(), paymentMethod: '', notes: '' });
+    reset({ date: initDate(), paymentMethod: '', notes: '' });
     setFile(null);
     if (fileRef.current) fileRef.current.value = '';
     mutation.reset();
@@ -82,7 +88,12 @@ export function DeclarePaymentDialog({ open, onClose, resident }: Props) {
         <DialogHeader>
           <DialogTitle>Declarar pagamento</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">{resident.name}</p>
+        <div>
+          <p className="text-sm text-muted-foreground">{resident.name}</p>
+          {referenceMonth && (
+            <p className="text-xs text-muted-foreground mt-0.5">Referente a {referenceMonth}</p>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <FormField label="Data do pagamento" error={errors.date?.message}>

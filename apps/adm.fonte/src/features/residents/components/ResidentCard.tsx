@@ -19,11 +19,43 @@ const ACTIVE_STATUSES = new Set<ResidentStatus>([
   ResidentStatus.TEMP_LEAVE,
 ]);
 
-function isSameMonth(dateStr: string): boolean {
-  // dateStr may be "YYYY-MM-DD" or a full ISO timestamp — normalise to local midnight
-  const d = new Date(dateStr.slice(0, 10) + 'T00:00:00');
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+const MONTH_NAMES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+
+/**
+ * Returns the next unpaid month's due info.
+ * If lastContributionDate is in current month or future, next unpaid = one month after it.
+ * Otherwise next unpaid = current month.
+ */
+function getNextDueInfo(
+  entryDate: string,
+  lastContributionDate: string | null,
+): { year: number; month: number; day: number; isoDate: string } {
+  const dueDay = new Date(entryDate + 'T00:00:00').getDate();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let targetYear = today.getFullYear();
+  let targetMonth = today.getMonth(); // 0-indexed
+
+  if (lastContributionDate) {
+    const last = new Date(lastContributionDate.slice(0, 10) + 'T00:00:00');
+    const lastYM = last.getFullYear() * 12 + last.getMonth();
+    const todayYM = today.getFullYear() * 12 + today.getMonth();
+    if (lastYM >= todayYM) {
+      // Current month already covered — advance to next unpaid month
+      const nextYM = lastYM + 1;
+      targetYear = Math.floor(nextYM / 12);
+      targetMonth = nextYM % 12;
+    }
+  }
+
+  const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const effectiveDay = Math.min(dueDay, lastDayOfMonth);
+  const isoDate = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(effectiveDay).padStart(2, '0')}`;
+  return { year: targetYear, month: targetMonth, day: effectiveDay, isoDate };
 }
 
 function getPaymentBadge(
@@ -31,29 +63,25 @@ function getPaymentBadge(
   familyInvestment: FamilyInvestment | null,
   status: ResidentStatus,
   lastContributionDate: string | null,
-): { label: string; variant: BadgeVariant; clickable: boolean } | null {
+): { label: string; variant: BadgeVariant; defaultDate: string; referenceMonth: string } | null {
   if (!entryDate || !familyInvestment || familyInvestment === FamilyInvestment.SOCIAL) return null;
   if (!ACTIVE_STATUSES.has(status)) return null;
 
-  if (lastContributionDate && isSameMonth(lastContributionDate)) {
-    return { label: 'Contribuição paga', variant: 'success', clickable: false };
-  }
+  const { year, month, day, isoDate } = getNextDueInfo(entryDate, lastContributionDate);
 
-  const dueDay = new Date(entryDate + 'T00:00:00').getDate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const dueDate = new Date(year, month, day);
+  const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-  const lastDayThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const effectiveDay = Math.min(dueDay, lastDayThisMonth);
-  const dueThisMonth = new Date(today.getFullYear(), today.getMonth(), effectiveDay);
-  const diffDays = Math.round((dueThisMonth.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const monthStr = String(month + 1).padStart(2, '0');
+  const label = `Vence ${day}/${monthStr}`;
+  const referenceMonth = `${MONTH_NAMES[month]}/${year}`;
 
-  const monthStr = String(today.getMonth() + 1).padStart(2, '0');
-  const label = `Vence ${effectiveDay}/${monthStr}`;
-  if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)}d`, variant: 'destructive', clickable: true };
-  if (diffDays <= 7) return { label, variant: 'warning', clickable: true };
-  if (diffDays <= 30) return { label, variant: 'info', clickable: true };
-  return { label, variant: 'success', clickable: true };
+  if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)}d`, variant: 'destructive', defaultDate: isoDate, referenceMonth };
+  if (diffDays < 5) return { label, variant: 'warning', defaultDate: isoDate, referenceMonth };
+  if (diffDays < 15) return { label, variant: 'info', defaultDate: isoDate, referenceMonth };
+  return { label, variant: 'success', defaultDate: isoDate, referenceMonth };
 }
 
 function formatLocalDate(iso: string): string {
@@ -131,18 +159,14 @@ export function ResidentCard({ resident, onDelete }: Props) {
             {RESIDENT_STATUS_LABELS[resident.status]}
           </Badge>
           {paymentBadge && (
-            paymentBadge.clickable ? (
-              <Badge
-                variant={paymentBadge.variant}
-                className="cursor-pointer hover:opacity-80"
-                onClick={(e) => { e.stopPropagation(); setPaymentDialogOpen(true); }}
-                title="Clique para declarar pagamento"
-              >
-                {paymentBadge.label}
-              </Badge>
-            ) : (
-              <Badge variant={paymentBadge.variant}>{paymentBadge.label}</Badge>
-            )
+            <Badge
+              variant={paymentBadge.variant}
+              className="cursor-pointer hover:opacity-80"
+              onClick={(e) => { e.stopPropagation(); setPaymentDialogOpen(true); }}
+              title="Clique para declarar pagamento"
+            >
+              {paymentBadge.label}
+            </Badge>
           )}
         </div>
         <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -161,11 +185,13 @@ export function ResidentCard({ resident, onDelete }: Props) {
         </div>
       </div>
 
-      {paymentBadge?.clickable && (
+      {paymentBadge && (
         <DeclarePaymentDialog
           open={paymentDialogOpen}
           onClose={() => setPaymentDialogOpen(false)}
           resident={{ id: resident.id, name: resident.name }}
+          defaultDate={paymentBadge.defaultDate}
+          referenceMonth={paymentBadge.referenceMonth}
         />
       )}
     </>

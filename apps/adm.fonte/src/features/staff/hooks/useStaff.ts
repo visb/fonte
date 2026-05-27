@@ -2,7 +2,31 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { StaffPermissionType } from '@fonte/types';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
-import type { CreateStaffInput, UpdateStaffInput } from '@fonte/api-client';
+import type { CreateStaffInput, UpdateStaffInput, UpdateStaffMeInput } from '@fonte/api-client';
+
+export function useStaffMe() {
+  return useQuery({
+    queryKey: queryKeys.staffMe.current,
+    queryFn: () => api.staff.me(),
+  });
+}
+
+export function useUpdateStaffMe() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ data, photo }: { data: UpdateStaffMeInput; photo?: Blob | null }) => {
+      await api.staff.updateMe(data);
+      if (photo) {
+        const fd = new window.FormData();
+        fd.append('file', photo, 'photo.jpg');
+        await api.staff.uploadPhotoMe(fd);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.staffMe.current });
+    },
+  });
+}
 
 export function useStaff(options?: { enabled?: boolean }) {
   return useQuery({

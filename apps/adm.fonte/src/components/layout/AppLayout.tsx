@@ -12,6 +12,7 @@ import {
   Receipt,
   Settings,
   Sun,
+  UserCircle,
   UserCog,
   Users,
   X,
@@ -242,7 +243,20 @@ export function AppLayout() {
           {isAdminOrCoordinator && <SettingsSubmenu closeSidebar={closeSidebar} />}
         </nav>
 
-        <div className="p-4 border-t">
+        <div className="p-4 border-t space-y-1">
+          <NavLink
+            to="/profile"
+            onClick={closeSidebar}
+            className={({ isActive }) =>
+              cn(
+                navLinkClass,
+                isActive && "bg-accent text-foreground font-medium",
+              )
+            }
+          >
+            <UserCircle size={16} />
+            Meu Perfil
+          </NavLink>
           <Button
             variant="ghost"
             className="w-full justify-start gap-3"

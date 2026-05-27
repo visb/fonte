@@ -30,6 +30,7 @@ import { PizzaPage } from '@/features/billing/pages/PizzaPage';
 import { PaoPage } from '@/features/billing/pages/PaoPage';
 import { AssociadosPage } from '@/features/billing/pages/AssociadosPage';
 import { MessagesPage } from '@/features/messages/pages/MessagesPage';
+import { ProfilePage } from '@/features/auth/pages/ProfilePage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +65,7 @@ export default function App() {
               }
             >
               <Route index element={<DashboardPage />} />
+              <Route path="profile" element={<ProfilePage />} />
               <Route path="houses" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><HousesPage /></ProtectedRoute>} />
               <Route path="houses/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><HouseDetailPage /></ProtectedRoute>} />
               <Route path="residents" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ResidentsPage /></ProtectedRoute>} />

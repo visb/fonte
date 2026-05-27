@@ -52,6 +52,9 @@ export const queryKeys = {
         ['billing', 'filhos', 'report', params] as const,
     },
   },
+  staffMe: {
+    current: ['staff', 'me'] as const,
+  },
   messages: {
     all: ['messages'] as const,
     conversations: ['messages', 'conversations'] as const,

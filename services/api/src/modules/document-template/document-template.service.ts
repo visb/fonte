@@ -4,12 +4,14 @@ import { Repository } from 'typeorm';
 import type { Browser } from 'puppeteer';
 import { Resident } from '../resident/resident.entity';
 import { DocumentTemplate } from './document-template.entity';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class DocumentTemplateService implements OnModuleDestroy {
   constructor(
     @InjectRepository(DocumentTemplate)
     private repo: Repository<DocumentTemplate>,
+    private storageService: StorageService,
   ) {}
 
   private browserPromise: Promise<Browser> | null = null;
@@ -88,6 +90,12 @@ export class DocumentTemplateService implements OnModuleDestroy {
     await this.repo.delete(id);
   }
 
+  async uploadImage(file: Express.Multer.File): Promise<{ url: string }> {
+    const filename = this.storageService.uniqueFilename(file.originalname, 'doc-');
+    const url = await this.storageService.upload('documents', filename, file.buffer, file.mimetype);
+    return { url };
+  }
+
   async renderForResident(templateId: string, resident: Resident): Promise<string> {
     const template = await this.findOne(templateId);
     const content = this.applyVariables(template.content, resident);
@@ -151,11 +159,12 @@ export class DocumentTemplateService implements OnModuleDestroy {
   <title>${title}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,Helvetica,sans-serif;font-size:12pt;line-height:1.7;color:#000;max-width:800px;margin:0 auto;padding:48px 40px}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:12pt;line-height:1.7;color:#000;max-width:800px;margin:0 auto;padding:48px 40px;overflow:hidden}
     h1,h2,h3{margin-bottom:14px;text-align:center}
-    p{margin-bottom:10px}
+    p{margin-bottom:10px;overflow:hidden}
     ol,ul{margin-left:28px;margin-bottom:10px}
     li{margin-bottom:6px}
+    img{max-width:100%}
     .print-btn{position:fixed;top:16px;right:16px;background:#1a1a1a;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit}
     .print-btn:hover{background:#333}
     @media print{.print-btn{display:none}body{padding:20px}}

@@ -28,13 +28,5 @@
     "build:app": "pnpm build:types && pnpm build:api-client && pnpm --filter app.fonte build:web",
     "start:app": "pnpm --filter app.fonte start:web",
     "seed:api": "pnpm --filter api seed"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@nestjs/core",
-      "@swc/core",
-      "bcrypt",
-      "esbuild"
-    ]
   }
 }

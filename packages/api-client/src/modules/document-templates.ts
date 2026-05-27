@@ -15,5 +15,11 @@ export function createDocumentTemplatesModule(http: AxiosInstance) {
     update: (id: string, data: UpdateDocumentTemplateInput) =>
       http.put<DocumentTemplate>(`/document-templates/${id}`, data).then((r) => r.data),
     delete: (id: string) => http.delete(`/document-templates/${id}`),
+    uploadImage: (formData: FormData): Promise<{ url: string }> =>
+      http
+        .post<{ url: string }>('/document-templates/images', formData, {
+          headers: { 'Content-Type': undefined },
+        })
+        .then((r) => r.data),
   };
 }

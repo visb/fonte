@@ -1,10 +1,29 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Put,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { DocumentTemplate } from './document-template.entity';
 import { DocumentTemplateService } from './document-template.service';
+
+const imageUploadOptions = { storage: memoryStorage() };
 
 @Controller('document-templates')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -31,6 +50,18 @@ export class DocumentTemplateController {
     @Body('isRequired') isRequired?: boolean,
   ): Promise<DocumentTemplate> {
     return this.service.create(name, content ?? '', isRequired ?? false);
+  }
+
+  @Post('images')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  @UseInterceptors(FileInterceptor('file', imageUploadOptions))
+  async uploadImage(
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<{ url: string }> {
+    if (!file) throw new BadRequestException('Nenhum arquivo enviado');
+    if (!file.mimetype.startsWith('image/')) throw new BadRequestException('Apenas imagens são permitidas');
+    if (file.size > 5 * 1024 * 1024) throw new BadRequestException('Imagem muito grande: máximo 5 MB');
+    return this.service.uploadImage(file);
   }
 
   @Put(':id')

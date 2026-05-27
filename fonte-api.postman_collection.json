@@ -1191,6 +1191,21 @@
             "method": "DELETE",
             "url": { "raw": "{{baseUrl}}/document-templates/{{templateId}}", "host": ["{{baseUrl}}"], "path": ["document-templates", "{{templateId}}"] }
           }
+        },
+        {
+          "name": "Upload Template Image",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "description": "Imagem (max 5 MB)" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/document-templates/images", "host": ["{{baseUrl}}"], "path": ["document-templates", "images"] },
+            "description": "Upload de imagem para uso em templates. Retorna { url } com link para o arquivo salvo no storage."
+          }
         }
       ]
     },

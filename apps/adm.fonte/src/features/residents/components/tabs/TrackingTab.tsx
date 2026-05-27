@@ -32,7 +32,7 @@ export function TrackingTab({ residentId }: Props) {
       </div>
 
       {!followUps?.length ? (
-        <EmptyState message="Nenhum evento registrado." />
+        <EmptyState title="Nenhum evento registrado." />
       ) : (
         <div className="space-y-2">
           {followUps.map((fu) => (

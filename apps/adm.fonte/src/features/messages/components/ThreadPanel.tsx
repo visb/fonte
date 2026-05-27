@@ -140,7 +140,7 @@ export function ThreadPanel({
   isLoading,
   showModerationActions,
   chatMode,
-  chatResidentName,
+  chatResidentName: _chatResidentName,
   residentLinkId,
   residentLinkName,
 }: ThreadPanelProps) {

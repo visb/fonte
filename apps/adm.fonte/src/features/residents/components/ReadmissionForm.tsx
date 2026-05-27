@@ -105,7 +105,7 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
       continuousMedication: toNullable(data.continuousMedication),
       weight: toInt(data.weight),
       height: toInt(data.height),
-      familyInvestment: (toNullable(data.familyInvestment) as FamilyInvestment | null),
+      familyInvestment: (data.familyInvestment || null) as FamilyInvestment | null,
       familyInvestmentAmount: data.familyInvestmentAmount ?? null,
     };
 

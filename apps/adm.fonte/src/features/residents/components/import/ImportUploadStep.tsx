@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import { FileText, Upload, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { parseDocx, type ParseResult } from '../../lib/docxParser';
+import { api } from '@/lib/api';
+import type { ParseResult } from '../../lib/types';
 
 interface ImportUploadStepProps {
   onParsed: (result: ParseResult, file: File) => void;
@@ -31,10 +32,23 @@ export function ImportUploadStep({ onParsed }: ImportUploadStepProps) {
 
     setParsing(true);
     try {
-      const result = await parseDocx(file);
+      const fd = new FormData();
+      fd.append('file', file);
+      const raw = await api.residents.parseDocx(fd);
+      const result: ParseResult = {
+        resident: raw.resident as ParseResult['resident'],
+        relatives: (raw.relatives ?? []).map((r) => ({
+          ...r,
+          id: crypto.randomUUID(),
+          include: true,
+        })),
+        warnings: raw.warnings as ParseResult['warnings'],
+        houseName: raw.houseName,
+        rawText: raw.rawText,
+      };
       onParsed(result, file);
     } catch (e) {
-      setError('Não foi possível ler o arquivo. Verifique se é um .docx válido.');
+      setError('Não foi possível extrair os dados. Verifique se é um .docx válido e tente novamente.');
       console.error(e);
     } finally {
       setParsing(false);
@@ -88,7 +102,7 @@ export function ImportUploadStep({ onParsed }: ImportUploadStepProps) {
         {parsing ? (
           <>
             <Loader2 size={40} className="text-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">Lendo a ficha...</p>
+            <p className="text-sm text-muted-foreground">Extraindo dados com IA...</p>
           </>
         ) : (
           <>

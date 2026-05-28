@@ -23,6 +23,7 @@
     "start:test": "cross-env NODE_ENV=test nest start --watch"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.99.0",
     "@aws-sdk/client-s3": "^3.1042.0",
     "@aws-sdk/s3-request-presigner": "^3.1045.0",
     "@fonte/types": "workspace:*",
@@ -41,6 +42,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.22.1",
     "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.12.0",
     "multer": "^1.4.5-lts.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

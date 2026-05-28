@@ -1,10 +1,12 @@
 import type { AxiosInstance } from 'axios';
 import type {
   Admission,
+  BulkCreateContributionsInput,
   CreateFollowUpInput,
   GenerateResidentAccessInput,
   ListResidentsParams,
   PaginatedResponse,
+  ParseDocxResult,
   ReadmitResidentInput,
   Resident,
   ResidentFollowUp,
@@ -79,6 +81,14 @@ export function createResidentsModule(http: AxiosInstance) {
 
     contributionsReport: (params: GetContributionsReportParams): Promise<ContributionsReportResponse> =>
       http.get<ContributionsReportResponse>('/residents/contributions/report', { params }).then((r) => r.data),
+
+    parseDocx: (formData: FormData): Promise<ParseDocxResult> =>
+      http
+        .post<ParseDocxResult>('/residents/import/parse-docx', formData, { headers: { 'Content-Type': undefined } })
+        .then((r) => r.data),
+
+    bulkCreateContributions: (id: string, data: BulkCreateContributionsInput): Promise<{ created: number; skipped: number }> =>
+      http.post(`/residents/${id}/follow-ups/bulk-contributions`, data).then((r) => r.data),
 
     me: (): Promise<ResidentMe> => http.get<ResidentMe>('/residents/me').then((r) => r.data),
     uploadPhotoMe: (formData: FormData): Promise<ResidentMe> =>

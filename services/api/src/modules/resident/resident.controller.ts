@@ -41,8 +41,10 @@ import { ResidentService } from './resident.service';
 import { ReadmitResidentDto } from './dto/readmit-resident.dto';
 import { ResidentFollowUpService, ResidentFollowUpView } from '../resident-follow-up/resident-follow-up.service';
 import { CreateFollowUpDto } from '../resident-follow-up/dto/create-follow-up.dto';
+import { BulkCreateContributionsDto } from '../resident-follow-up/dto/bulk-create-contributions.dto';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 import { ContributionsReportResponse } from '@fonte/types';
+import { DocxParserService, ParseDocxResult } from './docx-parser.service';
 
 const photoOptions = {
   storage: memoryStorage(),
@@ -68,6 +70,16 @@ const signedDocOptions = {
   },
 };
 
+const docxOptions = {
+  storage: memoryStorage(),
+  fileFilter: (_req: unknown, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
+    if (file.mimetype !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      return cb(new BadRequestException('Apenas arquivos .docx são permitidos'), false);
+    }
+    cb(null, true);
+  },
+};
+
 @Controller('residents')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ResidentController {
@@ -75,6 +87,7 @@ export class ResidentController {
     private residentService: ResidentService,
     private documentTemplateService: DocumentTemplateService,
     private followUpService: ResidentFollowUpService,
+    private docxParserService: DocxParserService,
   ) {}
 
   @Get()
@@ -109,6 +122,21 @@ export class ResidentController {
   @Roles(Role.ADMIN, Role.COORDINATOR)
   getContributionsReport(@Query() dto: GetContributionsReportDto): Promise<ContributionsReportResponse> {
     return this.residentService.getContributionsReport(dto);
+  }
+
+  @Post('import/parse-docx')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  @UseInterceptors(FileInterceptor('file', docxOptions))
+  parseDocx(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
+        exceptionFactory: () => new BadRequestException('Arquivo muito grande: máximo 5 MB'),
+      }),
+    )
+    file: Express.Multer.File,
+  ): Promise<ParseDocxResult> {
+    return this.docxParserService.parseDocx(file.buffer);
   }
 
   @Get(':id')
@@ -171,6 +199,16 @@ export class ResidentController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ResidentFollowUpView> {
     return this.followUpService.create(id, dto, user.userId);
+  }
+
+  @Post(':id/follow-ups/bulk-contributions')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  bulkCreateContributions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: BulkCreateContributionsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ created: number; skipped: number }> {
+    return this.followUpService.bulkCreateContributions(id, dto, user.userId);
   }
 
   @Post(':id/follow-ups/:followUpId/attachment')

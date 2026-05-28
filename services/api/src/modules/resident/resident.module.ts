@@ -9,6 +9,7 @@ import { ResidentDocument } from './resident-document.entity';
 import { Admission } from './admission.entity';
 import { ResidentController } from './resident.controller';
 import { ResidentService } from './resident.service';
+import { DocxParserService } from './docx-parser.service';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { ResidentService } from './resident.service';
     ResidentFollowUpModule,
   ],
   controllers: [ResidentController],
-  providers: [ResidentService],
+  providers: [ResidentService, DocxParserService],
   exports: [ResidentService],
 })
 export class ResidentModule {}

@@ -8,7 +8,7 @@ import { ImportReviewStep } from '../components/import/ImportReviewStep';
 import { ImportRelativesStep } from '../components/import/ImportRelativesStep';
 import { ImportDocumentsStep } from '../components/import/ImportDocumentsStep';
 import { ImportSummaryStep } from '../components/import/ImportSummaryStep';
-import type { ParseResult, DraftRelative } from '../lib/docxParser';
+import type { ParseResult, DraftRelative } from '../lib/types';
 import type { ResidentFormData } from '../lib/residentSchema';
 
 // ─── State ────────────────────────────────────────────────────────────────────

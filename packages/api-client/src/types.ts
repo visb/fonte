@@ -753,3 +753,23 @@ export interface RejectWishlistItemInput {
 export interface WishlistPendingItem extends WishlistItem {
   residentName: string;
 }
+
+// ─── Resident Import ──────────────────────────────────────────────────────────
+
+export interface BulkCreateContributionsInput {
+  months: { date: string }[];
+}
+
+export interface ParseDocxRelative {
+  name: string;
+  phone: string;
+  relationship: string;
+}
+
+export interface ParseDocxResult {
+  resident: Record<string, unknown>;
+  relatives: ParseDocxRelative[];
+  warnings: Record<string, string>;
+  houseName: string;
+  rawText: string;
+}

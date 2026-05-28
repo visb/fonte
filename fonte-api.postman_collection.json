@@ -535,6 +535,31 @@
             "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/follow-ups", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "follow-ups"] },
             "description": "Registra evento de acompanhamento. staffId extraído do JWT. Types: ADMISSION|READMISSION|DISCHARGE|EVASION|MINISTRY_CHANGE|RELATIVE_ADDED|DOCUMENT_ATTACHED|MONTHLY_CONTRIBUTION|DISCIPLINE|BEHAVIOR_ASSESSMENT|NOTE. AccessLevel: ALL|ADMINISTRATION."
           }
+        },
+        {
+          "name": "Bulk Create Contribution History",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"months\": [\n    { \"date\": \"2025-01-01\" },\n    { \"date\": \"2025-02-01\" },\n    { \"date\": \"2025-03-01\" }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/follow-ups/bulk-contributions", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "follow-ups", "bulk-contributions"] },
+            "description": "Importa histórico de contribuições mensais em lote. Meses já registrados são ignorados (skipped). Retorna { created, skipped }. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Parse DOCX Intake Form",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "description": "Arquivo .docx da ficha de acolhimento (máx 5 MB)" }]
+            },
+            "url": { "raw": "{{baseUrl}}/residents/import/parse-docx", "host": ["{{baseUrl}}"], "path": ["residents", "import", "parse-docx"] },
+            "description": "Extrai dados de uma ficha de acolhimento .docx usando Claude AI. Retorna ParseDocxResult com resident, relatives, warnings, houseName, rawText. Roles: ADMIN, COORDINATOR."
+          }
         }
       ]
     },

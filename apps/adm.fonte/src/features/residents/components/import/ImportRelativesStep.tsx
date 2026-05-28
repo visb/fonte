@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Plus, Trash2, UserCheck, UserX } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import type { DraftRelative } from '../../lib/docxParser';
+import type { DraftRelative } from '../../lib/types';
 
 interface ImportRelativesStepProps {
   relatives: DraftRelative[];

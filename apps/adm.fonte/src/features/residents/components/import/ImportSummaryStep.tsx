@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/lib/errors';
 import { useCreateResident } from '../../hooks/useResidents';
 import { buildResidentPayload, type ResidentFormData } from '../../lib/residentSchema';
-import type { DraftRelative } from '../../lib/docxParser';
+import type { DraftRelative } from '../../lib/types';
 
 interface ImportSummaryStepProps {
   residentValues: ResidentFormData;

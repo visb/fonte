@@ -87,4 +87,7 @@ export type {
   ContributionReportItem,
   ContributionsReportResponse,
   GetContributionsReportParams,
+  BulkCreateContributionsInput,
+  ParseDocxResult,
+  ParseDocxRelative,
 } from './types.js';

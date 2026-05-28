@@ -7,7 +7,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { residentSchema, type ResidentFormData } from '../../lib/residentSchema';
 import { ResidentFormSections } from '../ResidentFormSections';
-import type { ParseResult } from '../../lib/docxParser';
+import type { ParseResult } from '../../lib/types';
 
 interface ImportReviewStepProps {
   parseResult: ParseResult;

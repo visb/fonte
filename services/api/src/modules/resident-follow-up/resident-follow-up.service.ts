@@ -6,6 +6,7 @@ import { ResidentFollowUp } from './resident-follow-up.entity';
 import { Staff } from '../staff/staff.entity';
 import { Resident } from '../resident/resident.entity';
 import { CreateFollowUpDto } from './dto/create-follow-up.dto';
+import { BulkCreateContributionsDto } from './dto/bulk-create-contributions.dto';
 import { StorageService } from '../storage/storage.service';
 
 const STATUS_BY_TYPE: Partial<Record<FollowUpType, ResidentStatus>> = {
@@ -100,6 +101,40 @@ export class ResidentFollowUpService {
       .groupBy('f.resident_id')
       .getRawMany<{ residentId: string; lastDate: string }>();
     return new Map(rows.map((r) => [r.residentId, r.lastDate]));
+  }
+
+  async bulkCreateContributions(
+    residentId: string,
+    dto: BulkCreateContributionsDto,
+    staffUserId: string,
+  ): Promise<{ created: number; skipped: number }> {
+    const staff = await this.staffRepo.findOne({ where: { userId: staffUserId } });
+
+    const existing = await this.repo.find({
+      where: { residentId, type: FollowUpType.MONTHLY_CONTRIBUTION },
+      select: ['date'],
+    });
+    const existingKeys = new Set(
+      existing.map((e) => (e.date as unknown as string).slice(0, 7)),
+    );
+
+    const toCreate = dto.months.filter((m) => !existingKeys.has(m.date.slice(0, 7)));
+
+    if (toCreate.length > 0) {
+      const entries = toCreate.map((m) =>
+        this.repo.create({
+          residentId,
+          date: m.date as unknown as Date,
+          type: FollowUpType.MONTHLY_CONTRIBUTION,
+          description: null,
+          accessLevel: FollowUpAccessLevel.ALL,
+          createdById: staff?.id ?? null,
+        }),
+      );
+      await this.repo.save(entries);
+    }
+
+    return { created: toCreate.length, skipped: dto.months.length - toCreate.length };
   }
 
   async createAuto(residentId: string, type: FollowUpType, date?: string): Promise<void> {

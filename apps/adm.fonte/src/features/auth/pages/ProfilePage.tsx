@@ -1,5 +1,4 @@
-import { useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { maskPhone, withMask } from '@/features/residents/lib/masks';
 import { useStaffMe, useUpdateStaffMe } from '@/features/staff/hooks/useStaff';
+import { ChangePasswordDialog } from '../components/ChangePasswordDialog';
 
 const schema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -24,6 +24,7 @@ type FormData = z.infer<typeof schema>;
 
 export function ProfilePage() {
   const pendingPhotoRef = useRef<Blob | null>(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const { data: me, isLoading } = useStaffMe();
   const updateMutation = useUpdateStaffMe();
 
@@ -127,14 +128,22 @@ export function ProfilePage() {
           >
             Salvar
           </Button>
-          <Link to="/change-password">
-            <Button type="button" variant="outline" className="gap-2">
-              <KeyRound size={14} />
-              Alterar senha
-            </Button>
-          </Link>
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            onClick={() => setChangePasswordOpen(true)}
+          >
+            <KeyRound size={14} />
+            Alterar senha
+          </Button>
         </div>
       </form>
+
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+      />
     </div>
   );
 }

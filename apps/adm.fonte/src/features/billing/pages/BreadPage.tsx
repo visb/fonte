@@ -2,11 +2,11 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { StreetSaleType } from '@fonte/types';
 import { StreetSalesPageContent } from '../components/StreetSalesPageContent';
 
-export function PizzaPage() {
+export function BreadPage() {
   return (
     <div>
-      <PageHeader title="Pizza" description="Faturamento de vendas de pizza" />
-      <StreetSalesPageContent type={StreetSaleType.PIZZA} />
+      <PageHeader title="Pão" description="Faturamento de vendas de pão" />
+      <StreetSalesPageContent type={StreetSaleType.BREAD} />
     </div>
   );
 }

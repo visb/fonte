@@ -12,7 +12,7 @@ import type { StoreroomItem } from "@fonte/api-client";
 import { useAuth } from "@/lib/auth";
 import { useStoreroomItems } from "@/features/storeroom/hooks/useStoreroom";
 import { ItemDetailsModal } from "@/features/storeroom/components/ItemDetailsModal";
-import { SuccessBanner } from "@/features/storeroom/components/SuccessBanner";
+import { SuccessBanner } from "@/components/shared/SuccessBanner";
 import { LowStockAlert } from "@/features/storeroom/components/LowStockAlert";
 import { StoreroomItemCard } from "@/features/storeroom/components/StoreroomItemCard";
 

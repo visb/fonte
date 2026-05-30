@@ -90,4 +90,10 @@ export type {
   BulkCreateContributionsInput,
   ParseDocxResult,
   ParseDocxRelative,
+  StreetSaleType,
+  StreetSale,
+  StreetSalesReportResponse,
+  CreateStreetSaleInput,
+  UpdateStreetSaleInput,
+  GetStreetSalesReportParams,
 } from './types.js';

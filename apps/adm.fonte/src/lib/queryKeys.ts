@@ -51,6 +51,10 @@ export const queryKeys = {
       report: (params: { month: string; houseId?: string }) =>
         ['billing', 'filhos', 'report', params] as const,
     },
+    streetSales: {
+      report: (params: { type: string; month: string; houseId?: string }) =>
+        ['billing', 'street-sales', 'report', params] as const,
+    },
   },
   staffMe: {
     current: ['staff', 'me'] as const,

@@ -14,6 +14,7 @@ const ds = new DataSource({
 async function truncateTables(ds: DataSource) {
   await ds.query(`
     TRUNCATE TABLE
+      street_sales,
       support_group_relative_checkins,
       support_group_checkins,
       support_group_meetings,

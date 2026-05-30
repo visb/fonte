@@ -17,9 +17,13 @@ import type {
   ContributionReportItem,
   ContributionsReportResponse,
   GetContributionsReportParams,
+  StreetSaleType,
+  StreetSale,
+  StreetSalesReportResponse,
 } from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
+export type { StreetSaleType, StreetSale, StreetSalesReportResponse };
 
 export type { FamilyInvestment };
 
@@ -772,4 +776,24 @@ export interface ParseDocxResult {
   warnings: Record<string, string>;
   houseName: string;
   rawText: string;
+}
+
+// ─── Street Sales ─────────────────────────────────────────────────────────────
+
+export interface CreateStreetSaleInput {
+  houseId: string;
+  date: string;
+  type: StreetSaleType;
+  quantity: number;
+  amountPix: number;
+  amountCash: number;
+  amountCard: number;
+}
+
+export type UpdateStreetSaleInput = Partial<CreateStreetSaleInput>;
+
+export interface GetStreetSalesReportParams {
+  type: StreetSaleType;
+  month: string;
+  houseId?: string;
 }

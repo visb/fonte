@@ -167,6 +167,56 @@ export interface GetContributionsReportParams {
   houseId?: string;
 }
 
+// ─── Street Sales ─────────────────────────────────────────────────────────────
+
+export enum StreetSaleType {
+  BREAD = 'BREAD',
+  PIZZA = 'PIZZA',
+}
+
+export interface StreetSale {
+  id: string;
+  houseId: string;
+  houseName: string;
+  registeredById: string;
+  date: string;
+  type: StreetSaleType;
+  quantity: number;
+  amountPix: number;
+  amountCash: number;
+  amountCard: number;
+  totalAmount: number;
+  createdAt: string;
+}
+
+export interface StreetSalesReportPeriod {
+  period: string;
+  totalPix: number;
+  totalCash: number;
+  totalCard: number;
+  totalAmount: number;
+  totalQuantity: number;
+}
+
+export interface StreetSalesReportByHouse {
+  houseId: string;
+  houseName: string;
+  totalPix: number;
+  totalCash: number;
+  totalCard: number;
+  totalAmount: number;
+  totalQuantity: number;
+}
+
+export interface StreetSalesReportResponse {
+  type: StreetSaleType;
+  weeklyTotals: StreetSalesReportPeriod[];
+  monthlyTotals: StreetSalesReportPeriod[];
+  byHouse: StreetSalesReportByHouse[];
+  currentPeriodTotal: number;
+  previousPeriodTotal: number;
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

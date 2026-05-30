@@ -137,7 +137,7 @@ function FaturamentoSubmenu({ closeSidebar }: SettingsSubmenuProps) {
           <NavLink to="/billing/pizza" onClick={closeSidebar} className={subNavLinkClass}>
             Pizza
           </NavLink>
-          <NavLink to="/billing/pao" onClick={closeSidebar} className={subNavLinkClass}>
+          <NavLink to="/billing/bread" onClick={closeSidebar} className={subNavLinkClass}>
             Pão
           </NavLink>
           <NavLink to="/billing/associados" onClick={closeSidebar} className={subNavLinkClass}>

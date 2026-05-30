@@ -27,7 +27,7 @@ import { SupportGroupsPage } from '@/features/support-groups/pages/SupportGroups
 import { BillingPage } from '@/features/billing/pages/BillingPage';
 import { FilhosPage } from '@/features/billing/pages/FilhosPage';
 import { PizzaPage } from '@/features/billing/pages/PizzaPage';
-import { PaoPage } from '@/features/billing/pages/PaoPage';
+import { BreadPage } from '@/features/billing/pages/BreadPage';
 import { AssociadosPage } from '@/features/billing/pages/AssociadosPage';
 import { MessagesPage } from '@/features/messages/pages/MessagesPage';
 import { ProfilePage } from '@/features/auth/pages/ProfilePage';
@@ -95,7 +95,7 @@ export default function App() {
               >
                 <Route path="filhos" element={<FilhosPage />} />
                 <Route path="pizza" element={<PizzaPage />} />
-                <Route path="pao" element={<PaoPage />} />
+                <Route path="bread" element={<BreadPage />} />
                 <Route path="associados" element={<AssociadosPage />} />
               </Route>
             </Route>

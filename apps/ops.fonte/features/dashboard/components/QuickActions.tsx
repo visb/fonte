@@ -31,6 +31,13 @@ const ACTIONS = [
     bg: "#f0fdf4",
     route: "/(app)/storeroom",
   },
+  {
+    label: "Faturamento",
+    icon: "storefront-outline" as const,
+    color: "#b45309",
+    bg: "#fffbeb",
+    route: "/(app)/street-sales",
+  },
 ];
 
 export function QuickActions() {

@@ -1288,6 +1288,80 @@
           }
         }
       ]
+    },
+    {
+      "name": "Street Sales",
+      "item": [
+        {
+          "name": "Create Sale",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"houseId\": \"{{houseId}}\",\n  \"date\": \"2026-05-28\",\n  \"type\": \"BREAD\",\n  \"quantity\": 40,\n  \"amountPix\": 15000,\n  \"amountCash\": 8000,\n  \"amountCard\": 5000\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/street-sales", "host": ["{{baseUrl}}"], "path": ["street-sales"] }
+          }
+        },
+        {
+          "name": "List Sales",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/street-sales?houseId={{houseId}}&type=BREAD",
+              "host": ["{{baseUrl}}"],
+              "path": ["street-sales"],
+              "query": [
+                { "key": "houseId", "value": "{{houseId}}", "disabled": true },
+                { "key": "type", "value": "BREAD", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Report",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/street-sales/report?type=BREAD&month=2026-05",
+              "host": ["{{baseUrl}}"],
+              "path": ["street-sales", "report"],
+              "query": [
+                { "key": "type", "value": "BREAD" },
+                { "key": "month", "value": "2026-05" },
+                { "key": "houseId", "value": "{{houseId}}", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Sale by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/street-sales/{{streetSaleId}}", "host": ["{{baseUrl}}"], "path": ["street-sales", "{{streetSaleId}}"] }
+          }
+        },
+        {
+          "name": "Update Sale",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 45,\n  \"amountPix\": 16000\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/street-sales/{{streetSaleId}}", "host": ["{{baseUrl}}"], "path": ["street-sales", "{{streetSaleId}}"] }
+          }
+        },
+        {
+          "name": "Delete Sale",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/street-sales/{{streetSaleId}}", "host": ["{{baseUrl}}"], "path": ["street-sales", "{{streetSaleId}}"] }
+          }
+        }
+      ]
     }
   ]
 }

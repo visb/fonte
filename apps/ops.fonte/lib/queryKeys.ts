@@ -49,4 +49,8 @@ export const queryKeys = {
     items: (residentId: string) => ['wishlist', residentId] as const,
     pending: ['wishlist-pending'] as const,
   },
+  streetSales: {
+    all: ['street-sales'] as const,
+    byHouse: (houseId: string) => ['street-sales', houseId] as const,
+  },
 } as const;

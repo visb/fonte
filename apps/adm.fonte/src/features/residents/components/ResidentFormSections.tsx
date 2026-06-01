@@ -73,35 +73,8 @@ export function ResidentFormSections({
         </FormField>
       </div>
 
-      <SectionTitle>Admissão</SectionTitle>
+      <SectionTitle>Contato</SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Casa *" error={errors.houseId?.message}>
-          <Select {...register("houseId")}>
-            <option value="">Selecione a casa</option>
-            {houses.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.name}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-        <FormField label="Data de entrada">
-          <Input type="date" {...register("entryDate")} />
-        </FormField>
-        {showStatus && (
-          <FormField label="Status">
-            <Select {...register("status")}>
-              <option value={ResidentStatus.PRE_ADMISSION}>Pré-admissão</option>
-              <option value={ResidentStatus.ACTIVE}>Ativo</option>
-              <option value={ResidentStatus.DISCIPLINE}>Disciplina</option>
-              <option value={ResidentStatus.TEMP_LEAVE}>
-                Saída temporária
-              </option>
-              <option value={ResidentStatus.DISCHARGED}>Alta</option>
-              <option value={ResidentStatus.EVADED}>Evasão</option>
-            </Select>
-          </FormField>
-        )}
         <FormField label="Endereço" full>
           <Input {...register("address")} placeholder="Rua, número, bairro" />
         </FormField>
@@ -242,6 +215,37 @@ export function ResidentFormSections({
             />
             Primeira mensalidade já foi paga
           </label>
+        )}
+      </div>
+
+      <SectionTitle>Admissão</SectionTitle>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label="Casa *" error={errors.houseId?.message}>
+          <Select {...register("houseId")}>
+            <option value="">Selecione a casa</option>
+            {houses.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.name}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+        <FormField label="Data de entrada">
+          <Input type="date" {...register("entryDate")} />
+        </FormField>
+        {showStatus && (
+          <FormField label="Status">
+            <Select {...register("status")}>
+              <option value={ResidentStatus.PRE_ADMISSION}>Pré-admissão</option>
+              <option value={ResidentStatus.ACTIVE}>Ativo</option>
+              <option value={ResidentStatus.DISCIPLINE}>Disciplina</option>
+              <option value={ResidentStatus.TEMP_LEAVE}>
+                Saída temporária
+              </option>
+              <option value={ResidentStatus.DISCHARGED}>Alta</option>
+              <option value={ResidentStatus.EVADED}>Evasão</option>
+            </Select>
+          </FormField>
         )}
       </div>
     </>

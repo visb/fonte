@@ -179,6 +179,9 @@ export interface Resident {
   birthDate: string | null;
   cpf: string | null;
   rg: string | null;
+  nationality: string | null;
+  city: string | null;
+  state: string | null;
   gender: Gender | null;
   address: string | null;
   entryDate: string | null;
@@ -215,6 +218,9 @@ export interface CreateResidentInput {
   exitDate?: string | null;
   gender?: Gender | null;
   rg?: string | null;
+  nationality?: string | null;
+  city?: string | null;
+  state?: string | null;
   address?: string | null;
   contactPhone?: string | null;
   email?: string | null;

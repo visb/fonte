@@ -111,6 +111,9 @@ export class DocumentTemplateService implements OnModuleDestroy {
       name:          resident.name ?? '',
       cpf:           this.formatCpf(resident.cpf),
       rg:            resident.rg ?? 'não informado',
+      nationality:   resident.nationality ?? 'não informado',
+      city:          resident.city ?? 'não informado',
+      state:         resident.state ?? 'não informado',
       birthDate:     this.formatDate(resident.birthDate as Date | null),
       age:           this.computeAge(resident.birthDate as Date | null),
       maritalStatus: resident.maritalStatus ? (MARITAL_PT[resident.maritalStatus] ?? resident.maritalStatus) : 'não informado',
@@ -119,6 +122,7 @@ export class DocumentTemplateService implements OnModuleDestroy {
       house:         resident.house?.name ?? '',
       entryDate:     this.formatDate(resident.entryDate as Date | null),
       date:          this.formatDate(new Date()),
+      dateLong:      this.formatDateLong(new Date()),
     };
     let result = content;
     for (const [key, value] of Object.entries(vars)) {
@@ -135,6 +139,11 @@ export class DocumentTemplateService implements OnModuleDestroy {
     const m = today.getMonth() - birth.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
     return `${age} anos`;
+  }
+
+  private formatDateLong(date: Date | string | null): string {
+    if (!date) return '_______________';
+    return new Date(date).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
   }
 
   private formatDate(date: Date | string | null): string {

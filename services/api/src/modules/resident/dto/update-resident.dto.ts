@@ -52,6 +52,18 @@ export class UpdateResidentDto {
 
   @IsOptional()
   @IsString()
+  nationality?: string | null;
+
+  @IsOptional()
+  @IsString()
+  city?: string | null;
+
+  @IsOptional()
+  @IsString()
+  state?: string | null;
+
+  @IsOptional()
+  @IsString()
   address?: string | null;
 
   @IsOptional()

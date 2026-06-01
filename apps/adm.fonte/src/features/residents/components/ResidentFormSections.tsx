@@ -1,13 +1,18 @@
-import { type UseFormRegister } from 'react-hook-form';
-import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
-import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { SectionTitle, FormField } from '@/components/shared/FormField';
-import { maskCPF, maskRG, maskPhone, withMask } from '../lib/masks';
-import { FAMILY_INVESTMENT_LABELS } from '../constants';
-import type { ResidentFormData } from '../lib/residentSchema';
-import type { House } from '@fonte/api-client';
+import { type UseFormRegister } from "react-hook-form";
+import {
+  FamilyInvestment,
+  Gender,
+  MaritalStatus,
+  ResidentStatus,
+} from "@fonte/types";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { SectionTitle, FormField } from "@/components/shared/FormField";
+import { maskCPF, maskRG, maskPhone, withMask } from "../lib/masks";
+import { FAMILY_INVESTMENT_LABELS } from "../constants";
+import type { ResidentFormData } from "../lib/residentSchema";
+import type { House } from "@fonte/api-client";
 
 interface ResidentFormSectionsProps {
   register: UseFormRegister<ResidentFormData>;
@@ -30,7 +35,8 @@ export function ResidentFormSections({
   firstPaymentPaid = false,
   onFirstPaymentChange,
 }: ResidentFormSectionsProps) {
-  const hasPayment = showFirstPayment &&
+  const hasPayment =
+    showFirstPayment &&
     watchFamilyInvestment &&
     watchFamilyInvestment !== FamilyInvestment.SOCIAL;
   return (
@@ -38,19 +44,28 @@ export function ResidentFormSections({
       <SectionTitle>Identificação</SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Nome completo *" error={errors.name?.message} full>
-          <Input {...register('name')} placeholder="Nome do acolhido" />
+          <Input {...register("name")} placeholder="Nome do acolhido" />
         </FormField>
         <FormField label="CPF">
-          <Input {...withMask(register('cpf'), maskCPF)} placeholder="000.000.000-00" />
+          <Input
+            {...withMask(register("cpf"), maskCPF)}
+            placeholder="000.000.000-00"
+          />
         </FormField>
         <FormField label="RG">
-          <Input {...withMask(register('rg'), maskRG)} placeholder="00.000.000-0" />
+          <Input
+            {...withMask(register("rg"), maskRG)}
+            placeholder="00.000.000-0"
+          />
+        </FormField>
+        <FormField label="Nacionalidade">
+          <Input {...register("nationality")} placeholder="Ex: Brasileira" />
         </FormField>
         <FormField label="Data de nascimento">
-          <Input type="date" {...register('birthDate')} />
+          <Input type="date" {...register("birthDate")} />
         </FormField>
         <FormField label="Gênero">
-          <Select {...register('gender')}>
+          <Select {...register("gender")}>
             <option value="">Selecione</option>
             <option value={Gender.MALE}>Masculino</option>
             <option value={Gender.FEMALE}>Feminino</option>
@@ -61,7 +76,7 @@ export function ResidentFormSections({
       <SectionTitle>Admissão</SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Casa *" error={errors.houseId?.message}>
-          <Select {...register('houseId')}>
+          <Select {...register("houseId")}>
             <option value="">Selecione a casa</option>
             {houses.map((h) => (
               <option key={h.id} value={h.id}>
@@ -71,38 +86,55 @@ export function ResidentFormSections({
           </Select>
         </FormField>
         <FormField label="Data de entrada">
-          <Input type="date" {...register('entryDate')} />
+          <Input type="date" {...register("entryDate")} />
         </FormField>
         {showStatus && (
           <FormField label="Status">
-            <Select {...register('status')}>
+            <Select {...register("status")}>
               <option value={ResidentStatus.PRE_ADMISSION}>Pré-admissão</option>
               <option value={ResidentStatus.ACTIVE}>Ativo</option>
               <option value={ResidentStatus.DISCIPLINE}>Disciplina</option>
-              <option value={ResidentStatus.TEMP_LEAVE}>Saída temporária</option>
+              <option value={ResidentStatus.TEMP_LEAVE}>
+                Saída temporária
+              </option>
               <option value={ResidentStatus.DISCHARGED}>Alta</option>
               <option value={ResidentStatus.EVADED}>Evasão</option>
             </Select>
           </FormField>
         )}
         <FormField label="Endereço" full>
-          <Input {...register('address')} placeholder="Rua, número, bairro, cidade" />
+          <Input {...register("address")} placeholder="Rua, número, bairro" />
+        </FormField>
+        <FormField label="Cidade">
+          <Input {...register("city")} placeholder="Ex: São Paulo" />
+        </FormField>
+        <FormField label="UF">
+          <Input
+            {...register("state")}
+            placeholder="Ex: SP"
+            maxLength={2}
+            className="uppercase"
+          />
         </FormField>
         <FormField label="Telefone">
           <Input
-            {...withMask(register('contactPhone'), maskPhone)}
+            {...withMask(register("contactPhone"), maskPhone)}
             placeholder="(00) 00000-0000"
           />
         </FormField>
         <FormField label="E-mail" error={errors.email?.message}>
-          <Input {...register('email')} type="email" placeholder="exemplo@email.com" />
+          <Input
+            {...register("email")}
+            type="email"
+            placeholder="exemplo@email.com"
+          />
         </FormField>
       </div>
 
       <SectionTitle>Perfil social</SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Estado civil">
-          <Select {...register('maritalStatus')}>
+          <Select {...register("maritalStatus")}>
             <option value="">Selecione</option>
             <option value={MaritalStatus.SINGLE}>Solteiro(a)</option>
             <option value={MaritalStatus.MARRIED}>Casado(a)</option>
@@ -110,19 +142,36 @@ export function ResidentFormSections({
           </Select>
         </FormField>
         <FormField label="Filhos">
-          <Input type="number" min={0} {...register('children')} placeholder="0" />
+          <Input
+            type="number"
+            min={0}
+            {...register("children")}
+            placeholder="0"
+          />
         </FormField>
         <FormField label="Ocupação">
-          <Input {...register('occupation')} placeholder="Profissão ou ocupação" />
+          <Input
+            {...register("occupation")}
+            placeholder="Profissão ou ocupação"
+          />
         </FormField>
         <FormField label="Escolaridade">
-          <Input {...register('education')} placeholder="Ex: Ensino médio completo" />
+          <Input
+            {...register("education")}
+            placeholder="Ex: Ensino médio completo"
+          />
         </FormField>
         <FormField label="Religião">
-          <Input {...register('religion')} placeholder="Ex: Evangélico, Católico..." />
+          <Input
+            {...register("religion")}
+            placeholder="Ex: Evangélico, Católico..."
+          />
         </FormField>
         <FormField label="Dependência química">
-          <Input {...register('addiction')} placeholder="Ex: Álcool, crack..." />
+          <Input
+            {...register("addiction")}
+            placeholder="Ex: Álcool, crack..."
+          />
         </FormField>
       </div>
 
@@ -130,40 +179,55 @@ export function ResidentFormSections({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Problemas de saúde" full>
           <Textarea
-            {...register('healthIssues')}
+            {...register("healthIssues")}
             placeholder="Descreva condições de saúde relevantes"
           />
         </FormField>
         <FormField label="Medicação contínua" full>
           <Textarea
-            {...register('continuousMedication')}
+            {...register("continuousMedication")}
             placeholder="Liste os medicamentos em uso"
           />
         </FormField>
         <FormField label="Peso (kg)">
-          <Input type="number" min={0} {...register('weight')} placeholder="70" />
+          <Input
+            type="number"
+            min={0}
+            {...register("weight")}
+            placeholder="70"
+          />
         </FormField>
         <FormField label="Altura (cm)">
-          <Input type="number" min={0} {...register('height')} placeholder="175" />
+          <Input
+            type="number"
+            min={0}
+            {...register("height")}
+            placeholder="175"
+          />
         </FormField>
       </div>
 
       <SectionTitle>Família</SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Investimento familiar">
-          <Select {...register('familyInvestment')}>
+          <Select {...register("familyInvestment")}>
             <option value="">Selecione a modalidade</option>
             {Object.values(FamilyInvestment).map((v) => (
-              <option key={v} value={v}>{FAMILY_INVESTMENT_LABELS[v]}</option>
+              <option key={v} value={v}>
+                {FAMILY_INVESTMENT_LABELS[v]}
+              </option>
             ))}
           </Select>
         </FormField>
         {watchFamilyInvestment === FamilyInvestment.NEGOTIATED && (
-          <FormField label="Valor negociado (R$)" error={errors.familyInvestmentAmount?.message}>
+          <FormField
+            label="Valor negociado (R$)"
+            error={errors.familyInvestmentAmount?.message}
+          >
             <Input
               type="number"
               min={0}
-              {...register('familyInvestmentAmount')}
+              {...register("familyInvestmentAmount")}
               placeholder="Ex: 350"
             />
           </FormField>

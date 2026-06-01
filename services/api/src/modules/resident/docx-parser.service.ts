@@ -10,6 +10,9 @@ export interface ParseDocxResident {
   gender: 'MALE' | 'FEMALE' | null;
   cpf: string | null;
   rg: string | null;
+  nationality: string | null;
+  city: string | null;
+  state: string | null;
   address: string | null;
   maritalStatus: 'SINGLE' | 'MARRIED' | 'DIVORCED' | null;
   children: string | null;
@@ -57,6 +60,9 @@ Retorne um JSON com esta estrutura exata:
     "gender": "MALE | FEMALE | null",
     "cpf": "string | null (formato: 000.000.000-00)",
     "rg": "string | null",
+    "nationality": "string | null",
+    "city": "string | null",
+    "state": "string | null (sigla UF, ex: SP)",
     "address": "string | null",
     "maritalStatus": "SINGLE | MARRIED | DIVORCED | null",
     "children": "string | null (número como string)",
@@ -87,6 +93,9 @@ Mapeamento de campos:
 - "SEXO" (Masculino/M → MALE, Feminino/F → FEMALE) → gender
 - "CPF" → cpf (formatar como 000.000.000-00)
 - "RG" → rg
+- "NACIONALIDADE" → nationality
+- "CIDADE" ou "MUNICÍPIO" → city
+- "UF" ou "ESTADO" → state (retornar somente a sigla de 2 letras, ex: SP)
 - "ENDEREÇO" → address
 - "ESTADO CIVIL" (Solteiro→SINGLE, Casado→MARRIED, Divorciado/Separado→DIVORCED) → maritalStatus
 - "FILHOS" → children (número como string)

@@ -86,16 +86,18 @@ function ResizableImageNodeView({ node, updateAttributes, selected }: any) {
     position: 'relative',
     lineHeight: 0,
     display: imgAlign === 'center' ? 'block' : 'inline-block',
+    width: imgAlign === 'center' ? '100%' : undefined,
     float: imgAlign === 'left' ? 'left' : imgAlign === 'right' ? 'right' : undefined,
     margin:
-      imgAlign === 'left'   ? '0 1em 0.5em 0' :
-      imgAlign === 'right'  ? '0 0 0.5em 1em' :
-      imgAlign === 'center' ? '0 auto' : '0',
+      imgAlign === 'left'  ? '0 1em 0.5em 0' :
+      imgAlign === 'right' ? '0 0 0.5em 1em' :
+      '0',
   };
 
   const imgStyle: React.CSSProperties = {
     display: 'block',
     maxWidth: '100%',
+    margin: imgAlign === 'center' ? '0 auto' : undefined,
     userSelect: 'none',
     width:  width  ? `${width}px`  : undefined,
     height: height ? `${height}px` : undefined,
@@ -260,6 +262,9 @@ const VARIABLES: { key: string; label: string; description: string }[] = [
   { key: '{{name}}',          label: 'Nome completo',      description: 'Nome completo do acolhido' },
   { key: '{{cpf}}',           label: 'CPF',                description: 'CPF formatado (000.000.000-00)' },
   { key: '{{rg}}',            label: 'RG',                 description: 'Registro Geral do acolhido' },
+  { key: '{{nationality}}',   label: 'Nacionalidade',      description: 'Nacionalidade do acolhido' },
+  { key: '{{city}}',          label: 'Cidade',             description: 'Cidade de residência do acolhido' },
+  { key: '{{state}}',         label: 'UF',                 description: 'Estado (sigla) de residência do acolhido' },
   { key: '{{birthDate}}',     label: 'Data de nascimento', description: 'Data de nascimento no formato dd/mm/aaaa' },
   { key: '{{age}}',           label: 'Idade',              description: 'Idade atual calculada em anos' },
   { key: '{{maritalStatus}}', label: 'Estado civil',       description: 'Solteiro(a), Casado(a) ou Divorciado(a)' },
@@ -268,6 +273,7 @@ const VARIABLES: { key: string; label: string; description: string }[] = [
   { key: '{{house}}',         label: 'Nome da casa',       description: 'Nome da unidade de acolhimento' },
   { key: '{{entryDate}}',     label: 'Data de entrada',    description: 'Data de entrada na comunidade (dd/mm/aaaa)' },
   { key: '{{date}}',          label: 'Data de hoje',       description: 'Data atual no momento da impressão (dd/mm/aaaa)' },
+  { key: '{{dateLong}}',      label: 'Data por extenso',   description: 'Data atual por extenso (ex: 1 de junho de 2026)' },
 ];
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
@@ -467,9 +473,11 @@ export function TemplateEditor({ template, onSaved }: Props) {
 
       {imageUploadError && <p className="text-xs text-destructive">{imageUploadError}</p>}
 
-      {/* Editor */}
-      <div className="min-h-64 rounded-md border bg-background p-4 focus-within:ring-1 focus-within:ring-ring">
-        <EditorContent editor={editor} />
+      {/* Editor — max-width simula área de conteúdo A4 (800px corpo − 2×40px padding do PDF) */}
+      <div className="min-h-64 rounded-md border bg-background p-4 focus-within:ring-1 focus-within:ring-ring overflow-x-auto">
+        <div className="max-w-[720px] mx-auto">
+          <EditorContent editor={editor} />
+        </div>
       </div>
 
       {/* Variables */}

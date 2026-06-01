@@ -77,6 +77,15 @@ export class Resident {
   rg: string | null;
 
   @Column({ nullable: true, type: 'varchar' })
+  nationality: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  city: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  state: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
   address: string | null;
 
   @Column({ name: 'contact_phone', nullable: true, type: 'varchar' })

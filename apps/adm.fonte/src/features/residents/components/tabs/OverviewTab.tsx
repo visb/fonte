@@ -80,6 +80,7 @@ export function OverviewTab({ resident }: Props) {
         <InfoRow label="Nome" value={resident.name} full />
         <InfoRow label="CPF" value={val(resident.cpf, maskCPF)} />
         <InfoRow label="RG" value={val(resident.rg, maskRG)} />
+        <InfoRow label="Nacionalidade" value={val(resident.nationality)} />
         <InfoRow
           label="Data de nascimento"
           value={resident.birthDate ? `${formatDate(resident.birthDate)}${computeAge(resident.birthDate)}` : '—'}
@@ -97,6 +98,8 @@ export function OverviewTab({ resident }: Props) {
         <InfoRow label="Data de saída" value={formatDate(resident.exitDate)} />
         <InfoRow label="Telefone" value={val(resident.contactPhone, maskPhone)} />
         <InfoRow label="E-mail" value={val(resident.email)} />
+        <InfoRow label="Cidade" value={val(resident.city)} />
+        <InfoRow label="UF" value={val(resident.state)} />
         <InfoRow label="Endereço" value={val(resident.address)} full />
       </InfoGrid>
 

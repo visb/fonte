@@ -2,9 +2,20 @@ import { useState } from 'react';
 import { ArrowLeft, ArrowRight, Plus, Trash2, UserCheck, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { RELATIONSHIP_OPTIONS } from '../../constants';
 import { WizardActions } from './WizardActions';
 import type { DraftRelative } from '../../lib/types';
+
+// Maps an AI-parsed relationship (e.g. "mãe") to the canonical option label so it
+// preselects in the dropdown. Returns the original value when there's no match.
+function normalizeRelationship(value: string): string {
+  const match = RELATIONSHIP_OPTIONS.find(
+    (o) => o !== 'Outro' && o.toLowerCase() === value.trim().toLowerCase(),
+  );
+  return match ?? value;
+}
 
 interface ImportRelativesStepProps {
   relatives: DraftRelative[];
@@ -17,7 +28,9 @@ export function ImportRelativesStep({
   onBack,
   onNext,
 }: ImportRelativesStepProps) {
-  const [list, setList] = useState<DraftRelative[]>(initial);
+  const [list, setList] = useState<DraftRelative[]>(() =>
+    initial.map((r) => ({ ...r, relationship: normalizeRelationship(r.relationship) })),
+  );
 
   const update = (id: string, patch: Partial<DraftRelative>) => {
     setList((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -102,6 +115,22 @@ interface RelativeCardProps {
 function RelativeCard({ relative, onToggle, onUpdate, onRemove }: RelativeCardProps) {
   const { include } = relative;
 
+  const isKnown =
+    relative.relationship !== 'Outro' &&
+    (RELATIONSHIP_OPTIONS as readonly string[]).includes(relative.relationship);
+  const [otherMode, setOtherMode] = useState(!isKnown && relative.relationship.trim() !== '');
+  const selectValue = otherMode ? 'Outro' : isKnown ? relative.relationship : '';
+
+  const handleSelect = (value: string) => {
+    if (value === 'Outro') {
+      setOtherMode(true);
+      onUpdate({ relationship: '' });
+    } else {
+      setOtherMode(false);
+      onUpdate({ relationship: value });
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -156,12 +185,21 @@ function RelativeCard({ relative, onToggle, onUpdate, onRemove }: RelativeCardPr
         </div>
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">Parentesco</label>
-          <Input
-            value={relative.relationship}
-            onChange={(e) => onUpdate({ relationship: e.target.value })}
-            placeholder="Ex: Mãe, Pai..."
-            disabled={!include}
-          />
+          <Select value={selectValue} onChange={(e) => handleSelect(e.target.value)} disabled={!include}>
+            <option value="">Selecione...</option>
+            {RELATIONSHIP_OPTIONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </Select>
+          {otherMode && (
+            <Input
+              value={relative.relationship}
+              onChange={(e) => onUpdate({ relationship: e.target.value })}
+              placeholder="Especifique o parentesco"
+              disabled={!include}
+              className="mt-2"
+            />
+          )}
         </div>
       </div>
     </div>

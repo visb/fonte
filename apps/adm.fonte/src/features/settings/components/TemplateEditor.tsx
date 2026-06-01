@@ -13,7 +13,7 @@ import { Mark, mergeAttributes } from '@tiptap/core';
 import Image from '@tiptap/extension-image';
 import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight,
-  Bold, ImageIcon, Italic, List, ListOrdered, Loader2, Minus,
+  Bold, Check, Eraser, ImageIcon, Italic, List, ListOrdered, Loader2, Minus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,8 @@ import { useUpdateDocumentTemplate } from '../hooks/useDocumentTemplates';
 // Custom inline mark — stores pt value; avoids @tiptap/extension-text-style
 // version lock issues.
 
+const DEFAULT_LINE_HEIGHT = 1.2;
+
 const FontSize = Mark.create({
   name: 'fontSize',
   addAttributes() {
@@ -35,15 +37,33 @@ const FontSize = Mark.create({
       pt: {
         default: null,
         parseHTML: (el) => el.getAttribute('data-font-size') ?? null,
-        renderHTML: (attrs) => attrs.pt
-          ? { 'data-font-size': String(attrs.pt), style: `font-size: ${attrs.pt}pt` }
-          : {},
+        renderHTML: () => ({}), // style is built jointly in renderHTML below
+      },
+      lh: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('data-line-height') ?? null,
+        renderHTML: () => ({}),
       },
     };
   },
-  parseHTML() { return [{ tag: 'span[data-font-size]' }]; },
-  renderHTML({ HTMLAttributes }) {
-    return ['span', mergeAttributes(HTMLAttributes), 0];
+  parseHTML() { return [{ tag: 'span[data-font-size]' }, { tag: 'span[data-line-height]' }]; },
+  renderHTML({ mark, HTMLAttributes }) {
+    const { pt, lh } = mark.attrs as { pt?: string | number | null; lh?: string | number | null };
+    const styles: string[] = [];
+    const dataAttrs: Record<string, string> = {};
+    if (pt) {
+      styles.push(`font-size: ${pt}pt`);
+      dataAttrs['data-font-size'] = String(pt);
+    }
+    // Unitless line-height = multiplier of the current font-size (proportional).
+    // Falls back to the default factor whenever a font-size is set.
+    const factor = lh != null ? Number(lh) : pt ? DEFAULT_LINE_HEIGHT : null;
+    if (factor != null) {
+      styles.push(`line-height: ${factor}`);
+      if (lh != null) dataAttrs['data-line-height'] = String(lh);
+    }
+    const attrs = styles.length ? { ...dataAttrs, style: styles.join('; ') } : {};
+    return ['span', mergeAttributes(HTMLAttributes, attrs), 0];
   },
 });
 
@@ -289,6 +309,8 @@ export function TemplateEditor({ template, onSaved }: Props) {
   const [copied, setCopied]                    = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageInputRef  = useRef<HTMLInputElement>(null);
   // Ref so the paste handler (defined at useEditor time) can call the latest upload fn
   const uploadFnRef = useRef<((file: File) => Promise<void>) | null>(null);
@@ -300,6 +322,7 @@ export function TemplateEditor({ template, onSaved }: Props) {
 
   useEffect(() => {
     reset({ name: template.name, isRequired: template.isRequired });
+    setJustSaved(false);
   }, [template.id, reset]);
 
   const updateMutation = useUpdateDocumentTemplate();
@@ -314,7 +337,9 @@ export function TemplateEditor({ template, onSaved }: Props) {
     ],
     content: template.content,
     editorProps: {
-      attributes: { style: 'display: flow-root;' },
+      attributes: {
+        style: 'display: flow-root; font-family: Arial, Helvetica, sans-serif; font-size: 10px; line-height: 1.2;',
+      },
       // Intercept clipboard paste — if image file present, upload instead of embedding base64
       handlePaste: (_view, event) => {
         const items = event.clipboardData?.items;
@@ -369,9 +394,18 @@ export function TemplateEditor({ template, onSaved }: Props) {
     const { name, isRequired } = getValues();
     updateMutation.mutate(
       { id: template.id, data: { name, content: editor.getHTML(), isRequired } },
-      { onSuccess: (updated) => onSaved(updated) },
+      {
+        onSuccess: (updated) => {
+          onSaved(updated);
+          setJustSaved(true);
+          if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+          savedTimerRef.current = setTimeout(() => setJustSaved(false), 2500);
+        },
+      },
     );
   }, [editor, updateMutation, template.id, getValues, onSaved]);
+
+  useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); }, []);
 
   const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -379,13 +413,28 @@ export function TemplateEditor({ template, onSaved }: Props) {
     e.target.value = '';
   };
 
-  // Font size: read current pt value from textStyle mark, default 12
+  // Font size: read current pt value from fontSize mark, default 12.
+  // Preserve any custom line-height factor on the same mark.
   const changeFontSize = (delta: number) => {
     if (!editor) return;
-    const current = editor.getAttributes('fontSize').pt;
-    const currentPt = current ? Number(current) : 12;
+    const attrs = editor.getAttributes('fontSize');
+    const currentPt = attrs.pt ? Number(attrs.pt) : 12;
     const next = Math.max(8, Math.min(72, currentPt + delta));
-    editor.chain().focus().setMark('fontSize', { pt: next }).run();
+    editor.chain().focus().setMark('fontSize', { pt: next, lh: attrs.lh ?? null }).run();
+  };
+
+  // Line-height: unitless multiplier of the font size, default 1.2.
+  const changeLineHeight = (delta: number) => {
+    if (!editor) return;
+    const attrs = editor.getAttributes('fontSize');
+    const current = attrs.lh ? Number(attrs.lh) : DEFAULT_LINE_HEIGHT;
+    const next = Math.round(Math.max(1, Math.min(3, current + delta)) * 10) / 10;
+    editor.chain().focus().setMark('fontSize', { pt: attrs.pt ?? null, lh: next }).run();
+  };
+
+  const clearFormatting = () => {
+    if (!editor) return;
+    editor.chain().focus().unsetAllMarks().clearNodes().run();
   };
 
   const insertVariable = (key: string) => {
@@ -425,12 +474,25 @@ export function TemplateEditor({ template, onSaved }: Props) {
 
         <div className="w-px h-5 bg-border mx-0.5" />
 
+        {/* Line height */}
+        <ToolbarButton active={false} onClick={() => changeLineHeight(0.1)} title="Aumentar entrelinha">
+          <span className="text-[11px] font-bold leading-none select-none">LH+</span>
+        </ToolbarButton>
+        <ToolbarButton active={false} onClick={() => changeLineHeight(-0.1)} title="Diminuir entrelinha">
+          <span className="text-[11px] font-bold leading-none select-none">LH−</span>
+        </ToolbarButton>
+
+        <div className="w-px h-5 bg-border mx-0.5" />
+
         {/* Inline formatting */}
         <ToolbarButton active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="Negrito">
           <Bold size={14} />
         </ToolbarButton>
         <ToolbarButton active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} title="Itálico">
           <Italic size={14} />
+        </ToolbarButton>
+        <ToolbarButton active={false} onClick={clearFormatting} title="Remover formatação">
+          <Eraser size={14} />
         </ToolbarButton>
 
         <div className="w-px h-5 bg-border mx-0.5" />
@@ -509,7 +571,13 @@ export function TemplateEditor({ template, onSaved }: Props) {
         </p>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {justSaved && !updateMutation.isPending && (
+          <span className="flex items-center gap-1.5 text-sm text-green-600">
+            <Check size={15} />
+            Template salvo
+          </span>
+        )}
         <Button onClick={handleSave} disabled={updateMutation.isPending || !getValues('name').trim()}>
           {updateMutation.isPending ? 'Salvando...' : 'Salvar template'}
         </Button>

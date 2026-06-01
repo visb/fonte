@@ -14,4 +14,5 @@ export interface ParseResult {
   warnings: Partial<Record<keyof ResidentFormData, string>>;
   houseName: string;
   rawText: string;
+  photoBase64: string | null;
 }

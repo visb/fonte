@@ -45,6 +45,7 @@ export function ImportUploadStep({ onParsed }: ImportUploadStepProps) {
         warnings: raw.warnings as ParseResult['warnings'],
         houseName: raw.houseName,
         rawText: raw.rawText,
+        photoBase64: raw.photoBase64 ?? null,
       };
       onParsed(result, file);
     } catch (e) {

@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Plus, Trash2, UserCheck, UserX } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { WizardActions } from './WizardActions';
 import type { DraftRelative } from '../../lib/types';
 
 interface ImportRelativesStepProps {
@@ -75,7 +76,7 @@ export function ImportRelativesStep({
           : 'Nenhum familiar será cadastrado.'}
       </div>
 
-      <div className="flex justify-between gap-3 pt-4">
+      <WizardActions>
         <Button type="button" variant="outline" className="gap-2" onClick={onBack}>
           <ArrowLeft size={14} />
           Voltar
@@ -84,7 +85,7 @@ export function ImportRelativesStep({
           Próximo: Resumo
           <ArrowRight size={14} />
         </Button>
-      </div>
+      </WizardActions>
     </div>
   );
 }

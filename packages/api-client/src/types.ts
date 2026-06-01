@@ -835,6 +835,7 @@ export interface ParseDocxResult {
   warnings: Record<string, string>;
   houseName: string;
   rawText: string;
+  photoBase64: string | null;
 }
 
 // ─── Street Sales ─────────────────────────────────────────────────────────────

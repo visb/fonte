@@ -219,7 +219,7 @@ export function ResidentAdmissionSections({
             />
           </FormField>
         )}
-        {watchFamilyInvestment && watchFamilyInvestment !== FamilyInvestment.SOCIAL && (
+        {watchFamilyInvestment !== FamilyInvestment.SOCIAL && (
           <FormField label="Dia de vencimento da contribuição">
             <Select {...register("contributionDueDay")}>
               <option value="">Mesmo dia do acolhimento</option>

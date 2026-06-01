@@ -8,8 +8,21 @@ import { ImportReviewStep } from '../components/import/ImportReviewStep';
 import { ImportRelativesStep } from '../components/import/ImportRelativesStep';
 import { ImportDocumentsStep } from '../components/import/ImportDocumentsStep';
 import { ImportSummaryStep } from '../components/import/ImportSummaryStep';
+import { ImportWarnings } from '../components/import/ImportWarnings';
 import type { ParseResult, DraftRelative } from '../lib/types';
 import type { ResidentFormData } from '../lib/residentSchema';
+
+// Decodes a `data:<mime>;base64,<...>` URL into a Blob. Returns null for empty input.
+function dataUrlToBlob(dataUrl: string | null): Blob | null {
+  if (!dataUrl) return null;
+  const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/);
+  if (!match) return null;
+  const [, mime, b64] = match;
+  const bytes = atob(b64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -45,8 +58,12 @@ export function ImportResidentPage() {
     photo: null,
     extraFiles: [],
   });
+  const [dismissedWarnings, setDismissedWarnings] = useState<Set<string>>(new Set());
 
   const setStep = (step: Step) => setState((s) => ({ ...s, step }));
+  const setPhoto = (photo: Blob | null) => setState((s) => ({ ...s, photo }));
+  const dismissWarning = (key: string) =>
+    setDismissedWarnings((prev) => new Set(prev).add(key));
 
   // Step 1 → 2
   const handleParsed = (result: ParseResult, file: File) => {
@@ -56,6 +73,8 @@ export function ImportResidentPage() {
       file,
       parseResult: result,
       relatives: result.relatives,
+      // Pre-fill the resident photo extracted from the document, if any.
+      photo: dataUrlToBlob(result.photoBase64) ?? s.photo,
     }));
   };
 
@@ -70,11 +89,17 @@ export function ImportResidentPage() {
   };
 
   // Step 4 → 5
-  const handleDocumentsNext = (photo: Blob | null, extraFiles: File[]) => {
-    setState((s) => ({ ...s, step: 5, photo, extraFiles }));
+  const handleDocumentsNext = (extraFiles: File[]) => {
+    setState((s) => ({ ...s, step: 5, extraFiles }));
   };
 
   const { step, file, parseResult, residentValues, relatives, photo, extraFiles } = state;
+
+  const activeWarnings = parseResult
+    ? Object.entries(parseResult.warnings)
+        .filter(([key, message]) => message && !dismissedWarnings.has(key))
+        .map(([key, message]) => ({ key, message: message as string }))
+    : [];
 
   return (
     <div className="max-w-2xl">
@@ -91,6 +116,13 @@ export function ImportResidentPage() {
       {/* Step indicator */}
       <StepIndicator current={step} steps={STEPS} />
 
+      {/* Import alerts — persist across all steps until dismissed individually */}
+      {step > 1 && activeWarnings.length > 0 && (
+        <div className="mt-6">
+          <ImportWarnings warnings={activeWarnings} onDismiss={dismissWarning} />
+        </div>
+      )}
+
       {/* Content */}
       <div className="mt-8">
         {step === 1 && <ImportUploadStep onParsed={handleParsed} />}
@@ -99,6 +131,8 @@ export function ImportResidentPage() {
           <ImportReviewStep
             parseResult={parseResult}
             initialValues={parseResult.resident}
+            photo={photo}
+            onPhotoChange={setPhoto}
             onBack={() => setStep(1)}
             onNext={handleResidentNext}
           />
@@ -114,7 +148,6 @@ export function ImportResidentPage() {
 
         {step === 4 && (
           <ImportDocumentsStep
-            initialPhoto={photo}
             initialFiles={extraFiles}
             onBack={() => setStep(3)}
             onNext={handleDocumentsNext}

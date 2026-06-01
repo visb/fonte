@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/lib/errors';
 import { useCreateResident } from '../../hooks/useResidents';
 import { buildResidentPayload, type ResidentFormData } from '../../lib/residentSchema';
+import { WizardActions } from './WizardActions';
 import type { DraftRelative } from '../../lib/types';
 
 interface ImportSummaryStepProps {
@@ -182,7 +183,7 @@ export function ImportSummaryStep({
         </div>
       )}
 
-      <div className="flex justify-between gap-3 pt-2">
+      <WizardActions>
         <Button type="button" variant="outline" className="gap-2" onClick={onBack} disabled={saving}>
           <ArrowLeft size={14} />
           Voltar
@@ -197,7 +198,7 @@ export function ImportSummaryStep({
             'Confirmar e salvar'
           )}
         </Button>
-      </div>
+      </WizardActions>
     </div>
   );
 }

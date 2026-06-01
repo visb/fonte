@@ -20,11 +20,12 @@ import type {
   StreetSaleType,
   StreetSale,
   StreetSalesReportResponse,
+  StreetSalesReportByHouse,
   SupplyRoomCategory,
 } from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
-export type { StreetSaleType, StreetSale, StreetSalesReportResponse };
+export type { StreetSaleType, StreetSale, StreetSalesReportResponse, StreetSalesReportByHouse };
 export type { SupplyRoomCategory };
 
 export type { FamilyInvestment };

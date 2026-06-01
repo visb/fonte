@@ -78,7 +78,7 @@ export function SalesHistoryChart({ data }: Props) {
                 width={80}
               />
               <Tooltip
-                formatter={(value: number) => formatBRL(value * 100)}
+                formatter={(value) => formatBRL(Number(value) * 100)}
                 labelStyle={{ fontWeight: 600 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />

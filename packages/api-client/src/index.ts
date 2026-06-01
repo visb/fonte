@@ -93,6 +93,7 @@ export type {
   StreetSaleType,
   StreetSale,
   StreetSalesReportResponse,
+  StreetSalesReportByHouse,
   CreateStreetSaleInput,
   UpdateStreetSaleInput,
   GetStreetSalesReportParams,

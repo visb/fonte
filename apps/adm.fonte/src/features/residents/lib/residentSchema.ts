@@ -30,6 +30,7 @@ export const residentSchema = z.object({
   height: z.string().optional(),
   familyInvestment: z.nativeEnum(FamilyInvestment).or(z.literal('')).optional().nullable(),
   familyInvestmentAmount: z.coerce.number().int().min(0).optional().nullable(),
+  contributionDueDay: z.string().optional(),
 });
 
 export type ResidentFormData = z.infer<typeof residentSchema>;
@@ -44,7 +45,7 @@ export const FICHA_FIELDS = [
 ] as const satisfies readonly (keyof ResidentFormData)[];
 
 export const ADMISSAO_FIELDS = [
-  'houseId', 'entryDate', 'familyInvestment', 'familyInvestmentAmount',
+  'houseId', 'entryDate', 'familyInvestment', 'familyInvestmentAmount', 'contributionDueDay',
 ] as const satisfies readonly (keyof ResidentFormData)[];
 
 export function buildResidentPayload(data: ResidentFormData): Record<string, unknown> {
@@ -54,7 +55,7 @@ export function buildResidentPayload(data: ResidentFormData): Record<string, unk
       payload[key] = null;
       continue;
     }
-    if (key === 'children' || key === 'weight' || key === 'height' || key === 'familyInvestmentAmount') {
+    if (key === 'children' || key === 'weight' || key === 'height' || key === 'familyInvestmentAmount' || key === 'contributionDueDay') {
       payload[key] = Number(value);
     } else {
       payload[key] = value;
@@ -93,5 +94,6 @@ export function residentToFormValues(r: Resident): ResidentFormData {
     height: numStr(r.height),
     familyInvestment: (r.familyInvestment as FamilyInvestment) ?? '',
     familyInvestmentAmount: r.familyInvestmentAmount ?? undefined,
+    contributionDueDay: numStr(r.contributionDueDay),
   };
 }

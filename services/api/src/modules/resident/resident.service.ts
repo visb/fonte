@@ -116,7 +116,7 @@ export class ResidentService {
         )
         .andWhere(
           `LEAST(
-            EXTRACT(DAY FROM resident.entry_date)::int,
+            COALESCE(resident.contribution_due_day, EXTRACT(DAY FROM resident.entry_date)::int),
             EXTRACT(DAY FROM (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month - 1 day'))::int
           ) < EXTRACT(DAY FROM CURRENT_DATE)::int`,
         );
@@ -274,6 +274,7 @@ export class ResidentService {
     if (dto.education !== undefined) residentUpdate.education = dto.education;
     if (dto.religion !== undefined) residentUpdate.religion = dto.religion;
     if (dto.addiction !== undefined) residentUpdate.addiction = dto.addiction;
+    if (dto.contributionDueDay !== undefined) residentUpdate.contributionDueDay = dto.contributionDueDay;
 
     await this.residentRepository.update(id, residentUpdate);
     return this.findOne(id);

@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   Min,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
@@ -128,6 +129,14 @@ export class CreateResidentDto {
   @IsInt()
   @Min(0)
   familyInvestmentAmount?: number | null;
+
+  // Day of month (1-31) the monthly contribution is due. Null falls back to the
+  // entry_date day-of-month.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(31)
+  contributionDueDay?: number | null;
 
   @IsOptional()
   @IsUUID()

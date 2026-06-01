@@ -201,6 +201,7 @@ export interface Resident {
   height: number | null;
   familyInvestment: FamilyInvestment | null;
   familyInvestmentAmount: number | null;
+  contributionDueDay: number | null;
   lastContributionDate: string | null;
   photoUrl: string | null;
   house: { id: string; name: string } | null;
@@ -238,6 +239,7 @@ export interface CreateResidentInput {
   height?: number | null;
   familyInvestment?: FamilyInvestment | null;
   familyInvestmentAmount?: number | null;
+  contributionDueDay?: number | null;
   ministryId?: string | null;
 }
 
@@ -324,6 +326,7 @@ export interface ReadmitResidentInput {
   height?: number | null;
   familyInvestment?: FamilyInvestment | null;
   familyInvestmentAmount?: number | null;
+  contributionDueDay?: number | null;
 }
 
 // ─── Follow Up ───────────────────────────────────────────────────────────────

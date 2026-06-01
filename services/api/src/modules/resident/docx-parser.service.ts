@@ -25,6 +25,7 @@ export interface ParseDocxResident {
   weight: string | null;
   height: string | null;
   familyInvestment: 'BASKET_500' | 'PAYMENT_700' | 'SOCIAL' | 'NEGOTIATED' | null;
+  familyInvestmentAmount: number | null;
   contactPhone: string | null;
 }
 
@@ -75,6 +76,7 @@ Retorne um JSON com esta estrutura exata:
     "weight": "string | null (número em kg)",
     "height": "string | null (número em cm)",
     "familyInvestment": "BASKET_500 | PAYMENT_700 | SOCIAL | NEGOTIATED | null",
+    "familyInvestmentAmount": "number | null (valor em reais, sem símbolo)",
     "contactPhone": "string | null"
   },
   "relatives": [
@@ -86,30 +88,46 @@ Retorne um JSON com esta estrutura exata:
   "houseName": "string (nome da unidade/casa)"
 }
 
-Mapeamento de campos:
+Mapeamento de campos (modelo "FICHA DE ACOLHIMENTO - FILHO|RESIDENTE"):
 - "NOME" → name
-- "DATA DO ACOLHIMENTO" → entryDate (formato ISO YYYY-MM-DD)
+- "DATA DO ACOLHIMENTO" → entryDate (formato ISO YYYY-MM-DD). O campo PODE conter duas datas
+  (acolhimento original + readmissão), ex: "14/09/2021 03/08/2023". Nesse caso use a data MAIS
+  RECENTE como entryDate e adicione warning em "entryDate": "Duas datas de acolhimento encontradas — confirmar a correta".
 - "DATA DE NASCIMENTO" → birthDate (formato ISO YYYY-MM-DD)
+- "IDADE" → ignorar (derivável de birthDate)
 - "SEXO" (Masculino/M → MALE, Feminino/F → FEMALE) → gender
 - "CPF" → cpf (formatar como 000.000.000-00)
-- "RG" → rg
-- "NACIONALIDADE" → nationality
-- "CIDADE" ou "MUNICÍPIO" → city
-- "UF" ou "ESTADO" → state (retornar somente a sigla de 2 letras, ex: SP)
-- "ENDEREÇO" → address
+- "RG" → rg (quando existir)
+- "NACIONALIDADE" → nationality (quando existir)
+- "ENDEREÇO" → address, city e state. No modelo novo o endereço vem completo numa única linha,
+  ex: "Rua 2850, nº 150 apto. 601 – Balneário Camboriú - SC". Separe:
+    state = sigla UF de 2 letras no final (ex: SC); city = município antes da UF (ex: Balneário Camboriú);
+    address = logradouro/número/complemento (sem cidade e UF).
+  Se houver linhas separadas "CIDADE"/"MUNICÍPIO" e "UF"/"ESTADO", use-as diretamente.
 - "ESTADO CIVIL" (Solteiro→SINGLE, Casado→MARRIED, Divorciado/Separado→DIVORCED) → maritalStatus
 - "FILHOS" → children (número como string)
 - "PROFISSÃO" ou "PROF" → occupation
-- "TELEFONE" → relatives (múltiplos separados por / ou |, com nome e grau de parentesco em parênteses; extraia contactPhone do primeiro telefone sem nome associado)
-- Seção "INFORMAÇÕES NECESSÁRIAS":
-  1. Escolaridade → education
-  2. Problema de saúde → healthIssues (se apenas "Sim" sem detalhes, adicione warning: "Confirmar detalhes do problema de saúde")
-  3. Medicação contínua → continuousMedication (se apenas "Sim" sem detalhes, adicione warning: "Confirmar nome e dosagem da medicação")
-  4. Religião → religion
-  5. Vícios/Dependência → addiction
-  6. Altura / Peso → height (cm, número como string) e weight (kg, número como string)
-  7. Investimento familiar → familyInvestment (R$500+cestas→BASKET_500, R$700→PAYMENT_700, Social→SOCIAL, outro valor→NEGOTIATED)
-- "FARÁ O TRATAMENTO NA FONTE" ou "UNIDADE" → houseName`;
+- "TELEFONE DE CONTATO" ou "TELEFONE" → relatives + contactPhone. Múltiplos separados por "/" ou "|".
+  O formato é número PRIMEIRO, depois o nome, e o grau de parentesco entre parênteses,
+  ex: "(47)984037330 Carla (mãe) / (41)99651834 Fernando". Para cada bloco extraia:
+    phone = número; name = nome após o número; relationship = texto entre parênteses (vazio se ausente).
+  contactPhone = primeiro número da lista.
+- "RESPONSÁVEL/ACOLHIMENTO DO FILHO" e o "RESPONSÁVEL" do rodapé → ignorar (não há campo correspondente).
+- Seção "INFORMAÇÕES NECESSÁRIAS" (itens numerados — a numeração pode variar, guie-se pelo rótulo):
+  - "ATÉ QUE SÉRIE ESTUDOU" / Escolaridade → education
+  - "PROBLEMA DE SAÚDE" → healthIssues (se apenas "Sim" sem detalhes, warning: "Confirmar detalhes do problema de saúde")
+  - "MEDICAÇÃO" → continuousMedication (se apenas "Sim" sem detalhes, warning: "Confirmar nome e dosagem da medicação")
+  - "RELIGIÃO" → religion
+  - "DEPENDÊNCIA" / Vícios → addiction
+  - "PESO|ALTURA" / "ALTURA|PESO" → height e weight. ATENÇÃO: o rótulo e a ordem dos valores podem não bater
+    e as unidades podem ter erros de digitação (ex "kl"). Regra de desambiguação:
+      o valor decimal pequeno (ex 1,92 ou "1,9 m") é a ALTURA → converta para cm inteiro (1,92 → "192");
+      o valor inteiro entre 30 e 250 é o PESO em kg (ex "80").
+    Se não der para distinguir com segurança, adicione warning em "weight": "Confirmar peso e altura".
+  - "INVESTIMENTO DA FAMÍLIA" (pode aparecer como "INVENSTIMENTO") → familyInvestment + familyInvestmentAmount.
+    familyInvestmentAmount = valor numérico em reais (ex "500.00" → 500).
+    familyInvestment: ~R$500 (cestas)→BASKET_500, ~R$700→PAYMENT_700, social/isento→SOCIAL, outro valor→NEGOTIATED.
+  - "FARÁ O TRATAMENTO NA FONTE" ou "UNIDADE" → houseName`;
 
 /**
  * Extracts a JSON object from the model response, tolerating markdown code

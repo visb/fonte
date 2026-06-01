@@ -219,6 +219,21 @@ export function ResidentAdmissionSections({
             />
           </FormField>
         )}
+        {watchFamilyInvestment && watchFamilyInvestment !== FamilyInvestment.SOCIAL && (
+          <FormField label="Dia de vencimento da contribuição">
+            <Select {...register("contributionDueDay")}>
+              <option value="">Mesmo dia do acolhimento</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={d}>
+                  Dia {d}
+                </option>
+              ))}
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Use quando a família paga em data diferente da entrada.
+            </p>
+          </FormField>
+        )}
         {hasPayment && (
           <label className="flex items-center gap-2 text-sm cursor-pointer col-span-full pt-1">
             <input

@@ -133,6 +133,10 @@ export class Resident {
   @Column({ name: 'family_investment_amount', type: 'integer', nullable: true })
   familyInvestmentAmount: number | null;
 
+  // Day of month (1-31) the monthly contribution is due. Null → use entry_date day.
+  @Column({ name: 'contribution_due_day', type: 'integer', nullable: true })
+  contributionDueDay: number | null;
+
   @Column({ name: 'photo_url', nullable: true, type: 'varchar' })
   photoUrl: string | null;
 

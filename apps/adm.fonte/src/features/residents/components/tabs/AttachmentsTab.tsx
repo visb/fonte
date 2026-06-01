@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ChevronDown, Download, ExternalLink, FileText, Loader2, Paperclip, Trash2, Upload,
 } from 'lucide-react';
+import { MaritalStatus } from '@fonte/types';
 import { api } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,11 +10,13 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  useResidentDocuments, useResidentAttachments, useAddAttachment,
-  useDeleteAttachment, useUploadSignedDocument,
+  useResidentById, useResidentDocuments, useResidentAttachments,
+  useAddAttachment, useDeleteAttachment, useUploadSignedDocument,
 } from '../../hooks/useResidents';
 import { useDocumentTemplates } from '@/features/settings/hooks/useDocumentTemplates';
-import type { DocumentTemplate, ResidentDocument, ResidentAttachment } from '@fonte/api-client';
+import { MissingFieldsDialog } from '../MissingFieldsDialog';
+import type { MissingField } from '../MissingFieldsDialog';
+import type { DocumentTemplate, Resident, ResidentDocument, ResidentAttachment, UpdateResidentInput } from '@fonte/api-client';
 
 function slugify(text: string): string {
   return text
@@ -26,42 +29,84 @@ function slugify(text: string): string {
     .replace(/^-|-$/g, '');
 }
 
-function GenerateDocumentMenu({ templates, residentId, residentName }: {
+const ALWAYS_AVAILABLE = new Set(['name', 'house', 'entryDate', 'date', 'dateLong']);
+
+interface VarMapping {
+  residentField: keyof UpdateResidentInput;
+  label: string;
+  inputType: 'text' | 'date' | 'select';
+  options?: { value: string; label: string }[];
+  isEmpty: (r: Resident) => boolean;
+}
+
+const VAR_TO_FIELD: Record<string, VarMapping> = {
+  cpf:          { residentField: 'cpf',           label: 'CPF',                inputType: 'text',   isEmpty: (r) => !r.cpf },
+  rg:           { residentField: 'rg',            label: 'RG',                 inputType: 'text',   isEmpty: (r) => !r.rg },
+  nationality:  { residentField: 'nationality',   label: 'Nacionalidade',      inputType: 'text',   isEmpty: (r) => !r.nationality },
+  city:         { residentField: 'city',          label: 'Cidade',             inputType: 'text',   isEmpty: (r) => !r.city },
+  state:        { residentField: 'state',         label: 'UF',                 inputType: 'text',   isEmpty: (r) => !r.state },
+  birthDate:    { residentField: 'birthDate',     label: 'Data de nascimento', inputType: 'date',   isEmpty: (r) => !r.birthDate },
+  age:          { residentField: 'birthDate',     label: 'Data de nascimento', inputType: 'date',   isEmpty: (r) => !r.birthDate },
+  maritalStatus: {
+    residentField: 'maritalStatus',
+    label: 'Estado civil',
+    inputType: 'select',
+    options: [
+      { value: MaritalStatus.SINGLE,   label: 'Solteiro(a)' },
+      { value: MaritalStatus.MARRIED,  label: 'Casado(a)' },
+      { value: MaritalStatus.DIVORCED, label: 'Divorciado(a)' },
+    ],
+    isEmpty: (r) => !r.maritalStatus,
+  },
+  address: { residentField: 'address',      label: 'Endereço', inputType: 'text', isEmpty: (r) => !r.address },
+  phone:   { residentField: 'contactPhone', label: 'Telefone', inputType: 'text', isEmpty: (r) => !r.contactPhone },
+};
+
+function extractTemplateVars(content: string): string[] {
+  const matches = content.match(/\{\{(\w+)\}\}/g) ?? [];
+  return [...new Set(matches.map((m) => m.slice(2, -2)))];
+}
+
+function findMissingFields(vars: string[], resident: Resident): MissingField[] {
+  const seen = new Set<string>();
+  const result: MissingField[] = [];
+  for (const varName of vars) {
+    if (ALWAYS_AVAILABLE.has(varName)) continue;
+    const mapping = VAR_TO_FIELD[varName];
+    if (!mapping) continue;
+    const fieldKey = mapping.residentField as string;
+    if (seen.has(fieldKey)) continue;
+    if (!mapping.isEmpty(resident)) continue;
+    seen.add(fieldKey);
+    result.push({
+      residentField: mapping.residentField,
+      label: mapping.label,
+      inputType: mapping.inputType,
+      options: mapping.options,
+    });
+  }
+  return result;
+}
+
+function GenerateDocumentMenu({ templates, onGenerate, generatingId }: {
   templates: DocumentTemplate[];
-  residentId: string;
-  residentName: string;
+  onGenerate: (template: DocumentTemplate) => void;
+  generatingId: string | null;
 }) {
-  const [downloading, setDownloading] = useState<string | null>(null);
-
-  const downloadPdf = async (template: DocumentTemplate) => {
-    setDownloading(template.id);
-    try {
-      const blob = await api.residents.downloadDocumentPdf(residentId, template.id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${slugify(`${residentName} ${template.name}`)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } finally {
-      setDownloading(null);
-    }
-  };
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" disabled={downloading !== null}>
-          {downloading !== null ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <FileText size={14} className="mr-1.5" />}
+        <Button variant="outline" size="sm" disabled={generatingId !== null}>
+          {generatingId !== null
+            ? <Loader2 size={14} className="animate-spin mr-1.5" />
+            : <FileText size={14} className="mr-1.5" />}
           Gerar documento
           <ChevronDown size={14} className="ml-1.5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {templates.map((t) => (
-          <DropdownMenuItem key={t.id} onClick={() => downloadPdf(t)}>{t.name}</DropdownMenuItem>
+          <DropdownMenuItem key={t.id} onClick={() => onGenerate(t)}>{t.name}</DropdownMenuItem>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -111,40 +156,24 @@ function AttachmentRow({ attachment }: { attachment: ResidentAttachment }) {
   );
 }
 
-function DocumentCard({ templateId, templateName, residentId, signedDoc, residentName }: {
-  templateId: string;
-  templateName: string;
+function DocumentCard({ template, residentId, signedDoc, residentName, onGenerate, generating }: {
+  template: DocumentTemplate;
   residentId: string;
   signedDoc: ResidentDocument | null;
   residentName: string;
+  onGenerate: (template: DocumentTemplate) => void;
+  generating: boolean;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [downloading, setDownloading] = useState(false);
   const uploadMutation = useUploadSignedDocument(residentId);
 
-  const pdfFilename = `${slugify(`${residentName} ${templateName}`)}.pdf`;
-
-  const downloadPdf = async () => {
-    setDownloading(true);
-    try {
-      const blob = await api.residents.downloadDocumentPdf(residentId, templateId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = pdfFilename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } finally {
-      setDownloading(false);
-    }
-  };
-
+  const pdfFilename = `${slugify(`${residentName} ${template.name}`)}.pdf`;
   const wasSigned = signedDoc?.signed ?? false;
   const withinWindow = signedDoc?.withinWindow ?? false;
   const signedAt = signedDoc?.signedAt
-    ? new Date(signedDoc.signedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    ? new Date(signedDoc.signedAt).toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      })
     : null;
 
   return (
@@ -153,7 +182,7 @@ function DocumentCard({ templateId, templateName, residentId, signedDoc, residen
         <FileText size={18} className="text-muted-foreground" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{templateName}</p>
+        <p className="font-medium text-sm truncate">{template.name}</p>
         <p className="text-xs text-muted-foreground truncate">{pdfFilename}</p>
         <div className="mt-0.5">
           {wasSigned ? (
@@ -165,19 +194,27 @@ function DocumentCard({ templateId, templateName, residentId, signedDoc, residen
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <Button variant="outline" size="sm" disabled={downloading} onClick={downloadPdf}>
-          {downloading ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Download size={14} className="mr-1.5" />}
+        <Button variant="outline" size="sm" disabled={generating} onClick={() => onGenerate(template)}>
+          {generating
+            ? <Loader2 size={14} className="animate-spin mr-1.5" />
+            : <Download size={14} className="mr-1.5" />}
           <span className="hidden sm:inline">Baixar PDF</span>
         </Button>
         {(!wasSigned || withinWindow) && (
-          <Button variant="ghost" size="sm" disabled={uploadMutation.isPending} onClick={() => fileInputRef.current?.click()} title={wasSigned ? 'Substituir documento assinado' : 'Enviar documento assinado'}>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={uploadMutation.isPending}
+            onClick={() => fileInputRef.current?.click()}
+            title={wasSigned ? 'Substituir documento assinado' : 'Enviar documento assinado'}
+          >
             {uploadMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
             <span className="ml-1.5 hidden sm:inline">{wasSigned ? 'Substituir' : 'Enviar assinado'}</span>
           </Button>
         )}
         <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) uploadMutation.mutate({ templateId, file });
+          if (file) uploadMutation.mutate({ templateId: template.id, file });
           e.target.value = '';
         }} />
       </div>
@@ -191,9 +228,47 @@ interface Props {
 }
 
 export function AttachmentsTab({ residentId, residentName }: Props) {
+  const { data: resident } = useResidentById(residentId);
   const { data: signedDocs = [] } = useResidentDocuments(residentId);
   const { data: attachments = [] } = useResidentAttachments(residentId);
   const { data: templates = [] } = useDocumentTemplates();
+
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [missingDialog, setMissingDialog] = useState<{
+    missingFields: MissingField[];
+    template: DocumentTemplate;
+  } | null>(null);
+
+  const downloadPdf = useCallback(async (template: DocumentTemplate) => {
+    setGeneratingId(template.id);
+    try {
+      const blob = await api.residents.downloadDocumentPdf(residentId, template.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${slugify(`${residentName} ${template.name}`)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setGeneratingId(null);
+    }
+  }, [residentId, residentName]);
+
+  const handleGenerateRequest = useCallback((template: DocumentTemplate) => {
+    if (!resident) {
+      downloadPdf(template);
+      return;
+    }
+    const vars = extractTemplateVars(template.content);
+    const missing = findMissingFields(vars, resident);
+    if (missing.length === 0) {
+      downloadPdf(template);
+    } else {
+      setMissingDialog({ missingFields: missing, template });
+    }
+  }, [resident, downloadPdf]);
 
   const docByTemplate = Object.fromEntries(signedDocs.map((d) => [d.templateId, d]));
   const requiredTemplates = templates.filter((t) => t.isRequired);
@@ -207,7 +282,11 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
             Documentos de acolhimento
           </h3>
           {optionalTemplates.length > 0 && (
-            <GenerateDocumentMenu templates={optionalTemplates} residentId={residentId} residentName={residentName} />
+            <GenerateDocumentMenu
+              templates={optionalTemplates}
+              onGenerate={handleGenerateRequest}
+              generatingId={generatingId}
+            />
           )}
         </div>
 
@@ -217,11 +296,12 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
           requiredTemplates.map((template) => (
             <DocumentCard
               key={template.id}
-              templateId={template.id}
-              templateName={template.name}
+              template={template}
               residentId={residentId}
               residentName={residentName}
               signedDoc={docByTemplate[template.id] ?? null}
+              onGenerate={handleGenerateRequest}
+              generating={generatingId === template.id}
             />
           ))
         )}
@@ -238,11 +318,19 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
         {attachments.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">Nenhum anexo adicionado.</p>
         ) : (
-          attachments.map((a) => (
-            <AttachmentRow key={a.id} attachment={a} />
-          ))
+          attachments.map((a) => <AttachmentRow key={a.id} attachment={a} />)
         )}
       </div>
+
+      <MissingFieldsDialog
+        open={missingDialog !== null}
+        onClose={() => setMissingDialog(null)}
+        missingFields={missingDialog?.missingFields ?? []}
+        residentId={residentId}
+        onSaved={() => {
+          if (missingDialog) downloadPdf(missingDialog.template);
+        }}
+      />
     </div>
   );
 }

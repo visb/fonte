@@ -94,6 +94,22 @@ export function useHouseStoreroomMovements(houseId: string) {
   });
 }
 
+export function useHouseSupplyRoomItems(houseId: string) {
+  return useQuery({
+    queryKey: queryKeys.supplyRoom.byHouse(houseId),
+    queryFn: () => api.supplyRoom.listItems({ houseId }),
+    enabled: !!houseId,
+  });
+}
+
+export function useHouseSupplyRoomMovements(houseId: string) {
+  return useQuery({
+    queryKey: queryKeys.supplyRoom.movementsByHouse(houseId),
+    queryFn: () => api.supplyRoom.listMovements({ houseId }),
+    enabled: !!houseId,
+  });
+}
+
 export function useDeleteHousePhoto(houseId: string) {
   const queryClient = useQueryClient();
   return useMutation({

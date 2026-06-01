@@ -32,6 +32,13 @@ const ACTIONS = [
     route: "/(app)/storeroom",
   },
   {
+    label: "Almoxarifado",
+    icon: "spray-outline" as const,
+    color: "#2563eb",
+    bg: "#eff6ff",
+    route: "/(app)/supply-room",
+  },
+  {
     label: "Faturamento",
     icon: "storefront-outline" as const,
     color: "#b45309",

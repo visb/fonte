@@ -20,10 +20,12 @@ import type {
   StreetSaleType,
   StreetSale,
   StreetSalesReportResponse,
+  SupplyRoomCategory,
 } from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
 export type { StreetSaleType, StreetSale, StreetSalesReportResponse };
+export type { SupplyRoomCategory };
 
 export type { FamilyInvestment };
 
@@ -401,6 +403,51 @@ export interface StoreroomMovement {
 }
 
 export interface CreateMovementInput {
+  itemId: string;
+  type: MovementType;
+  quantity: number;
+  responsibleId: string;
+  date: string;
+  notes?: string | null;
+}
+
+// ─── Supply Room ─────────────────────────────────────────────────────────────
+
+export interface SupplyRoomItem {
+  id: string;
+  name: string;
+  unit: string;
+  category: SupplyRoomCategory;
+  houseId: string;
+  currentQuantity: number;
+}
+
+export interface CreateSupplyItemInput {
+  name: string;
+  unit: string;
+  category: SupplyRoomCategory;
+  houseId: string;
+}
+
+export interface UpdateSupplyItemInput {
+  name?: string;
+  unit?: string;
+  category?: SupplyRoomCategory;
+}
+
+export interface SupplyRoomMovement {
+  id: string;
+  itemId: string;
+  item: { id: string; name: string; unit: string; category: SupplyRoomCategory };
+  type: MovementType;
+  quantity: number;
+  responsibleId: string;
+  responsible: { id: string; name: string };
+  date: string;
+  notes: string | null;
+}
+
+export interface CreateSupplyMovementInput {
   itemId: string;
   type: MovementType;
   quantity: number;

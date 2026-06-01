@@ -46,6 +46,10 @@ export const queryKeys = {
     byHouse: (houseId: string) => ['storeroom', houseId] as const,
     movementsByHouse: (houseId: string) => ['storeroom-movements', houseId] as const,
   },
+  supplyRoom: {
+    byHouse: (houseId: string) => ['supply-room', houseId] as const,
+    movementsByHouse: (houseId: string) => ['supply-room-movements', houseId] as const,
+  },
   billing: {
     filhos: {
       report: (params: { month: string; houseId?: string }) =>

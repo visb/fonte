@@ -98,6 +98,17 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="supply-room"
+        options={{
+          title: "Almoxarifado",
+          headerShown: false,
+          href: null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="spray-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="support-groups"
         options={{
           title: "Apoio",

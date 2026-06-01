@@ -14,6 +14,7 @@ import { createSupportGroupsModule } from './modules/support-groups.js';
 import { createWishlistModule } from './modules/wishlist.js';
 import { createAppSettingsModule } from './modules/app-settings.js';
 import { createStreetSalesModule } from './modules/street-sales.js';
+import { createSupplyRoomModule } from './modules/supply-room.js';
 
 export interface ApiClientConfig {
   baseURL: string;
@@ -57,6 +58,7 @@ export function createApiClient(config: ApiClientConfig) {
     wishlist: createWishlistModule(http),
     appSettings: createAppSettingsModule(http),
     streetSales: createStreetSalesModule(http),
+    supplyRoom: createSupplyRoomModule(http),
     photoUrl: (path: string | null | undefined): string | null => {
       if (!path) return null;
       if (path.startsWith('http://') || path.startsWith('https://')) return path;

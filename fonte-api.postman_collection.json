@@ -978,6 +978,81 @@
       ]
     },
     {
+      "name": "Supply Room",
+      "item": [
+        {
+          "name": "List Items",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/supply-room/items?houseId={{houseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["supply-room", "items"],
+              "query": [{ "key": "houseId", "value": "{{houseId}}" }]
+            }
+          }
+        },
+        {
+          "name": "Create Item",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Detergente\",\n  \"unit\": \"unid.\",\n  \"category\": \"CLEANING\",\n  \"houseId\": \"{{houseId}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/supply-room/items", "host": ["{{baseUrl}}"], "path": ["supply-room", "items"] }
+          }
+        },
+        {
+          "name": "Update Item",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Detergente 500ml\",\n  \"category\": \"CLEANING\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/supply-room/items/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["supply-room", "items", "{{itemId}}"] }
+          }
+        },
+        {
+          "name": "Delete Item",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/supply-room/items/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["supply-room", "items", "{{itemId}}"] }
+          }
+        },
+        {
+          "name": "List Movements",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/supply-room/movements?houseId={{houseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["supply-room", "movements"],
+              "query": [
+                { "key": "houseId", "value": "{{houseId}}" },
+                { "key": "itemId", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Movement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": \"{{itemId}}\",\n  \"type\": \"IN\",\n  \"quantity\": 5,\n  \"responsibleId\": \"{{staffId}}\",\n  \"date\": \"2024-06-01\",\n  \"notes\": \"Compra do mercado\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/supply-room/movements", "host": ["{{baseUrl}}"], "path": ["supply-room", "movements"] }
+          }
+        }
+      ]
+    },
+    {
       "name": "Support Groups",
       "item": [
         {

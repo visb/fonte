@@ -10,6 +10,7 @@ import { ResidentsTab } from '../components/tabs/ResidentsTab';
 import { StaffTab } from '../components/tabs/StaffTab';
 import { MinistriesTab } from '../components/tabs/MinistriesTab';
 import { StoreroomTab } from '../components/tabs/StoreroomTab';
+import { SupplyRoomTab } from '../components/tabs/SupplyRoomTab';
 import { RulesTab } from '../components/tabs/RulesTab';
 import { useHouseById } from '../hooks/useHouses';
 
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'staff', label: 'Servos' },
   { id: 'ministries', label: 'Ministérios' },
   { id: 'storeroom', label: 'Dispensa' },
+  { id: 'supply-room', label: 'Almoxarifado' },
   { id: 'rules', label: 'Regras' },
 ] as const;
 
@@ -68,6 +70,7 @@ export function HouseDetailPage() {
         {activeTab === 'staff' && <StaffTab houseId={id!} />}
         {activeTab === 'ministries' && <MinistriesTab houseId={id!} />}
         {activeTab === 'storeroom' && <StoreroomTab houseId={id!} />}
+        {activeTab === 'supply-room' && <SupplyRoomTab houseId={id!} />}
         {activeTab === 'rules' && <RulesTab houseId={id!} />}
       </div>
     </div>

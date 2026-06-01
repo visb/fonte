@@ -24,6 +24,7 @@ import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { AppSettingsModule } from './modules/app-settings/app-settings.module';
 import { ResidentFollowUpModule } from './modules/resident-follow-up/resident-follow-up.module';
 import { StreetSaleModule } from './modules/street-sale/street-sale.module';
+import { SupplyRoomModule } from './modules/supply-room/supply-room.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { StreetSaleModule } from './modules/street-sale/street-sale.module';
     AppSettingsModule,
     ResidentFollowUpModule,
     StreetSaleModule,
+    SupplyRoomModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },

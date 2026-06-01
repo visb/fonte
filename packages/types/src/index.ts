@@ -167,6 +167,16 @@ export interface GetContributionsReportParams {
   houseId?: string;
 }
 
+// ─── Supply Room ─────────────────────────────────────────────────────────────
+
+export enum SupplyRoomCategory {
+  CLEANING = 'CLEANING',
+  HYGIENE = 'HYGIENE',
+  PPE = 'PPE',
+  OFFICE = 'OFFICE',
+  OTHER = 'OTHER',
+}
+
 // ─── Street Sales ─────────────────────────────────────────────────────────────
 
 export enum StreetSaleType {

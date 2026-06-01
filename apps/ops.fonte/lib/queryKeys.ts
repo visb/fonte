@@ -31,6 +31,12 @@ export const queryKeys = {
     allMovements: ['storeroom-movements'] as const,
     movements: (itemId: string) => ['storeroom-movements', itemId] as const,
   },
+  supplyRoom: {
+    allItems: ['supply-room-items'] as const,
+    items: (houseId: string) => ['supply-room-items', houseId] as const,
+    allMovements: ['supply-room-movements'] as const,
+    movements: (itemId: string) => ['supply-room-movements', itemId] as const,
+  },
   supportGroups: {
     all: ['support-groups'] as const,
     allMeetings: ['support-group-meetings'] as const,

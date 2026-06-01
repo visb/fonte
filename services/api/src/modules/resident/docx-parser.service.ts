@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import * as mammoth from 'mammoth';
@@ -111,8 +111,26 @@ Mapeamento de campos:
   7. Investimento familiar → familyInvestment (R$500+cestas→BASKET_500, R$700→PAYMENT_700, Social→SOCIAL, outro valor→NEGOTIATED)
 - "FARÁ O TRATAMENTO NA FONTE" ou "UNIDADE" → houseName`;
 
+/**
+ * Extracts a JSON object from the model response, tolerating markdown code
+ * fences (```json ... ```) and surrounding prose. Falls back to the substring
+ * between the first `{` and the last `}`.
+ */
+function extractJson(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced ? fenced[1] : text).trim();
+  const start = candidate.indexOf('{');
+  const end = candidate.lastIndexOf('}');
+  if (start !== -1 && end > start) {
+    return candidate.slice(start, end + 1);
+  }
+  return candidate;
+}
+
 @Injectable()
 export class DocxParserService {
+  private readonly logger = new Logger(DocxParserService.name);
+
   constructor(private configService: ConfigService) {}
 
   async parseDocx(buffer: Buffer): Promise<ParseDocxResult> {
@@ -126,17 +144,21 @@ export class DocxParserService {
     const client = new Anthropic({ apiKey });
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 2048,
+      max_tokens: 4096,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: USER_PROMPT_TEMPLATE(rawText) }],
     });
 
-    const text = message.content[0].type === 'text' ? message.content[0].text : '';
+    const text = message.content[0]?.type === 'text' ? message.content[0].text : '';
+    const json = extractJson(text);
 
     let parsed: ParseDocxResult;
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(json);
     } catch {
+      this.logger.error(
+        `Falha ao parsear resposta da IA (stop_reason=${message.stop_reason}). Resposta bruta:\n${text}`,
+      );
       throw new BadRequestException('IA retornou resposta inválida. Tente novamente.');
     }
 

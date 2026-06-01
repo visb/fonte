@@ -248,6 +248,19 @@ describe('ResidentService.findAll', () => {
     expect(sqls.some((s) => s.includes('LEAST'))).toBe(true);
   });
 
+  it('uses contribution_due_day (falling back to entry_date) for the overdue due-day comparison', async () => {
+    const dto: ListResidentsDto = { overdueContribution: true };
+    await service.findAll(dto);
+
+    const sqls: string[] = (qb.andWhere as jest.Mock).mock.calls.map((c) => c[0] as string);
+    const leastClause = sqls.find((s) => s.includes('LEAST'));
+
+    expect(leastClause).toBeDefined();
+    expect(leastClause).toContain(
+      'COALESCE(resident.contribution_due_day, EXTRACT(DAY FROM resident.entry_date)::int)',
+    );
+  });
+
   it('does not apply overdue contribution filters when overdueContribution is absent', async () => {
     const dto: ListResidentsDto = {};
     await service.findAll(dto);
@@ -500,6 +513,24 @@ describe('ResidentService.readmit', () => {
     expect(admissionCreate).toHaveBeenCalledWith(
       expect.objectContaining({ entryDate: today }),
     );
+  });
+
+  it('propagates contributionDueDay to the resident update when provided', async () => {
+    const dtoWithDueDay: ReadmitResidentDto = { houseId: 'new-house-uuid', contributionDueDay: 15 };
+
+    const { service, residentUpdate } = makeReadmitService({ status: ResidentStatus.DISCHARGED });
+    await service.readmit(RESIDENT_ID, dtoWithDueDay);
+
+    const resetCall = residentUpdate.mock.calls.find(([, update]) => update.status === 'PRE_ADMISSION');
+    expect(resetCall![1]).toMatchObject({ contributionDueDay: 15 });
+  });
+
+  it('does NOT set contributionDueDay on the resident update when omitted', async () => {
+    const { service, residentUpdate } = makeReadmitService({ status: ResidentStatus.DISCHARGED });
+    await service.readmit(RESIDENT_ID, dto);
+
+    const resetCall = residentUpdate.mock.calls.find(([, update]) => update.status === 'PRE_ADMISSION');
+    expect(resetCall![1]).not.toHaveProperty('contributionDueDay');
   });
 });
 

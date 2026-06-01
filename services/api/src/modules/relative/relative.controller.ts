@@ -78,6 +78,12 @@ export class RelativeController {
     return this.relativeService.create(dto);
   }
 
+  @Patch(':id/responsible')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  setResponsible(@Param('id', ParseUUIDPipe) id: string): Promise<Relative> {
+    return this.relativeService.setResponsible(id);
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Roles(Role.ADMIN, Role.COORDINATOR)

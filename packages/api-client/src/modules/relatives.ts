@@ -22,6 +22,8 @@ export function createRelativesModule(http: AxiosInstance) {
       http.get<Relative[]>('/relatives', { params: { residentId } }).then((r) => r.data),
     create: (data: CreateRelativeInput): Promise<Relative> =>
       http.post<Relative>('/relatives', data).then((r) => r.data),
+    setResponsible: (id: string): Promise<Relative> =>
+      http.patch<Relative>(`/relatives/${id}/responsible`).then((r) => r.data),
     delete: (id: string) => http.delete(`/relatives/${id}`),
     generateAccess: (id: string, data: GenerateRelativeAccessInput): Promise<Relative> =>
       http.post<Relative>(`/relatives/${id}/access`, data).then((r) => r.data),

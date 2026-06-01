@@ -29,6 +29,9 @@ export class Relative {
   @Column({ name: 'photo_url', nullable: true, type: 'varchar' })
   photoUrl: string | null;
 
+  @Column({ name: 'is_responsible', default: false })
+  isResponsible: boolean;
+
   @OneToOne(() => User, { eager: false, nullable: true })
   @JoinColumn({ name: 'user_id' })
   user: User | null;

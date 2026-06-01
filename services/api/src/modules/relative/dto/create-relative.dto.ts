@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateRelativeDto {
   @IsString()
@@ -15,4 +15,8 @@ export class CreateRelativeDto {
   @IsString()
   @IsOptional()
   relationship?: string | null;
+
+  @IsBoolean()
+  @IsOptional()
+  isResponsible?: boolean;
 }

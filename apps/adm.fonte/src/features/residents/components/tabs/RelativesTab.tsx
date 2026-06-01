@@ -8,7 +8,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useResidentRelatives, useDeleteRelative } from '../../hooks/useResidents';
+import { useResidentRelatives, useDeleteRelative, useSetResponsibleRelative } from '../../hooks/useResidents';
 import { AddRelativeDialog } from '../AddRelativeDialog';
 import { RelativeCard } from '../RelativeCard';
 import { GenerateRelativeAccessDialog } from '../GenerateRelativeAccessDialog';
@@ -26,6 +26,7 @@ export function RelativesTab({ residentId }: Props) {
 
   const { data: relatives = [], isLoading } = useResidentRelatives(residentId);
   const deleteMutation = useDeleteRelative(residentId);
+  const setResponsibleMutation = useSetResponsibleRelative(residentId);
 
   return (
     <div className="space-y-4">
@@ -48,6 +49,7 @@ export function RelativesTab({ residentId }: Props) {
               relative={relative}
               onGenerateAccess={() => setAccessTarget(relative)}
               onResetPassword={() => setResetTarget(relative)}
+              onSetResponsible={() => setResponsibleMutation.mutate(relative.id)}
               onDelete={() => setDeleteTarget(relative)}
             />
           ))}

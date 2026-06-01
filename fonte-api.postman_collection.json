@@ -615,9 +615,16 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Maria da Silva\",\n  \"residentId\": \"{{residentId}}\",\n  \"phone\": \"+5511999999999\",\n  \"relationship\": \"Mãe\"\n}"
+              "raw": "{\n  \"name\": \"Maria da Silva\",\n  \"residentId\": \"{{residentId}}\",\n  \"phone\": \"+5511999999999\",\n  \"relationship\": \"Mãe\",\n  \"isResponsible\": true\n}"
             },
             "url": { "raw": "{{baseUrl}}/relatives", "host": ["{{baseUrl}}"], "path": ["relatives"] }
+          }
+        },
+        {
+          "name": "Set Relative Responsible",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/relatives/{{relativeId}}/responsible", "host": ["{{baseUrl}}"], "path": ["relatives", "{{relativeId}}", "responsible"] }
           }
         },
         {

@@ -128,13 +128,24 @@ export function useResidentRelatives(residentId: string) {
 export function useAddRelative(residentId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; relationship?: string; phone?: string }) =>
+    mutationFn: (data: { name: string; relationship?: string; phone?: string; isResponsible?: boolean }) =>
       api.relatives.create({
         name: data.name,
         residentId,
         phone: data.phone || null,
         relationship: data.relationship || null,
+        isResponsible: data.isResponsible,
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.relatives(residentId) });
+    },
+  });
+}
+
+export function useSetResponsibleRelative(residentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (relativeId: string) => api.relatives.setResponsible(relativeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.residents.relatives(residentId) });
     },

@@ -103,8 +103,21 @@ export class RelativeService {
   async create(dto: CreateRelativeDto): Promise<Relative> {
     const relative = this.relativeRepository.create(dto);
     const saved = await this.relativeRepository.save(relative);
+    if (dto.isResponsible) await this.setResponsible(saved.id);
     await this.followUpService.createAuto(dto.residentId, FollowUpType.RELATIVE_ADDED);
     return saved;
+  }
+
+  // Marca este familiar como responsável e remove a marcação dos demais do mesmo acolhido.
+  async setResponsible(id: string): Promise<Relative> {
+    const relative = await this.relativeRepository.findOne({ where: { id } });
+    if (!relative) throw new NotFoundException(`Relative ${id} not found`);
+    await this.relativeRepository.update(
+      { residentId: relative.residentId },
+      { isResponsible: false },
+    );
+    await this.relativeRepository.update(id, { isResponsible: true });
+    return this.relativeRepository.findOne({ where: { id } }) as Promise<Relative>;
   }
 
   async remove(id: string): Promise<void> {

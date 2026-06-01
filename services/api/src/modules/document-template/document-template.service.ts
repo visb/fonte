@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Browser } from 'puppeteer';
 import { Resident } from '../resident/resident.entity';
+import { Relative } from '../relative/relative.entity';
 import { DocumentTemplate } from './document-template.entity';
 import { StorageService } from '../storage/storage.service';
 
@@ -11,6 +12,8 @@ export class DocumentTemplateService implements OnModuleDestroy {
   constructor(
     @InjectRepository(DocumentTemplate)
     private repo: Repository<DocumentTemplate>,
+    @InjectRepository(Relative)
+    private relativeRepo: Repository<Relative>,
     private storageService: StorageService,
   ) {}
 
@@ -98,11 +101,14 @@ export class DocumentTemplateService implements OnModuleDestroy {
 
   async renderForResident(templateId: string, resident: Resident): Promise<string> {
     const template = await this.findOne(templateId);
-    const content = this.applyVariables(template.content, resident);
+    const responsible = await this.relativeRepo.findOne({
+      where: { residentId: resident.id, isResponsible: true },
+    });
+    const content = this.applyVariables(template.content, resident, responsible);
     return this.wrapPage(template.name, content);
   }
 
-  private applyVariables(content: string, resident: Resident): string {
+  private applyVariables(content: string, resident: Resident, responsible: Relative | null): string {
     const MARITAL_PT: Record<string, string> = {
       SINGLE: 'Solteiro(a)', MARRIED: 'Casado(a)', DIVORCED: 'Divorciado(a)',
     };
@@ -123,6 +129,9 @@ export class DocumentTemplateService implements OnModuleDestroy {
       entryDate:     this.formatDate(resident.entryDate as Date | null),
       date:          this.formatDate(new Date()),
       dateLong:      this.formatDateLong(new Date()),
+      responsibleName:         responsible?.name ?? 'não informado',
+      responsibleRelationship: responsible?.relationship ?? 'não informado',
+      responsiblePhone:        responsible?.phone ?? 'não informado',
     };
     let result = content;
     for (const [key, value] of Object.entries(vars)) {

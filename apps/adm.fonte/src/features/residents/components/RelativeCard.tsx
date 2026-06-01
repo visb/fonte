@@ -1,23 +1,33 @@
-import { KeyRound, Phone, Trash2, User } from 'lucide-react';
+import { KeyRound, Phone, Star, Trash2, User } from 'lucide-react';
 import type { Relative } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { maskPhone } from '../lib/masks';
 
 interface Props {
   relative: Relative;
   onGenerateAccess: () => void;
   onResetPassword: () => void;
+  onSetResponsible: () => void;
   onDelete: () => void;
 }
 
-export function RelativeCard({ relative, onGenerateAccess, onResetPassword, onDelete }: Props) {
+export function RelativeCard({ relative, onGenerateAccess, onResetPassword, onSetResponsible, onDelete }: Props) {
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <User size={16} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{relative.name}</p>
+        <div className="flex items-center gap-2">
+          <p className="font-medium text-sm truncate">{relative.name}</p>
+          {relative.isResponsible && (
+            <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+              <Star size={11} className="fill-amber-500 text-amber-500" />
+              Responsável
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
           {relative.relationship && <span>{relative.relationship}</span>}
           {relative.phone && (
@@ -34,6 +44,18 @@ export function RelativeCard({ relative, onGenerateAccess, onResetPassword, onDe
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          title={relative.isResponsible ? 'Responsável pelo acolhido' : 'Marcar como responsável'}
+          disabled={relative.isResponsible}
+          onClick={onSetResponsible}
+        >
+          <Star
+            size={15}
+            className={cn(relative.isResponsible ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground')}
+          />
+        </Button>
         {relative.userId ? (
           <Button variant="ghost" size="icon" title="Resetar senha" onClick={onResetPassword}>
             <KeyRound size={15} />

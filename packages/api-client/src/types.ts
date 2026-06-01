@@ -522,6 +522,7 @@ export interface Relative {
   name: string;
   phone: string | null;
   relationship: string | null;
+  isResponsible: boolean;
   userId: string | null;
 }
 
@@ -554,6 +555,7 @@ export interface CreateRelativeInput {
   residentId: string;
   phone?: string | null;
   relationship?: string | null;
+  isResponsible?: boolean;
 }
 
 export interface GenerateRelativeAccessInput {

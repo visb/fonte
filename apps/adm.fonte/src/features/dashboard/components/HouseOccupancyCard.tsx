@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import type { House } from '@fonte/api-client';
+import { houseChildVacancies } from '@/features/houses/utils';
 
 interface Props {
   house: House;
@@ -7,13 +8,7 @@ interface Props {
 
 export function HouseOccupancyCard({ house }: Props) {
   const navigate = useNavigate();
-  const hasCapacity = house.generalCapacity != null || house.staffCapacity != null;
-  const vagas = hasCapacity
-    ? Math.max(
-        0,
-        (house.generalCapacity ?? 0) + (house.staffCapacity ?? 0) - house.staffCount - house.activeResidentsCount,
-      )
-    : null;
+  const vagas = houseChildVacancies(house);
 
   return (
     <button

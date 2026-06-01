@@ -9,6 +9,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useHouseById, useUploadHousePhoto, useDeleteHousePhoto } from '../../hooks/useHouses';
+import { houseChildVacancies } from '../../utils';
 import { HouseDialog } from '../HouseDialog';
 import type { House } from '@fonte/api-client';
 
@@ -52,9 +53,7 @@ export function OverviewTab({ houseId }: { houseId: string }) {
               <span className="text-muted-foreground">Ocupação</span>
               <div className="flex gap-6">
                 <div className="text-center">
-                  <p className="font-semibold">
-                    {Math.max(0, (house.generalCapacity ?? 0) + (house.staffCapacity ?? 0) - house.staffCount - house.activeResidentsCount)}
-                  </p>
+                  <p className="font-semibold">{houseChildVacancies(house)}</p>
                   <p className="text-xs text-muted-foreground">vagas</p>
                 </div>
                 <div className="text-center">

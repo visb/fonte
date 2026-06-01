@@ -2,6 +2,7 @@ import { Home, MapPin, Pencil, Phone, Trash2, User } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { House } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
+import { houseChildVacancies } from '../utils';
 
 interface Props {
   house: House;
@@ -54,9 +55,7 @@ export function HouseCard({ house, onNavigate, onEdit, onDelete }: Props) {
         {(house.generalCapacity != null || house.staffCapacity != null) && (
           <div className="hidden sm:flex gap-4 shrink-0 text-center">
             <div>
-              <p className="text-xl font-bold leading-none">
-                {Math.max(0, (house.generalCapacity ?? 0) + (house.staffCapacity ?? 0) - house.staffCount - house.activeResidentsCount)}
-              </p>
+              <p className="text-xl font-bold leading-none">{houseChildVacancies(house)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">vagas</p>
             </div>
             <div>

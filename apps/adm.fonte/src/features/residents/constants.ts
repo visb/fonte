@@ -70,6 +70,37 @@ export const FOLLOW_UP_TYPE_ICONS: Record<FollowUpType, string> = {
   [FollowUpType.NOTE]: 'StickyNote',
 };
 
+/** Parentescos mais prováveis; "Outro" libera campo livre. */
+export const RELATIONSHIP_OPTIONS = [
+  'Mãe',
+  'Pai',
+  'Madrasta',
+  'Padrasto',
+  'Avó',
+  'Avô',
+  'Irmã',
+  'Irmão',
+  'Esposa',
+  'Esposo',
+  'Companheira',
+  'Companheiro',
+  'Filha',
+  'Filho',
+  'Tia',
+  'Tio',
+  'Prima',
+  'Primo',
+  'Madrinha',
+  'Padrinho',
+  'Sogra',
+  'Sogro',
+  'Cunhada',
+  'Cunhado',
+  'Amiga',
+  'Amigo',
+  'Outro',
+] as const;
+
 export const FOLLOW_UP_ACCESS_LABELS: Record<FollowUpAccessLevel, string> = {
   [FollowUpAccessLevel.ALL]: 'Todos',
   [FollowUpAccessLevel.ADMINISTRATION]: 'Administração',

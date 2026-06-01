@@ -1,3 +1,4 @@
+import { type ReactNode } from "react";
 import { type UseFormRegister } from "react-hook-form";
 import {
   FamilyInvestment,
@@ -23,22 +24,12 @@ interface ResidentFormSectionsProps {
   showFirstPayment?: boolean;
   firstPaymentPaid?: boolean;
   onFirstPaymentChange?: (v: boolean) => void;
+  firstPaymentSlot?: ReactNode;
 }
 
-export function ResidentFormSections({
-  register,
-  errors,
-  houses,
-  showStatus = false,
-  watchFamilyInvestment,
-  showFirstPayment = false,
-  firstPaymentPaid = false,
-  onFirstPaymentChange,
-}: ResidentFormSectionsProps) {
-  const hasPayment =
-    showFirstPayment &&
-    watchFamilyInvestment &&
-    watchFamilyInvestment !== FamilyInvestment.SOCIAL;
+type FichaSectionsProps = Pick<ResidentFormSectionsProps, "register" | "errors">;
+
+export function ResidentFichaSections({ register, errors }: FichaSectionsProps) {
   return (
     <>
       <SectionTitle>Identificação</SectionTitle>
@@ -179,8 +170,31 @@ export function ResidentFormSections({
           />
         </FormField>
       </div>
+    </>
+  );
+}
 
-      <SectionTitle>Família</SectionTitle>
+type AdmissionSectionsProps = Omit<ResidentFormSectionsProps, "register" | "errors"> &
+  Pick<ResidentFormSectionsProps, "register" | "errors">;
+
+export function ResidentAdmissionSections({
+  register,
+  errors,
+  houses,
+  showStatus = false,
+  watchFamilyInvestment,
+  showFirstPayment = false,
+  firstPaymentPaid = false,
+  onFirstPaymentChange,
+  firstPaymentSlot,
+}: AdmissionSectionsProps) {
+  const hasPayment =
+    showFirstPayment &&
+    watchFamilyInvestment &&
+    watchFamilyInvestment !== FamilyInvestment.SOCIAL;
+  return (
+    <>
+      <SectionTitle>Investimento</SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Investimento familiar">
           <Select {...register("familyInvestment")}>
@@ -216,6 +230,9 @@ export function ResidentFormSections({
             Primeira mensalidade já foi paga
           </label>
         )}
+        {hasPayment && firstPaymentPaid && firstPaymentSlot && (
+          <div className="col-span-full">{firstPaymentSlot}</div>
+        )}
       </div>
 
       <SectionTitle>Admissão</SectionTitle>
@@ -248,6 +265,15 @@ export function ResidentFormSections({
           </FormField>
         )}
       </div>
+    </>
+  );
+}
+
+export function ResidentFormSections(props: ResidentFormSectionsProps) {
+  return (
+    <>
+      <ResidentFichaSections register={props.register} errors={props.errors} />
+      <ResidentAdmissionSections {...props} />
     </>
   );
 }

@@ -34,6 +34,19 @@ export const residentSchema = z.object({
 
 export type ResidentFormData = z.infer<typeof residentSchema>;
 
+// Field groups for the multi-step admission wizard. Each step only advances
+// when the fields it owns pass validation.
+export const FICHA_FIELDS = [
+  'name', 'cpf', 'rg', 'nationality', 'birthDate', 'gender',
+  'address', 'city', 'state', 'contactPhone', 'email',
+  'maritalStatus', 'children', 'occupation', 'education', 'religion', 'addiction',
+  'healthIssues', 'continuousMedication', 'weight', 'height',
+] as const satisfies readonly (keyof ResidentFormData)[];
+
+export const ADMISSAO_FIELDS = [
+  'houseId', 'entryDate', 'familyInvestment', 'familyInvestmentAmount',
+] as const satisfies readonly (keyof ResidentFormData)[];
+
 export function buildResidentPayload(data: ResidentFormData): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {

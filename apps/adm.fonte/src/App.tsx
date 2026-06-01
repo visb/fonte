@@ -10,7 +10,7 @@ import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { HousesPage } from '@/features/houses/pages/HousesPage';
 import { HouseDetailPage } from '@/features/houses/pages/HouseDetailPage';
 import { ResidentsPage } from '@/features/residents/pages/ResidentsPage';
-import { NewResidentPage } from '@/features/residents/pages/NewResidentPage';
+import { AdmissionWizardPage } from '@/features/residents/pages/AdmissionWizardPage';
 import { NewAdmissionGatewayPage } from '@/features/residents/pages/NewAdmissionGatewayPage';
 import { ReadmissionPage } from '@/features/residents/pages/ReadmissionPage';
 import { ResidentDetailPage } from '@/features/residents/pages/ResidentDetailPage';
@@ -70,7 +70,7 @@ export default function App() {
               <Route path="houses/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><HouseDetailPage /></ProtectedRoute>} />
               <Route path="residents" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ResidentsPage /></ProtectedRoute>} />
               <Route path="residents/admission" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><NewAdmissionGatewayPage /></ProtectedRoute>} />
-              <Route path="residents/new" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><NewResidentPage /></ProtectedRoute>} />
+              <Route path="residents/new" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><AdmissionWizardPage /></ProtectedRoute>} />
               <Route path="residents/import" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ImportResidentPage /></ProtectedRoute>} />
               <Route path="residents/readmit/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ReadmissionPage /></ProtectedRoute>} />
               <Route path="residents/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ResidentDetailPage /></ProtectedRoute>} />

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { login } from './helpers/auth';
+import { createResidentViaWizard, openResidentFromList } from './helpers/residents';
 
 test.describe('Filhos (Residentes)', () => {
   test.beforeEach(async ({ page }) => {
@@ -65,23 +66,10 @@ test.describe('Filhos (Residentes)', () => {
 
   test('cria novo residente via gateway e aparece na lista', async ({ page }) => {
     const name = `Residente E2E ${Date.now()}`;
-    await page.getByRole('link', { name: 'Novo acolhimento' }).click();
-    await expect(page).toHaveURL('/residents/admission');
-
-    // Navega para formulário de primeiro acolhimento
-    await page.getByRole('link', { name: /Primeiro acolhimento/ }).click();
-    await expect(page).toHaveURL('/residents/new');
-
-    await page.locator('input[name="name"]').fill(name);
-    await page.locator('select[name="houseId"]').selectOption({ label: 'Casa Teste' });
-    await page.getByRole('button', { name: 'Registrar acolhimento' }).click();
-
-    // Redireciona para página de detalhe
-    await expect(page).toHaveURL(/\/residents\/.+/);
+    await createResidentViaWizard(page, name);
 
     // Volta para lista e verifica
-    await page.getByRole('link', { name: 'Filhos' }).click();
-    await expect(page.getByText(name)).toBeVisible();
+    await openResidentFromList(page, name);
   });
 
   // ─── Navegação e edição ──────────────────────────────────────────────────────
@@ -95,23 +83,17 @@ test.describe('Filhos (Residentes)', () => {
   test('edita residente existente', async ({ page }) => {
     // Cria residente próprio para não afetar dados do seed
     const name = `Residente Para Editar ${Date.now()}`;
-    await page.getByRole('link', { name: 'Novo acolhimento' }).click();
-    await page.getByRole('link', { name: /Primeiro acolhimento/ }).click();
-    await page.locator('input[name="name"]').fill(name);
-    await page.locator('select[name="houseId"]').selectOption({ label: 'Casa Teste' });
-    await page.getByRole('button', { name: 'Registrar acolhimento' }).click();
-    await page.getByRole('link', { name: 'Filhos' }).click();
-    await expect(page.getByText(name)).toBeVisible();
+    await createResidentViaWizard(page, name);
 
-    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: name }).getByTitle('Editar').click();
+    const card = await openResidentFromList(page, name);
+    await card.getByTitle('Editar').click();
     await expect(page).toHaveURL(/\/residents\/.+\/edit/);
 
     await page.locator('input[name="name"]').clear();
     await page.locator('input[name="name"]').fill(`${name} (Editado)`);
     await page.getByRole('button', { name: 'Salvar' }).click();
 
-    await page.getByRole('link', { name: 'Filhos' }).click();
-    await expect(page.getByText(`${name} (Editado)`)).toBeVisible();
+    await openResidentFromList(page, `${name} (Editado)`);
   });
 
   test('familiar criado pelo seed aparece na aba Familiares', async ({ page }) => {
@@ -129,13 +111,12 @@ test.describe('Filhos (Residentes)', () => {
     await expect(page.getByRole('button', { name: 'Histórico' })).toBeVisible();
   });
 
-  test('aba Histórico mostra acolhimento do residente criado via API', async ({ page }) => {
+  test('aba Histórico mostra acolhimento do residente criado via wizard', async ({ page }) => {
     const name = `Residente Histórico ${Date.now()}`;
-    await page.getByRole('link', { name: 'Novo acolhimento' }).click();
-    await page.getByRole('link', { name: /Primeiro acolhimento/ }).click();
-    await page.locator('input[name="name"]').fill(name);
-    await page.locator('select[name="houseId"]').selectOption({ label: 'Casa Teste' });
-    await page.getByRole('button', { name: 'Registrar acolhimento' }).click();
+    await createResidentViaWizard(page, name);
+
+    const card = await openResidentFromList(page, name);
+    await card.first().click();
     await expect(page).toHaveURL(/\/residents\/.+/);
 
     await page.getByRole('button', { name: 'Histórico' }).click();
@@ -155,11 +136,10 @@ test.describe('Filhos (Residentes)', () => {
   test('residente DISCHARGED exibe botão Reintroduzir que leva a /residents/readmit/:id', async ({ page }) => {
     // Cria residente e navega para seu detalhe
     const name = `Residente Alta ${Date.now()}`;
-    await page.getByRole('link', { name: 'Novo acolhimento' }).click();
-    await page.getByRole('link', { name: /Primeiro acolhimento/ }).click();
-    await page.locator('input[name="name"]').fill(name);
-    await page.locator('select[name="houseId"]').selectOption({ label: 'Casa Teste' });
-    await page.getByRole('button', { name: 'Registrar acolhimento' }).click();
+    await createResidentViaWizard(page, name);
+
+    const card = await openResidentFromList(page, name);
+    await card.first().click();
     await expect(page).toHaveURL(/\/residents\/.+/);
 
     // Muda para DISCHARGED via edição
@@ -182,23 +162,26 @@ test.describe('Filhos (Residentes)', () => {
   test('gateway exibe "Iniciar reintrodução" ao selecionar residente DISCHARGED', async ({ page }) => {
     // Cria residente e coloca em DISCHARGED
     const name = `Residente Reintr ${Date.now()}`;
-    await page.getByRole('link', { name: 'Novo acolhimento' }).click();
-    await page.getByRole('link', { name: /Primeiro acolhimento/ }).click();
-    await page.locator('input[name="name"]').fill(name);
-    await page.locator('select[name="houseId"]').selectOption({ label: 'Casa Teste' });
-    await page.getByRole('button', { name: 'Registrar acolhimento' }).click();
+    await createResidentViaWizard(page, name);
+
+    const card = await openResidentFromList(page, name);
+    await card.first().click();
+    await expect(page).toHaveURL(/\/residents\/.+/);
 
     await page.getByRole('link', { name: 'Editar' }).click();
     await page.locator('select[name="status"]').selectOption('DISCHARGED');
     await page.getByRole('button', { name: 'Salvar' }).click();
+    await expect(page).toHaveURL(/\/residents\/.+/);
 
-    // Volta para lista e abre gateway
+    // Volta para lista e abre gateway de novo acolhimento
     await page.getByRole('link', { name: 'Filhos' }).click();
+    await expect(page).toHaveURL('/residents');
     await page.getByRole('link', { name: 'Novo acolhimento' }).click();
     await expect(page).toHaveURL('/residents/admission');
 
-    // Busca o residente
-    await page.getByPlaceholder('Nome ou CPF...').fill(name.slice(0, 10));
+    // Busca o residente pelo nome completo (único via timestamp) — buscas curtas
+    // batem em muitos residentes acumulados e o item não entra no dropdown.
+    await page.getByPlaceholder('Nome ou CPF...').fill(name);
     await page.waitForTimeout(400); // debounce
 
     const dropdownItem = page.getByText(name, { exact: false }).first();

@@ -17,7 +17,7 @@ interface Props {
 
 const emptyForm: HouseFormData = {
   name: '', generalCapacity: undefined, staffCapacity: undefined,
-  address: '', city: '', state: '', coordinatorId: '', phone: '',
+  address: '', city: '', state: '', coordinatorId: '', phone: '', isMotherHouse: false,
 };
 
 export function HouseDialog({ open, house, onClose }: Props) {
@@ -39,6 +39,7 @@ export function HouseDialog({ open, house, onClose }: Props) {
         state: house.state ?? '',
         coordinatorId: house.coordinatorId ?? '',
         phone: house.phone ?? '',
+        isMotherHouse: house.isMotherHouse ?? false,
       } : emptyForm);
     }
   }, [open, house, reset]);

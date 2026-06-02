@@ -45,6 +45,9 @@ export class House {
   @Column({ nullable: true, type: 'varchar' })
   phone: string | null;
 
+  @Column({ name: 'is_mother_house', default: false })
+  isMotherHouse: boolean;
+
   @OneToMany(() => HousePhoto, (photo) => photo.house)
   photos: HousePhoto[];
 

@@ -25,6 +25,7 @@ import { AppSettingsModule } from './modules/app-settings/app-settings.module';
 import { ResidentFollowUpModule } from './modules/resident-follow-up/resident-follow-up.module';
 import { StreetSaleModule } from './modules/street-sale/street-sale.module';
 import { SupplyRoomModule } from './modules/supply-room/supply-room.module';
+import { BibleCourseModule } from './modules/bible-course/bible-course.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { SupplyRoomModule } from './modules/supply-room/supply-room.module';
     ResidentFollowUpModule,
     StreetSaleModule,
     SupplyRoomModule,
+    BibleCourseModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },

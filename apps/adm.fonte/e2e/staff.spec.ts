@@ -15,8 +15,9 @@ test.describe('Servos', () => {
 
   test('mostra avatar na listagem de servos', async ({ page }) => {
     const card = page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'Coordenador Teste' });
-    // Avatar circular visível (foto ou ícone fallback)
-    await expect(card.locator('.rounded-full')).toBeVisible();
+    // Avatar circular visível (foto ou ícone fallback) — o badge de papel também usa
+    // rounded-full, então alvejamos o container do avatar pelo tamanho fixo.
+    await expect(card.locator('.w-10.h-10.rounded-full')).toBeVisible();
   });
 
   test('cria novo servo e aparece na lista', async ({ page }) => {

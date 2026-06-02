@@ -1195,6 +1195,87 @@
       ]
     },
     {
+      "name": "Bible Course",
+      "item": [
+        {
+          "name": "List Classes",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/bible-course/classes?status=PLANNED", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes"], "query": [{ "key": "status", "value": "PLANNED", "disabled": true }] }
+          }
+        },
+        {
+          "name": "Create Class",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Turma 2026/1\",\n  \"houseId\": \"{{houseId}}\",\n  \"startDate\": \"2026-06-01\",\n  \"endDate\": \"2026-08-15\",\n  \"notes\": null\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/bible-course/classes", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes"] }
+          }
+        },
+        {
+          "name": "Get Class by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes", "{{bibleClassId}}"] }
+          }
+        },
+        {
+          "name": "Update Class",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes", "{{bibleClassId}}"] }
+          }
+        },
+        {
+          "name": "Delete Class",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes", "{{bibleClassId}}"] }
+          }
+        },
+        {
+          "name": "Enroll Resident",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"residentId\": \"{{residentId}}\",\n  \"notes\": null\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}/enrollments", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes", "{{bibleClassId}}", "enrollments"] }
+          }
+        },
+        {
+          "name": "Update Enrollment",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/bible-course/enrollments/{{enrollmentId}}", "host": ["{{baseUrl}}"], "path": ["bible-course", "enrollments", "{{enrollmentId}}"] }
+          }
+        },
+        {
+          "name": "Remove Enrollment",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/bible-course/enrollments/{{enrollmentId}}", "host": ["{{baseUrl}}"], "path": ["bible-course", "enrollments", "{{enrollmentId}}"] }
+          }
+        }
+      ]
+    },
+    {
       "name": "Wishlist",
       "item": [
         {

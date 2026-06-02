@@ -58,6 +58,18 @@ export enum ProfileType {
   RESIDENT = 'RESIDENT',
 }
 
+export enum BibleCourseClassStatus {
+  PLANNED = 'PLANNED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+}
+
+export enum BibleCourseEnrollmentStatus {
+  ENROLLED = 'ENROLLED',
+  COMPLETED = 'COMPLETED',
+  DROPPED = 'DROPPED',
+}
+
 export enum Gender {
   MALE = 'MALE',
   FEMALE = 'FEMALE',

@@ -90,7 +90,9 @@ export class HouseService {
     });
   }
 
-  create(dto: CreateHouseDto): Promise<House> {
+  async create(dto: CreateHouseDto): Promise<House> {
+    // Clear before saving: partial unique index rejects two mother houses at once.
+    if (dto.isMotherHouse) await this.clearOtherMotherHouses();
     const house = this.houseRepository.create(dto);
     return this.houseRepository.save(house);
   }
@@ -98,8 +100,21 @@ export class HouseService {
   async update(id: string, dto: UpdateHouseDto): Promise<House> {
     const count = await this.houseRepository.count({ where: { id } });
     if (!count) throw new NotFoundException(`House ${id} not found`);
+    // Clear before updating: partial unique index rejects two mother houses at once.
+    if (dto.isMotherHouse) await this.clearOtherMotherHouses(id);
     await this.houseRepository.update(id, dto);
     return this.findOne(id);
+  }
+
+  /** Only one house can be the mother house; unmark all others. */
+  private async clearOtherMotherHouses(keepId?: string): Promise<void> {
+    const qb = this.houseRepository
+      .createQueryBuilder()
+      .update(House)
+      .set({ isMotherHouse: false })
+      .where('is_mother_house = true');
+    if (keepId) qb.andWhere('id != :keepId', { keepId });
+    await qb.execute();
   }
 
   async remove(id: string): Promise<void> {

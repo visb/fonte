@@ -29,7 +29,14 @@ export function HouseCard({ house, onNavigate, onEdit, onDelete }: Props) {
 
       <div className="flex flex-1 items-center gap-3 sm:gap-6 px-3 sm:px-5 py-4 min-w-0">
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-base truncate">{house.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-base truncate">{house.name}</p>
+            {house.isMotherHouse && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
+                Casa mãe
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
             {(house.city || house.state) && (
               <span className="flex items-center gap-1">

@@ -65,6 +65,16 @@ export function HouseFormFields({ register, errors, staffList }: HouseFormFields
           ))}
         </select>
       </div>
+
+      <label htmlFor="isMotherHouse" className="flex items-center gap-2 cursor-pointer">
+        <input
+          id="isMotherHouse"
+          type="checkbox"
+          className="h-4 w-4 rounded border-input"
+          {...register('isMotherHouse')}
+        />
+        <span className="text-sm">Casa mãe (sede do curso bíblico)</span>
+      </label>
     </div>
   );
 }

@@ -42,6 +42,11 @@ export const queryKeys = {
     relativeHistory: (relativeId: string) => ['support-groups', 'relative', relativeId, 'history'] as const,
     residentHistory: (residentId: string) => ['support-groups', 'resident', residentId, 'history'] as const,
   },
+  bibleCourses: {
+    all: ['bible-courses'] as const,
+    list: (status?: string) => ['bible-courses', 'list', status ?? null] as const,
+    detail: (id: string) => ['bible-courses', id] as const,
+  },
   storeroom: {
     byHouse: (houseId: string) => ['storeroom', houseId] as const,
     movementsByHouse: (houseId: string) => ['storeroom-movements', houseId] as const,

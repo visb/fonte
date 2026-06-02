@@ -20,6 +20,7 @@ export const houseSchema = z.object({
   state: z.string().length(2).optional().or(z.literal('')),
   coordinatorId: z.string().uuid().optional().or(z.literal('')),
   phone: z.string().optional().or(z.literal('')),
+  isMotherHouse: z.boolean().optional(),
 });
 
 export type HouseFormData = z.infer<typeof houseSchema>;
@@ -34,6 +35,7 @@ export function sanitizeHouseData(data: HouseFormData) {
     state: data.state === '' ? null : data.state,
     coordinatorId: data.coordinatorId === '' ? null : data.coordinatorId,
     phone: data.phone === '' ? null : data.phone,
+    isMotherHouse: data.isMotherHouse ?? false,
   };
 }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
+  BookOpen,
   Building2,
   ChevronDown,
   HandHeart,
@@ -231,6 +232,12 @@ export function AppLayout() {
             <Link to="/support-groups" onClick={closeSidebar} className={navLinkClass}>
               <HandHeart size={16} />
               Grupos de Apoio
+            </Link>
+          )}
+          {isAdminOrCoordinator && (
+            <Link to="/bible-courses" onClick={closeSidebar} className={navLinkClass}>
+              <BookOpen size={16} />
+              Curso Bíblico
             </Link>
           )}
           {isAdminOrCoordinator && (

@@ -97,4 +97,13 @@ export type {
   CreateStreetSaleInput,
   UpdateStreetSaleInput,
   GetStreetSalesReportParams,
+  BibleCourseClassStatus,
+  BibleCourseEnrollmentStatus,
+  BibleCourseClass,
+  BibleCourseEnrollment,
+  BibleCourseClassDetail,
+  CreateBibleCourseClassInput,
+  UpdateBibleCourseClassInput,
+  EnrollResidentInput,
+  UpdateBibleCourseEnrollmentInput,
 } from './types.js';

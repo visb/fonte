@@ -24,6 +24,8 @@ import { DocumentTemplatesPage } from '@/features/settings/pages/DocumentTemplat
 import { PermissionsPage } from '@/features/settings/pages/PermissionsPage';
 import { ChildAppSettingsPage } from '@/features/settings/pages/ChildAppSettingsPage';
 import { SupportGroupsPage } from '@/features/support-groups/pages/SupportGroupsPage';
+import { BibleCoursesPage } from '@/features/bible-courses/pages/BibleCoursesPage';
+import { BibleClassDetailPage } from '@/features/bible-courses/pages/BibleClassDetailPage';
 import { BillingPage } from '@/features/billing/pages/BillingPage';
 import { FilhosPage } from '@/features/billing/pages/FilhosPage';
 import { PizzaPage } from '@/features/billing/pages/PizzaPage';
@@ -84,6 +86,8 @@ export default function App() {
                 <Route path="app-filhos" element={<ChildAppSettingsPage />} />
               </Route>
               <Route path="support-groups" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><SupportGroupsPage /></ProtectedRoute>} />
+              <Route path="bible-courses" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><BibleCoursesPage /></ProtectedRoute>} />
+              <Route path="bible-courses/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><BibleClassDetailPage /></ProtectedRoute>} />
               <Route path="messages" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><MessagesPage /></ProtectedRoute>} />
               <Route
                 path="billing"

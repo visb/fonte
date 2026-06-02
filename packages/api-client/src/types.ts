@@ -68,6 +68,7 @@ export interface House {
   coordinatorId: string | null;
   coordinator: { id: string; name: string; phone?: string | null } | null;
   phone: string | null;
+  isMotherHouse: boolean;
   thumbnailUrl: string | null;
   photos: HousePhoto[];
   activeResidentsCount: number;
@@ -85,6 +86,7 @@ export interface CreateHouseInput {
   state?: string | null;
   coordinatorId?: string | null;
   phone?: string | null;
+  isMotherHouse?: boolean;
 }
 
 export type UpdateHouseInput = Partial<CreateHouseInput>;
@@ -674,6 +676,75 @@ export interface CreateMeetingInput {
 
 export interface AddCheckinInput {
   residentId: string;
+}
+
+// ─── Bible Course ────────────────────────────────────────────────────────────
+
+export type BibleCourseClassStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED';
+export type BibleCourseEnrollmentStatus = 'ENROLLED' | 'COMPLETED' | 'DROPPED';
+
+export interface BibleCourseClass {
+  id: string;
+  name: string;
+  houseId: string;
+  houseName: string;
+  startDate: string;
+  endDate: string;
+  status: BibleCourseClassStatus;
+  enrollmentCount: number;
+  createdAt: string;
+}
+
+export interface BibleCourseEnrollment {
+  id: string;
+  residentId: string;
+  residentName: string;
+  residentHouseId: string | null;
+  residentHouseName: string | null;
+  status: BibleCourseEnrollmentStatus;
+  enrolledAt: string;
+  completedAt: string | null;
+  notes: string | null;
+}
+
+export interface BibleCourseClassDetail {
+  id: string;
+  name: string;
+  houseId: string;
+  houseName: string;
+  startDate: string;
+  endDate: string;
+  status: BibleCourseClassStatus;
+  notes: string | null;
+  createdAt: string;
+  enrollments: BibleCourseEnrollment[];
+}
+
+export interface CreateBibleCourseClassInput {
+  name: string;
+  houseId: string;
+  startDate: string;
+  endDate: string;
+  notes?: string | null;
+}
+
+export interface UpdateBibleCourseClassInput {
+  name?: string;
+  houseId?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: BibleCourseClassStatus;
+  notes?: string | null;
+}
+
+export interface EnrollResidentInput {
+  residentId: string;
+  notes?: string | null;
+}
+
+export interface UpdateBibleCourseEnrollmentInput {
+  status?: BibleCourseEnrollmentStatus;
+  notes?: string | null;
 }
 
 // ─── Document Template ───────────────────────────────────────────────────────

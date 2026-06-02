@@ -9,11 +9,12 @@ import {
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
-import { Mark, mergeAttributes } from '@tiptap/core';
+import { Extension, Mark, mergeAttributes } from '@tiptap/core';
 import Image from '@tiptap/extension-image';
 import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight,
-  Bold, Check, Eraser, ImageIcon, Italic, List, ListOrdered, Loader2, Minus,
+  Bold, Check, Eraser, ImageIcon, IndentDecrease, IndentIncrease,
+  Italic, List, ListOrdered, Loader2, Minus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,6 +67,40 @@ const FontSize = Mark.create({
     return ['span', mergeAttributes(HTMLAttributes, attrs), 0];
   },
 });
+
+// ─── ParagraphIndent extension ────────────────────────────────────────────────
+// First-line indent stored as a `text-indent` inline style on the paragraph.
+// Survives PDF export (puppeteer) because it ships as an inline style, unlike
+// leading spaces which the HTML/CSS whitespace collapse would strip.
+
+const INDENT_STEP_EM = 2;
+const MAX_INDENT_EM = 12;
+
+const ParagraphIndent = Extension.create({
+  name: 'paragraphIndent',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['paragraph'],
+        attributes: {
+          textIndent: {
+            default: null,
+            parseHTML: (el) => (el as HTMLElement).style.textIndent || null,
+            renderHTML: (attrs) =>
+              attrs.textIndent ? { style: `text-indent: ${attrs.textIndent}` } : {},
+          },
+        },
+      },
+    ];
+  },
+});
+
+// Read current paragraph indent in em (0 when unset).
+function currentIndentEm(value: string | null | undefined): number {
+  if (!value) return 0;
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
+}
 
 // ─── Resize handle config ─────────────────────────────────────────────────────
 
@@ -340,6 +375,7 @@ export function TemplateEditor({ template, onSaved }: Props) {
       Placeholder.configure({ placeholder: 'Conteúdo do documento...' }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       FontSize,
+      ParagraphIndent,
       ResizableImage.configure({ inline: false, allowBase64: false }),
     ],
     content: template.content,
@@ -439,6 +475,18 @@ export function TemplateEditor({ template, onSaved }: Props) {
     editor.chain().focus().setMark('fontSize', { pt: attrs.pt ?? null, lh: next }).run();
   };
 
+  // First-line paragraph indent: step the `text-indent` em value up/down.
+  const changeIndent = (delta: number) => {
+    if (!editor) return;
+    const current = currentIndentEm(editor.getAttributes('paragraph').textIndent as string | null);
+    const next = Math.max(0, Math.min(MAX_INDENT_EM, current + delta * INDENT_STEP_EM));
+    editor
+      .chain()
+      .focus()
+      .updateAttributes('paragraph', { textIndent: next > 0 ? `${next}em` : null })
+      .run();
+  };
+
   const clearFormatting = () => {
     if (!editor) return;
     editor.chain().focus().unsetAllMarks().clearNodes().run();
@@ -526,6 +574,16 @@ export function TemplateEditor({ template, onSaved }: Props) {
         </ToolbarButton>
         <ToolbarButton active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()} title="Justificar">
           <AlignJustify size={14} />
+        </ToolbarButton>
+
+        <div className="w-px h-5 bg-border mx-0.5" />
+
+        {/* Paragraph indent */}
+        <ToolbarButton active={false} onClick={() => changeIndent(1)} title="Recuar primeira linha do parágrafo">
+          <IndentIncrease size={14} />
+        </ToolbarButton>
+        <ToolbarButton active={false} onClick={() => changeIndent(-1)} title="Diminuir recuo da primeira linha">
+          <IndentDecrease size={14} />
         </ToolbarButton>
 
         <div className="w-px h-5 bg-border mx-0.5" />

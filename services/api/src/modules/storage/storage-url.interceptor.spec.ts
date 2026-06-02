@@ -40,6 +40,23 @@ describe('StorageUrlInterceptor', () => {
     expect(result.items[0].createdAt).toBeInstanceOf(Date);
   });
 
+  it('recurses into class instances (e.g. TypeORM entities) and signs their urls', async () => {
+    const interceptor = makeInterceptor(true);
+
+    class DocumentTemplate {
+      content = 's3://bucket/doc.html';
+      updatedAt = new Date('2026-06-02T12:00:00.000Z');
+    }
+
+    const result = (await run(interceptor, new DocumentTemplate())) as {
+      content: string;
+      updatedAt: Date;
+    };
+
+    expect(result.content).toBe('s3://bucket/doc.html?signed');
+    expect(result.updatedAt).toBeInstanceOf(Date);
+  });
+
   it('returns data untouched when not in S3 mode', async () => {
     const interceptor = makeInterceptor(false);
     const payload = { fileUrl: 's3://bucket/a.png', updatedAt: new Date() };

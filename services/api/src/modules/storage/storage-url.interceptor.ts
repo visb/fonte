@@ -28,23 +28,18 @@ export class StorageUrlInterceptor implements NestInterceptor {
     if (Array.isArray(value)) {
       return Promise.all(value.map((item) => this.signDeep(item)));
     }
-    if (value && typeof value === "object" && this.isPlainObject(value)) {
+    // Leaf value types that are objects but must not be recursed into.
+    // `Object.entries(new Date())` is `[]`, which would collapse the date to
+    // `{}` and produce "Invalid Date" on the client.
+    if (value instanceof Date || Buffer.isBuffer(value)) {
+      return value;
+    }
+    if (value && typeof value === "object") {
       const entries = await Promise.all(
         Object.entries(value).map(async ([k, v]) => [k, await this.signDeep(v)]),
       );
       return Object.fromEntries(entries);
     }
     return value;
-  }
-
-  /**
-   * Only recurse into plain objects. Dates and other class instances are
-   * objects too, but `Object.entries` strips their value (a Date has no own
-   * enumerable props), turning it into `{}` and producing "Invalid Date" on
-   * the client. Those are left untouched.
-   */
-  private isPlainObject(value: object): boolean {
-    const proto = Object.getPrototypeOf(value);
-    return proto === Object.prototype || proto === null;
   }
 }

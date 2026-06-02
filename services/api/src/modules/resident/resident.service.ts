@@ -449,9 +449,10 @@ export class ResidentService {
     originalFilename: string,
   ): Promise<ResidentAttachment> {
     await this.findOne(residentId);
-    const filename = this.storageService.uniqueFilename(originalFilename);
+    const displayName = this.storageService.decodeOriginalName(originalFilename);
+    const filename = this.storageService.uniqueFilename(displayName);
     const fileUrl = await this.storageService.upload('attachments', filename, file.buffer, file.mimetype);
-    const attachment = this.attachmentRepository.create({ residentId, filename: originalFilename, fileUrl });
+    const attachment = this.attachmentRepository.create({ residentId, filename: displayName, fileUrl });
     const saved = await this.attachmentRepository.save(attachment);
     await this.followUpService.createAuto(residentId, FollowUpType.DOCUMENT_ATTACHED);
     return saved;

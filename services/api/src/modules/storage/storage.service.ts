@@ -48,6 +48,14 @@ export class StorageService implements OnModuleInit {
     }
   }
 
+  /**
+   * Multer/busboy decodes the multipart filename as latin1, which mangles
+   * UTF-8 accents (e.g. "João" arrives as "JoÃ£o"). Re-decode to utf8.
+   */
+  decodeOriginalName(originalname: string): string {
+    return Buffer.from(originalname, "latin1").toString("utf8");
+  }
+
   uniqueFilename(originalname: string, prefix = ""): string {
     const suffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     return `${prefix}${suffix}${extname(originalname)}`;

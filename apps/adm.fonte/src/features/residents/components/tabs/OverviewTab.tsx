@@ -94,6 +94,7 @@ export function OverviewTab({ resident }: Props) {
       <SectionTitle>Admissão</SectionTitle>
       <InfoGrid>
         <InfoRow label="Casa" value={resident.house?.name ?? '—'} />
+        <InfoRow label="Ministério" value={resident.ministry?.name ?? '—'} />
         <InfoRow label="Data de entrada" value={formatDate(resident.entryDate)} />
         <InfoRow label="Data de saída" value={formatDate(resident.exitDate)} />
         <InfoRow label="Telefone" value={val(resident.contactPhone, maskPhone)} />
@@ -137,6 +138,12 @@ export function OverviewTab({ resident }: Props) {
             : '—'}
           full
         />
+        {resident.familyInvestment !== FamilyInvestment.SOCIAL && (
+          <InfoRow
+            label="Dia de vencimento da contribuição"
+            value={resident.contributionDueDay ? `Dia ${resident.contributionDueDay}` : 'Mesmo dia do acolhimento'}
+          />
+        )}
       </InfoGrid>
 
       <SectionTitle>Acesso Digital</SectionTitle>

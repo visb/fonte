@@ -140,6 +140,10 @@ export class Resident {
   @Column({ name: 'photo_url', nullable: true, type: 'varchar' })
   photoUrl: string | null;
 
+  // 70x70 cropped thumbnail of photoUrl, used in lists and detail header.
+  @Column({ name: 'photo_thumb_url', nullable: true, type: 'varchar' })
+  photoThumbUrl: string | null;
+
   // Virtual — populated by service, not persisted
   lastContributionDate?: string | null;
 

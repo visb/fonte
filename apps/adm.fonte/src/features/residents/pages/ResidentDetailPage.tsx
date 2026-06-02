@@ -54,7 +54,7 @@ export function ResidentDetailPage() {
           onClick={() => resident.photoUrl && setPhotoModalOpen(true)}
         >
           {resident.photoUrl ? (
-            <img src={api.photoUrl(resident.photoUrl)!} alt={resident.name} className="w-full h-full object-cover" />
+            <img src={api.photoUrl(resident.photoThumbUrl ?? resident.photoUrl)!} alt={resident.name} className="w-full h-full object-cover" />
           ) : (
             <User size={22} className="text-muted-foreground" />
           )}

@@ -204,6 +204,7 @@ export interface Resident {
   contributionDueDay: number | null;
   lastContributionDate: string | null;
   photoUrl: string | null;
+  photoThumbUrl: string | null;
   house: { id: string; name: string } | null;
   houseId: string;
   ministry: { id: string; name: string } | null;
@@ -251,6 +252,7 @@ export interface ResidentMe {
   houseId: string;
   userId: string;
   photoUrl: string | null;
+  photoThumbUrl: string | null;
 }
 
 export interface GenerateResidentAccessInput {

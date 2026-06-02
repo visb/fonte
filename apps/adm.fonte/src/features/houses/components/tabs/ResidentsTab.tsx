@@ -69,7 +69,7 @@ export function ResidentsTab({ houseId }: { houseId: string }) {
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 {detail.photoUrl ? (
-                  <img src={api.photoUrl(detail.photoUrl)!} alt={detail.name} className="w-16 h-16 rounded-full object-cover shrink-0" />
+                  <img src={api.photoUrl(detail.photoThumbUrl ?? detail.photoUrl)!} alt={detail.name} className="w-16 h-16 rounded-full object-cover shrink-0" />
                 ) : (
                   <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center shrink-0">
                     <User size={24} className="text-muted-foreground" />

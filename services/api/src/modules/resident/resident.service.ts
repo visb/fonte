@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import sharp from 'sharp';
 import { ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, ResidentStatus, Role } from '@fonte/types';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
@@ -39,6 +40,7 @@ export interface ResidentMeView {
   houseId: string;
   userId: string;
   photoUrl: string | null;
+  photoThumbUrl: string | null;
 }
 
 @Injectable()
@@ -257,6 +259,7 @@ export class ResidentService {
       ministryId: null,
       userId: null,
       photoUrl: null,
+      photoThumbUrl: null,
       healthIssues: dto.healthIssues ?? null,
       continuousMedication: dto.continuousMedication ?? null,
       weight: dto.weight ?? null,
@@ -306,6 +309,7 @@ export class ResidentService {
       houseId: resident.houseId,
       userId: resident.userId!,
       photoUrl: resident.photoUrl,
+      photoThumbUrl: resident.photoThumbUrl,
     };
   }
 
@@ -347,14 +351,37 @@ export class ResidentService {
     return this.findMe(userId);
   }
 
+  static readonly PHOTO_THUMB_SIZE = 70;
+
+  // Generates a square cropped thumbnail (PHOTO_THUMB_SIZE px) as JPEG.
+  private static async makePhotoThumbnail(buffer: Buffer): Promise<Buffer> {
+    return sharp(buffer)
+      .rotate()
+      .resize(ResidentService.PHOTO_THUMB_SIZE, ResidentService.PHOTO_THUMB_SIZE, {
+        fit: 'cover',
+        position: 'centre',
+      })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+  }
+
   async uploadPhoto(residentId: string, file: Express.Multer.File): Promise<Resident> {
     const resident = await this.findOne(residentId);
     if (resident.photoUrl) {
       await this.storageService.delete(resident.photoUrl);
     }
+    if (resident.photoThumbUrl) {
+      await this.storageService.delete(resident.photoThumbUrl);
+    }
+
     const filename = this.storageService.uniqueFilename(file.originalname);
     const url = await this.storageService.upload('residents', filename, file.buffer, file.mimetype);
-    await this.residentRepository.update(residentId, { photoUrl: url });
+
+    const thumbBuffer = await ResidentService.makePhotoThumbnail(file.buffer);
+    const thumbFilename = this.storageService.uniqueFilename('thumb.jpg', 'thumb_');
+    const thumbUrl = await this.storageService.upload('residents', thumbFilename, thumbBuffer, 'image/jpeg');
+
+    await this.residentRepository.update(residentId, { photoUrl: url, photoThumbUrl: thumbUrl });
     return this.findOne(residentId);
   }
 

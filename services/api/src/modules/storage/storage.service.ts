@@ -7,7 +7,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { mkdir, unlink, writeFile } from "fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { extname, join } from "path";
 
 @Injectable()
@@ -94,6 +94,26 @@ export class StorageService implements OnModuleInit {
       new GetObjectCommand({ Bucket: this.bucketName, Key: key }),
       { expiresIn },
     );
+  }
+
+  // Reads back a stored object as a Buffer. Used by maintenance scripts that
+  // reprocess existing files (e.g. generating missing thumbnails).
+  async download(fileUrl: string): Promise<Buffer> {
+    if (this.s3 && this.bucketName && this.publicBaseUrl) {
+      const key = fileUrl.startsWith(this.publicBaseUrl + "/")
+        ? fileUrl.slice(this.publicBaseUrl.length + 1)
+        : fileUrl;
+      const res = await this.s3.send(
+        new GetObjectCommand({ Bucket: this.bucketName, Key: key }),
+      );
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as AsyncIterable<Uint8Array>) {
+        chunks.push(Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    }
+    const relative = fileUrl.startsWith("/") ? fileUrl.slice(1) : fileUrl;
+    return readFile(join(process.cwd(), relative));
   }
 
   async delete(fileUrl: string): Promise<void> {

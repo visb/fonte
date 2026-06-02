@@ -21,6 +21,7 @@
     "seed": "npx ts-node src/database/seed.ts",
     "seed:test": "npx ts-node src/database/seed-test.ts",
     "seed:street-sales": "npx ts-node src/database/seed-street-sales.ts",
+    "backfill:resident-thumbs": "npx ts-node src/database/backfill-resident-thumbnails.ts",
     "start:test": "cross-env NODE_ENV=test nest start --watch"
   },
   "dependencies": {
@@ -52,6 +53,7 @@
     "puppeteer": "^24.42.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sharp": "^0.34.5",
     "typeorm": "^0.3.20"
   },
   "devDependencies": {

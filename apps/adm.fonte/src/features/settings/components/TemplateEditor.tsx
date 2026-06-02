@@ -517,8 +517,9 @@ export function TemplateEditor({ template, onSaved }: Props) {
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 rounded-md border bg-muted/30 p-1">
+      {/* Toolbar — fica fixa no topo ao rolar. Offset/margens negativos cancelam
+          o padding do <main> (p-4 sm:p-8) pra encostar flush no topo. */}
+      <div className="sticky -top-4 z-20 -mx-4 flex flex-wrap items-center gap-1 border-b bg-muted/95 px-4 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-muted/80 sm:-top-8 sm:-mx-8 sm:px-8">
         {/* Font size */}
         <ToolbarButton active={false} onClick={() => changeFontSize(2)} title="Aumentar fonte">
           <span className="text-[13px] font-bold leading-none select-none">A+</span>
@@ -636,7 +637,7 @@ export function TemplateEditor({ template, onSaved }: Props) {
         </p>
       )}
 
-      <div className="flex items-center justify-end gap-3">
+      <div className="sticky -bottom-4 z-20 -mx-4 -mb-4 mt-6 flex items-center justify-end gap-3 border-t bg-background/95 px-4 pt-3 pb-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-bottom-8 sm:-mx-8 sm:-mb-8 sm:px-8 sm:pt-4 sm:pb-8">
         {justSaved && !updateMutation.isPending && (
           <span className="flex items-center gap-1.5 text-sm text-green-600">
             <Check size={15} />

@@ -10,13 +10,32 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { extname, join } from "path";
 
+// Signed URLs are valid for 24h, but we serve a cached one for only 12h so a
+// URL handed to the client always has >=12h of validity left.
+const SIGN_EXPIRES_IN = 86400;
+const CACHE_REUSE_MS = 12 * 60 * 60 * 1000;
+const DEFAULT_CACHE_MAX_ENTRIES = 5000;
+
+interface SignedUrlCacheEntry {
+  signedUrl: string;
+  expiresAt: number;
+}
+
 @Injectable()
 export class StorageService implements OnModuleInit {
   private s3: S3Client | null = null;
   private bucketName: string | null = null;
   private publicBaseUrl: string | null = null;
 
+  // Keyed by the unsigned S3 URL (deterministic per object). Bounds memory via
+  // an LRU cap (Map keeps insertion order) plus lazy + scheduled expiry.
+  private urlCache = new Map<string, SignedUrlCacheEntry>();
+  private cacheMaxEntries: number;
+
   constructor(private config: ConfigService) {
+    this.cacheMaxEntries =
+      config.get<number>("SIGNED_URL_CACHE_MAX") ?? DEFAULT_CACHE_MAX_ENTRIES;
+
     const bucketName = config.get<string>("AWS_S3_BUCKET_NAME");
     const endpoint = config.get<string>("AWS_ENDPOINT_URL");
 
@@ -94,14 +113,46 @@ export class StorageService implements OnModuleInit {
     return !!this.publicBaseUrl && url.startsWith(this.publicBaseUrl + "/");
   }
 
-  async signUrl(url: string, expiresIn = 86400): Promise<string> {
+  async signUrl(url: string, expiresIn = SIGN_EXPIRES_IN): Promise<string> {
     if (!this.s3 || !this.bucketName || !this.publicBaseUrl) return url;
+
+    const now = Date.now();
+    const cached = this.urlCache.get(url);
+    if (cached && now < cached.expiresAt) {
+      // LRU touch: move to the most-recent position.
+      this.urlCache.delete(url);
+      this.urlCache.set(url, cached);
+      return cached.signedUrl;
+    }
+
     const key = url.slice(this.publicBaseUrl.length + 1);
-    return getSignedUrl(
+    const signedUrl = await getSignedUrl(
       this.s3,
       new GetObjectCommand({ Bucket: this.bucketName, Key: key }),
       { expiresIn },
     );
+
+    this.urlCache.set(url, { signedUrl, expiresAt: now + CACHE_REUSE_MS });
+    while (this.urlCache.size > this.cacheMaxEntries) {
+      // Evict the oldest entry (first key in insertion order).
+      this.urlCache.delete(this.urlCache.keys().next().value as string);
+    }
+
+    return signedUrl;
+  }
+
+  // Removes expired cache entries. Called by SignedUrlCacheScheduler so memory
+  // is reclaimed even for entries that are never read again.
+  sweepExpiredUrls(): number {
+    const now = Date.now();
+    let removed = 0;
+    for (const [url, entry] of this.urlCache) {
+      if (now >= entry.expiresAt) {
+        this.urlCache.delete(url);
+        removed++;
+      }
+    }
+    return removed;
   }
 
   // Reads back a stored object as a Buffer. Used by maintenance scripts that

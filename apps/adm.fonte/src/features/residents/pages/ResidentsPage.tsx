@@ -58,9 +58,6 @@ export function ResidentsPage() {
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <div>
       <PageHeader
@@ -84,7 +81,11 @@ export function ResidentsPage() {
         onOverdueContributionChange={setOverdueContribution}
       />
 
-      {residents.length === 0 ? (
+      {isLoading ? (
+        <LoadingState />
+      ) : isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : residents.length === 0 ? (
         <EmptyState title="Nenhum acolhido encontrado." />
       ) : (
         <div className="space-y-3">

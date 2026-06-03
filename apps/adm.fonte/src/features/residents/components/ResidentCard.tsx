@@ -32,8 +32,9 @@ const MONTH_NAMES = [
 function getNextDueInfo(
   entryDate: string,
   lastContributionDate: string | null,
+  contributionDueDay: number | null,
 ): { year: number; month: number; day: number; isoDate: string } {
-  const dueDay = new Date(entryDate + 'T00:00:00').getDate();
+  const dueDay = contributionDueDay ?? new Date(entryDate + 'T00:00:00').getDate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -63,11 +64,12 @@ function getPaymentBadge(
   familyInvestment: FamilyInvestment | null,
   status: ResidentStatus,
   lastContributionDate: string | null,
+  contributionDueDay: number | null,
 ): { label: string; variant: BadgeVariant; defaultDate: string; referenceMonth: string } | null {
   if (!entryDate || !familyInvestment || familyInvestment === FamilyInvestment.SOCIAL) return null;
   if (!ACTIVE_STATUSES.has(status)) return null;
 
-  const { year, month, day, isoDate } = getNextDueInfo(entryDate, lastContributionDate);
+  const { year, month, day, isoDate } = getNextDueInfo(entryDate, lastContributionDate, contributionDueDay);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -127,6 +129,7 @@ export function ResidentCard({ resident, onDelete }: Props) {
     resident.familyInvestment,
     resident.status,
     resident.lastContributionDate,
+    resident.contributionDueDay,
   );
 
   return (

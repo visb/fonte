@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import sharp from 'sharp';
+// require form: this script runs under ts-node, whose tsconfig lacks
+// esModuleInterop, so `import sharp from 'sharp'` emits an undefined default.
+const sharp = require('sharp') as typeof import('sharp');
 import { StorageService } from '../modules/storage/storage.service';
 
 // Backfills 70x70 thumbnails for residents that already have a photo but no

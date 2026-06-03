@@ -2,7 +2,9 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import sharp from 'sharp';
+// require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
+// emits an undefined default for sharp's CommonJS module.
+const sharp = require('sharp') as typeof import('sharp');
 import { ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, ResidentStatus, Role, ServantRank } from '@fonte/types';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 

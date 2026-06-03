@@ -14,6 +14,7 @@ export type {
   CreateHouseRuleInput,
   Staff,
   StaffMe,
+  PromoteToServantInput,
   CreateStaffInput,
   UpdateStaffInput,
   UpdateStaffMeInput,

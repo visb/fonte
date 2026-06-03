@@ -18,6 +18,7 @@ import { EditResidentPage } from '@/features/residents/pages/EditResidentPage';
 import { ImportResidentPage } from '@/features/residents/pages/ImportResidentPage';
 import { StaffPage } from '@/features/staff/pages/StaffPage';
 import { NewStaffPage } from '@/features/staff/pages/NewStaffPage';
+import { StaffDetailPage } from '@/features/staff/pages/StaffDetailPage';
 import { EditStaffPage } from '@/features/staff/pages/EditStaffPage';
 import { SettingsPage } from '@/features/settings/pages/SettingsPage';
 import { DocumentTemplatesPage } from '@/features/settings/pages/DocumentTemplatesPage';
@@ -79,6 +80,7 @@ export default function App() {
               <Route path="residents/:id/edit" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><EditResidentPage /></ProtectedRoute>} />
               <Route path="staff" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><StaffPage /></ProtectedRoute>} />
               <Route path="staff/new" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><NewStaffPage /></ProtectedRoute>} />
+              <Route path="staff/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><StaffDetailPage /></ProtectedRoute>} />
               <Route path="staff/:id/edit" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><EditStaffPage /></ProtectedRoute>} />
               <Route path="settings" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><SettingsPage /></ProtectedRoute>}>
                 <Route path="templates" element={<DocumentTemplatesPage />} />

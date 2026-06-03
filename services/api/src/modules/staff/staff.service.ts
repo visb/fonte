@@ -91,6 +91,7 @@ export class StaffService {
     userId: string;
     formerResidentId: string;
     rank: ServantRank;
+    promotedAt: string;
   }): Promise<Staff> {
     const staff = this.staffRepository.create({
       name: params.name,
@@ -100,6 +101,7 @@ export class StaffService {
       userId: params.userId,
       formerResidentId: params.formerResidentId,
       rank: params.rank,
+      promotedAt: params.promotedAt,
     });
     return this.staffRepository.save(staff);
   }

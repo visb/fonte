@@ -370,6 +370,8 @@ export class ResidentService {
       userId = savedUser.id;
     }
 
+    const promotedAt = dto.date ?? new Date().toISOString().split('T')[0];
+
     const staff = await this.staffService.createFromResident({
       name: resident.name,
       phone: resident.contactPhone,
@@ -378,15 +380,15 @@ export class ResidentService {
       userId,
       formerResidentId: resident.id,
       rank: dto.rank ?? ServantRank.ASPIRANTE,
+      promotedAt,
     });
 
-    // Arquiva o filho: alta + evento na timeline.
-    const today = new Date().toISOString().split('T')[0];
+    // Arquiva o filho: alta + evento na timeline na data da promoção.
     await this.residentRepository.update(id, {
       status: ResidentStatus.DISCHARGED,
-      exitDate: today as unknown as Date,
+      exitDate: promotedAt as unknown as Date,
     });
-    await this.followUpService.createAuto(id, FollowUpType.PROMOTED_TO_SERVANT, today);
+    await this.followUpService.createAuto(id, FollowUpType.PROMOTED_TO_SERVANT, promotedAt);
 
     // Recarrega com as relações (user/house) para a resposta.
     return this.staffService.findOne(staff.id);

@@ -52,6 +52,10 @@ export class Staff {
   @Column({ name: 'former_resident_id', nullable: true, type: 'uuid' })
   formerResidentId: string | null;
 
+  // Data em que o filho foi promovido a servo. Null para servos criados direto.
+  @Column({ name: 'promoted_at', type: 'date', nullable: true })
+  promotedAt: string | null;
+
   @ManyToOne(() => SupportGroup, { eager: false, nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'support_group_id' })
   supportGroup: SupportGroup | null;

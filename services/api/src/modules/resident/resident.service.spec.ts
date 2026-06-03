@@ -680,4 +680,19 @@ describe('ResidentService.promoteToServant', () => {
     );
     expect(createAuto).toHaveBeenCalledWith(RESIDENT_ID, 'PROMOTED_TO_SERVANT', expect.any(String));
   });
+
+  it('uses the provided date for exit, timeline and staff promotedAt', async () => {
+    const { service, residentUpdate, createAuto, staffService } = makePromoteService({ userId: USER_ID });
+
+    await service.promoteToServant(RESIDENT_ID, { date: '2026-01-15' });
+
+    expect(residentUpdate).toHaveBeenCalledWith(
+      RESIDENT_ID,
+      expect.objectContaining({ exitDate: '2026-01-15' }),
+    );
+    expect(createAuto).toHaveBeenCalledWith(RESIDENT_ID, 'PROMOTED_TO_SERVANT', '2026-01-15');
+    expect(staffService.createFromResident).toHaveBeenCalledWith(
+      expect.objectContaining({ promotedAt: '2026-01-15' }),
+    );
+  });
 });

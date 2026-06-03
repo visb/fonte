@@ -48,6 +48,7 @@ export function StaffPage() {
             <StaffCard
               key={s.id}
               staff={s}
+              onView={() => navigate(`/staff/${s.id}`)}
               onEdit={() => navigate(`/staff/${s.id}/edit`)}
               onResetPassword={() => setResetTarget(s)}
               onDelete={() => setDeleteTarget(s)}

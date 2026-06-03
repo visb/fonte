@@ -33,16 +33,17 @@ const ROLE_VARIANT: Record<string, 'destructive' | 'info' | 'secondary'> = {
 
 interface Props {
   staff: Staff;
+  onView: () => void;
   onEdit: () => void;
   onResetPassword: () => void;
   onDelete: () => void;
 }
 
-export function StaffCard({ staff: s, onEdit, onResetPassword, onDelete }: Props) {
+export function StaffCard({ staff: s, onView, onEdit, onResetPassword, onDelete }: Props) {
   return (
     <div className="flex w-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-accent/50 transition-colors">
       <StaffAvatar url={s.photoUrl} name={s.name} />
-      <div className="flex-1 min-w-0">
+      <button type="button" onClick={onView} className="flex-1 min-w-0 text-left">
         <p className="font-semibold truncate">{s.name}</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
           {s.house && (
@@ -62,7 +63,7 @@ export function StaffCard({ staff: s, onEdit, onResetPassword, onDelete }: Props
             </span>
           )}
         </div>
-      </div>
+      </button>
       <div className="flex flex-col items-end gap-1 shrink-0">
         <Badge variant={ROLE_VARIANT[s.user.role] ?? 'secondary'}>
           {ROLE_LABEL[s.user.role] ?? s.user.role}

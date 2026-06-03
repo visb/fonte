@@ -75,12 +75,14 @@ Quase todos os servos foram filhos um dia. Um Resident pode ser promovido a Staf
 
 - Ação disponível na página do filho; permitida a ADMIN ou COORDINATOR
 - Permitida em qualquer status do filho
-- O filho é arquivado: status passa a `DISCHARGED` com `exit_date` = hoje
-- Cria-se um Staff com role `SERVANT`, nível `ASPIRANTE`, vinculado ao Resident de origem (`former_resident_id`)
+- A data da promoção é informada no diálogo (default: hoje) e usada na alta, na timeline e em `promoted_at` do servo
+- O filho é arquivado: status passa a `DISCHARGED` com `exit_date` = data da promoção
+- Cria-se um Staff com role `SERVANT`, nível `ASPIRANTE`, vinculado ao Resident de origem (`former_resident_id`) e com `promoted_at`
 - Se o filho já tinha acesso (User do kiosk), a conta é reaproveitada: role muda de `RESIDENT` para `SERVANT`, mantendo email/senha
 - Se não tinha acesso, gera-se email + senha (igual ao fluxo de novo servo)
 - Não é permitida dupla promoção do mesmo filho
-- A timeline do filho registra o evento `PROMOTED_TO_SERVANT`
+- A timeline do filho registra o evento `PROMOTED_TO_SERVANT` na data da promoção
+- O servo herda todo o histórico do filho (acompanhamento, familiares, anexos, acolhimentos), exibido na página de detalhes do servo via `former_resident_id`
 
 ---
 

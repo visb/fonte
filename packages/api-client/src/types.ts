@@ -131,6 +131,7 @@ export interface Staff {
   supportGroup: { id: string; name: string } | null;
   rank: ServantRank | null;
   formerResidentId: string | null;
+  promotedAt: string | null;
   user: { email: string; role: Role };
 }
 
@@ -139,6 +140,7 @@ export interface PromoteToServantInput {
   password?: string;
   houseId?: string;
   rank?: ServantRank;
+  date?: string;
 }
 
 export interface StaffMe {

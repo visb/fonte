@@ -444,7 +444,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"servo@fonte.org\",\n  \"password\": \"senha123\",\n  \"houseId\": \"{{houseId}}\",\n  \"rank\": \"ASPIRANTE\"\n}"
+              "raw": "{\n  \"email\": \"servo@fonte.org\",\n  \"password\": \"senha123\",\n  \"houseId\": \"{{houseId}}\",\n  \"rank\": \"ASPIRANTE\",\n  \"date\": \"2026-01-15\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/promote-to-servant", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "promote-to-servant"] }
           }

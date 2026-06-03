@@ -34,8 +34,11 @@ const schema = z.object({
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
   houseId: z.string().min(1, 'Casa é obrigatória'),
   rank: z.nativeEnum(ServantRank),
+  date: z.string().min(1, 'Data é obrigatória'),
 });
 type FormData = z.infer<typeof schema>;
+
+const TODAY = new Date().toISOString().split('T')[0];
 
 interface Props {
   open: boolean;
@@ -59,6 +62,7 @@ export function PromoteToServantDialog({ open, onClose, resident }: Props) {
       email: '',
       houseId: resident?.houseId ?? '',
       rank: ServantRank.ASPIRANTE,
+      date: TODAY,
     },
   });
 
@@ -74,9 +78,10 @@ export function PromoteToServantDialog({ open, onClose, resident }: Props) {
       {
         houseId: data.houseId,
         rank: data.rank,
+        date: data.date,
         ...(hasAccess ? {} : { email: data.email || undefined, password }),
       },
-      { onSuccess: (staff) => { onClose(); navigate(`/staff/${staff.id}/edit`); } },
+      { onSuccess: (staff) => { onClose(); navigate(`/staff/${staff.id}`); } },
     );
   };
 
@@ -110,6 +115,12 @@ export function PromoteToServantDialog({ open, onClose, resident }: Props) {
                   <option key={r} value={r}>{SERVANT_RANK_LABELS[r]}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="promote-date">Data da promoção</Label>
+              <Input id="promote-date" type="date" max={TODAY} {...register('date')} />
+              {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
             </div>
 
             {hasAccess ? (

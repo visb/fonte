@@ -3,6 +3,7 @@ import { ResidentStatus } from '@fonte/types';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { useHouses } from '@/features/houses/hooks/useHouses';
 import { RESIDENT_STATUS_LABELS } from '../constants';
 
 interface ResidentsFiltersProps {
@@ -10,6 +11,8 @@ interface ResidentsFiltersProps {
   onSearchChange: (value: string) => void;
   status: ResidentStatus | '';
   onStatusChange: (value: ResidentStatus | '') => void;
+  houseId: string;
+  onHouseIdChange: (value: string) => void;
   overdueContribution: boolean;
   onOverdueContributionChange: (value: boolean) => void;
 }
@@ -19,9 +22,13 @@ export function ResidentsFilters({
   onSearchChange,
   status,
   onStatusChange,
+  houseId,
+  onHouseIdChange,
   overdueContribution,
   onOverdueContributionChange,
 }: ResidentsFiltersProps) {
+  const { data: houses = [] } = useHouses();
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-4">
       <div className="relative flex-1">
@@ -43,6 +50,19 @@ export function ResidentsFilters({
         {Object.values(ResidentStatus).map((s) => (
           <option key={s} value={s}>
             {RESIDENT_STATUS_LABELS[s]}
+          </option>
+        ))}
+      </Select>
+
+      <Select
+        value={houseId}
+        onChange={(e) => onHouseIdChange(e.target.value)}
+        className="w-full sm:w-48"
+      >
+        <option value="">Todas as casas</option>
+        {houses.map((house) => (
+          <option key={house.id} value={house.id}>
+            {house.name}
           </option>
         ))}
       </Select>

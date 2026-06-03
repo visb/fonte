@@ -1,4 +1,4 @@
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ResidentStatus } from '@fonte/types';
 
@@ -23,6 +23,10 @@ export class ListResidentsDto {
   @IsOptional()
   @IsEnum(ResidentStatus)
   status?: ResidentStatus;
+
+  @IsOptional()
+  @IsUUID()
+  houseId?: string;
 
   @IsOptional()
   @IsBoolean()

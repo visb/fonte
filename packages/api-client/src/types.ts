@@ -314,6 +314,7 @@ export interface ListResidentsParams {
   limit?: number;
   search?: string;
   status?: ResidentStatus;
+  houseId?: string;
   overdueContribution?: boolean;
 }
 

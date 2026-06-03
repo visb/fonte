@@ -74,7 +74,7 @@ export class ResidentService {
   ) {}
 
   async findAll(dto: ListResidentsDto): Promise<{ data: Resident[]; total: number; page: number; limit: number }> {
-    const { page = 1, limit = 20, search, status } = dto;
+    const { page = 1, limit = 20, search, status, houseId } = dto;
 
     const qb = this.residentRepository
       .createQueryBuilder('resident')
@@ -100,6 +100,10 @@ export class ResidentService {
 
     if (status) {
       qb.andWhere('resident.status = :status', { status });
+    }
+
+    if (houseId) {
+      qb.andWhere('resident.houseId = :houseId', { houseId });
     }
 
     if (dto.overdueContribution) {

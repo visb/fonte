@@ -318,14 +318,16 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/residents?page=1&limit=20&search=&status=",
+              "raw": "{{baseUrl}}/residents?page=1&limit=20&search=&status=&houseId=",
               "host": ["{{baseUrl}}"],
               "path": ["residents"],
               "query": [
                 { "key": "page", "value": "1", "description": "Página (padrão: 1)" },
                 { "key": "limit", "value": "20", "description": "Itens por página (padrão: 20, máx: 100)" },
                 { "key": "search", "value": "", "description": "Busca parcial por nome ou CPF (case-insensitive, ignora pontuação do CPF)" },
-                { "key": "status", "value": "", "description": "Filtro por status: PRE_ADMISSION | ACTIVE | DISCIPLINE | TEMP_LEAVE | DISCHARGED | EVADED" }
+                { "key": "status", "value": "", "description": "Filtro por status: PRE_ADMISSION | ACTIVE | DISCIPLINE | TEMP_LEAVE | DISCHARGED | EVADED" },
+                { "key": "houseId", "value": "", "description": "UUID da casa (opcional, filtra por casa)" },
+                { "key": "overdueContribution", "value": "", "description": "true para listar apenas contribuições em atraso", "disabled": true }
               ]
             }
           }

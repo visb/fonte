@@ -13,15 +13,16 @@ import type {
   UpdateResidentInput,
 } from '@fonte/api-client';
 
-export function useInfiniteResidents(params: { search?: string; status?: ResidentStatus | ''; overdueContribution?: boolean }) {
+export function useInfiniteResidents(params: { search?: string; status?: ResidentStatus | ''; houseId?: string; overdueContribution?: boolean }) {
   return useInfiniteQuery({
-    queryKey: queryKeys.residents.list({ search: params.search, status: params.status, overdueContribution: params.overdueContribution }),
+    queryKey: queryKeys.residents.list({ search: params.search, status: params.status, houseId: params.houseId, overdueContribution: params.overdueContribution }),
     queryFn: ({ pageParam }) =>
       api.residents.list({
         page: pageParam as number,
         limit: 20,
         search: params.search || undefined,
         status: (params.status as ResidentStatus) || undefined,
+        houseId: params.houseId || undefined,
         overdueContribution: params.overdueContribution || undefined,
       }),
     initialPageParam: 1,

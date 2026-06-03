@@ -21,7 +21,8 @@ export function MeetingDetailPage() {
   const [search, setSearch] = useState('');
 
   const { data: meeting, isLoading } = useMeetingDetail(meetingId);
-  const { data: residents = [] } = useAllResidents();
+  const { data: residentsPage } = useAllResidents();
+  const residents = residentsPage?.data ?? [];
   const addCheckin = useAddCheckin(meetingId ?? '');
   const removeCheckin = useRemoveCheckin(meetingId ?? '');
 

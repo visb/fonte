@@ -104,7 +104,7 @@ export default function AppLayout() {
           headerShown: false,
           href: null,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="spray-outline" size={size} color={color} />
+            <Ionicons name="sparkles-outline" size={size} color={color} />
           ),
         }}
       />

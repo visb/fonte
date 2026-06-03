@@ -33,7 +33,7 @@ const ACTIONS = [
   },
   {
     label: "Almoxarifado",
-    icon: "spray-outline" as const,
+    icon: "sparkles-outline" as const,
     color: "#2563eb",
     bg: "#eff6ff",
     route: "/(app)/supply-room",

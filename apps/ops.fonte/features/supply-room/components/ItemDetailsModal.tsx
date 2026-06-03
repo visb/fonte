@@ -36,7 +36,7 @@ export function ItemDetailsModal({
         <View className="bg-white rounded-t-3xl max-h-[88%]">
           <View className="px-5 pt-5 pb-3 border-b border-gray-100 flex-row items-center">
             <View className="w-11 h-11 rounded-full bg-blue-50 items-center justify-center mr-3">
-              <Ionicons name="spray-outline" size={22} color="#2563eb" />
+              <Ionicons name="sparkles-outline" size={22} color="#2563eb" />
             </View>
             <View className="flex-1">
               <Text className="text-lg font-semibold text-gray-900">{item.name}</Text>

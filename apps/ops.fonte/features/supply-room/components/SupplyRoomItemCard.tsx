@@ -18,7 +18,7 @@ export function SupplyRoomItemCard({ item, onPress }: Props) {
       onPress={onPress}
     >
       <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3">
-        <Ionicons name="spray-outline" size={20} color="#2563eb" />
+        <Ionicons name="sparkles-outline" size={20} color="#2563eb" />
       </View>
       <View className="flex-1">
         <Text className="text-sm font-semibold text-gray-900">{item.name}</Text>

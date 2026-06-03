@@ -29,8 +29,24 @@ export const residentSchema = z.object({
   weight: z.string().optional(),
   height: z.string().optional(),
   familyInvestment: z.nativeEnum(FamilyInvestment).or(z.literal('')).optional().nullable(),
-  familyInvestmentAmount: z.coerce.number().int().min(0).optional().nullable(),
-  contributionDueDay: z.string().optional(),
+  // Coerced leniently: blank or non-numeric input (e.g. values the AI import may
+  // carry over from the ficha like "isento"/"R$0") become null instead of failing.
+  // The amount input only renders for NEGOTIATED, so a hidden invalid value must
+  // never silently block submit on the other modalities (SOCIAL/BASKET/PAYMENT).
+  familyInvestmentAmount: z
+    .preprocess((v) => {
+      if (v === '' || v === null || v === undefined) return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }, z.number().int().min(0).nullable())
+    .optional(),
+  // Same lenient handling as the amount: the due-day select is hidden for SOCIAL,
+  // and the AI import may carry the day as a number — coerce to string (or drop
+  // empty/null) so a hidden value can't silently block submit.
+  contributionDueDay: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : String(v)),
+    z.string().optional(),
+  ),
 });
 
 export type ResidentFormData = z.infer<typeof residentSchema>;

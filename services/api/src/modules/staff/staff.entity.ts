@@ -9,7 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { ServantRank } from '@fonte/types';
+import { Gender, MaritalStatus, ServantRank } from '@fonte/types';
 import { User } from '../user/user.entity';
 import { House } from '../house/house.entity';
 import { SupportGroup } from '../support-group/support-group.entity';
@@ -24,6 +24,62 @@ export class Staff {
 
   @Column({ nullable: true, type: 'varchar' })
   phone: string | null;
+
+  // --- Ficha pessoal (espelha os dados pessoais do filho/resident) ---
+
+  @Column({ name: 'birth_date', type: 'date', nullable: true })
+  birthDate: Date | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  cpf: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  rg: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  nationality: string | null;
+
+  @Column({ type: 'enum', enum: Gender, nullable: true })
+  gender: Gender | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  city: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  state: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  address: string | null;
+
+  @Column({ name: 'marital_status', type: 'enum', enum: MaritalStatus, nullable: true })
+  maritalStatus: MaritalStatus | null;
+
+  @Column({ type: 'integer', default: 0 })
+  children: number;
+
+  @Column({ nullable: true, type: 'varchar' })
+  occupation: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  education: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  religion: string | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  addiction: string | null;
+
+  @Column({ name: 'health_issues', nullable: true, type: 'varchar' })
+  healthIssues: string | null;
+
+  @Column({ name: 'continuous_medication', nullable: true, type: 'varchar' })
+  continuousMedication: string | null;
+
+  @Column({ nullable: true, type: 'integer' })
+  weight: number | null;
+
+  @Column({ nullable: true, type: 'integer' })
+  height: number | null;
 
   @OneToOne(() => User, { eager: false })
   @JoinColumn({ name: 'user_id' })

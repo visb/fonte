@@ -13,8 +13,10 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
-  email: string;
+  // Nullable: nem todo Staff tem acesso aos apps. Unicidade garantida por
+  // índice parcial (UQ_users_email_active) — múltiplos NULLs são permitidos.
+  @Column({ unique: true, type: 'varchar', nullable: true })
+  email: string | null;
 
   @Column({ name: 'password_hash' })
   passwordHash: string;

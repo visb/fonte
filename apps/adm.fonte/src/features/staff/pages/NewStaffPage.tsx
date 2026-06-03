@@ -3,19 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useGoBack } from '@/lib/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { ArrowLeft, Copy, Eye, EyeOff } from 'lucide-react';
-import { Role, ServantRank } from '@fonte/types';
+import { Role } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { maskPhone, withMask } from '@/features/residents/lib/masks';
+import { SectionTitle } from '@/components/shared/FormField';
+import { PersonalDataFields } from '@/components/shared/PersonalDataFields';
 import { useCreateStaff } from '../hooks/useStaff';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { useSupportGroups } from '@/features/support-groups/hooks/useSupportGroups';
 import { StaffServiceSelector } from '../components/StaffServiceSelector';
 import { SERVANT_RANK_LABELS, SERVANT_RANK_ORDER } from '../constants';
+import { newStaffSchema, buildStaffPayload, type NewStaffFormData } from '../lib/staffSchema';
 
 const SELECT_CLASS =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
@@ -24,28 +25,6 @@ const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
 function generatePassword(len = 12) {
   return Array.from({ length: len }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join('');
 }
-
-const schema = z
-  .object({
-    name: z.string().min(1, 'Nome é obrigatório'),
-    email: z.string().email('E-mail inválido'),
-    password: z.string().min(6),
-    role: z.enum([Role.ADMIN, Role.COORDINATOR, Role.SERVANT], { required_error: 'Função é obrigatória' }),
-    rank: z.nativeEnum(ServantRank).optional(),
-    servesInGroup: z.boolean(),
-    houseId: z.string().optional().or(z.literal('')),
-    supportGroupId: z.string().optional().or(z.literal('')),
-    phone: z.string().optional().or(z.literal('')),
-  })
-  .refine((d) => d.servesInGroup || !!d.houseId, {
-    message: 'Casa é obrigatória para servos da casa',
-    path: ['houseId'],
-  })
-  .refine((d) => !d.servesInGroup || !!d.supportGroupId, {
-    message: 'Grupo de apoio é obrigatório',
-    path: ['supportGroupId'],
-  });
-type FormData = z.infer<typeof schema>;
 
 export function NewStaffPage() {
   const navigate = useNavigate();
@@ -57,9 +36,9 @@ export function NewStaffPage() {
   const { data: supportGroups = [] } = useSupportGroups();
 
   const { register, handleSubmit, setValue, getValues, watch, formState: { errors, isSubmitting } } =
-    useForm<FormData>({
-      resolver: zodResolver(schema),
-      defaultValues: { servesInGroup: false, rank: ServantRank.ASPIRANTE },
+    useForm<NewStaffFormData>({
+      resolver: zodResolver(newStaffSchema),
+      defaultValues: { servesInGroup: false, rank: undefined },
     });
 
   useEffect(() => { setValue('password', generatePassword()); }, [setValue]);
@@ -68,18 +47,9 @@ export function NewStaffPage() {
   const role = watch('role');
   const createMutation = useCreateStaff();
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = (data: NewStaffFormData) => {
     createMutation.mutate(
-      {
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        role: data.role,
-        houseId: data.servesInGroup ? null : (data.houseId || null),
-        supportGroupId: data.servesInGroup ? (data.supportGroupId || null) : null,
-        phone: data.phone || null,
-        rank: data.role === Role.SERVANT ? (data.rank ?? ServantRank.ASPIRANTE) : null,
-      },
+      { ...buildStaffPayload(data), password: data.password },
       { onSuccess: () => navigate('/staff') },
     );
   };
@@ -106,17 +76,9 @@ export function NewStaffPage() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Nome *</Label>
-          <Input id="name" {...register('name')} placeholder="Nome completo" />
-          {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-        </div>
+        <PersonalDataFields register={register} errors={errors} namePlaceholder="Nome completo" />
 
-        <div className="space-y-2">
-          <Label htmlFor="email">E-mail *</Label>
-          <Input id="email" type="email" {...register('email')} placeholder="servo@fonte.org" />
-          {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-        </div>
+        <SectionTitle>Conta e serviço</SectionTitle>
 
         <div className="space-y-2">
           <Label htmlFor="password">Senha gerada *</Label>
@@ -132,7 +94,7 @@ export function NewStaffPage() {
               {copied ? 'Copiado!' : 'Copiar'}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">Envie esta senha ao servo via WhatsApp. Ele deverá alterá-la no primeiro acesso.</p>
+          <p className="text-xs text-muted-foreground">Só é usada se o servo tiver e-mail e acesso aos apps. Envie via WhatsApp; ele deverá alterá-la no primeiro acesso.</p>
         </div>
 
         <div className="space-y-2">
@@ -168,11 +130,6 @@ export function NewStaffPage() {
           houseIdError={errors.houseId?.message}
           supportGroupIdError={errors.supportGroupId?.message}
         />
-
-        <div className="space-y-2">
-          <Label htmlFor="phone">Telefone</Label>
-          <Input id="phone" {...withMask(register('phone'), maskPhone)} placeholder="(11) 99999-9999" />
-        </div>
 
         <div className="flex gap-3 pt-2">
           <Button type="button" variant="outline" onClick={goBack}>Cancelar</Button>

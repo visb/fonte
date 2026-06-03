@@ -275,7 +275,7 @@ export class MessageService {
       const staffMatch = staffList.find((s) => s.userId === u.id);
       const residentMatch = residents.find((r) => r.userId === u.id);
       const relativeMatch = relativesList.find((r) => r.userId === u.id);
-      nameMap.set(u.id, staffMatch?.name ?? residentMatch?.name ?? relativeMatch?.name ?? u.email);
+      nameMap.set(u.id, staffMatch?.name ?? residentMatch?.name ?? relativeMatch?.name ?? u.email ?? '');
       profileTypeMap.set(
         u.id,
         residentMatch ? 'RESIDENT' : relativeMatch ? 'RELATIVE' : 'STAFF',

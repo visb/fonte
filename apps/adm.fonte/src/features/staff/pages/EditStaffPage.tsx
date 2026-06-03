@@ -5,44 +5,23 @@ import { AvatarUpload } from '@/components/AvatarUpload';
 import { useGoBack } from '@/lib/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { ArrowLeft } from 'lucide-react';
-import { Role, ServantRank } from '@fonte/types';
+import { Role } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SectionTitle } from '@/components/shared/FormField';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { maskPhone, withMask } from '@/features/residents/lib/masks';
+import { PersonalDataFields } from '@/components/shared/PersonalDataFields';
 import { useUpdateStaff, useStaffById } from '../hooks/useStaff';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { useSupportGroups } from '@/features/support-groups/hooks/useSupportGroups';
 import { StaffServiceSelector } from '../components/StaffServiceSelector';
 import { SERVANT_RANK_LABELS, SERVANT_RANK_ORDER } from '../constants';
+import { editStaffSchema, buildStaffPayload, staffToFormValues, type EditStaffFormData } from '../lib/staffSchema';
 
 const SELECT_CLASS =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
-
-const schema = z
-  .object({
-    name: z.string().min(1, 'Nome é obrigatório'),
-    email: z.string().email('E-mail inválido'),
-    role: z.enum([Role.ADMIN, Role.COORDINATOR, Role.SERVANT]),
-    rank: z.nativeEnum(ServantRank).optional(),
-    servesInGroup: z.boolean(),
-    houseId: z.string().optional().or(z.literal('')),
-    supportGroupId: z.string().optional().or(z.literal('')),
-    phone: z.string().optional().or(z.literal('')),
-  })
-  .refine((d) => d.servesInGroup || !!d.houseId, {
-    message: 'Casa é obrigatória para servos da casa',
-    path: ['houseId'],
-  })
-  .refine((d) => !d.servesInGroup || !!d.supportGroupId, {
-    message: 'Grupo de apoio é obrigatório',
-    path: ['supportGroupId'],
-  });
-type FormData = z.infer<typeof schema>;
 
 export function EditStaffPage() {
   const { id } = useParams<{ id: string }>();
@@ -54,41 +33,19 @@ export function EditStaffPage() {
   const { data: staff, isLoading } = useStaffById(id!);
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } =
-    useForm<FormData>({ resolver: zodResolver(schema) });
+    useForm<EditStaffFormData>({ resolver: zodResolver(editStaffSchema) });
 
   useEffect(() => {
-    if (staff) {
-      reset({
-        name: staff.name,
-        email: staff.user.email,
-        role: staff.user.role as FormData['role'],
-        rank: staff.rank ?? ServantRank.ASPIRANTE,
-        servesInGroup: !staff.houseId,
-        houseId: staff.houseId ?? '',
-        supportGroupId: staff.supportGroupId ?? '',
-        phone: staff.phone ?? '',
-      });
-    }
+    if (staff) reset(staffToFormValues(staff));
   }, [staff, reset]);
 
   const servesInGroup = watch('servesInGroup');
   const role = watch('role');
   const updateMutation = useUpdateStaff(id!);
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = (data: EditStaffFormData) => {
     updateMutation.mutate(
-      {
-        data: {
-          name: data.name,
-          email: data.email,
-          role: data.role,
-          houseId: data.servesInGroup ? null : (data.houseId || null),
-          supportGroupId: data.servesInGroup ? (data.supportGroupId || null) : null,
-          phone: data.phone || null,
-          rank: data.role === Role.SERVANT ? (data.rank ?? ServantRank.ASPIRANTE) : null,
-        },
-        photo: pendingPhotoRef.current,
-      },
+      { data: buildStaffPayload(data), photo: pendingPhotoRef.current },
       { onSuccess: () => goBack() },
     );
   };
@@ -118,17 +75,9 @@ export function EditStaffPage() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="name">Nome *</Label>
-          <Input id="name" {...register('name')} />
-          {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-        </div>
+        <PersonalDataFields register={register} errors={errors} namePlaceholder="Nome completo" />
 
-        <div className="space-y-2">
-          <Label htmlFor="email">E-mail *</Label>
-          <Input id="email" type="email" {...register('email')} />
-          {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-        </div>
+        <SectionTitle>Conta e serviço</SectionTitle>
 
         <div className="space-y-2">
           <Label htmlFor="role">Função *</Label>
@@ -162,11 +111,6 @@ export function EditStaffPage() {
           houseIdError={errors.houseId?.message}
           supportGroupIdError={errors.supportGroupId?.message}
         />
-
-        <div className="space-y-2">
-          <Label htmlFor="phone">Telefone</Label>
-          <Input id="phone" {...withMask(register('phone'), maskPhone)} placeholder="(11) 99999-9999" />
-        </div>
 
         <div className="flex gap-3 pt-2">
           <Button type="button" variant="outline" onClick={goBack}>Cancelar</Button>

@@ -54,20 +54,24 @@ export class StaffService {
   }
 
   async create(dto: CreateStaffDto): Promise<Staff> {
-    const existing = await this.userRepository.findOne({ where: { email: dto.email } });
-    if (existing) throw new ConflictException('E-mail já cadastrado');
+    const email = dto.email || null;
+    if (email) {
+      const existing = await this.userRepository.findOne({ where: { email } });
+      if (existing) throw new ConflictException('E-mail já cadastrado');
+    }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = this.userRepository.create({
-      email: dto.email,
+      email,
       passwordHash,
       role: dto.role,
       mustChangePassword: true,
     });
     const savedUser = await this.userRepository.save(user);
 
+    const { email: _email, password: _password, role, ...fields } = dto;
     const staff = this.staffRepository.create({
-      name: dto.name,
+      ...fields,
       phone: dto.phone ?? null,
       houseId: dto.houseId ?? null,
       supportGroupId: dto.supportGroupId ?? null,
@@ -117,11 +121,14 @@ export class StaffService {
 
     const userUpdates: Partial<User> = {};
     if (email !== undefined) {
-      const existing = await this.userRepository.findOne({ where: { email } });
-      if (existing && existing.id !== staff.userId) {
-        throw new ConflictException('E-mail já cadastrado');
+      const normalized = email || null;
+      if (normalized) {
+        const existing = await this.userRepository.findOne({ where: { email: normalized } });
+        if (existing && existing.id !== staff.userId) {
+          throw new ConflictException('E-mail já cadastrado');
+        }
       }
-      userUpdates.email = email;
+      userUpdates.email = normalized;
     }
     if (role !== undefined) userUpdates.role = role;
     if (password) {

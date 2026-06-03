@@ -132,7 +132,26 @@ export interface Staff {
   rank: ServantRank | null;
   formerResidentId: string | null;
   promotedAt: string | null;
-  user: { email: string; role: Role };
+  // Ficha pessoal (espelha os dados do filho)
+  birthDate: string | null;
+  cpf: string | null;
+  rg: string | null;
+  nationality: string | null;
+  gender: Gender | null;
+  city: string | null;
+  state: string | null;
+  address: string | null;
+  maritalStatus: MaritalStatus | null;
+  children: number;
+  occupation: string | null;
+  education: string | null;
+  religion: string | null;
+  addiction: string | null;
+  healthIssues: string | null;
+  continuousMedication: string | null;
+  weight: number | null;
+  height: number | null;
+  user: { email: string | null; role: Role };
 }
 
 export interface PromoteToServantInput {
@@ -159,25 +178,35 @@ export interface StaffMe {
 
 export interface CreateStaffInput {
   name: string;
-  email: string;
+  email?: string | null;
   password: string;
   role: Role;
   houseId?: string | null;
   supportGroupId?: string | null;
   phone?: string | null;
   rank?: ServantRank | null;
+  // Ficha pessoal (espelha os dados do filho)
+  birthDate?: string | null;
+  cpf?: string | null;
+  rg?: string | null;
+  nationality?: string | null;
+  gender?: Gender | null;
+  city?: string | null;
+  state?: string | null;
+  address?: string | null;
+  maritalStatus?: MaritalStatus | null;
+  children?: number;
+  occupation?: string | null;
+  education?: string | null;
+  religion?: string | null;
+  addiction?: string | null;
+  healthIssues?: string | null;
+  continuousMedication?: string | null;
+  weight?: number | null;
+  height?: number | null;
 }
 
-export interface UpdateStaffInput {
-  name?: string;
-  phone?: string | null;
-  houseId?: string | null;
-  supportGroupId?: string | null;
-  email?: string;
-  role?: Role;
-  password?: string;
-  rank?: ServantRank | null;
-}
+export type UpdateStaffInput = Partial<CreateStaffInput>;
 
 export interface UpdateStaffMeInput {
   name?: string;

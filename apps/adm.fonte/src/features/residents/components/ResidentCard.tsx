@@ -158,6 +158,9 @@ export function ResidentCard({ resident, onDelete }: Props) {
           <Badge variant={RESIDENT_STATUS_VARIANT[resident.status]}>
             {RESIDENT_STATUS_LABELS[resident.status]}
           </Badge>
+          {resident.familyInvestment === FamilyInvestment.SOCIAL && (
+            <Badge variant="destructive">Social</Badge>
+          )}
           {paymentBadge && (
             <Badge
               variant={paymentBadge.variant}

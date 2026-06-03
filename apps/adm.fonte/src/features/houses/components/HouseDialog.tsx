@@ -42,7 +42,7 @@ export function HouseDialog({ open, house, onClose }: Props) {
         isMotherHouse: house.isMotherHouse ?? false,
       } : emptyForm);
     }
-  }, [open, house, reset]);
+  }, [open, house, staffList, reset]);
 
   const onSubmit = (data: HouseFormData) => {
     const payload = sanitizeHouseData(data);

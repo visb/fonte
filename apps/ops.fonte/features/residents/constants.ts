@@ -1,4 +1,17 @@
-import { FollowUpType } from '@fonte/types';
+import { FollowUpType, ResidentStatus } from '@fonte/types';
+
+export const RESIDENT_STATUS_FILTER_OPTIONS: ResidentStatus[] = [
+  ResidentStatus.PRE_ADMISSION,
+  ResidentStatus.ACTIVE,
+  ResidentStatus.DISCIPLINE,
+  ResidentStatus.TEMP_LEAVE,
+  ResidentStatus.DISCHARGED,
+  ResidentStatus.EVADED,
+];
+
+export const DEFAULT_RESIDENT_STATUS_FILTER: ResidentStatus[] = [
+  ResidentStatus.ACTIVE,
+];
 
 export const FOLLOW_UP_TYPE_LABELS: Record<FollowUpType, string> = {
   [FollowUpType.ADMISSION]: 'Admissão',

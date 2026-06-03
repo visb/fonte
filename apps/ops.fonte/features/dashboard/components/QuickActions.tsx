@@ -47,14 +47,28 @@ const ACTIONS = [
   },
 ];
 
-export function QuickActions() {
+const HOUSE_SETTINGS_ACTION = {
+  label: "Configurações da casa",
+  icon: "settings-outline" as const,
+  color: "#475569",
+  bg: "#f1f5f9",
+  route: "/(app)/house-settings",
+};
+
+interface Props {
+  showHouseSettings?: boolean;
+}
+
+export function QuickActions({ showHouseSettings = false }: Props) {
+  const actions = showHouseSettings ? [...ACTIONS, HOUSE_SETTINGS_ACTION] : ACTIONS;
+
   return (
     <View>
       <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
         Ações rápidas
       </Text>
       <View className="flex-row flex-wrap gap-3">
-        {ACTIONS.map((a) => (
+        {actions.map((a) => (
           <TouchableOpacity
             key={a.label}
             onPress={() => router.push(a.route as never)}

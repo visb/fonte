@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, CalendarDays, Pencil, Trash2, User } from 'lucide-react';
 import { FamilyInvestment, ResidentStatus } from '@fonte/types';
@@ -8,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import type { BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RESIDENT_STATUS_LABELS, RESIDENT_STATUS_VARIANT } from '../constants';
-import { DeclarePaymentDialog } from './DeclarePaymentDialog';
 
 type BadgeVariant = NonNullable<BadgeProps['variant']>;
 
@@ -122,7 +120,6 @@ interface Props {
 export function ResidentCard({ resident, onDelete }: Props) {
   const navigate = useNavigate();
   const age = computeAge(resident.birthDate);
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
   const paymentBadge = getPaymentBadge(
     resident.entryDate,
@@ -168,8 +165,8 @@ export function ResidentCard({ resident, onDelete }: Props) {
             <Badge
               variant={paymentBadge.variant}
               className="cursor-pointer hover:opacity-80"
-              onClick={(e) => { e.stopPropagation(); setPaymentDialogOpen(true); }}
-              title="Clique para declarar pagamento"
+              onClick={(e) => { e.stopPropagation(); navigate(`/residents/${resident.id}?tab=contributions`); }}
+              title="Ver carnê de contribuição"
             >
               {paymentBadge.label}
             </Badge>
@@ -190,16 +187,6 @@ export function ResidentCard({ resident, onDelete }: Props) {
           </Button>
         </div>
       </div>
-
-      {paymentBadge && (
-        <DeclarePaymentDialog
-          open={paymentDialogOpen}
-          onClose={() => setPaymentDialogOpen(false)}
-          resident={{ id: resident.id, name: resident.name }}
-          defaultDate={paymentBadge.defaultDate}
-          referenceMonth={paymentBadge.referenceMonth}
-        />
-      )}
     </>
   );
 }

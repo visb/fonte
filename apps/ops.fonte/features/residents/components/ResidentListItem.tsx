@@ -5,19 +5,26 @@ import { STATUS_CONFIG } from "@/lib/constants";
 import { resolveAssetUrl } from "@/lib/api";
 
 type Props = {
-  item: { id: string; name: string; status: string; photoUrl?: string | null };
+  item: {
+    id: string;
+    name: string;
+    status: string;
+    photoUrl?: string | null;
+    photoThumbUrl?: string | null;
+  };
 };
 
 export function ResidentListItem({ item }: Props) {
+  const thumbUrl = resolveAssetUrl(item.photoThumbUrl ?? item.photoUrl);
   return (
     <TouchableOpacity
       className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex-row items-center"
       onPress={() => router.push(`/(app)/residents/${item.id}` as never)}
     >
       <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3 overflow-hidden">
-        {resolveAssetUrl(item.photoUrl) ? (
+        {thumbUrl ? (
           <Image
-            source={{ uri: resolveAssetUrl(item.photoUrl)! }}
+            source={{ uri: thumbUrl }}
             className="w-10 h-10 rounded-full"
           />
         ) : (

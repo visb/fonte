@@ -1,0 +1,70 @@
+import { FileText, RotateCcw } from 'lucide-react';
+import { ReceivableStatus } from '@fonte/types';
+import type { ResidentReceivable } from '@fonte/api-client';
+import { api } from '@/lib/api';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { PAYMENT_METHOD_LABELS } from '../constants';
+import { formatDate, formatReferenceMonth, receivableBadge } from '../lib/receivables';
+
+interface Props {
+  receivable: ResidentReceivable;
+  canManage: boolean;
+  onPayClick: (r: ResidentReceivable) => void;
+  onReopenClick: (r: ResidentReceivable) => void;
+}
+
+export function ReceivableRow({ receivable, canManage, onPayClick, onReopenClick }: Props) {
+  const badge = receivableBadge(receivable);
+  const isPaid = receivable.status === ReceivableStatus.PAID;
+  const attachment = receivable.attachmentUrl ? api.photoUrl(receivable.attachmentUrl) : null;
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium">{formatReferenceMonth(receivable.referenceMonth)}</span>
+          <Badge variant={badge.variant}>{badge.label}</Badge>
+          {!receivable.mandatory && <Badge variant="outline">Voluntário</Badge>}
+        </div>
+        <div className="text-sm text-muted-foreground mt-0.5">
+          {isPaid ? (
+            <span>
+              Pago em {formatDate(receivable.paidAt)}
+              {receivable.paymentMethod ? ` · ${PAYMENT_METHOD_LABELS[receivable.paymentMethod]}` : ''}
+            </span>
+          ) : (
+            <span>Vence {formatDate(receivable.dueDate)}</span>
+          )}
+        </div>
+        {isPaid && receivable.notes && (
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">{receivable.notes}</p>
+        )}
+      </div>
+
+      <div className="text-right shrink-0">
+        <p className="font-semibold">R$ {receivable.amount}</p>
+      </div>
+
+      <div className="flex items-center gap-1 shrink-0">
+        {attachment && (
+          <a href={attachment} target="_blank" rel="noreferrer" title="Ver comprovante">
+            <Button variant="ghost" size="icon">
+              <FileText size={16} />
+            </Button>
+          </a>
+        )}
+        {!isPaid && receivable.status === ReceivableStatus.PENDING && canManage && (
+          <Button variant="outline" size="sm" onClick={() => onPayClick(receivable)}>
+            Registrar pagamento
+          </Button>
+        )}
+        {isPaid && canManage && (
+          <Button variant="ghost" size="icon" onClick={() => onReopenClick(receivable)} title="Reabrir">
+            <RotateCcw size={16} />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -165,6 +165,17 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="house-settings"
+        options={{
+          title: "Configurações da casa",
+          href: null,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Perfil",

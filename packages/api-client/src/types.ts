@@ -18,6 +18,12 @@ import type {
   ContributionReportItem,
   ContributionsReportResponse,
   GetContributionsReportParams,
+  ReceivableStatus,
+  PaymentMethod,
+  ResidentReceivable,
+  RegisterReceivablePaymentInput,
+  UpdateContributionPlanInput,
+  SetContributionExemptInput,
   StreetSaleType,
   StreetSale,
   StreetSalesReportResponse,
@@ -26,6 +32,14 @@ import type {
 } from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
+export type {
+  ReceivableStatus,
+  PaymentMethod,
+  ResidentReceivable,
+  RegisterReceivablePaymentInput,
+  UpdateContributionPlanInput,
+  SetContributionExemptInput,
+};
 export type { StreetSaleType, StreetSale, StreetSalesReportResponse, StreetSalesReportByHouse };
 export type { SupplyRoomCategory };
 
@@ -247,6 +261,7 @@ export interface Resident {
   familyInvestment: FamilyInvestment | null;
   familyInvestmentAmount: number | null;
   contributionDueDay: number | null;
+  contributionExempt: boolean;
   lastContributionDate: string | null;
   photoUrl: string | null;
   photoThumbUrl: string | null;

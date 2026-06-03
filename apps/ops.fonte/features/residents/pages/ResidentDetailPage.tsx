@@ -15,6 +15,7 @@ import { ResidentOverviewTab } from '../components/ResidentOverviewTab';
 import { ResidentFamiliesTab } from '../components/ResidentFamiliesTab';
 import { ResidentAttachmentsTab } from '../components/ResidentAttachmentsTab';
 import { ResidentTrackingTab } from '../components/ResidentTrackingTab';
+import { ResidentDetailHeader } from '../components/ResidentDetailHeader';
 import { LoadingState } from '@/components/shared/LoadingState';
 
 const TABS = ['Visão Geral', 'Acompanhamento', 'Familiares', 'Anexos'] as const;
@@ -54,7 +55,19 @@ export function ResidentDetailPage() {
 
   return (
     <>
-      <Stack.Screen options={{ title: resident.name }} />
+      <Stack.Screen
+        options={{
+          header: () => (
+            <ResidentDetailHeader
+              name={resident.name}
+              birthDate={resident.birthDate}
+              entryDate={resident.entryDate}
+              photoUrl={resident.photoUrl}
+              photoThumbUrl={resident.photoThumbUrl}
+            />
+          ),
+        }}
+      />
 
       <View className="flex-1 bg-white">
         <ScrollView

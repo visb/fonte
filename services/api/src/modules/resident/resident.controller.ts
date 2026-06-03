@@ -44,6 +44,10 @@ import { ReadmitResidentDto } from './dto/readmit-resident.dto';
 import { ResidentFollowUpService, ResidentFollowUpView } from '../resident-follow-up/resident-follow-up.service';
 import { CreateFollowUpDto } from '../resident-follow-up/dto/create-follow-up.dto';
 import { BulkCreateContributionsDto } from '../resident-follow-up/dto/bulk-create-contributions.dto';
+import { ResidentReceivableService, ResidentReceivableView } from '../resident-receivable/resident-receivable.service';
+import { RegisterPaymentDto } from '../resident-receivable/dto/register-payment.dto';
+import { UpdateContributionPlanDto } from '../resident-receivable/dto/update-contribution-plan.dto';
+import { SetContributionExemptDto } from '../resident-receivable/dto/set-contribution-exempt.dto';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 import { ContributionsReportResponse } from '@fonte/types';
 import { DocxParserService, ParseDocxResult } from './docx-parser.service';
@@ -89,6 +93,7 @@ export class ResidentController {
     private residentService: ResidentService,
     private documentTemplateService: DocumentTemplateService,
     private followUpService: ResidentFollowUpService,
+    private receivableService: ResidentReceivableService,
     private docxParserService: DocxParserService,
   ) {}
 
@@ -228,6 +233,59 @@ export class ResidentController {
     file: Express.Multer.File,
   ): Promise<ResidentFollowUpView> {
     return this.followUpService.uploadAttachment(followUpId, id, file);
+  }
+
+  @Get(':id/receivables')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  getReceivables(@Param('id', ParseUUIDPipe) id: string): Promise<ResidentReceivableView[]> {
+    return this.receivableService.findByResident(id);
+  }
+
+  @Patch(':id/contribution-plan')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  updateContributionPlan(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateContributionPlanDto,
+  ): Promise<Resident> {
+    return this.residentService.updateContributionPlan(id, dto);
+  }
+
+  @Patch(':id/contribution-exempt')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  setContributionExempt(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetContributionExemptDto,
+  ): Promise<Resident> {
+    return this.residentService.setContributionExempt(id, dto.exempt);
+  }
+
+  @Post(':id/receivables/:receivableId/payment')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  @UseInterceptors(FileInterceptor('file', attachmentOptions))
+  registerReceivablePayment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('receivableId', ParseUUIDPipe) receivableId: string,
+    @Body() dto: RegisterPaymentDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 20 * 1024 * 1024 })],
+        fileIsRequired: false,
+        exceptionFactory: () => new BadRequestException('Arquivo muito grande: máximo 20 MB'),
+      }),
+    )
+    file?: Express.Multer.File,
+  ): Promise<ResidentReceivableView> {
+    return this.receivableService.registerPayment(id, receivableId, dto, user.userId, file);
+  }
+
+  @Post(':id/receivables/:receivableId/reopen')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  reopenReceivable(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('receivableId', ParseUUIDPipe) receivableId: string,
+  ): Promise<ResidentReceivableView> {
+    return this.receivableService.reopenPayment(id, receivableId);
   }
 
   @Post(':id/access')

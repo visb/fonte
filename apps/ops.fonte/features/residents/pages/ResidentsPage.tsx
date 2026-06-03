@@ -1,14 +1,24 @@
 import { useState } from "react";
 import { View, Text, FlatList, ActivityIndicator } from "react-native";
+import { ResidentStatus } from "@fonte/types";
 import { useAuth } from "@/lib/auth";
 import { useResidentsByHouse } from "@/features/residents/hooks/useResidents";
 import { ResidentSearchBar } from "@/features/residents/components/ResidentSearchBar";
+import { ResidentStatusFilterModal } from "@/features/residents/components/ResidentStatusFilterModal";
 import { ResidentListItem } from "@/features/residents/components/ResidentListItem";
+import {
+  DEFAULT_RESIDENT_STATUS_FILTER,
+  RESIDENT_STATUS_FILTER_OPTIONS,
+} from "@/features/residents/constants";
 
 export function ResidentsPage() {
   const { staff } = useAuth();
   const [search, setSearch] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<ResidentStatus[]>(
+    DEFAULT_RESIDENT_STATUS_FILTER,
+  );
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const { data: residents = [], isLoading, refetch } = useResidentsByHouse(
     staff?.houseId,
@@ -20,8 +30,14 @@ export function ResidentsPage() {
     setIsRefreshing(false);
   };
 
-  const filtered = residents.filter((r) =>
-    r.name.toLowerCase().includes(search.toLowerCase()),
+  const filterActive =
+    statusFilter.length !== RESIDENT_STATUS_FILTER_OPTIONS.length;
+
+  const filtered = residents.filter(
+    (r) =>
+      r.name.toLowerCase().includes(search.toLowerCase()) &&
+      (statusFilter.length === 0 ||
+        statusFilter.includes(r.status as ResidentStatus)),
   );
 
   return (
@@ -30,6 +46,18 @@ export function ResidentsPage() {
         value={search}
         onChangeText={setSearch}
         onClear={() => setSearch("")}
+        onPressFilter={() => setFilterOpen(true)}
+        filterActive={filterActive}
+      />
+
+      <ResidentStatusFilterModal
+        visible={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        value={statusFilter}
+        onApply={(statuses) => {
+          setStatusFilter(statuses);
+          setFilterOpen(false);
+        }}
       />
 
       {isLoading ? (

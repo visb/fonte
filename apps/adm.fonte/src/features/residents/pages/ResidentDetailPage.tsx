@@ -19,10 +19,12 @@ import { RelativesTab } from '../components/tabs/RelativesTab';
 import { AttachmentsTab } from '../components/tabs/AttachmentsTab';
 import { AdmissionsTab } from '../components/tabs/AdmissionsTab';
 import { TrackingTab } from '../components/tabs/TrackingTab';
+import { ContributionsTab } from '../components/tabs/ContributionsTab';
 
 const TABS = [
   { id: 'overview', label: 'Visão Geral' },
   { id: 'timeline', label: 'Acompanhamento' },
+  { id: 'contributions', label: 'Contribuição', manageOnly: true },
   { id: 'relatives', label: 'Familiares' },
   { id: 'attachments', label: 'Anexos' },
   { id: 'admissions', label: 'Histórico' },
@@ -38,7 +40,9 @@ export function ResidentDetailPage() {
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
   const { role } = useAuth();
-  const canPromote = role === Role.ADMIN || role === Role.COORDINATOR;
+  const canManage = role === Role.ADMIN || role === Role.COORDINATOR;
+  const canPromote = canManage;
+  const visibleTabs = TABS.filter((tab) => !('manageOnly' in tab && tab.manageOnly) || canManage);
 
   const { data: resident, isLoading, isError } = useResidentById(id!);
 
@@ -98,7 +102,7 @@ export function ResidentDetailPage() {
       </div>
 
       <div className="border-b flex gap-0">
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -117,6 +121,8 @@ export function ResidentDetailPage() {
       {activeTab === 'overview' && <OverviewTab resident={resident} />}
 
       {activeTab === 'timeline' && <TrackingTab residentId={id!} />}
+
+      {activeTab === 'contributions' && canManage && <ContributionsTab resident={resident} />}
 
       {activeTab === 'relatives' && <RelativesTab residentId={id!} />}
 

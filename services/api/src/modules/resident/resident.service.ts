@@ -17,6 +17,8 @@ import { Resident } from './resident.entity';
 import { Admission } from './admission.entity';
 import { User } from '../user/user.entity';
 import { ResidentFollowUpService } from '../resident-follow-up/resident-follow-up.service';
+import { ResidentReceivableService } from '../resident-receivable/resident-receivable.service';
+import { UpdateContributionPlanDto } from '../resident-receivable/dto/update-contribution-plan.dto';
 import { StaffService } from '../staff/staff.service';
 import { Staff } from '../staff/staff.entity';
 import { PromoteToServantDto } from './dto/promote-to-servant.dto';
@@ -69,6 +71,7 @@ export class ResidentService {
     private admissionRepository: Repository<Admission>,
     private storageService: StorageService,
     private followUpService: ResidentFollowUpService,
+    private receivableService: ResidentReceivableService,
     private staffService: StaffService,
     private dataSource: DataSource,
   ) {}
@@ -113,30 +116,23 @@ export class ResidentService {
         ResidentStatus.DISCIPLINE,
         ResidentStatus.TEMP_LEAVE,
       ];
-      qb.andWhere('resident.familyInvestment IS NOT NULL')
-        .andWhere('resident.familyInvestment != :overdSocial', { overdSocial: FamilyInvestment.SOCIAL })
+      qb.andWhere('resident.contributionExempt = false')
         .andWhere('resident.status IN (:...overdActiveStatuses)', { overdActiveStatuses: activeStatuses })
         .andWhere(
-          `NOT EXISTS (
-            SELECT 1 FROM resident_follow_ups rfu
-            WHERE rfu.resident_id = resident.id
-              AND rfu.type = :overdType
-              AND DATE_TRUNC('month', rfu.date) = DATE_TRUNC('month', CURRENT_DATE)
-              AND rfu.deleted_at IS NULL
+          `EXISTS (
+            SELECT 1 FROM resident_receivables rcv
+            WHERE rcv.resident_id = resident.id
+              AND rcv.mandatory = true
+              AND rcv.status = 'PENDING'
+              AND rcv.due_date < CURRENT_DATE
+              AND rcv.deleted_at IS NULL
           )`,
-          { overdType: FollowUpType.MONTHLY_CONTRIBUTION },
-        )
-        .andWhere(
-          `LEAST(
-            COALESCE(resident.contribution_due_day, EXTRACT(DAY FROM resident.entry_date)::int),
-            EXTRACT(DAY FROM (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month - 1 day'))::int
-          ) < EXTRACT(DAY FROM CURRENT_DATE)::int`,
         );
     }
 
     const [data, total] = await qb.getManyAndCount();
     if (data.length > 0) {
-      const map = await this.followUpService.getLastContributionDates(data.map((r) => r.id));
+      const map = await this.receivableService.getLastPaidDates(data.map((r) => r.id));
       for (const r of data) r.lastContributionDate = map.get(r.id) ?? null;
     }
     return { data, total, page, limit };
@@ -186,6 +182,8 @@ export class ResidentService {
       : new Date().toISOString().split('T')[0];
     await this.followUpService.createAuto(saved.id, FollowUpType.ADMISSION, admissionDate);
 
+    await this.receivableService.generateSchedule(saved.id);
+
     return saved;
   }
 
@@ -197,11 +195,23 @@ export class ResidentService {
     const today = new Date().toISOString().split('T')[0];
     if (dto.status === 'DISCHARGED' && before.status !== 'DISCHARGED') {
       await this.followUpService.createAuto(id, FollowUpType.DISCHARGE, today);
+      await this.receivableService.cancelAfterExit(id, today);
     } else if (dto.status === 'EVADED' && before.status !== 'EVADED') {
       await this.followUpService.createAuto(id, FollowUpType.EVASION, today);
+      await this.receivableService.cancelAfterExit(id, today);
     }
     if (dto.ministryId !== undefined && dto.ministryId !== before.ministryId) {
       await this.followUpService.createAuto(id, FollowUpType.MINISTRY_CHANGE, today);
+    }
+
+    // Keep the carnê in sync when contribution-relevant fields change via the edit form.
+    const contributionTouched =
+      dto.familyInvestment !== undefined ||
+      dto.familyInvestmentAmount !== undefined ||
+      dto.contributionDueDay !== undefined ||
+      dto.entryDate !== undefined;
+    if (contributionTouched) {
+      await this.receivableService.recalcFuturePending(id);
     }
 
     const admissionUpdate = Object.fromEntries(
@@ -290,6 +300,34 @@ export class ResidentService {
     if (dto.contributionDueDay !== undefined) residentUpdate.contributionDueDay = dto.contributionDueDay;
 
     await this.residentRepository.update(id, residentUpdate);
+
+    await this.receivableService.generateSchedule(id);
+
+    return this.findOne(id);
+  }
+
+  async updateContributionPlan(id: string, dto: UpdateContributionPlanDto): Promise<Resident> {
+    await this.findOne(id);
+    const update: Partial<Resident> = { familyInvestment: dto.familyInvestment };
+    update.familyInvestmentAmount =
+      dto.familyInvestment === FamilyInvestment.NEGOTIATED
+        ? (dto.familyInvestmentAmount ?? null)
+        : (CANONICAL_AMOUNTS[dto.familyInvestment] ?? null);
+    if (dto.contributionDueDay !== undefined) update.contributionDueDay = dto.contributionDueDay;
+
+    await this.residentRepository.update(id, update);
+    await this.receivableService.recalcFuturePending(id);
+    return this.findOne(id);
+  }
+
+  async setContributionExempt(id: string, exempt: boolean): Promise<Resident> {
+    await this.findOne(id);
+    await this.residentRepository.update(id, { contributionExempt: exempt });
+    if (exempt) {
+      await this.receivableService.cancelFuturePending(id);
+    } else {
+      await this.receivableService.generateSchedule(id);
+    }
     return this.findOne(id);
   }
 
@@ -547,19 +585,19 @@ export class ResidentService {
         r.name          AS "residentName",
         r.house_id      AS "houseId",
         h.name          AS "houseName",
-        r.family_investment             AS "familyInvestment",
-        r.family_investment_amount      AS "expectedAmount",
-        (rfu.id IS NOT NULL)            AS paid,
-        rfu.date                        AS "paidAt"
+        rcv.family_investment           AS "familyInvestment",
+        rcv.amount                      AS "expectedAmount",
+        (rcv.status = 'PAID')           AS paid,
+        rcv.paid_at                     AS "paidAt"
       FROM residents r
       INNER JOIN houses h ON h.id = r.house_id
-      LEFT JOIN resident_follow_ups rfu
-        ON  rfu.resident_id = r.id
-        AND rfu.type = 'MONTHLY_CONTRIBUTION'
-        AND DATE_TRUNC('month', rfu.date) = DATE_TRUNC('month', $1::date)
-        AND rfu.deleted_at IS NULL
-      WHERE r.family_investment IS NOT NULL
-        AND r.family_investment != 'SOCIAL'
+      INNER JOIN resident_receivables rcv
+        ON  rcv.resident_id = r.id
+        AND rcv.mandatory = true
+        AND rcv.status != 'CANCELED'
+        AND DATE_TRUNC('month', rcv.reference_month) = DATE_TRUNC('month', $1::date)
+        AND rcv.deleted_at IS NULL
+      WHERE r.contribution_exempt = false
         AND r.status IN ('PRE_ADMISSION','ACTIVE','DISCIPLINE','TEMP_LEAVE')
         AND r.deleted_at IS NULL
     `;

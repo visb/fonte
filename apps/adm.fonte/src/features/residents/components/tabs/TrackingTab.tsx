@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { History, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { AddFollowUpDialog } from '../AddFollowUpDialog';
-import { ContributionHistoryDialog } from '../ContributionHistoryDialog';
 import { TrackingEventItem } from '../TrackingEventItem';
 import { useResidentFollowUps } from '../../hooks/useResidentFollowUps';
 
@@ -15,7 +14,6 @@ interface Props {
 
 export function TrackingTab({ residentId }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const { data: followUps, isLoading, isError } = useResidentFollowUps(residentId);
 
   if (isLoading) return <LoadingState />;
@@ -28,10 +26,6 @@ export function TrackingTab({ residentId }: Props) {
           Histórico de eventos
         </h3>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setHistoryDialogOpen(true)}>
-            <History size={14} className="mr-1.5" />
-            Importar histórico
-          </Button>
           <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
             <Plus size={14} className="mr-1.5" />
             Registrar evento
@@ -53,13 +47,6 @@ export function TrackingTab({ residentId }: Props) {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         residentId={residentId}
-      />
-
-      <ContributionHistoryDialog
-        open={historyDialogOpen}
-        onClose={() => setHistoryDialogOpen(false)}
-        residentId={residentId}
-        existingFollowUps={followUps ?? []}
       />
     </div>
   );

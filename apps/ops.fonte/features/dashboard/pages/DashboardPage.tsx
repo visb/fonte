@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { View, ScrollView, RefreshControl } from "react-native";
+import { Role } from "@fonte/types";
 import { useAuth } from "@/lib/auth";
 import { useResidentCountByHouse } from "@/features/residents/hooks/useResidents";
 import { useIncidentsToday } from "@/features/incidents/hooks/useIncidents";
+import { useHouseById } from "@/features/house-settings/hooks/useHouseSettings";
 import { WelcomeHeader } from "@/features/dashboard/components/WelcomeHeader";
 import { StatCards } from "@/features/dashboard/components/StatCards";
 import { QuickActions } from "@/features/dashboard/components/QuickActions";
@@ -15,6 +17,12 @@ export function DashboardPage() {
     useResidentCountByHouse(staff?.houseId);
   const { data: incidents = [], refetch: refetchIncidents } =
     useIncidentsToday(staff?.houseId);
+  const { data: house } = useHouseById(staff?.houseId, {
+    enabled: staff?.user.role === Role.COORDINATOR,
+  });
+
+  const isHouseCoordinator =
+    staff?.user.role === Role.COORDINATOR && !!house && house.coordinatorId === staff.id;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -41,7 +49,7 @@ export function DashboardPage() {
           residentCount={residents.length}
           incidentCount={todayIncidentsCount}
         />
-        <QuickActions />
+        <QuickActions showHouseSettings={isHouseCoordinator} />
       </View>
     </ScrollView>
   );

@@ -149,11 +149,19 @@ export class HouseService {
   // ─── Residents ──────────────────────────────────────────────────────────────
 
   async findResidents(houseId: string): Promise<
-    Array<{ id: string; name: string; status: string; entryDate: string | null; photoUrl: string | null }>
+    Array<{
+      id: string;
+      name: string;
+      status: string;
+      entryDate: string | null;
+      photoUrl: string | null;
+      photoThumbUrl: string | null;
+    }>
   > {
     await this.assertHouseExists(houseId);
     return this.houseRepository.manager.query(
-      `SELECT id, name, status, entry_date AS "entryDate", photo_url AS "photoUrl"
+      `SELECT id, name, status, entry_date AS "entryDate",
+              photo_url AS "photoUrl", photo_thumb_url AS "photoThumbUrl"
        FROM residents
        WHERE house_id = $1 AND deleted_at IS NULL
        ORDER BY name`,

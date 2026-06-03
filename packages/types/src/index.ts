@@ -187,6 +187,56 @@ export interface GetContributionsReportParams {
   houseId?: string;
 }
 
+// ─── Receivables (carnê de contribuição) ──────────────────────────────────────
+
+export enum ReceivableStatus {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  CANCELED = 'CANCELED',
+}
+
+export enum PaymentMethod {
+  CASH = 'CASH',
+  PIX = 'PIX',
+  CREDIT_CARD = 'CREDIT_CARD',
+  DEBIT_CARD = 'DEBIT_CARD',
+  BASKET = 'BASKET',
+  OTHER = 'OTHER',
+}
+
+export interface ResidentReceivable {
+  id: string;
+  residentId: string;
+  referenceMonth: string; // YYYY-MM-01
+  dueDate: string; // YYYY-MM-DD
+  amount: number;
+  familyInvestment: FamilyInvestment;
+  mandatory: boolean;
+  status: ReceivableStatus;
+  paidAt: string | null;
+  paymentMethod: PaymentMethod | null;
+  attachmentUrl: string | null;
+  notes: string | null;
+  createdByName: string | null;
+  createdAt: string;
+}
+
+export interface RegisterReceivablePaymentInput {
+  paidAt: string; // YYYY-MM-DD
+  paymentMethod: PaymentMethod;
+  notes?: string;
+}
+
+export interface UpdateContributionPlanInput {
+  familyInvestment: FamilyInvestment;
+  familyInvestmentAmount?: number | null;
+  contributionDueDay?: number | null;
+}
+
+export interface SetContributionExemptInput {
+  exempt: boolean;
+}
+
 // ─── Supply Room ─────────────────────────────────────────────────────────────
 
 export enum SupplyRoomCategory {

@@ -38,6 +38,19 @@ jest.mock('@fonte/types', () => ({
     ALL: 'ALL',
     ADMINISTRATION: 'ADMINISTRATION',
   },
+  ReceivableStatus: {
+    PENDING: 'PENDING',
+    PAID: 'PAID',
+    CANCELED: 'CANCELED',
+  },
+  PaymentMethod: {
+    CASH: 'CASH',
+    PIX: 'PIX',
+    CREDIT_CARD: 'CREDIT_CARD',
+    DEBIT_CARD: 'DEBIT_CARD',
+    BASKET: 'BASKET',
+    OTHER: 'OTHER',
+  },
   ServantRank: {
     ASPIRANTE: 'ASPIRANTE',
     CONSAGRADO: 'CONSAGRADO',
@@ -124,6 +137,13 @@ function makeService(
     createAuto: jest.fn().mockResolvedValue(undefined),
     getLastContributionDates: jest.fn().mockResolvedValue(new Map()),
   },
+  receivableService: Record<string, jest.Mock> = {
+    getLastPaidDates: jest.fn().mockResolvedValue(new Map()),
+    generateSchedule: jest.fn().mockResolvedValue(undefined),
+    recalcFuturePending: jest.fn().mockResolvedValue(undefined),
+    cancelFuturePending: jest.fn().mockResolvedValue(undefined),
+    cancelAfterExit: jest.fn().mockResolvedValue(undefined),
+  },
 ) {
   return new ResidentService(
     residentRepo as Repository<Resident>,
@@ -133,6 +153,7 @@ function makeService(
     admissionRepo as Repository<Admission>,
     {} as never, // StorageService
     followUpService as never, // ResidentFollowUpService
+    receivableService as never, // ResidentReceivableService
     staffService as never, // StaffService
     { query: jest.fn().mockResolvedValue([]) } as never, // DataSource
   );
@@ -253,24 +274,22 @@ describe('ResidentService.findAll', () => {
     const whereCalls: Array<[string, unknown?]> = (qb.andWhere as jest.Mock).mock.calls;
     const sqls = whereCalls.map(([sql]) => sql as string);
 
-    expect(sqls.some((s) => s.includes('resident.familyInvestment IS NOT NULL'))).toBe(true);
-    expect(sqls.some((s) => s.includes('resident.familyInvestment != :overdSocial'))).toBe(true);
+    expect(sqls.some((s) => s.includes('resident.contributionExempt = false'))).toBe(true);
     expect(sqls.some((s) => s.includes('overdActiveStatuses'))).toBe(true);
-    expect(sqls.some((s) => s.includes('resident_follow_ups'))).toBe(true);
-    expect(sqls.some((s) => s.includes('LEAST'))).toBe(true);
+    expect(sqls.some((s) => s.includes('resident_receivables'))).toBe(true);
   });
 
-  it('uses contribution_due_day (falling back to entry_date) for the overdue due-day comparison', async () => {
+  it('checks for a mandatory pending receivable past its due date', async () => {
     const dto: ListResidentsDto = { overdueContribution: true };
     await service.findAll(dto);
 
     const sqls: string[] = (qb.andWhere as jest.Mock).mock.calls.map((c) => c[0] as string);
-    const leastClause = sqls.find((s) => s.includes('LEAST'));
+    const existsClause = sqls.find((s) => s.includes('resident_receivables'));
 
-    expect(leastClause).toBeDefined();
-    expect(leastClause).toContain(
-      'COALESCE(resident.contribution_due_day, EXTRACT(DAY FROM resident.entry_date)::int)',
-    );
+    expect(existsClause).toBeDefined();
+    expect(existsClause).toContain('rcv.mandatory = true');
+    expect(existsClause).toContain("rcv.status = 'PENDING'");
+    expect(existsClause).toContain('rcv.due_date < CURRENT_DATE');
   });
 
   it('does not apply overdue contribution filters when overdueContribution is absent', async () => {
@@ -279,9 +298,8 @@ describe('ResidentService.findAll', () => {
 
     const whereCalls: string[] = (qb.andWhere as jest.Mock).mock.calls.map((c) => c[0]);
 
-    expect(whereCalls.some((s) => s.includes('familyInvestment'))).toBe(false);
-    expect(whereCalls.some((s) => s.includes('resident_follow_ups'))).toBe(false);
-    expect(whereCalls.some((s) => s.includes('LEAST'))).toBe(false);
+    expect(whereCalls.some((s) => s.includes('contributionExempt'))).toBe(false);
+    expect(whereCalls.some((s) => s.includes('resident_receivables'))).toBe(false);
   });
 });
 

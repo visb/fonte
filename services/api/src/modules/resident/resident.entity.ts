@@ -137,6 +137,10 @@ export class Resident {
   @Column({ name: 'contribution_due_day', type: 'integer', nullable: true })
   contributionDueDay: number | null;
 
+  // Exempt from monthly contribution regardless of plan (e.g. financial hardship).
+  @Column({ name: 'contribution_exempt', type: 'boolean', default: false })
+  contributionExempt: boolean;
+
   @Column({ name: 'photo_url', nullable: true, type: 'varchar' })
   photoUrl: string | null;
 

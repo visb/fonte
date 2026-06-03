@@ -67,9 +67,11 @@ export function AddFollowUpDialog({ open, onClose, residentId }: Props) {
             <div className="space-y-2">
               <Label htmlFor="fu-type">Tipo *</Label>
               <Select id="fu-type" {...register('type')}>
-                {Object.values(FollowUpType).map((t) => (
-                  <option key={t} value={t}>{FOLLOW_UP_TYPE_LABELS[t]}</option>
-                ))}
+                {Object.values(FollowUpType)
+                  .filter((t) => t !== FollowUpType.MONTHLY_CONTRIBUTION)
+                  .map((t) => (
+                    <option key={t} value={t}>{FOLLOW_UP_TYPE_LABELS[t]}</option>
+                  ))}
               </Select>
             </div>
 

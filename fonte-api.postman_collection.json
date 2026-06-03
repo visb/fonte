@@ -564,6 +564,65 @@
           }
         },
         {
+          "name": "Get Resident Receivables (carnê)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/receivables", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "receivables"] },
+            "description": "Lista o carnê de contribuição do acolhido (parcelas mensais). Gera 6 parcelas obrigatórias a partir da entrada e rola garantindo ≥1 mês futuro aberto enquanto ativo. Plano SOCIAL ou acolhido isento não geram parcelas. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Update Contribution Plan",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"familyInvestment\": \"NEGOTIATED\",\n  \"familyInvestmentAmount\": 350,\n  \"contributionDueDay\": 10\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/contribution-plan", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "contribution-plan"] },
+            "description": "Altera o plano de contribuição. Recalcula valor/vencimento das parcelas futuras em aberto (PENDING). Parcelas pagas não mudam. familyInvestment: BASKET_500|PAYMENT_700|SOCIAL|NEGOTIATED. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Set Contribution Exempt",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"exempt\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/contribution-exempt", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "contribution-exempt"] },
+            "description": "Marca/desmarca o acolhido como isento de contribuição (independente do plano). Ao isentar, cancela as parcelas obrigatórias futuras em aberto. Ao remover isenção, regenera a janela obrigatória. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Register Receivable Payment",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "paidAt", "value": "2026-06-10", "type": "text" },
+                { "key": "paymentMethod", "value": "PIX", "type": "text" },
+                { "key": "notes", "value": "Pagamento via PIX", "type": "text" },
+                { "key": "file", "type": "file", "description": "Comprovante opcional (imagem ou PDF, máx 20 MB)" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/payment", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "receivables", "{{receivableId}}", "payment"] },
+            "description": "Registra o pagamento de uma parcela, anexando comprovante opcional na mesma requisição. paymentMethod: CASH|PIX|CREDIT_CARD|DEBIT_CARD|BASKET|OTHER. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Reopen Receivable Payment",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/reopen", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "receivables", "{{receivableId}}", "reopen"] },
+            "description": "Desfaz o pagamento de uma parcela (volta a PENDING e remove o comprovante). Correção sem estorno. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
           "name": "Parse DOCX Intake Form",
           "request": {
             "method": "POST",

@@ -20,6 +20,8 @@ import type {
   ResidentAttachment,
   ContributionsReportResponse,
   GetContributionsReportParams,
+  ResidentReceivable,
+  UpdateContributionPlanInput,
 } from '../types.js';
 
 export function createResidentsModule(http: AxiosInstance) {
@@ -83,6 +85,25 @@ export function createResidentsModule(http: AxiosInstance) {
 
     contributionsReport: (params: GetContributionsReportParams): Promise<ContributionsReportResponse> =>
       http.get<ContributionsReportResponse>('/residents/contributions/report', { params }).then((r) => r.data),
+
+    getReceivables: (id: string): Promise<ResidentReceivable[]> =>
+      http.get<ResidentReceivable[]>(`/residents/${id}/receivables`).then((r) => r.data),
+
+    registerReceivablePayment: (id: string, receivableId: string, formData: FormData): Promise<ResidentReceivable> =>
+      http
+        .post<ResidentReceivable>(`/residents/${id}/receivables/${receivableId}/payment`, formData, {
+          headers: { 'Content-Type': undefined },
+        })
+        .then((r) => r.data),
+
+    reopenReceivable: (id: string, receivableId: string): Promise<ResidentReceivable> =>
+      http.post<ResidentReceivable>(`/residents/${id}/receivables/${receivableId}/reopen`, {}).then((r) => r.data),
+
+    updateContributionPlan: (id: string, data: UpdateContributionPlanInput): Promise<Resident> =>
+      http.patch<Resident>(`/residents/${id}/contribution-plan`, data).then((r) => r.data),
+
+    setContributionExempt: (id: string, exempt: boolean): Promise<Resident> =>
+      http.patch<Resident>(`/residents/${id}/contribution-exempt`, { exempt }).then((r) => r.data),
 
     parseDocx: (formData: FormData): Promise<ParseDocxResult> =>
       http

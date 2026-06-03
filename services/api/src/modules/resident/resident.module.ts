@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DocumentTemplateModule } from '../document-template/document-template.module';
 import { ResidentFollowUpModule } from '../resident-follow-up/resident-follow-up.module';
+import { StaffModule } from '../staff/staff.module';
 import { User } from '../user/user.entity';
 import { Resident } from './resident.entity';
 import { ResidentAttachment } from './resident-attachment.entity';
@@ -16,6 +17,7 @@ import { DocxParserService } from './docx-parser.service';
     TypeOrmModule.forFeature([Resident, ResidentDocument, ResidentAttachment, User, Admission]),
     DocumentTemplateModule,
     ResidentFollowUpModule,
+    StaffModule,
   ],
   controllers: [ResidentController],
   providers: [ResidentService, DocxParserService],

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Delete,
@@ -27,7 +27,7 @@ export class MinistryController {
   constructor(private service: MinistryService) {}
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.findOne(id);
   }
@@ -48,11 +48,11 @@ export class MinistryController {
     return this.service.remove(id);
   }
 
-  // ─── Members: Residents (filhos) ─────────────────────────────────────────────
+  // â”€â”€â”€ Members: Residents (filhos) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Post(':id/residents')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   addResident(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AddMinistryResidentDto,
@@ -62,7 +62,7 @@ export class MinistryController {
 
   @Delete(':id/residents/:residentId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   removeResident(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('residentId', ParseUUIDPipe) residentId: string,
@@ -70,11 +70,11 @@ export class MinistryController {
     return this.service.removeResident(id, residentId);
   }
 
-  // ─── Members: Staff (servos) ─────────────────────────────────────────────────
+  // â”€â”€â”€ Members: Staff (servos) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Post(':id/staff')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   addStaff(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AddMinistryStaffDto,
@@ -84,7 +84,7 @@ export class MinistryController {
 
   @Delete(':id/staff/:staffId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   removeStaff(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('staffId', ParseUUIDPipe) staffId: string,
@@ -92,16 +92,16 @@ export class MinistryController {
     return this.service.removeStaff(id, staffId);
   }
 
-  // ─── Tasks ───────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Tasks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get(':id/tasks')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findTasks(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.findTasks(id);
   }
 
   @Post(':id/tasks')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   createTask(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateMinistryTaskDto,
@@ -110,7 +110,7 @@ export class MinistryController {
   }
 
   @Patch(':id/tasks/:taskId')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   updateTask(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('taskId', ParseUUIDPipe) taskId: string,
@@ -121,7 +121,7 @@ export class MinistryController {
 
   @Delete(':id/tasks/:taskId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   removeTask(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('taskId', ParseUUIDPipe) taskId: string,

@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft } from 'lucide-react';
-import { Role } from '@fonte/types';
+import { Role, ServantRank } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import { useUpdateStaff, useStaffById } from '../hooks/useStaff';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { useSupportGroups } from '@/features/support-groups/hooks/useSupportGroups';
 import { StaffServiceSelector } from '../components/StaffServiceSelector';
+import { SERVANT_RANK_LABELS, SERVANT_RANK_ORDER } from '../constants';
 
 const SELECT_CLASS =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
@@ -26,7 +27,8 @@ const schema = z
   .object({
     name: z.string().min(1, 'Nome é obrigatório'),
     email: z.string().email('E-mail inválido'),
-    role: z.enum([Role.ADMIN, Role.COORDINATOR, Role.OPERATOR]),
+    role: z.enum([Role.ADMIN, Role.COORDINATOR, Role.SERVANT]),
+    rank: z.nativeEnum(ServantRank).optional(),
     servesInGroup: z.boolean(),
     houseId: z.string().optional().or(z.literal('')),
     supportGroupId: z.string().optional().or(z.literal('')),
@@ -60,6 +62,7 @@ export function EditStaffPage() {
         name: staff.name,
         email: staff.user.email,
         role: staff.user.role as FormData['role'],
+        rank: staff.rank ?? ServantRank.ASPIRANTE,
         servesInGroup: !staff.houseId,
         houseId: staff.houseId ?? '',
         supportGroupId: staff.supportGroupId ?? '',
@@ -69,6 +72,7 @@ export function EditStaffPage() {
   }, [staff, reset]);
 
   const servesInGroup = watch('servesInGroup');
+  const role = watch('role');
   const updateMutation = useUpdateStaff(id!);
 
   const onSubmit = (data: FormData) => {
@@ -81,6 +85,7 @@ export function EditStaffPage() {
           houseId: data.servesInGroup ? null : (data.houseId || null),
           supportGroupId: data.servesInGroup ? (data.supportGroupId || null) : null,
           phone: data.phone || null,
+          rank: data.role === Role.SERVANT ? (data.rank ?? ServantRank.ASPIRANTE) : null,
         },
         photo: pendingPhotoRef.current,
       },
@@ -130,10 +135,21 @@ export function EditStaffPage() {
           <select id="role" {...register('role')} className={SELECT_CLASS}>
             <option value={Role.ADMIN}>Administrador</option>
             <option value={Role.COORDINATOR}>Coordenador</option>
-            <option value={Role.OPERATOR}>Operador</option>
+            <option value={Role.SERVANT}>Servo</option>
           </select>
           {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
         </div>
+
+        {role === Role.SERVANT && (
+          <div className="space-y-2">
+            <Label htmlFor="rank">Nível</Label>
+            <select id="rank" {...register('rank')} className={SELECT_CLASS}>
+              {SERVANT_RANK_ORDER.map((r) => (
+                <option key={r} value={r}>{SERVANT_RANK_LABELS[r]}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <StaffServiceSelector
           servesInGroup={servesInGroup}

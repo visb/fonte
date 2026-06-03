@@ -1,4 +1,4 @@
-import * as dotenv from 'dotenv';
+﻿import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -71,7 +71,7 @@ async function seed() {
   const [operatorUser] = await ds.query<{ id: string }[]>(
     `INSERT INTO users (id, email, password_hash, role, is_active, must_change_password)
      VALUES (gen_random_uuid(), $1, $2, $3, true, false) RETURNING id`,
-    ['operator@fonte.com', operatorHash, Role.OPERATOR],
+    ['operator@fonte.com', operatorHash, Role.SERVANT],
   );
 
   // Resident user (for kiosk login)
@@ -127,14 +127,14 @@ async function seed() {
   const [resident] = await ds.query<{ id: string }[]>(
     `INSERT INTO residents (id, name, house_id, status, entry_date, user_id)
      VALUES (gen_random_uuid(), $1, $2, $3, CURRENT_DATE, $4) RETURNING id`,
-    ['João Testador', house.id, ResidentStatus.ACTIVE, residentUser.id],
+    ['JoÃ£o Testador', house.id, ResidentStatus.ACTIVE, residentUser.id],
   );
 
   // Relative linked to resident, with userId + mustChangePassword false
   const [relative] = await ds.query<{ id: string }[]>(
     `INSERT INTO relatives (id, name, resident_id, relationship, user_id)
      VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING id`,
-    ['Maria Testadora', resident.id, 'Mãe', relativeUser.id],
+    ['Maria Testadora', resident.id, 'MÃ£e', relativeUser.id],
   );
 
   // Approved wishlist item for resident
@@ -148,14 +148,14 @@ async function seed() {
   await ds.query(
     `INSERT INTO messages (id, resident_id, relative_id, sender_user_id, content, status, approved_by_user_id, approved_at)
      VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, NOW())`,
-    [resident.id, relative.id, relativeUser.id, 'Olá, como você está?', MessageStatus.APPROVED, operatorUser.id],
+    [resident.id, relative.id, relativeUser.id, 'OlÃ¡, como vocÃª estÃ¡?', MessageStatus.APPROVED, operatorUser.id],
   );
 
   // Support group with meeting (for checkin flow)
   const [supportGroup] = await ds.query<{ id: string }[]>(
     `INSERT INTO support_groups (id, name, church_name, address, day_of_week)
      VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING id`,
-    ['Grupo Esperança', 'Igreja Esperança', 'Rua dos Grupos, 456', 0],
+    ['Grupo EsperanÃ§a', 'Igreja EsperanÃ§a', 'Rua dos Grupos, 456', 0],
   );
 
   await ds.query(
@@ -178,20 +178,20 @@ async function seed() {
     ['Arroz', 'kg', 10, house.id],
   );
 
-  console.log('✓ Banco de testes populado:');
+  console.log('âœ“ Banco de testes populado:');
   console.log('  Admin:        admin@fonte.com / admin123');
   console.log('  Coordenador:  coord@fonte.com / coord123');
   console.log('  Operador:     operator@fonte.com / operator123');
   console.log('  Residente:    resident@teste.com / resident123');
   console.log('  Familiar:     familiar@fonte.com / familiar123');
   console.log('  Casa:         Casa Teste');
-  console.log('  Acolhido:     João Testador (com acesso gerado)');
+  console.log('  Acolhido:     JoÃ£o Testador (com acesso gerado)');
   console.log('  Familiar:     Maria Testadora (com acesso gerado)');
-  console.log('  Ministério:   Cozinha');
+  console.log('  MinistÃ©rio:   Cozinha');
   console.log('  Dispensa:     Arroz (10 kg)');
   console.log('  Wishlist:     Bermuda azul tamanho M (aprovado)');
-  console.log('  Mensagem:     "Olá, como você está?" (aprovada)');
-  console.log('  Grupo apoio:  Grupo Esperança (reunião hoje)');
+  console.log('  Mensagem:     "OlÃ¡, como vocÃª estÃ¡?" (aprovada)');
+  console.log('  Grupo apoio:  Grupo EsperanÃ§a (reuniÃ£o hoje)');
 
   await ds.destroy();
 }

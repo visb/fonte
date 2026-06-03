@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Delete,
@@ -26,13 +26,13 @@ export class WishlistController {
   constructor(private service: WishlistService) {}
 
   @Get('pending')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   getPending(@CurrentUser() user: AuthenticatedUser) {
     return this.service.findPending(user.userId);
   }
 
   @Get(':residentId')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RESIDENT, Role.RELATIVE)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT, Role.RESIDENT, Role.RELATIVE)
   getItems(
     @CurrentUser() user: AuthenticatedUser,
     @Param('residentId', ParseUUIDPipe) residentId: string,
@@ -62,7 +62,7 @@ export class WishlistController {
   }
 
   @Patch('items/:itemId/approve')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   approve(
     @CurrentUser() user: AuthenticatedUser,
     @Param('itemId', ParseUUIDPipe) itemId: string,
@@ -71,7 +71,7 @@ export class WishlistController {
   }
 
   @Patch('items/:itemId/reject')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   reject(
     @CurrentUser() user: AuthenticatedUser,
     @Param('itemId', ParseUUIDPipe) itemId: string,

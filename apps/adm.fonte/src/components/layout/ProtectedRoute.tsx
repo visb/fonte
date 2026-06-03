@@ -12,7 +12,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   const location = useLocation();
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (isAuthenticated && role === Role.OPERATOR)
+  if (isAuthenticated && role === Role.SERVANT)
     return <Navigate to="/login" replace state={{ error: 'Acesso não permitido para este perfil.' }} />;
   if (mustChangePassword && location.pathname !== '/change-password')
     return <Navigate to="/change-password" replace />;

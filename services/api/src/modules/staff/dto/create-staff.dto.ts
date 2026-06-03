@@ -1,5 +1,6 @@
-import {
+﻿import {
   IsEmail,
+  IsEnum,
   IsIn,
   IsNotEmpty,
   IsOptional,
@@ -8,7 +9,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
-import { Role } from '@fonte/types';
+import { Role, ServantRank } from '@fonte/types';
 
 export class CreateStaffDto {
   @IsString()
@@ -22,7 +23,7 @@ export class CreateStaffDto {
   @MinLength(6)
   password: string;
 
-  @IsIn([Role.ADMIN, Role.COORDINATOR, Role.OPERATOR])
+  @IsIn([Role.ADMIN, Role.COORDINATOR, Role.SERVANT])
   role: Role;
 
   @IsOptional()
@@ -38,4 +39,9 @@ export class CreateStaffDto {
   @IsOptional()
   @IsString()
   phone?: string | null;
+
+  // Nível do servo (SERVANT). Ignorado para ADMIN/COORDINATOR.
+  @IsOptional()
+  @IsEnum(ServantRank)
+  rank?: ServantRank | null;
 }

@@ -4,6 +4,8 @@ import type {
   BulkCreateContributionsInput,
   CreateFollowUpInput,
   GenerateResidentAccessInput,
+  PromoteToServantInput,
+  Staff,
   ListResidentsParams,
   PaginatedResponse,
   ParseDocxResult,
@@ -99,5 +101,7 @@ export function createResidentsModule(http: AxiosInstance) {
       http.post<Resident>(`/residents/${id}/access`, data).then((r) => r.data),
     resetPassword: (id: string, data: ResetResidentPasswordInput): Promise<void> =>
       http.post(`/residents/${id}/access/reset-password`, data).then(() => undefined),
+    promoteToServant: (id: string, data: PromoteToServantInput): Promise<Staff> =>
+      http.post<Staff>(`/residents/${id}/promote-to-servant`, data).then((r) => r.data),
   };
 }

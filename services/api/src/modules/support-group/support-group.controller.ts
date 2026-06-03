@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Delete,
@@ -28,10 +28,10 @@ import { AddRelativeCheckinDto } from './dto/add-relative-checkin.dto';
 export class SupportGroupController {
   constructor(private service: SupportGroupService) {}
 
-  // ─── Groups ──────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Groups â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get()
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findAll() {
     return this.service.findAll();
   }
@@ -43,13 +43,13 @@ export class SupportGroupController {
   }
 
   @Get('meetings')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findAllMeetings() {
     return this.service.findAllMeetings();
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.findOne(id);
   }
@@ -70,16 +70,16 @@ export class SupportGroupController {
     return this.service.remove(id);
   }
 
-  // ─── Meetings ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Meetings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get(':id/meetings')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findMeetings(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.findMeetings(id);
   }
 
   @Post(':id/meetings')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   createMeeting(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateMeetingDto,
@@ -88,33 +88,33 @@ export class SupportGroupController {
   }
 
   @Get('meetings/:meetingId')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findMeetingDetail(@Param('meetingId', ParseUUIDPipe) meetingId: string) {
     return this.service.findMeetingDetail(meetingId);
   }
 
   @Get('meetings/:meetingId/relative-checkins')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findMeetingRelativeCheckins(@Param('meetingId', ParseUUIDPipe) meetingId: string) {
     return this.service.findMeetingRelativeCheckins(meetingId);
   }
 
   @Get('relatives/:relativeId/checkin-history')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findRelativeCheckinHistory(@Param('relativeId', ParseUUIDPipe) relativeId: string) {
     return this.service.findRelativeCheckinHistory(relativeId);
   }
 
   @Get('residents/:residentId/checkin-history')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findResidentCheckinHistory(@Param('residentId', ParseUUIDPipe) residentId: string) {
     return this.service.findResidentCheckinHistory(residentId);
   }
 
-  // ─── Checkins ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Checkins â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Post('meetings/:meetingId/checkins')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   addCheckin(
     @Param('meetingId', ParseUUIDPipe) meetingId: string,
     @Body() dto: AddCheckinDto,
@@ -124,7 +124,7 @@ export class SupportGroupController {
 
   @Delete('meetings/:meetingId/checkins/:checkinId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   removeCheckin(
     @Param('meetingId', ParseUUIDPipe) meetingId: string,
     @Param('checkinId', ParseUUIDPipe) checkinId: string,

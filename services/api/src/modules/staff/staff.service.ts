@@ -6,7 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { StaffPermissionType } from '@fonte/types';
+import { Role, ServantRank, StaffPermissionType } from '@fonte/types';
 import { Staff } from './staff.entity';
 import { StaffPermission } from './staff-permission.entity';
 import { User } from '../user/user.entity';
@@ -71,7 +71,35 @@ export class StaffService {
       phone: dto.phone ?? null,
       houseId: dto.houseId ?? null,
       supportGroupId: dto.supportGroupId ?? null,
+      rank: dto.role === Role.SERVANT ? (dto.rank ?? null) : null,
       userId: savedUser.id,
+    });
+    return this.staffRepository.save(staff);
+  }
+
+  existsForFormerResident(residentId: string): Promise<boolean> {
+    return this.staffRepository.exists({ where: { formerResidentId: residentId } });
+  }
+
+  // Cria um Staff a partir de um Resident promovido a servo. O User já foi
+  // resolvido (reaproveitado ou criado) pelo ResidentService.
+  createFromResident(params: {
+    name: string;
+    phone: string | null;
+    houseId: string | null;
+    photoUrl: string | null;
+    userId: string;
+    formerResidentId: string;
+    rank: ServantRank;
+  }): Promise<Staff> {
+    const staff = this.staffRepository.create({
+      name: params.name,
+      phone: params.phone,
+      houseId: params.houseId,
+      photoUrl: params.photoUrl,
+      userId: params.userId,
+      formerResidentId: params.formerResidentId,
+      rank: params.rank,
     });
     return this.staffRepository.save(staff);
   }

@@ -23,7 +23,7 @@ export function LoginPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isAuthenticated && role !== Role.OPERATOR) navigate('/', { replace: true });
+    if (isAuthenticated && role !== Role.SERVANT) navigate('/', { replace: true });
   }, [isAuthenticated, role, navigate]);
 
   const {
@@ -38,7 +38,7 @@ export function LoginPage() {
       await login(data.email, data.password);
       const token = localStorage.getItem(TOKEN_STORAGE_KEY);
       const payload = token ? JSON.parse(atob(token.split('.')[1])) : {};
-      if (payload.role === Role.OPERATOR) {
+      if (payload.role === Role.SERVANT) {
         logout();
         setError('root', { message: 'Acesso não permitido para este perfil.' });
         return;

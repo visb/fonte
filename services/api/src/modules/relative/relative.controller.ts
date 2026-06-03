@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Body,
   Controller,
@@ -59,13 +59,13 @@ export class RelativeController {
     @UploadedFile() file: Express.Multer.File | undefined,
   ): Promise<RelativeMeView> {
     if (!file) throw new BadRequestException('Nenhum arquivo enviado');
-    if (!file.mimetype.startsWith('image/')) throw new BadRequestException('Apenas imagens são permitidas');
-    if (file.size > 5 * 1024 * 1024) throw new BadRequestException('Arquivo muito grande: máximo 5 MB');
+    if (!file.mimetype.startsWith('image/')) throw new BadRequestException('Apenas imagens sÃ£o permitidas');
+    if (file.size > 5 * 1024 * 1024) throw new BadRequestException('Arquivo muito grande: mÃ¡ximo 5 MB');
     return this.relativeService.uploadPhoto(user.userId, file);
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findByResident(
     @Query('residentId', ParseUUIDPipe) residentId: string,
   ): Promise<Relative[]> {
@@ -102,7 +102,7 @@ export class RelativeController {
 
   @Post(':id/access/reset-password')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   resetPassword(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ResetRelativePasswordDto,

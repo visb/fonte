@@ -4,6 +4,7 @@ import type { Staff } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SERVANT_RANK_LABELS, SERVANT_RANK_VARIANT } from '../constants';
 
 function StaffAvatar({ url, name }: { url: string | null; name: string }) {
   const src = api.photoUrl(url);
@@ -21,13 +22,13 @@ function StaffAvatar({ url, name }: { url: string | null; name: string }) {
 const ROLE_LABEL: Record<string, string> = {
   [Role.ADMIN]: 'Administrador',
   [Role.COORDINATOR]: 'Coordenador',
-  [Role.OPERATOR]: 'Operador',
+  [Role.SERVANT]: 'Servo',
 };
 
 const ROLE_VARIANT: Record<string, 'destructive' | 'info' | 'secondary'> = {
   [Role.ADMIN]: 'destructive',
   [Role.COORDINATOR]: 'info',
-  [Role.OPERATOR]: 'secondary',
+  [Role.SERVANT]: 'secondary',
 };
 
 interface Props {
@@ -62,9 +63,14 @@ export function StaffCard({ staff: s, onEdit, onResetPassword, onDelete }: Props
           )}
         </div>
       </div>
-      <Badge variant={ROLE_VARIANT[s.user.role] ?? 'secondary'}>
-        {ROLE_LABEL[s.user.role] ?? s.user.role}
-      </Badge>
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <Badge variant={ROLE_VARIANT[s.user.role] ?? 'secondary'}>
+          {ROLE_LABEL[s.user.role] ?? s.user.role}
+        </Badge>
+        {s.user.role === Role.SERVANT && s.rank && (
+          <Badge variant={SERVANT_RANK_VARIANT[s.rank]}>{SERVANT_RANK_LABELS[s.rank]}</Badge>
+        )}
+      </div>
       <div className="flex gap-1 shrink-0">
         <Button variant="ghost" size="icon" onClick={onEdit} title="Editar">
           <Pencil size={16} />

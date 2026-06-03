@@ -459,7 +459,7 @@ export class MessageService {
         .addGroupBy('m.relativeId')
         .getRawMany<RawPair>();
     } else {
-      // OPERATOR: only own conversations
+      // SERVANT: only own conversations
       const staff = await this.staffRepository.findOne({ where: { userId: staffUserId } });
       if (!staff || (!staff.houseId && !staff.supportGroupId)) return [];
 

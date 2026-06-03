@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ResidentStatus } from '@fonte/types';
+import { ResidentStatus, Role } from '@fonte/types';
 import { useGoBack } from '@/lib/navigation';
-import { ArrowLeft, Pencil, RefreshCw, User } from 'lucide-react';
+import { ArrowLeft, Pencil, RefreshCw, User, UserPlus } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { RESIDENT_STATUS_LABELS, RESIDENT_STATUS_VARIANT } from '../constants';
 import { useResidentById } from '../hooks/useResidents';
+import { PromoteToServantDialog } from '../components/PromoteToServantDialog';
 import { OverviewTab } from '../components/tabs/OverviewTab';
 import { RelativesTab } from '../components/tabs/RelativesTab';
 import { AttachmentsTab } from '../components/tabs/AttachmentsTab';
@@ -34,6 +36,9 @@ export function ResidentDetailPage() {
   const activeTab = (searchParams.get('tab') as TabId | null) ?? 'overview';
   const setActiveTab = (tab: TabId) => setSearchParams({ tab }, { replace: true });
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const { role } = useAuth();
+  const canPromote = role === Role.ADMIN || role === Role.COORDINATOR;
 
   const { data: resident, isLoading, isError } = useResidentById(id!);
 
@@ -78,6 +83,12 @@ export function ResidentDetailPage() {
             </Link>
           </Button>
         )}
+        {canPromote && (
+          <Button variant="outline" size="sm" onClick={() => setPromoteOpen(true)}>
+            <UserPlus size={14} className="mr-2" />
+            Tornar Servo
+          </Button>
+        )}
         <Button asChild variant="outline" size="sm">
           <Link to={`/residents/${id}/edit`}>
             <Pencil size={14} className="mr-2" />
@@ -112,6 +123,8 @@ export function ResidentDetailPage() {
       {activeTab === 'attachments' && <AttachmentsTab residentId={id!} residentName={resident.name} />}
 
       {activeTab === 'admissions' && <AdmissionsTab residentId={id!} />}
+
+      <PromoteToServantDialog open={promoteOpen} onClose={() => setPromoteOpen(false)} resident={resident} />
 
       <Dialog open={photoModalOpen} onOpenChange={setPhotoModalOpen}>
         <DialogContent className="max-w-sm p-2">

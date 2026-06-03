@@ -120,7 +120,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Nome do Staff\",\n  \"email\": \"staff@fonte.com\",\n  \"password\": \"senha123\",\n  \"role\": \"OPERATOR\",\n  \"houseId\": \"{{houseId}}\",\n  \"supportGroupId\": null,\n  \"phone\": \"+5511999999999\"\n}"
+              "raw": "{\n  \"name\": \"Nome do Staff\",\n  \"email\": \"staff@fonte.com\",\n  \"password\": \"senha123\",\n  \"role\": \"SERVANT\",\n  \"houseId\": \"{{houseId}}\",\n  \"supportGroupId\": null,\n  \"phone\": \"+5511999999999\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/staff", "host": ["{{baseUrl}}"], "path": ["staff"] }
           }
@@ -438,6 +438,18 @@
           }
         },
         {
+          "name": "Promote Resident to Servant",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"servo@fonte.org\",\n  \"password\": \"senha123\",\n  \"houseId\": \"{{houseId}}\",\n  \"rank\": \"ASPIRANTE\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/promote-to-servant", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "promote-to-servant"] }
+          }
+        },
+        {
           "name": "Get Resident Documents",
           "request": {
             "method": "GET",
@@ -512,7 +524,7 @@
           "request": {
             "method": "GET",
             "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/admissions", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "admissions"] },
-            "description": "Retorna histórico de todos os acolhimentos do residente, com nome da casa. Ordem: mais recente primeiro. Roles: ADMIN, COORDINATOR, OPERATOR."
+            "description": "Retorna histórico de todos os acolhimentos do residente, com nome da casa. Ordem: mais recente primeiro. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {
@@ -520,7 +532,7 @@
           "request": {
             "method": "GET",
             "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/follow-ups", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "follow-ups"] },
-            "description": "Lista eventos de acompanhamento do residente. OPERATOR vê apenas accessLevel=ALL. ADMIN/COORDINATOR veem tudo. Ordenado por date DESC, createdAt DESC."
+            "description": "Lista eventos de acompanhamento do residente. SERVANT vê apenas accessLevel=ALL. ADMIN/COORDINATOR veem tudo. Ordenado por date DESC, createdAt DESC."
           }
         },
         {

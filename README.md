@@ -50,7 +50,7 @@ Aplicativo interno para operadores da casa.
 
 Stakeholders:
 
-- Operator
+- SERVANT
 - Coordinator
 
 Responsabilidades:
@@ -159,7 +159,7 @@ Sem multi-tenant (neste momento).
 
 - ADMIN
 - COORDINATOR
-- OPERATOR
+- SERVANT
 - FAMILY (fase futura)
 - RESIDENT (fase futura)
 

@@ -16,7 +16,7 @@ jest.mock('@fonte/types', () => ({
   Role: {
     ADMIN: 'ADMIN',
     COORDINATOR: 'COORDINATOR',
-    OPERATOR: 'OPERATOR',
+    SERVANT: 'SERVANT',
     RELATIVE: 'RELATIVE',
     RESIDENT: 'RESIDENT',
   },
@@ -31,11 +31,17 @@ jest.mock('@fonte/types', () => ({
     MONTHLY_CONTRIBUTION: 'MONTHLY_CONTRIBUTION',
     DISCIPLINE: 'DISCIPLINE',
     BEHAVIOR_ASSESSMENT: 'BEHAVIOR_ASSESSMENT',
+    PROMOTED_TO_SERVANT: 'PROMOTED_TO_SERVANT',
     NOTE: 'NOTE',
   },
   FollowUpAccessLevel: {
     ALL: 'ALL',
     ADMINISTRATION: 'ADMINISTRATION',
+  },
+  ServantRank: {
+    ASPIRANTE: 'ASPIRANTE',
+    CONSAGRADO: 'CONSAGRADO',
+    ALIANCADO: 'ALIANCADO',
   },
 }));
 
@@ -110,6 +116,14 @@ function makeService(
   residentRepo: Partial<Repository<Resident>>,
   admissionRepo: Partial<Repository<Admission>> = {},
   userRepo: Partial<Repository<User>> = {},
+  staffService: Record<string, jest.Mock> = {
+    existsForFormerResident: jest.fn().mockResolvedValue(false),
+    createFromResident: jest.fn().mockResolvedValue({ id: 'staff-1' }),
+  },
+  followUpService: Record<string, jest.Mock> = {
+    createAuto: jest.fn().mockResolvedValue(undefined),
+    getLastContributionDates: jest.fn().mockResolvedValue(new Map()),
+  },
 ) {
   return new ResidentService(
     residentRepo as Repository<Resident>,
@@ -118,10 +132,8 @@ function makeService(
     userRepo as Repository<User>,
     admissionRepo as Repository<Admission>,
     {} as never, // StorageService
-    {
-      createAuto: jest.fn().mockResolvedValue(undefined),
-      getLastContributionDates: jest.fn().mockResolvedValue(new Map()),
-    } as never, // ResidentFollowUpService
+    followUpService as never, // ResidentFollowUpService
+    staffService as never, // StaffService
     { query: jest.fn().mockResolvedValue([]) } as never, // DataSource
   );
 }
@@ -584,5 +596,88 @@ describe('ResidentService.findAdmissions', () => {
     expect(admissionFind).toHaveBeenCalledWith(
       expect.objectContaining({ relations: ['house'] }),
     );
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// promoteToServant
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('ResidentService.promoteToServant', () => {
+  const { ConflictException, BadRequestException: BadReq } = jest.requireActual('@nestjs/common');
+
+  function makePromoteService(residentOverrides: Partial<Resident> = {}, alreadyServant = false) {
+    const resident = makeResident(residentOverrides);
+    const residentFindOne = jest.fn().mockResolvedValue(resident);
+    const residentUpdate = jest.fn().mockResolvedValue({ affected: 1 });
+    const userFindOne = jest.fn().mockResolvedValue(null);
+    const userUpdate = jest.fn().mockResolvedValue({ affected: 1 });
+    const userCreate = jest.fn().mockImplementation((v) => v);
+    const userSave = jest.fn().mockImplementation((v) => Promise.resolve({ ...v, id: USER_ID }));
+    const createAuto = jest.fn().mockResolvedValue(undefined);
+
+    const staffService = {
+      existsForFormerResident: jest.fn().mockResolvedValue(alreadyServant),
+      createFromResident: jest.fn().mockResolvedValue({ id: 'staff-1' }),
+      findOne: jest.fn().mockResolvedValue({ id: 'staff-1', rank: 'ASPIRANTE' }),
+    };
+
+    const service = makeService(
+      { findOne: residentFindOne, update: residentUpdate },
+      {},
+      { findOne: userFindOne, update: userUpdate, create: userCreate, save: userSave },
+      staffService,
+      { createAuto, getLastContributionDates: jest.fn().mockResolvedValue(new Map()) },
+    );
+
+    return { service, residentUpdate, userUpdate, userSave, staffService, createAuto };
+  }
+
+  it('reuses existing User (RESIDENT→SERVANT) when resident already has access', async () => {
+    const { service, userUpdate, userSave, staffService } = makePromoteService({ userId: USER_ID });
+
+    const staff = await service.promoteToServant(RESIDENT_ID, {});
+
+    expect(userUpdate).toHaveBeenCalledWith(USER_ID, { role: 'SERVANT' });
+    expect(userSave).not.toHaveBeenCalled();
+    expect(staffService.createFromResident).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID, formerResidentId: RESIDENT_ID, rank: 'ASPIRANTE' }),
+    );
+    expect(staff).toMatchObject({ id: 'staff-1' });
+  });
+
+  it('creates a new User when resident has no access and email/password provided', async () => {
+    const { service, userSave, staffService } = makePromoteService({ userId: null });
+
+    await service.promoteToServant(RESIDENT_ID, { email: 'novo@fonte.org', password: 'secret123' });
+
+    expect(userSave).toHaveBeenCalledTimes(1);
+    expect(staffService.createFromResident).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID }),
+    );
+  });
+
+  it('throws when resident has no access and email/password are missing', async () => {
+    const { service } = makePromoteService({ userId: null });
+
+    await expect(service.promoteToServant(RESIDENT_ID, {})).rejects.toBeInstanceOf(BadReq);
+  });
+
+  it('rejects double conversion', async () => {
+    const { service } = makePromoteService({ userId: USER_ID }, true);
+
+    await expect(service.promoteToServant(RESIDENT_ID, {})).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('archives the filho as DISCHARGED and logs PROMOTED_TO_SERVANT follow-up', async () => {
+    const { service, residentUpdate, createAuto } = makePromoteService({ userId: USER_ID });
+
+    await service.promoteToServant(RESIDENT_ID, {});
+
+    expect(residentUpdate).toHaveBeenCalledWith(
+      RESIDENT_ID,
+      expect.objectContaining({ status: 'DISCHARGED' }),
+    );
+    expect(createAuto).toHaveBeenCalledWith(RESIDENT_ID, 'PROMOTED_TO_SERVANT', expect.any(String));
   });
 });

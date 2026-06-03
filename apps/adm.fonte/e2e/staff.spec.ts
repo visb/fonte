@@ -75,7 +75,7 @@ test.describe('Servos', () => {
     await page.getByRole('link', { name: 'Novo Servo' }).click();
     await page.getByLabel('Nome *').fill(name);
     await page.getByLabel('E-mail *').fill(email);
-    await page.getByLabel('Função *').selectOption('OPERATOR');
+    await page.getByLabel('Função *').selectOption('SERVANT');
     await page.getByLabel('Casa *').selectOption({ label: 'Casa Teste' });
     await page.getByRole('button', { name: 'Cadastrar' }).click();
     await expect(page.getByText(name)).toBeVisible();

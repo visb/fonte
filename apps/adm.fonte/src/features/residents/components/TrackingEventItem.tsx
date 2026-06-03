@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   Shuffle,
   StickyNote,
+  UserPlus,
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -28,6 +29,7 @@ const TYPE_ICONS: Record<FollowUpType, LucideIcon> = {
   [FollowUpType.MONTHLY_CONTRIBUTION]: DollarSign,
   [FollowUpType.DISCIPLINE]: ShieldAlert,
   [FollowUpType.BEHAVIOR_ASSESSMENT]: ClipboardList,
+  [FollowUpType.PROMOTED_TO_SERVANT]: UserPlus,
   [FollowUpType.NOTE]: StickyNote,
 };
 
@@ -42,6 +44,7 @@ const TYPE_COLORS: Record<FollowUpType, string> = {
   [FollowUpType.MONTHLY_CONTRIBUTION]: 'bg-yellow-100 text-yellow-700',
   [FollowUpType.DISCIPLINE]: 'bg-amber-100 text-amber-700',
   [FollowUpType.BEHAVIOR_ASSESSMENT]: 'bg-indigo-100 text-indigo-700',
+  [FollowUpType.PROMOTED_TO_SERVANT]: 'bg-emerald-100 text-emerald-700',
   [FollowUpType.NOTE]: 'bg-slate-100 text-slate-700',
 };
 

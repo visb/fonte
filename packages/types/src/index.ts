@@ -38,9 +38,16 @@ export const DAY_OF_WEEK_LABELS: Record<number, string> = {
 export enum Role {
   ADMIN = 'ADMIN',
   COORDINATOR = 'COORDINATOR',
-  OPERATOR = 'OPERATOR',
+  SERVANT = 'SERVANT',
   RELATIVE = 'RELATIVE',
   RESIDENT = 'RESIDENT',
+}
+
+// Hierarquia espiritual do servo (role SERVANT). Independente do Role de sistema.
+export enum ServantRank {
+  ASPIRANTE = 'ASPIRANTE',
+  CONSAGRADO = 'CONSAGRADO',
+  ALIANCADO = 'ALIANCADO',
 }
 
 export enum ResidentStatus {
@@ -130,6 +137,7 @@ export enum FollowUpType {
   MONTHLY_CONTRIBUTION = 'MONTHLY_CONTRIBUTION',
   DISCIPLINE = 'DISCIPLINE',
   BEHAVIOR_ASSESSMENT = 'BEHAVIOR_ASSESSMENT',
+  PROMOTED_TO_SERVANT = 'PROMOTED_TO_SERVANT',
   NOTE = 'NOTE',
 }
 

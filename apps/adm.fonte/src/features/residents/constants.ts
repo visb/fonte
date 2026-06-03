@@ -53,6 +53,7 @@ export const FOLLOW_UP_TYPE_LABELS: Record<FollowUpType, string> = {
   [FollowUpType.MONTHLY_CONTRIBUTION]: 'Contribuição mensal',
   [FollowUpType.DISCIPLINE]: 'Disciplina',
   [FollowUpType.BEHAVIOR_ASSESSMENT]: 'Avaliação de conduta',
+  [FollowUpType.PROMOTED_TO_SERVANT]: 'Tornou-se servo',
   [FollowUpType.NOTE]: 'Observação',
 };
 
@@ -67,6 +68,7 @@ export const FOLLOW_UP_TYPE_ICONS: Record<FollowUpType, string> = {
   [FollowUpType.MONTHLY_CONTRIBUTION]: 'DollarSign',
   [FollowUpType.DISCIPLINE]: 'ShieldAlert',
   [FollowUpType.BEHAVIOR_ASSESSMENT]: 'ClipboardList',
+  [FollowUpType.PROMOTED_TO_SERVANT]: 'UserPlus',
   [FollowUpType.NOTE]: 'StickyNote',
 };
 

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import sharp from 'sharp';
-import { ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, ResidentStatus, Role } from '@fonte/types';
+import { ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, ResidentStatus, Role, ServantRank } from '@fonte/types';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
 const CANONICAL_AMOUNTS: Partial<Record<FamilyInvestment, number>> = {
@@ -15,6 +15,9 @@ import { Resident } from './resident.entity';
 import { Admission } from './admission.entity';
 import { User } from '../user/user.entity';
 import { ResidentFollowUpService } from '../resident-follow-up/resident-follow-up.service';
+import { StaffService } from '../staff/staff.service';
+import { Staff } from '../staff/staff.entity';
+import { PromoteToServantDto } from './dto/promote-to-servant.dto';
 
 export interface ResidentDocumentView {
   id: string;
@@ -64,6 +67,7 @@ export class ResidentService {
     private admissionRepository: Repository<Admission>,
     private storageService: StorageService,
     private followUpService: ResidentFollowUpService,
+    private staffService: StaffService,
     private dataSource: DataSource,
   ) {}
 
@@ -330,6 +334,62 @@ export class ResidentService {
     const savedUser = await this.userRepository.save(user);
     await this.residentRepository.update(id, { userId: savedUser.id });
     return this.findOne(id);
+  }
+
+  // Promove um filho (Resident) a servo (Staff): reaproveita o User do kiosk se
+  // houver (troca role para SERVANT) ou cria um novo acesso, cria o Staff como
+  // ASPIRANTE vinculado ao Resident, e arquiva o filho (alta).
+  async promoteToServant(id: string, dto: PromoteToServantDto): Promise<Staff> {
+    const resident = await this.findOne(id);
+
+    if (await this.staffService.existsForFormerResident(id)) {
+      throw new ConflictException('Este interno já foi promovido a servo');
+    }
+
+    let userId: string;
+    if (resident.userId) {
+      // Reaproveita a conta de kiosk: mantém email/senha, vira SERVANT.
+      await this.userRepository.update(resident.userId, { role: Role.SERVANT });
+      userId = resident.userId;
+    } else {
+      if (!dto.email || !dto.password) {
+        throw new BadRequestException('E-mail e senha são obrigatórios para gerar o acesso do servo');
+      }
+      const existing = await this.userRepository.findOne({ where: { email: dto.email } });
+      if (existing) throw new ConflictException('E-mail já cadastrado');
+
+      const passwordHash = await bcrypt.hash(dto.password, 10);
+      const savedUser = await this.userRepository.save(
+        this.userRepository.create({
+          email: dto.email,
+          passwordHash,
+          role: Role.SERVANT,
+          mustChangePassword: true,
+        }),
+      );
+      userId = savedUser.id;
+    }
+
+    const staff = await this.staffService.createFromResident({
+      name: resident.name,
+      phone: resident.contactPhone,
+      houseId: dto.houseId ?? resident.houseId,
+      photoUrl: resident.photoUrl,
+      userId,
+      formerResidentId: resident.id,
+      rank: dto.rank ?? ServantRank.ASPIRANTE,
+    });
+
+    // Arquiva o filho: alta + evento na timeline.
+    const today = new Date().toISOString().split('T')[0];
+    await this.residentRepository.update(id, {
+      status: ResidentStatus.DISCHARGED,
+      exitDate: today as unknown as Date,
+    });
+    await this.followUpService.createAuto(id, FollowUpType.PROMOTED_TO_SERVANT, today);
+
+    // Recarrega com as relações (user/house) para a resposta.
+    return this.staffService.findOne(staff.id);
   }
 
   async resetPassword(id: string, password: string): Promise<void> {

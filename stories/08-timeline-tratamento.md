@@ -43,7 +43,7 @@ enum FollowUpType {
 }
 
 enum FollowUpAccessLevel {
-  ALL = "ALL", // toda a staff: ADMIN, COORDINATOR, OPERATOR
+  ALL = "ALL", // toda a staff: ADMIN, COORDINATOR, SERVANT
   ADMINISTRATION = "ADMINISTRATION", // só ADMIN
 }
 ```
@@ -52,7 +52,7 @@ enum FollowUpAccessLevel {
 
 ## Controle de acesso
 
-| Nível            | OPERATOR/COORDINATOR | ADMIN |
+| Nível            | SERVANT/COORDINATOR | ADMIN |
 | ---------------- | -------------------- | ----- |
 | `ALL`            | ✅                   | ✅    |
 | `ADMINISTRATION` | ❌                   | ✅    |
@@ -90,7 +90,7 @@ src/modules/resident-follow-up/
 
 `findByResident(residentId, role)`:
 
-- `Role.OPERATOR` → filtrar só `accessLevel = ALL`
+- `Role.SERVANT` → filtrar só `accessLevel = ALL`
 - `Role.ADMIN | COORDINATOR` → retornar tudo
 - Ordenar por `date DESC, createdAt DESC`
 - Join com staff (created_by) para retornar `createdByName`
@@ -102,8 +102,8 @@ Nova migration: cria tabela `resident_follow_ups` com FK para `residents` e `sta
 ### Endpoints em `resident.controller.ts`
 
 ```
-GET  /residents/:id/follow-ups   roles: ADMIN, COORDINATOR, OPERATOR
-POST /residents/:id/follow-ups   roles: ADMIN, COORDINATOR, OPERATOR
+GET  /residents/:id/follow-ups   roles: ADMIN, COORDINATOR, SERVANT
+POST /residents/:id/follow-ups   roles: ADMIN, COORDINATOR, SERVANT
 ```
 
 POST extrai `staffId` do JWT via `@CurrentUser()` → `createdById`.
@@ -165,7 +165,7 @@ createFollowUp: (id: string, data: CreateFollowUpInput) =>
 | `lib/queryKeys.ts`                                      | adicionar `followUps(id)`                                                              |
 | `features/residents/constants.ts`                       | labels para `FollowUpType`                                                             |
 
-> **Nota**: OPERATOR só vê e só pode criar eventos com `accessLevel = ALL`. O campo accessLevel não aparece no formulário do ops.fonte.
+> **Nota**: SERVANT só vê e só pode criar eventos com `accessLevel = ALL`. O campo accessLevel não aparece no formulário do ops.fonte.
 
 ---
 
@@ -185,5 +185,5 @@ createFollowUp: (id: string, data: CreateFollowUpInput) =>
 2. Adicionar familiar → evento RELATIVE_ADDED aparece
 3. Mudar status para Alta → evento DISCHARGE aparece
 4. Registrar evento MONTHLY_CONTRIBUTION (accessLevel ADMINISTRATION) → visível para ADMIN
-5. Registrar evento com accessLevel ADMINISTRATION → aparece para ADMIN, **não** para OPERATOR nem COORDINATOR
+5. Registrar evento com accessLevel ADMINISTRATION → aparece para ADMIN, **não** para SERVANT nem COORDINATOR
 6. `pnpm test:api` passa após mudanças no backend

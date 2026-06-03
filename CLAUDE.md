@@ -314,6 +314,6 @@ Consulte `BUSINESS_RULES.md` antes de tocar nestes fluxos:
 
 - Autenticação centralizada em `User`.
 - `Staff.user_id` é obrigatório; `Relative.user_id` e `Resident.user_id` são preenchidos quando recebem acesso.
-- Roles `ADMIN`, `COORDINATOR`, `OPERATOR` são exclusivas de Staff.
+- Roles `ADMIN`, `COORDINATOR`, `SERVANT` são exclusivas de Staff.
 - Roles `RELATIVE`, `RESIDENT` são fases futuras.
 - JWT carrega `user_id`, `role`, `profile_type` (`STAFF` | `RELATIVE` | `RESIDENT`).

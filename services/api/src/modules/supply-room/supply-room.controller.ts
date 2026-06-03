@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Delete,
@@ -26,16 +26,16 @@ import { CreateMovementDto } from './dto/create-movement.dto';
 export class SupplyRoomController {
   constructor(private service: SupplyRoomService) {}
 
-  // ── Items ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get('items')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findItems(@Query('houseId') houseId?: string) {
     return this.service.findItems(houseId);
   }
 
   @Post('items')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   createItem(@Body() dto: CreateItemDto) {
     return this.service.createItem(dto);
   }
@@ -56,10 +56,10 @@ export class SupplyRoomController {
     return this.service.removeItem(id);
   }
 
-  // ── Movements ──────────────────────────────────────────────────────────────
+  // â”€â”€ Movements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get('movements')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findMovements(
     @Query('houseId') houseId?: string,
     @Query('itemId') itemId?: string,
@@ -68,7 +68,7 @@ export class SupplyRoomController {
   }
 
   @Post('movements')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   createMovement(@Body() dto: CreateMovementDto) {
     return this.service.createMovement(dto);
   }

@@ -11,6 +11,9 @@ import { AppModule } from '../src/app.module';
 
 const BASE = '/api/v1';
 const REPORT_MONTH = new Date().toISOString().slice(0, 7); // YYYY-MM
+// Vendas inseridas dentro do mês do relatório para os totais do período atual baterem.
+const BREAD_DATE = `${REPORT_MONTH}-15`;
+const PIZZA_DATE = `${REPORT_MONTH}-16`;
 
 describe('StreetSaleController (e2e)', () => {
   let app: INestApplication;
@@ -160,7 +163,7 @@ describe('StreetSaleController (e2e)', () => {
     it('creates a bread sale and returns the view shape', async () => {
       const body = {
         houseId,
-        date: '2026-05-15',
+        date: BREAD_DATE,
         type: StreetSaleType.BREAD,
         quantity: 40,
         amountPix: 15000,
@@ -176,7 +179,7 @@ describe('StreetSaleController (e2e)', () => {
 
       expect(res.body).toMatchObject({
         houseId,
-        date: '2026-05-15',
+        date: BREAD_DATE,
         type: StreetSaleType.BREAD,
         quantity: 40,
         amountPix: 15000,
@@ -195,7 +198,7 @@ describe('StreetSaleController (e2e)', () => {
         .set('Authorization', `Bearer ${coordToken}`)
         .send({
           houseId,
-          date: '2026-05-16',
+          date: PIZZA_DATE,
           type: StreetSaleType.PIZZA,
           quantity: 15,
           amountPix: 20000,

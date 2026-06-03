@@ -11,5 +11,6 @@ export const FOLLOW_UP_TYPE_LABELS: Record<FollowUpType, string> = {
   [FollowUpType.MONTHLY_CONTRIBUTION]: 'Contribuição mensal',
   [FollowUpType.DISCIPLINE]: 'Disciplina',
   [FollowUpType.BEHAVIOR_ASSESSMENT]: 'Avaliação de conduta',
+  [FollowUpType.PROMOTED_TO_SERVANT]: 'Tornou-se servo',
   [FollowUpType.NOTE]: 'Observação',
 };

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Get,
@@ -21,7 +21,7 @@ export class IncidentController {
   constructor(private service: IncidentService) {}
 
   @Get()
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findAll(
     @Query('houseId') houseId?: string,
     @Query('residentId') residentId?: string,
@@ -30,13 +30,13 @@ export class IncidentController {
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.findOne(id);
   }
 
   @Post()
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   create(@Body() dto: CreateIncidentDto) {
     return this.service.create(dto);
   }

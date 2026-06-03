@@ -9,7 +9,7 @@ import { useStaff, useStaffPermissions, useAddStaffPermission, useRemoveStaffPer
 const ROLE_LABEL: Record<string, string> = {
   [Role.ADMIN]: 'Administrador',
   [Role.COORDINATOR]: 'Coordenador',
-  [Role.OPERATOR]: 'Operador',
+  [Role.SERVANT]: 'Servo',
 };
 
 const PERMISSIONS = [

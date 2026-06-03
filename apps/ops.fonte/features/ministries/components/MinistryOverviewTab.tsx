@@ -124,9 +124,9 @@ export function MinistryOverviewTab({ ministryId, houseId, ministry, onEditLeade
         <Text className="text-sm text-gray-400 mb-2">Nenhum servo disponível.</Text>
       )}
 
-      <SectionLabel>{`Operadores (${ministry.members.length})`}</SectionLabel>
+      <SectionLabel>{`Servos (${ministry.members.length})`}</SectionLabel>
       {ministry.members.length === 0 ? (
-        <Text className="text-sm text-gray-400 py-2">Nenhum operador adicionado.</Text>
+        <Text className="text-sm text-gray-400 py-2">Nenhum servo adicionado.</Text>
       ) : (
         ministry.members.map((member) => (
           <View key={member.id} className="flex-row items-center py-3 border-b border-gray-100">

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FollowUpAccessLevel, FollowUpType, Role, ResidentStatus } from '@fonte/types';
@@ -47,7 +47,7 @@ export class ResidentFollowUpService {
       .where('f.resident_id = :residentId', { residentId })
       .andWhere('f.deleted_at IS NULL');
 
-    if (role === Role.OPERATOR) {
+    if (role === Role.SERVANT) {
       qb.andWhere('f.access_level = :level', { level: FollowUpAccessLevel.ALL });
     }
 
@@ -60,7 +60,7 @@ export class ResidentFollowUpService {
   async create(residentId: string, dto: CreateFollowUpDto, staffUserId: string): Promise<ResidentFollowUpView> {
     const staff = await this.staffRepo.findOne({ where: { userId: staffUserId } });
 
-    // OPERATOR can only create ALL-level events
+    // SERVANT can only create ALL-level events
     const accessLevel =
       dto.accessLevel === FollowUpAccessLevel.ADMINISTRATION && staff
         ? dto.accessLevel

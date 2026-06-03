@@ -69,10 +69,25 @@ Para registrar alta:
 
 ---
 
+## 5.1. Promoção de filho a servo
+
+Quase todos os servos foram filhos um dia. Um Resident pode ser promovido a Staff:
+
+- Ação disponível na página do filho; permitida a ADMIN ou COORDINATOR
+- Permitida em qualquer status do filho
+- O filho é arquivado: status passa a `DISCHARGED` com `exit_date` = hoje
+- Cria-se um Staff com role `SERVANT`, nível `ASPIRANTE`, vinculado ao Resident de origem (`former_resident_id`)
+- Se o filho já tinha acesso (User do kiosk), a conta é reaproveitada: role muda de `RESIDENT` para `SERVANT`, mantendo email/senha
+- Se não tinha acesso, gera-se email + senha (igual ao fluxo de novo servo)
+- Não é permitida dupla promoção do mesmo filho
+- A timeline do filho registra o evento `PROMOTED_TO_SERVANT`
+
+---
+
 ## 6. Ministérios
 
 - Apenas COORDINATOR ou ADMIN pode criar ou remover ministérios
-- OPERATOR pode ser atribuído como responsável de um ministério
+- SERVANT pode ser atribuído como responsável de um ministério
 - Filhos podem ser designados a um ou mais ministérios
 - Ministério não pode ser removido fisicamente (soft delete)
 
@@ -81,8 +96,8 @@ Para registrar alta:
 ## 7. Storeroom (Dispensa)
 
 - Cada House possui sua própria storeroom
-- OPERATOR pode registrar entradas e saídas
-- OPERATOR pode realizar conferência
+- SERVANT pode registrar entradas e saídas
+- SERVANT pode realizar conferência
 - Toda movimentação é registrada com responsável, data e quantidade
 - Não é permitido estorno; correções devem ser feitas com novo lançamento
 - O serviço mantém log interno de todas as movimentações
@@ -102,7 +117,7 @@ Para registrar alta:
 
 - Residents podem fazer login no ops.fonte com email + senha
 - Acesso gerado manualmente por ADMIN ou COORDINATOR no adm.fonte
-- Senha pode ser resetada por ADMIN, COORDINATOR ou OPERATOR
+- Senha pode ser resetada por ADMIN, COORDINATOR ou SERVANT
 - Residents só têm acesso a: Módulo Mensagens e Módulo Lista de Pedidos
 - Limite diário de 1200 segundos (20 min) por interno para uso destes módulos
 - Timer exibido no topo das telas; acesso bloqueado quando limite é atingido
@@ -149,9 +164,21 @@ Autenticação é centralizada na entidade `User`. Cada entidade que precisar de
 
 ### Roles
 
-- `ADMIN`, `COORDINATOR`, `OPERATOR` — exclusivos de Staff
+- `ADMIN`, `COORDINATOR`, `SERVANT` — exclusivos de Staff (`SERVANT` = servo da casa)
 - `RELATIVE` — exclusivo de Relative
 - `RESIDENT` — exclusivo de Resident
+
+### Hierarquia do servo (rank)
+
+Servos (`SERVANT`) têm um nível espiritual, separado do Role de sistema:
+
+- `ASPIRANTE` → `CONSAGRADO` → `ALIANCADO`
+
+Regras:
+
+- Campo `rank` em Staff; nulo para `ADMIN`/`COORDINATOR`
+- Servo recém-criado/promovido entra como `ASPIRANTE`
+- Promoção entre níveis é feita na edição do servo
 
 ### Regras
 
@@ -164,7 +191,7 @@ Autenticação é centralizada na entidade `User`. Cada entidade que precisar de
 
 ## 10. Permissões por Role
 
-| Ação                       | ADMIN | COORDINATOR | OPERATOR |
+| Ação                       | ADMIN | COORDINATOR | SERVANT |
 | -------------------------- | :---: | :---------: | :------: |
 | Gerenciar Staff            |   ✓   |             |          |
 | Remover Staff              |   ✓   |             |          |
@@ -193,7 +220,7 @@ App mobile para familiares (role `RELATIVE`) de residentes.
 
 ### Acesso
 - Familiar recebe login (email + senha) gerado por ADMIN ou COORDINATOR no adm.fonte
-- Senha pode ser resetada por ADMIN, COORDINATOR ou OPERATOR
+- Senha pode ser resetada por ADMIN, COORDINATOR ou SERVANT
 - No primeiro login, familiar deve trocar a senha (`mustChangePassword = true`)
 
 ### Permissões

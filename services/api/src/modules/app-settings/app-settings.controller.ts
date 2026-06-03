@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -12,7 +12,7 @@ export class AppSettingsController {
   constructor(private service: AppSettingsService) {}
 
   @Get()
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   get() {
     return this.service.get();
   }

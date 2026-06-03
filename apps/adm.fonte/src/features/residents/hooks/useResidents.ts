@@ -8,6 +8,7 @@ import type {
   CreateResidentInput,
   GenerateResidentAccessInput,
   GenerateRelativeAccessInput,
+  PromoteToServantInput,
   ReadmitResidentInput,
   UpdateResidentInput,
 } from '@fonte/api-client';
@@ -106,6 +107,19 @@ export function useGenerateResidentAccess(residentId: string) {
       api.residents.generateAccess(residentId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(residentId) });
+    },
+  });
+}
+
+export function usePromoteResidentToServant(residentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PromoteToServantInput) =>
+      api.residents.promoteToServant(residentId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(residentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.staff.all });
     },
   });
 }

@@ -17,6 +17,7 @@ const TYPE_ICONS: Record<FollowUpType, IoniconString> = {
   [FollowUpType.MONTHLY_CONTRIBUTION]: 'cash-outline',
   [FollowUpType.DISCIPLINE]: 'shield-outline',
   [FollowUpType.BEHAVIOR_ASSESSMENT]: 'clipboard-outline',
+  [FollowUpType.PROMOTED_TO_SERVANT]: 'person-add-outline',
   [FollowUpType.NOTE]: 'document-text-outline',
 };
 
@@ -31,6 +32,7 @@ const TYPE_BG: Record<FollowUpType, string> = {
   [FollowUpType.MONTHLY_CONTRIBUTION]: 'bg-yellow-100',
   [FollowUpType.DISCIPLINE]: 'bg-amber-100',
   [FollowUpType.BEHAVIOR_ASSESSMENT]: 'bg-indigo-100',
+  [FollowUpType.PROMOTED_TO_SERVANT]: 'bg-emerald-100',
   [FollowUpType.NOTE]: 'bg-slate-100',
 };
 
@@ -45,6 +47,7 @@ const TYPE_COLOR: Record<FollowUpType, string> = {
   [FollowUpType.MONTHLY_CONTRIBUTION]: '#a16207',
   [FollowUpType.DISCIPLINE]: '#b45309',
   [FollowUpType.BEHAVIOR_ASSESSMENT]: '#4338ca',
+  [FollowUpType.PROMOTED_TO_SERVANT]: '#047857',
   [FollowUpType.NOTE]: '#475569',
 };
 

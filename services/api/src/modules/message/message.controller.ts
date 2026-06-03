@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Body,
   Controller,
@@ -41,7 +41,7 @@ export class MessageController {
   ) {}
 
   @Get('conversations')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   getConversations(@CurrentUser() user: AuthenticatedUser) {
     return this.service.getConversations(user.userId, user.role);
   }
@@ -53,7 +53,7 @@ export class MessageController {
   }
 
   @Get('conversations/:residentId/:relativeId')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RESIDENT, Role.RELATIVE)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT, Role.RESIDENT, Role.RELATIVE)
   getThread(
     @CurrentUser() user: AuthenticatedUser,
     @Param('residentId', ParseUUIDPipe) residentId: string,
@@ -63,17 +63,17 @@ export class MessageController {
   }
 
   @Get('pending')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   getPending(@CurrentUser() user: AuthenticatedUser) {
     return this.service.getPending(user.userId);
   }
 
   @Post('upload')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RESIDENT, Role.RELATIVE)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT, Role.RESIDENT, Role.RELATIVE)
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } }))
   async uploadAttachment(@UploadedFile() file: Express.Multer.File) {
-    if (!file) throw new BadRequestException('Arquivo não enviado');
-    if (!ALLOWED_MIMETYPES.has(file.mimetype)) throw new BadRequestException('Tipo de arquivo não permitido');
+    if (!file) throw new BadRequestException('Arquivo nÃ£o enviado');
+    if (!ALLOWED_MIMETYPES.has(file.mimetype)) throw new BadRequestException('Tipo de arquivo nÃ£o permitido');
 
     const type = file.mimetype.startsWith('image/') ? 'image'
       : file.mimetype.startsWith('audio/') ? 'audio'
@@ -84,7 +84,7 @@ export class MessageController {
   }
 
   @Post()
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RESIDENT, Role.RELATIVE)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT, Role.RESIDENT, Role.RELATIVE)
   send(@CurrentUser() user: AuthenticatedUser, @Body() dto: SendMessageDto) {
     return this.service.send(user.userId, user.profileType, dto);
   }
@@ -96,13 +96,13 @@ export class MessageController {
   }
 
   @Get('direct-conversations')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   getDirectConversations(@CurrentUser() user: AuthenticatedUser) {
     return this.service.getDirectConversations(user.userId, user.role);
   }
 
   @Get('direct/:staffId/:relativeId')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RELATIVE)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT, Role.RELATIVE)
   getDirectThread(
     @CurrentUser() user: AuthenticatedUser,
     @Param('staffId', ParseUUIDPipe) staffId: string,
@@ -112,13 +112,13 @@ export class MessageController {
   }
 
   @Post('direct')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR, Role.RELATIVE)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT, Role.RELATIVE)
   sendDirect(@CurrentUser() user: AuthenticatedUser, @Body() dto: SendDirectMessageDto) {
     return this.service.sendDirect(user.userId, user.profileType, dto);
   }
 
   @Patch(':id/approve')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   approve(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -127,7 +127,7 @@ export class MessageController {
   }
 
   @Patch(':id/reject')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   reject(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,

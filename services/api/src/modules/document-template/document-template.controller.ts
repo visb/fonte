@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Body,
   Controller,
@@ -31,7 +31,7 @@ export class DocumentTemplateController {
   constructor(private service: DocumentTemplateService) {}
 
   @Get()
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findAll(): Promise<DocumentTemplate[]> {
     return this.service.findAll();
   }
@@ -59,8 +59,8 @@ export class DocumentTemplateController {
     @UploadedFile() file: Express.Multer.File | undefined,
   ): Promise<{ url: string }> {
     if (!file) throw new BadRequestException('Nenhum arquivo enviado');
-    if (!file.mimetype.startsWith('image/')) throw new BadRequestException('Apenas imagens são permitidas');
-    if (file.size > 5 * 1024 * 1024) throw new BadRequestException('Imagem muito grande: máximo 5 MB');
+    if (!file.mimetype.startsWith('image/')) throw new BadRequestException('Apenas imagens sÃ£o permitidas');
+    if (file.size > 5 * 1024 * 1024) throw new BadRequestException('Imagem muito grande: mÃ¡ximo 5 MB');
     return this.service.uploadImage(file);
   }
 

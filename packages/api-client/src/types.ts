@@ -5,6 +5,7 @@ import type {
   MessageStatus,
   ProfileType,
   Role,
+  ServantRank,
   WishlistStatus,
   IncidentSeverity,
   MovementType,
@@ -128,7 +129,16 @@ export interface Staff {
   house: { id: string; name: string } | null;
   supportGroupId: string | null;
   supportGroup: { id: string; name: string } | null;
+  rank: ServantRank | null;
+  formerResidentId: string | null;
   user: { email: string; role: Role };
+}
+
+export interface PromoteToServantInput {
+  email?: string;
+  password?: string;
+  houseId?: string;
+  rank?: ServantRank;
 }
 
 export interface StaffMe {
@@ -153,6 +163,7 @@ export interface CreateStaffInput {
   houseId?: string | null;
   supportGroupId?: string | null;
   phone?: string | null;
+  rank?: ServantRank | null;
 }
 
 export interface UpdateStaffInput {
@@ -163,6 +174,7 @@ export interface UpdateStaffInput {
   email?: string;
   role?: Role;
   password?: string;
+  rank?: ServantRank | null;
 }
 
 export interface UpdateStaffMeInput {

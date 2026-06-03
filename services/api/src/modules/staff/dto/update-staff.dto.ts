@@ -1,5 +1,6 @@
-import {
+﻿import {
   IsEmail,
+  IsEnum,
   IsIn,
   IsNotEmpty,
   IsOptional,
@@ -8,7 +9,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
-import { Role } from '@fonte/types';
+import { Role, ServantRank } from '@fonte/types';
 
 export class UpdateStaffDto {
   @IsOptional()
@@ -35,11 +36,15 @@ export class UpdateStaffDto {
   email?: string;
 
   @IsOptional()
-  @IsIn([Role.ADMIN, Role.COORDINATOR, Role.OPERATOR])
+  @IsIn([Role.ADMIN, Role.COORDINATOR, Role.SERVANT])
   role?: Role;
 
   @IsOptional()
   @IsString()
   @MinLength(6)
   password?: string;
+
+  @IsOptional()
+  @IsEnum(ServantRank)
+  rank?: ServantRank | null;
 }

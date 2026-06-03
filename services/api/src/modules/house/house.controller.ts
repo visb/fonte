@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Body,
   Controller,
@@ -36,7 +36,7 @@ const photoOptions = {
   storage: memoryStorage(),
   fileFilter: (_req: unknown, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
     if (!file.mimetype.startsWith('image/')) {
-      return cb(new BadRequestException('Apenas imagens são permitidas'), false);
+      return cb(new BadRequestException('Apenas imagens sÃ£o permitidas'), false);
     }
     cb(null, true);
   },
@@ -51,13 +51,13 @@ export class HouseController {
   ) {}
 
   @Get()
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findAll(): Promise<House[]> {
     return this.houseService.findAll();
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findOne(@Param('id', ParseUUIDPipe) id: string): Promise<House> {
     return this.houseService.findOne(id);
   }
@@ -92,7 +92,7 @@ export class HouseController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
-        exceptionFactory: () => new BadRequestException('Arquivo muito grande: máximo 5 MB'),
+        exceptionFactory: () => new BadRequestException('Arquivo muito grande: mÃ¡ximo 5 MB'),
       }),
     )
     file: Express.Multer.File,
@@ -110,32 +110,32 @@ export class HouseController {
     return this.houseService.removePhoto(id, photoId);
   }
 
-  // ─── Residents ──────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Residents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get(':id/residents')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findResidents(@Param('id', ParseUUIDPipe) id: string) {
     return this.houseService.findResidents(id);
   }
 
-  // ─── Staff ──────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Staff â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get(':id/staff')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findHouseStaff(@Param('id', ParseUUIDPipe) id: string) {
     return this.houseService.findStaffForHouse(id);
   }
 
-  // ─── Ministries ─────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Ministries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get(':id/ministries')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findMinistries(@Param('id', ParseUUIDPipe) id: string) {
     return this.ministryService.findByHouse(id);
   }
 
   @Post(':id/ministries')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   createMinistry(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateMinistryDto,
@@ -143,10 +143,10 @@ export class HouseController {
     return this.ministryService.create(id, dto);
   }
 
-  // ─── Rules ──────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Rules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get(':id/rules')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.OPERATOR)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findRules(@Param('id', ParseUUIDPipe) id: string) {
     return this.houseService.findRules(id);
   }

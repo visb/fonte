@@ -8,8 +8,9 @@ export class PromoteToServantDto {
   @IsDateString()
   date?: string;
 
-  // Obrigatórios apenas quando o interno ainda não tem acesso (User). Se já tem,
-  // a conta de kiosk é reaproveitada e estes campos são ignorados.
+  // E-mail é opcional para servos: a conta pode ser criada só com senha e
+  // receber o e-mail depois. Quando o interno já tem acesso (User), a conta de
+  // kiosk é reaproveitada e estes campos são ignorados.
   @IsOptional()
   @IsEmail()
   email?: string;

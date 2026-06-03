@@ -657,7 +657,18 @@ describe('ResidentService.promoteToServant', () => {
     );
   });
 
-  it('throws when resident has no access and email/password are missing', async () => {
+  it('creates a User with null email when resident has no access and only password provided', async () => {
+    const { service, userSave, staffService } = makePromoteService({ userId: null });
+
+    await service.promoteToServant(RESIDENT_ID, { password: 'secret123' });
+
+    expect(userSave).toHaveBeenCalledWith(expect.objectContaining({ email: null, role: 'SERVANT' }));
+    expect(staffService.createFromResident).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID }),
+    );
+  });
+
+  it('throws when resident has no access and password is missing', async () => {
     const { service } = makePromoteService({ userId: null });
 
     await expect(service.promoteToServant(RESIDENT_ID, {})).rejects.toBeInstanceOf(BadReq);

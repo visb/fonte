@@ -358,16 +358,19 @@ export class ResidentService {
       await this.userRepository.update(resident.userId, { role: Role.SERVANT });
       userId = resident.userId;
     } else {
-      if (!dto.email || !dto.password) {
-        throw new BadRequestException('E-mail e senha são obrigatórios para gerar o acesso do servo');
+      if (!dto.password) {
+        throw new BadRequestException('Senha é obrigatória para gerar o acesso do servo');
       }
-      const existing = await this.userRepository.findOne({ where: { email: dto.email } });
-      if (existing) throw new ConflictException('E-mail já cadastrado');
+      const email = dto.email || null;
+      if (email) {
+        const existing = await this.userRepository.findOne({ where: { email } });
+        if (existing) throw new ConflictException('E-mail já cadastrado');
+      }
 
       const passwordHash = await bcrypt.hash(dto.password, 10);
       const savedUser = await this.userRepository.save(
         this.userRepository.create({
-          email: dto.email,
+          email,
           passwordHash,
           role: Role.SERVANT,
           mustChangePassword: true,

@@ -1,3 +1,4 @@
+import { FamilyInvestment } from '@fonte/types';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { ContributionReportItem } from '@fonte/api-client';
@@ -20,7 +21,14 @@ function formatDate(iso: string | null) {
 export function ContributionRow({ item }: ContributionRowProps) {
   return (
     <TableRow>
-      <TableCell className="font-medium">{item.residentName}</TableCell>
+      <TableCell className="font-medium">
+        <span className="inline-flex items-center gap-2">
+          {item.residentName}
+          {item.familyInvestment === FamilyInvestment.SOCIAL && (
+            <Badge variant="destructive">Social</Badge>
+          )}
+        </span>
+      </TableCell>
       <TableCell>{item.houseName}</TableCell>
       <TableCell>{FAMILY_INVESTMENT_LABELS[item.familyInvestment]}</TableCell>
       <TableCell>{formatBRL(item.expectedAmount ?? 0)}</TableCell>

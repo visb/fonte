@@ -1,4 +1,4 @@
-import { type FieldValues, type Path, type UseFormRegister } from "react-hook-form";
+import { type FieldErrors, type FieldValues, type Path, type UseFormRegister } from "react-hook-form";
 import { Gender, MaritalStatus } from "@fonte/types";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -34,7 +34,7 @@ export interface PersonalDataFormValues {
 
 interface Props<T extends FieldValues> {
   register: UseFormRegister<T>;
-  errors: Partial<Record<keyof PersonalDataFormValues, { message?: string }>>;
+  errors: FieldErrors<T>;
   /** Renderiza o campo Nome dentro da seção de identificação. */
   includeName?: boolean;
   nameLabel?: string;
@@ -49,13 +49,17 @@ export function PersonalDataFields<T extends FieldValues>({
   namePlaceholder = "Nome completo",
 }: Props<T>) {
   const f = (name: keyof PersonalDataFormValues) => register(name as Path<T>);
+  // Acesso por chave dinâmica: os nomes vivem em PersonalDataFormValues, não
+  // necessariamente como chaves estáticas de T.
+  const errMsg = (name: keyof PersonalDataFormValues): string | undefined =>
+    (errors as Record<string, { message?: string } | undefined>)[name]?.message;
 
   return (
     <>
       <SectionTitle>Identificação</SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {includeName && (
-          <FormField label={nameLabel} error={errors.name?.message} full>
+          <FormField label={nameLabel} error={errMsg("name")} full>
             <Input {...f("name")} placeholder={namePlaceholder} />
           </FormField>
         )}
@@ -94,7 +98,7 @@ export function PersonalDataFields<T extends FieldValues>({
         <FormField label="Telefone">
           <Input {...withMask(f("contactPhone"), maskPhone)} placeholder="(00) 00000-0000" />
         </FormField>
-        <FormField label="E-mail" error={errors.email?.message}>
+        <FormField label="E-mail" error={errMsg("email")}>
           <Input {...f("email")} type="email" placeholder="exemplo@email.com" />
         </FormField>
       </div>

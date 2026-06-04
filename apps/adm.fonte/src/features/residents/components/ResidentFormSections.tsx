@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { type UseFormRegister } from "react-hook-form";
+import { type FieldErrors, type UseFormRegister } from "react-hook-form";
 import {
   FamilyInvestment,
   ResidentStatus,
@@ -14,7 +14,7 @@ import type { House } from "@fonte/api-client";
 
 interface ResidentFormSectionsProps {
   register: UseFormRegister<ResidentFormData>;
-  errors: Partial<Record<keyof ResidentFormData, { message?: string }>>;
+  errors: FieldErrors<ResidentFormData>;
   houses: House[];
   showStatus?: boolean;
   watchFamilyInvestment?: string | null;

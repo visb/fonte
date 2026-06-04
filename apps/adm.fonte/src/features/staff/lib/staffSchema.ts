@@ -37,22 +37,23 @@ const baseShape = {
   height: z.string().optional(),
 };
 
-const withServiceRefinements = <T extends z.ZodTypeAny>(schema: T) =>
-  schema
-    .refine((d: z.infer<T>) => d.servesInGroup || !!d.houseId, {
-      message: 'Casa é obrigatória para servos da casa',
-      path: ['houseId'],
-    })
-    .refine((d: z.infer<T>) => !d.servesInGroup || !!d.supportGroupId, {
-      message: 'Grupo de apoio é obrigatório',
-      path: ['supportGroupId'],
-    });
+// Refinamentos inline (não genéricos): manter a inferência concreta de cada
+// schema. Um helper genérico sobre z.ZodTypeAny faria z.infer colapsar para
+// `any`, quebrando a tipagem de FieldErrors nos formulários.
+type ServiceFields = { servesInGroup: boolean; houseId?: string; supportGroupId?: string };
 
-export const newStaffSchema = withServiceRefinements(
-  z.object({ ...baseShape, password: z.string().min(6) }),
-);
+const houseRequired = (d: ServiceFields) => d.servesInGroup || !!d.houseId;
+const groupRequired = (d: ServiceFields) => !d.servesInGroup || !!d.supportGroupId;
 
-export const editStaffSchema = withServiceRefinements(z.object(baseShape));
+export const newStaffSchema = z
+  .object({ ...baseShape, password: z.string().min(6) })
+  .refine(houseRequired, { message: 'Casa é obrigatória para servos da casa', path: ['houseId'] })
+  .refine(groupRequired, { message: 'Grupo de apoio é obrigatório', path: ['supportGroupId'] });
+
+export const editStaffSchema = z
+  .object(baseShape)
+  .refine(houseRequired, { message: 'Casa é obrigatória para servos da casa', path: ['houseId'] })
+  .refine(groupRequired, { message: 'Grupo de apoio é obrigatório', path: ['supportGroupId'] });
 
 export type NewStaffFormData = z.infer<typeof newStaffSchema>;
 export type EditStaffFormData = z.infer<typeof editStaffSchema>;

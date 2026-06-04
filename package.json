@@ -27,6 +27,7 @@
     "build:ops": "pnpm build:types && pnpm build:api-client && pnpm --filter ops.fonte build:web",
     "build:app": "pnpm build:types && pnpm build:api-client && pnpm --filter app.fonte build:web",
     "start:app": "pnpm --filter app.fonte start:web",
+    "start:ops": "pnpm --filter ops.fonte start:web",
     "seed:api": "pnpm --filter api seed",
     "seed:street-sales": "pnpm --filter api seed:street-sales"
   }

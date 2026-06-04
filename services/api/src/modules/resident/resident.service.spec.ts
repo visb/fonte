@@ -725,3 +725,78 @@ describe('ResidentService.promoteToServant', () => {
     );
   });
 });
+
+// ═════════════════════════════════════════════════════════════════════════════
+// update — exit-driven events (discharge / evasion)
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('ResidentService.update exit events', () => {
+  function makeUpdateService(before: Resident) {
+    const residentUpdate = jest.fn().mockResolvedValue(undefined);
+    const residentRepo = {
+      findOne: jest.fn().mockResolvedValue(before),
+      update: residentUpdate,
+    } as unknown as Partial<Repository<Resident>>;
+    const admissionRepo = {
+      findOne: jest.fn().mockResolvedValue(makeAdmission()),
+      update: jest.fn().mockResolvedValue(undefined),
+    } as unknown as Partial<Repository<Admission>>;
+    const createAuto = jest.fn().mockResolvedValue(undefined);
+    const cancelAfterExit = jest.fn().mockResolvedValue(undefined);
+    const service = makeService(
+      residentRepo,
+      admissionRepo,
+      {},
+      undefined,
+      { createAuto, getLastContributionDates: jest.fn().mockResolvedValue(new Map()) },
+      {
+        getLastPaidDates: jest.fn().mockResolvedValue(new Map()),
+        generateSchedule: jest.fn().mockResolvedValue(undefined),
+        recalcFuturePending: jest.fn().mockResolvedValue(undefined),
+        cancelFuturePending: jest.fn().mockResolvedValue(undefined),
+        cancelAfterExit,
+      },
+    );
+    return { service, createAuto, cancelAfterExit, residentUpdate };
+  }
+
+  it('dates the DISCHARGE follow-up and receivable cancel by the provided exitDate', async () => {
+    const { service, createAuto, cancelAfterExit } = makeUpdateService(
+      makeResident({ status: ResidentStatus.ACTIVE }),
+    );
+
+    await service.update(RESIDENT_ID, {
+      status: ResidentStatus.DISCHARGED,
+      exitDate: '2026-02-10',
+    } as never);
+
+    expect(createAuto).toHaveBeenCalledWith(RESIDENT_ID, 'DISCHARGE', '2026-02-10');
+    expect(cancelAfterExit).toHaveBeenCalledWith(RESIDENT_ID, '2026-02-10');
+  });
+
+  it('dates the EVASION follow-up and receivable cancel by the provided exitDate', async () => {
+    const { service, createAuto, cancelAfterExit } = makeUpdateService(
+      makeResident({ status: ResidentStatus.ACTIVE }),
+    );
+
+    await service.update(RESIDENT_ID, {
+      status: ResidentStatus.EVADED,
+      exitDate: '2026-03-05',
+    } as never);
+
+    expect(createAuto).toHaveBeenCalledWith(RESIDENT_ID, 'EVASION', '2026-03-05');
+    expect(cancelAfterExit).toHaveBeenCalledWith(RESIDENT_ID, '2026-03-05');
+  });
+
+  it('falls back to today when exitDate is not provided', async () => {
+    const { service, createAuto, cancelAfterExit } = makeUpdateService(
+      makeResident({ status: ResidentStatus.ACTIVE }),
+    );
+    const today = new Date().toISOString().split('T')[0];
+
+    await service.update(RESIDENT_ID, { status: ResidentStatus.DISCHARGED } as never);
+
+    expect(createAuto).toHaveBeenCalledWith(RESIDENT_ID, 'DISCHARGE', today);
+    expect(cancelAfterExit).toHaveBeenCalledWith(RESIDENT_ID, today);
+  });
+});

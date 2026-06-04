@@ -47,20 +47,29 @@ const ACTIONS = [
   },
 ];
 
-const HOUSE_SETTINGS_ACTION = {
-  label: "Configurações da casa",
-  icon: "settings-outline" as const,
-  color: "#475569",
-  bg: "#f1f5f9",
-  route: "/(app)/house-settings",
-};
+const COORDINATOR_ACTIONS = [
+  {
+    label: "Contagem",
+    icon: "checkbox-outline" as const,
+    color: "#0d9488",
+    bg: "#f0fdfa",
+    route: "/(app)/census",
+  },
+  {
+    label: "Configurações da casa",
+    icon: "settings-outline" as const,
+    color: "#475569",
+    bg: "#f1f5f9",
+    route: "/(app)/house-settings",
+  },
+];
 
 interface Props {
   showHouseSettings?: boolean;
 }
 
 export function QuickActions({ showHouseSettings = false }: Props) {
-  const actions = showHouseSettings ? [...ACTIONS, HOUSE_SETTINGS_ACTION] : ACTIONS;
+  const actions = showHouseSettings ? [...ACTIONS, ...COORDINATOR_ACTIONS] : ACTIONS;
 
   return (
     <View>

@@ -193,12 +193,15 @@ export class ResidentService {
     await this.residentRepository.update(id, dto);
 
     const today = new Date().toISOString().split('T')[0];
+    // Exit-driven events (discharge/evasion) are dated by the actual exit date
+    // when provided, falling back to today.
+    const exitEventDate = (dto.exitDate as string | undefined) ?? today;
     if (dto.status === 'DISCHARGED' && before.status !== 'DISCHARGED') {
-      await this.followUpService.createAuto(id, FollowUpType.DISCHARGE, today);
-      await this.receivableService.cancelAfterExit(id, today);
+      await this.followUpService.createAuto(id, FollowUpType.DISCHARGE, exitEventDate);
+      await this.receivableService.cancelAfterExit(id, exitEventDate);
     } else if (dto.status === 'EVADED' && before.status !== 'EVADED') {
-      await this.followUpService.createAuto(id, FollowUpType.EVASION, today);
-      await this.receivableService.cancelAfterExit(id, today);
+      await this.followUpService.createAuto(id, FollowUpType.EVASION, exitEventDate);
+      await this.receivableService.cancelAfterExit(id, exitEventDate);
     }
     if (dto.ministryId !== undefined && dto.ministryId !== before.ministryId) {
       await this.followUpService.createAuto(id, FollowUpType.MINISTRY_CHANGE, today);

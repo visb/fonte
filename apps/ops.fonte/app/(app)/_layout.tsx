@@ -176,6 +176,17 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="census"
+        options={{
+          title: "Contagem",
+          href: null,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="checkbox-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Perfil",

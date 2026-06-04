@@ -11,6 +11,7 @@ export const queryKeys = {
     byResident: (residentId: string) => ['relatives', residentId] as const,
   },
   houses: {
+    all: ['houses'] as const,
     detail: (id: string) => ['house', id] as const,
     ministries: (houseId: string) => ['house-ministries', houseId] as const,
   },

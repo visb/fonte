@@ -18,11 +18,16 @@ import {
 import { FAMILY_INVESTMENT_LABELS } from '../constants';
 import { useUpdateContributionPlan } from '../hooks/useResidentReceivables';
 
+// Campos numéricos opcionais: input vazio ('') deve virar undefined, senão
+// z.coerce.number('') => 0 e dispara as validações de mínimo indevidamente.
+const optionalInt = (inner: z.ZodNumber) =>
+  z.preprocess((v) => (v === '' || v == null ? undefined : v), inner.optional());
+
 const schema = z
   .object({
     familyInvestment: z.nativeEnum(FamilyInvestment),
-    familyInvestmentAmount: z.coerce.number().int().min(0).optional(),
-    contributionDueDay: z.coerce.number().int().min(1).max(31).optional(),
+    familyInvestmentAmount: optionalInt(z.coerce.number().int().min(0)),
+    contributionDueDay: optionalInt(z.coerce.number().int().min(1).max(31)),
   })
   .refine(
     (v) => v.familyInvestment !== FamilyInvestment.NEGOTIATED || (v.familyInvestmentAmount ?? 0) > 0,

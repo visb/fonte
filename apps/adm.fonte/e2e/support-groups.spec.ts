@@ -62,4 +62,16 @@ test.describe('Grupos de Apoio', () => {
     await page.getByRole('button', { name: 'Excluir' }).last().click();
     await expect(page.getByText(name)).not.toBeVisible();
   });
+
+  // ─── Reuniões + check-in de famílias ─────────────────────────────────────────
+
+  test('abre modal de famílias presentes a partir do grupo do seed', async ({ page }) => {
+    // O seed cria "Grupo Esperança" com uma reunião hoje.
+    await page.getByText('Grupo Esperança').click();
+    await expect(page.getByText('Histórico de reuniões')).toBeVisible();
+
+    // O contador de famílias da reunião abre o modal de presenças.
+    await page.getByRole('button', { name: /família/ }).first().click();
+    await expect(page.getByText('Famílias presentes')).toBeVisible();
+  });
 });

@@ -17,6 +17,7 @@ jest.mock('@fonte/types', () => ({
   PaymentMethod: { CASH: 'CASH', PIX: 'PIX', CREDIT_CARD: 'CREDIT_CARD', DEBIT_CARD: 'DEBIT_CARD', BASKET: 'BASKET', OTHER: 'OTHER' },
 }));
 
+import { NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { ResidentReceivableService } from './resident-receivable.service';
 import { ResidentReceivable } from './resident-receivable.entity';
@@ -63,6 +64,20 @@ function makeService(repo: MockRepo, residentRepo: Partial<Repository<Resident>>
     residentRepo as Repository<Resident>,
     {} as Repository<Staff>,
     {} as never, // StorageService
+  );
+}
+
+function makeFullService(
+  repo: MockRepo,
+  residentRepo: Partial<Repository<Resident>>,
+  staffRepo: Partial<Repository<Staff>>,
+  storage: Record<string, jest.Mock> = {},
+) {
+  return new ResidentReceivableService(
+    repo as unknown as Repository<ResidentReceivable>,
+    residentRepo as Repository<Resident>,
+    staffRepo as Repository<Staff>,
+    storage as never,
   );
 }
 
@@ -181,5 +196,152 @@ describe('ResidentReceivableService.cancelFuturePending', () => {
     expect(patch).toEqual({ status: 'CANCELED' });
     // Only March and April (>= current month); January excluded.
     expect(criteria.id._value).toEqual(['b', 'c']);
+  });
+});
+
+describe('ResidentReceivableService.cancelAfterExit', () => {
+  it('cancels only pending installments after the exit month', async () => {
+    const repo = makeRepo({
+      find: jest.fn().mockResolvedValue([
+        { id: 'a', referenceMonth: '2026-03-01' }, // exit month — kept
+        { id: 'b', referenceMonth: '2026-04-01' }, // after — canceled
+        { id: 'c', referenceMonth: '2026-05-01' }, // after — canceled
+      ]),
+    });
+    const service = makeService(repo, {});
+
+    await service.cancelAfterExit('res-1', '2026-03-20');
+
+    expect(repo.update).toHaveBeenCalledTimes(1);
+    const [criteria, patch] = repo.update.mock.calls[0];
+    expect(patch).toEqual({ status: 'CANCELED' });
+    expect(criteria.id._value).toEqual(['b', 'c']);
+  });
+
+  it('does nothing when no installment is past the exit month', async () => {
+    const repo = makeRepo({ find: jest.fn().mockResolvedValue([{ id: 'a', referenceMonth: '2026-01-01' }]) });
+    const service = makeService(repo, {});
+    await service.cancelAfterExit('res-1', '2026-06-20');
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('ResidentReceivableService.registerPayment', () => {
+  it('throws NotFound when the receivable does not belong to the resident', async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const service = makeFullService(repo, {}, { findOne: jest.fn() });
+    await expect(
+      service.registerPayment('res-1', 'rcv-1', { paidAt: '2026-06-01', paymentMethod: 'PIX' } as never, 'user-1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('marks the receivable PAID with the payment data and author', async () => {
+    const repo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'rcv-1', residentId: 'res-1', attachmentUrl: null })
+        .mockResolvedValue({ id: 'rcv-1', createdBy: { name: 'Servo' } }),
+    });
+    const staffRepo = { findOne: jest.fn().mockResolvedValue({ id: 'staff-1' }) };
+    const service = makeFullService(repo, {}, staffRepo);
+
+    const view = await service.registerPayment(
+      'res-1',
+      'rcv-1',
+      { paidAt: '2026-06-01', paymentMethod: 'PIX', notes: 'ok' } as never,
+      'user-1',
+    );
+
+    const [id, patch] = repo.update.mock.calls[0];
+    expect(id).toBe('rcv-1');
+    expect(patch).toMatchObject({ status: 'PAID', paidAt: '2026-06-01', paymentMethod: 'PIX', notes: 'ok', createdById: 'staff-1' });
+    expect(view.createdByName).toBe('Servo');
+  });
+
+  it('uploads the attachment, deleting the previous one', async () => {
+    const repo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'rcv-1', residentId: 'res-1', attachmentUrl: 'old.pdf' })
+        .mockResolvedValue({ id: 'rcv-1', createdBy: null }),
+    });
+    const storage = {
+      delete: jest.fn().mockResolvedValue(undefined),
+      uniqueFilename: jest.fn().mockReturnValue('new.pdf'),
+      upload: jest.fn().mockResolvedValue('https://cdn/new.pdf'),
+    };
+    const service = makeFullService(repo, {}, { findOne: jest.fn().mockResolvedValue(null) }, storage);
+
+    await service.registerPayment(
+      'res-1',
+      'rcv-1',
+      { paidAt: '2026-06-01', paymentMethod: 'PIX' } as never,
+      'user-1',
+      { originalname: 'p.pdf', buffer: Buffer.from(''), mimetype: 'application/pdf' } as never,
+    );
+
+    expect(storage.delete).toHaveBeenCalledWith('old.pdf');
+    expect(repo.update.mock.calls[0][1].attachmentUrl).toBe('https://cdn/new.pdf');
+  });
+});
+
+describe('ResidentReceivableService.reopenPayment', () => {
+  it('resets the receivable to PENDING and clears payment fields', async () => {
+    const repo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'rcv-1', residentId: 'res-1', attachmentUrl: 'p.pdf' })
+        .mockResolvedValue({ id: 'rcv-1', createdBy: null }),
+    });
+    const storage = { delete: jest.fn().mockResolvedValue(undefined) };
+    const service = makeFullService(repo, {}, {}, storage);
+
+    await service.reopenPayment('res-1', 'rcv-1');
+
+    expect(storage.delete).toHaveBeenCalledWith('p.pdf');
+    expect(repo.update.mock.calls[0][1]).toMatchObject({ status: 'PENDING', paidAt: null, paymentMethod: null, attachmentUrl: null });
+  });
+});
+
+describe('ResidentReceivableService.recalcFuturePending', () => {
+  beforeAll(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-03-10T12:00:00Z'));
+  });
+  afterAll(() => jest.useRealTimers());
+
+  it('cancels future pending when the resident becomes exempt', async () => {
+    const cancelSpy = jest.fn();
+    const repo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
+    const residentRepo = { findOne: jest.fn().mockResolvedValue(makeResident({ contributionExempt: true })) };
+    const service = makeService(repo, residentRepo);
+    service.cancelFuturePending = cancelSpy;
+
+    await service.recalcFuturePending('res-1');
+    expect(cancelSpy).toHaveBeenCalledWith('res-1');
+  });
+
+  it('reprices future pending installments after a plan change', async () => {
+    const residentRepo = {
+      findOne: jest.fn().mockResolvedValue(
+        makeResident({ familyInvestment: 'NEGOTIATED' as never, familyInvestmentAmount: 420 }),
+      ),
+    };
+    // generateSchedule reads existing months (find #1), then materializes (save).
+    // recalc then loads future pendings (find #2) to reprice.
+    const repo = makeRepo({
+      find: jest
+        .fn()
+        .mockResolvedValueOnce([]) // materializeUpTo existing keys
+        .mockResolvedValue([
+          { id: 'p1', referenceMonth: '2026-04-01', amount: 700, dueDate: '2026-04-10', status: 'PENDING' },
+        ]),
+    });
+    const service = makeService(repo, residentRepo);
+
+    await service.recalcFuturePending('res-1');
+
+    const repriced = repo.save.mock.calls.at(-1)![0] as Array<{ amount: number; familyInvestment: string }>;
+    expect(repriced[0].amount).toBe(420);
+    expect(repriced[0].familyInvestment).toBe('NEGOTIATED');
   });
 });

@@ -27,8 +27,8 @@ test.describe('Servos', () => {
     await page.getByRole('link', { name: 'Novo Servo' }).click();
     await expect(page).toHaveURL('/staff/new');
 
-    await page.getByLabel('Nome *').fill(name);
-    await page.getByLabel('E-mail *').fill(email);
+    await page.getByPlaceholder('Nome completo').fill(name);
+    await page.getByPlaceholder('exemplo@email.com').fill(email);
     await page.getByLabel('Função *').selectOption('COORDINATOR');
     // Serve na casa (padrão)
     await page.getByLabel('Casa *').selectOption({ label: 'Casa Teste' });
@@ -43,8 +43,8 @@ test.describe('Servos', () => {
     const name = `Servo Para Editar ${Date.now()}`;
     const email = `editar_${Date.now()}@fonte.com`;
     await page.getByRole('link', { name: 'Novo Servo' }).click();
-    await page.getByLabel('Nome *').fill(name);
-    await page.getByLabel('E-mail *').fill(email);
+    await page.getByPlaceholder('Nome completo').fill(name);
+    await page.getByPlaceholder('exemplo@email.com').fill(email);
     await page.getByLabel('Função *').selectOption('COORDINATOR');
     await page.getByLabel('Casa *').selectOption({ label: 'Casa Teste' });
     await page.getByRole('button', { name: 'Cadastrar' }).click();
@@ -52,8 +52,8 @@ test.describe('Servos', () => {
 
     await page.locator('.rounded-lg.border.bg-card').filter({ hasText: name }).getByTitle('Editar').click();
     await expect(page).toHaveURL(/\/staff\/.+\/edit/);
-    await page.getByLabel('Nome *').clear();
-    await page.getByLabel('Nome *').fill(`${name} (Editado)`);
+    await page.getByPlaceholder('Nome completo').clear();
+    await page.getByPlaceholder('Nome completo').fill(`${name} (Editado)`);
     await page.getByRole('button', { name: 'Salvar' }).click();
 
     await expect(page).toHaveURL('/staff');
@@ -73,8 +73,8 @@ test.describe('Servos', () => {
     const email = `excluir_${Date.now()}@fonte.com`;
 
     await page.getByRole('link', { name: 'Novo Servo' }).click();
-    await page.getByLabel('Nome *').fill(name);
-    await page.getByLabel('E-mail *').fill(email);
+    await page.getByPlaceholder('Nome completo').fill(name);
+    await page.getByPlaceholder('exemplo@email.com').fill(email);
     await page.getByLabel('Função *').selectOption('SERVANT');
     await page.getByLabel('Casa *').selectOption({ label: 'Casa Teste' });
     await page.getByRole('button', { name: 'Cadastrar' }).click();
@@ -83,5 +83,21 @@ test.describe('Servos', () => {
     await page.locator('.rounded-lg.border.bg-card').filter({ hasText: name }).getByTitle('Excluir').click();
     await page.getByRole('button', { name: 'Excluir' }).last().click();
     await expect(page.getByText(name)).not.toBeVisible();
+  });
+
+  // ─── Página de detalhe (ficha do servo) ──────────────────────────────────────
+
+  test('abre página de detalhe do servo com aba Visão Geral e ações', async ({ page }) => {
+    await page
+      .locator('.rounded-lg.border.bg-card')
+      .filter({ hasText: 'Coordenador Teste' })
+      .getByText('Coordenador Teste')
+      .click();
+
+    await expect(page).toHaveURL(/\/staff\/.+/);
+    await expect(page.getByRole('heading', { name: 'Coordenador Teste' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Visão Geral' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Resetar senha' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Editar' })).toBeVisible();
   });
 });

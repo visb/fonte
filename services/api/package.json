@@ -99,7 +99,7 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^@fonte/types$": "<rootDir>/../../../packages/types/dist"
+      "^@fonte/types$": "<rootDir>/../../../packages/types/src/index.ts"
     }
   }
 }

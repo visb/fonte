@@ -31,7 +31,8 @@ test.describe('Filhos (Residentes)', () => {
   });
 
   test('filtro por status exibe apenas residentes com aquele status', async ({ page }) => {
-    await page.locator('select').selectOption('ACTIVE');
+    // A página tem dois selects (status e casa); o status é o primeiro.
+    await page.locator('select').first().selectOption('ACTIVE');
     const cards = page.locator('.rounded-lg.border.bg-card');
     // aguarda re-render após filtro aplicado
     await expect(cards.first()).toBeVisible();
@@ -42,7 +43,7 @@ test.describe('Filhos (Residentes)', () => {
 
   test('busca e filtro de status combinados', async ({ page }) => {
     await page.getByPlaceholder('Buscar por nome...').fill('João');
-    await page.locator('select').selectOption('ACTIVE');
+    await page.locator('select').first().selectOption('ACTIVE');
     await expect(page.getByText('João Testador')).toBeVisible();
   });
 
@@ -190,5 +191,50 @@ test.describe('Filhos (Residentes)', () => {
 
     // Botão de iniciar reintrodução deve aparecer
     await expect(page.getByRole('button', { name: 'Iniciar reintrodução' })).toBeVisible();
+  });
+
+  // ─── Filtro por casa ─────────────────────────────────────────────────────────
+
+  test('filtro por casa exibe residentes da casa selecionada', async ({ page }) => {
+    // A página tem dois selects: [0] status, [1] casa.
+    await page.locator('select').nth(1).selectOption({ label: 'Casa Teste' });
+    await expect(page.getByText('João Testador')).toBeVisible();
+  });
+
+  test('botão "Contribuição em atraso" alterna o filtro', async ({ page }) => {
+    const button = page.getByRole('button', { name: 'Contribuição em atraso' });
+    await button.click();
+    // Lista re-renderiza sem erro (pode ficar vazia conforme dados do seed).
+    await expect(button).toBeVisible();
+  });
+
+  // ─── Aba Contribuição (recebíveis + plano) ──────────────────────────────────
+
+  test('aba Contribuição: define plano e registra pagamento de parcela', async ({ page }) => {
+    // Usa o acolhido do seed (João Testador), que tem entry_date definida —
+    // garantindo a geração das parcelas ao definir um plano pagante.
+    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'João Testador' }).first().click();
+    await expect(page).toHaveURL(/\/residents\/.+/);
+
+    await page.getByRole('button', { name: 'Contribuição' }).click();
+
+    // Define o plano (default do diálogo é Pagamento R$700) → gera o carnê.
+    // Dia de vencimento fica em branco de propósito: o campo é opcional e o
+    // submit deve passar mesmo vazio (cai no dia do acolhimento).
+    await page.getByRole('button', { name: 'Alterar plano' }).click();
+    await expect(page.getByText('Alterar plano de contribuição')).toBeVisible();
+    await page.getByRole('button', { name: 'Salvar' }).click();
+
+    // As parcelas obrigatórias aparecem com a ação de pagamento.
+    const payButton = page.getByRole('button', { name: 'Registrar pagamento' }).first();
+    await expect(payButton).toBeVisible();
+    await payButton.click();
+
+    // Diálogo de pagamento (data e PIX já vêm preenchidos por padrão).
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByRole('button', { name: 'Confirmar' }).click();
+
+    // A parcela passa a exibir o estado "Pago em ...".
+    await expect(page.getByText(/Pago em/).first()).toBeVisible();
   });
 });

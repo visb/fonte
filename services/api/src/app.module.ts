@@ -5,6 +5,7 @@ import { MustChangePasswordGuard } from './common/guards/must-change-password.gu
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { getDatabaseConfig } from './config/database.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
@@ -26,6 +27,7 @@ import { ResidentFollowUpModule } from './modules/resident-follow-up/resident-fo
 import { StreetSaleModule } from './modules/street-sale/street-sale.module';
 import { SupplyRoomModule } from './modules/supply-room/supply-room.module';
 import { BibleCourseModule } from './modules/bible-course/bible-course.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 @Module({
   imports: [
@@ -38,6 +40,7 @@ import { BibleCourseModule } from './modules/bible-course/bible-course.module';
       useFactory: getDatabaseConfig,
     }),
     ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot(),
     AuthModule,
     UserModule,
     HouseModule,
@@ -58,6 +61,7 @@ import { BibleCourseModule } from './modules/bible-course/bible-course.module';
     StreetSaleModule,
     SupplyRoomModule,
     BibleCourseModule,
+    NotificationModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },

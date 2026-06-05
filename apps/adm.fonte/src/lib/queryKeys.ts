@@ -78,4 +78,8 @@ export const queryKeys = {
     directThread: (staffId: string, relativeId: string) =>
       ['messages', 'direct-thread', staffId, relativeId] as const,
   },
+  notifications: {
+    all: ['notifications'] as const,
+    unreadCount: ['notifications', 'unread-count'] as const,
+  },
 } as const;

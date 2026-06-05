@@ -1,0 +1,24 @@
+appId: org.fonte.ops
+---
+# Pré-requisito: a API de teste deve ter ao menos uma notificação escopada à casa
+# do operador (ex.: gerar uma ocorrência/incidente para a casa antes de rodar).
+- runFlow: helpers/login-operator.yaml
+
+# Sino visível no header.
+- assertVisible:
+    id: "notification-bell"
+
+# Abrir a folha de notificações.
+- tapOn:
+    id: "notification-bell"
+- assertVisible: "Notificações"
+
+# A lista mostra avisos escopados à casa do operador (o backend filtra por houseId).
+# Tocar um item marca como lido.
+- tapOn:
+    id: "notification-bell"
+    optional: true
+
+# Fechar a folha.
+- tapOn: "Notificações"
+- assertVisible: "Bem-vindo,"

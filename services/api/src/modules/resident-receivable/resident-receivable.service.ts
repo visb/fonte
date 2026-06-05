@@ -1,17 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import {
   FamilyInvestment,
+  NotificationType,
   PaymentMethod,
   ReceivableStatus,
   ResidentStatus,
+  Role,
 } from '@fonte/types';
 import { ResidentReceivable } from './resident-receivable.entity';
 import { Resident } from '../resident/resident.entity';
 import { Staff } from '../staff/staff.entity';
 import { RegisterPaymentDto } from './dto/register-payment.dto';
 import { StorageService } from '../storage/storage.service';
+import { NotificationService } from '../notification/notification.service';
 
 const TREATMENT_MONTHS = 6;
 
@@ -82,6 +85,8 @@ function resolveAmount(plan: FamilyInvestment, amount: number | null): number {
 
 @Injectable()
 export class ResidentReceivableService {
+  private readonly logger = new Logger(ResidentReceivableService.name);
+
   constructor(
     @InjectRepository(ResidentReceivable)
     private repo: Repository<ResidentReceivable>,
@@ -90,6 +95,7 @@ export class ResidentReceivableService {
     @InjectRepository(Staff)
     private staffRepo: Repository<Staff>,
     private storageService: StorageService,
+    private notifications: NotificationService,
   ) {}
 
   async findByResident(residentId: string): Promise<ResidentReceivableView[]> {
@@ -240,7 +246,36 @@ export class ResidentReceivableService {
     });
 
     const updated = await this.repo.findOne({ where: { id: receivableId }, relations: ['createdBy'] });
+
+    await this.notifyPaymentRegistered(residentId, updated!);
+
     return this.toView(updated!);
+  }
+
+  // Best-effort: a failure here must never break the payment registration.
+  private async notifyPaymentRegistered(
+    residentId: string,
+    receivable: ResidentReceivable,
+  ): Promise<void> {
+    try {
+      const resident = await this.residentRepo.findOne({ where: { id: residentId } });
+      const residentName = resident?.name ?? 'Acolhido';
+      const amount = receivable.paidAmount ?? receivable.amount;
+      await this.notifications.create({
+        type: NotificationType.PAYMENT_REGISTERED,
+        title: 'Pagamento registrado',
+        body: `Pagamento de R$ ${amount} registrado para ${residentName}.`,
+        link: `/residents/${residentId}`,
+        recipientRole: Role.ADMIN,
+        metadata: { entityId: receivable.id, residentId },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to emit PAYMENT_REGISTERED notification for receivable ${receivable.id}: ${
+          error instanceof Error ? error.message : error
+        }`,
+      );
+    }
   }
 
   async reopenPayment(residentId: string, receivableId: string): Promise<ResidentReceivableView> {

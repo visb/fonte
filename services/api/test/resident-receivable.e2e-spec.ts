@@ -2,9 +2,12 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.test' });
 process.env.NODE_ENV = 'test';
 
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
-import { FamilyInvestment, PaymentMethod, ReceivableStatus } from '@fonte/types';
+import { FamilyInvestment, NotificationType, PaymentMethod, ReceivableStatus, Role } from '@fonte/types';
+import { AppModule } from '../src/app.module';
+import { NotificationService } from '../src/modules/notification/notification.service';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
 
 describe('Resident receivables (e2e)', () => {
@@ -74,6 +77,20 @@ describe('Resident receivables (e2e)', () => {
         .send({ paidAt: new Date().toISOString().slice(0, 10), paymentMethod: PaymentMethod.PIX, notes: 'pix recebido' })
         .expect(201);
       expect(res.body.status).toBe(ReceivableStatus.PAID);
+    });
+
+    it('generates a PAYMENT_REGISTERED notification visible to ADMIN', async () => {
+      const list = await request(app.getHttpServer())
+        .get(`${BASE}/notifications`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      const payment = list.body.find(
+        (n: { type: string; metadata?: { entityId?: string } }) =>
+          n.type === NotificationType.PAYMENT_REGISTERED && n.metadata?.entityId === receivableId,
+      );
+      expect(payment).toBeDefined();
+      expect(payment.recipientRole).toBe(Role.ADMIN);
     });
 
     it('400 when paidAt is missing', () =>
@@ -191,5 +208,71 @@ describe('Resident receivables (e2e)', () => {
       );
       expect(futurePending).toHaveLength(0);
     });
+  });
+});
+
+describe('Payment notification is best-effort (e2e)', () => {
+  let app: INestApplication;
+  let token: string;
+  let houseId: string;
+  let adminToken: string;
+  let residentId: string;
+
+  beforeAll(async () => {
+    // Boot a dedicated app where the notification create throws, to prove the
+    // payment still succeeds when the notification side-effect fails.
+    const moduleFixture = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(NotificationService)
+      .useValue({
+        create: jest.fn().mockRejectedValue(new Error('notification down')),
+      })
+      .compile();
+
+    app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api/v1');
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+    );
+    await app.init();
+
+    ({ token, houseId } = await loginCoordinator(app));
+    adminToken = await login(app, 'admin@fonte.com', 'admin123');
+
+    const today = new Date().toISOString().slice(0, 10);
+    const created = await request(app.getHttpServer())
+      .post(`${BASE}/residents`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: `Best Effort ${Date.now()}`,
+        houseId,
+        entryDate: today,
+        familyInvestment: FamilyInvestment.PAYMENT_700,
+        contributionDueDay: 10,
+      })
+      .expect(201);
+    residentId = created.body.id;
+  });
+
+  afterAll(async () => {
+    await request(app.getHttpServer())
+      .delete(`${BASE}/residents/${residentId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    await app.close();
+  });
+
+  it('still registers the payment when the notification emission throws', async () => {
+    const list = await request(app.getHttpServer())
+      .get(`${BASE}/residents/${residentId}/receivables`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const receivableId = list.body[0].id;
+
+    const res = await request(app.getHttpServer())
+      .post(`${BASE}/residents/${residentId}/receivables/${receivableId}/payment`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ paidAt: new Date().toISOString().slice(0, 10), paymentMethod: PaymentMethod.PIX })
+      .expect(201);
+
+    expect(res.body.status).toBe(ReceivableStatus.PAID);
   });
 });

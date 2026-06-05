@@ -34,6 +34,10 @@ jest.mock('@fonte/types', () => ({
     PROMOTED_TO_SERVANT: 'PROMOTED_TO_SERVANT',
     NOTE: 'NOTE',
   },
+  NotificationType: {
+    ADMISSION_CREATED: 'ADMISSION_CREATED',
+    RESIDENT_DISCHARGED: 'RESIDENT_DISCHARGED',
+  },
   FollowUpAccessLevel: {
     ALL: 'ALL',
     ADMINISTRATION: 'ADMINISTRATION',
@@ -156,6 +160,7 @@ function makeService(
     receivableService as never, // ResidentReceivableService
     staffService as never, // StaffService
     { query: jest.fn().mockResolvedValue([]) } as never, // DataSource
+    { create: jest.fn().mockResolvedValue(undefined) } as never, // NotificationService
   );
 }
 
@@ -819,6 +824,7 @@ describe('ResidentService.getContributionsReport', () => {
       {} as never,
       {} as never,
       { query } as never,
+      { create: jest.fn().mockResolvedValue(undefined) } as never,
     );
     return { service, query };
   }

@@ -2,6 +2,7 @@ import { View, Text, Image, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
 import { resolveAssetUrl } from "@/lib/api";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 
 type Props = {
   name: string;
@@ -32,12 +33,15 @@ export function WelcomeHeader({ name, houseName, photoUrl }: Props) {
             )}
           </View>
         </View>
-        <TouchableOpacity
-          onPress={logout}
-          className="ml-2 px-3 py-1.5 rounded-lg border border-white/30 bg-white/10"
-        >
-          <Text className="text-white text-sm font-medium">Sair</Text>
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-2">
+          <NotificationBell />
+          <TouchableOpacity
+            onPress={logout}
+            className="px-3 py-1.5 rounded-lg border border-white/30 bg-white/10"
+          >
+            <Text className="text-white text-sm font-medium">Sair</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );

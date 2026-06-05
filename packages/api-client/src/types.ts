@@ -29,7 +29,11 @@ import type {
   StreetSalesReportResponse,
   StreetSalesReportByHouse,
   SupplyRoomCategory,
+  Notification,
+  UnreadCountResponse,
+  NotificationPushPayload,
 } from '@fonte/types';
+import { NotificationType } from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
 export type {
@@ -46,6 +50,14 @@ export type { SupplyRoomCategory };
 export type { FamilyInvestment };
 
 export type { PaginatedResponse };
+
+export { NotificationType };
+export type { Notification, UnreadCountResponse, NotificationPushPayload };
+
+export interface ListNotificationsParams {
+  unreadOnly?: boolean;
+  page?: number;
+}
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 

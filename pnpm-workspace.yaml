@@ -3,6 +3,11 @@ packages:
   - "services/*"
   - "packages/*"
 allowBuilds:
+  '@nestjs/core': true
+  '@swc/core': true
+  bcrypt: true
+  esbuild: true
+  puppeteer: false
   sharp: true
 onlyBuiltDependencies:
   - "@nestjs/core"

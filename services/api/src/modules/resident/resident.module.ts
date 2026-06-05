@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DocumentTemplateModule } from '../document-template/document-template.module';
 import { ResidentFollowUpModule } from '../resident-follow-up/resident-follow-up.module';
 import { ResidentReceivableModule } from '../resident-receivable/resident-receivable.module';
+import { NotificationModule } from '../notification/notification.module';
 import { StaffModule } from '../staff/staff.module';
 import { User } from '../user/user.entity';
 import { Resident } from './resident.entity';
@@ -19,6 +20,7 @@ import { DocxParserService } from './docx-parser.service';
     DocumentTemplateModule,
     ResidentFollowUpModule,
     ResidentReceivableModule,
+    NotificationModule,
     StaffModule,
   ],
   controllers: [ResidentController],

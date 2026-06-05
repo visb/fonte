@@ -23,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 
 const navLinkClass =
   "flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors";
@@ -288,6 +289,16 @@ export function AppLayout() {
             <Menu size={20} />
           </Button>
           <span className="ml-2 text-base font-bold">adm.fonte</span>
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
+        </div>
+
+        {/* Desktop top bar */}
+        <div className="hidden items-center h-14 px-6 border-b md:flex shrink-0">
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </div>
 
         <main className="flex-1 overflow-auto p-4 sm:p-8">

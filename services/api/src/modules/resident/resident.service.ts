@@ -5,7 +5,8 @@ import * as bcrypt from 'bcrypt';
 // require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
 // emits an undefined default for sharp's CommonJS module.
 const sharp = require('sharp') as typeof import('sharp');
-import { ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, ResidentStatus, Role, ServantRank } from '@fonte/types';
+import { ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, NotificationType, ResidentStatus, Role, ServantRank } from '@fonte/types';
+import { Logger } from '@nestjs/common';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
 const CANONICAL_AMOUNTS: Partial<Record<FamilyInvestment, number>> = {
@@ -21,6 +22,7 @@ import { ResidentReceivableService } from '../resident-receivable/resident-recei
 import { UpdateContributionPlanDto } from '../resident-receivable/dto/update-contribution-plan.dto';
 import { StaffService } from '../staff/staff.service';
 import { Staff } from '../staff/staff.entity';
+import { NotificationService } from '../notification/notification.service';
 import { PromoteToServantDto } from './dto/promote-to-servant.dto';
 
 export interface ResidentDocumentView {
@@ -52,6 +54,8 @@ export interface ResidentMeView {
 
 @Injectable()
 export class ResidentService {
+  private readonly logger = new Logger(ResidentService.name);
+
   private static readonly ADMISSION_FIELDS = new Set<string>([
     'houseId', 'ministryId', 'entryDate', 'exitDate', 'status',
     'healthIssues', 'continuousMedication', 'weight', 'height',
@@ -74,6 +78,7 @@ export class ResidentService {
     private receivableService: ResidentReceivableService,
     private staffService: StaffService,
     private dataSource: DataSource,
+    private notifications: NotificationService,
   ) {}
 
   async findAll(dto: ListResidentsDto): Promise<{ data: Resident[]; total: number; page: number; limit: number }> {
@@ -199,12 +204,18 @@ export class ResidentService {
     if (dto.status === 'DISCHARGED' && before.status !== 'DISCHARGED') {
       await this.followUpService.createAuto(id, FollowUpType.DISCHARGE, exitEventDate);
       await this.receivableService.cancelAfterExit(id, exitEventDate);
+      await this.notifyResidentDischarged(before);
     } else if (dto.status === 'EVADED' && before.status !== 'EVADED') {
       await this.followUpService.createAuto(id, FollowUpType.EVASION, exitEventDate);
       await this.receivableService.cancelAfterExit(id, exitEventDate);
     }
     if (dto.ministryId !== undefined && dto.ministryId !== before.ministryId) {
       await this.followUpService.createAuto(id, FollowUpType.MINISTRY_CHANGE, today);
+    }
+
+    // Acolhimento concluído: transição para ACTIVE.
+    if (dto.status === ResidentStatus.ACTIVE && before.status !== ResidentStatus.ACTIVE) {
+      await this.notifyAdmissionCreated(before);
     }
 
     // Keep the carnê in sync when contribution-relevant fields change via the edit form.
@@ -231,6 +242,67 @@ export class ResidentService {
     }
 
     return this.findOne(id);
+  }
+
+  // Best-effort: a notification failure must never break the resident update.
+  private async notifyAdmissionCreated(resident: Resident): Promise<void> {
+    try {
+      const metadata = { entityId: resident.id, residentId: resident.id };
+      await this.notifications.create({
+        type: NotificationType.ADMISSION_CREATED,
+        title: 'Acolhimento concluído',
+        body: `${resident.name} agora está ativo.`,
+        link: `/residents/${resident.id}`,
+        recipientRole: Role.ADMIN,
+        metadata,
+      });
+      if (resident.houseId) {
+        await this.notifications.create({
+          type: NotificationType.ADMISSION_CREATED,
+          title: 'Acolhimento concluído',
+          body: `${resident.name} agora está ativo.`,
+          link: `/residents/${resident.id}`,
+          houseId: resident.houseId,
+          metadata,
+        });
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to emit ADMISSION_CREATED for ${resident.id}: ${
+          error instanceof Error ? error.message : error
+        }`,
+      );
+    }
+  }
+
+  private async notifyResidentDischarged(resident: Resident): Promise<void> {
+    try {
+      const metadata = { entityId: resident.id, residentId: resident.id };
+      await this.notifications.create({
+        type: NotificationType.RESIDENT_DISCHARGED,
+        title: 'Alta registrada',
+        body: `${resident.name} recebeu alta.`,
+        link: `/residents/${resident.id}`,
+        recipientRole: Role.ADMIN,
+        metadata,
+      });
+      if (resident.houseId) {
+        await this.notifications.create({
+          type: NotificationType.RESIDENT_DISCHARGED,
+          title: 'Alta registrada',
+          body: `${resident.name} recebeu alta.`,
+          link: `/residents/${resident.id}`,
+          houseId: resident.houseId,
+          metadata,
+        });
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to emit RESIDENT_DISCHARGED for ${resident.id}: ${
+          error instanceof Error ? error.message : error
+        }`,
+      );
+    }
   }
 
   async readmit(id: string, dto: ReadmitResidentDto): Promise<Resident> {

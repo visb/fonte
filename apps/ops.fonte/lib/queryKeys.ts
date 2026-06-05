@@ -61,4 +61,8 @@ export const queryKeys = {
     all: ['street-sales'] as const,
     byHouse: (houseId: string) => ['street-sales', houseId] as const,
   },
+  notifications: {
+    all: ['notifications'] as const,
+    unreadCount: ['notifications', 'unread-count'] as const,
+  },
 } as const;

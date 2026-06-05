@@ -15,6 +15,8 @@ jest.mock('@fonte/types', () => ({
   },
   ReceivableStatus: { PENDING: 'PENDING', PAID: 'PAID', CANCELED: 'CANCELED' },
   PaymentMethod: { CASH: 'CASH', PIX: 'PIX', CREDIT_CARD: 'CREDIT_CARD', DEBIT_CARD: 'DEBIT_CARD', BASKET: 'BASKET', OTHER: 'OTHER' },
+  NotificationType: { PAYMENT_REGISTERED: 'PAYMENT_REGISTERED' },
+  Role: { ADMIN: 'ADMIN', COORDINATOR: 'COORDINATOR', SERVANT: 'SERVANT', RELATIVE: 'RELATIVE', RESIDENT: 'RESIDENT' },
 }));
 
 import { NotFoundException } from '@nestjs/common';
@@ -64,6 +66,7 @@ function makeService(repo: MockRepo, residentRepo: Partial<Repository<Resident>>
     residentRepo as Repository<Resident>,
     {} as Repository<Staff>,
     {} as never, // StorageService
+    { create: jest.fn().mockResolvedValue(undefined) } as never, // NotificationService
   );
 }
 
@@ -73,11 +76,18 @@ function makeFullService(
   staffRepo: Partial<Repository<Staff>>,
   storage: Record<string, jest.Mock> = {},
 ) {
+  // registerPayment emits a best-effort notification that reads the resident
+  // name; provide a default findOne so the happy path does not log warnings.
+  const residentRepoWithFind = {
+    findOne: jest.fn().mockResolvedValue({ name: 'Acolhido' }),
+    ...residentRepo,
+  };
   return new ResidentReceivableService(
     repo as unknown as Repository<ResidentReceivable>,
-    residentRepo as Repository<Resident>,
+    residentRepoWithFind as Repository<Resident>,
     staffRepo as Repository<Staff>,
     storage as never,
+    { create: jest.fn().mockResolvedValue(undefined) } as never, // NotificationService
   );
 }
 

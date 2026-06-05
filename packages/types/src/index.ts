@@ -311,3 +311,39 @@ export interface PaginatedResponse<T> {
   limit: number;
 }
 
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export enum NotificationType {
+  // ações de usuário
+  ADMISSION_CREATED = 'ADMISSION_CREATED',
+  PAYMENT_REGISTERED = 'PAYMENT_REGISTERED',
+  INCIDENT_CREATED = 'INCIDENT_CREATED',
+  RESIDENT_DISCHARGED = 'RESIDENT_DISCHARGED',
+  // background workers
+  RECEIVABLE_OVERDUE = 'RECEIVABLE_OVERDUE',
+  ROUTINE_MISSING = 'ROUTINE_MISSING',
+  REQUIRED_DOC_MISSING = 'REQUIRED_DOC_MISSING',
+  // ... expandir conforme eventos cobertos
+}
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  link: string | null;
+  metadata: Record<string, unknown> | null;
+  recipientId: string | null;
+  recipientRole: Role | null;
+  houseId: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface UnreadCountResponse {
+  count: number;
+}
+
+/** Realtime payload pushed over the `notification:new` socket event. */
+export type NotificationPushPayload = Notification;
+

@@ -118,4 +118,9 @@ export type {
   UpdateBibleCourseClassInput,
   EnrollResidentInput,
   UpdateBibleCourseEnrollmentInput,
+  Notification,
+  UnreadCountResponse,
+  NotificationPushPayload,
+  ListNotificationsParams,
 } from './types.js';
+export { NotificationType } from './types.js';

@@ -34,6 +34,7 @@ import { BreadPage } from '@/features/billing/pages/BreadPage';
 import { AssociadosPage } from '@/features/billing/pages/AssociadosPage';
 import { MessagesPage } from '@/features/messages/pages/MessagesPage';
 import { ProfilePage } from '@/features/auth/pages/ProfilePage';
+import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +70,7 @@ export default function App() {
             >
               <Route index element={<DashboardPage />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
               <Route path="houses" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><HousesPage /></ProtectedRoute>} />
               <Route path="houses/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><HouseDetailPage /></ProtectedRoute>} />
               <Route path="residents" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ResidentsPage /></ProtectedRoute>} />

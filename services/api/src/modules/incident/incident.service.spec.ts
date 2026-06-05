@@ -13,8 +13,18 @@ function makeRepo(overrides: Record<string, jest.Mock> = {}) {
   };
 }
 
-function makeService(repo: ReturnType<typeof makeRepo>) {
-  return new IncidentService(repo as unknown as Repository<Incident>);
+function makeNotifications() {
+  return { create: jest.fn().mockResolvedValue(undefined) };
+}
+
+function makeService(
+  repo: ReturnType<typeof makeRepo>,
+  notifications = makeNotifications(),
+) {
+  return new IncidentService(
+    repo as unknown as Repository<Incident>,
+    notifications as never,
+  );
 }
 
 describe('IncidentService.findAll', () => {

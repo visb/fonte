@@ -4,22 +4,68 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
-    { "key": "token", "value": "" },
-    { "key": "houseId", "value": "{{houseId}}" },
-    { "key": "residentId", "value": "{{residentId}}" },
-    { "key": "relativeId", "value": "{{relativeId}}" },
-    { "key": "staffId", "value": "{{staffId}}" },
-    { "key": "ministryId", "value": "{{ministryId}}" },
-    { "key": "supportGroupId", "value": "{{supportGroupId}}" },
-    { "key": "meetingId", "value": "{{meetingId}}" },
-    { "key": "incidentId", "value": "{{incidentId}}" },
-    { "key": "itemId", "value": "{{itemId}}" },
-    { "key": "templateId", "value": "{{templateId}}" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "houseId",
+      "value": "{{houseId}}"
+    },
+    {
+      "key": "residentId",
+      "value": "{{residentId}}"
+    },
+    {
+      "key": "relativeId",
+      "value": "{{relativeId}}"
+    },
+    {
+      "key": "staffId",
+      "value": "{{staffId}}"
+    },
+    {
+      "key": "ministryId",
+      "value": "{{ministryId}}"
+    },
+    {
+      "key": "supportGroupId",
+      "value": "{{supportGroupId}}"
+    },
+    {
+      "key": "meetingId",
+      "value": "{{meetingId}}"
+    },
+    {
+      "key": "incidentId",
+      "value": "{{incidentId}}"
+    },
+    {
+      "key": "itemId",
+      "value": "{{itemId}}"
+    },
+    {
+      "key": "templateId",
+      "value": "{{templateId}}"
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    }
   ],
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
   },
   "item": [
     {
@@ -42,26 +88,56 @@
             }
           ],
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"admin@fonte.com\",\n  \"password\": \"senha123\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
           }
         },
         {
           "name": "Change Password",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"newPassword\": \"novaSenha123\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/auth/change-password", "host": ["{{baseUrl}}"], "path": ["auth", "change-password"] }
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "change-password"
+              ]
+            }
           }
         }
       ]
@@ -73,19 +149,42 @@
           "name": "Get Me",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/staff/me", "host": ["{{baseUrl}}"], "path": ["staff", "me"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "me"
+              ]
+            }
           }
         },
         {
           "name": "Update Me",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Meu Nome\",\n  \"phone\": \"+5511999999999\",\n  \"email\": \"me@fonte.com\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/staff/me", "host": ["{{baseUrl}}"], "path": ["staff", "me"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "me"
+              ]
+            }
           }
         },
         {
@@ -94,54 +193,123 @@
             "method": "POST",
             "body": {
               "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
             },
-            "url": { "raw": "{{baseUrl}}/staff/me/photo", "host": ["{{baseUrl}}"], "path": ["staff", "me", "photo"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff/me/photo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "me",
+                "photo"
+              ]
+            }
           }
         },
         {
           "name": "List Staff",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/staff", "host": ["{{baseUrl}}"], "path": ["staff"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff"
+              ]
+            }
           }
         },
         {
           "name": "Get Staff by ID",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/staff/{{staffId}}", "host": ["{{baseUrl}}"], "path": ["staff", "{{staffId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}"
+              ]
+            }
           }
         },
         {
           "name": "Create Staff",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Nome do Staff\",\n  \"email\": \"staff@fonte.com\",\n  \"password\": \"senha123\",\n  \"role\": \"SERVANT\",\n  \"houseId\": \"{{houseId}}\",\n  \"supportGroupId\": null,\n  \"phone\": \"+5511999999999\",\n  \"rank\": \"ASPIRANTE\",\n  \"cpf\": \"123.456.789-00\",\n  \"rg\": \"12.345.678-9\",\n  \"nationality\": \"Brasileira\",\n  \"birthDate\": \"1990-01-15\",\n  \"gender\": \"MALE\",\n  \"address\": \"Rua das Flores, 123\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"maritalStatus\": \"SINGLE\",\n  \"children\": 0,\n  \"occupation\": \"Auxiliar\",\n  \"education\": \"Ensino médio completo\",\n  \"religion\": \"Evangélico\",\n  \"addiction\": null,\n  \"healthIssues\": null,\n  \"continuousMedication\": null,\n  \"weight\": 70,\n  \"height\": 175\n}"
             },
-            "url": { "raw": "{{baseUrl}}/staff", "host": ["{{baseUrl}}"], "path": ["staff"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff"
+              ]
+            }
           }
         },
         {
           "name": "Update Staff",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Nome Atualizado\",\n  \"role\": \"COORDINATOR\",\n  \"houseId\": \"{{houseId}}\",\n  \"email\": null,\n  \"cpf\": \"123.456.789-00\",\n  \"occupation\": \"Coordenador\",\n  \"healthIssues\": \"Hipertensão\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/staff/{{staffId}}", "host": ["{{baseUrl}}"], "path": ["staff", "{{staffId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}"
+              ]
+            }
           }
         },
         {
           "name": "Delete Staff",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/staff/{{staffId}}", "host": ["{{baseUrl}}"], "path": ["staff", "{{staffId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}"
+              ]
+            }
           }
         },
         {
@@ -150,35 +318,87 @@
             "method": "POST",
             "body": {
               "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
             },
-            "url": { "raw": "{{baseUrl}}/staff/{{staffId}}/photo", "host": ["{{baseUrl}}"], "path": ["staff", "{{staffId}}", "photo"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/photo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}",
+                "photo"
+              ]
+            }
           }
         },
         {
           "name": "Get Staff Permissions",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/staff/{{staffId}}/permissions", "host": ["{{baseUrl}}"], "path": ["staff", "{{staffId}}", "permissions"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}",
+                "permissions"
+              ]
+            }
           }
         },
         {
           "name": "Add Staff Permission",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"type\": \"PERMISSION_TYPE\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/staff/{{staffId}}/permissions", "host": ["{{baseUrl}}"], "path": ["staff", "{{staffId}}", "permissions"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}",
+                "permissions"
+              ]
+            }
           }
         },
         {
           "name": "Remove Staff Permission",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/staff/{{staffId}}/permissions/:type", "host": ["{{baseUrl}}"], "path": ["staff", "{{staffId}}", "permissions", ":type"] }
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/permissions/:type",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}",
+                "permissions",
+                ":type"
+              ]
+            }
           }
         }
       ]
@@ -190,45 +410,98 @@
           "name": "List Houses",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/houses", "host": ["{{baseUrl}}"], "path": ["houses"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses"
+              ]
+            }
           }
         },
         {
           "name": "Get House by ID",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}"
+              ]
+            }
           }
         },
         {
           "name": "Create House",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Casa Esperança\",\n  \"generalCapacity\": 20,\n  \"staffCapacity\": 5,\n  \"address\": \"Rua das Flores, 123\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"coordinatorId\": null,\n  \"phone\": \"+5511999999999\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/houses", "host": ["{{baseUrl}}"], "path": ["houses"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses"
+              ]
+            }
           }
         },
         {
           "name": "Update House",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Casa Esperança Atualizada\",\n  \"generalCapacity\": 25\n}"
             },
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}"
+              ]
+            }
           }
         },
         {
           "name": "Delete House",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}"
+              ]
+            }
           }
         },
         {
@@ -237,75 +510,183 @@
             "method": "POST",
             "body": {
               "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
             },
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}/photos", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}", "photos"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/photos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "photos"
+              ]
+            }
           }
         },
         {
           "name": "Delete House Photo",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}/photos/:photoId", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}", "photos", ":photoId"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/photos/:photoId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "photos",
+                ":photoId"
+              ]
+            }
           }
         },
         {
           "name": "Get House Residents",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}/residents", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}", "residents"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/residents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "residents"
+              ]
+            }
           }
         },
         {
           "name": "Get House Staff",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}/staff", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}", "staff"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "staff"
+              ]
+            }
           }
         },
         {
           "name": "Get House Ministries",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}/ministries", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}", "ministries"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/ministries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "ministries"
+              ]
+            }
           }
         },
         {
           "name": "Create Ministry",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Ministério de Louvor\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}/ministries", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}", "ministries"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/ministries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "ministries"
+              ]
+            }
           }
         },
         {
           "name": "Get House Rules",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}/rules", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}", "rules"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "rules"
+              ]
+            }
           }
         },
         {
           "name": "Create House Rule",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Horário de silêncio\",\n  \"content\": \"Das 22h às 6h é obrigatório silêncio nos dormitórios.\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}/rules", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}", "rules"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "rules"
+              ]
+            }
           }
         },
         {
           "name": "Delete House Rule",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}/rules/:ruleId", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}", "rules", ":ruleId"] }
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/rules/:ruleId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "rules",
+                ":ruleId"
+              ]
+            }
           }
         }
       ]
@@ -319,15 +700,44 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/residents?page=1&limit=20&search=&status=&houseId=",
-              "host": ["{{baseUrl}}"],
-              "path": ["residents"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents"
+              ],
               "query": [
-                { "key": "page", "value": "1", "description": "Página (padrão: 1)" },
-                { "key": "limit", "value": "20", "description": "Itens por página (padrão: 20, máx: 100)" },
-                { "key": "search", "value": "", "description": "Busca parcial por nome ou CPF (case-insensitive, ignora pontuação do CPF)" },
-                { "key": "status", "value": "", "description": "Filtro por status: PRE_ADMISSION | ACTIVE | DISCIPLINE | TEMP_LEAVE | DISCHARGED | EVADED" },
-                { "key": "houseId", "value": "", "description": "UUID da casa (opcional, filtra por casa)" },
-                { "key": "overdueContribution", "value": "", "description": "true para listar apenas contribuições em atraso", "disabled": true }
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página (padrão: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Itens por página (padrão: 20, máx: 100)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Busca parcial por nome ou CPF (case-insensitive, ignora pontuação do CPF)"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Filtro por status: PRE_ADMISSION | ACTIVE | DISCIPLINE | TEMP_LEAVE | DISCHARGED | EVADED"
+                },
+                {
+                  "key": "houseId",
+                  "value": "",
+                  "description": "UUID da casa (opcional, filtra por casa)"
+                },
+                {
+                  "key": "overdueContribution",
+                  "value": "",
+                  "description": "true para listar apenas contribuições em atraso",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -336,14 +746,34 @@
           "name": "Get Contributions Monthly Report",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/residents/contributions/report?month=2026-05",
-              "host": ["{{baseUrl}}"],
-              "path": ["residents", "contributions", "report"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "contributions",
+                "report"
+              ],
               "query": [
-                { "key": "month", "value": "2026-05", "description": "Mês do relatório (YYYY-MM, obrigatório)" },
-                { "key": "houseId", "value": "", "description": "UUID da casa (opcional, filtra por casa)", "disabled": true }
+                {
+                  "key": "month",
+                  "value": "2026-05",
+                  "description": "Mês do relatório (YYYY-MM, obrigatório)"
+                },
+                {
+                  "key": "houseId",
+                  "value": "",
+                  "description": "UUID da casa (opcional, filtra por casa)",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -352,45 +782,99 @@
           "name": "Get Resident by ID",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}"
+              ]
+            }
           }
         },
         {
           "name": "Get Me (Resident)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/residents/me", "host": ["{{baseUrl}}"], "path": ["residents", "me"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "me"
+              ]
+            }
           }
         },
         {
           "name": "Create Resident",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"João da Silva\",\n  \"houseId\": \"{{houseId}}\",\n  \"birthDate\": \"1990-01-15\",\n  \"cpf\": \"123.456.789-00\",\n  \"status\": \"ACTIVE\",\n  \"entryDate\": \"2024-01-01\",\n  \"gender\": \"MALE\",\n  \"contactPhone\": \"+5511999999999\",\n  \"email\": \"joao@email.com\",\n  \"nationality\": \"Brasileira\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"addiction\": \"Álcool\",\n  \"familyInvestment\": \"BASKET_500\",\n  \"familyInvestmentAmount\": null,\n  \"contributionDueDay\": 10\n}"
             },
-            "url": { "raw": "{{baseUrl}}/residents", "host": ["{{baseUrl}}"], "path": ["residents"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents"
+              ]
+            }
           }
         },
         {
           "name": "Update Resident",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"João da Silva Atualizado\",\n  \"status\": \"ACTIVE\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}"
+              ]
+            }
           }
         },
         {
           "name": "Delete Resident",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}"
+              ]
+            }
           }
         },
         {
@@ -399,9 +883,25 @@
             "method": "POST",
             "body": {
               "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/photo", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "photo"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/photo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "photo"
+              ]
+            }
           }
         },
         {
@@ -410,73 +910,179 @@
             "method": "POST",
             "body": {
               "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
             },
-            "url": { "raw": "{{baseUrl}}/residents/me/photo", "host": ["{{baseUrl}}"], "path": ["residents", "me", "photo"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/me/photo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "me",
+                "photo"
+              ]
+            }
           }
         },
         {
           "name": "Generate Resident Access",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"password\": \"senha123\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/access", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "access"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "access"
+              ]
+            }
           }
         },
         {
           "name": "Reset Resident Password",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"newPassword\": \"novaSenha123\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/access/reset-password", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "access", "reset-password"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/access/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "access",
+                "reset-password"
+              ]
+            }
           }
         },
         {
           "name": "Promote Resident to Servant",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"servo@fonte.org\",\n  \"password\": \"senha123\",\n  \"houseId\": \"{{houseId}}\",\n  \"rank\": \"ASPIRANTE\",\n  \"date\": \"2026-01-15\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/promote-to-servant", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "promote-to-servant"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/promote-to-servant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "promote-to-servant"
+              ]
+            }
           }
         },
         {
           "name": "Get Resident Documents",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/documents", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "documents"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "documents"
+              ]
+            }
           }
         },
         {
           "name": "Render Document (HTML)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/documents/{{templateId}}/render", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "documents", "{{templateId}}", "render"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/documents/{{templateId}}/render",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "documents",
+                "{{templateId}}",
+                "render"
+              ]
+            }
           }
         },
         {
           "name": "Export Document (PDF)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/documents/{{templateId}}/pdf", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "documents", "{{templateId}}", "pdf"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/documents/{{templateId}}/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "documents",
+                "{{templateId}}",
+                "pdf"
+              ]
+            }
           }
         },
         {
           "name": "Get Resident Attachments",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/attachments", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "attachments"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "attachments"
+              ]
+            }
           }
         },
         {
@@ -485,16 +1091,43 @@
             "method": "POST",
             "body": {
               "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/attachments", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "attachments"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "attachments"
+              ]
+            }
           }
         },
         {
           "name": "Delete Resident Attachment",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/attachments/:attachmentId", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "attachments", ":attachmentId"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/attachments/:attachmentId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "attachments",
+                ":attachmentId"
+              ]
+            }
           }
         },
         {
@@ -503,21 +1136,54 @@
             "method": "POST",
             "body": {
               "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/documents/{{templateId}}/signed", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "documents", "{{templateId}}", "signed"] }
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/documents/{{templateId}}/signed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "documents",
+                "{{templateId}}",
+                "signed"
+              ]
+            }
           }
         },
         {
           "name": "Readmit Resident",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"houseId\": \"{{houseId}}\",\n  \"entryDate\": \"2024-06-01\",\n  \"address\": \"Rua das Flores, 123\",\n  \"contactPhone\": \"(11) 99999-9999\",\n  \"email\": \"joao@email.com\",\n  \"addiction\": \"Álcool\",\n  \"healthIssues\": null,\n  \"continuousMedication\": null,\n  \"weight\": 75,\n  \"height\": 175,\n  \"familyInvestment\": \"BASKET_500\",\n  \"familyInvestmentAmount\": null,\n  \"contributionDueDay\": 10\n}"
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/readmit", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "readmit"] },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/readmit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "readmit"
+              ]
+            },
             "description": "Reintroduz acolhido com status DISCHARGED ou EVADED. Cria novo registro de Admission e reseta campos de admissão. Acesso digital anterior é revogado via soft-delete do User. Roles: ADMIN, COORDINATOR."
           }
         },
@@ -525,7 +1191,17 @@
           "name": "Get Resident Admissions",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/admissions", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "admissions"] },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/admissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "admissions"
+              ]
+            },
             "description": "Retorna histórico de todos os acolhimentos do residente, com nome da casa. Ordem: mais recente primeiro. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
@@ -533,7 +1209,17 @@
           "name": "Get Resident Follow-Ups",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/follow-ups", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "follow-ups"] },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/follow-ups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "follow-ups"
+              ]
+            },
             "description": "Lista eventos de acompanhamento do residente. SERVANT vê apenas accessLevel=ALL. ADMIN/COORDINATOR veem tudo. Ordenado por date DESC, createdAt DESC."
           }
         },
@@ -541,12 +1227,27 @@
           "name": "Create Resident Follow-Up",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"date\": \"2025-01-15\",\n  \"type\": \"NOTE\",\n  \"description\": \"Observação sobre o acolhido\",\n  \"accessLevel\": \"ALL\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/follow-ups", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "follow-ups"] },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/follow-ups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "follow-ups"
+              ]
+            },
             "description": "Registra evento de acompanhamento. staffId extraído do JWT. Types: ADMISSION|READMISSION|DISCHARGE|EVASION|MINISTRY_CHANGE|RELATIVE_ADDED|DOCUMENT_ATTACHED|MONTHLY_CONTRIBUTION|DISCIPLINE|BEHAVIOR_ASSESSMENT|NOTE. AccessLevel: ALL|ADMINISTRATION."
           }
         },
@@ -554,12 +1255,28 @@
           "name": "Bulk Create Contribution History",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"months\": [\n    { \"date\": \"2025-01-01\" },\n    { \"date\": \"2025-02-01\" },\n    { \"date\": \"2025-03-01\" }\n  ]\n}"
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/follow-ups/bulk-contributions", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "follow-ups", "bulk-contributions"] },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/follow-ups/bulk-contributions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "follow-ups",
+                "bulk-contributions"
+              ]
+            },
             "description": "Importa histórico de contribuições mensais em lote. Meses já registrados são ignorados (skipped). Retorna { created, skipped }. Roles: ADMIN, COORDINATOR."
           }
         },
@@ -567,7 +1284,17 @@
           "name": "Get Resident Receivables (carnê)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/receivables", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "receivables"] },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/receivables",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "receivables"
+              ]
+            },
             "description": "Lista o carnê de contribuição do acolhido (parcelas mensais). Gera 6 parcelas obrigatórias a partir da entrada e rola garantindo ≥1 mês futuro aberto enquanto ativo. Plano SOCIAL ou acolhido isento não geram parcelas. Roles: ADMIN, COORDINATOR."
           }
         },
@@ -575,12 +1302,27 @@
           "name": "Update Contribution Plan",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"familyInvestment\": \"NEGOTIATED\",\n  \"familyInvestmentAmount\": 350,\n  \"contributionDueDay\": 10\n}"
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/contribution-plan", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "contribution-plan"] },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/contribution-plan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "contribution-plan"
+              ]
+            },
             "description": "Altera o plano de contribuição. Recalcula valor/vencimento das parcelas futuras em aberto (PENDING). Parcelas pagas não mudam. familyInvestment: BASKET_500|PAYMENT_700|SOCIAL|NEGOTIATED. Roles: ADMIN, COORDINATOR."
           }
         },
@@ -588,12 +1330,27 @@
           "name": "Set Contribution Exempt",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"exempt\": true\n}"
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/contribution-exempt", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "contribution-exempt"] },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/contribution-exempt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "contribution-exempt"
+              ]
+            },
             "description": "Marca/desmarca o acolhido como isento de contribuição (independente do plano). Ao isentar, cancela as parcelas obrigatórias futuras em aberto. Ao remover isenção, regenera a janela obrigatória. Roles: ADMIN, COORDINATOR."
           }
         },
@@ -604,15 +1361,53 @@
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "paidAt", "value": "2026-06-10", "type": "text" },
-                { "key": "paymentMethod", "value": "PIX", "type": "text" },
-                { "key": "paidAmount", "value": "700", "type": "text", "description": "Valor efetivamente pago (R$, inteiro). Opcional — default = amount da parcela." },
-                { "key": "paidFamilyInvestment", "value": "PAYMENT_700", "type": "text", "description": "Modalidade efetiva: BASKET_500|PAYMENT_700|SOCIAL|NEGOTIATED. Opcional — default = familyInvestment da parcela." },
-                { "key": "notes", "value": "Pagamento via PIX", "type": "text" },
-                { "key": "file", "type": "file", "description": "Comprovante opcional (imagem ou PDF, máx 20 MB)" }
+                {
+                  "key": "paidAt",
+                  "value": "2026-06-10",
+                  "type": "text"
+                },
+                {
+                  "key": "paymentMethod",
+                  "value": "PIX",
+                  "type": "text"
+                },
+                {
+                  "key": "paidAmount",
+                  "value": "700",
+                  "type": "text",
+                  "description": "Valor efetivamente pago (R$, inteiro). Opcional — default = amount da parcela."
+                },
+                {
+                  "key": "paidFamilyInvestment",
+                  "value": "PAYMENT_700",
+                  "type": "text",
+                  "description": "Modalidade efetiva: BASKET_500|PAYMENT_700|SOCIAL|NEGOTIATED. Opcional — default = familyInvestment da parcela."
+                },
+                {
+                  "key": "notes",
+                  "value": "Pagamento via PIX",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Comprovante opcional (imagem ou PDF, máx 20 MB)"
+                }
               ]
             },
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/payment", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "receivables", "{{receivableId}}", "payment"] },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "receivables",
+                "{{receivableId}}",
+                "payment"
+              ]
+            },
             "description": "Registra o pagamento de uma parcela, anexando comprovante opcional na mesma requisição. paymentMethod: CASH|PIX|CREDIT_CARD|DEBIT_CARD|BASKET|OTHER. paidAmount/paidFamilyInvestment opcionais permitem registrar valor/modalidade fora do plano (default = snapshot da parcela). Roles: ADMIN, COORDINATOR."
           }
         },
@@ -620,7 +1415,19 @@
           "name": "Reopen Receivable Payment",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/reopen", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "receivables", "{{receivableId}}", "reopen"] },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/reopen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "receivables",
+                "{{receivableId}}",
+                "reopen"
+              ]
+            },
             "description": "Desfaz o pagamento de uma parcela (volta a PENDING e remove o comprovante). Correção sem estorno. Roles: ADMIN, COORDINATOR."
           }
         },
@@ -630,9 +1437,25 @@
             "method": "POST",
             "body": {
               "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "description": "Arquivo .docx da ficha de acolhimento (máx 5 MB)" }]
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Arquivo .docx da ficha de acolhimento (máx 5 MB)"
+                }
+              ]
             },
-            "url": { "raw": "{{baseUrl}}/residents/import/parse-docx", "host": ["{{baseUrl}}"], "path": ["residents", "import", "parse-docx"] },
+            "url": {
+              "raw": "{{baseUrl}}/residents/import/parse-docx",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "import",
+                "parse-docx"
+              ]
+            },
             "description": "Extrai dados de uma ficha de acolhimento .docx usando Claude AI. Retorna ParseDocxResult com resident, relatives, warnings, houseName, rawText. Roles: ADMIN, COORDINATOR."
           }
         }
@@ -647,9 +1470,18 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/relatives?residentId={{residentId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["relatives"],
-              "query": [{ "key": "residentId", "value": "{{residentId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relatives"
+              ],
+              "query": [
+                {
+                  "key": "residentId",
+                  "value": "{{residentId}}"
+                }
+              ]
             }
           }
         },
@@ -657,19 +1489,42 @@
           "name": "Get Me (Relative)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/relatives/me", "host": ["{{baseUrl}}"], "path": ["relatives", "me"] }
+            "url": {
+              "raw": "{{baseUrl}}/relatives/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relatives",
+                "me"
+              ]
+            }
           }
         },
         {
           "name": "Update Me (Relative)",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Meu Nome\",\n  \"phone\": \"+5511999999999\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/relatives/me", "host": ["{{baseUrl}}"], "path": ["relatives", "me"] }
+            "url": {
+              "raw": "{{baseUrl}}/relatives/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relatives",
+                "me"
+              ]
+            }
           }
         },
         {
@@ -678,59 +1533,138 @@
             "method": "POST",
             "body": {
               "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
             },
-            "url": { "raw": "{{baseUrl}}/relatives/me/photo", "host": ["{{baseUrl}}"], "path": ["relatives", "me", "photo"] }
+            "url": {
+              "raw": "{{baseUrl}}/relatives/me/photo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relatives",
+                "me",
+                "photo"
+              ]
+            }
           }
         },
         {
           "name": "Create Relative",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Maria da Silva\",\n  \"residentId\": \"{{residentId}}\",\n  \"phone\": \"+5511999999999\",\n  \"relationship\": \"Mãe\",\n  \"isResponsible\": true\n}"
             },
-            "url": { "raw": "{{baseUrl}}/relatives", "host": ["{{baseUrl}}"], "path": ["relatives"] }
+            "url": {
+              "raw": "{{baseUrl}}/relatives",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relatives"
+              ]
+            }
           }
         },
         {
           "name": "Set Relative Responsible",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/relatives/{{relativeId}}/responsible", "host": ["{{baseUrl}}"], "path": ["relatives", "{{relativeId}}", "responsible"] }
+            "url": {
+              "raw": "{{baseUrl}}/relatives/{{relativeId}}/responsible",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relatives",
+                "{{relativeId}}",
+                "responsible"
+              ]
+            }
           }
         },
         {
           "name": "Delete Relative",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/relatives/{{relativeId}}", "host": ["{{baseUrl}}"], "path": ["relatives", "{{relativeId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/relatives/{{relativeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relatives",
+                "{{relativeId}}"
+              ]
+            }
           }
         },
         {
           "name": "Generate Relative Access",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"password\": \"senha123\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/relatives/{{relativeId}}/access", "host": ["{{baseUrl}}"], "path": ["relatives", "{{relativeId}}", "access"] }
+            "url": {
+              "raw": "{{baseUrl}}/relatives/{{relativeId}}/access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relatives",
+                "{{relativeId}}",
+                "access"
+              ]
+            }
           }
         },
         {
           "name": "Reset Relative Password",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"newPassword\": \"novaSenha123\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/relatives/{{relativeId}}/access/reset-password", "host": ["{{baseUrl}}"], "path": ["relatives", "{{relativeId}}", "access", "reset-password"] }
+            "url": {
+              "raw": "{{baseUrl}}/relatives/{{relativeId}}/access/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relatives",
+                "{{relativeId}}",
+                "access",
+                "reset-password"
+              ]
+            }
           }
         }
       ]
@@ -742,102 +1676,238 @@
           "name": "Get Ministry by ID",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/ministries/{{ministryId}}", "host": ["{{baseUrl}}"], "path": ["ministries", "{{ministryId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}"
+              ]
+            }
           }
         },
         {
           "name": "Update Ministry",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Ministério Atualizado\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/ministries/{{ministryId}}", "host": ["{{baseUrl}}"], "path": ["ministries", "{{ministryId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}"
+              ]
+            }
           }
         },
         {
           "name": "Delete Ministry",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/ministries/{{ministryId}}", "host": ["{{baseUrl}}"], "path": ["ministries", "{{ministryId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}"
+              ]
+            }
           }
         },
         {
           "name": "Add Resident to Ministry",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"residentId\": \"{{residentId}}\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/ministries/{{ministryId}}/residents", "host": ["{{baseUrl}}"], "path": ["ministries", "{{ministryId}}", "residents"] }
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}/residents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}",
+                "residents"
+              ]
+            }
           }
         },
         {
           "name": "Remove Resident from Ministry",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/ministries/{{ministryId}}/residents/{{residentId}}", "host": ["{{baseUrl}}"], "path": ["ministries", "{{ministryId}}", "residents", "{{residentId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}/residents/{{residentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}",
+                "residents",
+                "{{residentId}}"
+              ]
+            }
           }
         },
         {
           "name": "Add Staff to Ministry",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"staffId\": \"{{staffId}}\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/ministries/{{ministryId}}/staff", "host": ["{{baseUrl}}"], "path": ["ministries", "{{ministryId}}", "staff"] }
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}",
+                "staff"
+              ]
+            }
           }
         },
         {
           "name": "Remove Staff from Ministry",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/ministries/{{ministryId}}/staff/{{staffId}}", "host": ["{{baseUrl}}"], "path": ["ministries", "{{ministryId}}", "staff", "{{staffId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}/staff/{{staffId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}",
+                "staff",
+                "{{staffId}}"
+              ]
+            }
           }
         },
         {
           "name": "Get Ministry Tasks",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/ministries/{{ministryId}}/tasks", "host": ["{{baseUrl}}"], "path": ["ministries", "{{ministryId}}", "tasks"] }
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}",
+                "tasks"
+              ]
+            }
           }
         },
         {
           "name": "Create Ministry Task",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Organizar altar\",\n  \"description\": \"Preparar o altar para o culto de domingo\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/ministries/{{ministryId}}/tasks", "host": ["{{baseUrl}}"], "path": ["ministries", "{{ministryId}}", "tasks"] }
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}",
+                "tasks"
+              ]
+            }
           }
         },
         {
           "name": "Update Ministry Task",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Tarefa atualizada\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/ministries/{{ministryId}}/tasks/:taskId", "host": ["{{baseUrl}}"], "path": ["ministries", "{{ministryId}}", "tasks", ":taskId"] }
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}/tasks/:taskId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}",
+                "tasks",
+                ":taskId"
+              ]
+            }
           }
         },
         {
           "name": "Delete Ministry Task",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/ministries/{{ministryId}}/tasks/:taskId", "host": ["{{baseUrl}}"], "path": ["ministries", "{{ministryId}}", "tasks", ":taskId"] }
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}/tasks/:taskId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}",
+                "tasks",
+                ":taskId"
+              ]
+            }
           }
         }
       ]
@@ -851,11 +1921,22 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/incidents?houseId={{houseId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["incidents"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "incidents"
+              ],
               "query": [
-                { "key": "houseId", "value": "{{houseId}}" },
-                { "key": "residentId", "value": "", "disabled": true }
+                {
+                  "key": "houseId",
+                  "value": "{{houseId}}"
+                },
+                {
+                  "key": "residentId",
+                  "value": "",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -864,19 +1945,41 @@
           "name": "Get Incident by ID",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/incidents/{{incidentId}}", "host": ["{{baseUrl}}"], "path": ["incidents", "{{incidentId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/incidents/{{incidentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "incidents",
+                "{{incidentId}}"
+              ]
+            }
           }
         },
         {
           "name": "Create Incident",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"date\": \"2024-06-01T14:00:00.000Z\",\n  \"severity\": \"MEDIUM\",\n  \"description\": \"Descrição do incidente.\",\n  \"houseId\": \"{{houseId}}\",\n  \"responsibleId\": \"{{staffId}}\",\n  \"residentId\": \"{{residentId}}\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/incidents", "host": ["{{baseUrl}}"], "path": ["incidents"] }
+            "url": {
+              "raw": "{{baseUrl}}/incidents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "incidents"
+              ]
+            }
           }
         }
       ]
@@ -888,28 +1991,66 @@
           "name": "List Conversations (Staff)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/messages/conversations", "host": ["{{baseUrl}}"], "path": ["messages", "conversations"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "conversations"
+              ]
+            }
           }
         },
         {
           "name": "My Conversations (Resident/Relative)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/messages/my-conversations", "host": ["{{baseUrl}}"], "path": ["messages", "my-conversations"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages/my-conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "my-conversations"
+              ]
+            }
           }
         },
         {
           "name": "Get Conversation (Resident-Relative)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/messages/conversations/{{residentId}}/{{relativeId}}", "host": ["{{baseUrl}}"], "path": ["messages", "conversations", "{{residentId}}", "{{relativeId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages/conversations/{{residentId}}/{{relativeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "conversations",
+                "{{residentId}}",
+                "{{relativeId}}"
+              ]
+            }
           }
         },
         {
           "name": "Get Pending Messages",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/messages/pending", "host": ["{{baseUrl}}"], "path": ["messages", "pending"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "pending"
+              ]
+            }
           }
         },
         {
@@ -918,68 +2059,239 @@
             "method": "POST",
             "body": {
               "mode": "formdata",
-              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
             },
-            "url": { "raw": "{{baseUrl}}/messages/upload", "host": ["{{baseUrl}}"], "path": ["messages", "upload"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "upload"
+              ]
+            }
           }
         },
         {
           "name": "Send Message (Resident-Relative)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"residentId\": \"{{residentId}}\",\n  \"relativeId\": \"{{relativeId}}\",\n  \"content\": \"Olá, tudo bem?\",\n  \"attachmentUrl\": null,\n  \"attachmentType\": null\n}"
             },
-            "url": { "raw": "{{baseUrl}}/messages", "host": ["{{baseUrl}}"], "path": ["messages"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages"
+              ]
+            }
           }
         },
         {
           "name": "Get House-Staff Threads (Relative)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/messages/house-staff-threads", "host": ["{{baseUrl}}"], "path": ["messages", "house-staff-threads"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages/house-staff-threads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "house-staff-threads"
+              ]
+            }
           }
         },
         {
           "name": "List Direct Conversations (Staff)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/messages/direct-conversations", "host": ["{{baseUrl}}"], "path": ["messages", "direct-conversations"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages/direct-conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "direct-conversations"
+              ]
+            }
           }
         },
         {
           "name": "Get Direct Conversation (Staff-Relative)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/messages/direct/{{staffId}}/{{relativeId}}", "host": ["{{baseUrl}}"], "path": ["messages", "direct", "{{staffId}}", "{{relativeId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages/direct/{{staffId}}/{{relativeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "direct",
+                "{{staffId}}",
+                "{{relativeId}}"
+              ]
+            }
           }
         },
         {
           "name": "Send Direct Message (Staff-Relative)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"staffId\": \"{{staffId}}\",\n  \"relativeId\": \"{{relativeId}}\",\n  \"content\": \"Olá, tenho uma informação importante.\",\n  \"attachmentUrl\": null,\n  \"attachmentType\": null\n}"
             },
-            "url": { "raw": "{{baseUrl}}/messages/direct", "host": ["{{baseUrl}}"], "path": ["messages", "direct"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages/direct",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                "direct"
+              ]
+            }
           }
         },
         {
           "name": "Approve Message",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/messages/:id/approve", "host": ["{{baseUrl}}"], "path": ["messages", ":id", "approve"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages/:id/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                ":id",
+                "approve"
+              ]
+            }
           }
         },
         {
           "name": "Reject Message",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/messages/:id/reject", "host": ["{{baseUrl}}"], "path": ["messages", ":id", "reject"] }
+            "url": {
+              "raw": "{{baseUrl}}/messages/:id/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                ":id",
+                "reject"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/notifications?unreadOnly=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "unreadOnly",
+                  "value": "false"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unread Count",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/notifications/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "unread-count"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark All Notifications Read",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "read-all"
+              ]
+            }
           }
         }
       ]
@@ -993,9 +2305,19 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/storerooms/items?houseId={{houseId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["storerooms", "items"],
-              "query": [{ "key": "houseId", "value": "{{houseId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "storerooms",
+                "items"
+              ],
+              "query": [
+                {
+                  "key": "houseId",
+                  "value": "{{houseId}}"
+                }
+              ]
             }
           }
         },
@@ -1003,31 +2325,70 @@
           "name": "Create Item",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Arroz\",\n  \"unit\": \"kg\",\n  \"houseId\": \"{{houseId}}\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/storerooms/items", "host": ["{{baseUrl}}"], "path": ["storerooms", "items"] }
+            "url": {
+              "raw": "{{baseUrl}}/storerooms/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "storerooms",
+                "items"
+              ]
+            }
           }
         },
         {
           "name": "Update Item",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Arroz Parboilizado\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/storerooms/items/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["storerooms", "items", "{{itemId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/storerooms/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "storerooms",
+                "items",
+                "{{itemId}}"
+              ]
+            }
           }
         },
         {
           "name": "Delete Item",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/storerooms/items/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["storerooms", "items", "{{itemId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/storerooms/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "storerooms",
+                "items",
+                "{{itemId}}"
+              ]
+            }
           }
         },
         {
@@ -1036,11 +2397,23 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/storerooms/movements?houseId={{houseId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["storerooms", "movements"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "storerooms",
+                "movements"
+              ],
               "query": [
-                { "key": "houseId", "value": "{{houseId}}" },
-                { "key": "itemId", "value": "", "disabled": true }
+                {
+                  "key": "houseId",
+                  "value": "{{houseId}}"
+                },
+                {
+                  "key": "itemId",
+                  "value": "",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -1049,12 +2422,26 @@
           "name": "Create Movement",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"itemId\": \"{{itemId}}\",\n  \"type\": \"IN\",\n  \"quantity\": 10,\n  \"responsibleId\": \"{{staffId}}\",\n  \"date\": \"2024-06-01T10:00:00.000Z\",\n  \"notes\": \"Doação recebida\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/storerooms/movements", "host": ["{{baseUrl}}"], "path": ["storerooms", "movements"] }
+            "url": {
+              "raw": "{{baseUrl}}/storerooms/movements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "storerooms",
+                "movements"
+              ]
+            }
           }
         }
       ]
@@ -1068,9 +2455,19 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/supply-room/items?houseId={{houseId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["supply-room", "items"],
-              "query": [{ "key": "houseId", "value": "{{houseId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "supply-room",
+                "items"
+              ],
+              "query": [
+                {
+                  "key": "houseId",
+                  "value": "{{houseId}}"
+                }
+              ]
             }
           }
         },
@@ -1078,31 +2475,70 @@
           "name": "Create Item",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Detergente\",\n  \"unit\": \"unid.\",\n  \"category\": \"CLEANING\",\n  \"houseId\": \"{{houseId}}\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/supply-room/items", "host": ["{{baseUrl}}"], "path": ["supply-room", "items"] }
+            "url": {
+              "raw": "{{baseUrl}}/supply-room/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "supply-room",
+                "items"
+              ]
+            }
           }
         },
         {
           "name": "Update Item",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Detergente 500ml\",\n  \"category\": \"CLEANING\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/supply-room/items/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["supply-room", "items", "{{itemId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/supply-room/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "supply-room",
+                "items",
+                "{{itemId}}"
+              ]
+            }
           }
         },
         {
           "name": "Delete Item",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/supply-room/items/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["supply-room", "items", "{{itemId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/supply-room/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "supply-room",
+                "items",
+                "{{itemId}}"
+              ]
+            }
           }
         },
         {
@@ -1111,11 +2547,23 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/supply-room/movements?houseId={{houseId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["supply-room", "movements"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "supply-room",
+                "movements"
+              ],
               "query": [
-                { "key": "houseId", "value": "{{houseId}}" },
-                { "key": "itemId", "value": "", "disabled": true }
+                {
+                  "key": "houseId",
+                  "value": "{{houseId}}"
+                },
+                {
+                  "key": "itemId",
+                  "value": "",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -1124,12 +2572,26 @@
           "name": "Create Movement",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"itemId\": \"{{itemId}}\",\n  \"type\": \"IN\",\n  \"quantity\": 5,\n  \"responsibleId\": \"{{staffId}}\",\n  \"date\": \"2024-06-01\",\n  \"notes\": \"Compra do mercado\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/supply-room/movements", "host": ["{{baseUrl}}"], "path": ["supply-room", "movements"] }
+            "url": {
+              "raw": "{{baseUrl}}/supply-room/movements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "supply-room",
+                "movements"
+              ]
+            }
           }
         }
       ]
@@ -1141,130 +2603,302 @@
           "name": "List Support Groups",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/support-groups", "host": ["{{baseUrl}}"], "path": ["support-groups"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups"
+              ]
+            }
           }
         },
         {
           "name": "Create Support Group",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Grupo Esperança\",\n  \"churchName\": \"Igreja da Graça\",\n  \"address\": \"Rua da Paz, 100\",\n  \"coordinatorId\": null,\n  \"dayOfWeek\": 0\n}"
             },
-            "url": { "raw": "{{baseUrl}}/support-groups", "host": ["{{baseUrl}}"], "path": ["support-groups"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups"
+              ]
+            }
           }
         },
         {
           "name": "List All Meetings",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/support-groups/meetings", "host": ["{{baseUrl}}"], "path": ["support-groups", "meetings"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/meetings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "meetings"
+              ]
+            }
           }
         },
         {
           "name": "Get Support Group by ID",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/support-groups/{{supportGroupId}}", "host": ["{{baseUrl}}"], "path": ["support-groups", "{{supportGroupId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/{{supportGroupId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "{{supportGroupId}}"
+              ]
+            }
           }
         },
         {
           "name": "Update Support Group",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Grupo Atualizado\",\n  \"dayOfWeek\": 3\n}"
             },
-            "url": { "raw": "{{baseUrl}}/support-groups/{{supportGroupId}}", "host": ["{{baseUrl}}"], "path": ["support-groups", "{{supportGroupId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/{{supportGroupId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "{{supportGroupId}}"
+              ]
+            }
           }
         },
         {
           "name": "Delete Support Group",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/support-groups/{{supportGroupId}}", "host": ["{{baseUrl}}"], "path": ["support-groups", "{{supportGroupId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/{{supportGroupId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "{{supportGroupId}}"
+              ]
+            }
           }
         },
         {
           "name": "Get Group Meetings",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/support-groups/{{supportGroupId}}/meetings", "host": ["{{baseUrl}}"], "path": ["support-groups", "{{supportGroupId}}", "meetings"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/{{supportGroupId}}/meetings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "{{supportGroupId}}",
+                "meetings"
+              ]
+            }
           }
         },
         {
           "name": "Create Meeting",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"date\": \"2024-06-02T19:00:00.000Z\",\n  \"notes\": \"Reunião mensal de familiares\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/support-groups/{{supportGroupId}}/meetings", "host": ["{{baseUrl}}"], "path": ["support-groups", "{{supportGroupId}}", "meetings"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/{{supportGroupId}}/meetings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "{{supportGroupId}}",
+                "meetings"
+              ]
+            }
           }
         },
         {
           "name": "Get Meeting by ID",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/support-groups/meetings/{{meetingId}}", "host": ["{{baseUrl}}"], "path": ["support-groups", "meetings", "{{meetingId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/meetings/{{meetingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "meetings",
+                "{{meetingId}}"
+              ]
+            }
           }
         },
         {
           "name": "Get Meeting Relative Check-ins",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/support-groups/meetings/{{meetingId}}/relative-checkins", "host": ["{{baseUrl}}"], "path": ["support-groups", "meetings", "{{meetingId}}", "relative-checkins"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/meetings/{{meetingId}}/relative-checkins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "meetings",
+                "{{meetingId}}",
+                "relative-checkins"
+              ]
+            }
           }
         },
         {
           "name": "Get Relative Check-in History",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/support-groups/relatives/{{relativeId}}/checkin-history", "host": ["{{baseUrl}}"], "path": ["support-groups", "relatives", "{{relativeId}}", "checkin-history"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/relatives/{{relativeId}}/checkin-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "relatives",
+                "{{relativeId}}",
+                "checkin-history"
+              ]
+            }
           }
         },
         {
           "name": "Get Resident Check-in History",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/support-groups/residents/{{residentId}}/checkin-history", "host": ["{{baseUrl}}"], "path": ["support-groups", "residents", "{{residentId}}", "checkin-history"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/residents/{{residentId}}/checkin-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "residents",
+                "{{residentId}}",
+                "checkin-history"
+              ]
+            }
           }
         },
         {
           "name": "Add Check-in (Staff)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"residentId\": \"{{residentId}}\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/support-groups/meetings/{{meetingId}}/checkins", "host": ["{{baseUrl}}"], "path": ["support-groups", "meetings", "{{meetingId}}", "checkins"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/meetings/{{meetingId}}/checkins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "meetings",
+                "{{meetingId}}",
+                "checkins"
+              ]
+            }
           }
         },
         {
           "name": "Remove Check-in",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/support-groups/meetings/{{meetingId}}/checkins/:checkinId", "host": ["{{baseUrl}}"], "path": ["support-groups", "meetings", "{{meetingId}}", "checkins", ":checkinId"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/meetings/{{meetingId}}/checkins/:checkinId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "meetings",
+                "{{meetingId}}",
+                "checkins",
+                ":checkinId"
+              ]
+            }
           }
         },
         {
           "name": "Relative Self Check-in",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"meetingId\": \"{{meetingId}}\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/support-groups/relative-checkin", "host": ["{{baseUrl}}"], "path": ["support-groups", "relative-checkin"] }
+            "url": {
+              "raw": "{{baseUrl}}/support-groups/relative-checkin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "support-groups",
+                "relative-checkin"
+              ]
+            }
           }
         }
       ]
@@ -1276,76 +2910,182 @@
           "name": "List Classes",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/bible-course/classes?status=PLANNED", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes"], "query": [{ "key": "status", "value": "PLANNED", "disabled": true }] }
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes?status=PLANNED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PLANNED",
+                  "disabled": true
+                }
+              ]
+            }
           }
         },
         {
           "name": "Create Class",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Turma 2026/1\",\n  \"houseId\": \"{{houseId}}\",\n  \"startDate\": \"2026-06-01\",\n  \"endDate\": \"2026-08-15\",\n  \"notes\": null\n}"
             },
-            "url": { "raw": "{{baseUrl}}/bible-course/classes", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes"] }
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes"
+              ]
+            }
           }
         },
         {
           "name": "Get Class by ID",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes", "{{bibleClassId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes",
+                "{{bibleClassId}}"
+              ]
+            }
           }
         },
         {
           "name": "Update Class",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes", "{{bibleClassId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes",
+                "{{bibleClassId}}"
+              ]
+            }
           }
         },
         {
           "name": "Delete Class",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes", "{{bibleClassId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes",
+                "{{bibleClassId}}"
+              ]
+            }
           }
         },
         {
           "name": "Enroll Resident",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"residentId\": \"{{residentId}}\",\n  \"notes\": null\n}"
             },
-            "url": { "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}/enrollments", "host": ["{{baseUrl}}"], "path": ["bible-course", "classes", "{{bibleClassId}}", "enrollments"] }
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}/enrollments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes",
+                "{{bibleClassId}}",
+                "enrollments"
+              ]
+            }
           }
         },
         {
           "name": "Update Enrollment",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"COMPLETED\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/bible-course/enrollments/{{enrollmentId}}", "host": ["{{baseUrl}}"], "path": ["bible-course", "enrollments", "{{enrollmentId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/enrollments/{{enrollmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "enrollments",
+                "{{enrollmentId}}"
+              ]
+            }
           }
         },
         {
           "name": "Remove Enrollment",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/bible-course/enrollments/{{enrollmentId}}", "host": ["{{baseUrl}}"], "path": ["bible-course", "enrollments", "{{enrollmentId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/enrollments/{{enrollmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "enrollments",
+                "{{enrollmentId}}"
+              ]
+            }
           }
         }
       ]
@@ -1357,52 +3097,123 @@
           "name": "Get Pending Wishlist Items",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/wishlist/pending", "host": ["{{baseUrl}}"], "path": ["wishlist", "pending"] }
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wishlist",
+                "pending"
+              ]
+            }
           }
         },
         {
           "name": "Get Resident Wishlist",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/wishlist/{{residentId}}", "host": ["{{baseUrl}}"], "path": ["wishlist", "{{residentId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/{{residentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wishlist",
+                "{{residentId}}"
+              ]
+            }
           }
         },
         {
           "name": "Add Wishlist Item (Resident)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"description\": \"Tênis de corrida\",\n  \"quantity\": 1\n}"
             },
-            "url": { "raw": "{{baseUrl}}/wishlist/{{residentId}}/items", "host": ["{{baseUrl}}"], "path": ["wishlist", "{{residentId}}", "items"] }
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/{{residentId}}/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wishlist",
+                "{{residentId}}",
+                "items"
+              ]
+            }
           }
         },
         {
           "name": "Remove Wishlist Item (Resident)",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/wishlist/{{residentId}}/items/:itemId", "host": ["{{baseUrl}}"], "path": ["wishlist", "{{residentId}}", "items", ":itemId"] }
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/{{residentId}}/items/:itemId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wishlist",
+                "{{residentId}}",
+                "items",
+                ":itemId"
+              ]
+            }
           }
         },
         {
           "name": "Approve Wishlist Item",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/wishlist/items/:itemId/approve", "host": ["{{baseUrl}}"], "path": ["wishlist", "items", ":itemId", "approve"] }
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/items/:itemId/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wishlist",
+                "items",
+                ":itemId",
+                "approve"
+              ]
+            }
           }
         },
         {
           "name": "Reject Wishlist Item",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"reason\": \"Item não disponível no momento\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/wishlist/items/:itemId/reject", "host": ["{{baseUrl}}"], "path": ["wishlist", "items", ":itemId", "reject"] }
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/items/:itemId/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wishlist",
+                "items",
+                ":itemId",
+                "reject"
+              ]
+            }
           }
         }
       ]
@@ -1414,45 +3225,98 @@
           "name": "List Templates",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/document-templates", "host": ["{{baseUrl}}"], "path": ["document-templates"] }
+            "url": {
+              "raw": "{{baseUrl}}/document-templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "document-templates"
+              ]
+            }
           }
         },
         {
           "name": "Get Template by ID",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/document-templates/{{templateId}}", "host": ["{{baseUrl}}"], "path": ["document-templates", "{{templateId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/document-templates/{{templateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "document-templates",
+                "{{templateId}}"
+              ]
+            }
           }
         },
         {
           "name": "Create Template",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Termo de Internação\",\n  \"content\": \"<html>...</html>\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/document-templates", "host": ["{{baseUrl}}"], "path": ["document-templates"] }
+            "url": {
+              "raw": "{{baseUrl}}/document-templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "document-templates"
+              ]
+            }
           }
         },
         {
           "name": "Update Template",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Termo Atualizado\",\n  \"content\": \"<html>...</html>\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/document-templates/{{templateId}}", "host": ["{{baseUrl}}"], "path": ["document-templates", "{{templateId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/document-templates/{{templateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "document-templates",
+                "{{templateId}}"
+              ]
+            }
           }
         },
         {
           "name": "Delete Template",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/document-templates/{{templateId}}", "host": ["{{baseUrl}}"], "path": ["document-templates", "{{templateId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/document-templates/{{templateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "document-templates",
+                "{{templateId}}"
+              ]
+            }
           }
         },
         {
@@ -1463,10 +3327,23 @@
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "file", "type": "file", "description": "Imagem (max 5 MB)" }
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Imagem (max 5 MB)"
+                }
               ]
             },
-            "url": { "raw": "{{baseUrl}}/document-templates/images", "host": ["{{baseUrl}}"], "path": ["document-templates", "images"] },
+            "url": {
+              "raw": "{{baseUrl}}/document-templates/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "document-templates",
+                "images"
+              ]
+            },
             "description": "Upload de imagem para uso em templates. Retorna { url } com link para o arquivo salvo no storage."
           }
         }
@@ -1479,19 +3356,40 @@
           "name": "Get App Settings",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/app-settings", "host": ["{{baseUrl}}"], "path": ["app-settings"] }
+            "url": {
+              "raw": "{{baseUrl}}/app-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "app-settings"
+              ]
+            }
           }
         },
         {
           "name": "Update App Settings",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"key\": \"value\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/app-settings", "host": ["{{baseUrl}}"], "path": ["app-settings"] }
+            "url": {
+              "raw": "{{baseUrl}}/app-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "app-settings"
+              ]
+            }
           }
         }
       ]
@@ -1503,26 +3401,59 @@
           "name": "Get Today Session (Resident)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/resident-sessions/today", "host": ["{{baseUrl}}"], "path": ["resident-sessions", "today"] }
+            "url": {
+              "raw": "{{baseUrl}}/resident-sessions/today",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "resident-sessions",
+                "today"
+              ]
+            }
           }
         },
         {
           "name": "Heartbeat (Resident)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"timestamp\": \"2024-06-01T10:00:00.000Z\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/resident-sessions/heartbeat", "host": ["{{baseUrl}}"], "path": ["resident-sessions", "heartbeat"] }
+            "url": {
+              "raw": "{{baseUrl}}/resident-sessions/heartbeat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "resident-sessions",
+                "heartbeat"
+              ]
+            }
           }
         },
         {
           "name": "Reset Session (Admin)",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/resident-sessions/{{residentId}}/reset", "host": ["{{baseUrl}}"], "path": ["resident-sessions", "{{residentId}}", "reset"] }
+            "url": {
+              "raw": "{{baseUrl}}/resident-sessions/{{residentId}}/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "resident-sessions",
+                "{{residentId}}",
+                "reset"
+              ]
+            }
           }
         }
       ]
@@ -1534,12 +3465,25 @@
           "name": "Create Sale",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"houseId\": \"{{houseId}}\",\n  \"date\": \"2026-05-28\",\n  \"type\": \"BREAD\",\n  \"quantity\": 40,\n  \"amountPix\": 15000,\n  \"amountCash\": 8000,\n  \"amountCard\": 5000\n}"
             },
-            "url": { "raw": "{{baseUrl}}/street-sales", "host": ["{{baseUrl}}"], "path": ["street-sales"] }
+            "url": {
+              "raw": "{{baseUrl}}/street-sales",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "street-sales"
+              ]
+            }
           }
         },
         {
@@ -1548,11 +3492,23 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/street-sales?houseId={{houseId}}&type=BREAD",
-              "host": ["{{baseUrl}}"],
-              "path": ["street-sales"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "street-sales"
+              ],
               "query": [
-                { "key": "houseId", "value": "{{houseId}}", "disabled": true },
-                { "key": "type", "value": "BREAD", "disabled": true }
+                {
+                  "key": "houseId",
+                  "value": "{{houseId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "BREAD",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -1563,12 +3519,27 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/street-sales/report?type=BREAD&month=2026-05",
-              "host": ["{{baseUrl}}"],
-              "path": ["street-sales", "report"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "street-sales",
+                "report"
+              ],
               "query": [
-                { "key": "type", "value": "BREAD" },
-                { "key": "month", "value": "2026-05" },
-                { "key": "houseId", "value": "{{houseId}}", "disabled": true }
+                {
+                  "key": "type",
+                  "value": "BREAD"
+                },
+                {
+                  "key": "month",
+                  "value": "2026-05"
+                },
+                {
+                  "key": "houseId",
+                  "value": "{{houseId}}",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -1577,26 +3548,58 @@
           "name": "Get Sale by ID",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/street-sales/{{streetSaleId}}", "host": ["{{baseUrl}}"], "path": ["street-sales", "{{streetSaleId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/street-sales/{{streetSaleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "street-sales",
+                "{{streetSaleId}}"
+              ]
+            }
           }
         },
         {
           "name": "Update Sale",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"quantity\": 45,\n  \"amountPix\": 16000\n}"
             },
-            "url": { "raw": "{{baseUrl}}/street-sales/{{streetSaleId}}", "host": ["{{baseUrl}}"], "path": ["street-sales", "{{streetSaleId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/street-sales/{{streetSaleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "street-sales",
+                "{{streetSaleId}}"
+              ]
+            }
           }
         },
         {
           "name": "Delete Sale",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/street-sales/{{streetSaleId}}", "host": ["{{baseUrl}}"], "path": ["street-sales", "{{streetSaleId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/street-sales/{{streetSaleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "street-sales",
+                "{{streetSaleId}}"
+              ]
+            }
           }
         }
       ]

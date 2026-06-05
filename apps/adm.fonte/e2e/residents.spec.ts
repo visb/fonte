@@ -73,6 +73,51 @@ test.describe('Filhos (Residentes)', () => {
     await openResidentFromList(page, name);
   });
 
+  test('conclui acolhimento e redireciona para detalhe na aba Visão Geral', async ({ page }) => {
+    const name = `Residente Conclui ${Date.now()}`;
+    await createResidentViaWizard(page, name);
+
+    // Step 2 — cadastra um familiar para habilitar o avanço.
+    await page.getByRole('button', { name: 'Adicionar familiar' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.locator('#rel-name').fill(`Familiar ${name}`);
+    await page.getByRole('button', { name: 'Adicionar' }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+
+    // Step 2 → 3 (Documentos).
+    await page.getByRole('button', { name: 'Avançar' }).click();
+    await expect(
+      page.getByText('Gere e envie assinado todos os documentos obrigatórios de acolhimento para concluir.'),
+    ).toBeVisible();
+
+    // Envia um PDF assinado para cada documento obrigatório, habilitando o
+    // botão "Concluir acolhimento".
+    const pdf = {
+      name: 'assinado.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF'),
+    };
+    const pendingCards = page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'Pendente assinatura' });
+    const signedBadges = page.getByText('Assinado', { exact: true });
+    const total = await pendingCards.count();
+    for (let signed = 0; signed < total; signed++) {
+      await pendingCards.first().locator('input[type="file"]').setInputFiles(pdf);
+      await expect(signedBadges).toHaveCount(signed + 1);
+    }
+
+    const concludeButton = page.getByRole('button', { name: 'Concluir acolhimento' });
+    await expect(concludeButton).toBeEnabled();
+    await concludeButton.click();
+
+    // Redireciona para o detalhe do filho com a aba Visão Geral explícita.
+    await expect(page).toHaveURL(/\/residents\/[^/]+\?tab=overview$/);
+
+    // A aba "Visão Geral" está ativa (estilo de aba selecionada).
+    const overviewTab = page.getByRole('button', { name: 'Visão Geral' });
+    await expect(overviewTab).toBeVisible();
+    await expect(overviewTab).toHaveClass(/border-primary/);
+  });
+
   // ─── Navegação e edição ──────────────────────────────────────────────────────
 
   test('navega para detalhe de residente', async ({ page }) => {

@@ -137,7 +137,7 @@ export function AdmissionWizardPage() {
     setAdvancing(true);
     try {
       await api.residents.update(residentId, { status: ResidentStatus.ACTIVE });
-      navigate(`/residents/${residentId}`);
+      navigate(`/residents/${residentId}?tab=overview`);
     } catch (e) {
       setError(getErrorMessage(e, 'Erro ao concluir acolhimento.'));
       setAdvancing(false);

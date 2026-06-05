@@ -2,17 +2,20 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, FileText, Loader2, Paperclip, Users } from 'lucide-react';
 import { ResidentStatus } from '@fonte/types';
+import type { House } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/lib/errors';
 import { useCreateResident } from '../../hooks/useResidents';
 import { buildResidentPayload, type ResidentFormData } from '../../lib/residentSchema';
+import { RESIDENT_SUMMARY_SECTIONS, formatSummaryValue } from '../../lib/summaryFields';
 import { WizardActions } from './WizardActions';
 import type { DraftRelative } from '../../lib/types';
 
 interface ImportSummaryStepProps {
   residentValues: ResidentFormData;
   relatives: DraftRelative[];
+  houses: House[];
   docxFile: File;
   photo: Blob | null;
   extraFiles: File[];
@@ -22,6 +25,7 @@ interface ImportSummaryStepProps {
 export function ImportSummaryStep({
   residentValues,
   relatives,
+  houses,
   docxFile,
   photo,
   extraFiles,
@@ -103,28 +107,27 @@ export function ImportSummaryStep({
         </p>
       </div>
 
-      {/* Resident summary */}
-      <section className="rounded-lg border p-4 space-y-2">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <CheckCircle2 size={16} className="text-primary" />
-          Residente
-        </div>
-        <SummaryRow label="Nome" value={residentValues.name} />
-        {residentValues.cpf && <SummaryRow label="CPF" value={residentValues.cpf} />}
-        {residentValues.birthDate && (
-          <SummaryRow
-            label="Nascimento"
-            value={new Date(residentValues.birthDate + 'T00:00:00').toLocaleDateString('pt-BR')}
-          />
-        )}
-        {residentValues.entryDate && (
-          <SummaryRow
-            label="Entrada"
-            value={new Date(residentValues.entryDate + 'T00:00:00').toLocaleDateString('pt-BR')}
-          />
-        )}
-        {residentValues.addiction && <SummaryRow label="Dependência" value={residentValues.addiction} />}
-      </section>
+      {/* Resident summary — grouped by section, mirroring the form */}
+      {RESIDENT_SUMMARY_SECTIONS.map((section) => {
+        const rows = section.fields
+          .map((f) => ({
+            label: f.label,
+            value: formatSummaryValue(residentValues[f.key], { houses }, f.format),
+          }))
+          .filter((r) => r.value);
+        if (!rows.length) return null;
+        return (
+          <section key={section.title} className="rounded-lg border p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <CheckCircle2 size={16} className="text-primary" />
+              {section.title}
+            </div>
+            {rows.map((r) => (
+              <SummaryRow key={r.label} label={r.label} value={r.value} />
+            ))}
+          </section>
+        );
+      })}
 
       {/* Relatives summary */}
       {includedRelatives.length > 0 && (

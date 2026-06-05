@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { login } from './helpers/auth';
 import { createResidentViaWizard, openResidentFromList } from './helpers/residents';
 
@@ -317,6 +317,128 @@ test.describe('Filhos (Residentes)', () => {
     await button.click();
     // Lista re-renderiza sem erro (pode ficar vazia conforme dados do seed).
     await expect(button).toBeVisible();
+  });
+
+  // ─── Importar com IA: resumo completo (story-17) ────────────────────────────
+
+  // Mock fixo do parse-docx para tornar o fluxo determinístico (sem depender da
+  // IA). A casa é resolvida por houseName → houseId no passo de revisão, então o
+  // resumo deve exibir o NOME da casa (não o UUID) e o LABEL da modalidade.
+  const parsedResident = {
+    name: 'Filho Importado IA',
+    cpf: '123.456.789-00',
+    rg: '12.345.678-9',
+    nationality: 'Brasileira',
+    birthDate: '1990-05-20',
+    gender: 'MALE',
+    address: 'Rua das Flores, 100',
+    city: 'São Paulo',
+    state: 'SP',
+    contactPhone: '(11) 98888-7777',
+    email: 'filho.ia@example.com',
+    maritalStatus: 'SINGLE',
+    children: '2',
+    occupation: 'Pedreiro',
+    education: 'Ensino médio completo',
+    religion: 'Evangélico',
+    addiction: 'Álcool',
+    healthIssues: 'Hipertensão',
+    continuousMedication: 'Losartana',
+    weight: '80',
+    height: '175',
+    familyInvestment: 'BASKET_500',
+  };
+
+  async function startImportWithMockedParse(page: Page) {
+    await page.route('**/api/v1/residents/import/parse-docx', async (route) => {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          resident: parsedResident,
+          relatives: [],
+          warnings: {},
+          houseName: 'Casa Teste',
+          rawText: 'texto da ficha',
+          photoBase64: null,
+        }),
+      });
+    });
+
+    await page.getByRole('link', { name: 'Novo acolhimento' }).click();
+    await expect(page).toHaveURL('/residents/admission');
+    await page.locator('a[href="/residents/import"]').click();
+    await expect(page).toHaveURL('/residents/import');
+
+    // Upload do .docx (conteúdo irrelevante — a resposta é mockada).
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'ficha.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      buffer: Buffer.from('conteudo da ficha'),
+    });
+
+    // Passo 2 (Revisar) — seleciona a casa explicitamente para garantir o
+    // houseId no resumo (o resumo deve então mostrar o NOME da casa).
+    await expect(page.getByRole('heading', { name: 'Revisar dados do residente' })).toBeVisible();
+    await page.locator('select[name="houseId"]').selectOption({ label: 'Casa Teste' });
+  }
+
+  test('importar com IA: resumo mostra todos os campos com label e valor legível', async ({ page }) => {
+    await startImportWithMockedParse(page);
+
+    // Avança Revisar → Familiares → Documentos → Resumo.
+    await page.getByRole('button', { name: /Próximo: Familiares/ }).click();
+    await page.getByRole('button', { name: /Próximo: Resumo/ }).click();
+    await page.getByRole('button', { name: 'Continuar' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Resumo da importação' })).toBeVisible();
+
+    // Seções agrupadas presentes.
+    await expect(page.getByText('Ficha de cadastro')).toBeVisible();
+    await expect(page.getByText('Admissão', { exact: true })).toBeVisible();
+
+    const summary = page.locator('div.space-y-5');
+
+    // Campos além do subconjunto antigo (endereço, escolaridade, etc.).
+    await expect(summary.getByText('Endereço', { exact: true })).toBeVisible();
+    await expect(summary.getByText('Rua das Flores, 100')).toBeVisible();
+    await expect(summary.getByText('Escolaridade', { exact: true })).toBeVisible();
+    await expect(summary.getByText('Ensino médio completo')).toBeVisible();
+    await expect(summary.getByText('Ocupação', { exact: true })).toBeVisible();
+    await expect(summary.getByText('Pedreiro')).toBeVisible();
+
+    // Casa: nome legível, não UUID.
+    await expect(summary.getByText('Casa', { exact: true })).toBeVisible();
+    await expect(summary.getByText('Casa Teste')).toBeVisible();
+
+    // Modalidade: label, não enum cru.
+    await expect(summary.getByText('Modalidade', { exact: true })).toBeVisible();
+    await expect(summary.getByText('R$ 500 + cestas')).toBeVisible();
+    await expect(summary.getByText('BASKET_500')).toHaveCount(0);
+
+    // Gênero/estado civil: labels legíveis.
+    await expect(summary.getByText('Masculino')).toBeVisible();
+    await expect(summary.getByText('Solteiro(a)')).toBeVisible();
+    await expect(summary.getByText('MALE')).toHaveCount(0);
+  });
+
+  test('importar com IA: campo deixado vazio não renderiza linha no resumo', async ({ page }) => {
+    await startImportWithMockedParse(page);
+
+    // Limpa um campo que veio preenchido (Religião) antes de avançar.
+    await page.locator('input[name="religion"]').clear();
+
+    await page.getByRole('button', { name: /Próximo: Familiares/ }).click();
+    await page.getByRole('button', { name: /Próximo: Resumo/ }).click();
+    await page.getByRole('button', { name: 'Continuar' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Resumo da importação' })).toBeVisible();
+
+    const summary = page.locator('div.space-y-5');
+    // A linha de Religião não deve existir no resumo (campo vazio = sem linha).
+    await expect(summary.getByText('Religião', { exact: true })).toHaveCount(0);
+    // Sanidade: outros campos continuam aparecendo.
+    await expect(summary.getByText('Ocupação', { exact: true })).toBeVisible();
   });
 
   // ─── Aba Contribuição (recebíveis + plano) ──────────────────────────────────

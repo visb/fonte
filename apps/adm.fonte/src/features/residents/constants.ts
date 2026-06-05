@@ -1,5 +1,16 @@
-import { FamilyInvestment, FollowUpAccessLevel, FollowUpType, PaymentMethod, ResidentStatus } from '@fonte/types';
+import { FamilyInvestment, FollowUpAccessLevel, FollowUpType, Gender, MaritalStatus, PaymentMethod, ResidentStatus } from '@fonte/types';
 import type { BadgeProps } from '@/components/ui/badge';
+
+export const GENDER_LABELS: Record<Gender, string> = {
+  [Gender.MALE]: 'Masculino',
+  [Gender.FEMALE]: 'Feminino',
+};
+
+export const MARITAL_STATUS_LABELS: Record<MaritalStatus, string> = {
+  [MaritalStatus.SINGLE]: 'Solteiro(a)',
+  [MaritalStatus.MARRIED]: 'Casado(a)',
+  [MaritalStatus.DIVORCED]: 'Divorciado(a)',
+};
 
 export const RESIDENT_STATUS_LABELS: Record<ResidentStatus, string> = {
   [ResidentStatus.PRE_ADMISSION]: 'Pré-admissão',

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useHouses } from '@/features/houses/hooks/useHouses';
 import { ImportUploadStep } from '../components/import/ImportUploadStep';
 import { ImportReviewStep } from '../components/import/ImportReviewStep';
 import { ImportRelativesStep } from '../components/import/ImportRelativesStep';
@@ -59,6 +60,7 @@ export function ImportResidentPage() {
     extraFiles: [],
   });
   const [dismissedWarnings, setDismissedWarnings] = useState<Set<string>>(new Set());
+  const { data: houses = [] } = useHouses();
 
   const setStep = (step: Step) => setState((s) => ({ ...s, step }));
   const setPhoto = (photo: Blob | null) => setState((s) => ({ ...s, photo }));
@@ -158,6 +160,7 @@ export function ImportResidentPage() {
           <ImportSummaryStep
             residentValues={residentValues}
             relatives={relatives}
+            houses={houses}
             docxFile={file}
             photo={photo}
             extraFiles={extraFiles}

@@ -49,6 +49,34 @@ test.describe('Casas', () => {
     await expect(page.getByText(tempName)).not.toBeVisible();
   });
 
+  test('modal de editar casa rola verticalmente em viewport baixa', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 500 });
+
+    const nameToEdit = `${HOUSE_NAME} Scroll ${Date.now()}`;
+    await page.getByRole('button', { name: 'Nova Casa' }).click();
+    await page.getByLabel('Nome *').fill(nameToEdit);
+    await page.getByRole('button', { name: 'Criar' }).click();
+    await expect(page.getByText(nameToEdit)).toBeVisible();
+
+    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: nameToEdit }).getByTitle('Editar').click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // O container do dialog deve permitir scroll interno e estar de fato cortado pela viewport baixa.
+    const overflowY = await dialog.evaluate((el) => getComputedStyle(el).overflowY);
+    expect(overflowY).toBe('auto');
+    const isScrollable = await dialog.evaluate((el) => el.scrollHeight > el.clientHeight);
+    expect(isScrollable).toBe(true);
+
+    // O botão de salvar no rodapé fica acessível via scroll e é clicável.
+    const saveButton = page.getByRole('button', { name: 'Salvar' });
+    await saveButton.scrollIntoViewIfNeeded();
+    await expect(saveButton).toBeVisible();
+    await saveButton.click();
+    await expect(dialog).not.toBeVisible();
+  });
+
   test('navega para detalhe da casa e exibe tabs', async ({ page }) => {
     await page.getByText('Casa Teste').click();
     await expect(page).toHaveURL(/\/houses\/.+/);

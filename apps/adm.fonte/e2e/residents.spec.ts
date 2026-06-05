@@ -87,24 +87,11 @@ test.describe('Filhos (Residentes)', () => {
     // Step 2 → 3 (Documentos).
     await page.getByRole('button', { name: 'Avançar' }).click();
     await expect(
-      page.getByText('Gere e envie assinado todos os documentos obrigatórios de acolhimento para concluir.'),
+      page.getByText('Gere e anexe os documentos assinados. Você pode concluir agora e anexá-los depois.'),
     ).toBeVisible();
 
-    // Envia um PDF assinado para cada documento obrigatório, habilitando o
-    // botão "Concluir acolhimento".
-    const pdf = {
-      name: 'assinado.pdf',
-      mimeType: 'application/pdf',
-      buffer: Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF'),
-    };
-    const pendingCards = page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'Pendente assinatura' });
-    const signedBadges = page.getByText('Assinado', { exact: true });
-    const total = await pendingCards.count();
-    for (let signed = 0; signed < total; signed++) {
-      await pendingCards.first().locator('input[type="file"]').setInputFiles(pdf);
-      await expect(signedBadges).toHaveCount(signed + 1);
-    }
-
+    // Documentos são opcionais: o botão "Concluir acolhimento" já fica
+    // habilitado sem nenhum upload (story 14).
     const concludeButton = page.getByRole('button', { name: 'Concluir acolhimento' });
     await expect(concludeButton).toBeEnabled();
     await concludeButton.click();
@@ -113,6 +100,28 @@ test.describe('Filhos (Residentes)', () => {
     await expect(page).toHaveURL(/\/residents\/[^/]+\?tab=overview$/);
 
     // A aba "Visão Geral" está ativa (estilo de aba selecionada).
+    const overviewTab = page.getByRole('button', { name: 'Visão Geral' });
+    await expect(overviewTab).toBeVisible();
+    await expect(overviewTab).toHaveClass(/border-primary/);
+  });
+
+  test('conclui acolhimento sem assinar nenhum documento (docs opcionais)', async ({ page }) => {
+    const name = `Residente Sem Docs ${Date.now()}`;
+    await createResidentViaWizard(page, name);
+
+    // Etapa 2 (Familiares) → Documentos, sem cadastrar familiar.
+    await page.getByRole('button', { name: 'Avançar' }).click();
+    await expect(
+      page.getByText('Gere e anexe os documentos assinados. Você pode concluir agora e anexá-los depois.'),
+    ).toBeVisible();
+
+    // Nenhum documento assinado: botão "Concluir acolhimento" habilitado.
+    const concludeButton = page.getByRole('button', { name: 'Concluir acolhimento' });
+    await expect(concludeButton).toBeEnabled();
+    await concludeButton.click();
+
+    // Redireciona para o detalhe na aba Visão Geral (conclusão bem-sucedida).
+    await expect(page).toHaveURL(/\/residents\/[^/]+\?tab=overview$/);
     const overviewTab = page.getByRole('button', { name: 'Visão Geral' });
     await expect(overviewTab).toBeVisible();
     await expect(overviewTab).toHaveClass(/border-primary/);
@@ -130,7 +139,7 @@ test.describe('Filhos (Residentes)', () => {
     // Avança para a etapa Documentos.
     await nextButton.click();
     await expect(
-      page.getByText('Gere e envie assinado todos os documentos obrigatórios de acolhimento para concluir.'),
+      page.getByText('Gere e anexe os documentos assinados. Você pode concluir agora e anexá-los depois.'),
     ).toBeVisible();
   });
 
@@ -148,7 +157,7 @@ test.describe('Filhos (Residentes)', () => {
     // Avança para a etapa Documentos.
     await page.getByRole('button', { name: 'Avançar' }).click();
     await expect(
-      page.getByText('Gere e envie assinado todos os documentos obrigatórios de acolhimento para concluir.'),
+      page.getByText('Gere e anexe os documentos assinados. Você pode concluir agora e anexá-los depois.'),
     ).toBeVisible();
   });
 

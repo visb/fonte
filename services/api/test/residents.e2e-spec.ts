@@ -117,5 +117,21 @@ describe('ResidentController (e2e)', () => {
         .get(`${BASE}/residents/00000000-0000-0000-0000-000000000000`)
         .set('Authorization', `Bearer ${token}`)
         .expect(404));
+
+    it('PATCH /residents/:id { status: ACTIVE } is accepted without any signed documents', async () => {
+      const created = await request(app.getHttpServer())
+        .post(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Filho Docs Opcionais ${Date.now()}`, houseId, status: ResidentStatus.PRE_ADMISSION })
+        .expect(201);
+      createdIds.push(created.body.id);
+
+      const updated = await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${created.body.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: ResidentStatus.ACTIVE })
+        .expect(200);
+      expect(updated.body.status).toBe(ResidentStatus.ACTIVE);
+    });
   });
 });

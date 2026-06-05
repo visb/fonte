@@ -129,7 +129,7 @@ export function AdmissionWizardPage() {
   };
 
   const handleFinish = async () => {
-    if (!residentId || !allDocsSigned) return;
+    if (!residentId) return;
     setError(null);
     setAdvancing(true);
     try {
@@ -144,9 +144,7 @@ export function AdmissionWizardPage() {
   if (loadingHouses) return <LoadingState />;
 
   const isLast = step === STEPS.length - 1;
-  const nextDisabled =
-    advancing ||
-    (isLast && !allDocsSigned);
+  const nextDisabled = advancing;
 
   return (
     <div className="max-w-2xl">
@@ -203,9 +201,14 @@ export function AdmissionWizardPage() {
         {step === 3 && residentId && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Gere e envie assinado todos os documentos obrigatórios de acolhimento para concluir.
+              Gere e anexe os documentos assinados. Você pode concluir agora e anexá-los depois.
             </p>
             <AttachmentsTab residentId={residentId} residentName={watch('name') ?? ''} />
+            {!allDocsSigned && (
+              <p className="text-sm text-amber-600 pt-2">
+                Há documentos obrigatórios pendentes. Você pode concluir agora e anexá-los depois.
+              </p>
+            )}
           </div>
         )}
       </div>

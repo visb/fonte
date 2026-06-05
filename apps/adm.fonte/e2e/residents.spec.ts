@@ -185,6 +185,29 @@ test.describe('Filhos (Residentes)', () => {
     await openResidentFromList(page, `${name} (Editado)`);
   });
 
+  test('(regressão story-12) editar filho com casa preenche o campo Casa mesmo com /houses lento', async ({ page }) => {
+    // João Testador é do seed e está vinculado à "Casa Teste".
+    const card = page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'João Testador' }).first();
+    await card.getByTitle('Editar').click();
+    await expect(page).toHaveURL(/\/residents\/.+\/edit/);
+    const editUrl = page.url();
+
+    // Força a corrida: atrasa GET /houses para chegar DEPOIS do residente. O
+    // reload limpa o cache do react-query, então as casas vêm da rede (lentas)
+    // enquanto GET /residents/:id chega rápido.
+    await page.route('**/api/v1/houses', async (route) => {
+      await new Promise((r) => setTimeout(r, 1500));
+      await route.continue();
+    });
+    await page.goto(editUrl);
+
+    // Sem o fix, o <select> nativo descarta o houseId aplicado pelo reset()
+    // porque as <option> de casas ainda não existiam. Com o fix, vem preenchido.
+    const houseSelect = page.locator('select[name="houseId"]');
+    await expect(houseSelect).toHaveValue(/.+/);
+    await expect(houseSelect).toContainText('Casa Teste');
+  });
+
   test('familiar criado pelo seed aparece na aba Familiares', async ({ page }) => {
     await page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'João Testador' }).first().click();
     await expect(page).toHaveURL(/\/residents\/.+/);

@@ -25,7 +25,7 @@ export function EditResidentPage() {
   const pendingPhotoRef = useRef<Blob | null>(null);
 
   const { data: resident, isLoading: loadingResident } = useResidentById(id!);
-  const { data: houses = [] } = useHouses();
+  const { data: houses = [], isLoading: loadingHouses } = useHouses();
 
   const {
     register,
@@ -36,8 +36,8 @@ export function EditResidentPage() {
   } = useForm<ResidentFormData>({ resolver: zodResolver(residentSchema) });
 
   useEffect(() => {
-    if (resident) reset(residentToFormValues(resident));
-  }, [resident, reset]);
+    if (resident && !loadingHouses) reset(residentToFormValues(resident));
+  }, [resident, loadingHouses, reset]);
 
   const updateMutation = useUpdateResident(id!);
 
@@ -51,7 +51,7 @@ export function EditResidentPage() {
     );
   };
 
-  if (loadingResident) return <LoadingState />;
+  if (loadingResident || loadingHouses) return <LoadingState />;
 
   return (
     <div className="max-w-2xl">

@@ -63,6 +63,40 @@ test.describe('Grupos de Apoio', () => {
     await expect(page.getByText(name)).not.toBeVisible();
   });
 
+  // ─── Regressão story-12: coordenador preenchido com /staff lento ─────────────
+
+  test('editar grupo com coordenador preenche o campo Coordenador mesmo com /staff lento', async ({ page }) => {
+    // Cria um grupo e define um coordenador (Coordenador Teste do seed).
+    const name = `Grupo Coord ${ts()}`;
+    await createGroup(page, name);
+
+    const row = page.locator('.rounded-lg.border.bg-card').filter({ hasText: name });
+    await row.getByTitle('Editar').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByLabel('Coordenador (opcional)').selectOption({ label: 'Coordenador Teste' });
+    await page.getByRole('button', { name: 'Salvar' }).click();
+    await expect(page.getByText(name)).toBeVisible();
+
+    // Força a corrida: atrasa GET /staff e recarrega a página (limpa o cache do
+    // react-query). Ao abrir o diálogo, o reset() aplica o coordinatorId antes
+    // de o /staff resolver — sem as <option> do staff o <select> nativo descarta
+    // o valor. O fix (opção B) reaplica via setValue quando o staff chega.
+    await page.route('**/api/v1/staff', async (route) => {
+      await new Promise((r) => setTimeout(r, 1500));
+      await route.continue();
+    });
+    await page.reload();
+    await expect(page).toHaveURL('/support-groups');
+
+    const reloadedRow = page.locator('.rounded-lg.border.bg-card').filter({ hasText: name });
+    await reloadedRow.getByTitle('Editar').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    const coordSelect = page.getByLabel('Coordenador (opcional)');
+    await expect(coordSelect).toHaveValue(/.+/);
+    await expect(coordSelect).toContainText('Coordenador Teste');
+  });
+
   // ─── Reuniões + check-in de famílias ─────────────────────────────────────────
 
   test('abre modal de famílias presentes a partir do grupo do seed', async ({ page }) => {

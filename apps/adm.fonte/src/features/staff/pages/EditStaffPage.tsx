@@ -28,16 +28,16 @@ export function EditStaffPage() {
   const goBack = useGoBack('/staff');
   const pendingPhotoRef = useRef<Blob | null>(null);
 
-  const { data: houses = [] } = useHouses();
-  const { data: supportGroups = [] } = useSupportGroups();
+  const { data: houses = [], isLoading: loadingHouses } = useHouses();
+  const { data: supportGroups = [], isLoading: loadingGroups } = useSupportGroups();
   const { data: staff, isLoading } = useStaffById(id!);
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } =
     useForm<EditStaffFormData>({ resolver: zodResolver(editStaffSchema) });
 
   useEffect(() => {
-    if (staff) reset(staffToFormValues(staff));
-  }, [staff, reset]);
+    if (staff && !loadingHouses && !loadingGroups) reset(staffToFormValues(staff));
+  }, [staff, loadingHouses, loadingGroups, reset]);
 
   const servesInGroup = watch('servesInGroup');
   const role = watch('role');
@@ -50,7 +50,7 @@ export function EditStaffPage() {
     );
   };
 
-  if (isLoading) return <LoadingState />;
+  if (isLoading || loadingHouses || loadingGroups) return <LoadingState />;
 
   return (
     <div className="max-w-lg">

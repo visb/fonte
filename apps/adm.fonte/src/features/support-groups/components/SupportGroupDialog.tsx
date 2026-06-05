@@ -58,6 +58,10 @@ export function SupportGroupDialog({ open, group, onClose }: Props) {
     }
   }, [open, group, reset]);
 
+  useEffect(() => {
+    if (open && group && staff.length) setValue('coordinatorId', group.coordinatorId ?? null);
+  }, [open, group, staff, setValue]);
+
   const onSubmit = (data: FormData) => {
     const payload = { ...data, coordinatorId: data.coordinatorId || null };
     if (group) {

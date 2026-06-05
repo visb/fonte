@@ -13,7 +13,6 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { getErrorMessage } from '@/lib/errors';
 import {
   useCreateResident,
-  useResidentRelatives,
   useResidentDocuments,
 } from '../hooks/useResidents';
 import {
@@ -63,13 +62,11 @@ export function AdmissionWizardPage() {
   const createMutation = useCreateResident();
 
   // Gating — only read once the resident exists.
-  const { data: relatives = [] } = useResidentRelatives(residentId ?? '');
   const { data: signedDocs = [] } = useResidentDocuments(residentId ?? '', { enabled: !!residentId });
   const { data: templates = [] } = useDocumentTemplates();
   const requiredTemplates = templates.filter((t) => t.isRequired);
   const signedMap = new Map(signedDocs.map((d) => [d.templateId, d]));
   const allDocsSigned = requiredTemplates.every((t) => signedMap.get(t.id)?.signed);
-  const hasRelative = relatives.length > 0;
 
   const ensureResident = async () => {
     setError(null);
@@ -126,7 +123,7 @@ export function AdmissionWizardPage() {
       if (await trigger(ADMISSAO_FIELDS)) await ensureResident();
       return;
     }
-    if (step === 2 && hasRelative) {
+    if (step === 2) {
       setStep(3);
     }
   };
@@ -149,7 +146,6 @@ export function AdmissionWizardPage() {
   const isLast = step === STEPS.length - 1;
   const nextDisabled =
     advancing ||
-    (step === 2 && !hasRelative) ||
     (isLast && !allDocsSigned);
 
   return (
@@ -198,7 +194,7 @@ export function AdmissionWizardPage() {
         {step === 2 && residentId && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Cadastre pelo menos um familiar para continuar.
+              Cadastre os familiares do acolhido. Você pode adicioná-los depois, se necessário.
             </p>
             <RelativesTab residentId={residentId} />
           </div>

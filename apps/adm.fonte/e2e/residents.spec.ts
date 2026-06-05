@@ -118,6 +118,40 @@ test.describe('Filhos (Residentes)', () => {
     await expect(overviewTab).toHaveClass(/border-primary/);
   });
 
+  test('avança da aba Familiares sem cadastrar nenhum familiar', async ({ page }) => {
+    const name = `Residente Sem Familiar ${Date.now()}`;
+    await createResidentViaWizard(page, name);
+
+    // Etapa 2 (Familiares) — nenhum familiar cadastrado.
+    const nextButton = page.getByRole('button', { name: 'Avançar' });
+    // O botão "Avançar" deve estar habilitado mesmo sem familiar.
+    await expect(nextButton).toBeEnabled();
+
+    // Avança para a etapa Documentos.
+    await nextButton.click();
+    await expect(
+      page.getByText('Gere e envie assinado todos os documentos obrigatórios de acolhimento para concluir.'),
+    ).toBeVisible();
+  });
+
+  test('(regressão) avança da aba Familiares com familiar cadastrado', async ({ page }) => {
+    const name = `Residente Com Familiar ${Date.now()}`;
+    await createResidentViaWizard(page, name);
+
+    // Etapa 2 — cadastra um familiar.
+    await page.getByRole('button', { name: 'Adicionar familiar' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.locator('#rel-name').fill(`Familiar ${name}`);
+    await page.getByRole('button', { name: 'Adicionar' }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+
+    // Avança para a etapa Documentos.
+    await page.getByRole('button', { name: 'Avançar' }).click();
+    await expect(
+      page.getByText('Gere e envie assinado todos os documentos obrigatórios de acolhimento para concluir.'),
+    ).toBeVisible();
+  });
+
   // ─── Navegação e edição ──────────────────────────────────────────────────────
 
   test('navega para detalhe de residente', async ({ page }) => {

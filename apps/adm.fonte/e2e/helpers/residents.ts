@@ -20,7 +20,9 @@ export async function createResidentViaWizard(page: Page, name: string) {
   await page.getByRole('button', { name: 'Avançar' }).click();
 
   // Resident criado → step 2 (Familiares)
-  await expect(page.getByText('Cadastre pelo menos um familiar para continuar.')).toBeVisible();
+  await expect(
+    page.getByText('Cadastre os familiares do acolhido. Você pode adicioná-los depois, se necessário.'),
+  ).toBeVisible();
 }
 
 /** Lista de filhos filtrada pelo nome, com o card correspondente já visível. */

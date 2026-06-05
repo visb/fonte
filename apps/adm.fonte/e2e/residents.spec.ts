@@ -464,10 +464,24 @@ test.describe('Filhos (Residentes)', () => {
     await payButton.click();
 
     // Diálogo de pagamento (data e PIX já vêm preenchidos por padrão).
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await page.getByRole('button', { name: 'Confirmar' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
 
-    // A parcela passa a exibir o estado "Pago em ...".
+    // Modalidade e valor pago vêm pré-preenchidos com o plano (R$700 / Pagamento).
+    const modalityField = dialog.locator('div', { has: page.getByText('Modalidade', { exact: true }) }).last();
+    const modality = modalityField.locator('select');
+    await expect(modality).toBeVisible();
+    const amountField = dialog.locator('div', { has: page.getByText('Valor pago (R$)', { exact: true }) }).last();
+    const paidAmount = amountField.locator('input[type="number"]');
+    await expect(paidAmount).toHaveValue('700');
+
+    // Registra um valor fora do padrão do plano (modalidade Negociado / R$ 250).
+    await modality.selectOption('NEGOTIATED');
+    await paidAmount.fill('250');
+    await dialog.getByRole('button', { name: 'Confirmar' }).click();
+
+    // A parcela passa a exibir o estado "Pago em ..." e o valor efetivamente pago.
     await expect(page.getByText(/Pago em/).first()).toBeVisible();
+    await expect(page.getByText('R$ 250').first()).toBeVisible();
   });
 });

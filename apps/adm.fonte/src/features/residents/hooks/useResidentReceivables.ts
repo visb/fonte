@@ -28,18 +28,24 @@ export function useRegisterReceivablePayment(residentId: string) {
       receivableId,
       paidAt,
       paymentMethod,
+      paidAmount,
+      paidFamilyInvestment,
       notes,
       file,
     }: {
       receivableId: string;
       paidAt: string;
       paymentMethod: string;
+      paidAmount?: number;
+      paidFamilyInvestment?: string;
       notes?: string;
       file?: File | null;
     }) => {
       const fd = new window.FormData();
       fd.append('paidAt', paidAt);
       fd.append('paymentMethod', paymentMethod);
+      if (paidAmount != null) fd.append('paidAmount', String(paidAmount));
+      if (paidFamilyInvestment) fd.append('paidFamilyInvestment', paidFamilyInvestment);
       if (notes) fd.append('notes', notes);
       if (file) fd.append('file', file);
       return api.residents.registerReceivablePayment(residentId, receivableId, fd);

@@ -606,12 +606,14 @@
               "formdata": [
                 { "key": "paidAt", "value": "2026-06-10", "type": "text" },
                 { "key": "paymentMethod", "value": "PIX", "type": "text" },
+                { "key": "paidAmount", "value": "700", "type": "text", "description": "Valor efetivamente pago (R$, inteiro). Opcional — default = amount da parcela." },
+                { "key": "paidFamilyInvestment", "value": "PAYMENT_700", "type": "text", "description": "Modalidade efetiva: BASKET_500|PAYMENT_700|SOCIAL|NEGOTIATED. Opcional — default = familyInvestment da parcela." },
                 { "key": "notes", "value": "Pagamento via PIX", "type": "text" },
                 { "key": "file", "type": "file", "description": "Comprovante opcional (imagem ou PDF, máx 20 MB)" }
               ]
             },
             "url": { "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/payment", "host": ["{{baseUrl}}"], "path": ["residents", "{{residentId}}", "receivables", "{{receivableId}}", "payment"] },
-            "description": "Registra o pagamento de uma parcela, anexando comprovante opcional na mesma requisição. paymentMethod: CASH|PIX|CREDIT_CARD|DEBIT_CARD|BASKET|OTHER. Roles: ADMIN, COORDINATOR."
+            "description": "Registra o pagamento de uma parcela, anexando comprovante opcional na mesma requisição. paymentMethod: CASH|PIX|CREDIT_CARD|DEBIT_CARD|BASKET|OTHER. paidAmount/paidFamilyInvestment opcionais permitem registrar valor/modalidade fora do plano (default = snapshot da parcela). Roles: ADMIN, COORDINATOR."
           }
         },
         {

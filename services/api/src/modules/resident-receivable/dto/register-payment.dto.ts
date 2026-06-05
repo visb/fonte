@@ -1,5 +1,6 @@
-import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
-import { PaymentMethod } from '@fonte/types';
+import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { FamilyInvestment, PaymentMethod } from '@fonte/types';
 
 export class RegisterPaymentDto {
   @IsDateString()
@@ -7,6 +8,16 @@ export class RegisterPaymentDto {
 
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  paidAmount?: number;
+
+  @IsOptional()
+  @IsEnum(FamilyInvestment)
+  paidFamilyInvestment?: FamilyInvestment;
 
   @IsOptional()
   @IsString()

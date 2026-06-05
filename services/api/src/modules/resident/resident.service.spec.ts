@@ -800,3 +800,47 @@ describe('ResidentService.update exit events', () => {
     expect(cancelAfterExit).toHaveBeenCalledWith(RESIDENT_ID, today);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════════════════
+// getContributionsReport — totalCollectedAmount uses the real paid amount
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('ResidentService.getContributionsReport', () => {
+  function makeServiceWithRows(rows: unknown[]) {
+    const query = jest.fn().mockResolvedValue(rows);
+    const service = new ResidentService(
+      {} as Repository<Resident>,
+      {} as Repository<ResidentDocument>,
+      {} as Repository<ResidentAttachment>,
+      {} as Repository<User>,
+      {} as Repository<Admission>,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { query } as never,
+    );
+    return { service, query };
+  }
+
+  it('sums the real paid_amount for paid installments, with fallback to the snapshot', async () => {
+    const { service } = makeServiceWithRows([
+      // paid, diverging paid amount (300 < expected 700)
+      { residentId: 'r1', residentName: 'A', houseId: 'h', houseName: 'H', familyInvestment: 'PAYMENT_700', expectedAmount: 700, collectedAmount: 300, paid: true, paidAt: '2026-06-01' },
+      // paid, no paid_amount recorded → falls back to expected (500)
+      { residentId: 'r2', residentName: 'B', houseId: 'h', houseName: 'H', familyInvestment: 'BASKET_500', expectedAmount: 500, collectedAmount: null, paid: true, paidAt: '2026-06-02' },
+      // pending → not counted in collected total
+      { residentId: 'r3', residentName: 'C', houseId: 'h', houseName: 'H', familyInvestment: 'PAYMENT_700', expectedAmount: 700, collectedAmount: null, paid: false, paidAt: null },
+    ]);
+
+    const report = await service.getContributionsReport({ month: '2026-06' } as never);
+
+    expect(report.totalPaid).toBe(2);
+    expect(report.totalPending).toBe(1);
+    // expected total uses the plan: 700 + 500 + 700
+    expect(report.totalExpectedAmount).toBe(1900);
+    // collected total uses real paid amount (300) + fallback snapshot (500) = 800
+    expect(report.totalCollectedAmount).toBe(800);
+    expect(report.items[0].collectedAmount).toBe(300);
+  });
+});

@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Paperclip, Upload, X } from 'lucide-react';
-import { PaymentMethod } from '@fonte/types';
+import { FamilyInvestment, PaymentMethod } from '@fonte/types';
 import type { ResidentReceivable } from '@fonte/api-client';
 import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
@@ -18,19 +18,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { PAYMENT_METHOD_LABELS } from '../constants';
+import { FAMILY_INVESTMENT_LABELS, PAYMENT_METHOD_LABELS } from '../constants';
 import { useRegisterReceivablePayment } from '../hooks/useResidentReceivables';
 import { formatReferenceMonth } from '../lib/receivables';
 
 const schema = z.object({
   paidAt: z.string().min(1, 'Informe a data'),
   paymentMethod: z.nativeEnum(PaymentMethod),
+  paidFamilyInvestment: z.nativeEnum(FamilyInvestment),
+  paidAmount: z.coerce.number().int().min(0, 'Valor inválido'),
   notes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
 const todayIso = () => new Date().toISOString().split('T')[0];
+
+function defaultsFor(receivable: ResidentReceivable | null): FormValues {
+  return {
+    paidAt: todayIso(),
+    paymentMethod: PaymentMethod.PIX,
+    paidFamilyInvestment: receivable?.familyInvestment ?? FamilyInvestment.PAYMENT_700,
+    paidAmount: receivable?.amount ?? 0,
+    notes: '',
+  };
+}
 
 interface Props {
   open: boolean;
@@ -52,11 +64,18 @@ export function RegisterPaymentDialog({ open, onClose, residentId, residentName,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { paidAt: todayIso(), paymentMethod: PaymentMethod.PIX, notes: '' },
+    defaultValues: defaultsFor(receivable),
   });
 
+  // The dialog instance is reused across installments — reapply defaults when the
+  // target receivable changes so modality/amount reflect the selected plan.
+  useEffect(() => {
+    if (open && receivable) reset(defaultsFor(receivable));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, receivable?.id]);
+
   const handleClose = () => {
-    reset({ paidAt: todayIso(), paymentMethod: PaymentMethod.PIX, notes: '' });
+    reset(defaultsFor(receivable));
     setFile(null);
     if (fileRef.current) fileRef.current.value = '';
     mutation.reset();
@@ -70,6 +89,8 @@ export function RegisterPaymentDialog({ open, onClose, residentId, residentName,
         receivableId: receivable.id,
         paidAt: values.paidAt,
         paymentMethod: values.paymentMethod,
+        paidAmount: values.paidAmount,
+        paidFamilyInvestment: values.paidFamilyInvestment,
         notes: values.notes?.trim() || undefined,
         file: file ?? null,
       },
@@ -105,6 +126,20 @@ export function RegisterPaymentDialog({ open, onClose, residentId, residentName,
                 </option>
               ))}
             </Select>
+          </FormField>
+
+          <FormField label="Modalidade" error={errors.paidFamilyInvestment?.message}>
+            <Select {...register('paidFamilyInvestment')}>
+              {Object.values(FamilyInvestment).map((m) => (
+                <option key={m} value={m}>
+                  {FAMILY_INVESTMENT_LABELS[m]}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+
+          <FormField label="Valor pago (R$)" error={errors.paidAmount?.message}>
+            <Input type="number" min={0} {...register('paidAmount', { valueAsNumber: true })} />
           </FormField>
 
           <FormField label="Comprovante (opcional)">

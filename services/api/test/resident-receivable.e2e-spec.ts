@@ -92,6 +92,63 @@ describe('Resident receivables (e2e)', () => {
     });
   });
 
+  describe('payment with diverging modality and amount', () => {
+    it('persists paidAmount/paidFamilyInvestment when out of the plan default', async () => {
+      const list = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/receivables`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      // Pick a still-pending installment (the first one was reopened above).
+      const target = list.body.find(
+        (r: { status: string }) => r.status === ReceivableStatus.PENDING,
+      );
+      expect(target).toBeDefined();
+
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/residents/${residentId}/receivables/${target.id}/payment`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          paidAt: new Date().toISOString().slice(0, 10),
+          paymentMethod: PaymentMethod.CASH,
+          paidAmount: 250,
+          paidFamilyInvestment: FamilyInvestment.NEGOTIATED,
+        })
+        .expect(201);
+
+      expect(res.body.status).toBe(ReceivableStatus.PAID);
+      expect(res.body.paidAmount).toBe(250);
+      expect(res.body.paidFamilyInvestment).toBe(FamilyInvestment.NEGOTIATED);
+
+      const after = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/receivables`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      const persisted = after.body.find((r: { id: string }) => r.id === target.id);
+      expect(persisted.paidAmount).toBe(250);
+      expect(persisted.paidFamilyInvestment).toBe(FamilyInvestment.NEGOTIATED);
+    });
+
+    it('defaults paidAmount/paidFamilyInvestment to the snapshot when omitted', async () => {
+      const list = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/receivables`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      const target = list.body.find(
+        (r: { status: string }) => r.status === ReceivableStatus.PENDING,
+      );
+      expect(target).toBeDefined();
+
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/residents/${residentId}/receivables/${target.id}/payment`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ paidAt: new Date().toISOString().slice(0, 10), paymentMethod: PaymentMethod.PIX })
+        .expect(201);
+
+      expect(res.body.paidAmount).toBe(target.amount);
+      expect(res.body.paidFamilyInvestment).toBe(target.familyInvestment);
+    });
+  });
+
   describe('contribution plan changes', () => {
     it('reprices future pending after switching to a NEGOTIATED plan', async () => {
       await request(app.getHttpServer())

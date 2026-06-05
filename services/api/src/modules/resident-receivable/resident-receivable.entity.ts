@@ -45,6 +45,20 @@ export class ResidentReceivable {
   @Column({ type: 'enum', enum: ReceivableStatus, enumName: 'receivable_status_enum', default: ReceivableStatus.PENDING })
   status: ReceivableStatus;
 
+  // Amount actually collected (reais); may diverge from the snapshot `amount`.
+  @Column({ name: 'paid_amount', type: 'integer', nullable: true })
+  paidAmount: number | null;
+
+  // Modality actually used at payment time; may diverge from the snapshot `familyInvestment`.
+  @Column({
+    name: 'paid_family_investment',
+    type: 'enum',
+    enum: FamilyInvestment,
+    enumName: 'family_investment_enum',
+    nullable: true,
+  })
+  paidFamilyInvestment: FamilyInvestment | null;
+
   @Column({ name: 'paid_at', type: 'date', nullable: true })
   paidAt: Date | null;
 

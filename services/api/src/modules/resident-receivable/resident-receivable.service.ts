@@ -36,6 +36,8 @@ export interface ResidentReceivableView {
   dueDate: string;
   amount: number;
   familyInvestment: FamilyInvestment;
+  paidAmount: number | null;
+  paidFamilyInvestment: FamilyInvestment | null;
   mandatory: boolean;
   status: ReceivableStatus;
   paidAt: string | null;
@@ -230,6 +232,8 @@ export class ResidentReceivableService {
       status: ReceivableStatus.PAID,
       paidAt: dto.paidAt as unknown as Date,
       paymentMethod: dto.paymentMethod,
+      paidAmount: dto.paidAmount ?? receivable.amount,
+      paidFamilyInvestment: dto.paidFamilyInvestment ?? receivable.familyInvestment,
       notes: dto.notes ?? null,
       attachmentUrl,
       createdById: staff?.id ?? null,
@@ -249,6 +253,8 @@ export class ResidentReceivableService {
       status: ReceivableStatus.PENDING,
       paidAt: null,
       paymentMethod: null,
+      paidAmount: null,
+      paidFamilyInvestment: null,
       notes: null,
       attachmentUrl: null,
       createdById: null,
@@ -318,6 +324,8 @@ export class ResidentReceivableService {
       dueDate: String(item.dueDate).slice(0, 10),
       amount: item.amount,
       familyInvestment: item.familyInvestment,
+      paidAmount: item.paidAmount,
+      paidFamilyInvestment: item.paidFamilyInvestment,
       mandatory: item.mandatory,
       status: item.status,
       paidAt: item.paidAt ? String(item.paidAt).slice(0, 10) : null,

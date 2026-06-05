@@ -4,7 +4,7 @@ import type { ResidentReceivable } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { PAYMENT_METHOD_LABELS } from '../constants';
+import { FAMILY_INVESTMENT_LABELS, FAMILY_INVESTMENT_VARIANT, PAYMENT_METHOD_LABELS } from '../constants';
 import { formatDate, formatReferenceMonth, receivableBadge } from '../lib/receivables';
 
 interface Props {
@@ -19,6 +19,12 @@ export function ReceivableRow({ receivable, canManage, onPayClick, onReopenClick
   const isPaid = receivable.status === ReceivableStatus.PAID;
   const attachment = receivable.attachmentUrl ? api.photoUrl(receivable.attachmentUrl) : null;
 
+  // When paid, prefer the amount/modality actually collected over the plan snapshot.
+  const displayAmount = isPaid && receivable.paidAmount != null ? receivable.paidAmount : receivable.amount;
+  const paidModality =
+    isPaid && receivable.paidFamilyInvestment != null ? receivable.paidFamilyInvestment : null;
+  const modalityDiverges = paidModality != null && paidModality !== receivable.familyInvestment;
+
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
       <div className="flex-1 min-w-0">
@@ -26,6 +32,11 @@ export function ReceivableRow({ receivable, canManage, onPayClick, onReopenClick
           <span className="font-medium">{formatReferenceMonth(receivable.referenceMonth)}</span>
           <Badge variant={badge.variant}>{badge.label}</Badge>
           {!receivable.mandatory && <Badge variant="outline">Voluntário</Badge>}
+          {modalityDiverges && paidModality && (
+            <Badge variant={FAMILY_INVESTMENT_VARIANT[paidModality]}>
+              {FAMILY_INVESTMENT_LABELS[paidModality]}
+            </Badge>
+          )}
         </div>
         <div className="text-sm text-muted-foreground mt-0.5">
           {isPaid ? (
@@ -43,7 +54,7 @@ export function ReceivableRow({ receivable, canManage, onPayClick, onReopenClick
       </div>
 
       <div className="text-right shrink-0">
-        <p className="font-semibold">R$ {receivable.amount}</p>
+        <p className="font-semibold">R$ {displayAmount}</p>
       </div>
 
       <div className="flex items-center gap-1 shrink-0">

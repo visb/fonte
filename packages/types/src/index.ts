@@ -168,6 +168,7 @@ export interface ContributionReportItem {
   houseName: string;
   familyInvestment: FamilyInvestment;
   expectedAmount: number;
+  collectedAmount: number | null;
   paid: boolean;
   paidAt: string | null;
 }
@@ -211,6 +212,8 @@ export interface ResidentReceivable {
   dueDate: string; // YYYY-MM-DD
   amount: number;
   familyInvestment: FamilyInvestment;
+  paidAmount: number | null;
+  paidFamilyInvestment: FamilyInvestment | null;
   mandatory: boolean;
   status: ReceivableStatus;
   paidAt: string | null;
@@ -224,6 +227,8 @@ export interface ResidentReceivable {
 export interface RegisterReceivablePaymentInput {
   paidAt: string; // YYYY-MM-DD
   paymentMethod: PaymentMethod;
+  paidAmount?: number;
+  paidFamilyInvestment?: FamilyInvestment;
   notes?: string;
 }
 

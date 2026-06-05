@@ -590,6 +590,7 @@ export class ResidentService {
         h.name          AS "houseName",
         rcv.family_investment           AS "familyInvestment",
         rcv.amount                      AS "expectedAmount",
+        rcv.paid_amount                 AS "collectedAmount",
         (rcv.status = 'PAID')           AS paid,
         rcv.paid_at                     AS "paidAt"
       FROM residents r
@@ -620,13 +621,16 @@ export class ResidentService {
       ...row,
       paid: row.paid === true || (row.paid as unknown) === 't' || (row.paid as unknown) === 'true',
       expectedAmount: row.expectedAmount != null ? Number(row.expectedAmount) : (CANONICAL_AMOUNTS[row.familyInvestment as FamilyInvestment] ?? 0),
+      collectedAmount: row.collectedAmount != null ? Number(row.collectedAmount) : null,
     }));
 
     const totalResidents = items.length;
     const totalPaid = items.filter((i) => i.paid).length;
     const totalPending = totalResidents - totalPaid;
     const totalExpectedAmount = items.reduce((sum, i) => sum + (i.expectedAmount ?? 0), 0);
-    const totalCollectedAmount = items.filter((i) => i.paid).reduce((sum, i) => sum + (i.expectedAmount ?? 0), 0);
+    const totalCollectedAmount = items
+      .filter((i) => i.paid)
+      .reduce((sum, i) => sum + (i.collectedAmount ?? i.expectedAmount ?? 0), 0);
 
     return {
       month: dto.month,

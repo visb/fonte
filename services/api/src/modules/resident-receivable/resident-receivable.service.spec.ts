@@ -258,6 +258,62 @@ describe('ResidentReceivableService.registerPayment', () => {
     expect(view.createdByName).toBe('Servo');
   });
 
+  it('persists paidAmount/paidFamilyInvestment when provided (diverging from snapshot)', async () => {
+    const repo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'rcv-1', residentId: 'res-1', attachmentUrl: null, amount: 700, familyInvestment: 'PAYMENT_700' })
+        .mockResolvedValue({ id: 'rcv-1', createdBy: null }),
+    });
+    const staffRepo = { findOne: jest.fn().mockResolvedValue({ id: 'staff-1' }) };
+    const service = makeFullService(repo, {}, staffRepo);
+
+    await service.registerPayment(
+      'res-1',
+      'rcv-1',
+      { paidAt: '2026-06-01', paymentMethod: 'PIX', paidAmount: 300, paidFamilyInvestment: 'NEGOTIATED' } as never,
+      'user-1',
+    );
+
+    const [, patch] = repo.update.mock.calls[0];
+    expect(patch).toMatchObject({ paidAmount: 300, paidFamilyInvestment: 'NEGOTIATED' });
+  });
+
+  it('defaults paidAmount/paidFamilyInvestment to the snapshot when not provided', async () => {
+    const repo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'rcv-1', residentId: 'res-1', attachmentUrl: null, amount: 700, familyInvestment: 'PAYMENT_700' })
+        .mockResolvedValue({ id: 'rcv-1', createdBy: null }),
+    });
+    const staffRepo = { findOne: jest.fn().mockResolvedValue({ id: 'staff-1' }) };
+    const service = makeFullService(repo, {}, staffRepo);
+
+    await service.registerPayment(
+      'res-1',
+      'rcv-1',
+      { paidAt: '2026-06-01', paymentMethod: 'PIX' } as never,
+      'user-1',
+    );
+
+    const [, patch] = repo.update.mock.calls[0];
+    expect(patch).toMatchObject({ paidAmount: 700, paidFamilyInvestment: 'PAYMENT_700' });
+  });
+
+  it('clears paidAmount/paidFamilyInvestment on reopen', async () => {
+    const repo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'rcv-1', residentId: 'res-1', attachmentUrl: null })
+        .mockResolvedValue({ id: 'rcv-1', createdBy: null }),
+    });
+    const service = makeFullService(repo, {}, {}, { delete: jest.fn() });
+
+    await service.reopenPayment('res-1', 'rcv-1');
+
+    expect(repo.update.mock.calls[0][1]).toMatchObject({ paidAmount: null, paidFamilyInvestment: null });
+  });
+
   it('uploads the attachment, deleting the previous one', async () => {
     const repo = makeRepo({
       findOne: jest

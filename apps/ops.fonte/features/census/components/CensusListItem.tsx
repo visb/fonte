@@ -10,11 +10,13 @@ interface Props {
     photoThumbUrl?: string | null;
   };
   confirmed: boolean;
+  // Added during this census; awaiting ADM approval. Auto-confirmed (present).
+  pending?: boolean;
   onConfirm: () => void;
   onRemove: () => void;
 }
 
-export function CensusListItem({ resident, confirmed, onConfirm, onRemove }: Props) {
+export function CensusListItem({ resident, confirmed, pending, onConfirm, onRemove }: Props) {
   const thumbUrl = resolveAssetUrl(resident.photoThumbUrl ?? resident.photoUrl);
   return (
     <View
@@ -27,14 +29,29 @@ export function CensusListItem({ resident, confirmed, onConfirm, onRemove }: Pro
           <Ionicons name="person-outline" size={20} color="#2563eb" />
         )}
       </View>
-      <Text className="flex-1 text-sm font-semibold text-gray-900">{resident.name}</Text>
+      <View className="flex-1">
+        <Text className="text-sm font-semibold text-gray-900">{resident.name}</Text>
+        {pending ? (
+          <View className="flex-row items-center mt-0.5">
+            <View className="bg-amber-100 rounded-full px-2 py-0.5">
+              <Text className="text-[10px] font-medium text-amber-700">Aguardando aprovação</Text>
+            </View>
+          </View>
+        ) : null}
+      </View>
 
-      <TouchableOpacity
-        className={`w-10 h-10 rounded-full items-center justify-center mr-2 ${confirmed ? 'bg-green-600' : 'bg-green-50'}`}
-        onPress={onConfirm}
-      >
-        <Ionicons name="checkmark" size={20} color={confirmed ? '#fff' : '#16a34a'} />
-      </TouchableOpacity>
+      {pending ? (
+        <View className="w-10 h-10 rounded-full items-center justify-center mr-2 bg-green-600">
+          <Ionicons name="checkmark" size={20} color="#fff" />
+        </View>
+      ) : (
+        <TouchableOpacity
+          className={`w-10 h-10 rounded-full items-center justify-center mr-2 ${confirmed ? 'bg-green-600' : 'bg-green-50'}`}
+          onPress={onConfirm}
+        >
+          <Ionicons name="checkmark" size={20} color={confirmed ? '#fff' : '#16a34a'} />
+        </TouchableOpacity>
+      )}
       <TouchableOpacity
         className="w-10 h-10 rounded-full items-center justify-center bg-red-50"
         onPress={onRemove}

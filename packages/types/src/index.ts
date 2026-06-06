@@ -57,6 +57,10 @@ export enum ResidentStatus {
   TEMP_LEAVE = 'TEMP_LEAVE',
   DISCHARGED = 'DISCHARGED',
   EVADED = 'EVADED',
+  // Adicionado pelo coordenador durante a contagem; aguarda aprovação do ADM.
+  CENSUS_ADDED = 'CENSUS_ADDED',
+  // Recusado pelo ADM na revisão da contagem (mantido para auditoria).
+  REJECTED_CENSUS = 'REJECTED_CENSUS',
 }
 
 export enum ProfileType {
@@ -323,6 +327,9 @@ export enum NotificationType {
   CAPACITY_CHANGE_REQUESTED = 'CAPACITY_CHANGE_REQUESTED',
   CAPACITY_CHANGE_APPROVED = 'CAPACITY_CHANGE_APPROVED',
   CAPACITY_CHANGE_REJECTED = 'CAPACITY_CHANGE_REJECTED',
+  // contagem / chamada (ops → adm)
+  CENSUS_RESIDENT_ADDED = 'CENSUS_RESIDENT_ADDED',
+  CENSUS_CONCLUDED = 'CENSUS_CONCLUDED',
   // background workers
   RECEIVABLE_OVERDUE = 'RECEIVABLE_OVERDUE',
   ROUTINE_MISSING = 'ROUTINE_MISSING',

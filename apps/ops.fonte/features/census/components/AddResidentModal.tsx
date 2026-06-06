@@ -16,10 +16,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Gender, ResidentStatus } from '@fonte/types';
+import { Gender } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
 import { DatePickerModal } from '@/components/DatePickerModal';
-import { useCreateCensusResident } from '../hooks/useCensus';
+import { useCensusAddResident } from '../hooks/useCensus';
 
 const schema = z.object({
   name: z.string().trim().min(1, 'Informe o nome'),
@@ -61,7 +61,7 @@ interface Props {
 export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props) {
   const [photo, setPhoto] = useState<{ uri: string; type: string } | null>(null);
   const [activeDatePicker, setActiveDatePicker] = useState<'entry' | 'birth' | null>(null);
-  const createMutation = useCreateCensusResident(houseId);
+  const createMutation = useCensusAddResident(houseId);
 
   const {
     control,
@@ -101,7 +101,6 @@ export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props
         data: {
           name: values.name.trim(),
           houseId,
-          status: ResidentStatus.ACTIVE,
           entryDate: values.entryDate,
           gender: values.gender,
           birthDate: values.birthDate || null,

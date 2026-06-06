@@ -85,4 +85,7 @@ export const queryKeys = {
     all: ['notifications'] as const,
     unreadCount: ['notifications', 'unread-count'] as const,
   },
+  census: {
+    pending: (houseId: string) => ['census', houseId, 'pending'] as const,
+  },
 } as const;

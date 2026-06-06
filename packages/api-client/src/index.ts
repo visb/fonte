@@ -10,6 +10,8 @@ export type {
   UpdateHouseInput,
   HouseCapacityRequest,
   CreateCapacityRequestInput,
+  CensusConcludeInput,
+  CensusPendingResident,
   HouseMinistry,
   AddMinistryInput,
   HouseRule,

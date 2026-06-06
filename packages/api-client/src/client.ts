@@ -17,6 +17,7 @@ import { createStreetSalesModule } from './modules/street-sales.js';
 import { createSupplyRoomModule } from './modules/supply-room.js';
 import { createBibleCourseModule } from './modules/bible-course.js';
 import { createNotificationsModule } from './modules/notifications.js';
+import { createCensusModule } from './modules/census.js';
 
 export interface ApiClientConfig {
   baseURL: string;
@@ -63,6 +64,7 @@ export function createApiClient(config: ApiClientConfig) {
     supplyRoom: createSupplyRoomModule(http),
     bibleCourse: createBibleCourseModule(http),
     notifications: createNotificationsModule(http),
+    census: createCensusModule(http),
     photoUrl: (path: string | null | undefined): string | null => {
       if (!path) return null;
       if (path.startsWith('http://') || path.startsWith('https://')) return path;

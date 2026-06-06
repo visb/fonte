@@ -2311,6 +2311,117 @@
       ]
     },
     {
+      "name": "Census",
+      "item": [
+        {
+          "name": "Add Resident in Census (coordinator)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Filho da Contagem\",\n  \"houseId\": \"{{houseId}}\",\n  \"entryDate\": \"2026-06-06\",\n  \"gender\": \"MALE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/census/residents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "census",
+                "residents"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Conclude Census (coordinator)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"houseId\": \"{{houseId}}\",\n  \"confirmedCount\": 5,\n  \"total\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/census/conclude",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "census",
+                "conclude"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Pending Census Residents (admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/census/houses/{{houseId}}/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "census",
+                "houses",
+                "{{houseId}}",
+                "pending"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve All Census Residents (admin)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/census/houses/{{houseId}}/approve-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "census",
+                "houses",
+                "{{houseId}}",
+                "approve-all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reject Census Resident (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/census/residents/{{residentId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "census",
+                "residents",
+                "{{residentId}}",
+                "reject"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Notifications",
       "item": [
         {

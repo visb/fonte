@@ -141,6 +141,22 @@ export interface CreateCapacityRequestInput {
   staffCapacity: number;
 }
 
+// ─── Census (contagem) ───────────────────────────────────────────────────────
+
+export interface CensusConcludeInput {
+  houseId: string;
+  confirmedCount: number;
+  total: number;
+}
+
+export interface CensusPendingResident {
+  id: string;
+  name: string;
+  photoThumbUrl: string | null;
+  entryDate: string | null;
+  createdAt: string;
+}
+
 export interface HouseMinistry {
   id: string;
   name: string;

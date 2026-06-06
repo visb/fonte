@@ -2,6 +2,7 @@ import { NotificationType, type Notification } from '@fonte/api-client';
 import { cn } from '@/lib/utils';
 import { relativeTime } from '../lib/relativeTime';
 import { CapacityRequestActions } from './CapacityRequestActions';
+import { CensusReviewActions } from './CensusReviewActions';
 
 interface Props {
   notification: Notification;
@@ -11,6 +12,8 @@ interface Props {
 export function NotificationItem({ notification, onSelect }: Props) {
   const isCapacityRequest =
     notification.type === NotificationType.CAPACITY_CHANGE_REQUESTED;
+  const isCensusConcluded =
+    notification.type === NotificationType.CENSUS_CONCLUDED;
 
   return (
     <div className={cn('rounded-md', !notification.read && 'bg-accent/40')}>
@@ -42,6 +45,7 @@ export function NotificationItem({ notification, onSelect }: Props) {
       </button>
 
       {isCapacityRequest && <CapacityRequestActions notification={notification} />}
+      {isCensusConcluded && <CensusReviewActions notification={notification} />}
     </div>
   );
 }

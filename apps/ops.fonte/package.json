@@ -2,9 +2,9 @@
   "name": "ops.fonte",
   "version": "1.0.0",
   "private": true,
-  "main": "index.js",
+  "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start",
+    "start": "expo start --clear",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",

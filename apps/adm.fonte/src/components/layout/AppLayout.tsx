@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import {
   BookOpen,
   Building2,
@@ -133,16 +139,32 @@ function FaturamentoSubmenu({ closeSidebar }: SettingsSubmenuProps) {
 
       {open && (
         <div className="ml-6 mt-1 space-y-1">
-          <NavLink to="/billing/filhos" onClick={closeSidebar} className={subNavLinkClass}>
+          <NavLink
+            to="/billing/filhos"
+            onClick={closeSidebar}
+            className={subNavLinkClass}
+          >
             Filhos
           </NavLink>
-          <NavLink to="/billing/pizza" onClick={closeSidebar} className={subNavLinkClass}>
+          <NavLink
+            to="/billing/pizza"
+            onClick={closeSidebar}
+            className={subNavLinkClass}
+          >
             Pizza
           </NavLink>
-          <NavLink to="/billing/bread" onClick={closeSidebar} className={subNavLinkClass}>
+          <NavLink
+            to="/billing/bread"
+            onClick={closeSidebar}
+            className={subNavLinkClass}
+          >
             Pão
           </NavLink>
-          <NavLink to="/billing/associados" onClick={closeSidebar} className={subNavLinkClass}>
+          <NavLink
+            to="/billing/associados"
+            onClick={closeSidebar}
+            className={subNavLinkClass}
+          >
             Associados
           </NavLink>
         </div>
@@ -183,7 +205,7 @@ export function AppLayout() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="p-6 border-b flex items-center justify-between">
+        <div className="p-6 pt-2 pb-[7.5px] border-b flex items-center justify-between">
           <h1 className="text-xl font-bold">adm.fonte</h1>
           <div className="flex items-center gap-1">
             <Button
@@ -218,7 +240,11 @@ export function AppLayout() {
             </Link>
           )}
           {isAdminOrCoordinator && (
-            <Link to="/residents" onClick={closeSidebar} className={navLinkClass}>
+            <Link
+              to="/residents"
+              onClick={closeSidebar}
+              className={navLinkClass}
+            >
               <Users size={16} />
               Filhos
             </Link>
@@ -230,25 +256,41 @@ export function AppLayout() {
             </Link>
           )}
           {isAdminOrCoordinator && (
-            <Link to="/support-groups" onClick={closeSidebar} className={navLinkClass}>
+            <Link
+              to="/support-groups"
+              onClick={closeSidebar}
+              className={navLinkClass}
+            >
               <HandHeart size={16} />
               Grupos de Apoio
             </Link>
           )}
           {isAdminOrCoordinator && (
-            <Link to="/bible-courses" onClick={closeSidebar} className={navLinkClass}>
+            <Link
+              to="/bible-courses"
+              onClick={closeSidebar}
+              className={navLinkClass}
+            >
               <BookOpen size={16} />
               Curso Bíblico
             </Link>
           )}
           {isAdminOrCoordinator && (
-            <Link to="/messages" onClick={closeSidebar} className={navLinkClass}>
+            <Link
+              to="/messages"
+              onClick={closeSidebar}
+              className={navLinkClass}
+            >
               <MessageSquare size={16} />
               Mensagens
             </Link>
           )}
-          {isAdminOrCoordinator && <FaturamentoSubmenu closeSidebar={closeSidebar} />}
-          {isAdminOrCoordinator && <SettingsSubmenu closeSidebar={closeSidebar} />}
+          {isAdminOrCoordinator && (
+            <FaturamentoSubmenu closeSidebar={closeSidebar} />
+          )}
+          {isAdminOrCoordinator && (
+            <SettingsSubmenu closeSidebar={closeSidebar} />
+          )}
         </nav>
 
         <div className="p-4 border-t space-y-1">

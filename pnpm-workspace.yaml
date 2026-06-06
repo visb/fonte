@@ -2,6 +2,7 @@ packages:
   - "apps/*"
   - "services/*"
   - "packages/*"
+nodeLinker: hoisted
 allowBuilds:
   '@nestjs/core': true
   '@swc/core': true

@@ -8,6 +8,8 @@ import type {
   AddMinistryInput,
   HouseRule,
   CreateHouseRuleInput,
+  HouseCapacityRequest,
+  CreateCapacityRequestInput,
   Resident,
   Staff,
 } from '../types.js';
@@ -42,5 +44,26 @@ export function createHousesModule(http: AxiosInstance) {
       http.post<HouseRule>(`/houses/${id}/rules`, data).then((r) => r.data),
     deleteRule: (id: string, ruleId: string) =>
       http.delete(`/houses/${id}/rules/${ruleId}`),
+    // ─── Pedidos de alteração de capacidade (ops → adm) ───────────────────────
+    createCapacityRequest: (id: string, data: CreateCapacityRequestInput) =>
+      http
+        .post<HouseCapacityRequest>(`/houses/${id}/capacity-requests`, data)
+        .then((r) => r.data),
+    listCapacityRequests: (id: string) =>
+      http
+        .get<HouseCapacityRequest[]>(`/houses/${id}/capacity-requests`)
+        .then((r) => r.data),
+    getCapacityRequest: (requestId: string) =>
+      http
+        .get<HouseCapacityRequest>(`/house-capacity-requests/${requestId}`)
+        .then((r) => r.data),
+    approveCapacityRequest: (requestId: string) =>
+      http
+        .patch<HouseCapacityRequest>(`/house-capacity-requests/${requestId}/approve`)
+        .then((r) => r.data),
+    rejectCapacityRequest: (requestId: string) =>
+      http
+        .patch<HouseCapacityRequest>(`/house-capacity-requests/${requestId}/reject`)
+        .then((r) => r.data),
   };
 }

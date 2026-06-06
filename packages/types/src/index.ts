@@ -319,11 +319,23 @@ export enum NotificationType {
   PAYMENT_REGISTERED = 'PAYMENT_REGISTERED',
   INCIDENT_CREATED = 'INCIDENT_CREATED',
   RESIDENT_DISCHARGED = 'RESIDENT_DISCHARGED',
+  // pedidos de aprovação (ops → adm)
+  CAPACITY_CHANGE_REQUESTED = 'CAPACITY_CHANGE_REQUESTED',
+  CAPACITY_CHANGE_APPROVED = 'CAPACITY_CHANGE_APPROVED',
+  CAPACITY_CHANGE_REJECTED = 'CAPACITY_CHANGE_REJECTED',
   // background workers
   RECEIVABLE_OVERDUE = 'RECEIVABLE_OVERDUE',
   ROUTINE_MISSING = 'ROUTINE_MISSING',
   REQUIRED_DOC_MISSING = 'REQUIRED_DOC_MISSING',
   // ... expandir conforme eventos cobertos
+}
+
+/** Estado de um pedido de alteração de capacidade de leitos (ops → adm). */
+export enum HouseCapacityRequestStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  SUPERSEDED = 'SUPERSEDED',
 }
 
 export interface Notification {

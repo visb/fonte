@@ -6,6 +6,9 @@ export const queryKeys = {
     staff: (id: string) => ['houses', id, 'staff'] as const,
     residents: (id: string) => ['houses', id, 'residents'] as const,
     rules: (id: string) => ['houses', id, 'rules'] as const,
+    capacityRequests: (id: string) => ['houses', id, 'capacity-requests'] as const,
+    capacityRequest: (requestId: string) =>
+      ['houses', 'capacity-request', requestId] as const,
   },
   residents: {
     all: ['residents'] as const,

@@ -12,6 +12,7 @@ import { MinistriesTab } from '../components/tabs/MinistriesTab';
 import { StoreroomTab } from '../components/tabs/StoreroomTab';
 import { SupplyRoomTab } from '../components/tabs/SupplyRoomTab';
 import { RulesTab } from '../components/tabs/RulesTab';
+import { CapacityRequestsTab } from '../components/tabs/CapacityRequestsTab';
 import { useHouseById } from '../hooks/useHouses';
 
 const TABS = [
@@ -22,6 +23,7 @@ const TABS = [
   { id: 'storeroom', label: 'Dispensa' },
   { id: 'supply-room', label: 'Almoxarifado' },
   { id: 'rules', label: 'Regras' },
+  { id: 'capacity-requests', label: 'Leitos' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -72,6 +74,7 @@ export function HouseDetailPage() {
         {activeTab === 'storeroom' && <StoreroomTab houseId={id!} />}
         {activeTab === 'supply-room' && <SupplyRoomTab houseId={id!} />}
         {activeTab === 'rules' && <RulesTab houseId={id!} />}
+        {activeTab === 'capacity-requests' && <CapacityRequestsTab houseId={id!} />}
       </div>
     </div>
   );

@@ -119,3 +119,56 @@ export function useDeleteHousePhoto(houseId: string) {
     },
   });
 }
+
+// ─── Pedidos de alteração de capacidade (ops → adm) ──────────────────────────
+
+export function useCapacityRequestHistory(houseId: string) {
+  return useQuery({
+    queryKey: queryKeys.houses.capacityRequests(houseId),
+    queryFn: () => api.houses.listCapacityRequests(houseId),
+    enabled: !!houseId,
+  });
+}
+
+export function useCapacityRequest(
+  requestId: string | null,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.houses.capacityRequest(requestId ?? ''),
+    queryFn: () => api.houses.getCapacityRequest(requestId as string),
+    enabled: !!requestId && (options?.enabled ?? true),
+  });
+}
+
+function useInvalidateAfterCapacityReview() {
+  const queryClient = useQueryClient();
+  return (request: { id: string; houseId: string }) => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount });
+    queryClient.invalidateQueries({ queryKey: queryKeys.houses.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.houses.detail(request.houseId) });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.houses.capacityRequests(request.houseId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.houses.capacityRequest(request.id),
+    });
+  };
+}
+
+export function useApproveCapacityRequest() {
+  const invalidate = useInvalidateAfterCapacityReview();
+  return useMutation({
+    mutationFn: (requestId: string) => api.houses.approveCapacityRequest(requestId),
+    onSuccess: (request) => invalidate(request),
+  });
+}
+
+export function useRejectCapacityRequest() {
+  const invalidate = useInvalidateAfterCapacityReview();
+  return useMutation({
+    mutationFn: (requestId: string) => api.houses.rejectCapacityRequest(requestId),
+    onSuccess: (request) => invalidate(request),
+  });
+}

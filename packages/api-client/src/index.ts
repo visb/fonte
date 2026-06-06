@@ -8,6 +8,8 @@ export type {
   HousePhoto,
   CreateHouseInput,
   UpdateHouseInput,
+  HouseCapacityRequest,
+  CreateCapacityRequestInput,
   HouseMinistry,
   AddMinistryInput,
   HouseRule,
@@ -123,4 +125,4 @@ export type {
   NotificationPushPayload,
   ListNotificationsParams,
 } from './types.js';
-export { NotificationType } from './types.js';
+export { NotificationType, HouseCapacityRequestStatus } from './types.js';

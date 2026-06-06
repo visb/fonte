@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
-import type { UpdateHouseInput } from '@fonte/api-client';
+import type { UpdateHouseInput, CreateCapacityRequestInput } from '@fonte/api-client';
 
 export function useHouseById(id: string | null | undefined, options?: { enabled?: boolean }) {
   return useQuery({
@@ -19,6 +19,17 @@ export function useUpdateHouse(id: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.houses.detail(id) });
     },
+  });
+}
+
+/**
+ * Coordenador solicita alteração de capacidade de leitos. Não aplica direto:
+ * gera um pedido que o ADM aprova/rejeita no adm.fonte.
+ */
+export function useRequestCapacityChange(id: string) {
+  return useMutation({
+    mutationFn: (data: CreateCapacityRequestInput) =>
+      api.houses.createCapacityRequest(id, data),
   });
 }
 

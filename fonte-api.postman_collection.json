@@ -505,6 +505,100 @@
           }
         },
         {
+          "name": "Create Capacity Change Request (coordinator)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"generalCapacity\": 22,\n  \"staffCapacity\": 6\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/capacity-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "capacity-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Capacity Change Requests (admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/capacity-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "capacity-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Capacity Change Request (admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/house-capacity-requests/{{capacityRequestId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "house-capacity-requests",
+                "{{capacityRequestId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve Capacity Change Request (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/house-capacity-requests/{{capacityRequestId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "house-capacity-requests",
+                "{{capacityRequestId}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reject Capacity Change Request (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/house-capacity-requests/{{capacityRequestId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "house-capacity-requests",
+                "{{capacityRequestId}}",
+                "reject"
+              ]
+            }
+          }
+        },
+        {
           "name": "Upload House Photo",
           "request": {
             "method": "POST",

@@ -22,6 +22,10 @@ import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import {
+  AuthenticatedUser,
+  CurrentUser,
+} from '../../common/decorators/current-user.decorator';
 import { CreateHouseDto } from './dto/create-house.dto';
 import { CreateHouseRuleDto } from './dto/create-house-rule.dto';
 import { UpdateHouseDto } from './dto/update-house.dto';
@@ -73,7 +77,14 @@ export class HouseController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateHouseDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<House> {
+    // Capacidade de leitos só muda por pedido aprovado (ops → adm). O COORDINATOR
+    // não altera capacidade direto: ignora silenciosamente esses campos.
+    if (user.role === Role.COORDINATOR) {
+      delete dto.generalCapacity;
+      delete dto.staffCapacity;
+    }
     return this.houseService.update(id, dto);
   }
 

@@ -33,7 +33,7 @@ import type {
   UnreadCountResponse,
   NotificationPushPayload,
 } from '@fonte/types';
-import { NotificationType } from '@fonte/types';
+import { NotificationType, HouseCapacityRequestStatus } from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
 export type {
@@ -117,6 +117,29 @@ export interface CreateHouseInput {
 }
 
 export type UpdateHouseInput = Partial<CreateHouseInput>;
+
+export { HouseCapacityRequestStatus };
+
+export interface HouseCapacityRequest {
+  id: string;
+  houseId: string;
+  requestedGeneralCapacity: number;
+  requestedStaffCapacity: number;
+  previousGeneralCapacity: number | null;
+  previousStaffCapacity: number | null;
+  status: HouseCapacityRequestStatus;
+  requestedById: string;
+  requestedBy?: { id: string; name: string } | null;
+  reviewedById: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCapacityRequestInput {
+  generalCapacity: number;
+  staffCapacity: number;
+}
 
 export interface HouseMinistry {
   id: string;

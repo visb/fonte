@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import {
   useMutation,
   useQuery,
@@ -54,32 +54,64 @@ const SOCKET_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000/ap
   '',
 );
 
-/**
- * Opens the realtime channel once. On `notification:new`, invalidates the list
- * and unread-count queries. Disconnects on logout/unmount. No polling.
- */
-export function useNotificationSocket() {
-  const { token } = useAuth();
-  const invalidate = useNotificationInvalidation();
-  const socketRef = useRef<Socket | null>(null);
+// ─── Shared socket connection ────────────────────────────────────────────────
+// One socket per token, ref-counted across subscribers. The disconnect is
+// deferred so React StrictMode's mount→cleanup→mount cycle (dev) reuses the same
+// connection instead of tearing it down mid-handshake ("WebSocket is closed
+// before the connection is established").
 
-  useEffect(() => {
-    if (!token) return;
+let sharedSocket: Socket | null = null;
+let sharedToken: string | null = null;
+let refCount = 0;
+let disconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const socket = io(`${SOCKET_ORIGIN}/notifications`, {
+function acquireNotificationSocket(token: string, onNew: () => void): () => void {
+  if (disconnectTimer) {
+    clearTimeout(disconnectTimer);
+    disconnectTimer = null;
+  }
+  if (!sharedSocket || sharedToken !== token) {
+    if (sharedSocket) sharedSocket.disconnect();
+    sharedSocket = io(`${SOCKET_ORIGIN}/notifications`, {
       transports: ['websocket'],
       auth: { token },
       reconnection: true,
     });
-    socketRef.current = socket;
+    sharedToken = token;
+  }
 
-    socket.on('notification:new', () => invalidate());
+  const socket = sharedSocket;
+  refCount += 1;
+  socket.on('notification:new', onNew);
 
-    return () => {
-      socket.off('notification:new');
-      socket.disconnect();
-      socketRef.current = null;
-    };
+  return () => {
+    socket.off('notification:new', onNew);
+    refCount -= 1;
+    if (refCount <= 0) {
+      disconnectTimer = setTimeout(() => {
+        if (refCount <= 0 && sharedSocket) {
+          sharedSocket.disconnect();
+          sharedSocket = null;
+          sharedToken = null;
+        }
+        disconnectTimer = null;
+      }, 1000);
+    }
+  };
+}
+
+/**
+ * Subscribes to the realtime channel. On `notification:new`, invalidates the
+ * list and unread-count queries. Shares one connection across mounts. No polling.
+ */
+export function useNotificationSocket() {
+  const { token } = useAuth();
+  const invalidate = useNotificationInvalidation();
+
+  useEffect(() => {
+    if (!token) return;
+    const release = acquireNotificationSocket(token, () => invalidate());
+    return release;
     // invalidate is stable enough; re-run only when the token changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);

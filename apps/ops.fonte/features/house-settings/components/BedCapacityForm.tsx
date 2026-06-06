@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { House } from '@fonte/api-client';
 import { getErrorMessage } from '@/lib/errors';
-import { useUpdateHouse } from '../hooks/useHouseSettings';
+import { useRequestCapacityChange } from '../hooks/useHouseSettings';
 
 const THEME = '#272950';
 const INPUT_CLASS = 'border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50';
@@ -21,7 +21,7 @@ interface Props {
 }
 
 export function BedCapacityForm({ house }: Props) {
-  const updateHouse = useUpdateHouse(house.id);
+  const requestChange = useRequestCapacityChange(house.id);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -37,21 +37,24 @@ export function BedCapacityForm({ house }: Props) {
     setError('');
     setSuccess(false);
     try {
-      await updateHouse.mutateAsync({
+      await requestChange.mutateAsync({
         generalCapacity: Number(data.generalCapacity),
         staffCapacity: Number(data.staffCapacity),
       });
       setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      setTimeout(() => setSuccess(false), 4000);
     } catch (err) {
-      setError(getErrorMessage(err, 'Erro ao salvar leitos.'));
+      setError(getErrorMessage(err, 'Erro ao enviar pedido.'));
     }
   }
 
   return (
     <View className="bg-white rounded-2xl shadow-sm p-4">
-      <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+      <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
         Leitos
+      </Text>
+      <Text className="text-xs text-gray-500 mb-4">
+        Alterações dependem de aprovação do ADM.
       </Text>
 
       <View className="space-y-3">
@@ -98,7 +101,9 @@ export function BedCapacityForm({ house }: Props) {
         </View>
 
         {error ? <Text className="text-sm text-red-600">{error}</Text> : null}
-        {success ? <Text className="text-sm text-green-600">Leitos atualizados com sucesso!</Text> : null}
+        {success ? (
+          <Text className="text-sm text-green-600">Pedido enviado para aprovação do ADM.</Text>
+        ) : null}
 
         <TouchableOpacity
           className="rounded-lg py-3 items-center mt-1"
@@ -109,7 +114,7 @@ export function BedCapacityForm({ house }: Props) {
           {isSubmitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-white font-semibold text-base">Salvar leitos</Text>
+            <Text className="text-white font-semibold text-base">Solicitar alteração</Text>
           )}
         </TouchableOpacity>
       </View>

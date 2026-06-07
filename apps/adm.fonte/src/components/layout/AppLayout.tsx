@@ -207,7 +207,7 @@ export function AppLayout() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="p-6 pt-2 pb-[7.5px] border-b flex items-center justify-between">
+        <div className="p-6 pt-2 pb-[7px] border-b flex items-center justify-between">
           <h1 className="text-xl font-bold">adm.fonte</h1>
           <div className="flex items-center gap-1">
             <Button

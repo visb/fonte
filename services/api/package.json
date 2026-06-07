@@ -22,6 +22,9 @@
     "seed:test": "npx ts-node src/database/seed-test.ts",
     "seed:street-sales": "npx ts-node src/database/seed-street-sales.ts",
     "backfill:resident-thumbs": "npx ts-node src/database/backfill-resident-thumbnails.ts",
+    "backup:restore": "npx ts-node src/database/restore-backup.ts",
+    "backup:export": "npx ts-node src/database/backup-export.ts",
+    "backup:import": "npx ts-node src/database/backup-import.ts",
     "start:test": "cross-env NODE_ENV=test nest start --watch"
   },
   "dependencies": {

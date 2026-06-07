@@ -28,6 +28,7 @@ import { StreetSaleModule } from './modules/street-sale/street-sale.module';
 import { SupplyRoomModule } from './modules/supply-room/supply-room.module';
 import { BibleCourseModule } from './modules/bible-course/bible-course.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { BackupModule } from './modules/backup/backup.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { NotificationModule } from './modules/notification/notification.module';
     SupplyRoomModule,
     BibleCourseModule,
     NotificationModule,
+    BackupModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },

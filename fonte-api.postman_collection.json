@@ -2422,6 +2422,42 @@
       ]
     },
     {
+      "name": "Backup",
+      "item": [
+        {
+          "name": "List Backups (admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/backup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "backup"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Run Backup Now (admin)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/backup/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "backup",
+                "run"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Notifications",
       "item": [
         {

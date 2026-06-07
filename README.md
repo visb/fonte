@@ -137,6 +137,10 @@ Infraestrutura:
 - 1 banco PostgreSQL
 - Deploy em VPS
 
+> **Backup (story 20):** o backup semanal usa `pg_dump`/`pg_restore` **v16**. A imagem/host
+> que roda a API precisa ter o `postgresql-client` v16 instalado (ex.: Alpine
+> `apk add postgresql16-client`; Debian `postgresql-client-16`). Ver `docs/ai/backup-guide.md`.
+
 Sem microservices.
 Sem mensageria.
 Sem multi-tenant (neste momento).

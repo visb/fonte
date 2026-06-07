@@ -88,4 +88,7 @@ export const queryKeys = {
   census: {
     pending: (houseId: string) => ['census', houseId, 'pending'] as const,
   },
+  backup: {
+    all: ['backup'] as const,
+  },
 } as const;

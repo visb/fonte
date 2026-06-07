@@ -35,6 +35,7 @@ import { AssociadosPage } from '@/features/billing/pages/AssociadosPage';
 import { MessagesPage } from '@/features/messages/pages/MessagesPage';
 import { ProfilePage } from '@/features/auth/pages/ProfilePage';
 import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage';
+import { BackupPage } from '@/features/backup/pages/BackupPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -93,6 +94,7 @@ export default function App() {
               <Route path="bible-courses" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><BibleCoursesPage /></ProtectedRoute>} />
               <Route path="bible-courses/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><BibleClassDetailPage /></ProtectedRoute>} />
               <Route path="messages" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><MessagesPage /></ProtectedRoute>} />
+              <Route path="backup" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><BackupPage /></ProtectedRoute>} />
               <Route
                 path="billing"
                 element={

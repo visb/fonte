@@ -10,6 +10,7 @@ import {
   BookOpen,
   Building2,
   ChevronDown,
+  Database,
   HandHeart,
   Home,
   LogOut,
@@ -179,6 +180,7 @@ export function AppLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isAdminOrCoordinator = role === Role.ADMIN || role === Role.COORDINATOR;
+  const isAdmin = role === Role.ADMIN;
 
   const closeSidebar = () => setSidebarOpen(false);
 
@@ -290,6 +292,12 @@ export function AppLayout() {
           )}
           {isAdminOrCoordinator && (
             <SettingsSubmenu closeSidebar={closeSidebar} />
+          )}
+          {isAdmin && (
+            <Link to="/backup" onClick={closeSidebar} className={navLinkClass}>
+              <Database size={16} />
+              Backup
+            </Link>
           )}
         </nav>
 

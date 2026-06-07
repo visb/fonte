@@ -1040,3 +1040,21 @@ export interface GetStreetSalesReportParams {
   month: string;
   houseId?: string;
 }
+
+// ─── Backup ───────────────────────────────────────────────────────────────────
+
+export interface BackupListItem {
+  key: string;
+  size: number;
+  createdAt: string;
+}
+
+export interface BackupSummary {
+  skipped: boolean;
+  reason?: string;
+  dumpKey?: string;
+  dumpSize?: number;
+  filesCopied?: number;
+  filesTotal?: number;
+  prunedDumps?: string[];
+}

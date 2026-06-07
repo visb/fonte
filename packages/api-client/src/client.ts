@@ -18,6 +18,7 @@ import { createSupplyRoomModule } from './modules/supply-room.js';
 import { createBibleCourseModule } from './modules/bible-course.js';
 import { createNotificationsModule } from './modules/notifications.js';
 import { createCensusModule } from './modules/census.js';
+import { createBackupModule } from './modules/backup.js';
 
 export interface ApiClientConfig {
   baseURL: string;
@@ -65,6 +66,7 @@ export function createApiClient(config: ApiClientConfig) {
     bibleCourse: createBibleCourseModule(http),
     notifications: createNotificationsModule(http),
     census: createCensusModule(http),
+    backup: createBackupModule(http),
     photoUrl: (path: string | null | undefined): string | null => {
       if (!path) return null;
       if (path.startsWith('http://') || path.startsWith('https://')) return path;

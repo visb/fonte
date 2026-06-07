@@ -126,5 +126,7 @@ export type {
   UnreadCountResponse,
   NotificationPushPayload,
   ListNotificationsParams,
+  BackupListItem,
+  BackupSummary,
 } from './types.js';
 export { NotificationType, HouseCapacityRequestStatus } from './types.js';

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guidance de alta prioridade para Claude Code neste repositório. Detalhes completos em `docs/ai/`.
+Guidance de alta prioridade para Claude Code neste repositório. Detalhes sob demanda nas skills `fonte-*` em `.claude/skills/` (carregadas automaticamente quando a tarefa casa).
 
 ---
 
@@ -27,14 +27,19 @@ packages/
 
 ## Leia sob demanda
 
-- `docs/ai/project-map.md` — onde encontrar cada tipo de mudança.
-- `docs/ai/backend-guide.md` — padrões do backend, módulos, auth e migrations.
-- `docs/ai/frontend-guide.md` — padrões dos apps `adm.fonte` e `ops.fonte`.
-- `docs/ai/workflow-guide.md` — comandos e validação por tipo de mudança.
+Skills `fonte-*` (em `.claude/skills/`) carregam automaticamente quando a tarefa casa com sua `description`. Existem:
+
+- `fonte-project-map` — onde encontrar cada tipo de mudança no monorepo.
+- `fonte-backend` — padrões do backend NestJS, módulos, auth e migrations.
+- `fonte-frontend` — padrões dos apps `adm.fonte` e `ops.fonte`.
+- `fonte-workflow` — comandos e validação por tipo de mudança.
+- `fonte-backup` — runbook de backup banco+bucket.
+- `fonte-support-groups` — feature Grupos de Apoio.
+
+Docs canônicos (não são skills):
+
 - `BUSINESS_RULES.md` — regras de negócio e permissões por role.
 - `CONTRIBUTING.md` — convenção de commits.
-
-Abra apenas os guias necessários para a tarefa atual.
 
 ---
 

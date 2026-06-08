@@ -1,3 +1,8 @@
+---
+name: fonte-backup
+description: Runbook de backup banco+bucket da API fonte — pg_dump/pg_restore v16 (pré-requisito bloqueante), agenda semanal sob advisory lock, retenção por contagem, restore a partir da nuvem, export/import local 3-2-1, endpoints ADMIN. Use ao mexer em backup, restore, pg_dump ou ao operar/configurar o backup.
+---
+
 # Backup — guia de operação
 
 Backup do banco (Postgres) e do bucket de arquivos. Implementado na story 20

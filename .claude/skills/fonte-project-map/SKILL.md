@@ -1,3 +1,8 @@
+---
+name: fonte-project-map
+description: Mapa do monorepo fonte — onde encontrar cada tipo de mudança (módulo, DTO, tela, auth, migration, features específicas). Use ao localizar arquivos, mapear dependências entre packages, ou começar qualquer tarefa no repo sem saber onde mexer.
+---
+
 # Mapa do projeto para IA
 
 ## Visão geral
@@ -56,4 +61,4 @@ Quando `packages/types/src/index.ts` mudar, reconstrua `@fonte/types`. Quando o 
 
 - Não carregue todos os arquivos por padrão; use este mapa para abrir só o necessário.
 - Antes de propor alteração, leia o arquivo real afetado.
-- Se uma orientação deste diretório conflitar com o código atual, confie no código e atualize o guia.
+- Se uma orientação deste mapa conflitar com o código atual, confie no código e atualize o mapa.

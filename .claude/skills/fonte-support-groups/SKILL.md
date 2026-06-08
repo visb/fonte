@@ -1,3 +1,8 @@
+---
+name: fonte-support-groups
+description: Feature Grupos de Apoio (grupos de oração de famílias + checkin de presença) — modelo de dados (support_groups/meetings/checkins), API REST, telas adm.fonte e ops.fonte, geração/impressão de QR Code, fluxo de checkin fase 2 (ff.fonte). Use ao tocar em grupos de apoio, reuniões ou checkin de família.
+---
+
 # Grupos de Apoio
 
 ## Visão geral

@@ -1,3 +1,8 @@
+---
+name: fonte-frontend
+description: Padrões dos apps adm.fonte (React/Vite) e ops.fonte (Expo Router/React Native) — cliente HTTP @fonte/api-client compartilhado, rotas/auth/config de API de cada app, modo Resident e timer de uso no ops.fonte, tipos compartilhados. Use ao editar apps/adm.fonte ou apps/ops.fonte.
+---
+
 # Guia dos frontends para IA
 
 ## Apps

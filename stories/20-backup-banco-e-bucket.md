@@ -127,7 +127,7 @@ para **produção** via `.env` local). Reusam a lógica de `BackupService`.
 - `services/api/src/database/restore-backup.ts`
 - `services/api/src/database/backup-export.ts` — export local em zip.
 - `services/api/src/database/backup-import.ts` — import local a partir do zip (destrutivo).
-- `docs/ai/backup-guide.md` — operação, restauração, export/import local, pré-requisito `pg_dump` v16.
+- skill `fonte-backup` (`.claude/skills/fonte-backup/`) — operação, restauração, export/import local, pré-requisito `pg_dump` v16.
 
 **Editar:**
 - `services/api/src/app.module.ts` — importar `BackupModule`.

@@ -1,8 +1,13 @@
+---
+name: fonte-workflow
+description: Comandos e validação por tipo de mudança no monorepo fonte — build/test/docker, qual validação mínima rodar antes de commit, convenção de commit e cuidados (docker:reset, contratos compartilhados, auth). Use ao construir, testar, validar ou commitar mudanças.
+---
+
 # Workflow para IA
 
 ## Antes de alterar
 
-1. Identifique a área pelo [`project-map.md`](project-map.md).
+1. Identifique a área pela skill `fonte-project-map`.
 2. Leia os arquivos reais que serão alterados.
 3. Consulte `BUSINESS_RULES.md` para mudanças de regra de negócio/permissão.
 4. Consulte `CONTRIBUTING.md` apenas quando for criar commit.
@@ -65,4 +70,4 @@ Scopes esperados incluem:
 - `services/api`
 - `packages/types`
 
-Para mudanças nestes guias, use escopo adequado de documentação quando aceito pelo repositório, por exemplo `docs` ou o módulo afetado.
+Para mudanças de documentação use escopo adequado quando aceito pelo repositório, por exemplo `docs` ou o módulo afetado.

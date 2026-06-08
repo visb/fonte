@@ -1,3 +1,8 @@
+---
+name: fonte-backend
+description: Padrões do backend NestJS em services/api — estrutura de módulos, controllers finos, DTO+class-validator, entities/migrations TypeORM, auth/guards JWT, módulos resident-session/message/wishlist e regras críticas de domínio. Use ao criar ou editar qualquer coisa em services/api.
+---
+
 # Guia do backend para IA
 
 ## Estrutura

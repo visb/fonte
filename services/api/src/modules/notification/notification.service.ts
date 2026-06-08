@@ -167,22 +167,41 @@ export class NotificationService {
   }
 
   /**
-   * Idempotency helper for schedulers: true when a notification of `type` for
-   * `recipientRole`/`houseId` already exists referencing `entityId` in metadata
-   * within the dedupe `windowStart`.
+   * Idempotency helper for schedulers: true when a notification of `type`
+   * already exists whose metadata `key` equals `value` within the dedupe
+   * `windowStart`.
    */
-  async existsForEntitySince(
+  async existsByMetadataSince(
     type: NotificationType,
-    entityId: string,
+    key: string,
+    value: string,
     windowStart: Date,
   ): Promise<boolean> {
     const count = await this.repo
       .createQueryBuilder('n')
       .where('n.type = :type', { type })
       .andWhere('n.created_at >= :windowStart', { windowStart })
-      .andWhere(`n.metadata ->> 'entityId' = :entityId`, { entityId })
+      .andWhere(`n.metadata ->> :key = :value`, { key, value })
       .getCount();
     return count > 0;
+  }
+
+  /** Idempotency by referenced `entityId` in metadata. */
+  async existsForEntitySince(
+    type: NotificationType,
+    entityId: string,
+    windowStart: Date,
+  ): Promise<boolean> {
+    return this.existsByMetadataSince(type, 'entityId', entityId, windowStart);
+  }
+
+  /** Idempotency by referenced `residentId` in metadata. */
+  async existsForResidentSince(
+    type: NotificationType,
+    residentId: string,
+    windowStart: Date,
+  ): Promise<boolean> {
+    return this.existsByMetadataSince(type, 'residentId', residentId, windowStart);
   }
 
   /** Builds the targeting predicate shared by list/count/markAll. */

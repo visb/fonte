@@ -16,6 +16,11 @@ export class NotificationScheduler {
     private readonly notifications: NotificationService,
   ) {}
 
+  // One overdue notification per resident, deduped over a rolling 7-day window,
+  // so a family with several overdue installments gets a single weekly digest
+  // instead of one notification per installment every day.
+  private static readonly DEDUPE_WINDOW_DAYS = 7;
+
   @Cron('0 8 * * *', {
     name: 'receivable-overdue',
     timeZone: 'America/Sao_Paulo',
@@ -25,8 +30,9 @@ export class NotificationScheduler {
 
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
-    // Dedupe window: start of today (so a re-run on the same day does not duplicate).
-    const windowStart = new Date(`${todayStr}T00:00:00.000Z`);
+    // Dedupe window: last 7 days (so at most one notification per resident/week).
+    const windowStart = new Date(today);
+    windowStart.setUTCDate(windowStart.getUTCDate() - NotificationScheduler.DEDUPE_WINDOW_DAYS);
 
     const overdue = await this.receivableRepo.find({
       where: {
@@ -36,13 +42,15 @@ export class NotificationScheduler {
       relations: ['resident'],
     });
 
+    const byResident = this.groupByResident(overdue);
+
     let created = 0;
     let skipped = 0;
 
-    for (const receivable of overdue) {
-      const already = await this.notifications.existsForEntitySince(
+    for (const [residentId, items] of byResident) {
+      const already = await this.notifications.existsForResidentSince(
         NotificationType.RECEIVABLE_OVERDUE,
-        receivable.id,
+        residentId,
         windowStart,
       );
       if (already) {
@@ -50,26 +58,33 @@ export class NotificationScheduler {
         continue;
       }
 
-      const residentName = receivable.resident?.name ?? 'Acolhido';
-      const dueStr = String(receivable.dueDate).slice(0, 10);
+      const residentName = items[0].resident?.name ?? 'Acolhido';
+      const dueDates = items.map((i) => String(i.dueDate).slice(0, 10)).sort();
+      const oldestDue = dueDates[0];
+      const oldestDueBr = this.formatBrDate(oldestDue);
+      const count = items.length;
+      const body =
+        count === 1
+          ? `A parcela de ${residentName} venceu em ${oldestDueBr}.`
+          : `${residentName} tem ${count} parcelas vencidas (a mais antiga em ${oldestDueBr}).`;
 
       try {
         await this.notifications.create({
           type: NotificationType.RECEIVABLE_OVERDUE,
-          title: 'Parcela vencida',
-          body: `A parcela de ${residentName} venceu em ${dueStr}.`,
-          link: `/residents/${receivable.residentId}`,
+          title: count === 1 ? 'Parcela vencida' : 'Parcelas vencidas',
+          body,
+          link: `/residents/${residentId}`,
           recipientRole: Role.ADMIN,
           metadata: {
-            entityId: receivable.id,
-            residentId: receivable.residentId,
-            dueDate: dueStr,
+            residentId,
+            count,
+            oldestDueDate: oldestDue,
           },
         });
         created += 1;
       } catch (error) {
         this.logger.error(
-          `Failed to create overdue notification for receivable ${receivable.id}`,
+          `Failed to create overdue notification for resident ${residentId}`,
           error instanceof Error ? error.stack : error,
         );
       }
@@ -79,5 +94,23 @@ export class NotificationScheduler {
       `Finished overdue receivables check: ${created} created, ${skipped} skipped`,
     );
     return { created, skipped };
+  }
+
+  /** Converts an ISO date (yyyy-mm-dd) to Brazilian format (dd/mm/yyyy). */
+  private formatBrDate(isoDate: string): string {
+    const [year, month, day] = isoDate.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
+  private groupByResident(
+    receivables: ResidentReceivable[],
+  ): Map<string, ResidentReceivable[]> {
+    const groups = new Map<string, ResidentReceivable[]>();
+    for (const receivable of receivables) {
+      const list = groups.get(receivable.residentId);
+      if (list) list.push(receivable);
+      else groups.set(receivable.residentId, [receivable]);
+    }
+    return groups;
   }
 }

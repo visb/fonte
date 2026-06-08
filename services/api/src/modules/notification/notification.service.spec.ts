@@ -258,3 +258,18 @@ describe('NotificationService.existsForEntitySince', () => {
     ).resolves.toBe(false);
   });
 });
+
+describe('NotificationService.existsForResidentSince', () => {
+  it('matches on the residentId metadata key', async () => {
+    const qb = makeQb({ count: 1 });
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo);
+
+    await expect(
+      service.existsForResidentSince(NotificationType.RECEIVABLE_OVERDUE, 'res-1', new Date()),
+    ).resolves.toBe(true);
+
+    const calls = JSON.stringify(qb.andWhere.mock.calls);
+    expect(calls).toContain("metadata ->> :key");
+  });
+});

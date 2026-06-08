@@ -40,6 +40,8 @@ Docs canônicos (não são skills):
 
 - `BUSINESS_RULES.md` — regras de negócio e permissões por role.
 - `CONTRIBUTING.md` — convenção de commits.
+- `docs/lgpd/DIAGNOSTICO_LGPD.md` — inventário de dados pessoais e mapa de gaps LGPD.
+- `docs/lgpd/ROADMAP_LGPD.md` — plano faseado de adequação à LGPD.
 
 ---
 

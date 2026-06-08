@@ -3844,6 +3844,29 @@
           }
         }
       ]
+    },
+    {
+      "name": "Audit",
+      "item": [
+        {
+          "name": "Get audit trail by target",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/audit/resident/{{residentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit",
+                "resident",
+                "{{residentId}}"
+              ]
+            },
+            "description": "Trilha de auditoria de um recurso (LGPD art. 37). Somente ADMIN. targetType: resident|staff."
+          }
+        }
+      ]
     }
   ]
 }

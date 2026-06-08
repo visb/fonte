@@ -25,6 +25,7 @@ import { Role } from '@fonte/types';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RevealSensitive } from '../../common/decorators/reveal-sensitive.decorator';
+import { Audit } from '../../common/decorators/audit.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { DocumentTemplateService } from '../document-template/document-template.service';
@@ -150,6 +151,7 @@ export class ResidentController {
   @Get(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   @RevealSensitive()
+  @Audit('resident.read', 'resident')
   findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Resident> {
     return this.residentService.findOne(id);
   }
@@ -164,6 +166,7 @@ export class ResidentController {
   @Patch(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR)
   @RevealSensitive()
+  @Audit('resident.update', 'resident')
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateResidentDto,
@@ -174,6 +177,7 @@ export class ResidentController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Roles(Role.ADMIN)
+  @Audit('resident.delete', 'resident')
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.residentService.remove(id);
   }
@@ -358,6 +362,7 @@ export class ResidentController {
 
   @Get(':id/documents/:templateId/pdf')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  @Audit('resident.document.pdf', 'resident')
   async downloadPdf(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('templateId', ParseUUIDPipe) templateId: string,

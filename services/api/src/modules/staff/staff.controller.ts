@@ -19,6 +19,7 @@ import { memoryStorage } from 'multer';
 import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RevealSensitive } from '../../common/decorators/reveal-sensitive.decorator';
+import { Audit } from '../../common/decorators/audit.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -70,6 +71,7 @@ export class StaffController {
   @Get(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR)
   @RevealSensitive()
+  @Audit('staff.read', 'staff')
   findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Staff> {
     return this.staffService.findOne(id);
   }

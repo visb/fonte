@@ -3885,6 +3885,129 @@
           }
         }
       ]
+    },
+    {
+      "name": "Consents",
+      "item": [
+        {
+          "name": "Grant consent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/consents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "consents"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subjectType\": \"RESIDENT\",\n  \"subjectId\": \"{{residentId}}\",\n  \"purpose\": \"IMAGE_PUBLICATION\",\n  \"termVersion\": \"1.0\"\n}"
+            },
+            "description": "Registra consentimento (concessao). purpose: IMAGE_PUBLICATION|RELIGIOUS_DISCLOSURE."
+          }
+        },
+        {
+          "name": "Revoke consent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/consents/revoke",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "consents",
+                "revoke"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subjectType\": \"RESIDENT\",\n  \"subjectId\": \"{{residentId}}\",\n  \"purpose\": \"IMAGE_PUBLICATION\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Consent status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/consents/RESIDENT/{{residentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "consents",
+                "RESIDENT",
+                "{{residentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consent history",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/consents/RESIDENT/{{residentId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "consents",
+                "RESIDENT",
+                "{{residentId}}",
+                "history"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Check active consent",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/consents/check/active?subjectType=RESIDENT&subjectId={{residentId}}&purpose=IMAGE_PUBLICATION",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "consents",
+                "check",
+                "active"
+              ],
+              "query": [
+                {
+                  "key": "subjectType",
+                  "value": "RESIDENT"
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{residentId}}"
+                },
+                {
+                  "key": "purpose",
+                  "value": "IMAGE_PUBLICATION"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

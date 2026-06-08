@@ -32,6 +32,7 @@ import { BibleCourseModule } from './modules/bible-course/bible-course.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { ConsentModule } from './modules/consent/consent.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { AuditModule } from './modules/audit/audit.module';
     NotificationModule,
     BackupModule,
     AuditModule,
+    ConsentModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },

@@ -1,13 +1,15 @@
 import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { Notification } from '@fonte/api-client';
 import { relativeTime } from '../lib/relativeTime';
 
 type Props = {
   item: Notification;
   onPress: (item: Notification) => void;
+  onMarkRead: (id: string) => void;
 };
 
-export function NotificationRow({ item, onPress }: Props) {
+export function NotificationRow({ item, onPress, onMarkRead }: Props) {
   return (
     <TouchableOpacity
       onPress={() => onPress(item)}
@@ -31,6 +33,16 @@ export function NotificationRow({ item, onPress }: Props) {
             </Text>
           ) : null}
         </View>
+        {!item.read && (
+          <TouchableOpacity
+            onPress={() => onMarkRead(item.id)}
+            accessibilityLabel="Marcar como lida"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="ml-1 p-1"
+          >
+            <Ionicons name="checkmark-done" size={18} color="#2563eb" />
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );

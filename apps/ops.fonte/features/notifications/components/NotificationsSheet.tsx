@@ -61,7 +61,13 @@ export function NotificationsSheet({ visible, onClose }: Props) {
             <FlatList
               data={notifications}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <NotificationRow item={item} onPress={handlePress} />}
+              renderItem={({ item }) => (
+                <NotificationRow
+                  item={item}
+                  onPress={handlePress}
+                  onMarkRead={(id) => markRead.mutate(id)}
+                />
+              )}
             />
           )}
         </View>

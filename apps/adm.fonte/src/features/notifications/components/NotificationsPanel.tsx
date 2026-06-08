@@ -55,7 +55,12 @@ export function NotificationsPanel({ onClose }: Props) {
         ) : (
           <div className="space-y-0.5">
             {notifications.map((n) => (
-              <NotificationItem key={n.id} notification={n} onSelect={handleSelect} />
+              <NotificationItem
+                key={n.id}
+                notification={n}
+                onSelect={handleSelect}
+                onMarkRead={(id) => markRead.mutate(id)}
+              />
             ))}
           </div>
         )}

@@ -24,6 +24,7 @@ import { memoryStorage } from 'multer';
 import { Role } from '@fonte/types';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RevealSensitive } from '../../common/decorators/reveal-sensitive.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { DocumentTemplateService } from '../document-template/document-template.service';
@@ -148,18 +149,21 @@ export class ResidentController {
 
   @Get(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  @RevealSensitive()
   findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Resident> {
     return this.residentService.findOne(id);
   }
 
   @Post()
   @Roles(Role.ADMIN, Role.COORDINATOR)
+  @RevealSensitive()
   create(@Body() dto: CreateResidentDto): Promise<Resident> {
     return this.residentService.create(dto);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR)
+  @RevealSensitive()
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateResidentDto,
@@ -176,6 +180,7 @@ export class ResidentController {
 
   @Post(':id/readmit')
   @Roles(Role.ADMIN, Role.COORDINATOR)
+  @RevealSensitive()
   readmit(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReadmitResidentDto,

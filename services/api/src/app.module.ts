@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { StorageUrlInterceptor } from './modules/storage/storage-url.interceptor';
+import { SensitiveDataInterceptor } from './common/interceptors/sensitive-data.interceptor';
 import { MustChangePasswordGuard } from './common/guards/must-change-password.guard';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -42,6 +44,9 @@ import { BackupModule } from './modules/backup/backup.module';
     }),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
+    // LGPD art. 46 — proteção contra força bruta. Janela global padrão; o login
+    // recebe limite mais estrito via @Throttle no AuthController.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     AuthModule,
     UserModule,
     HouseModule,
@@ -68,6 +73,8 @@ import { BackupModule } from './modules/backup/backup.module';
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },
     { provide: APP_INTERCEPTOR, useClass: StorageUrlInterceptor },
+    // LGPD — mascaramento de CPF/RG nas respostas (minimização de dados).
+    { provide: APP_INTERCEPTOR, useClass: SensitiveDataInterceptor },
   ],
 })
 export class AppModule {}

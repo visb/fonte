@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SkipPasswordCheck } from '../../common/decorators/skip-password-check.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -11,8 +12,12 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  // LGPD art. 46 — limita tentativas de login (5 por minuto por IP) para mitigar
+  // força bruta sobre credenciais.
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto);
   }

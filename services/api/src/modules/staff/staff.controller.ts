@@ -18,6 +18,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RevealSensitive } from '../../common/decorators/reveal-sensitive.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -38,6 +39,7 @@ export class StaffController {
   constructor(private staffService: StaffService) {}
 
   @Get('me')
+  @RevealSensitive()
   getMe(@CurrentUser() user: AuthenticatedUser): Promise<Staff> {
     return this.staffService.findByUserId(user.userId);
   }
@@ -67,12 +69,14 @@ export class StaffController {
 
   @Get(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR)
+  @RevealSensitive()
   findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Staff> {
     return this.staffService.findOne(id);
   }
 
   @Post()
   @Roles(Role.ADMIN)
+  @RevealSensitive()
   create(@Body() dto: CreateStaffDto): Promise<Staff> {
     return this.staffService.create(dto);
   }
@@ -92,6 +96,7 @@ export class StaffController {
 
   @Patch(':id')
   @Roles(Role.ADMIN)
+  @RevealSensitive()
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateStaffDto,

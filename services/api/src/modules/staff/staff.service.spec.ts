@@ -259,3 +259,45 @@ describe('StaffService permissions', () => {
     await expect(service.hasPermission('staff-1', 'MANAGE_STOREROOM' as never)).resolves.toBe(false);
   });
 });
+
+describe('StaffService.findAll house scoping', () => {
+  it('ADMIN lists all staff (no house filter)', async () => {
+    const staffRepo = makeRepo({ find: jest.fn().mockResolvedValue([{ id: 's1' }]) });
+    const service = makeService(staffRepo, makeRepo(), makeRepo());
+
+    await service.findAll({ role: 'ADMIN', userId: 'u1' });
+
+    expect(staffRepo.find).toHaveBeenCalledWith(
+      expect.not.objectContaining({ where: expect.anything() }),
+    );
+  });
+
+  it('COORDINATOR is scoped to own house', async () => {
+    const staffRepo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'me', userId: 'u1', houseId: 'house-9' }),
+      find: jest.fn().mockResolvedValue([]),
+    });
+    const permRepo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
+    const service = makeService(staffRepo, makeRepo(), permRepo);
+
+    await service.findAll({ role: 'COORDINATOR', userId: 'u1' });
+
+    expect(staffRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { houseId: 'house-9' } }),
+    );
+  });
+
+  it('returns empty when non-admin caller has no house', async () => {
+    const staffRepo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'me', userId: 'u1', houseId: null }),
+      find: jest.fn().mockResolvedValue([]),
+    });
+    const permRepo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
+    const service = makeService(staffRepo, makeRepo(), permRepo);
+
+    const result = await service.findAll({ role: 'SERVANT', userId: 'u1' });
+
+    expect(result).toEqual([]);
+    expect(staffRepo.find).not.toHaveBeenCalled();
+  });
+});

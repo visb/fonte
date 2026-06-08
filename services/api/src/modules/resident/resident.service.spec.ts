@@ -850,3 +850,41 @@ describe('ResidentService.getContributionsReport', () => {
     expect(report.items[0].collectedAmount).toBe(300);
   });
 });
+
+describe('ResidentService.findAll house scoping', () => {
+  function makeScopedService(staffService: Record<string, jest.Mock>) {
+    const qb = makeQb([], 0);
+    const repo = { createQueryBuilder: jest.fn().mockReturnValue(qb) } as unknown as Repository<Resident>;
+    const service = makeService(repo, {}, {}, staffService);
+    return { service, qb };
+  }
+
+  it('forces the caller house for non-admin and ignores dto.houseId', async () => {
+    const staffService = { findByUserId: jest.fn().mockResolvedValue({ houseId: 'house-9' }) };
+    const { service, qb } = makeScopedService(staffService);
+
+    await service.findAll({ houseId: 'other-house' }, { role: 'SERVANT', userId: 'u1' });
+
+    expect(staffService.findByUserId).toHaveBeenCalledWith('u1');
+    expect(qb.andWhere).toHaveBeenCalledWith('resident.houseId = :houseId', { houseId: 'house-9' });
+  });
+
+  it('returns empty when non-admin caller has no house', async () => {
+    const staffService = { findByUserId: jest.fn().mockResolvedValue({ houseId: null }) };
+    const { service, qb } = makeScopedService(staffService);
+
+    const result = await service.findAll({}, { role: 'SERVANT', userId: 'u1' });
+
+    expect(result).toEqual({ data: [], total: 0, page: 1, limit: 20 });
+    expect(qb.getManyAndCount).not.toHaveBeenCalled();
+  });
+
+  it('does not scope ADMIN callers', async () => {
+    const staffService = { findByUserId: jest.fn() };
+    const { service } = makeScopedService(staffService);
+
+    await service.findAll({}, { role: 'ADMIN', userId: 'admin-1' });
+
+    expect(staffService.findByUserId).not.toHaveBeenCalled();
+  });
+});

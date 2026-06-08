@@ -64,8 +64,8 @@ export class StaffController {
 
   @Get()
   @Roles(Role.ADMIN, Role.COORDINATOR)
-  findAll(): Promise<Staff[]> {
-    return this.staffService.findAll();
+  findAll(@CurrentUser() user: AuthenticatedUser): Promise<Staff[]> {
+    return this.staffService.findAll({ role: user.role, userId: user.userId });
   }
 
   @Get(':id')

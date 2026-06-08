@@ -81,8 +81,21 @@ export class ResidentService {
     private notifications: NotificationService,
   ) {}
 
-  async findAll(dto: ListResidentsDto): Promise<{ data: Resident[]; total: number; page: number; limit: number }> {
-    const { page = 1, limit = 20, search, status, houseId } = dto;
+  async findAll(
+    dto: ListResidentsDto,
+    caller?: { role: string; userId: string },
+  ): Promise<{ data: Resident[]; total: number; page: number; limit: number }> {
+    const { page = 1, limit = 20, search, status } = dto;
+    let { houseId } = dto;
+
+    // LGPD art. 6/46 — escopo por casa. Não-ADMIN só enxerga internos da própria
+    // casa; o houseId é derivado do staff autenticado, nunca do parâmetro de
+    // consulta (que seria adulterável).
+    if (caller && caller.role !== Role.ADMIN) {
+      const staff = await this.staffService.findByUserId(caller.userId).catch(() => null);
+      if (!staff?.houseId) return { data: [], total: 0, page, limit };
+      houseId = staff.houseId;
+    }
 
     const qb = this.residentRepository
       .createQueryBuilder('resident')

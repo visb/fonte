@@ -101,8 +101,11 @@ export class ResidentController {
 
   @Get()
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
-  findAll(@Query() dto: ListResidentsDto): Promise<{ data: Resident[]; total: number; page: number; limit: number }> {
-    return this.residentService.findAll(dto);
+  findAll(
+    @Query() dto: ListResidentsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ data: Resident[]; total: number; page: number; limit: number }> {
+    return this.residentService.findAll(dto, { role: user.role, userId: user.userId });
   }
 
   @Get('me')

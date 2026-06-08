@@ -37,11 +37,17 @@ export class StaffService {
     return Object.assign(staff, { permissions: perms.map((p) => p.permissionType) });
   }
 
-  findAll(): Promise<Staff[]> {
-    return this.staffRepository.find({
-      order: { name: 'ASC' },
-      relations: ['user', 'house', 'supportGroup'],
-    });
+  // LGPD art. 6/46 — escopo por casa. COORDINATOR só lista staff da própria
+  // casa; ADMIN lista todos. houseId vem do staff autenticado, não do cliente.
+  async findAll(caller?: { role: string; userId: string }): Promise<Staff[]> {
+    const order = { name: 'ASC' } as const;
+    const relations = ['user', 'house', 'supportGroup'];
+    if (caller && caller.role !== Role.ADMIN) {
+      const me = await this.findByUserId(caller.userId).catch(() => null);
+      if (!me?.houseId) return [];
+      return this.staffRepository.find({ where: { houseId: me.houseId }, order, relations });
+    }
+    return this.staffRepository.find({ order, relations });
   }
 
   async findOne(id: string): Promise<Staff> {

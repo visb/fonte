@@ -30,10 +30,23 @@ export interface ResidentDocumentView {
   residentId: string;
   templateId: string;
   templateName: string;
+  signAtAdmission: boolean;
   signed: boolean;
   signedFileUrl: string | null;
   signedAt: Date | null;
   withinWindow: boolean;
+}
+
+// Documento de acolhimento a assinar: combina o template marcado
+// signAtAdmission com o status de assinatura do interno. Inclui o caminho do
+// PDF preenchido (gerado on-demand) para impressão/assinatura.
+export interface AdmissionDocumentView {
+  templateId: string;
+  templateName: string;
+  signed: boolean;
+  signedFileUrl: string | null;
+  signedAt: Date | null;
+  pdfPath: string;
 }
 import { ResidentAttachment } from './resident-attachment.entity';
 import { ResidentDocument } from './resident-document.entity';
@@ -600,10 +613,33 @@ export class ResidentService {
         residentId: doc.residentId,
         templateId: doc.templateId,
         templateName: doc.template?.name ?? '',
+        signAtAdmission: doc.template?.signAtAdmission ?? false,
         signed: !!doc.signedFileUrl,
         signedFileUrl: doc.signedFileUrl,
         signedAt: doc.signedFileUrl ? doc.updatedAt : null,
         withinWindow,
+      };
+    });
+  }
+
+  // Lista os documentos de acolhimento (templates signAtAdmission) com o status
+  // de assinatura do interno. `templates` vem do DocumentTemplateService para
+  // não acoplar ResidentService ao repositório de templates.
+  async findAdmissionDocuments(
+    residentId: string,
+    templates: { id: string; name: string }[],
+  ): Promise<AdmissionDocumentView[]> {
+    await this.findOne(residentId);
+    const docs = await this.docRepository.find({ where: { residentId } });
+    return templates.map((t) => {
+      const doc = docs.find((d) => d.templateId === t.id);
+      return {
+        templateId: t.id,
+        templateName: t.name,
+        signed: !!doc?.signedFileUrl,
+        signedFileUrl: doc?.signedFileUrl ?? null,
+        signedAt: doc?.signedFileUrl ? doc.updatedAt : null,
+        pdfPath: `/api/v1/residents/${residentId}/documents/${t.id}/pdf`,
       };
     });
   }

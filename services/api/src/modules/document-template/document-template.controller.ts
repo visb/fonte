@@ -48,8 +48,9 @@ export class DocumentTemplateController {
     @Body('name') name: string,
     @Body('content') content: string,
     @Body('isRequired') isRequired?: boolean,
+    @Body('signAtAdmission') signAtAdmission?: boolean,
   ): Promise<DocumentTemplate> {
-    return this.service.create(name, content ?? '', isRequired ?? false);
+    return this.service.create(name, content ?? '', isRequired ?? false, signAtAdmission ?? false);
   }
 
   @Post('images')
@@ -71,11 +72,13 @@ export class DocumentTemplateController {
     @Body('name') name?: string,
     @Body('content') content?: string,
     @Body('isRequired') isRequired?: boolean,
+    @Body('signAtAdmission') signAtAdmission?: boolean,
   ): Promise<DocumentTemplate> {
-    const data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired'>> = {};
+    const data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired' | 'signAtAdmission'>> = {};
     if (name !== undefined) data.name = name;
     if (content !== undefined) data.content = content;
     if (isRequired !== undefined) data.isRequired = isRequired;
+    if (signAtAdmission !== undefined) data.signAtAdmission = signAtAdmission;
     return this.service.update(id, data);
   }
 

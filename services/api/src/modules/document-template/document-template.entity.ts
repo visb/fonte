@@ -14,6 +14,11 @@ export class DocumentTemplate {
   @Column({ name: 'is_required', type: 'boolean', default: false })
   isRequired: boolean;
 
+  // LGPD/acolhimento — marca o template como documento a ser assinado no
+  // acolhimento. Surge na aba de anexos do filho com flag específica.
+  @Column({ name: 'sign_at_admission', type: 'boolean', default: false })
+  signAtAdmission: boolean;
+
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }

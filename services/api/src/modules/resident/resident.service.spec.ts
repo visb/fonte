@@ -888,3 +888,39 @@ describe('ResidentService.findAll house scoping', () => {
     expect(staffService.findByUserId).not.toHaveBeenCalled();
   });
 });
+
+describe('ResidentService.findAdmissionDocuments', () => {
+  it('composes admission templates with the resident signed status', async () => {
+    const residentFindOne = jest.fn().mockResolvedValue(makeResident());
+    const docFind = jest.fn().mockResolvedValue([
+      { templateId: 't1', signedFileUrl: 'http://x/url.pdf', updatedAt: new Date('2026-01-01') },
+    ]);
+    const service = new ResidentService(
+      { findOne: residentFindOne } as never,                                  // residentRepository
+      { find: docFind } as never,                                             // docRepository
+      {} as never,                                                            // attachmentRepository
+      {} as never,                                                            // userRepository
+      {} as never,                                                            // admissionRepository
+      {} as never,                                                            // storageService
+      { getLastContributionDates: jest.fn().mockResolvedValue(new Map()) } as never, // followUpService
+      {} as never,                                                            // receivableService
+      {} as never,                                                            // staffService
+      {} as never,                                                            // dataSource
+      {} as never,                                                            // notifications
+    );
+
+    const result = await service.findAdmissionDocuments(RESIDENT_ID, [
+      { id: 't1', name: 'Termo de Imagem' },
+      { id: 't2', name: 'Aviso de Privacidade' },
+    ]);
+
+    expect(result[0]).toMatchObject({
+      templateId: 't1',
+      templateName: 'Termo de Imagem',
+      signed: true,
+      signedFileUrl: 'http://x/url.pdf',
+    });
+    expect(result[0].pdfPath).toContain('/documents/t1/pdf');
+    expect(result[1]).toMatchObject({ templateId: 't2', signed: false, signedFileUrl: null });
+  });
+});

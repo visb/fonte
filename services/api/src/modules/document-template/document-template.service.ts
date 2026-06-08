@@ -65,20 +65,25 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return this.repo.find({ order: { name: 'ASC' } });
   }
 
+  // Templates marcados para assinatura no acolhimento.
+  findAdmissionTemplates(): Promise<DocumentTemplate[]> {
+    return this.repo.find({ where: { signAtAdmission: true }, order: { name: 'ASC' } });
+  }
+
   async findOne(id: string): Promise<DocumentTemplate> {
     const template = await this.repo.findOne({ where: { id } });
     if (!template) throw new NotFoundException(`Template ${id} not found`);
     return template;
   }
 
-  async create(name: string, content: string, isRequired = false): Promise<DocumentTemplate> {
+  async create(name: string, content: string, isRequired = false, signAtAdmission = false): Promise<DocumentTemplate> {
     const existing = await this.repo.findOne({ where: { name } });
     if (existing) throw new ConflictException(`Template com nome "${name}" já existe`);
-    const template = this.repo.create({ name, content, isRequired });
+    const template = this.repo.create({ name, content, isRequired, signAtAdmission });
     return this.repo.save(template);
   }
 
-  async update(id: string, data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired'>>): Promise<DocumentTemplate> {
+  async update(id: string, data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired' | 'signAtAdmission'>>): Promise<DocumentTemplate> {
     await this.findOne(id);
     if (data.name) {
       const conflict = await this.repo.findOne({ where: { name: data.name } });

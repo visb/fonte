@@ -1552,6 +1552,24 @@
             },
             "description": "Extrai dados de uma ficha de acolhimento .docx usando Claude AI. Retorna ParseDocxResult com resident, relatives, warnings, houseName, rawText. Roles: ADMIN, COORDINATOR."
           }
+        },
+        {
+          "name": "Get admission documents",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/admission-documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "admission-documents"
+              ]
+            },
+            "description": "Documentos a assinar no acolhimento (templates signAtAdmission) com status de assinatura e caminho do PDF preenchido."
+          }
         }
       ]
     },

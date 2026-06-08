@@ -39,7 +39,7 @@ import { UpdateResidentDto } from './dto/update-resident.dto';
 import { ResidentAttachment } from './resident-attachment.entity';
 import { ResidentDocument } from './resident-document.entity';
 import { Admission } from './admission.entity';
-import { ResidentDocumentView, ResidentMeView } from './resident.service';
+import { AdmissionDocumentView, ResidentDocumentView, ResidentMeView } from './resident.service';
 import { Resident } from './resident.entity';
 import { ResidentService } from './resident.service';
 import { ReadmitResidentDto } from './dto/readmit-resident.dto';
@@ -376,6 +376,18 @@ export class ResidentController {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(buffer);
+  }
+
+  // Documentos a assinar no acolhimento (flag signAtAdmission no template),
+  // com status de assinatura e caminho do PDF preenchido. Alimenta a aba de
+  // anexos do filho.
+  @Get(':id/admission-documents')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  async getAdmissionDocuments(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<AdmissionDocumentView[]> {
+    const templates = await this.documentTemplateService.findAdmissionTemplates();
+    return this.residentService.findAdmissionDocuments(id, templates);
   }
 
   @Get(':id/attachments')

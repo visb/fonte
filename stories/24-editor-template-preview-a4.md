@@ -1,16 +1,14 @@
-# Plan: Pré-visualização real do template em folha A4
+# Plan: Editor com moldura A4 e quebra de página automática (estilo Word/Docs)
 
 ## Context
 
-Ao editar um template (`TemplateEditor.tsx`), o usuário **não vê** como o texto fica posicionado na folha impressa. O editor apenas **aproxima** a área de conteúdo com `max-width: 720px` (comentário "simula área A4"), mas:
-- Não respeita as **proporções reais** da A4 (210×297mm).
-- Não mostra as **margens** reais do PDF (40px em todos os lados + `padding:48px 40px` do `body`).
-- Não mostra **quebras de página** (onde o conteúdo passa para a 2ª folha).
-- A unidade de fonte do editor (px) hoje difere da do PDF — ver `[[23-editor-template-fonte-padrao-sincronizada]]`.
+Ao editar um template (`TemplateEditor.tsx`), o usuário **não vê** como o texto fica posicionado na folha impressa. Hoje o editor só aproxima a área com `max-width: 720px` (comentário "simula área A4") — sem proporção real da A4, sem margens reais, **sem quebras de página**.
 
-O PDF real é gerado por puppeteer em `document-template.service.ts`: `page.pdf({ format: 'A4', margin: 40px })` sobre o HTML de `renderForResident`, cujo `<style>` define `body{font-family:Arial;font-size:10px;line-height:1.2;max-width:800px;padding:48px 40px}`.
+**Decisão do usuário**: o **próprio editor** deve ter uma **moldura de A4**, com **quebras de página automáticas** quando o conteúdo excede uma folha — exatamente como Word/Google Docs. Não é um preview separado: a edição acontece dentro das páginas A4 paginadas.
 
-Requisito: "ao editar um template, preciso ter uma visão real do texto posicionado na hora da impressão numa folha A4."
+O PDF real é gerado por puppeteer em `document-template.service.ts`: `page.pdf({ format: 'A4', margin: 40px })` sobre o HTML de `renderForResident`, cujo `<style>` tem `body{font-family:Arial;font-size:10px;line-height:1.2;max-width:800px;padding:48px 40px}`. A moldura do editor tem que **bater 1:1** com essa geometria para a paginação na tela corresponder à do PDF.
+
+> Pré-requisito: a unidade de fonte editor↔PDF precisa estar unificada (px→pt) — fazer **depois** da `[[23-editor-template-fonte-padrao-sincronizada]]`, senão a quebra na tela não corresponde à impressão.
 
 ---
 
@@ -18,52 +16,47 @@ Requisito: "ao editar um template, preciso ter uma visão real do texto posicion
 
 ### 1. CSS de impressão como fonte única de verdade
 
-Hoje o CSS de impressão vive embutido no template HTML de `document-template.service.ts` e o editor reaproxima por conta própria. Extrair as regras de corpo/tipografia/tabela para uma **constante compartilhada** consumível pelos dois lados:
+Hoje o CSS de impressão vive embutido em `document-template.service.ts` e o editor reaproxima por conta própria. Extrair corpo/tipografia/tabela/imagem para uma **constante compartilhada** `DOCUMENT_PRINT_CSS` em `packages/types` (ou novo `packages/doc-styles`), consumida pelos dois lados:
+- Backend injeta no `<style>` do `renderForResident`.
+- Frontend injeta na moldura do editor.
+Garante que a tela e o PDF usem **exatamente** as mesmas regras (margens, fonte, tabela, listas, imagem). Decisão: extrair para pacote (não duplicar).
 
-- Opção A (preferida): mover a string de CSS para `packages/types` (ou um novo `packages/doc-styles`) exportando `DOCUMENT_PRINT_CSS`. Backend injeta no `<style>`; frontend injeta no preview. Garante 1:1.
-- Opção B (mínimo): duplicar o CSS no frontend e marcar no código que **as duas cópias devem andar juntas** (mais frágil).
+### 2. Geometria da página A4 (calibrar com o puppeteer)
 
-Recomendo A — é o que torna o preview confiável a longo prazo.
+A4 a 96 dpi = **794 × 1123 px**. O puppeteer aplica `margin: 40px` em cada lado **e** o `body` tem `padding: 48px 40px`. Reconciliar para a moldura do editor:
+- Largura da página: 794px (`210mm`).
+- Altura da página: 1123px (`297mm`).
+- Área de conteúdo (onde o texto flui antes de quebrar) = altura − margens efetivas (margin puppeteer + padding body). **Medir o valor real** gerando um PDF de referência e ajustando a constante até a quebra na tela coincidir com a do PDF (calibração empírica — registrar o número final em comentário).
 
-### 2. Componente `A4Preview` — `features/settings/components/A4Preview.tsx`
+> ⚠️ Risco principal da story: margin do puppeteer e padding do body hoje **se somam**. Ao paginar na tela, definir UMA convenção (ex.: zerar `margin` do puppeteer e deixar só o padding do body, ou vice-versa) para a altura útil ser inequívoca. Ajustar `document-template.service.ts` em conjunto.
 
-Renderiza `editor.getHTML()` dentro de uma "página" com proporção A4 real e as margens do PDF:
+### 3. Paginação dentro do editor TipTap
+
+TipTap/ProseMirror **não** pagina nativamente. Abordagem:
+- **Preferida**: adotar uma extensão de paginação TipTap já testada (ex.: `tiptap-pagination-plus` / `tiptap-extension-pagination`), que mede a altura dos nós e desenha quebras de página + molduras a cada altura útil. **Conferir compatibilidade** com o major do `@tiptap/core`/`@tiptap/react` já instalado antes de adotar; se incompatível, fixar versão ou migrar.
+- **Fallback (MVP visual)**: se nenhuma extensão for compatível, envolver o `EditorContent` numa moldura A4 (largura/margens reais) e desenhar **guias de quebra** (linhas tracejadas + "gaps" entre páginas) via camada de fundo `repeating-linear-gradient` na altura de página. Não move o conteúdo entre folhas discretas, mas mostra onde cada página termina — calibrado para coincidir com o PDF. Evoluir para folhas discretas depois.
+
+Decisão: tentar a extensão de paginação real (comportamento Word/Docs); cair no MVP visual só se a compat travar — registrar em `PROGRESS.md` se cair no fallback.
+
+### 4. Moldura visual — `TemplateEditor.tsx`
+
+Envolver o `EditorContent` na página A4:
 
 ```tsx
-// página A4: 210mm × 297mm; margens do PDF = 40px ~ 30px de padding interno equiv.
-<div className="a4-page" style={{
-  width: '210mm', minHeight: '297mm',
-  padding: '48px 40px',                 // == body do PDF
-  background: '#fff', boxShadow: '0 0 0 1px #ddd, 0 8px 24px rgba(0,0,0,.12)',
-  fontFamily: 'Arial, Helvetica, sans-serif',
-}}>
-  <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+<div className="a4-canvas">              {/* fundo cinza, centraliza, faz zoom-fit */}
+  <div className="a4-page">              {/* 794px, sombra, padding == geometria §2 */}
+    <EditorContent editor={editor} />    {/* paginação da §3 desenha as quebras */}
+  </div>
 </div>
 ```
 
-- Aplicar `DOCUMENT_PRINT_CSS` num `<style scoped>`/classe que envolve o preview, para tabela/listas/imagem baterem com o PDF.
-- **Escala**: 210mm não cabe em telas estreitas; envolver num container com `transform: scale(...)` calculado pela largura disponível (ou `zoom`), mantendo as proporções. Mostrar a régua de zoom (50/75/100%).
+- `.a4-canvas`: fundo neutro (cinza claro), centraliza a página, aplica `transform: scale(...)` para caber em telas estreitas (régua de zoom 50/75/100%).
+- `.a4-page`: 794px de largura, sombra, padding = geometria calibrada na §2; recebe `DOCUMENT_PRINT_CSS`.
+- Remover o `max-width:720px` atual (substituído pela página A4 real).
 
-### 3. Variáveis no preview
+### 5. Variáveis na moldura
 
-O template tem placeholders `{{name}}`, `{{cpf}}`, etc. (lista em `VARIABLES`). No preview (sem filho selecionado), renderizar os placeholders de forma legível:
-- Opção A: substituir por **rótulos** entre colchetes (ex.: `[Nome completo]`) — deixa claro que é variável.
-- Opção B: substituir por **dados de exemplo** fixos.
-Proposta: A (rótulos), reusando o mapa `VARIABLES`.
-
-### 4. Paginação (quebras de página A4)
-
-Mostrar onde o conteúdo passa de página. Abordagens:
-- **MVP**: uma única página A4 de largura/margens reais com **guias horizontais tracejadas** a cada altura de página (297mm − margens) indicando a quebra. Simples e suficiente para "ver o posicionamento".
-- **Completo**: paginar de verdade, fatiando o conteúdo em N folhas A4 empilhadas (mais complexo; mede a altura renderizada e quebra). Considerar lib só se o MVP não bastar.
-Proposta: começar pelo MVP (guias de quebra), evoluir depois.
-
-### 5. Integração na UI — `TemplateEditor.tsx`
-
-Botão **"Pré-visualizar (A4)"** no toolbar abrindo o `A4Preview`:
-- Modo **toggle lado a lado** (editor à esquerda, preview à direita) em telas largas, ou
-- Modo **modal/drawer** de preview em telas estreitas.
-Proposta: toggle lado a lado com fallback modal. Atualiza ao vivo de `editor.getHTML()` (ou em um "atualizar preview" para não re-renderizar a cada tecla).
+Placeholders `{{name}}` etc. (mapa `VARIABLES`) aparecem **literais** durante a edição (é o template). A moldura A4 é a superfície de edição — não substituir por dados aqui (a substituição acontece no `renderForResident` ao gerar o PDF do filho). Manter literais; a fidelidade de **layout** (margem/fonte/quebra) é o que importa.
 
 ---
 
@@ -71,24 +64,24 @@ Proposta: toggle lado a lado com fallback modal. Atualiza ao vivo de `editor.get
 
 | Arquivo | Caso |
 | --- | --- |
-| `apps/adm.fonte/e2e/document-templates.spec.ts` | Abrir editor → clicar "Pré-visualizar (A4)" → `.a4-page` visível com width A4; conteúdo do editor aparece dentro |
-| idem | Placeholder `{{name}}` no conteúdo → preview mostra `[Nome completo]` (rótulo), não o literal `{{name}}` |
-| Visual/manual | Texto do preview alinhado com a saída do PDF (mesmas margens/fonte) |
+| `apps/adm.fonte/e2e/document-templates.spec.ts` | Editor renderiza dentro de `.a4-page` com largura A4; digitar conteúdo curto fica em 1 página |
+| idem | Inserir conteúdo longo (> 1 folha) → segunda página/quebra aparece (elemento de page-break visível) |
+| Visual/manual | Posição da quebra na tela coincide com a quebra do PDF gerado (mesma fonte/margem) |
 
 Rodar: `pnpm test:adm`.
 
 ## Verificação manual
 
-1. `pnpm dev:adm` → editar template → "Pré-visualizar (A4)": página com proporção/margens reais.
-2. Encher de texto até passar de uma página → guia de quebra aparece na posição correta.
-3. Gerar o PDF real de um filho → posicionamento bate com o preview (mesma fonte/margem/tabela).
+1. `pnpm dev:adm` → editar template → área de edição é uma folha A4 com margens reais.
+2. Digitar até passar de uma folha → nova página A4 surge automaticamente (estilo Word/Docs).
+3. Gerar o PDF real de um filho → o número de páginas e a posição das quebras batem com o que se viu no editor.
 
 ---
 
 ## Refinamentos pendentes (decisões)
 
-1. **Fonte do CSS**: extrair `DOCUMENT_PRINT_CSS` para pacote compartilhado [proposta A] ou duplicar no frontend [B]? A é mais robusto; B é mais rápido.
-2. **Layout do preview**: lado a lado (live) vs modal sob demanda. Proposta: lado a lado com botão "atualizar" para não re-renderizar a cada tecla.
-3. **Paginação**: guias de quebra (MVP) vs folhas paginadas de verdade. Proposta: MVP primeiro.
-4. **Variáveis no preview**: rótulos `[Nome completo]` vs dados de exemplo. Proposta: rótulos.
-5. **Dependência da Story 23**: o preview só é fiel se a unidade de fonte editor/PDF estiver unificada — fazer **depois** da `[[23-editor-template-fonte-padrao-sincronizada]]`.
+1. ✅ **Formato**: moldura A4 **dentro do editor** com quebra automática (não preview separado). Decidido.
+2. ✅ **CSS de impressão**: extrair para **pacote compartilhado** (`DOCUMENT_PRINT_CSS`), backend+front 1:1. Decidido.
+3. **Extensão de paginação**: validar compatibilidade de uma extensão TipTap de paginação com a versão instalada; se travar, usar o MVP visual (guias de quebra) e registrar. Investigar no início.
+4. **Geometria margin×padding**: hoje `margin` do puppeteer e `padding` do body se somam — escolher convenção única e ajustar `document-template.service.ts` junto, calibrando a altura útil contra um PDF de referência.
+5. **Zoom**: régua 50/75/100% (decisão de UX menor) — confirmar na implementação.

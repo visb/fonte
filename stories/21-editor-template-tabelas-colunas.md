@@ -45,7 +45,8 @@ TableCell,
 
 Adicionar, após o grupo de imagem/HR, um botão **Inserir tabela** (ícone `Table` do lucide-react) e, quando o cursor está dentro de uma tabela (`editor.isActive('table')`), expor os controles contextuais:
 
-- Inserir tabela: `editor.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: false }).run()`
+- Inserir tabela (**padrão = SEM borda**, decisão): `editor.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: false }).updateAttributes('table', { class: 'doc-table no-border' }).run()`
+- Alternar bordas da tabela atual (toggle `no-border` na classe) — para quando o usuário quiser um quadro de dados visível.
 - Add/remover coluna: `addColumnAfter` / `deleteColumn`
 - Add/remover linha: `addRowAfter` / `deleteRow`
 - Mesclar/dividir células: `mergeOrSplit`
@@ -94,6 +95,6 @@ Rodar: `pnpm test:adm` (filtrando o spec). Sem `skip`/`only`.
 
 ## Refinamentos pendentes (decisões)
 
-1. **Estilo de borda padrão ao inserir**: tabela com borda visível (quadro de dados) ou sem borda (layout)? Proposta: botão principal = com borda; opção secundária "2 colunas" = sem borda.
+1. ✅ **Borda padrão = SEM borda** (toda tabela nasce como layout/multicoluna). Bordas viram um **toggle manual** (alternar classe `no-border`) para quando o usuário quiser um quadro de dados visível. Decidido.
 2. **Cabeçalho**: inserir com linha de cabeçalho (`withHeaderRow`) por padrão? Proposta: não (documentos jurídicos raramente usam `<th>`).
 3. **Colunas redimensionáveis no PDF**: o `resizable` salva larguras em `<colgroup>`; confirmar que o puppeteer respeita (provável sim). Se não, fixar `table-layout: fixed` + larguras percentuais.

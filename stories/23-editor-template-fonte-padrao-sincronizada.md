@@ -22,8 +22,8 @@ Requisito do usuário: a fonte deve **começar no mesmo tamanho** que o controle
 ### 1. Constante única de fonte padrão — `TemplateEditor.tsx`
 
 ```ts
-const DEFAULT_FONT_PT = 10;     // tamanho-base do corpo do documento (pt)
-const FONT_STEP_PT    = 1;      // passo do A+/A−  (ver §Refinamentos)
+const DEFAULT_FONT_PT = 12;     // tamanho-base do corpo do documento (pt) — DECISÃO
+const FONT_STEP_PT    = 2;      // passo do A+/A− — DECISÃO
 const MIN_FONT_PT = 8, MAX_FONT_PT = 72;
 ```
 
@@ -54,7 +54,7 @@ Com isso, sobre texto no default: A− → `DEFAULT−1`; A+ → `DEFAULT` de vo
 
 ### 4. Base do PDF em **pt**, sincronizada — `document-template.service.ts`
 
-Trocar `body{font-size:10px}` por `body{font-size:${DEFAULT_FONT_PT}pt}` (ou um literal `10pt`) para o **editor casar 1:1 com a impressão**. Como hoje é `10px` e passaria a `10pt` (≈ 13,3px), o texto-base **cresce ~33%** — ver §Refinamentos (escolher o valor que preserva o visual atual dos templates existentes, ou aceitar o reflow).
+Trocar `body{font-size:10px}` por `body{font-size:12pt}` (= `DEFAULT_FONT_PT`) para o **editor casar 1:1 com a impressão**. Como hoje é `10px` e passa a `12pt` (= 16px), o texto-base **cresce ~60%** na impressão — decisão tomada (padrão "documento" 12pt); **revisar os templates já cadastrados** após o deploy (ver §Refinamentos #3).
 
 > A unificação px→pt é também pré-requisito para a pré-visualização A4 fiel da `[[24-editor-template-preview-a4]]` (preview tem que bater com o PDF).
 
@@ -85,6 +85,6 @@ Rodar: `pnpm test:adm`.
 
 ## Refinamentos pendentes (decisões)
 
-1. **Valor do `DEFAULT_FONT_PT`**: manter o visual atual (`10px` ≈ **7.5pt**, arredondar para 8pt) ou adotar um padrão "limpo" (**10pt** ou **12pt**) aceitando que os templates existentes reflowem/cresçam na próxima impressão? Recomendo **10pt** (legível, próximo do atual) e revisar 1–2 templates após.
-2. **Passo `FONT_STEP_PT`**: hoje é 2pt. O usuário reclamou que "diminui muito" — sugiro **1pt**. Confirmar.
-3. Migração dos templates existentes: como a base muda de px→pt, vale revisar os documentos já cadastrados após o deploy (não há migration de dados; é conteúdo HTML salvo). Listar os templates e conferir impressão.
+1. ✅ **`DEFAULT_FONT_PT` = 12pt** (padrão documento). Decidido.
+2. ✅ **`FONT_STEP_PT` = 2pt**. Decidido.
+3. ⚠️ **Migração dos templates existentes**: a base muda de `10px` para `12pt` (~+60% no corpo sem marca). Não há migration de dados (é HTML salvo); após o deploy, **listar e reabrir cada template existente** conferindo a impressão e ajustando onde quebrar. Incluir esse passo na verificação manual antes de fechar a story.

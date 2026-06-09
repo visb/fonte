@@ -42,9 +42,7 @@ editor.chain().focus().setImage({ src: url }).updateAttributes('image', {
 
 ### 3. Não forçar downscale silencioso
 
-Manter `max-width: 100%` **apenas** como proteção contra estouro da página A4 (senão a imagem vaza a margem no PDF), mas como agora o nó nasce com `width/height` naturais, a imagem só será reduzida se de fato exceder a largura útil — e nesse caso o usuário vê e ajusta. Documentar no código que o `max-width:100%` é guarda de página, não "tratamento".
-
-> Se o requisito for **literal** ("exibir os pixels exatos, mesmo que estourem a A4"), trocar `max-width:100%` por `max-width:none` na `ResizableImage` e no wrapper do PDF — ver §Refinamentos. Isso permite imagem maior que a página (cortada na impressão). Decisão do usuário.
+**Decisão**: manter `max-width: 100%` como **guarda de página** (a imagem grande é reduzida para não vazar a margem da A4). Como o nó agora nasce com `width/height` naturais, a imagem só é reduzida quando de fato excede a largura útil — e aí o usuário vê e ajusta pelos handles. Documentar no código que `max-width:100%` é guarda de página, **não** "tratamento" (não há recompressão/resize de bytes).
 
 ### 4. Formatos
 
@@ -71,6 +69,6 @@ Rodar: `pnpm test:api`, `pnpm test:adm`.
 
 ## Refinamentos pendentes (decisões)
 
-1. **Estouro da A4**: imagem maior que a largura útil deve (a) ser limitada a 100% da página [proposta] ou (b) manter pixels exatos e ser cortada na impressão? Define `max-width:100%` vs `none`.
-2. **DPI**: o usuário pensa em "tamanho do arquivo" em px (naturalWidth) ou em cm/polegadas? px é o que o navegador/puppeteer entende; se precisar respeitar DPI físico, é outra conta (px = cm × DPI). Proposta: usar px natural.
-3. Confirmar se há **algum** outro ponto do fluxo que reprocessa (CDN/Railway object storage com transform?) — investigar antes de fechar.
+1. ✅ **Estouro da A4**: imagem limitada a 100% da largura útil (`max-width:100%` mantido como guarda). Decidido.
+2. **DPI**: usar **px natural** (`naturalWidth`/`naturalHeight`) — é o que navegador/puppeteer entendem. Sem conversão DPI/cm. Proposta mantida.
+3. Confirmar que não há outro ponto reprocessando (CDN/Railway object storage com transform on-the-fly) — investigar no início da implementação; o caminho de código está limpo.

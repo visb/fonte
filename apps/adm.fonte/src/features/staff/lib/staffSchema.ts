@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Gender, MaritalStatus, Role, ServantRank } from '@fonte/types';
 import type { CreateStaffInput, Staff } from '@fonte/api-client';
-import { maskCPF, maskRG, maskPhone } from '@/features/residents/lib/masks';
+import { maskCPF, maskRG, maskPhone } from '@/lib/masks';
 
 // Campos comuns a criação e edição de servo: conta + serviço + ficha pessoal
 // (espelha os dados do filho). Senha existe apenas na criação.

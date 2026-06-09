@@ -12,7 +12,7 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionTitle, FormField } from '@/components/shared/FormField';
 import { getErrorMessage } from '@/lib/errors';
-import { maskPhone, maskCPF, maskRG, withMask } from '../lib/masks';
+import { maskPhone, maskCPF, maskRG, withMask } from '@/lib/masks';
 import { FAMILY_INVESTMENT_LABELS } from '../constants';
 import { useReadmitResident } from '../hooks/useResidents';
 import { useHouses } from '@/features/houses/hooks/useHouses';

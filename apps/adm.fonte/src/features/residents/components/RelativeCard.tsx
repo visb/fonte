@@ -2,7 +2,7 @@ import { KeyRound, Phone, Star, Trash2, User } from 'lucide-react';
 import type { Relative } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { maskPhone } from '../lib/masks';
+import { maskPhone } from '@/lib/masks';
 
 interface Props {
   relative: Relative;

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionTitle, FormField } from "@/components/shared/FormField";
-import { maskCPF, maskRG, maskPhone, withMask } from "@/features/residents/lib/masks";
+import { maskCPF, maskRG, maskPhone, withMask } from "@/lib/masks";
 
 // Campos pessoais compartilhados entre filho (resident) e servo (staff).
 // O formulário consumidor precisa expor estes nomes de campo:

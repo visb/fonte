@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
-import { maskCPF, maskRG, maskPhone } from './masks';
+import { maskCPF, maskRG, maskPhone } from '@/lib/masks';
 
 export const residentSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),

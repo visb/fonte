@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { maskPhone, withMask } from '../lib/masks';
+import { maskPhone, withMask } from '@/lib/masks';
 import { RELATIONSHIP_OPTIONS } from '../constants';
 import { useAddRelative } from '../hooks/useResidents';
 

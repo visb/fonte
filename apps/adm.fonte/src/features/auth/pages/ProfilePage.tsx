@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { maskPhone, withMask } from '@/features/residents/lib/masks';
+import { maskPhone, withMask } from '@/lib/masks';
 import { useStaffMe, useUpdateStaffMe } from '@/features/staff/hooks/useStaff';
 import { ChangePasswordDialog } from '../components/ChangePasswordDialog';
 

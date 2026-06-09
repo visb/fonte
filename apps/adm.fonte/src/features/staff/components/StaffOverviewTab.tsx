@@ -4,7 +4,7 @@ import { Gender, MaritalStatus, Role } from '@fonte/types';
 import type { Staff } from '@fonte/api-client';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { maskCPF, maskPhone, maskRG } from '@/features/residents/lib/masks';
+import { maskCPF, maskPhone, maskRG } from '@/lib/masks';
 import { SERVANT_RANK_LABELS, SERVANT_RANK_VARIANT } from '../constants';
 
 const ROLE_LABELS: Record<string, string> = {

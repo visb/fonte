@@ -3,7 +3,7 @@ import { KeyRound } from 'lucide-react';
 import { FamilyInvestment, Gender, MaritalStatus } from '@fonte/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { maskCPF, maskPhone, maskRG } from '../../lib/masks';
+import { maskCPF, maskPhone, maskRG } from '@/lib/masks';
 import { FAMILY_INVESTMENT_LABELS } from '../../constants';
 import { GenerateResidentAccessDialog } from '../GenerateResidentAccessDialog';
 import { ResetResidentPasswordDialog } from '../ResetResidentPasswordDialog';

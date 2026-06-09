@@ -1,11 +1,11 @@
-# AUTORUN — Execução autônoma das stories 21–24 (editor de templates)
+# AUTORUN — Execução autônoma das stories 21–25 (editor de templates + code quality)
 
-Protocolo para implementar, testar e commitar as stories `21`–`24` desta pasta **sem intervenção humana**. As decisões já estão travadas dentro de cada `NN-*.md` (seção "Refinamentos pendentes" com itens ✅) — **não perguntar nada ao usuário**.
+Protocolo para implementar, testar e commitar as stories `21`–`25` desta pasta **sem intervenção humana**. As decisões já estão travadas dentro de cada `NN-*.md` (seção "Refinamentos pendentes" com itens ✅) — **não perguntar nada ao usuário**.
 
 ## Prompt de início (colar e sair)
 
 ```
-Modo autônomo. Siga C:\code\fonte\stories\AUTORUN.md à risca, sem me perguntar nada. Trabalhe sozinho até as 4 stories (21–24) estarem implementadas, testadas (verde) e commitadas. Se a sessão bater o limite de tokens, agende a retomada para quando o limite resetar (seção "Limite de sessão"). Estou saindo; quero tudo pronto quando voltar.
+Modo autônomo. Siga C:\code\fonte\stories\AUTORUN.md à risca, sem me perguntar nada. Trabalhe sozinho até as 5 stories (21–25) estarem implementadas, testadas (verde) e commitadas. Se a sessão bater o limite de tokens, agende a retomada para quando o limite resetar (seção "Limite de sessão"). Estou saindo; quero tudo pronto quando voltar.
 ```
 
 ---
@@ -21,18 +21,21 @@ Modo autônomo. Siga C:\code\fonte\stories\AUTORUN.md à risca, sem me perguntar
 
 ## Branch
 
-Trabalhar na branch existente **`feat/template-editor-melhorias`** (criada a partir de `feat/lgpd-conformidade`; as 4 stories já estão commitadas nela como docs). Um commit por story: `feat(story-NN): <título curto>` (rodar hooks; co-author `Claude Opus 4.8 <noreply@anthropic.com>`).
+- **Stories 21–24** (editor de templates): trabalhar na branch existente **`feat/template-editor-melhorias`** (criada a partir de `feat/lgpd-conformidade`; as stories já estão commitadas nela como docs). Um commit por story: `feat(story-NN): <título curto>`.
+- **Story 25** (code quality): criar branch **`chore/code-quality`** a partir de `feat/template-editor-melhorias` **depois** de 21–24 commitadas. Ali, **commits parciais** (`refactor(<area>): ...` / `fix(<area>): ...`), **sem merge com main, sem PR** — ver a própria story.
+- Sempre rodar hooks; co-author `Claude Opus 4.8 <noreply@anthropic.com>`.
 
 ## Ordem (respeita dependências)
 
 ```
-23 → 22 → 21 → 24
+23 → 22 → 21 → 24 → 25
 ```
 
 - **23** (unificar fonte px→pt) primeiro: é pré-requisito da **24** (a quebra de página na tela só bate com o PDF se a unidade de fonte estiver unificada).
 - **22** (imagem) é independente e curta.
 - **21** (tabelas) adiciona regras de tabela ao CSS de impressão.
-- **24** por último: é a maior (moldura A4 no editor + paginação + extrair `DOCUMENT_PRINT_CSS` para pacote compartilhado) e **consolida** o CSS de impressão das stories anteriores. Depende de 23.
+- **24** (moldura A4 + paginação + extrair `DOCUMENT_PRINT_CSS`): maior; **consolida** o CSS de impressão das anteriores. Depende de 23.
+- **25** (review de code quality + correção de gaps nos frontends) **por último**, em branch própria, revisando inclusive o que 21–24 produziram. Não é um sub-agente único — ver "Story 25".
 
 ## Bootstrap de serviços (uma vez, no início, em background)
 
@@ -83,6 +86,17 @@ Se a sessão bater o limite de uso/tokens (ex.: sub-agente ou chamada falha com 
 5. Se preferir cadência fixa em vez de horário do reset, usar `/loop` — mas o caminho padrão aqui é `ScheduleWakeup` ancorado no horário do reset.
 
 > Objetivo: a fila das 4 stories sobrevive a um esgotamento de limite no meio do caminho — ela mesma reprograma a continuação e fecha sozinha quando o limite voltar.
+
+## Story 25 (caso especial — review de code quality)
+
+Difere do fluxo "uma story = um sub-agente + um commit":
+
+- Rodar **só depois** de 21–24 commitadas em `feat/template-editor-melhorias`.
+- **Criar a branch** `chore/code-quality` a partir de `feat/template-editor-melhorias` antes de começar.
+- É um **review + correção em lotes**, não um feature único. Dentro do sub-agente: mapear gaps (grep/leitura), corrigir em lotes coesos por eixo/domínio, e fazer **um commit parcial por lote** (`refactor(<area>): ...`).
+- **Sem merge com main, sem PR.** Só commits locais na branch.
+- Só **qualidade** (vertical-slice/MVVM, reuso, tipos/tamanho) — **não mudar comportamento**. Gap que exija mudança de comportamento: registrar em `PROGRESS.md` e pular.
+- DoD: build do adm verde + `tsc --noEmit` de ops/app limpos + testes existentes sem regressão (ver a story). Se o volume for grande, fechar por app (adm primeiro) mantendo build verde e registrar o resto para um 2º passe.
 
 ## Bloqueios
 

@@ -18,3 +18,13 @@ export class RegisterConsentDto {
   @IsString()
   termVersion?: string;
 }
+
+// Autoatendimento: o titular vem do JWT, só a finalidade é enviada.
+export class PurposeDto {
+  @IsIn(PURPOSES)
+  purpose: ConsentPurpose;
+
+  @IsOptional()
+  @IsString()
+  termVersion?: string;
+}

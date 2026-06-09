@@ -117,6 +117,31 @@ describe('LGPD (e2e)', () => {
     });
   });
 
+  describe('Self-service consent (RELATIVE)', () => {
+    it('familiar reads and toggles own consent', async () => {
+      const token = await login(app, 'familiar@fonte.com', 'familiar123');
+
+      const status = await request(app.getHttpServer())
+        .get(`${BASE}/consents/me`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(Array.isArray(status.body)).toBe(true);
+
+      await request(app.getHttpServer())
+        .post(`${BASE}/consents/me/grant`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ purpose: 'IMAGE_PUBLICATION' })
+        .expect(201);
+
+      const after = await request(app.getHttpServer())
+        .get(`${BASE}/consents/me`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      const image = after.body.find((s: { purpose: string }) => s.purpose === 'IMAGE_PUBLICATION');
+      expect(image.granted).toBe(true);
+    });
+  });
+
   describe('Data subject rights', () => {
     it('exports the resident data with personal records', async () => {
       const res = await request(app.getHttpServer())

@@ -1,4 +1,6 @@
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { router, type Href } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -59,6 +61,14 @@ export function ProfilePage() {
             onSuccess={refreshRelative}
           />
           <PasswordChangeForm />
+          <Pressable
+            onPress={() => router.push('/(app)/privacy' as Href)}
+            className="flex-row items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3"
+          >
+            <Ionicons name="shield-checkmark-outline" size={20} color="#7c3aed" />
+            <Text className="flex-1 text-sm font-medium text-gray-900">Privacidade e consentimentos</Text>
+            <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

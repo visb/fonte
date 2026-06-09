@@ -1,5 +1,6 @@
 export const queryKeys = {
   relativeMe: ['relative-me'] as const,
+  consents: ['consents', 'me'] as const,
   messages: {
     thread: (residentId: string, relativeId: string) =>
       ['messages', 'thread', residentId, relativeId] as const,

@@ -75,6 +75,7 @@ export default function AppLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="privacy" options={{ href: null, title: 'Privacidade' }} />
     </Tabs>
   );
 }

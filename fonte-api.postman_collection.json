@@ -4042,6 +4042,77 @@
               ]
             }
           }
+        },
+        {
+          "name": "My consent status (RELATIVE/RESIDENT)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/consents/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "consents",
+                "me"
+              ]
+            },
+            "description": "Estado do proprio consentimento (titular do JWT)."
+          }
+        },
+        {
+          "name": "Grant my consent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/consents/me/grant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "consents",
+                "me",
+                "grant"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purpose\": \"IMAGE_PUBLICATION\",\n  \"termVersion\": \"1.0\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Revoke my consent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/consents/me/revoke",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "consents",
+                "me",
+                "revoke"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purpose\": \"IMAGE_PUBLICATION\"\n}"
+            }
+          }
         }
       ]
     }

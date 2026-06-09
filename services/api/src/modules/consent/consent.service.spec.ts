@@ -3,7 +3,7 @@ import { ConsentService } from './consent.service';
 import { ConsentRecord } from './consent-record.entity';
 
 function makeService(repo: Partial<Repository<ConsentRecord>>) {
-  return new ConsentService(repo as Repository<ConsentRecord>);
+  return new ConsentService(repo as Repository<ConsentRecord>, {} as never, {} as never);
 }
 
 describe('ConsentService', () => {

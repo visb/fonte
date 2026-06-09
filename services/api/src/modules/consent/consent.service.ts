@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ProfileType } from '@fonte/types';
+import { Relative } from '../relative/relative.entity';
+import { Resident } from '../resident/resident.entity';
 import {
   ConsentPurpose,
   ConsentRecord,
@@ -19,7 +22,30 @@ export class ConsentService {
   constructor(
     @InjectRepository(ConsentRecord)
     private readonly repo: Repository<ConsentRecord>,
+    @InjectRepository(Relative)
+    private readonly relativeRepo: Repository<Relative>,
+    @InjectRepository(Resident)
+    private readonly residentRepo: Repository<Resident>,
   ) {}
+
+  // Resolve o titular (subject) a partir do usuário autenticado, para fluxos de
+  // autoatendimento (familiar/interno gerindo o próprio consentimento).
+  async resolveSubjectForUser(
+    userId: string,
+    profileType: string,
+  ): Promise<{ subjectType: ConsentSubjectType; subjectId: string }> {
+    if (profileType === ProfileType.RELATIVE) {
+      const relative = await this.relativeRepo.findOne({ where: { userId } });
+      if (!relative) throw new NotFoundException('Perfil de familiar não encontrado');
+      return { subjectType: 'RELATIVE', subjectId: relative.id };
+    }
+    if (profileType === ProfileType.RESIDENT) {
+      const resident = await this.residentRepo.findOne({ where: { userId } });
+      if (!resident) throw new NotFoundException('Perfil de interno não encontrado');
+      return { subjectType: 'RESIDENT', subjectId: resident.id };
+    }
+    throw new ForbiddenException();
+  }
 
   private write(
     subjectType: ConsentSubjectType,

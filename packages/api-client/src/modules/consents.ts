@@ -27,5 +27,13 @@ export function createConsentsModule(http: AxiosInstance) {
           params: { subjectType, subjectId, purpose },
         })
         .then((r) => r.data),
+
+    // Autoatendimento do titular (familiar/interno) — titular vem do JWT.
+    myStatus: (): Promise<ConsentStatus[]> =>
+      http.get<ConsentStatus[]>('/consents/me').then((r) => r.data),
+    myGrant: (purpose: ConsentPurpose, termVersion = '1.0'): Promise<ConsentRecord> =>
+      http.post<ConsentRecord>('/consents/me/grant', { purpose, termVersion }).then((r) => r.data),
+    myRevoke: (purpose: ConsentPurpose): Promise<ConsentRecord> =>
+      http.post<ConsentRecord>('/consents/me/revoke', { purpose }).then((r) => r.data),
   };
 }

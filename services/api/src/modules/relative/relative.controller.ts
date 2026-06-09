@@ -68,8 +68,9 @@ export class RelativeController {
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findByResident(
     @Query('residentId', ParseUUIDPipe) residentId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<Relative[]> {
-    return this.relativeService.findByResident(residentId);
+    return this.relativeService.findByResident(residentId, { role: user.role, userId: user.userId });
   }
 
   @Post()

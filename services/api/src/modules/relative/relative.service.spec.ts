@@ -30,6 +30,7 @@ function makeService(
   return new RelativeService(
     relativeRepo as unknown as Repository<Relative>,
     makeRepo() as unknown as Repository<Resident>,
+    makeRepo() as never, // Staff repo
     userRepo as unknown as Repository<User>,
     {} as StorageService,
     followUp as ResidentFollowUpService,
@@ -118,5 +119,46 @@ describe('RelativeService.resetPassword', () => {
     const relativeRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'rel-1', userId: null, user: null }) });
     const service = makeService(relativeRepo);
     await expect(service.resetPassword('rel-1', 'secret123')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('RelativeService.findByResident house scoping', () => {
+  function build(staffFindOne: jest.Mock, residentFindOne: jest.Mock, relFind: jest.Mock) {
+    return new RelativeService(
+      { find: relFind } as never,                 // relativeRepository
+      { findOne: residentFindOne } as never,      // residentRepository
+      { findOne: staffFindOne } as never,         // staffRepository
+      {} as never,                                // userRepository
+      {} as never,                                // storageService
+      {} as never,                                // followUpService
+    );
+  }
+
+  it('ADMIN bypasses house scoping', async () => {
+    const relFind = jest.fn().mockResolvedValue([{ id: 'rel-1' }]);
+    const service = build(jest.fn(), jest.fn(), relFind);
+    await expect(service.findByResident('res-1', { role: 'ADMIN', userId: 'u1' })).resolves.toHaveLength(1);
+    expect(relFind).toHaveBeenCalled();
+  });
+
+  it('SERVANT in same house is allowed', async () => {
+    const relFind = jest.fn().mockResolvedValue([{ id: 'rel-1' }]);
+    const service = build(
+      jest.fn().mockResolvedValue({ houseId: 'house-9' }),
+      jest.fn().mockResolvedValue({ id: 'res-1', houseId: 'house-9' }),
+      relFind,
+    );
+    await expect(service.findByResident('res-1', { role: 'SERVANT', userId: 'u1' })).resolves.toHaveLength(1);
+  });
+
+  it('SERVANT from another house is forbidden', async () => {
+    const { ForbiddenException } = jest.requireActual('@nestjs/common');
+    const service = build(
+      jest.fn().mockResolvedValue({ houseId: 'house-A' }),
+      jest.fn().mockResolvedValue({ id: 'res-1', houseId: 'house-B' }),
+      jest.fn(),
+    );
+    await expect(service.findByResident('res-1', { role: 'SERVANT', userId: 'u1' }))
+      .rejects.toBeInstanceOf(ForbiddenException);
   });
 });

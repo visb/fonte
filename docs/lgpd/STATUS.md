@@ -37,7 +37,6 @@
 - Confirmar prazos legais de retenção na `politica-retencao-descarte.md`.
 
 ### Backend
-- Escopo por casa em **relatives** (`findByResident`) — ainda não força a casa do interno.
 - **Gate de consentimento** antes de publicar imagem/divulgação religiosa: `ConsentService.hasActiveConsent` existe, mas falta chamar no ponto de publicação (quando esse fluxo existir).
 - **Job de purga/anonimização** automático ao fim do prazo de retenção (Fase 4) — não implementado; hoje a anonimização é manual via endpoint.
 - Soft delete nas demais tabelas sem PII (movimentos/logs) — deixado de fora de propósito; revisar caso a caso se necessário.

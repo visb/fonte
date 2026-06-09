@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -7,6 +7,7 @@ import { Relative } from './relative.entity';
 import { CreateRelativeDto } from './dto/create-relative.dto';
 import { UpdateRelativeMeDto } from './dto/update-relative-me.dto';
 import { Resident } from '../resident/resident.entity';
+import { Staff } from '../staff/staff.entity';
 import { User } from '../user/user.entity';
 import { StorageService } from '../storage/storage.service';
 import { ResidentFollowUpService } from '../resident-follow-up/resident-follow-up.service';
@@ -37,13 +38,24 @@ export class RelativeService {
     private relativeRepository: Repository<Relative>,
     @InjectRepository(Resident)
     private residentRepository: Repository<Resident>,
+    @InjectRepository(Staff)
+    private staffRepository: Repository<Staff>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private storageService: StorageService,
     private followUpService: ResidentFollowUpService,
   ) {}
 
-  findByResident(residentId: string): Promise<Relative[]> {
+  // LGPD art. 6/46 — escopo por casa: não-ADMIN só vê familiares de internos da
+  // própria casa. houseId derivado do staff autenticado.
+  async findByResident(residentId: string, caller?: { role: string; userId: string }): Promise<Relative[]> {
+    if (caller && caller.role !== Role.ADMIN) {
+      const staff = await this.staffRepository.findOne({ where: { userId: caller.userId } });
+      const resident = await this.residentRepository.findOne({ where: { id: residentId } });
+      if (!staff?.houseId || !resident || resident.houseId !== staff.houseId) {
+        throw new ForbiddenException();
+      }
+    }
     return this.relativeRepository.find({
       where: { residentId },
       order: { name: 'ASC' },

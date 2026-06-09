@@ -1,6 +1,6 @@
 ---
 name: fonte-support-groups
-description: Feature Grupos de Apoio (grupos de oração de famílias + checkin de presença) — modelo de dados (support_groups/meetings/checkins), API REST, telas adm.fonte e ops.fonte, geração/impressão de QR Code, fluxo de checkin fase 2 (ff.fonte). Use ao tocar em grupos de apoio, reuniões ou checkin de família.
+description: Feature Grupos de Apoio (grupos de oração de famílias + checkin de presença) — modelo de dados (support_groups/meetings/checkins), API REST, telas adm.fonte e ops.fonte, geração/impressão de QR Code, fluxo de checkin fase 2 (app.fonte). Use ao tocar em grupos de apoio, reuniões ou checkin de família.
 ---
 
 # Grupos de Apoio
@@ -71,7 +71,7 @@ Todas as rotas exigem JWT. Base: `/support-groups`.
 - Aba: "Apoio" (`heart-circle-outline`) na tab bar
 - Tela de lista (`/(app)/support-groups`): todas as reuniões, ordenadas por data; reunião de hoje em destaque; FAB para criar nova reunião
 - Tela de detalhe (`/(app)/support-groups/[meetingId]`):
-  - Botão para exibir QR Code (modal fullscreen) — famílias escaneiam via ff.fonte (fase 2)
+  - Botão para exibir QR Code (modal fullscreen) — famílias escaneiam via app.fonte (fase 2)
   - QR Code contém: `support-group-meeting:{meetingId}`
   - Autocomplete para buscar filho pelo nome e registrar presença manual
   - Lista de famílias presentes (identificadas pelo nome do filho) com opção de remover
@@ -88,6 +88,6 @@ Execute `pnpm install` após o pull para instalar.
 
 No modal do QR Code em `MeetingDetailPage.tsx`: botão "Imprimir" captura o QR via `qrRef.current.toDataURL()` (base64 PNG), embute num HTML mínimo e chama `Print.printAsync({ html })` do `expo-print`.
 
-## Fluxo de checkin via QR Code (fase 2 — ff.fonte)
+## Fluxo de checkin via QR Code (fase 2 — app.fonte)
 
-O QR Code da reunião contém `support-group-meeting:{meetingId}`. Quando o ff.fonte (app das famílias) for implementado, ao escanear esse código o app apresentará um fluxo para a família confirmar sua presença, chamando `POST /support-groups/meetings/:meetingId/checkins` com o `residentId` do filho.
+O QR Code da reunião contém `support-group-meeting:{meetingId}`. Quando o fluxo de checkin no app.fonte (app das famílias) for implementado, ao escanear esse código o app apresentará um fluxo para a família confirmar sua presença, chamando `POST /support-groups/meetings/:meetingId/checkins` com o `residentId` do filho.

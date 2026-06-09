@@ -103,7 +103,7 @@ Monorepo estruturado em:
 ```
 apps/
   adm.fonte/
-  ff.fonte/
+  app.fonte/
   ops.fonte/
   resident.fonte/
 

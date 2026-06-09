@@ -340,7 +340,7 @@ const VARIABLES: { key: string; label: string; description: string }[] = [
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
-const schema = z.object({ name: z.string().min(1), isRequired: z.boolean() });
+const schema = z.object({ name: z.string().min(1), isRequired: z.boolean(), signAtAdmission: z.boolean() });
 type FormData = z.infer<typeof schema>;
 
 // ─── TemplateEditor ───────────────────────────────────────────────────────────
@@ -359,11 +359,11 @@ export function TemplateEditor({ template, onSaved }: Props) {
 
   const { register, getValues, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: template.name, isRequired: template.isRequired },
+    defaultValues: { name: template.name, isRequired: template.isRequired, signAtAdmission: template.signAtAdmission },
   });
 
   useEffect(() => {
-    reset({ name: template.name, isRequired: template.isRequired });
+    reset({ name: template.name, isRequired: template.isRequired, signAtAdmission: template.signAtAdmission });
     setJustSaved(false);
   }, [template.id, reset]);
 
@@ -434,9 +434,9 @@ export function TemplateEditor({ template, onSaved }: Props) {
 
   const handleSave = useCallback(() => {
     if (!editor) return;
-    const { name, isRequired } = getValues();
+    const { name, isRequired, signAtAdmission } = getValues();
     updateMutation.mutate(
-      { id: template.id, data: { name, content: editor.getHTML(), isRequired } },
+      { id: template.id, data: { name, content: editor.getHTML(), isRequired, signAtAdmission } },
       {
         onSuccess: (updated) => {
           onSaved(updated);
@@ -513,6 +513,12 @@ export function TemplateEditor({ template, onSaved }: Props) {
           <input id="is-required" type="checkbox" {...register('isRequired')} className="h-4 w-4 cursor-pointer" />
           <Label htmlFor="is-required" className="text-sm cursor-pointer whitespace-nowrap">
             Exigir no acolhimento
+          </Label>
+        </div>
+        <div className="flex items-center gap-2 pt-5">
+          <input id="sign-at-admission" type="checkbox" {...register('signAtAdmission')} className="h-4 w-4 cursor-pointer" />
+          <Label htmlFor="sign-at-admission" className="text-sm cursor-pointer whitespace-nowrap">
+            Assinar no acolhimento
           </Label>
         </div>
       </div>

@@ -389,6 +389,7 @@ export interface ResidentDocument {
   residentId: string;
   templateId: string;
   templateName: string;
+  signAtAdmission: boolean;
   signed: boolean;
   signedFileUrl: string | null;
   signedAt: string | null;
@@ -864,6 +865,7 @@ export interface DocumentTemplate {
   name: string;
   content: string;
   isRequired: boolean;
+  signAtAdmission: boolean;
   updatedAt: string;
 }
 
@@ -871,12 +873,67 @@ export interface CreateDocumentTemplateInput {
   name: string;
   content: string;
   isRequired: boolean;
+  signAtAdmission?: boolean;
 }
 
 export interface UpdateDocumentTemplateInput {
   name?: string;
   content?: string;
   isRequired?: boolean;
+  signAtAdmission?: boolean;
+}
+
+// ─── LGPD ─────────────────────────────────────────────────────────────────────
+
+// Documento a assinar no acolhimento (template signAtAdmission) + status.
+export interface AdmissionDocument {
+  templateId: string;
+  templateName: string;
+  signed: boolean;
+  signedFileUrl: string | null;
+  signedAt: string | null;
+  pdfPath: string;
+}
+
+export type ConsentPurpose = 'IMAGE_PUBLICATION' | 'RELIGIOUS_DISCLOSURE';
+export type ConsentSubjectType = 'RESIDENT' | 'RELATIVE';
+
+export interface ConsentStatus {
+  purpose: ConsentPurpose;
+  granted: boolean;
+  termVersion: string | null;
+  since: string | null;
+}
+
+export interface ConsentRecord {
+  id: string;
+  subjectType: ConsentSubjectType;
+  subjectId: string;
+  purpose: ConsentPurpose;
+  granted: boolean;
+  termVersion: string | null;
+  recordedByUserId: string | null;
+  createdAt: string;
+}
+
+export interface RegisterConsentInput {
+  subjectType: ConsentSubjectType;
+  subjectId: string;
+  purpose: ConsentPurpose;
+  termVersion?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  userId: string | null;
+  role: string | null;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  httpMethod: string | null;
+  path: string | null;
+  ipAddress: string | null;
+  createdAt: string;
 }
 
 // ─── App Settings ─────────────────────────────────────────────────────────────

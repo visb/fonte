@@ -19,6 +19,8 @@ import { createBibleCourseModule } from './modules/bible-course.js';
 import { createNotificationsModule } from './modules/notifications.js';
 import { createCensusModule } from './modules/census.js';
 import { createBackupModule } from './modules/backup.js';
+import { createConsentsModule } from './modules/consents.js';
+import { createAuditModule } from './modules/audit.js';
 
 export interface ApiClientConfig {
   baseURL: string;
@@ -67,6 +69,8 @@ export function createApiClient(config: ApiClientConfig) {
     notifications: createNotificationsModule(http),
     census: createCensusModule(http),
     backup: createBackupModule(http),
+    consents: createConsentsModule(http),
+    audit: createAuditModule(http),
     photoUrl: (path: string | null | undefined): string | null => {
       if (!path) return null;
       if (path.startsWith('http://') || path.startsWith('https://')) return path;

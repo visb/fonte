@@ -18,6 +18,7 @@ import type {
   UpdateResidentInput,
   ResidentDocument,
   ResidentAttachment,
+  AdmissionDocument,
   ContributionsReportResponse,
   GetContributionsReportParams,
   ResidentReceivable,
@@ -48,6 +49,8 @@ export function createResidentsModule(http: AxiosInstance) {
       http
         .get<Blob>(`/residents/${id}/documents/${templateId}/pdf`, { responseType: 'blob' })
         .then((r) => r.data),
+    getAdmissionDocuments: (id: string) =>
+      http.get<AdmissionDocument[]>(`/residents/${id}/admission-documents`).then((r) => r.data),
     getAttachments: (id: string) =>
       http.get<ResidentAttachment[]>(`/residents/${id}/attachments`).then((r) => r.data),
     addAttachment: (id: string, formData: FormData) =>
@@ -124,5 +127,11 @@ export function createResidentsModule(http: AxiosInstance) {
       http.post(`/residents/${id}/access/reset-password`, data).then(() => undefined),
     promoteToServant: (id: string, data: PromoteToServantInput): Promise<Staff> =>
       http.post<Staff>(`/residents/${id}/promote-to-servant`, data).then((r) => r.data),
+
+    // LGPD — direitos do titular.
+    exportData: (id: string): Promise<Record<string, unknown>> =>
+      http.get<Record<string, unknown>>(`/residents/${id}/data-export`).then((r) => r.data),
+    anonymize: (id: string): Promise<{ anonymized: boolean; residentId: string }> =>
+      http.post(`/residents/${id}/anonymize`, {}).then((r) => r.data),
   };
 }

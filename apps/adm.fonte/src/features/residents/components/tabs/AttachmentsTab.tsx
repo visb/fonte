@@ -273,6 +273,7 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
   const docByTemplate = Object.fromEntries(signedDocs.map((d) => [d.templateId, d]));
   const requiredTemplates = templates.filter((t) => t.isRequired);
   const optionalTemplates = templates.filter((t) => !t.isRequired);
+  const admissionSignTemplates = templates.filter((t) => t.signAtAdmission);
 
   return (
     <div className="space-y-6">
@@ -306,6 +307,28 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
           ))
         )}
       </div>
+
+      {admissionSignTemplates.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Documentos para assinatura no acolhimento
+            </h3>
+            <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">LGPD</Badge>
+          </div>
+          {admissionSignTemplates.map((template) => (
+            <DocumentCard
+              key={template.id}
+              template={template}
+              residentId={residentId}
+              residentName={residentName}
+              signedDoc={docByTemplate[template.id] ?? null}
+              onGenerate={handleGenerateRequest}
+              generating={generatingId === template.id}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">

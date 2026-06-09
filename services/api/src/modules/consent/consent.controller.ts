@@ -42,6 +42,21 @@ export class ConsentController {
     return this.consentService.revoke(dto.subjectType, dto.subjectId, dto.purpose, user.userId);
   }
 
+  // Gate: verifica se há consentimento ativo para uma finalidade. Use antes de
+  // publicar imagem/divulgação religiosa. Declarado antes das rotas com
+  // parâmetros para não ser capturado por :subjectType/:subjectId.
+  @Get('check/active')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  check(
+    @Query('subjectType') subjectType: ConsentSubjectType,
+    @Query('subjectId') subjectId: string,
+    @Query('purpose') purpose: ConsentPurpose,
+  ): Promise<{ active: boolean }> {
+    return this.consentService
+      .hasActiveConsent(subjectType, subjectId, purpose)
+      .then((active) => ({ active }));
+  }
+
   // Estado consolidado de consentimento de um titular.
   @Get(':subjectType/:subjectId')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
@@ -60,19 +75,5 @@ export class ConsentController {
     @Param('subjectId') subjectId: string,
   ): Promise<ConsentRecord[]> {
     return this.consentService.history(subjectType, subjectId);
-  }
-
-  // Gate: verifica se há consentimento ativo para uma finalidade. Use antes de
-  // publicar imagem/divulgação religiosa.
-  @Get('check/active')
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
-  check(
-    @Query('subjectType') subjectType: ConsentSubjectType,
-    @Query('subjectId') subjectId: string,
-    @Query('purpose') purpose: ConsentPurpose,
-  ): Promise<{ active: boolean }> {
-    return this.consentService
-      .hasActiveConsent(subjectType, subjectId, purpose)
-      .then((active) => ({ active }));
   }
 }

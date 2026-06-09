@@ -186,7 +186,7 @@ export class DocumentTemplateService implements OnModuleDestroy {
   <title>${title}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:1.2;color:#000;max-width:800px;margin:0 auto;padding:48px 40px;overflow:hidden}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:12pt;line-height:1.2;color:#000;max-width:800px;margin:0 auto;padding:48px 40px;overflow:hidden}
     h1,h2,h3{margin-bottom:14px}
     p{margin-bottom:10px;overflow:hidden}
     ol,ul{margin-left:28px;margin-bottom:10px}

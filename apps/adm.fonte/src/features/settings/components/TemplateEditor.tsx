@@ -31,6 +31,29 @@ import { useUpdateDocumentTemplate } from '../hooks/useDocumentTemplates';
 
 const DEFAULT_LINE_HEIGHT = 1.2;
 
+// ─── Font size scale ──────────────────────────────────────────────────────────
+// Single source of truth for the body font. Must match the PDF base
+// (`body{font-size:12pt}` in document-template.service.ts) so the editor renders
+// 1:1 with the print output. The A+/A− control steps from this default, so
+// A− then A+ over default text returns to exactly the same size.
+
+const DEFAULT_FONT_PT = 12; // body base size (pt) — decisão story 23
+const FONT_STEP_PT = 2;     // A+/A− step (pt) — decisão story 23
+const MIN_FONT_PT = 8;
+const MAX_FONT_PT = 72;
+
+// Pure font-size stepper — exported for unit testing.
+// `current` is the active mark's pt value (or undefined when text has no mark,
+// in which case it falls back to the body default).
+export function nextFontPt(
+  current: number | string | null | undefined,
+  delta: number,
+  defaultPt: number = DEFAULT_FONT_PT,
+): number {
+  const base = current != null && current !== '' ? Number(current) : defaultPt;
+  return Math.max(MIN_FONT_PT, Math.min(MAX_FONT_PT, base + delta));
+}
+
 const FontSize = Mark.create({
   name: 'fontSize',
   addAttributes() {
@@ -381,7 +404,7 @@ export function TemplateEditor({ template, onSaved }: Props) {
     content: template.content,
     editorProps: {
       attributes: {
-        style: 'display: flow-root; font-family: Arial, Helvetica, sans-serif; font-size: 10px; line-height: 1.2;',
+        style: `display: flow-root; font-family: Arial, Helvetica, sans-serif; font-size: ${DEFAULT_FONT_PT}pt; line-height: ${DEFAULT_LINE_HEIGHT};`,
       },
       // Intercept clipboard paste — if image file present, upload instead of embedding base64
       handlePaste: (_view, event) => {
@@ -456,13 +479,12 @@ export function TemplateEditor({ template, onSaved }: Props) {
     e.target.value = '';
   };
 
-  // Font size: read current pt value from fontSize mark, default 12.
-  // Preserve any custom line-height factor on the same mark.
+  // Font size: read current pt value from fontSize mark, falling back to the
+  // body default. Preserve any custom line-height factor on the same mark.
   const changeFontSize = (delta: number) => {
     if (!editor) return;
     const attrs = editor.getAttributes('fontSize');
-    const currentPt = attrs.pt ? Number(attrs.pt) : 12;
-    const next = Math.max(8, Math.min(72, currentPt + delta));
+    const next = nextFontPt(attrs.pt, delta);
     editor.chain().focus().setMark('fontSize', { pt: next, lh: attrs.lh ?? null }).run();
   };
 
@@ -527,10 +549,13 @@ export function TemplateEditor({ template, onSaved }: Props) {
           o padding do <main> (p-4 sm:p-8) pra encostar flush no topo. */}
       <div className="sticky -top-4 z-20 -mx-4 flex flex-wrap items-center gap-1 border-b bg-muted/95 px-4 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-muted/80 sm:-top-8 sm:-mx-8 sm:px-8">
         {/* Font size */}
-        <ToolbarButton active={false} onClick={() => changeFontSize(2)} title="Aumentar fonte">
+        <ToolbarButton active={false} onClick={() => changeFontSize(FONT_STEP_PT)} title="Aumentar fonte">
           <span className="text-[13px] font-bold leading-none select-none">A+</span>
         </ToolbarButton>
-        <ToolbarButton active={false} onClick={() => changeFontSize(-2)} title="Diminuir fonte">
+        <span className="px-1 text-[11px] font-mono tabular-nums text-muted-foreground select-none" title="Tamanho da fonte (pt)">
+          {Number(editor.getAttributes('fontSize').pt ?? DEFAULT_FONT_PT)}
+        </span>
+        <ToolbarButton active={false} onClick={() => changeFontSize(-FONT_STEP_PT)} title="Diminuir fonte">
           <span className="text-[13px] font-bold leading-none select-none">A−</span>
         </ToolbarButton>
 

@@ -43,7 +43,16 @@
 - Soft delete nas demais tabelas sem PII (movimentos/logs) — deixado de fora de propósito; revisar caso a caso se necessário.
 - Avaliar anonimização de PII nos dumps de backup.
 
-### Frontend (não iniciado)
-- **adm.fonte**: exibir documentos de acolhimento na aba de anexos do filho com a flag; toggle `signAtAdmission` no editor de template; tela de consentimento (grant/revoke/status); botões de export e anonimização; trilha de auditoria; ajustar exibição de CPF mascarado.
-- **app.fonte / ops.fonte**: telas de consentimento do titular/familiar quando aplicável.
-- Tipos compartilhados (`@fonte/types`) para `ConsentPurpose`/`ConsentSubjectType` se o frontend for consumir (hoje definidos localmente no backend).
+### Frontend
+
+**adm.fonte — concluído** (api-client estendido; typecheck + build OK):
+- Toggle **"Assinar no acolhimento"** (`signAtAdmission`) no editor de template.
+- Seção **"Documentos para assinatura no acolhimento"** na aba de Anexos do filho (gera PDF preenchido + upload do assinado).
+- Aba **"Privacidade"** (ADMIN/COORDINATOR): consentimentos por finalidade (registrar/revogar), exportar dados (JSON), anonimizar com confirmação, trilha de auditoria sob demanda.
+- CPF/RG já chegam mascarados do backend — exibição automática.
+- `@fonte/api-client`: módulos `consents`, `audit`; `residents.getAdmissionDocuments/exportData/anonymize`; tipos LGPD.
+
+**ops.fonte / app.fonte — não iniciado** (depende das fases futuras RELATIVE/RESIDENT, hoje inativas):
+- app.fonte (familiar): visualizar política de privacidade e gerir o próprio consentimento.
+- ops.fonte: coleta de consentimento/exibição de docs no fluxo do operador, se desejado.
+- Tipos de consentimento hoje definidos localmente no backend e no api-client; mover p/ `@fonte/types` se ops/app forem consumir.

@@ -109,3 +109,34 @@ Estado da execução conduzida por `AUTORUN.md`. Fonte de verdade: esta seção 
 ## Bootstrap (2026-06-09)
 
 Serviços no ar: docker postgres, db teste seedado, `build:types`+`build:api-client` ok, API teste :3001 (404 root = ok), adm teste :5174 (200).
+
+## Story 25 — Code quality review (frontends) — branch `chore/code-quality` (2026-06-09)
+
+Review + correção em lotes coesos. SÓ qualidade, sem mudar comportamento. Commits parciais, sem merge/PR.
+
+### Lotes feitos (commit por lote)
+
+- `refactor(adm-residents): centraliza query key de billing.filhos` — query key literal `['billing','filhos']` na invalidação de receivables → `queryKeys.billing.filhos.all`. (ad146c8)
+- `refactor(adm): move helper de masks para lib compartilhada` — `features/residents/lib/masks.ts` (helper puro CPF/RG/telefone) consumido cross-slice por auth/staff/components/shared → `src/lib/masks.ts`; 9 imports atualizados. (a9e087d)
+- `refactor(ops-messages): centraliza query key de house-relatives` — literal `['house-relatives-messages']` → `queryKeys.messages.houseRelatives`. (ca09ae9)
+- `refactor(ops): sobe WheelDatePickerModal para components compartilhado` — wheel date picker vivia em `features/storeroom/components` e era importado por supply-room (cross-slice). Movido para `components/WheelDatePickerModal.tsx` (renomeado p/ não colidir com o `DatePickerModal` compartilhado de API diferente). (5a6a90b)
+- `refactor(ops): dedup helpers de estoque em lib/inventoryUtils` — `toNumber/formatQuantity/formatDateBR/toISODate/movementLabel` duplicados idênticos em storeroom/utils e supply-room/utils → `lib/inventoryUtils.ts`; ambos re-exportam (import paths preservados). (edddb13)
+
+### Validação rodada
+
+- adm.fonte: `tsc -b` limpo + `pnpm build` (vite) verde.
+- ops.fonte: `tsc --noEmit` limpo (após cada lote).
+- app.fonte: `tsc --noEmit` limpo (auditado; nenhum gap de alto sinal — sem query-key literal, sem fetch em page, sem `as any` evitável).
+
+### Pendente para 2º passe (registrado, NÃO bloqueio — refactors de médio risco que poderiam mudar comportamento)
+
+- **adm.fonte — `useForm` em pages** (8 pages: Login, ChangePassword, Profile, EditResident, NewStaff, EditStaff, ChildAppSettings, AdmissionWizard). CLAUDE.md desaconselha `useForm` direto em page. São form-pages pequenas (<150 linhas) e coesas onde o form É o conteúdo da page; extrair p/ hook é churn de médio risco (ex.: LoginPage tem efeito de decode de token no submit). Decisão: deixar; revisitar com cuidado caso a caso. **Não aplicado para não arriscar comportamento.**
+- **ops.fonte — `useForm` em pages** (5 pages: incidents/NewIncident, street-sales/New+Edit, storeroom/Movement, supply-room/Movement). Mesma natureza.
+- **adm.fonte — `TemplateEditor.tsx` (774 linhas) + 1 `any`** (`ResizableImageNodeView({...}: any)`, já com eslint-disable deliberado). Vem das stories 21–24 (editor de templates). Quebrar o NodeView de imagem redimensionável e tipar via `NodeViewProps` do tiptap é refactor de médio risco do recém-entregue; o `A4EditorFrame` já foi extraído na story 24. Deixado para passe focado.
+- **ops.fonte — modais/forms grandes** (`AddResidentModal` 354, `RemoveResidentModal` 209, `CreateMinistryModal` 208, `MessageInput` 213, etc.). Quebra em subcomponentes RN é médio risco (lifting de estado); priorizado deixar build verde.
+- **app.fonte — `MessageInput.tsx` (248 linhas)**. Único arquivo grande do app; extração de subcomponentes pendente.
+- **ops.fonte — 2× `as any` em `router.push(... as any)`** (MinistryCard, MeetingCard): cast de typed-route do expo-router, baixo valor.
+
+### Não aplicado por exigir mudança de comportamento
+
+- Nenhum gap exigiu mudança de comportamento entre os lotes aplicados (todos preservam saída idêntica das telas).

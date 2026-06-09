@@ -21,7 +21,11 @@ export class AuditInterceptor implements NestInterceptor {
     if (!meta) return next.handle();
 
     const req = context.switchToHttp().getRequest();
-    const targetParam = meta.targetParam ?? 'id';
+    const targetKey = meta.targetParam ?? 'id';
+    // O alvo pode chegar como route param, no corpo (ex.: subjectId) ou no
+    // próprio usuário autenticado (ex.: userId em autoatendimento).
+    const targetId =
+      req.params?.[targetKey] ?? req.body?.[targetKey] ?? req.user?.[targetKey] ?? null;
 
     return next.handle().pipe(
       tap(() => {
@@ -30,7 +34,7 @@ export class AuditInterceptor implements NestInterceptor {
           role: req.user?.role ?? null,
           action: meta.action,
           targetType: meta.targetType ?? null,
-          targetId: req.params?.[targetParam] ?? null,
+          targetId,
           httpMethod: req.method ?? null,
           path: req.originalUrl ?? req.url ?? null,
           ipAddress: req.ip ?? req.socket?.remoteAddress ?? null,

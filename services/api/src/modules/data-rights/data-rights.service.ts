@@ -62,45 +62,70 @@ export class DataRightsService {
   // Anonimiza um interno (art. 18, IV/VI). Remove identificadores diretos e
   // arquivos no bucket, soft-delete, preservando o histórico financeiro/legal
   // (admissions, receivables) sem PII associada ao titular.
+  //
+  // As mutações de banco rodam numa única transação: se qualquer passo falhar,
+  // nada é confirmado e o erro propaga — nunca reportamos sucesso parcial. Os
+  // arquivos do bucket só são removidos APÓS o commit (operação externa, sem
+  // rollback), em modo best-effort com log.
   async anonymizeResident(residentId: string): Promise<{ anonymized: boolean; residentId: string }> {
     const resident = (
-      await this.safeQuery('SELECT id, photo_url, photo_thumb_url FROM residents WHERE id = $1', [residentId])
+      await this.dataSource.query('SELECT id, photo_url, photo_thumb_url FROM residents WHERE id = $1', [residentId])
     )[0] as { id: string; photo_url: string | null; photo_thumb_url: string | null } | undefined;
     if (!resident) throw new NotFoundException(`Resident ${residentId} not found`);
 
-    // Remove arquivos do bucket (fotos, anexos, documentos assinados).
-    await this.deleteFile(resident.photo_url);
-    await this.deleteFile(resident.photo_thumb_url);
-    for (const a of await this.safeQuery('SELECT file_url FROM resident_attachments WHERE resident_id = $1', [residentId])) {
-      await this.deleteFile(a.file_url as string | null);
+    // Coleta as URLs de arquivos ANTES de zerar as colunas, para limpeza pós-commit.
+    const fileUrls: (string | null)[] = [resident.photo_url, resident.photo_thumb_url];
+    for (const a of await this.dataSource.query<{ file_url: string | null }[]>(
+      'SELECT file_url FROM resident_attachments WHERE resident_id = $1',
+      [residentId],
+    )) {
+      fileUrls.push(a.file_url);
     }
-    for (const d of await this.safeQuery(
+    for (const d of await this.dataSource.query<{ signed_file_url: string | null }[]>(
       'SELECT signed_file_url FROM resident_documents WHERE resident_id = $1 AND signed_file_url IS NOT NULL',
       [residentId],
     )) {
-      await this.deleteFile(d.signed_file_url as string | null);
+      fileUrls.push(d.signed_file_url);
+    }
+    for (const m of await this.dataSource.query<{ attachment_url: string | null }[]>(
+      'SELECT attachment_url FROM messages WHERE resident_id = $1 AND attachment_url IS NOT NULL',
+      [residentId],
+    )) {
+      fileUrls.push(m.attachment_url);
     }
 
-    // Pseudonimiza o interno e marca soft delete.
-    await this.safeQuery(
-      `UPDATE residents SET
-         name = 'Titular anonimizado', cpf = NULL, rg = NULL, birth_date = NULL,
-         nationality = NULL, city = NULL, state = NULL, address = NULL,
-         contact_phone = NULL, email = NULL, occupation = NULL, education = NULL,
-         religion = NULL, addiction = NULL, health_issues = NULL,
-         continuous_medication = NULL, photo_url = NULL, photo_thumb_url = NULL,
-         deleted_at = now()
-       WHERE id = $1`,
-      [residentId],
-    );
+    await this.dataSource.transaction(async (manager) => {
+      // Pseudonimiza o interno e marca soft delete.
+      await manager.query(
+        `UPDATE residents SET
+           name = 'Titular anonimizado', cpf = NULL, rg = NULL, birth_date = NULL,
+           nationality = NULL, city = NULL, state = NULL, address = NULL,
+           contact_phone = NULL, email = NULL, occupation = NULL, education = NULL,
+           religion = NULL, addiction = NULL, health_issues = NULL,
+           continuous_medication = NULL, photo_url = NULL, photo_thumb_url = NULL,
+           deleted_at = now()
+         WHERE id = $1`,
+        [residentId],
+      );
 
-    // Anonimiza familiares e remove anexos com conteúdo pessoal.
-    await this.safeQuery(
-      `UPDATE relatives SET name = 'Familiar anonimizado', phone = NULL, photo_url = NULL, deleted_at = now()
-       WHERE resident_id = $1`,
-      [residentId],
-    );
-    await this.safeQuery('DELETE FROM resident_attachments WHERE resident_id = $1', [residentId]);
+      // Anonimiza familiares e remove anexos com conteúdo pessoal.
+      await manager.query(
+        `UPDATE relatives SET name = 'Familiar anonimizado', phone = NULL, photo_url = NULL, deleted_at = now()
+         WHERE resident_id = $1`,
+        [residentId],
+      );
+      await manager.query('DELETE FROM resident_attachments WHERE resident_id = $1', [residentId]);
+
+      // Apaga o corpo/anexo das mensagens (texto livre com PII) e soft-delete.
+      await manager.query(
+        `UPDATE messages SET content = NULL, attachment_url = NULL, attachment_type = NULL, deleted_at = now()
+         WHERE resident_id = $1 AND deleted_at IS NULL`,
+        [residentId],
+      );
+    });
+
+    // Pós-commit: limpeza dos arquivos no bucket (best-effort).
+    for (const url of fileUrls) await this.deleteFile(url);
 
     return { anonymized: true, residentId };
   }

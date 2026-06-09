@@ -19,7 +19,8 @@ export class RetentionService {
   ) {}
 
   private get retentionDays(): number {
-    return Number(this.config.get('LGPD_RETENTION_DAYS') ?? 1825); // ~5 anos
+    const v = Number(this.config.get('LGPD_RETENTION_DAYS'));
+    return Number.isFinite(v) && v > 0 ? v : 1825; // default ~5 anos
   }
 
   private get enabled(): boolean {

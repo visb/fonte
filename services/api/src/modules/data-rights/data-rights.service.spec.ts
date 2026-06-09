@@ -4,9 +4,12 @@ import { DataRightsService } from './data-rights.service';
 import { StorageService } from '../storage/storage.service';
 
 function makeService(queryImpl: (sql: string, params: unknown[]) => Promise<unknown[]>, del = jest.fn()) {
-  const dataSource = { query: jest.fn(queryImpl) } as unknown as DataSource;
+  const query = jest.fn(queryImpl);
+  // transaction() roda o callback com um manager cujo query delega ao mesmo mock.
+  const transaction = jest.fn(async (cb: (m: { query: jest.Mock }) => Promise<unknown>) => cb({ query }));
+  const dataSource = { query, transaction } as unknown as DataSource;
   const storage = { delete: del } as unknown as StorageService;
-  return { service: new DataRightsService(dataSource, storage), del, query: dataSource.query as jest.Mock };
+  return { service: new DataRightsService(dataSource, storage), del, query };
 }
 
 describe('DataRightsService.exportResident', () => {

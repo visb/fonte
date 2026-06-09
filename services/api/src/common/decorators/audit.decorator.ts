@@ -7,7 +7,8 @@ export const AUDIT_KEY = 'auditMeta';
 export interface AuditMeta {
   action: string;
   targetType?: string;
-  // Nome do route param que identifica o alvo (default 'id').
+  // Nome da chave que identifica o alvo (default 'id'). Resolvida na ordem
+  // route param → corpo da requisição → usuário autenticado.
   targetParam?: string;
 }
 

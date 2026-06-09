@@ -11,6 +11,8 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import { Extension, Mark, mergeAttributes } from '@tiptap/core';
 import Image from '@tiptap/extension-image';
+import { Table, TableRow, TableHeader, TableCell, TableView } from '@tiptap/extension-table';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight,
   Bold, Check, Eraser, ImageIcon, IndentDecrease, IndentIncrease,
@@ -24,6 +26,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { api } from '@/lib/api';
 import type { DocumentTemplate } from '@fonte/api-client';
 import { useUpdateDocumentTemplate } from '../hooks/useDocumentTemplates';
+import { TableToolbar } from './TableToolbar';
 
 // ─── FontSize mark ────────────────────────────────────────────────────────────
 // Custom inline mark — stores pt value; avoids @tiptap/extension-text-style
@@ -341,6 +344,45 @@ const ResizableImage = Image.extend({
   addNodeView() { return ReactNodeViewRenderer(ResizableImageNodeView); },
 });
 
+// ─── DocTable extension ───────────────────────────────────────────────────────
+// Story 21 — adiciona um atributo `class` persistível ao nó de tabela para que
+// o toggle de borda (classe `no-border`) e a classe base `doc-table` sobrevivam
+// ao HTML salvo (e portanto ao PDF do puppeteer). O Table padrão do TipTap não
+// serializa `class`.
+// O NodeView padrão do TipTap (`TableView`, usado quando `resizable: true`)
+// monta um <table> "cru" que só copia `node.attrs.style` — ignora `class`. Por
+// isso o editor não recebia a classe `doc-table`/`no-border` ao vivo (embora o
+// getHTML/PDF a serializasse certo). Este NodeView espelha a classe no <table>
+// vivo para que o editor case visualmente com o PDF (story §4).
+class DocTableView extends TableView {
+  constructor(node: ProseMirrorNode, cellMinWidth: number) {
+    super(node, cellMinWidth);
+    this.syncClass(node);
+  }
+  override update(node: ProseMirrorNode): boolean {
+    const ok = super.update(node);
+    if (ok) this.syncClass(node);
+    return ok;
+  }
+  private syncClass(node: ProseMirrorNode) {
+    const cls = (node.attrs.class as string | undefined) ?? 'doc-table no-border';
+    this.table.setAttribute('class', cls);
+  }
+}
+
+const DocTable = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      class: {
+        default: 'doc-table no-border',
+        parseHTML: (el) => (el as HTMLElement).getAttribute('class') || 'doc-table no-border',
+        renderHTML: (attrs) => (attrs.class ? { class: attrs.class } : {}),
+      },
+    };
+  },
+});
+
 // ─── ToolbarButton ────────────────────────────────────────────────────────────
 
 function ToolbarButton({ active, onClick, title, children }: {
@@ -427,6 +469,13 @@ export function TemplateEditor({ template, onSaved }: Props) {
       FontSize,
       ParagraphIndent,
       ResizableImage.configure({ inline: false, allowBase64: false }),
+      // Story 21 — tabelas (também servem de layout multicoluna sem borda).
+      // `View: DocTableView` espelha a classe `doc-table`/`no-border` no <table>
+      // vivo (o TableView padrão só copia o style — ver DocTableView).
+      DocTable.configure({ resizable: true, View: DocTableView, HTMLAttributes: { class: 'doc-table' } }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: template.content,
     editorProps: {
@@ -664,6 +713,11 @@ export function TemplateEditor({ template, onSaved }: Props) {
           {isUploadingImage ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
         </ToolbarButton>
         <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
+
+        <div className="w-px h-5 bg-border mx-0.5" />
+
+        {/* Tabela / multicoluna (story 21) */}
+        <TableToolbar editor={editor} />
       </div>
 
       {imageUploadError && <p className="text-xs text-destructive">{imageUploadError}</p>}

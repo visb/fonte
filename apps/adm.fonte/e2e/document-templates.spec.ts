@@ -149,3 +149,70 @@ test.describe('Editor de templates — imagem entra no tamanho natural', () => {
     expect(persistedHtml).toContain(`height: ${IMG_HEIGHT}px`);
   });
 });
+
+// Story 21 — tabelas e texto em múltiplas colunas. Toda tabela nasce SEM borda
+// (classe `doc-table no-border`); o "2 colunas" é uma tabela 1×2 sem borda. O
+// conteúdo é HTML e precisa persistir o <table class="doc-table ...">.
+test.describe('Editor de templates — tabelas e colunas', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Configurações' }).click();
+    await page.getByRole('link', { name: 'Templates de documentos' }).click();
+    await expect(page).toHaveURL('/settings/templates');
+  });
+
+  test('inserir tabela 2×2, digitar em 2 células e salvar persiste a tabela', async ({ page }) => {
+    const templateName = `E2E Tabela ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+
+    // Insere uma tabela 2×2 (decisão story 21: sem borda por padrão).
+    await page.getByTitle('Inserir tabela 2×2').click();
+    await expect(editor.locator('table.doc-table')).toBeVisible();
+
+    // Digita em duas células distintas.
+    const cells = editor.locator('table.doc-table td');
+    await cells.nth(0).click();
+    await page.keyboard.type('Célula A');
+    await cells.nth(1).click();
+    await page.keyboard.type('Célula B');
+
+    await page.getByRole('button', { name: 'Salvar template' }).click();
+    await expect(page.getByText('Template salvo')).toBeVisible({ timeout: 15000 });
+
+    // A tabela persiste no conteúdo serializado (HTML contém <table).
+    const html = await editor.evaluate((el) => el.innerHTML);
+    expect(html).toContain('<table');
+    expect(html).toContain('doc-table');
+    expect(html).toContain('Célula A');
+    expect(html).toContain('Célula B');
+  });
+
+  test('inserir "2 colunas" salva uma tabela com class="doc-table no-border"', async ({ page }) => {
+    const templateName = `E2E Colunas ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+
+    await page.getByTitle('Inserir 2 colunas de texto').click();
+    await expect(editor.locator('table.doc-table.no-border')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Salvar template' }).click();
+    await expect(page.getByText('Template salvo')).toBeVisible({ timeout: 15000 });
+
+    const html = await editor.evaluate((el) => el.innerHTML);
+    // A classe `doc-table no-border` sobrevive ao HTML salvo (DocTable.class).
+    expect(html).toMatch(/class="[^"]*doc-table[^"]*no-border[^"]*"/);
+  });
+});

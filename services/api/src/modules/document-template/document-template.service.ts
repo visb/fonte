@@ -192,6 +192,10 @@ export class DocumentTemplateService implements OnModuleDestroy {
     ol,ul{margin-left:28px;margin-bottom:10px}
     li{margin-bottom:6px}
     img{max-width:100%}
+    table.doc-table{border-collapse:collapse;width:100%;margin-bottom:10px;table-layout:fixed}
+    table.doc-table td,table.doc-table th{border:1px solid #000;padding:4px 6px;vertical-align:top}
+    table.doc-table.no-border td,table.doc-table.no-border th{border:none;padding:0 8px}
+    table.doc-table th{font-weight:700;text-align:left}
     .print-btn{position:fixed;top:16px;right:16px;background:#1a1a1a;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit}
     .print-btn:hover{background:#333}
     @media print{.print-btn{display:none}body{padding:20px}}

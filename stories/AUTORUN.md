@@ -5,7 +5,7 @@ Protocolo para implementar, testar e commitar as stories `21`–`25` desta pasta
 ## Prompt de início (colar e sair)
 
 ```
-Modo autônomo. Siga C:\code\fonte\stories\AUTORUN.md à risca, sem me perguntar nada. Trabalhe sozinho até as 5 stories (21–25) estarem implementadas, testadas (verde) e commitadas. Se a sessão bater o limite de tokens, agende a retomada para quando o limite resetar (seção "Limite de sessão"). Estou saindo; quero tudo pronto quando voltar.
+Modo autônomo. Siga C:\code\fonte\stories\AUTORUN.md à risca, sem me perguntar nada. Trabalhe sozinho até as 5 stories (21–25) estarem implementadas, testadas (verde) e commitadas. ANTES de começar, arme um wakeup de fallback com ScheduleWakeup (seção "Limite de sessão") e reagende-o a cada story commitada — assim a fila se reprograma sozinha se você bater o limite de uso. Estou saindo; quero tudo pronto quando voltar.
 ```
 
 ---
@@ -13,7 +13,7 @@ Modo autônomo. Siga C:\code\fonte\stories\AUTORUN.md à risca, sem me perguntar
 ## Princípios
 
 - **Contexto limpo por story**: para cada story, disparar um sub-agente novo via tool `Agent` (`subagent_type: general-purpose`). O orquestrador **não** implementa stories no próprio contexto — só coordena, sobe serviços e dispara um sub-agente por vez.
-  - **Se o spawn do sub-agente falhar por limite de sessão** ("You've hit your session limit"), ver a seção **Limite de sessão** — agendar retomada; não tentar em loop.
+  - **Se o spawn do sub-agente falhar por limite de sessão** ("You've hit your session limit"), ver a seção **Limite de sessão** — a retomada já está armada de antemão (wakeup de fallback); não tentar em loop.
 - **Nenhum app rodado manualmente**: o orquestrador sobe todos os serviços (docker, API teste, adm teste). O usuário não roda nada.
 - **Sem push / sem PR**: trabalho fica commitado na branch local. Usuário revisa e sobe depois.
 - **Não travar a fila**: se uma story bloquear, registrar em `PROGRESS.md`, pular e seguir.
@@ -74,18 +74,25 @@ Fonte de verdade para retomar após resumo de contexto / reinício / reset de li
 
 ## Limite de sessão / continuação automática
 
-Se a sessão bater o limite de uso/tokens (ex.: sub-agente ou chamada falha com `You've hit your session limit · resets <hora> (<tz>)`), **não** insistir em loop. Em vez disso:
+**Por que proativo, não reativo.** Quando a conta bate o limite de uso (`You've hit your session limit · resets <hora> (<tz>)`), toda inferência é bloqueada — o modelo **não consegue mais chamar `ScheduleWakeup` naquele momento** (a própria chamada exige rodar o modelo, que está congelado). Logo, **não dá** para "agendar a retomada quando o limite bater". O único wakeup que sobrevive ao limite é o que **já estava armado antes** dele estourar — o harness guarda o agendamento independente do modelo. Por isso o fallback é armado no início e refrescado a cada story.
 
-1. **Salvar estado**: garantir que o progresso atual está em `PROGRESS.md` e que tudo que já passou está commitado (cada story commitada é um checkpoint).
-2. **Calcular o reset**: extrair `<hora>` da mensagem de limite e converter para "segundos a partir de agora". Adicionar margem de ~120s após o horário do reset.
-3. **Agendar a retomada** com a tool `ScheduleWakeup`:
-   - `delaySeconds` = segundos até (reset + 120s), respeitando o clamp `[60, 3600]` (se o reset for além de 1h, agendar 3600 e reavaliar ao acordar).
+> Nota: isto vale para o **limite de uso/sessão**. Encher a **janela de contexto** é outro caso — há auto-compactação e a execução segue sozinha; não precisa agendar nada.
+
+### Passo a passo
+
+1. **Armar o fallback logo no início** (antes da 1ª story), com a tool `ScheduleWakeup`:
+   - `delaySeconds` = `3600` (máx do clamp `[60, 3600]`).
    - `prompt` = o sentinel literal **`<<autonomous-loop-dynamic>>`** (retoma este modo autônomo no próximo disparo).
-   - `reason` = algo como `"retomando AUTORUN stories 21-24 apos reset do limite as <hora>"`.
-4. **Ao acordar**: reler `PROGRESS.md` + `git log`, identificar a próxima story não commitada na ordem `23 → 22 → 21 → 24`, e continuar do passo "Por cada story". Se o limite ainda não tiver resetado (chamadas voltam a falhar), reagendar (passo 3) — não desistir.
-5. Se preferir cadência fixa em vez de horário do reset, usar `/loop` — mas o caminho padrão aqui é `ScheduleWakeup` ancorado no horário do reset.
+   - `reason` = `"fallback AUTORUN stories 21-25: retoma se a sessao tiver batido o limite"`.
+2. **Refrescar a cada story commitada**: chamar `ScheduleWakeup` de novo (mesmos parâmetros) ao fechar cada story. Cada turno bem-sucedido empurra o disparo ~1h pra frente, então em operação normal ele nunca dispara à toa; se o limite estourar no meio, o último wakeup armado dispara depois e retoma.
+3. **Salvar estado sempre**: progresso em `PROGRESS.md` e tudo que passou commitado (cada story commitada = checkpoint). É a fonte de verdade pra retomar.
+4. **Ao acordar** (wakeup disparou): reler `PROGRESS.md` + `git log`, identificar a próxima story não commitada na ordem `23 → 22 → 21 → 24 → 25`, e continuar do passo "Por cada story".
+   - Se as chamadas **ainda falharem** por limite (reset não chegou): **rearmar** o fallback (passo 1) e dormir de novo — não desistir, não insistir em loop apertado.
+   - Se voltou a funcionar: rearmar o fallback (passo 1) e seguir trabalhando normalmente.
+5. **Opcional — ancorar no horário do reset**: se a mensagem de limite trouxe `<hora>`, dá pra calcular `delaySeconds` = segundos até (`<hora>` + 120s de margem), respeitando o clamp. É refino; o caminho padrão é o fallback de 3600s rearmado, que funciona sem saber a hora exata.
+6. **Alternativa equivalente — `/loop`**: rodar este AUTORUN sob `/loop <intervalo>` também sobrevive ao limite (o harness re-dispara no intervalo; disparos durante o limite falham, o 1º depois do reset retoma). Trade-off: queima alguns disparos à toa durante a janela de limite. Escolher um dos dois (fallback rearmado **ou** `/loop`), não os dois.
 
-> Objetivo: a fila das 4 stories sobrevive a um esgotamento de limite no meio do caminho — ela mesma reprograma a continuação e fecha sozinha quando o limite voltar.
+> Objetivo: a fila das stories sobrevive a um esgotamento de limite no meio do caminho — ela já tem a continuação **armada de antemão**, reprograma sozinha e fecha quando o limite voltar.
 
 ## Story 25 (caso especial — review de code quality)
 

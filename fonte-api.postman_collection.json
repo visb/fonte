@@ -1570,6 +1570,42 @@
             },
             "description": "Documentos a assinar no acolhimento (templates signAtAdmission) com status de assinatura e caminho do PDF preenchido."
           }
+        },
+        {
+          "name": "Export resident data (LGPD)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/data-export",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "data-export"
+              ]
+            },
+            "description": "Portabilidade (art. 20): exporta todos os dados pessoais do interno em JSON."
+          }
+        },
+        {
+          "name": "Anonymize resident (LGPD)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/anonymize",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "anonymize"
+              ]
+            },
+            "description": "Eliminacao/anonimizacao (art. 18). Irreversivel. Somente ADMIN."
+          }
         }
       ]
     },

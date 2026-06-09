@@ -53,6 +53,7 @@ export const queryKeys = {
     pending: ['messages-pending'] as const,
     directConversations: ['messages-direct-conversations'] as const,
     directThread: (staffId: string, relativeId: string) => ['messages-direct-thread', staffId, relativeId] as const,
+    houseRelatives: (houseId: string | null | undefined) => ['house-relatives-messages', houseId] as const,
   },
   wishlist: {
     items: (residentId: string) => ['wishlist', residentId] as const,

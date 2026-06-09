@@ -102,7 +102,7 @@ export function useDirectConversations() {
 
 export function useHouseRelativesForMessages(houseId: string | null | undefined) {
   return useQuery({
-    queryKey: ['house-relatives-messages', houseId] as const,
+    queryKey: queryKeys.messages.houseRelatives(houseId),
     queryFn: async () => {
       const residents = await api.residents.listByHouse(houseId!);
       const groups = await Promise.all(

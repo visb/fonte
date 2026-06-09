@@ -55,6 +55,7 @@
 - Tela **Privacidade** (`app/(app)/privacy.tsx`): aviso LGPD + toggles de consentimento próprio (uso de imagem, divulgação religiosa) via `/consents/me`. Link a partir do Perfil.
 - Backend: endpoints self-service `/consents/me` (GET/grant/revoke) para RELATIVE/RESIDENT, titular resolvido pelo JWT, auditados. Cobertos por e2e.
 
-**ops.fonte — não iniciado** (opcional):
-- Coleta de consentimento e exibição de documentos de acolhimento no fluxo do operador, se desejado.
-- Tipos de consentimento hoje definidos localmente no backend e no api-client; mover p/ `@fonte/types` se ops for consumir.
+**ops.fonte (operadores) — consentimento concluído** (typecheck OK):
+- Tab **Privacidade** no detalhe do interno: operador registra/revoga consentimento do filho (uso de imagem, divulgação religiosa) via `/consents` (RESIDENT).
+- Pendente opcional: exibir documentos de acolhimento (signAtAdmission) também no ops para impressão/coleta de assinatura no fluxo do operador.
+- Tipos de consentimento hoje definidos localmente no backend e no api-client; mover p/ `@fonte/types` se mais apps consumirem.

@@ -14,11 +14,12 @@ import { ResetResidentPasswordModal } from '../components/ResetResidentPasswordM
 import { ResidentOverviewTab } from '../components/ResidentOverviewTab';
 import { ResidentFamiliesTab } from '../components/ResidentFamiliesTab';
 import { ResidentAttachmentsTab } from '../components/ResidentAttachmentsTab';
+import { ResidentPrivacyTab } from '../components/ResidentPrivacyTab';
 import { ResidentTrackingTab } from '../components/ResidentTrackingTab';
 import { ResidentDetailHeader } from '../components/ResidentDetailHeader';
 import { LoadingState } from '@/components/shared/LoadingState';
 
-const TABS = ['Visão Geral', 'Acompanhamento', 'Familiares', 'Anexos'] as const;
+const TABS = ['Visão Geral', 'Acompanhamento', 'Familiares', 'Anexos', 'Privacidade'] as const;
 type Tab = (typeof TABS)[number];
 
 export function ResidentDetailPage() {
@@ -116,6 +117,8 @@ export function ResidentDetailPage() {
               <ResidentAttachmentsTab residentId={id!} />
             </View>
           )}
+
+          {activeTab === 'Privacidade' && <ResidentPrivacyTab residentId={id!} />}
         </ScrollView>
       </View>
 

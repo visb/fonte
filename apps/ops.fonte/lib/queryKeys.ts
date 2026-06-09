@@ -6,6 +6,7 @@ export const queryKeys = {
     detail: (id: string) => ['resident', id] as const,
     attachments: (id: string) => ['resident-attachments', id] as const,
     followUps: (id: string) => ['resident-follow-ups', id] as const,
+    consents: (id: string) => ['resident-consents', id] as const,
   },
   relatives: {
     byResident: (residentId: string) => ['relatives', residentId] as const,

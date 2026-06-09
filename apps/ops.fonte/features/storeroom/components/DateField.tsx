@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { DatePickerModal } from "./DatePickerModal";
+import { WheelDatePickerModal } from "@/components/WheelDatePickerModal";
 import { toISODate } from "@/features/storeroom/utils";
 
 function formatDateDisplay(date: Date): string {
@@ -28,7 +28,7 @@ export function DateField({ value, onChange }: Props) {
         <Text className="text-sm text-gray-900">{formatDateDisplay(value)}</Text>
         <Ionicons name="calendar-outline" size={18} color="#9ca3af" />
       </TouchableOpacity>
-      <DatePickerModal
+      <WheelDatePickerModal
         visible={showPicker}
         date={value}
         onConfirm={(d) => {

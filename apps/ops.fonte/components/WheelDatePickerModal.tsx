@@ -62,7 +62,7 @@ function PickerColumn({
   );
 }
 
-export function DatePickerModal({
+export function WheelDatePickerModal({
   visible,
   date,
   onConfirm,

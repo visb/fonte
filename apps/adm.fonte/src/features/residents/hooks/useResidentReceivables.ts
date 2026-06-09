@@ -17,7 +17,7 @@ function useReceivableInvalidation(residentId: string) {
     queryClient.invalidateQueries({ queryKey: queryKeys.residents.receivables(residentId) });
     queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(residentId) });
     queryClient.invalidateQueries({ queryKey: queryKeys.residents.all });
-    queryClient.invalidateQueries({ queryKey: ['billing', 'filhos'] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.billing.filhos.all });
   };
 }
 

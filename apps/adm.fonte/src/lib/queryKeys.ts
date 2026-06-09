@@ -63,6 +63,7 @@ export const queryKeys = {
   },
   billing: {
     filhos: {
+      all: ['billing', 'filhos'] as const,
       report: (params: { month: string; houseId?: string }) =>
         ['billing', 'filhos', 'report', params] as const,
     },

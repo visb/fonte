@@ -27,6 +27,7 @@ import { api } from '@/lib/api';
 import type { DocumentTemplate } from '@fonte/api-client';
 import { useUpdateDocumentTemplate } from '../hooks/useDocumentTemplates';
 import { TableToolbar } from './TableToolbar';
+import { A4EditorFrame } from './A4EditorFrame';
 
 // ─── FontSize mark ────────────────────────────────────────────────────────────
 // Custom inline mark — stores pt value; avoids @tiptap/extension-text-style
@@ -722,12 +723,11 @@ export function TemplateEditor({ template, onSaved }: Props) {
 
       {imageUploadError && <p className="text-xs text-destructive">{imageUploadError}</p>}
 
-      {/* Editor — max-width simula área de conteúdo A4 (800px corpo − 2×40px padding do PDF) */}
-      <div className="min-h-64 rounded-md border bg-background p-4 focus-within:ring-1 focus-within:ring-ring overflow-x-auto">
-        <div className="max-w-[720px] mx-auto">
-          <EditorContent editor={editor} />
-        </div>
-      </div>
+      {/* Editor — folha A4 real com geometria/typografia idêntica ao PDF e guias
+          de quebra de página (ver A4EditorFrame). Substitui o antigo max-width. */}
+      <A4EditorFrame>
+        <EditorContent editor={editor} />
+      </A4EditorFrame>
 
       {/* Variables */}
       <div className="rounded-md border bg-muted/30 p-3 space-y-2">

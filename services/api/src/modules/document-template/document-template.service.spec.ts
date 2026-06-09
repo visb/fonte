@@ -1,4 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { DOCUMENT_PRINT_CSS, A4_PAGE_WIDTH_PX } from '@fonte/doc-styles';
 import { Repository } from 'typeorm';
 import { DocumentTemplateService } from './document-template.service';
 import { DocumentTemplate } from './document-template.entity';
@@ -117,5 +118,25 @@ describe('DocumentTemplateService.renderForResident', () => {
 
     const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'João' } as Resident);
     expect(html).toContain('RG: não informado');
+  });
+
+  // Story 24 — o PDF e o editor consomem o MESMO CSS de impressão
+  // (@fonte/doc-styles). O <style> do HTML do PDF tem que conter exatamente o
+  // DOCUMENT_PRINT_CSS compartilhado, garantindo que a quebra na tela case com
+  // a do PDF (geometria A4 794×1123, base 12pt, tabela, imagem).
+  it('injects the shared DOCUMENT_PRINT_CSS into the PDF html (single source of truth)', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '<p>oi</p>' }),
+    });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'João' } as Resident);
+
+    expect(html).toContain(DOCUMENT_PRINT_CSS);
+    // Geometria/typografia consolidadas das stories 21/22/23 presentes no PDF.
+    expect(html).toContain('font-size:12pt'); // story 23 — base unificada
+    expect(html).toContain(`width:${A4_PAGE_WIDTH_PX}px`); // story 24 — A4 794px
+    expect(html).toContain('table.doc-table'); // story 21 — tabelas
+    expect(html).toContain('img{max-width:100%}'); // story 22 — guarda de imagem
   });
 });

@@ -80,3 +80,32 @@ pnpm test:api:e2e                       # e2e backend (113)
 cd apps/adm.fonte && pnpm exec playwright test   # adm (78)
 ```
 Serviços deixados de pé: API teste :3001, adm teste :5174, emulador Test_Emulator (emulator-5554).
+
+---
+
+# PROGRESS — Execução autônoma das stories 21–25 (editor de templates + code quality)
+
+Estado da execução conduzida por `AUTORUN.md`. Fonte de verdade: esta seção + `git log` da branch `feat/template-editor-melhorias` (21–24) e `chore/code-quality` (25). Ordem: `23 → 22 → 21 → 24 → 25`.
+
+## Fila
+
+| Ordem | Story | Status | Testes | Commit |
+| --- | --- | --- | --- | --- |
+| 1 | 23 — fonte padrão sincronizada (px→pt) | [OK] | adm e2e 1✓ + api 6✓ + tsc | 79eef59 |
+| 2 | 22 — imagem sem tratamento | [OK] | api 7✓ + adm e2e 2✓ + tsc | fad4c09 |
+| 3 | 21 — tabelas/colunas | [OK] | adm e2e 4✓ + api 7✓ + tsc | 023eb44 |
+| 4 | 24 — preview A4 + paginação | [OK] | adm e2e 6✓ + api 8✓ (suite 308✓) + build adm | (ver log) |
+| 5 | 25 — code quality review frontends | [ ] | — | — |
+
+## Log
+
+<!-- [OK|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — <timestamp> -->
+
+[OK] 23 — testes: adm e2e document-templates.spec 1 passed + api document-template.service 6 passed + tsc -b limpo; base do editor e do PDF unificadas em 12pt; `nextFontPt` extraída pura. Ponto manual: migração visual de templates já salvos (+~60% base) é verificação pós-deploy. — commit: 79eef59 — 2026-06-09
+[OK] 22 — testes: api document-template 7 passed (1 novo: upload repassa buffer/mimetype intactos) + adm e2e document-templates 2 passed (23+22) + tsc limpo. Confirmado: sem sharp/resize no upload; "tratamento" era display sem width/height — agora grava dimensões naturais no nó. Postman intacto. — commit: fad4c09 — 2026-06-09
+[OK] 21 — testes: adm e2e document-templates 4 passed (2 novos: tabela 2×2 persiste, "2 colunas" salva class) + api 7 passed + tsc -b limpo. Dep `@tiptap/extension-table@3.22.5` (exata, casa core/react/starter-kit 3.22.5; v3 é pacote único). `DocTableView extends TableView` espelha class na tabela viva (TableView ignora class/HTMLAttributes). CSS de tabela espelhado editor↔PDF. — commit: 023eb44 — 2026-06-09
+[OK] 24 — testes: adm e2e document-templates 6 passed (2 novos: editor dentro de `.a4-page` largura 794px / conteúdo curto 1 página; conteúdo longo >1 folha mostra guia de quebra) + api document-template 8 passed (1 novo: PDF injeta `DOCUMENT_PRINT_CSS`), suite api 308 passed + build adm prod OK + tsc -b limpo. CONSOLIDAÇÃO: criado `packages/doc-styles` (`DOCUMENT_PRINT_CSS` + geometria A4 + `EDITOR_PAGE_CSS`), consumido por adm.fonte E api 1:1 — removida a duplicação de CSS de print do `document-template.service.ts` (wrapPage) e do `index.css` (.ProseMirror). Preserva tabela (21), base 12pt (23), guarda de imagem (22). Geometria: puppeteer `margin:0`, margem da página = `padding:48px 40px` do body (altura útil 1027px), A4 794×1123. PAGINAÇÃO: **MVP visual** (guias de quebra via `repeating-linear-gradient` calibradas à mesma geometria do PDF) — NÃO usei extensão TipTap de paginação. Motivo: `tiptap-pagination-plus`/`tiptap-extension-pagination` mediriam altura no DOM de forma independente (não garante casar com o flow do puppeteer) e conflitam com os NodeViews custom (imagem/tabela); guias desenhadas a partir das constantes compartilhadas são determinísticas e batem com o PDF (DoD). Subcomponente `A4EditorFrame` extraído (régua de zoom 50/75/100% + folha A4 + guias), TemplateEditor não inflou. Postman intacto (sem mudança de endpoint). — commit: (ver git log) — 2026-06-09
+
+## Bootstrap (2026-06-09)
+
+Serviços no ar: docker postgres, db teste seedado, `build:types`+`build:api-client` ok, API teste :3001 (404 root = ok), adm teste :5174 (200).

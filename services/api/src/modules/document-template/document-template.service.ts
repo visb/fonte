@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException, OnModuleDestroy } fro
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Browser } from 'puppeteer';
+import { DOCUMENT_PRINT_CSS } from '@fonte/doc-styles';
 import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
 import { DocumentTemplate } from './document-template.entity';
@@ -43,7 +44,11 @@ export class DocumentTemplateService implements OnModuleDestroy {
     const page = await browser.newPage();
     try {
       await page.setContent(html, { waitUntil: 'networkidle0' });
-      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '40px', bottom: '40px', left: '40px', right: '40px' } });
+      // Single margin convention (story 24 §2): puppeteer margin is ZEROED so the
+      // ONLY page margin is the body `padding` from DOCUMENT_PRINT_CSS. This makes
+      // the usable content height unambiguous (A4 1123px − 2×48px = 1027px) and
+      // lets the editor's A4 frame paginate at exactly the same offset as the PDF.
+      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '0', bottom: '0', left: '0', right: '0' } });
       return { buffer: Buffer.from(pdf), filename };
     } finally {
       await page.close();
@@ -185,20 +190,13 @@ export class DocumentTemplateService implements OnModuleDestroy {
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>${title}</title>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,Helvetica,sans-serif;font-size:12pt;line-height:1.2;color:#000;max-width:800px;margin:0 auto;padding:48px 40px;overflow:hidden}
-    h1,h2,h3{margin-bottom:14px}
-    p{margin-bottom:10px;overflow:hidden}
-    ol,ul{margin-left:28px;margin-bottom:10px}
-    li{margin-bottom:6px}
-    img{max-width:100%}
-    table.doc-table{border-collapse:collapse;width:100%;margin-bottom:10px;table-layout:fixed}
-    table.doc-table td,table.doc-table th{border:1px solid #000;padding:4px 6px;vertical-align:top}
-    table.doc-table.no-border td,table.doc-table.no-border th{border:none;padding:0 8px}
-    table.doc-table th{font-weight:700;text-align:left}
+    /* Shared document typography/layout — single source of truth used by BOTH
+       this PDF and the editor's A4 frame (story 24). Do not inline rules here. */
+    ${DOCUMENT_PRINT_CSS}
+    /* PDF-document-only chrome (the on-screen "Imprimir" button). */
     .print-btn{position:fixed;top:16px;right:16px;background:#1a1a1a;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit}
     .print-btn:hover{background:#333}
-    @media print{.print-btn{display:none}body{padding:20px}}
+    @media print{.print-btn{display:none}}
   </style>
 </head>
 <body>

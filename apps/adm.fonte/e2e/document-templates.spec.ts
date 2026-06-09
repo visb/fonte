@@ -216,3 +216,81 @@ test.describe('Editor de templates — tabelas e colunas', () => {
     expect(html).toMatch(/class="[^"]*doc-table[^"]*no-border[^"]*"/);
   });
 });
+
+// Story 24 — moldura A4 dentro do editor + quebra de página. O EditorContent
+// renderiza dentro de `.a4-page` (folha A4 794px com a mesma geometria do PDF) e,
+// quando o conteúdo passa de uma folha, a guia de quebra de página fica visível.
+// A4_PAGE_WIDTH_PX (794) é a mesma constante de @fonte/doc-styles consumida pelo
+// PDF — é isso que faz a quebra na tela bater com a do PDF.
+const A4_PAGE_WIDTH_PX = 794;
+
+test.describe('Editor de templates — moldura A4 e quebra de página', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Configurações' }).click();
+    await page.getByRole('link', { name: 'Templates de documentos' }).click();
+    await expect(page).toHaveURL('/settings/templates');
+  });
+
+  test('o editor renderiza dentro de uma folha A4 (.a4-page) com largura A4', async ({ page }) => {
+    const templateName = `E2E A4 ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    // A folha A4 existe e o editor (ProseMirror) está dentro dela.
+    const a4Page = page.locator('[data-testid="a4-page"]');
+    await expect(a4Page).toBeVisible();
+    await expect(a4Page.locator('.ProseMirror')).toBeVisible();
+
+    // A folha tem a largura A4 real (794px) — a geometria que o PDF usa. O zoom
+    // é aplicado via transform: scale(), então o width do layout permanece 794.
+    const width = await a4Page.evaluate((el) => el.getBoundingClientRect().width);
+    // getBoundingClientRect reflete o scale; lemos o offsetWidth (pré-transform).
+    const layoutWidth = await a4Page.evaluate((el) => (el as HTMLElement).offsetWidth);
+    expect(layoutWidth).toBe(A4_PAGE_WIDTH_PX);
+    expect(width).toBeGreaterThan(0);
+
+    // Conteúdo curto continua em 1 folha: a altura da folha é ~1 página A4.
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+    await page.keyboard.type('Texto curto em uma única página.');
+    const shortHeight = await a4Page.evaluate((el) => (el as HTMLElement).offsetHeight);
+    // 1123px (A4) ± margem de tolerância de render.
+    expect(shortHeight).toBeLessThan(1123 * 1.5);
+  });
+
+  test('conteúdo longo (> 1 folha) faz a folha passar de uma página A4', async ({ page }) => {
+    const templateName = `E2E A4 Longo ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    const a4Page = page.locator('[data-testid="a4-page"]');
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+
+    // Digita muitos parágrafos para ultrapassar a altura útil de uma folha A4
+    // (área útil ~1027px). 80 linhas garantem passar de uma página.
+    for (let i = 0; i < 80; i++) {
+      await page.keyboard.type(`Linha ${i + 1} de conteúdo para estourar a página.`);
+      await page.keyboard.press('Enter');
+    }
+
+    // A folha cresceu além de uma página A4 (1123px) — há uma segunda página, e a
+    // guia de quebra (desenhada a cada 1123px via repeating-linear-gradient) passa
+    // a ser visível dentro da folha.
+    const tallHeight = await a4Page.evaluate((el) => (el as HTMLElement).offsetHeight);
+    expect(tallHeight).toBeGreaterThan(1123);
+
+    // A guia de quebra de página está presente como background da folha.
+    const hasGuide = await a4Page.evaluate(
+      (el) => getComputedStyle(el).backgroundImage.includes('linear-gradient'),
+    );
+    expect(hasGuide).toBe(true);
+  });
+});

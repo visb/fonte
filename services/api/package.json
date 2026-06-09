@@ -6,7 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "prebuild": "pnpm --filter @fonte/types build",
+    "prebuild": "pnpm --filter @fonte/types build && pnpm --filter @fonte/doc-styles build",
     "build": "node -e \"try{require('fs').rmSync('dist',{recursive:true,force:true})}catch(e){}\" && nest build",
     "dev": "nest start --watch",
     "start": "npx typeorm-ts-node-commonjs migration:run -d dist/database/data-source.js && node dist/main",
@@ -31,6 +31,7 @@
     "@anthropic-ai/sdk": "^0.99.0",
     "@aws-sdk/client-s3": "^3.1042.0",
     "@aws-sdk/s3-request-presigner": "^3.1045.0",
+    "@fonte/doc-styles": "workspace:*",
     "@fonte/types": "workspace:*",
     "@nestjs/common": "^10.4.15",
     "@nestjs/config": "^3.3.0",
@@ -108,7 +109,8 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^@fonte/types$": "<rootDir>/../../../packages/types/src/index.ts"
+      "^@fonte/types$": "<rootDir>/../../../packages/types/src/index.ts",
+      "^@fonte/doc-styles$": "<rootDir>/../../../packages/doc-styles/src/index.ts"
     }
   }
 }

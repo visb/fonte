@@ -62,7 +62,11 @@
   }
 }
 
-/* TipTap editor */
+/* TipTap editor — interactive-only rules. Document typography/layout (headings,
+   lists, paragraphs, table borders, font, page geometry) now comes from the
+   SHARED stylesheet @fonte/doc-styles (EDITOR_PAGE_CSS, scoped under `.a4-page`),
+   so the editor renders 1:1 with the puppeteer PDF (story 24). Do NOT re-add
+   document-typography rules here — they would diverge from the PDF. */
 .ProseMirror {
   outline: none;
   min-height: 12rem;
@@ -74,42 +78,13 @@
   pointer-events: none;
   height: 0;
 }
-.ProseMirror h1, .ProseMirror h2, .ProseMirror h3 {
-  font-weight: 700;
-  margin-top: 0.75rem;
-  margin-bottom: 0.25rem;
-}
-.ProseMirror h2 { font-size: 1.125rem; }
-.ProseMirror ol { list-style-type: decimal; padding-left: 1.5rem; }
-.ProseMirror ul { list-style-type: disc; padding-left: 1.5rem; }
-.ProseMirror li { margin-bottom: 0.25rem; }
-.ProseMirror p { margin-bottom: 0.5rem; }
-
-/* Tabela do editor — DEVE espelhar as regras de impressão em
-   services/api/src/modules/document-template/document-template.service.ts
-   (wrapPage <style>). Até a Story 24 extrair um stylesheet compartilhado,
-   qualquer regra nova de tabela precisa ser replicada nos dois lugares. */
-.ProseMirror table.doc-table {
-  border-collapse: collapse;
-  width: 100%;
-  margin-bottom: 10px;
-  table-layout: fixed;
-  overflow: hidden;
-}
+/* Editor-only table affordances (positioning context + min cell width for the
+   column-resize handles). Borders/padding/layout come from the shared CSS. */
 .ProseMirror table.doc-table td,
 .ProseMirror table.doc-table th {
-  border: 1px solid #000;
-  padding: 4px 6px;
-  vertical-align: top;
   position: relative;
   min-width: 1em;
 }
-.ProseMirror table.doc-table.no-border td,
-.ProseMirror table.doc-table.no-border th {
-  border: none;
-  padding: 0 8px;
-}
-.ProseMirror table.doc-table th { font-weight: 700; text-align: left; }
 /* Célula selecionada / handle de redimensionamento de coluna (TipTap). */
 .ProseMirror table.doc-table .selectedCell::after {
   content: '';

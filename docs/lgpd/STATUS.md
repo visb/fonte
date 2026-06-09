@@ -52,7 +52,7 @@
 - CPF/RG já chegam mascarados do backend — exibição automática.
 - `@fonte/api-client`: módulos `consents`, `audit`; `residents.getAdmissionDocuments/exportData/anonymize`; tipos LGPD.
 
-**ops.fonte / app.fonte — não iniciado** (depende das fases futuras RELATIVE/RESIDENT, hoje inativas):
-- app.fonte (familiar): visualizar política de privacidade e gerir o próprio consentimento.
-- ops.fonte: coleta de consentimento/exibição de docs no fluxo do operador, se desejado.
+**ops.fonte / app.fonte — não iniciado** (apps ativos; é só implementar as telas):
+- app.fonte (familiar, role RELATIVE — ativo): exibir política de privacidade e permitir ao familiar gerir o próprio consentimento (aceite/revogação).
+- ops.fonte (operadores): coleta de consentimento e exibição de documentos de acolhimento no fluxo do operador, se desejado.
 - Tipos de consentimento hoje definidos localmente no backend e no api-client; mover p/ `@fonte/types` se ops/app forem consumir.

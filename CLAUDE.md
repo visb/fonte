@@ -14,8 +14,8 @@ Monorepo pnpm com backend NestJS centralizado e múltiplos frontends.
 apps/
   adm.fonte/       ← web React/Vite — gestão administrativa
   ops.fonte/       ← Expo/React Native — operadores da casa
-  app.fonte/       ← Expo/React Native — familiares (role RELATIVE)
-  resident.fonte/  ← mobile Expo — internos em kiosk (fase 2)
+  app.fonte/       ← Expo/React Native — familiares (role RELATIVE, ativo)
+  resident.fonte/  ← mobile Expo — internos em kiosk (planejado; role RESIDENT já ativa no backend)
 services/
   api/             ← backend NestJS
 packages/
@@ -322,5 +322,6 @@ Consulte `BUSINESS_RULES.md` antes de tocar nestes fluxos:
 - Autenticação centralizada em `User`.
 - `Staff.user_id` é obrigatório; `Relative.user_id` e `Resident.user_id` são preenchidos quando recebem acesso.
 - Roles `ADMIN`, `COORDINATOR`, `SERVANT` são exclusivas de Staff.
-- Roles `RELATIVE`, `RESIDENT` são fases futuras.
+- Role `RELATIVE` (familiares) está ativa e em uso pelo `app.fonte`.
+- Role `RESIDENT` (internos) está ativa no backend (login, mensagens, sessão de uso com limite diário); o app/kiosk dedicado (`resident.fonte`) ainda não foi scaffoldado.
 - JWT carrega `user_id`, `role`, `profile_type` (`STAFF` | `RELATIVE` | `RESIDENT`).

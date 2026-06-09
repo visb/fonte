@@ -70,9 +70,9 @@ Responsabilidades:
 
 ---
 
-## ff.fonte (mobile)
+## app.fonte (mobile)
 
-Aplicativo para familiares (fase 2).
+Aplicativo para familiares (role RELATIVE) — ativo.
 
 Responsabilidades:
 
@@ -82,9 +82,9 @@ Responsabilidades:
 
 ---
 
-## resident.fonte(mobile)
+## resident.fonte (mobile)
 
-Aplicativo para filhos internos na comunidade(fase 2).
+Aplicativo para filhos internos na comunidade (planejado; role RESIDENT já ativa no backend).
 
 App rodando em modo Kiosk, disponivel para os filhos utilizarem no dia a dia, com limite de 25 min de uso diário, não acumulativo.
 
@@ -164,8 +164,8 @@ Sem multi-tenant (neste momento).
 - ADMIN
 - COORDINATOR
 - SERVANT
-- FAMILY (fase futura)
-- RESIDENT (fase futura)
+- RELATIVE (familiares — ativo, usado pelo app.fonte)
+- RESIDENT (internos — ativo no backend; app/kiosk dedicado planejado)
 
 ---
 

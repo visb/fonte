@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
-import type { CreateDocumentTemplateInput } from '@fonte/api-client';
+import type { CreateDocumentTemplateInput, UpdateDocumentTemplateInput } from '@fonte/api-client';
 
 export function useDocumentTemplates(options?: { enabled?: boolean }) {
   return useQuery({
@@ -34,7 +34,7 @@ export function useDeleteDocumentTemplate() {
 export function useUpdateDocumentTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { name: string; content: string; isRequired: boolean } }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateDocumentTemplateInput }) =>
       api.documentTemplates.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.documentTemplates.all });

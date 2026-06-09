@@ -17,6 +17,7 @@ import { PromoteToServantDialog } from '../components/PromoteToServantDialog';
 import { OverviewTab } from '../components/tabs/OverviewTab';
 import { RelativesTab } from '../components/tabs/RelativesTab';
 import { AttachmentsTab } from '../components/tabs/AttachmentsTab';
+import { PrivacyTab } from '../components/tabs/PrivacyTab';
 import { AdmissionsTab } from '../components/tabs/AdmissionsTab';
 import { TrackingTab } from '../components/tabs/TrackingTab';
 import { ContributionsTab } from '../components/tabs/ContributionsTab';
@@ -27,6 +28,7 @@ const TABS = [
   { id: 'contributions', label: 'Contribuição', manageOnly: true },
   { id: 'relatives', label: 'Familiares' },
   { id: 'attachments', label: 'Anexos' },
+  { id: 'privacy', label: 'Privacidade', manageOnly: true },
   { id: 'admissions', label: 'Histórico' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
@@ -127,6 +129,8 @@ export function ResidentDetailPage() {
       {activeTab === 'relatives' && <RelativesTab residentId={id!} />}
 
       {activeTab === 'attachments' && <AttachmentsTab residentId={id!} residentName={resident.name} />}
+
+      {activeTab === 'privacy' && canManage && <PrivacyTab residentId={id!} residentName={resident.name} />}
 
       {activeTab === 'admissions' && <AdmissionsTab residentId={id!} />}
 

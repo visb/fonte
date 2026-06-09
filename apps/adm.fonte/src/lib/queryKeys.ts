@@ -22,6 +22,8 @@ export const queryKeys = {
     admissions: (id: string) => ['resident-admissions', id] as const,
     followUps: (id: string) => ['resident-follow-ups', id] as const,
     receivables: (id: string) => ['residents', id, 'receivables'] as const,
+    consents: (id: string) => ['residents', id, 'consents'] as const,
+    audit: (id: string) => ['residents', id, 'audit'] as const,
   },
   staff: {
     all: ['staff'] as const,

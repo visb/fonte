@@ -4115,6 +4115,29 @@
           }
         }
       ]
+    },
+    {
+      "name": "LGPD Retention",
+      "item": [
+        {
+          "name": "Run retention purge (ADMIN)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/lgpd/retention/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lgpd",
+                "retention",
+                "run"
+              ]
+            },
+            "description": "Anonimiza internos soft-deleted alem do prazo (LGPD_RETENTION_DAYS). Agenda semanal sob LGPD_RETENTION_ENABLED=true."
+          }
+        }
+      ]
     }
   ]
 }

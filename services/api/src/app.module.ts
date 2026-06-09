@@ -34,6 +34,7 @@ import { BackupModule } from './modules/backup/backup.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { ConsentModule } from './modules/consent/consent.module';
 import { DataRightsModule } from './modules/data-rights/data-rights.module';
+import { RetentionModule } from './modules/retention/retention.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { DataRightsModule } from './modules/data-rights/data-rights.module';
     AuditModule,
     ConsentModule,
     DataRightsModule,
+    RetentionModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },

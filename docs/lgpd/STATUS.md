@@ -25,6 +25,7 @@
 
 ### Fase 4 — Retenção / soft delete
 - `deleted_at` + `@DeleteDateColumn` em: admissions, messages, bible_course_enrollments, resident_usage_sessions, support_group_checkins, support_group_relative_checkins.
+- **Job de retenção/purga**: `RetentionService` anonimiza internos soft-deleted além de `LGPD_RETENTION_DAYS` (default ~5 anos); cron semanal sob `LGPD_RETENTION_ENABLED=true`; endpoint manual `POST /lgpd/retention/run` (ADMIN).
 
 ### Validação
 - Migrations aplicadas no DB de teste. **298 testes unitários + 135 e2e** passando. Build de produção OK. Postman atualizado.
@@ -38,7 +39,6 @@
 
 ### Backend
 - **Gate de consentimento** antes de publicar imagem/divulgação religiosa: `ConsentService.hasActiveConsent` existe, mas falta chamar no ponto de publicação (quando esse fluxo existir).
-- **Job de purga/anonimização** automático ao fim do prazo de retenção (Fase 4) — não implementado; hoje a anonimização é manual via endpoint.
 - Soft delete nas demais tabelas sem PII (movimentos/logs) — deixado de fora de propósito; revisar caso a caso se necessário.
 - Avaliar anonimização de PII nos dumps de backup.
 

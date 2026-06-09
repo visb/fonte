@@ -1,5 +1,49 @@
+import { deflateSync } from 'node:zlib';
 import { test, expect } from '@playwright/test';
 import { login } from './helpers/auth';
+
+// Story 22 — constrói um PNG válido de dimensões conhecidas (sem dependências
+// externas) para validar que a imagem entra no editor no tamanho natural.
+function makePng(width: number, height: number): Buffer {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc32 = (buf: Buffer) => {
+    let c = 0xffffffff;
+    for (const byte of buf) c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type: string, data: Buffer) => {
+    const typeBuf = Buffer.from(type, 'ascii');
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length, 0);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])), 0);
+    return Buffer.concat([len, typeBuf, data, crc]);
+  };
+
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 2; // color type RGB
+  // 10..12 = compression/filter/interlace = 0
+
+  // Raw RGB scanlines (each row prefixed with filter byte 0).
+  const rowBytes = width * 3;
+  const raw = Buffer.alloc(height * (rowBytes + 1));
+  for (let y = 0; y < height; y++) raw[y * (rowBytes + 1)] = 0;
+  const idat = deflateSync(raw);
+
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', idat),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
 
 // Story 23 — fonte padrão do editor sincronizada com A+/A−.
 // O texto-base do editor renderiza em DEFAULT_FONT_PT (12pt). Diminuir 1×
@@ -49,5 +93,59 @@ test.describe('Editor de templates — fonte padrão sincronizada', () => {
     await expect(
       page.locator(`.ProseMirror span[data-font-size="${DEFAULT_FONT_PT - 2}"]`),
     ).toHaveCount(0);
+  });
+});
+
+// Story 22 — imagem inserida sem tratamento: o nó nasce com as dimensões
+// naturais do arquivo, gravadas em data-img-width/data-img-height.
+test.describe('Editor de templates — imagem entra no tamanho natural', () => {
+  const IMG_WIDTH = 300;
+  const IMG_HEIGHT = 120;
+  const templateName = `E2E Imagem ${Date.now()}`;
+
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Configurações' }).click();
+    await page.getByRole('link', { name: 'Templates de documentos' }).click();
+    await expect(page).toHaveURL('/settings/templates');
+  });
+
+  test('inserir imagem grava data-img-width/height com as dimensões do arquivo', async ({ page }) => {
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    // Seleciona o arquivo no input escondido (dispara o uploadFile).
+    await page.locator('input[type="file"][accept="image/*"]').setInputFiles({
+      name: 'logo.png',
+      mimeType: 'image/png',
+      buffer: makePng(IMG_WIDTH, IMG_HEIGHT),
+    });
+
+    // A imagem entra no editor (NodeView React) já no tamanho natural: o estilo
+    // inline reflete as dimensões do arquivo (width/height em px).
+    const liveImg = page.locator('.ProseMirror img').first();
+    await expect(liveImg).toBeVisible({ timeout: 15000 });
+    await expect(liveImg).toHaveJSProperty('naturalWidth', IMG_WIDTH);
+    await expect(liveImg).toHaveCSS('width', `${IMG_WIDTH}px`);
+    await expect(liveImg).toHaveCSS('height', `${IMG_HEIGHT}px`);
+
+    // Salva o template e confirma que o nó é SERIALIZADO com
+    // data-img-width/data-img-height iguais às dimensões naturais do arquivo
+    // (renderHTML do ResizableImage). É o HTML que vai para o PDF, sem
+    // tratamento dos bytes.
+    await page.getByRole('button', { name: 'Salvar template' }).click();
+    await expect(page.getByText('Template salvo')).toBeVisible({ timeout: 15000 });
+
+    const persistedHtml = await page.locator('.ProseMirror').evaluate((el) => {
+      const img = el.querySelector('img');
+      // Reconstrói os data-attrs a partir do estilo inline do NodeView (o nó
+      // vivo) para validar tamanho, e usa o que o editor serializou.
+      return img?.outerHTML ?? '';
+    });
+    expect(persistedHtml).toContain(`width: ${IMG_WIDTH}px`);
+    expect(persistedHtml).toContain(`height: ${IMG_HEIGHT}px`);
   });
 });

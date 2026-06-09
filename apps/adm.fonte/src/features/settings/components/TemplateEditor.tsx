@@ -125,6 +125,29 @@ function currentIndentEm(value: string | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+// ─── readImageSize ──────────────────────────────────────────────────────────
+// Story 22 — lê as dimensões naturais (em px) do arquivo de imagem antes de
+// inseri-lo no editor, para que o nó nasça no tamanho real do arquivo (sem
+// "tratamento"/escala silenciosa). O usuário ainda pode redimensionar pelos
+// handles. Em caso de falha de leitura, devolve null e o nó cai no fallback
+// `max-width: 100%`.
+function readImageSize(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new globalThis.Image();
+    img.onload = () => {
+      const size = { width: img.naturalWidth, height: img.naturalHeight };
+      URL.revokeObjectURL(url);
+      resolve(size.width && size.height ? size : null);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
 // ─── Resize handle config ─────────────────────────────────────────────────────
 
 type HandlePos = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
@@ -297,6 +320,10 @@ const ResizableImage = Image.extend({
     const width    = node.attrs.width    as number | null;
     const height   = node.attrs.height   as number | null;
     const imgAlign = node.attrs.imgAlign as string | null;
+    // `max-width: 100%` é guarda de página (evita a imagem vazar a margem da
+    // A4) — NÃO é "tratamento": os bytes não são recomprimidos/redimensionados.
+    // O nó já nasce com width/height naturais (ver readImageSize), então só é
+    // reduzido quando realmente excede a largura útil.
     const styles: string[] = ['max-width: 100%'];
     if (width)  styles.push(`width: ${width}px`);
     if (height) styles.push(`height: ${height}px`);
@@ -443,8 +470,17 @@ export function TemplateEditor({ template, onSaved }: Props) {
     setIsUploadingImage(true);
     setImageUploadError(null);
     try {
+      // Lê as dimensões naturais ANTES do upload — o arquivo local já está
+      // disponível e isso evita uma viagem de rede extra.
+      const dims = await readImageSize(file);
       const { url } = await api.documentTemplates.uploadImage(formData);
-      editor.chain().focus().setImage({ src: api.photoUrl(url) ?? url }).run();
+      const src = api.photoUrl(url) ?? url;
+      const chain = editor.chain().focus().setImage({ src });
+      // Insere a imagem no tamanho exato do arquivo (px). Sem dimensões, o nó
+      // cairia no fallback `max-width: 100%` (guarda de página), dando a
+      // impressão de "tratamento". Não há recompressão/resize dos bytes.
+      if (dims) chain.updateAttributes('image', { width: dims.width, height: dims.height });
+      chain.run();
     } catch (err) {
       setImageUploadError(getErrorMessage(err, 'Erro ao enviar imagem.'));
     } finally {

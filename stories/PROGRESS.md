@@ -95,7 +95,7 @@ Estado da execução conduzida por `AUTORUN.md`. Fonte de verdade: esta seção 
 | 2 | 22 — imagem sem tratamento | [OK] | api 7✓ + adm e2e 2✓ + tsc | fad4c09 |
 | 3 | 21 — tabelas/colunas | [OK] | adm e2e 4✓ + api 7✓ + tsc | 023eb44 |
 | 4 | 24 — preview A4 + paginação | [OK] | adm e2e 6✓ + api 8✓ (suite 308✓) + build adm | dcd7921 |
-| 5 | 25 — code quality review frontends | [ ] | — | — |
+| 5 | 25 — code quality review frontends | [OK] | adm build+tsc✓ + ops/app tsc✓ + adm playwright 43✓ | 26a7a04 (6 lotes) |
 
 ## Log
 
@@ -140,3 +140,38 @@ Review + correção em lotes coesos. SÓ qualidade, sem mudar comportamento. Com
 ### Não aplicado por exigir mudança de comportamento
 
 - Nenhum gap exigiu mudança de comportamento entre os lotes aplicados (todos preservam saída idêntica das telas).
+
+---
+
+## Resumo final 21–25 (2026-06-09, execução autônoma AUTORUN)
+
+5/5 stories implementadas, testadas (verde) e commitadas. Sem push, sem PR — revisar e subir manualmente.
+
+| Story | Branch | Commit | Validação |
+|---|---|---|---|
+| 23 — fonte padrão px→pt | `feat/template-editor-melhorias` | 79eef59 | adm e2e 1✓ + api 6✓ + tsc |
+| 22 — imagem sem tratamento | `feat/template-editor-melhorias` | fad4c09 | api 7✓ + adm e2e 2✓ + tsc |
+| 21 — tabelas/colunas | `feat/template-editor-melhorias` | 023eb44 | adm e2e 4✓ + api 7✓ + tsc |
+| 24 — preview A4 + paginação | `feat/template-editor-melhorias` | dcd7921 | adm e2e 6✓ + api 308✓ + build adm |
+| 25 — code quality | `chore/code-quality` | ad146c8→26a7a04 (6 lotes) | adm build+tsc + ops/app tsc + playwright 43✓ |
+
+**Branches:** 21–24 em `feat/template-editor-melhorias`; 25 (6 commits parciais) em `chore/code-quality` (criada a partir da anterior). Nenhum merge com main.
+
+**Destaques técnicos:**
+- Story 24 criou `packages/doc-styles` consolidando o CSS de impressão (antes duplicado em `document-template.service.ts` + `index.css`); editor e PDF agora consomem `DOCUMENT_PRINT_CSS`/`EDITOR_PAGE_CSS` 1:1. Paginação = MVP visual (guias calibradas à geometria A4 do puppeteer), nenhuma extensão TipTap de paginação adotada (não casavam com o flow do PDF).
+- Story 21 adicionou `@tiptap/extension-table@3.22.5` (casado ao core) + `DocTableView` para a classe da tabela bater editor↔PDF.
+
+**Pendências registradas (NÃO bloqueios):**
+- Story 23: migração visual de templates já salvos (base +~60% 10px→12pt) = verificação manual pós-deploy, sem migration de dados.
+- Story 25: itens de médio risco deixados p/ 2º passe (useForm em pages adm+ops, TemplateEditor 774 linhas + 1 `any`, modais grandes ops/app, 2× `as any` em router.push). Ver lista acima.
+
+**Reproduzir (serviços ficaram de pé):**
+```
+pnpm docker:up && pnpm test:setup
+pnpm build:types && pnpm build:api-client   # OBRIGATÓRIO antes de subir API/adm
+pnpm dev:api:test                            # :3001
+pnpm --filter adm.fonte dev:test             # :5174
+pnpm --filter api test                       # api unit (308)
+cd apps/adm.fonte && pnpm exec playwright test document-templates.spec.ts   # 6
+```
+Serviços no ar ao fim: API teste :3001, adm teste :5174, docker postgres.

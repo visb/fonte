@@ -63,6 +63,13 @@ export enum ResidentStatus {
   REJECTED_CENSUS = 'REJECTED_CENSUS',
 }
 
+// Filhos fisicamente presentes na casa (contagem de ocupação).
+export const PRESENT_RESIDENT_STATUSES = [
+  ResidentStatus.ACTIVE,
+  ResidentStatus.DISCIPLINE,
+  ResidentStatus.TEMP_LEAVE,
+] as const;
+
 export enum ProfileType {
   STAFF = 'STAFF',
   RELATIVE = 'RELATIVE',

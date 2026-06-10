@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { PRESENT_RESIDENT_STATUSES } from '@fonte/types';
 import { House } from './house.entity';
 import { HousePhoto } from './house-photo.entity';
 import { HouseRule } from './house-rule.entity';
@@ -35,9 +36,9 @@ export class HouseService {
       this.houseRepository.manager.query<Array<{ houseId: string; count: string }>>(
         `SELECT house_id AS "houseId", COUNT(id)::int AS count
          FROM residents
-         WHERE status = $1 AND deleted_at IS NULL
+         WHERE status = ANY($1) AND deleted_at IS NULL
          GROUP BY house_id`,
-        ['ACTIVE'],
+        [[...PRESENT_RESIDENT_STATUSES]],
       ),
       this.houseRepository.manager.query<Array<{ houseId: string; count: string }>>(
         `SELECT house_id AS "houseId", COUNT(DISTINCT id)::int AS count
@@ -72,8 +73,8 @@ export class HouseService {
         relations: ['coordinator', 'photos'],
       }),
       this.houseRepository.manager.query<Array<{ count: string }>>(
-        `SELECT COUNT(id)::int AS count FROM residents WHERE house_id = $1 AND status = $2 AND deleted_at IS NULL`,
-        [id, 'ACTIVE'],
+        `SELECT COUNT(id)::int AS count FROM residents WHERE house_id = $1 AND status = ANY($2) AND deleted_at IS NULL`,
+        [id, [...PRESENT_RESIDENT_STATUSES]],
       ),
       this.houseRepository.manager.query<Array<{ count: string }>>(
         `SELECT COUNT(DISTINCT id)::int AS count FROM staff WHERE house_id = $1 AND deleted_at IS NULL`,

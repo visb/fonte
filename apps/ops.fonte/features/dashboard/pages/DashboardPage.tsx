@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, ScrollView, RefreshControl } from "react-native";
-import { Role } from "@fonte/types";
+import { Role, PRESENT_RESIDENT_STATUSES } from "@fonte/types";
 import { useAuth } from "@/lib/auth";
 import { useResidentCountByHouse } from "@/features/residents/hooks/useResidents";
 import { useIncidentsToday } from "@/features/incidents/hooks/useIncidents";
@@ -30,6 +30,10 @@ export function DashboardPage() {
     setIsRefreshing(false);
   };
 
+  const presentResidentsCount = residents.filter((resident) =>
+    (PRESENT_RESIDENT_STATUSES as readonly string[]).includes(resident.status),
+  ).length;
+
   const todayIncidentsCount = incidents.filter((incident) => {
     const incidentDate = new Date(incident.date).toISOString().split("T")[0];
     const today = new Date().toISOString().split("T")[0];
@@ -46,7 +50,7 @@ export function DashboardPage() {
       <WelcomeHeader name={staff?.name ?? "—"} houseName={staff?.house?.name} photoUrl={staff?.photoUrl} />
       <View className="px-4 py-4">
         <StatCards
-          residentCount={residents.length}
+          residentCount={presentResidentsCount}
           incidentCount={todayIncidentsCount}
         />
         <QuickActions showHouseSettings={isHouseCoordinator} />

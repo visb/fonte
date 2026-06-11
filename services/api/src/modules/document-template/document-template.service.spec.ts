@@ -138,5 +138,7 @@ describe('DocumentTemplateService.renderForResident', () => {
     expect(html).toContain(`width:${A4_PAGE_WIDTH_PX}px`); // story 24 — A4 794px
     expect(html).toContain('table.doc-table'); // story 21 — tabelas
     expect(html).toContain('img{max-width:100%}'); // story 22 — guarda de imagem
+    expect(html).toContain('text-decoration:underline'); // story 27 — link visível
+    expect(html).toContain('p:empty{min-height:1.2em}'); // story 27 — preserva linha em branco
   });
 });

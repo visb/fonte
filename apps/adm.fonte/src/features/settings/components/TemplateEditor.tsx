@@ -11,6 +11,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import { Extension, Mark, mergeAttributes } from '@tiptap/core';
 import Image from '@tiptap/extension-image';
+import Link from '@tiptap/extension-link';
 import { Table, TableRow, TableHeader, TableCell, TableView } from '@tiptap/extension-table';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import {
@@ -27,6 +28,7 @@ import { api } from '@/lib/api';
 import type { DocumentTemplate } from '@fonte/api-client';
 import { useUpdateDocumentTemplate } from '../hooks/useDocumentTemplates';
 import { TableToolbar } from './TableToolbar';
+import { LinkToolbar } from './LinkToolbar';
 import { A4EditorFrame } from './A4EditorFrame';
 
 // ─── FontSize mark ────────────────────────────────────────────────────────────
@@ -470,6 +472,14 @@ export function TemplateEditor({ template, onSaved }: Props) {
       FontSize,
       ParagraphIndent,
       ResizableImage.configure({ inline: false, allowBase64: false }),
+      // Link visível (azul + sublinhado vêm do CSS compartilhado, não daqui, p/
+      // o editor casar 1:1 com o PDF). openOnClick: false p/ não navegar ao
+      // clicar dentro do editor.
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        HTMLAttributes: { class: 'doc-link', rel: 'noopener noreferrer nofollow', target: '_blank' },
+      }),
       // Story 21 — tabelas (também servem de layout multicoluna sem borda).
       // `View: DocTableView` espelha a classe `doc-table`/`no-border` no <table>
       // vivo (o TableView padrão só copia o style — ver DocTableView).
@@ -703,6 +713,11 @@ export function TemplateEditor({ template, onSaved }: Props) {
         <ToolbarButton active={false} onClick={() => changeIndent(-1)} title="Diminuir recuo da primeira linha">
           <IndentDecrease size={14} />
         </ToolbarButton>
+
+        <div className="w-px h-5 bg-border mx-0.5" />
+
+        {/* Link / unlink */}
+        <LinkToolbar editor={editor} />
 
         <div className="w-px h-5 bg-border mx-0.5" />
 

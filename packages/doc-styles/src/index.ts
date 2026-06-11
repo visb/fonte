@@ -50,7 +50,9 @@ function elementRules(scope = ''): string {
   return `
 ${s}h1,${s}h2,${s}h3{margin-bottom:14px}
 ${s}p{margin-bottom:10px;overflow:hidden}
-${s}p:empty::before{content:"\\00200b"}
+${s}a,${s}a.doc-link{color:#0645ad;text-decoration:underline}
+${s}p:empty{min-height:1.2em}
+${s}p:empty::before{content:"\\00a0"}
 ${s}ol,${s}ul{margin-left:28px;margin-bottom:10px}
 ${s}li{margin-bottom:6px}
 ${s}img{max-width:100%}

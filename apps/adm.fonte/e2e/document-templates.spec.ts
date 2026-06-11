@@ -294,3 +294,44 @@ test.describe('Editor de templates — moldura A4 e quebra de página', () => {
     expect(hasGuide).toBe(true);
   });
 });
+
+// Story 27 — link/unlink no editor. Texto com link vira <a class="doc-link"> e o
+// CSS compartilhado o pinta de azul + sublinhado (mesma regra do PDF).
+test.describe('Editor de templates — link/unlink', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Configurações' }).click();
+    await page.getByRole('link', { name: 'Templates de documentos' }).click();
+    await expect(page).toHaveURL('/settings/templates');
+  });
+
+  test('aplicar link via popover marca o texto e remover desfaz', async ({ page }) => {
+    const templateName = `E2E Link ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+    await page.keyboard.type('Fonte de Misericórdia');
+    await page.keyboard.press('Control+A');
+
+    // Abre o popover de link, digita a URL e aplica.
+    await page.getByTitle('Inserir/editar link').click();
+    await page.getByPlaceholder('https://exemplo.com').fill('fonte.org.br');
+    await page.getByRole('button', { name: 'Aplicar' }).click();
+
+    // O texto vira um link com class doc-link e href normalizado (https://).
+    const link = editor.locator('a.doc-link');
+    await expect(link).toHaveAttribute('href', 'https://fonte.org.br');
+    // E aparece azul + sublinhado (CSS compartilhado @fonte/doc-styles).
+    await expect(link).toHaveCSS('text-decoration-line', 'underline');
+
+    // Remove o link pela toolbar — o <a> some, o texto permanece.
+    await page.getByTitle('Remover link').click();
+    await expect(editor.locator('a.doc-link')).toHaveCount(0);
+    await expect(editor).toContainText('Fonte de Misericórdia');
+  });
+});

@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/react';
+import { useEditorState, type Editor } from '@tiptap/react';
 import {
   Columns2, Grid2x2X, Heading, Merge, SquareSplitHorizontal,
   Table as TableIcon, Trash2,
@@ -40,7 +40,16 @@ interface Props { editor: Editor; }
 // dentro de uma tabela. Extraído do TemplateEditor pra respeitar o limite de
 // ~150 linhas por componente (CLAUDE.md).
 export function TableToolbar({ editor }: Props) {
-  const insideTable = editor.isActive('table');
+  // Reativo ao cursor/seleção (useEditorState re-renderiza só quando o resultado muda):
+  // os controles de edição aparecem/somem ao entrar/sair de uma tabela em tempo real.
+  // Não usar shouldRerenderOnTransaction global — loopa com o BubbleMenu (lição story 28).
+  const { insideTable, tableClass } = useEditorState({
+    editor,
+    selector: ({ editor: e }) => ({
+      insideTable: e.isActive('table'),
+      tableClass: (e.getAttributes('table').class as string | undefined) ?? '',
+    }),
+  });
 
   // Insere tabela 2×2 SEM borda (decisão story 21) e aplica a classe.
   const insertTable = () => {
@@ -58,7 +67,7 @@ export function TableToolbar({ editor }: Props) {
       .run();
   };
 
-  const hasBorder = !(editor.getAttributes('table').class ?? '').includes(NO_BORDER_CLASS);
+  const hasBorder = !tableClass.includes(NO_BORDER_CLASS);
   const toggleBorder = () => {
     editor.chain().focus()
       .updateAttributes('table', {

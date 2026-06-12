@@ -369,6 +369,63 @@ test.describe('Editor de templates — moldura A4 e quebra de página', () => {
   });
 });
 
+// Story 30 — selecionar a tabela inteira e agir sobre ela como um bloco. A alça
+// (grip) aparece com o cursor dentro da tabela; clicar nela seleciona a tabela
+// (NodeSelection) e mostra o botão de menu no canto com Recortar/Copiar/Duplicar/
+// Remover. Os testes focam seleção + duplicar + remover (copiar/recortar dependem
+// do clipboard real do browser, instável de asserir no Playwright).
+test.describe('Editor de templates — seleção e menu de ações da tabela', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Configurações' }).click();
+    await page.getByRole('link', { name: 'Templates de documentos' }).click();
+    await expect(page).toHaveURL('/settings/templates');
+  });
+
+  test('alça seleciona a tabela e o menu duplica e remove', async ({ page }) => {
+    const templateName = `E2E Tabela Menu ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+    await page.getByTitle('Inserir tabela 2×2').click();
+    await expect(editor.locator('table.doc-table')).toHaveCount(1);
+
+    // Cursor numa célula → a alça de seleção aparece (reatividade useEditorState).
+    await editor.locator('table.doc-table td').first().click();
+    const handle = page.getByTestId('table-select-handle');
+    await expect(handle).toBeVisible();
+
+    // Clicar na alça seleciona a tabela: a alça some e o botão de menu aparece.
+    await handle.click();
+    const menuBtn = page.getByTestId('table-block-menu');
+    await expect(menuBtn).toBeVisible();
+    await expect(handle).toHaveCount(0);
+
+    // Abrir o menu → as 4 ações estão presentes.
+    await menuBtn.click();
+    await expect(page.getByRole('menuitem', { name: 'Recortar' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Copiar' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Duplicar' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Remover' })).toBeVisible();
+
+    // Duplicar → passa a haver 2 tabelas.
+    await page.getByRole('menuitem', { name: 'Duplicar' }).click();
+    await expect(editor.locator('table.doc-table')).toHaveCount(2);
+
+    // Seleciona a primeira tabela de novo e remove → volta a 1.
+    await editor.locator('table.doc-table').first().locator('td').first().click();
+    await page.getByTestId('table-select-handle').click();
+    await page.getByTestId('table-block-menu').click();
+    await page.getByRole('menuitem', { name: 'Remover' }).click();
+    await expect(editor.locator('table.doc-table')).toHaveCount(1);
+  });
+});
+
 // Story 27 — link/unlink no editor. Texto com link vira <a class="doc-link"> e o
 // CSS compartilhado o pinta de azul + sublinhado (mesma regra do PDF).
 test.describe('Editor de templates — link/unlink', () => {

@@ -30,6 +30,7 @@ import { useUpdateDocumentTemplate } from '../hooks/useDocumentTemplates';
 import { TableToolbar } from './TableToolbar';
 import { LinkToolbar } from './LinkToolbar';
 import { LinkBubbleMenu } from './LinkBubbleMenu';
+import { TableBlockMenu } from './TableBlockMenu';
 import { A4EditorFrame } from './A4EditorFrame';
 
 // ─── FontSize mark ────────────────────────────────────────────────────────────
@@ -756,6 +757,9 @@ export function TemplateEditor({ template, onSaved }: Props) {
 
       {/* Tooltip de ações ao clicar/posicionar o cursor num link (story 28) */}
       <LinkBubbleMenu editor={editor} />
+
+      {/* Alça de seleção + menu de ações da tabela inteira (story 30) */}
+      <TableBlockMenu editor={editor} />
 
       {/* Variables */}
       <div className="rounded-md border bg-muted/30 p-3 space-y-2">

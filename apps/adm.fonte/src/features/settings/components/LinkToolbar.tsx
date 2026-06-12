@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Editor } from '@tiptap/react';
+import { useEditorState, type Editor } from '@tiptap/react';
 import { Link as LinkIcon, Link2Off } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,10 @@ export function LinkToolbar({ editor }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const isLink = editor.isActive('link');
+  // Reativo ao cursor/seleção: useEditorState re-renderiza só quando `isLink` muda,
+  // sem forçar re-render global do editor (que entra em loop com o BubbleMenu). Assim
+  // o botão unlink habilita/desabilita ao posicionar o cursor sobre um link.
+  const isLink = useEditorState({ editor, selector: ({ editor: e }) => e.isActive('link') });
 
   useEffect(() => {
     if (!open) return;
@@ -67,7 +70,7 @@ export function LinkToolbar({ editor }: Props) {
   };
 
   return (
-    <div ref={containerRef} className="relative flex items-center">
+    <div ref={containerRef} data-testid="link-toolbar" className="relative flex items-center">
       <button
         type="button"
         onClick={openPopover}

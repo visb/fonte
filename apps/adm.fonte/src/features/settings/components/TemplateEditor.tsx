@@ -29,6 +29,7 @@ import type { DocumentTemplate } from '@fonte/api-client';
 import { useUpdateDocumentTemplate } from '../hooks/useDocumentTemplates';
 import { TableToolbar } from './TableToolbar';
 import { LinkToolbar } from './LinkToolbar';
+import { LinkBubbleMenu } from './LinkBubbleMenu';
 import { A4EditorFrame } from './A4EditorFrame';
 
 // ─── FontSize mark ────────────────────────────────────────────────────────────
@@ -493,6 +494,15 @@ export function TemplateEditor({ template, onSaved }: Props) {
       attributes: {
         style: `display: flow-root; font-family: Arial, Helvetica, sans-serif; font-size: ${DEFAULT_FONT_PT}pt; line-height: ${DEFAULT_LINE_HEIGHT};`,
       },
+      // Clicar num link NÃO navega — apenas posiciona o cursor (o LinkBubbleMenu cuida
+      // das ações). `openOnClick: false` não basta: o browser segue âncoras
+      // target="_blank" no clique mesmo dentro do contenteditable, então prevenimos
+      // o default aqui.
+      handleClick: (_view, _pos, event) => {
+        const el = event.target as HTMLElement | null;
+        if (el?.closest('a')) event.preventDefault();
+        return false;
+      },
       // Intercept clipboard paste — if image file present, upload instead of embedding base64
       handlePaste: (_view, event) => {
         const items = event.clipboardData?.items;
@@ -743,6 +753,9 @@ export function TemplateEditor({ template, onSaved }: Props) {
       <A4EditorFrame>
         <EditorContent editor={editor} />
       </A4EditorFrame>
+
+      {/* Tooltip de ações ao clicar/posicionar o cursor num link (story 28) */}
+      <LinkBubbleMenu editor={editor} />
 
       {/* Variables */}
       <div className="rounded-md border bg-muted/30 p-3 space-y-2">

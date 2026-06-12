@@ -319,7 +319,8 @@ test.describe('Editor de templates — link/unlink', () => {
     await page.keyboard.press('Control+A');
 
     // Abre o popover de link, digita a URL e aplica.
-    await page.getByTitle('Inserir/editar link').click();
+    const toolbar = page.getByTestId('link-toolbar');
+    await toolbar.getByTitle('Inserir/editar link').click();
     await page.getByPlaceholder('https://exemplo.com').fill('fonte.org.br');
     await page.getByRole('button', { name: 'Aplicar' }).click();
 
@@ -330,7 +331,49 @@ test.describe('Editor de templates — link/unlink', () => {
     await expect(link).toHaveCSS('text-decoration-line', 'underline');
 
     // Remove o link pela toolbar — o <a> some, o texto permanece.
-    await page.getByTitle('Remover link').click();
+    await toolbar.getByTitle('Remover link').click();
+    await expect(editor.locator('a.doc-link')).toHaveCount(0);
+    await expect(editor).toContainText('Fonte de Misericórdia');
+  });
+
+  // Story 28 — clicar no link abre um tooltip de ações (não navega) e o botão unlink
+  // da toolbar reflete o cursor em tempo real.
+  test('clicar no link abre tooltip de acoes e ativa o unlink da toolbar', async ({ page }) => {
+    const templateName = `E2E Link Tooltip ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    const editor = page.locator('.ProseMirror');
+    const toolbar = page.getByTestId('link-toolbar');
+    const unlinkBtn = toolbar.getByTitle('Remover link');
+
+    // Sem link sob o cursor, o botão unlink da toolbar está desabilitado.
+    await editor.click();
+    await page.keyboard.type('Fonte de Misericórdia');
+    await expect(unlinkBtn).toBeDisabled();
+
+    // Aplica um link no texto selecionado.
+    await page.keyboard.press('Control+A');
+    await toolbar.getByTitle('Inserir/editar link').click();
+    await page.getByPlaceholder('https://exemplo.com').fill('fonte.org.br');
+    await page.getByRole('button', { name: 'Aplicar' }).click();
+    const link = editor.locator('a.doc-link');
+    await expect(link).toHaveAttribute('href', 'https://fonte.org.br');
+
+    // Clicar no link NÃO navega (continua na página de templates) e abre o tooltip.
+    await link.click();
+    await expect(page).toHaveURL('/settings/templates');
+    const bubble = page.getByTestId('link-bubble');
+    await expect(bubble).toBeVisible();
+
+    // Com o cursor dentro do link, o unlink da toolbar fica habilitado (reatividade).
+    await expect(unlinkBtn).toBeEnabled();
+
+    // "Remover link" no tooltip desfaz o link; o texto permanece.
+    await bubble.getByTitle('Remover link').click();
     await expect(editor.locator('a.doc-link')).toHaveCount(0);
     await expect(editor).toContainText('Fonte de Misericórdia');
   });

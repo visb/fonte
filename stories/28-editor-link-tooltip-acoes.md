@@ -19,7 +19,10 @@ adicionou link/unlink via popover na toolbar):
    negrito/itálico/alinhamento) não atualizam.
 
 **Decisões do usuário (travadas):**
-- Ao clicar num link, **não navegar** — abrir tooltip de ações. (Já não navega; falta o tooltip.)
+- Ao clicar num link, **não navegar** — abrir tooltip de ações. Apesar de `openOnClick: false`,
+  o browser ainda segue âncoras `target="_blank"` no clique dentro do contenteditable (relato do
+  usuário: hoje redireciona). Prevenir via `editorProps.handleClick` (`preventDefault` quando o
+  alvo está dentro de um `<a>`); o clique então só posiciona o cursor e dispara o tooltip.
 - Botão unlink (e, por tabela, os demais botões de estado) deve refletir o cursor em tempo real.
 
 **Abordagem (travada na implementação):**
@@ -29,10 +32,10 @@ adicionou link/unlink via popover na toolbar):
   seleção vazia), então o tooltip aparece com o cursor dentro do link sem precisar selecionar.
   Como o `shouldShow` custom não checa foco, o tooltip permanece aberto enquanto o input de
   edição está focado (o editor perde foco, mas a seleção/link continua ativa).
-- Reatividade: `shouldRerenderOnTransaction: true` no `useEditor`. Corrige o unlink e, de quebra,
-  deixa todos os estados de toolbar (negrito/itálico/alinhamento/pt da fonte) reativos ao cursor.
-  Documento de template é pequeno — custo de re-render desprezível; é o padrão recomendado do
-  TipTap para toolbars reativas.
+- Reatividade do unlink: `useEditorState` no `LinkToolbar` (re-renderiza só quando `isLink` muda).
+  **Não** usar `shouldRerenderOnTransaction: true` no `useEditor` — testado e causa
+  "Maximum update depth exceeded" (loop) ao combinar o re-render global por transação com a
+  subscrição interna do `BubbleMenu`. `useEditorState` é cirúrgico e evita o loop.
 - Reuso de `normalizeLinkHref` (já exportado de `LinkToolbar.tsx`) no tooltip.
 
 ## Desenho
@@ -51,11 +54,12 @@ Novo componente `LinkBubbleMenu.tsx` em `features/settings/components/`:
   Vazio = `unsetLink` (mesma regra do popover da toolbar).
 - Reset do modo edição em `selectionUpdate` (mudar de link volta para o modo ação).
 - Render do `<LinkBubbleMenu editor={editor} />` ao lado de `<EditorContent>` no `TemplateEditor`.
+- `editorProps.handleClick` no `TemplateEditor` previne a navegação ao clicar num `<a>`.
 
 ### Parte 2 — Estado reativo da toolbar (fix)
 
-- `useEditor({ ..., shouldRerenderOnTransaction: true })` em `TemplateEditor.tsx`.
-- Nenhuma mudança no `LinkToolbar.tsx` (o `disabled={!isLink}` passa a reagir ao cursor).
+- `LinkToolbar.tsx`: `isLink` via `useEditorState({ editor, selector: ({editor}) => editor.isActive('link') })`
+  no lugar de `editor.isActive('link')` direto — o `disabled={!isLink}` passa a reagir ao cursor.
 
 ## Validação
 

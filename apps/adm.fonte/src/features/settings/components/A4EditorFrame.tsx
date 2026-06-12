@@ -27,7 +27,7 @@ interface Props {
 }
 
 export function A4EditorFrame({ children }: Props) {
-  const [zoom, setZoom] = useState<number>(0.75);
+  const [zoom, setZoom] = useState<number>(1);
 
   // The first page-break sits at top-padding + content-height; subsequent ones
   // repeat every full A4 page height. A `repeating-linear-gradient` starting at

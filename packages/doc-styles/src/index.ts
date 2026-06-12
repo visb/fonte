@@ -78,4 +78,5 @@ ${elementRules('')}
 export const EDITOR_PAGE_CSS = `
 .a4-page{${DOCUMENT_CONTENT_CSS}width:${A4_PAGE_WIDTH_PX}px;min-height:${A4_PAGE_HEIGHT_PX}px;padding:${A4_PADDING};background:#fff;}
 ${elementRules('.a4-page')}
+.a4-page table.doc-table.no-border td,.a4-page table.doc-table.no-border th{border:1px dashed #c8c8c8}
 `.trim();

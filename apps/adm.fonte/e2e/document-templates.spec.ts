@@ -215,6 +215,80 @@ test.describe('Editor de templates — tabelas e colunas', () => {
     // A classe `doc-table no-border` sobrevive ao HTML salvo (DocTable.class).
     expect(html).toMatch(/class="[^"]*doc-table[^"]*no-border[^"]*"/);
   });
+
+  // Story 29 — toolbar de tabela reativa ao cursor: os controles de edição só
+  // aparecem quando o cursor está dentro de uma tabela.
+  test('controles de edição de tabela só aparecem com o cursor dentro dela', async ({ page }) => {
+    const templateName = `E2E Tabela Reativa ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    const editor = page.locator('.ProseMirror');
+    const addColBtn = page.getByTitle('Adicionar coluna');
+
+    // Cursor fora de tabela (parágrafo): controle +Col não existe.
+    await editor.click();
+    await page.keyboard.type('Texto fora da tabela');
+    await expect(addColBtn).toHaveCount(0);
+
+    // Insere tabela e clica numa célula → +Col aparece (reatividade useEditorState).
+    await page.getByTitle('Inserir tabela 2×2').click();
+    await editor.locator('table.doc-table td').first().click();
+    await expect(addColBtn).toBeVisible();
+
+    // Volta o cursor para fora da tabela → +Col some de novo.
+    await editor.locator('p').first().click();
+    await expect(addColBtn).toHaveCount(0);
+  });
+
+  // Story 29 — tabela sem borda exibe bordas tracejadas nas células NO EDITOR
+  // (guia visual de divisão); o PDF segue borderless.
+  test('tabela sem borda mostra células tracejadas no editor', async ({ page }) => {
+    const templateName = `E2E Tabela Tracejada ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+    await page.getByTitle('Inserir 2 colunas de texto').click();
+
+    const cell = editor.locator('table.doc-table.no-border td').first();
+    await expect(cell).toBeVisible();
+    await expect(cell).toHaveCSS('border-top-style', 'dashed');
+  });
+});
+
+// Story 29 — zoom do frame A4 abre em 100% por padrão.
+test.describe('Editor de templates — zoom padrão', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Configurações' }).click();
+    await page.getByRole('link', { name: 'Templates de documentos' }).click();
+    await expect(page).toHaveURL('/settings/templates');
+  });
+
+  test('o zoom inicial é 100%', async ({ page }) => {
+    const templateName = `E2E Zoom ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    // O botão 100% nasce selecionado (variante primary: bg-primary).
+    const zoom100 = page.getByRole('button', { name: '100%' });
+    await expect(zoom100).toBeVisible();
+    await expect(zoom100).toHaveClass(/bg-primary/);
+    // E a folha está renderizada em escala 1 (sem redução).
+    const a4 = page.getByTestId('a4-page');
+    await expect(a4).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+  });
 });
 
 // Story 24 — moldura A4 dentro do editor + quebra de página. O EditorContent

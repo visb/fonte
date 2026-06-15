@@ -1,10 +1,3 @@
-import { type ClassValue, clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
 /**
  * Normaliza texto para busca insensível a acento e caixa.
  * Ex: `normalizeForSearch('João')` === `normalizeForSearch('joao')`.

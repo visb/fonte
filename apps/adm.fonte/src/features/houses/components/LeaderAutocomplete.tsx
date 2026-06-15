@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { normalizeForSearch } from '@/lib/utils';
 import { SELECT_CLASS } from '../constants';
 
 export interface PersonItem { id: string; name: string }
@@ -42,7 +43,7 @@ export function LeaderAutocomplete({
   }, []);
 
   const filtered = query
-    ? allOptions.filter((o) => o.name.toLowerCase().includes(query.toLowerCase()))
+    ? allOptions.filter((o) => normalizeForSearch(o.name).includes(normalizeForSearch(query)))
     : allOptions;
 
   const handleSelect = (id: string | null, type: LeaderType | null) => {

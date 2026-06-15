@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, FlatList, ActivityIndicator } from "react-native";
 import { ResidentStatus } from "@fonte/types";
 import { useAuth } from "@/lib/auth";
+import { normalizeForSearch } from "@/lib/searchUtils";
 import { useResidentsByHouse } from "@/features/residents/hooks/useResidents";
 import { ResidentSearchBar } from "@/features/residents/components/ResidentSearchBar";
 import { ResidentStatusFilterModal } from "@/features/residents/components/ResidentStatusFilterModal";
@@ -35,7 +36,7 @@ export function ResidentsPage() {
 
   const filtered = residents.filter(
     (r) =>
-      r.name.toLowerCase().includes(search.toLowerCase()) &&
+      normalizeForSearch(r.name).includes(normalizeForSearch(search)) &&
       (statusFilter.length === 0 ||
         statusFilter.includes(r.status as ResidentStatus)),
   );

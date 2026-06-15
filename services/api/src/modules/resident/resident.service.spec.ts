@@ -213,9 +213,19 @@ describe('ResidentService.findAll', () => {
     await service.findAll(dto);
 
     expect(qb.andWhere).toHaveBeenCalledWith(
-      'LOWER(resident.name) LIKE LOWER(:search)',
+      'unaccent(LOWER(resident.name)) LIKE unaccent(LOWER(:search))',
       { search: '%joao%' },
     );
+  });
+
+  it('uses unaccent so accented and unaccented names match', async () => {
+    const dto: ListResidentsDto = { search: 'João' };
+    await service.findAll(dto);
+
+    const whereCalls: Array<[string, Record<string, string>]> = (qb.andWhere as jest.Mock).mock.calls;
+    const searchCall = whereCalls.find(([sql]) => sql.includes('resident.name'));
+    expect(searchCall).toBeDefined();
+    expect(searchCall![0]).toContain('unaccent(LOWER(resident.name)) LIKE unaccent(LOWER(:search))');
   });
 
   it('applies CPF filter stripping non-digits when search contains digits', async () => {
@@ -258,7 +268,7 @@ describe('ResidentService.findAll', () => {
     await service.findAll(dto);
 
     expect(qb.andWhere).toHaveBeenCalledWith(
-      'LOWER(resident.name) LIKE LOWER(:search)',
+      'unaccent(LOWER(resident.name)) LIKE unaccent(LOWER(:search))',
       { search: '%Maria%' },
     );
     expect(qb.andWhere).toHaveBeenCalledWith('resident.status = :status', {

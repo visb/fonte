@@ -8,6 +8,7 @@ import { useAllResidents } from '@/features/residents/hooks/useResidents';
 import { CheckinRow } from '../components/CheckinRow';
 import { QRCodeModal } from '../components/QRCodeModal';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { normalizeForSearch } from '@/lib/searchUtils';
 
 function formatDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-');
@@ -34,7 +35,7 @@ export function MeetingDetailPage() {
   const filteredResidents = useMemo(
     () =>
       residents.filter(
-        (r) => r.name.toLowerCase().includes(search.toLowerCase()) && !checkedInIds.has(r.id),
+        (r) => normalizeForSearch(r.name).includes(normalizeForSearch(search)) && !checkedInIds.has(r.id),
       ),
     [residents, search, checkedInIds],
   );

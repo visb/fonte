@@ -123,12 +123,14 @@ export class ResidentService {
       const digits = search.replace(/\D/g, '');
       if (digits.length > 0) {
         qb.andWhere(
-          `(LOWER(resident.name) LIKE LOWER(:search)
+          `(unaccent(LOWER(resident.name)) LIKE unaccent(LOWER(:search))
             OR REPLACE(REPLACE(resident.cpf, '.', ''), '-', '') LIKE :cpfSearch)`,
           { search: `%${search}%`, cpfSearch: `%${digits}%` },
         );
       } else {
-        qb.andWhere('LOWER(resident.name) LIKE LOWER(:search)', { search: `%${search}%` });
+        qb.andWhere('unaccent(LOWER(resident.name)) LIKE unaccent(LOWER(:search))', {
+          search: `%${search}%`,
+        });
       }
     }
 

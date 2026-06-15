@@ -44,6 +44,7 @@ export function ChangePasswordForm({ onSuccess }: Props) {
           name="password"
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
+              accessibilityLabel="input-nova-senha"
               className={INPUT_CLASS}
               placeholder="••••••••"
               secureTextEntry
@@ -63,6 +64,7 @@ export function ChangePasswordForm({ onSuccess }: Props) {
           name="confirm"
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
+              accessibilityLabel="input-confirmar-senha"
               className={INPUT_CLASS}
               placeholder="••••••••"
               secureTextEntry

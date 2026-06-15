@@ -1,0 +1,27 @@
+appId: org.fonte.ops
+---
+# Login por telefone — operador (tel armazenado "(11) 97777-1000",
+# informado só com dígitos para provar a normalização no backend).
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "input-email"
+- inputText: "11977771000"
+- tapOn:
+    text: "input-senha"
+- inputText: "operator123"
+- tapOn: "Entrar"
+- assertVisible: "Bem-vindo,"
+- assertVisible: "Operador Teste"
+
+# Telefone correto + senha errada → recusa.
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "input-email"
+- inputText: "11977771000"
+- tapOn:
+    text: "input-senha"
+- inputText: "senha_errada"
+- tapOn: "Entrar"
+- assertVisible: "E-mail/telefone ou senha incorretos."

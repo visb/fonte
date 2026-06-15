@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const loginSchema = z.object({
-  email: z.string().email('E-mail inválido'),
+  identifier: z.string().min(1, 'Informe e-mail ou telefone'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });
 
@@ -35,7 +35,7 @@ export function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      await login(data.email, data.password);
+      await login(data.identifier, data.password);
       const token = localStorage.getItem(TOKEN_STORAGE_KEY);
       const payload = token ? JSON.parse(atob(token.split('.')[1])) : {};
       if (payload.role === Role.SERVANT) {
@@ -58,10 +58,10 @@ export function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input id="email" type="email" {...register('email')} />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+              <Label htmlFor="identifier">E-mail ou telefone</Label>
+              <Input id="identifier" type="text" {...register('identifier')} />
+              {errors.identifier && (
+                <p className="text-sm text-destructive">{errors.identifier.message}</p>
               )}
             </div>
             <div className="space-y-2">

@@ -100,7 +100,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@fonte.com\",\n  \"password\": \"senha123\"\n}"
+              "raw": "{\n  \"identifier\": \"admin@fonte.com\",\n  \"password\": \"senha123\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",

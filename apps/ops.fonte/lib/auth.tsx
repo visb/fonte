@@ -22,7 +22,7 @@ interface AuthContextValue extends AuthState {
   isResident: boolean;
   canSendMessagesToFamilies: boolean;
   canModerateMessages: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
   refreshStaff: () => Promise<void>;
@@ -58,8 +58,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
   }, []);
 
-  async function login(email: string, password: string) {
-    const { accessToken, profileType } = await api.auth.login({ email, password });
+  async function login(identifier: string, password: string) {
+    const { accessToken, profileType } = await api.auth.login({ identifier, password });
     await AsyncStorage.setItem('token', accessToken);
 
     try {

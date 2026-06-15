@@ -1,8 +1,18 @@
+import { useEffect } from 'react';
 import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { useAuth } from '@/lib/auth';
 import { LoginForm } from '@/features/auth/components/LoginForm';
 
 export default function LoginScreen() {
+  const { token } = useAuth();
+
+  // Recuperação: havendo token (inclusive logo após definir a senha no primeiro acesso),
+  // manda para a home. Evita o familiar ficar preso no login se o (app)/_layout fez bounce.
+  useEffect(() => {
+    if (token) router.replace('/(app)');
+  }, [token]);
+
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-white"

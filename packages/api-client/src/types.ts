@@ -62,7 +62,8 @@ export interface ListNotificationsParams {
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export interface LoginInput {
-  email: string;
+  /** E-mail ou telefone. */
+  identifier: string;
   password: string;
 }
 

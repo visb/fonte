@@ -14,6 +14,28 @@ export class UserService {
     return this.userRepository.findOne({ where: { email } });
   }
 
+  /**
+   * Resolve um telefone (apenas dígitos) para os IDs de usuário com acesso, varrendo os perfis
+   * staff/relatives/residents. O telefone não é único entre perfis: pode retornar 0, 1 ou mais.
+   * Quem decide o que fazer com ambiguidade é o AuthService (rejeita >1).
+   */
+  async findActiveUserIdsByPhone(digits: string): Promise<string[]> {
+    const rows: { user_id: string }[] = await this.userRepository.manager.query(
+      `SELECT DISTINCT user_id FROM (
+         SELECT user_id, phone FROM staff WHERE deleted_at IS NULL
+         UNION ALL
+         SELECT user_id, phone FROM relatives WHERE deleted_at IS NULL
+         UNION ALL
+         SELECT user_id, contact_phone AS phone FROM residents WHERE deleted_at IS NULL
+       ) p
+       WHERE user_id IS NOT NULL
+         AND p.phone IS NOT NULL
+         AND regexp_replace(p.phone, '\\D', '', 'g') = $1`,
+      [digits],
+    );
+    return rows.map((r) => r.user_id);
+  }
+
   findById(id: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { id } });
   }

@@ -14,7 +14,7 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto): Promise<{ accessToken: string; profileType: ProfileType }> {
-    const user = await this.userService.findByEmail(dto.email);
+    const user = await this.resolveUser(dto.identifier);
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Credenciais inválidas');
@@ -38,6 +38,26 @@ export class AuthService {
 
     const profileType = this.resolveProfileType(user.role);
     return { accessToken: this.signToken(userId, user.role, false), profileType };
+  }
+
+  /**
+   * Resolve o identificador (e-mail ou telefone) para um usuário. Com '@' → e-mail; senão →
+   * telefone (dígitos). Telefone que casa com >1 usuário é ambíguo → trata como não encontrado.
+   */
+  private async resolveUser(rawIdentifier: string) {
+    const identifier = rawIdentifier.trim();
+
+    if (identifier.includes('@')) {
+      return this.userService.findByEmail(identifier);
+    }
+
+    const digits = identifier.replace(/\D/g, '');
+    if (!digits) return null;
+
+    const userIds = await this.userService.findActiveUserIdsByPhone(digits);
+    if (userIds.length !== 1) return null; // 0 = não encontrado; >1 = ambíguo
+
+    return this.userService.findById(userIds[0]);
   }
 
   private signToken(userId: string, role: Role, mustChangePassword: boolean): string {

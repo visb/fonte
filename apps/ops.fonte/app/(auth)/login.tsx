@@ -13,7 +13,7 @@ import { useAuth, MustChangePasswordError } from "@/lib/auth";
 
 export default function LoginScreen() {
   const { login, token } = useAuth();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,19 +23,19 @@ export default function LoginScreen() {
   }, [token]);
 
   async function handleLogin() {
-    if (!email || !password) {
-      setError("Preencha e-mail e senha.");
+    if (!identifier || !password) {
+      setError("Preencha e-mail ou telefone e senha.");
       return;
     }
     setError("");
     setLoading(true);
     try {
-      await login(email, password);
+      await login(identifier, password);
     } catch (err) {
       if (err instanceof MustChangePasswordError) {
         router.replace("/(auth)/change-password");
       } else {
-        setError("E-mail ou senha incorretos.");
+        setError("E-mail/telefone ou senha incorretos.");
       }
     } finally {
       setLoading(false);
@@ -56,17 +56,16 @@ export default function LoginScreen() {
         <View className="space-y-4">
           <View>
             <Text className="text-sm font-medium text-gray-700 mb-1.5">
-              E-mail
+              E-mail ou telefone
             </Text>
             <TextInput
               accessibilityLabel="input-email"
               className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
-              placeholder="seu@email.com"
-              keyboardType="email-address"
+              placeholder="seu@email.com ou telefone"
               autoCapitalize="none"
               autoCorrect={false}
-              value={email}
-              onChangeText={setEmail}
+              value={identifier}
+              onChangeText={setIdentifier}
             />
           </View>
 

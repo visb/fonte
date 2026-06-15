@@ -16,6 +16,7 @@ function makeService(userServiceOverrides: Partial<UserService> = {}, sign = jes
   const userService = {
     findByEmail: jest.fn().mockResolvedValue(null),
     findById: jest.fn().mockResolvedValue(null),
+    findActiveUserIdsByPhone: jest.fn().mockResolvedValue([]),
     updatePassword: jest.fn().mockResolvedValue(undefined),
     ...userServiceOverrides,
   } as unknown as UserService;
@@ -28,7 +29,7 @@ describe('AuthService.login', () => {
 
   it('rejects an unknown user', async () => {
     const { service } = makeService({ findByEmail: jest.fn().mockResolvedValue(null) });
-    await expect(service.login({ email: 'x@y.com', password: 'p' } as never)).rejects.toBeInstanceOf(
+    await expect(service.login({ identifier: 'x@y.com', password: 'p' } as never)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
   });
@@ -37,7 +38,7 @@ describe('AuthService.login', () => {
     const { service } = makeService({
       findByEmail: jest.fn().mockResolvedValue({ id: 'u1', isActive: false, passwordHash: 'h', role: Role.SERVANT }),
     });
-    await expect(service.login({ email: 'x@y.com', password: 'p' } as never)).rejects.toBeInstanceOf(
+    await expect(service.login({ identifier: 'x@y.com', password: 'p' } as never)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
   });
@@ -47,7 +48,36 @@ describe('AuthService.login', () => {
     const { service } = makeService({
       findByEmail: jest.fn().mockResolvedValue({ id: 'u1', isActive: true, passwordHash: 'h', role: Role.SERVANT }),
     });
-    await expect(service.login({ email: 'x@y.com', password: 'wrong' } as never)).rejects.toBeInstanceOf(
+    await expect(service.login({ identifier: 'x@y.com', password: 'wrong' } as never)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('logs in by phone when exactly one user matches', async () => {
+    compare.mockResolvedValue(true);
+    const findById = jest.fn().mockResolvedValue({ id: 'u9', isActive: true, passwordHash: 'h', role: Role.RELATIVE, mustChangePassword: false });
+    const findActiveUserIdsByPhone = jest.fn().mockResolvedValue(['u9']);
+    const { service } = makeService({ findActiveUserIdsByPhone, findById });
+    const result = await service.login({ identifier: '(11) 99999-0000', password: 'right' } as never);
+    expect(findActiveUserIdsByPhone).toHaveBeenCalledWith('11999990000');
+    expect(result.profileType).toBe(ProfileType.RELATIVE);
+  });
+
+  it('rejects an ambiguous phone matching more than one user', async () => {
+    compare.mockResolvedValue(true);
+    const { service } = makeService({
+      findActiveUserIdsByPhone: jest.fn().mockResolvedValue(['u1', 'u2']),
+    });
+    await expect(service.login({ identifier: '11999990000', password: 'right' } as never)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('rejects an unknown phone', async () => {
+    const { service } = makeService({
+      findActiveUserIdsByPhone: jest.fn().mockResolvedValue([]),
+    });
+    await expect(service.login({ identifier: '11000000000', password: 'p' } as never)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
   });
@@ -57,7 +87,7 @@ describe('AuthService.login', () => {
     const { service } = makeService({
       findByEmail: jest.fn().mockResolvedValue({ id: 'u1', isActive: true, passwordHash: 'h', role: Role.SERVANT, mustChangePassword: false }),
     });
-    const result = await service.login({ email: 'x@y.com', password: 'right' } as never);
+    const result = await service.login({ identifier: 'x@y.com', password: 'right' } as never);
     expect(result).toEqual({ accessToken: 'jwt', profileType: ProfileType.STAFF });
   });
 
@@ -66,7 +96,7 @@ describe('AuthService.login', () => {
     const { service, sign } = makeService({
       findByEmail: jest.fn().mockResolvedValue({ id: 'u1', isActive: true, passwordHash: 'h', role: Role.RELATIVE, mustChangePassword: false }),
     });
-    const result = await service.login({ email: 'r@y.com', password: 'right' } as never);
+    const result = await service.login({ identifier: 'r@y.com', password: 'right' } as never);
     expect(result.profileType).toBe(ProfileType.RELATIVE);
     expect(sign.mock.calls[0][0]).toMatchObject({ sub: 'u1', role: Role.RELATIVE, profileType: ProfileType.RELATIVE });
   });

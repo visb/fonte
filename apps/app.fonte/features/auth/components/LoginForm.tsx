@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useAuth, MustChangePasswordError } from '@/lib/auth';
 
 const schema = z.object({
-  email: z.string().email('E-mail inválido'),
+  identifier: z.string().min(1, 'Informe e-mail ou telefone'),
   password: z.string().min(1, 'Senha é obrigatória'),
 });
 type FormData = z.infer<typeof schema>;
@@ -24,7 +24,7 @@ export function LoginForm({ onSuccess, onMustChangePassword }: Props) {
 
   async function onSubmit(data: FormData) {
     try {
-      await login(data.email, data.password);
+      await login(data.identifier, data.password);
       onSuccess();
     } catch (err) {
       if (err instanceof MustChangePasswordError) {
@@ -38,16 +38,15 @@ export function LoginForm({ onSuccess, onMustChangePassword }: Props) {
   return (
     <View className="space-y-4">
       <View>
-        <Text className="text-sm font-medium text-gray-700 mb-1.5">E-mail</Text>
+        <Text className="text-sm font-medium text-gray-700 mb-1.5">E-mail ou telefone</Text>
         <Controller
           control={control}
-          name="email"
+          name="identifier"
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
               accessibilityLabel="input-email"
               className={INPUT_CLASS}
-              placeholder="seu@email.com"
-              keyboardType="email-address"
+              placeholder="seu@email.com ou telefone"
               autoCapitalize="none"
               autoCorrect={false}
               value={value}
@@ -56,7 +55,7 @@ export function LoginForm({ onSuccess, onMustChangePassword }: Props) {
             />
           )}
         />
-        {errors.email && <Text className="text-sm text-red-600 mt-1">{errors.email.message}</Text>}
+        {errors.identifier && <Text className="text-sm text-red-600 mt-1">{errors.identifier.message}</Text>}
       </View>
 
       <View>
@@ -86,13 +85,13 @@ export function LoginForm({ onSuccess, onMustChangePassword }: Props) {
         <View className="flex-row justify-center gap-4">
           <TouchableOpacity
             accessibilityLabel="fill-test-credentials"
-            onPress={() => { setValue('email', 'familiar@fonte.com'); setValue('password', 'familiar123'); }}
+            onPress={() => { setValue('identifier', 'familiar@fonte.com'); setValue('password', 'familiar123'); }}
           >
             <Text className="text-xs text-gray-400">teste válido</Text>
           </TouchableOpacity>
           <TouchableOpacity
             accessibilityLabel="fill-test-credentials-invalid"
-            onPress={() => { setValue('email', 'familiar@fonte.com'); setValue('password', 'senha_errada'); }}
+            onPress={() => { setValue('identifier', 'familiar@fonte.com'); setValue('password', 'senha_errada'); }}
           >
             <Text className="text-xs text-gray-400">teste inválido</Text>
           </TouchableOpacity>

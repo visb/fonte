@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCreateMinistry, useHouseStaffForMinistry, useHouseResidentsForMinistry } from '../hooks/useMinistries';
+import { normalizeForSearch } from '@/lib/searchUtils';
 
 type LeaderType = 'STAFF' | 'RESIDENT';
 interface LeaderOption { id: string; name: string; type: LeaderType }
@@ -39,7 +40,7 @@ export function CreateMinistryModal({ visible, houseId, onClose, onSuccess }: Pr
   ], [allStaff, allResidents]);
 
   const filteredResidents = useMemo(
-    () => allResidents.filter((r) => r.name.toLowerCase().includes(residentSearch.toLowerCase())),
+    () => allResidents.filter((r) => normalizeForSearch(r.name).includes(normalizeForSearch(residentSearch))),
     [allResidents, residentSearch],
   );
 

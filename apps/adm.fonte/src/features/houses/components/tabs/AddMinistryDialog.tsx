@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { normalizeForSearch } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,7 @@ export function AddMinistryDialog({ open, onClose, houseId }: Props) {
   const mutation = useCreateHouseMinistry(houseId);
 
   const filteredResidents = useMemo(
-    () => residents.filter((r) => r.name.toLowerCase().includes(residentSearch.toLowerCase())),
+    () => residents.filter((r) => normalizeForSearch(r.name).includes(normalizeForSearch(residentSearch))),
     [residents, residentSearch],
   );
 

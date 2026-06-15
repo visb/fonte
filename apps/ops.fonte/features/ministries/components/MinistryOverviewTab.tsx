@@ -10,6 +10,7 @@ import {
   useHouseResidentsForMinistry,
   useHouseStaffForMinistry,
 } from '../hooks/useMinistries';
+import { normalizeForSearch } from '@/lib/searchUtils';
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -51,7 +52,7 @@ export function MinistryOverviewTab({ ministryId, houseId, ministry, onEditLeade
     () =>
       allResidents
         .filter((r) => !memberResidentIds.has(r.id))
-        .filter((r) => r.name.toLowerCase().includes(residentSearch.toLowerCase())),
+        .filter((r) => normalizeForSearch(r.name).includes(normalizeForSearch(residentSearch))),
     [allResidents, memberResidentIds, residentSearch],
   );
 
@@ -59,7 +60,7 @@ export function MinistryOverviewTab({ ministryId, houseId, ministry, onEditLeade
     () =>
       allStaff
         .filter((s) => !memberStaffIds.has(s.id))
-        .filter((s) => s.name.toLowerCase().includes(staffSearch.toLowerCase())),
+        .filter((s) => normalizeForSearch(s.name).includes(normalizeForSearch(staffSearch))),
     [allStaff, memberStaffIds, staffSearch],
   );
 

@@ -3202,6 +3202,92 @@
       "name": "Bible Course",
       "item": [
         {
+          "name": "List Modules (ADMIN)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/modules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "modules"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Module (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gênesis\",\n  \"sequence\": 1,\n  \"notes\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/modules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "modules"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Module (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Êxodo\",\n  \"sequence\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/modules/{{bibleModuleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "modules",
+                "{{bibleModuleId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Module (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/modules/{{bibleModuleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "modules",
+                "{{bibleModuleId}}"
+              ]
+            }
+          }
+        },
+        {
           "name": "List Classes",
           "request": {
             "method": "GET",

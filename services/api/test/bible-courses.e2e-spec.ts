@@ -10,12 +10,14 @@ import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
 describe('BibleCourseController (e2e)', () => {
   let app: INestApplication;
   let token: string;
+  let adminToken: string;
   let houseId: string;
   const createdClassIds: string[] = [];
 
   beforeAll(async () => {
     app = await bootstrapApp();
     ({ token, houseId } = await loginCoordinator(app));
+    adminToken = await login(app, 'admin@fonte.com', 'admin123');
   });
 
   afterAll(async () => {
@@ -104,5 +106,77 @@ describe('BibleCourseController (e2e)', () => {
         .get(`${BASE}/bible-course/classes/00000000-0000-0000-0000-000000000000`)
         .set('Authorization', `Bearer ${token}`)
         .expect(404));
+  });
+
+  describe('modules (catalogo, ADMIN only)', () => {
+    let moduleId: string;
+
+    it('GET /bible-course/modules → 403 for a non-ADMIN (coordinator)', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/bible-course/modules`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403));
+
+    it('POST /bible-course/modules → 403 for a non-ADMIN (coordinator)', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/bible-course/modules`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Gênesis' })
+        .expect(403));
+
+    it('POST /bible-course/modules → 400 with empty body (ADMIN)', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/bible-course/modules`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+        .expect(400));
+
+    it('ADMIN creates a module', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/bible-course/modules`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `Gênesis ${Date.now()}`, sequence: 1, notes: 'Primeiro módulo' })
+        .expect(201);
+      moduleId = res.body.id;
+      expect(res.body.sequence).toBe(1);
+    });
+
+    it('ADMIN lists modules ordered', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/bible-course/modules`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.some((m: { id: string }) => m.id === moduleId)).toBe(true);
+    });
+
+    it('ADMIN edits a module (reorder via sequence)', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`${BASE}/bible-course/modules/${moduleId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ sequence: 5, name: 'Êxodo' })
+        .expect(200);
+      expect(res.body.sequence).toBe(5);
+      expect(res.body.name).toBe('Êxodo');
+    });
+
+    it('PATCH /bible-course/modules/:id → 404 for an unknown module (ADMIN)', () =>
+      request(app.getHttpServer())
+        .patch(`${BASE}/bible-course/modules/00000000-0000-0000-0000-000000000000`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: 'X' })
+        .expect(404));
+
+    it('DELETE /bible-course/modules/:id → 403 for a non-ADMIN (coordinator)', () =>
+      request(app.getHttpServer())
+        .delete(`${BASE}/bible-course/modules/${moduleId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403));
+
+    it('ADMIN soft deletes a module', () =>
+      request(app.getHttpServer())
+        .delete(`${BASE}/bible-course/modules/${moduleId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(204));
   });
 });

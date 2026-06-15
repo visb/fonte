@@ -21,11 +21,43 @@ import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
+import { CreateModuleDto } from './dto/create-module.dto';
+import { UpdateModuleDto } from './dto/update-module.dto';
 
 @Controller('bible-course')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class BibleCourseController {
   constructor(private service: BibleCourseService) {}
+
+  // ─── Modules (catalogo compartilhado, ADMIN) ─────────────────────────────────
+
+  @Get('modules')
+  @Roles(Role.ADMIN)
+  findAllModules() {
+    return this.service.findAllModules();
+  }
+
+  @Post('modules')
+  @Roles(Role.ADMIN)
+  createModule(@Body() dto: CreateModuleDto) {
+    return this.service.createModule(dto);
+  }
+
+  @Patch('modules/:id')
+  @Roles(Role.ADMIN)
+  updateModule(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateModuleDto,
+  ) {
+    return this.service.updateModule(id, dto);
+  }
+
+  @Delete('modules/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(Role.ADMIN)
+  removeModule(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    return this.service.removeModule(id);
+  }
 
   // ─── Classes ───────────────────────────────────────────────────────────────
 

@@ -859,6 +859,27 @@ export interface UpdateBibleCourseEnrollmentInput {
   notes?: string | null;
 }
 
+export interface BibleCourseModule {
+  id: string;
+  name: string;
+  sequence: number;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBibleCourseModuleInput {
+  name: string;
+  sequence?: number;
+  notes?: string | null;
+}
+
+export interface UpdateBibleCourseModuleInput {
+  name?: string;
+  sequence?: number;
+  notes?: string | null;
+}
+
 // ─── Document Template ───────────────────────────────────────────────────────
 
 export interface DocumentTemplate {

@@ -8,10 +8,13 @@ import { Repository } from 'typeorm';
 import { BibleCourseEnrollmentStatus } from '@fonte/types';
 import { BibleCourseClass } from './bible-course-class.entity';
 import { BibleCourseEnrollment } from './bible-course-enrollment.entity';
+import { BibleCourseModule } from './bible-course-module.entity';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
+import { CreateModuleDto } from './dto/create-module.dto';
+import { UpdateModuleDto } from './dto/update-module.dto';
 
 @Injectable()
 export class BibleCourseService {
@@ -20,7 +23,42 @@ export class BibleCourseService {
     private classRepo: Repository<BibleCourseClass>,
     @InjectRepository(BibleCourseEnrollment)
     private enrollmentRepo: Repository<BibleCourseEnrollment>,
+    @InjectRepository(BibleCourseModule)
+    private moduleRepo: Repository<BibleCourseModule>,
   ) {}
+
+  // ─── Modules (catalogo compartilhado) ────────────────────────────────────────
+
+  findAllModules(): Promise<BibleCourseModule[]> {
+    return this.moduleRepo.find({ order: { sequence: 'ASC', name: 'ASC' } });
+  }
+
+  createModule(dto: CreateModuleDto): Promise<BibleCourseModule> {
+    return this.moduleRepo.save(
+      this.moduleRepo.create({
+        name: dto.name,
+        sequence: dto.sequence ?? 0,
+        notes: dto.notes ?? null,
+      }),
+    );
+  }
+
+  async updateModule(id: string, dto: UpdateModuleDto): Promise<BibleCourseModule> {
+    const module = await this.moduleRepo.findOne({ where: { id } });
+    if (!module) throw new NotFoundException(`BibleCourseModule ${id} not found`);
+
+    if (dto.name !== undefined) module.name = dto.name;
+    if (dto.sequence !== undefined) module.sequence = dto.sequence;
+    if (dto.notes !== undefined) module.notes = dto.notes ?? null;
+
+    return this.moduleRepo.save(module);
+  }
+
+  async removeModule(id: string): Promise<void> {
+    const module = await this.moduleRepo.findOne({ where: { id } });
+    if (!module) throw new NotFoundException(`BibleCourseModule ${id} not found`);
+    await this.moduleRepo.softDelete(id);
+  }
 
   // ─── Classes ───────────────────────────────────────────────────────────────
 

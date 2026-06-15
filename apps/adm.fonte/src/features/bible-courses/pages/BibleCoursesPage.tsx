@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { BookOpen, Plus } from 'lucide-react';
+import { Role } from '@fonte/types';
 import type { BibleCourseClass } from '@fonte/api-client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -19,6 +22,8 @@ export function BibleCoursesPage() {
   const [editTarget, setEditTarget] = useState<BibleCourseClass | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BibleCourseClass | null>(null);
 
+  const { role } = useAuth();
+  const isAdmin = role === Role.ADMIN;
   const { data: classes = [], isLoading, isError, refetch } = useBibleClasses();
   const deleteMutation = useDeleteBibleClass();
 
@@ -38,10 +43,20 @@ export function BibleCoursesPage() {
         title="Curso Bíblico"
         description="Turmas do curso bíblico e matrículas dos filhos."
         actions={
-          <Button size="sm" onClick={openCreate}>
-            <Plus size={14} className="mr-1.5" />
-            Nova turma
-          </Button>
+          <div className="flex gap-2">
+            {isAdmin && (
+              <Button asChild size="sm" variant="outline">
+                <Link to="/bible-courses/modules">
+                  <BookOpen size={14} className="mr-1.5" />
+                  Módulos
+                </Link>
+              </Button>
+            )}
+            <Button size="sm" onClick={openCreate}>
+              <Plus size={14} className="mr-1.5" />
+              Nova turma
+            </Button>
+          </div>
         }
       />
 

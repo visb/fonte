@@ -7,10 +7,21 @@ import type {
   UpdateBibleCourseClassInput,
   EnrollResidentInput,
   UpdateBibleCourseEnrollmentInput,
+  BibleCourseModule,
+  CreateBibleCourseModuleInput,
+  UpdateBibleCourseModuleInput,
 } from '../types.js';
 
 export function createBibleCourseModule(http: AxiosInstance) {
   return {
+    listModules: () =>
+      http.get<BibleCourseModule[]>('/bible-course/modules').then((r) => r.data),
+    createModule: (data: CreateBibleCourseModuleInput) =>
+      http.post<BibleCourseModule>('/bible-course/modules', data).then((r) => r.data),
+    updateModule: (id: string, data: UpdateBibleCourseModuleInput) =>
+      http.patch<BibleCourseModule>(`/bible-course/modules/${id}`, data).then((r) => r.data),
+    deleteModule: (id: string) => http.delete(`/bible-course/modules/${id}`),
+
     listClasses: (status?: string) =>
       http
         .get<BibleCourseClass[]>('/bible-course/classes', { params: status ? { status } : undefined })

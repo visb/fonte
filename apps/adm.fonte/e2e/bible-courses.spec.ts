@@ -91,3 +91,50 @@ test.describe('Curso Bíblico', () => {
     await expect(page.getByText(name)).not.toBeVisible();
   });
 });
+
+test.describe('Curso Bíblico — catálogo de módulos', () => {
+  const ts = () => Date.now();
+  const cardSelector = '.rounded-lg.border.bg-card';
+
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await page.getByRole('link', { name: 'Curso Bíblico' }).click();
+    await expect(page).toHaveURL('/bible-courses');
+    await page.getByRole('link', { name: 'Módulos' }).click();
+    await expect(page).toHaveURL('/bible-courses/modules');
+  });
+
+  async function createModule(page: Page, name: string) {
+    await page.getByRole('button', { name: 'Novo módulo' }).click();
+    await page.getByLabel('Nome *').fill(name);
+    await page.getByRole('button', { name: 'Criar' }).click();
+    await expect(page.getByText(name)).toBeVisible();
+  }
+
+  test('cria módulo no catálogo', async ({ page }) => {
+    await createModule(page, `Módulo E2E ${ts()}`);
+  });
+
+  test('edita módulo existente', async ({ page }) => {
+    const name = `Módulo Editar ${ts()}`;
+    const updated = `${name} (Editado)`;
+    await createModule(page, name);
+
+    const row = page.locator(cardSelector).filter({ hasText: name });
+    await row.getByTitle('Editar').click();
+    await page.getByLabel('Nome *').clear();
+    await page.getByLabel('Nome *').fill(updated);
+    await page.getByRole('button', { name: 'Salvar' }).click();
+    await expect(page.getByText(updated)).toBeVisible();
+  });
+
+  test('exclui módulo e some da lista', async ({ page }) => {
+    const name = `Módulo Excluir ${ts()}`;
+    await createModule(page, name);
+
+    const row = page.locator(cardSelector).filter({ hasText: name });
+    await row.getByTitle('Excluir').click();
+    await page.getByRole('button', { name: 'Excluir' }).last().click();
+    await expect(page.getByText(name)).not.toBeVisible();
+  });
+});

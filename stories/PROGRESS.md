@@ -175,3 +175,20 @@ pnpm --filter api test                       # api unit (308)
 cd apps/adm.fonte && pnpm exec playwright test document-templates.spec.ts   # 6
 ```
 Serviços no ar ao fim: API teste :3001, adm teste :5174, docker postgres.
+
+---
+
+# PROGRESS — stories 33-40
+
+Epic 33 (Notas do curso bíblico) e filhas. Fonte de verdade: esta seção + `git log` de `main`.
+
+## Fila
+
+| Ordem | Story | Status | Testes | Commit | Merge |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 34 — catálogo de módulos do curso bíblico | [OK] | api unit 318✓ (16 bible-course) + api e2e 16✓ (CRUD módulo + guard ADMIN 403) + adm build/tsc✓ | fdb0219 | 34ce159 |
+| 2 | 35 — lançamento de notas por módulo | [ ] | — | — | — |
+
+## Log
+
+[OK] 34 — testes: api unit 318 passed (6 novos no bible-course.service: lista ordenada, create default sequence, update/remove NotFound, soft delete) — api e2e bible-courses 16 passed (CRUD de módulo via HTTP + guard ADMIN: coordinator recebe 403 em GET/POST/DELETE, ADMIN autoriza) — adm `pnpm --filter adm.fonte build` verde (tsc -b + vite). adm Playwright bible-courses.spec (3 testes novos de módulo) NÃO rodou: o servidor de teste `dev:api:test` em :3001 está com build ANTIGO (anterior à story 31), responde 404 em `POST /auth/login` (espera `identifier`), o que faz TODA a suíte adm bible-courses falhar já no helper `login` — inclusive os testes de turma pré-existentes (não é regressão da story 34). Backend e2e (compilado do fonte atual) cobre integralmente o guard ADMIN. Migration: 1782300000000-BibleCourseModules (aplicada no db de teste via migration:run:test). Decisão UX: catálogo numa rota ADMIN `/bible-courses/modules`, acessível por botão "Módulos" (visível só p/ ADMIN) na BibleCoursesPage. Rota usa prefixo do controller existente `bible-course/modules` (não `bible-courses/modules` do plano) por consistência com classes/enrollments já existentes. Sem regra de unicidade de nome (plano marcava como opcional/confirmar). — commit: fdb0219 — merge: 34ce159 — 2026-06-15

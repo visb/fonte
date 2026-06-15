@@ -19,7 +19,7 @@ export async function bootstrapApp(): Promise<INestApplication> {
 export async function login(app: INestApplication, email: string, password: string): Promise<string> {
   const res = await request(app.getHttpServer())
     .post(`${BASE}/auth/login`)
-    .send({ email, password })
+    .send({ identifier: email, password })
     .expect(200);
   return res.body.accessToken;
 }

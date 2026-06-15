@@ -6,7 +6,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   mustChangePassword: boolean;
   role: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
   logout: () => void;
   onPasswordChanged: (newToken: string) => void;
 }
@@ -30,8 +30,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const mustChangePassword = decoded.mustChangePassword ?? false;
   const role = decoded.role ?? null;
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { accessToken } = await api.auth.login({ email, password });
+  const login = useCallback(async (identifier: string, password: string) => {
+    const { accessToken } = await api.auth.login({ identifier, password });
     localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
     setToken(accessToken);
   }, []);

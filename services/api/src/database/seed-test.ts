@@ -52,6 +52,7 @@ async function seed() {
   const operatorHash = await bcrypt.hash('operator123', 10);
   const residentHash = await bcrypt.hash('resident123', 10);
   const relativeHash = await bcrypt.hash('familiar123', 10);
+  const relativeTempHash = await bcrypt.hash('temp123', 10);
 
   // Admin user
   const [adminUser] = await ds.query<{ id: string }[]>(
@@ -109,11 +110,11 @@ async function seed() {
     ['Coordenador Teste', coordUser.id, house.id],
   );
 
-  // Operator staff linked to house
+  // Operator staff linked to house (com telefone — login por telefone)
   const [operatorStaff] = await ds.query<{ id: string }[]>(
-    `INSERT INTO staff (id, name, user_id, house_id)
-     VALUES (gen_random_uuid(), $1, $2, $3) RETURNING id`,
-    ['Operador Teste', operatorUser.id, house.id],
+    `INSERT INTO staff (id, name, user_id, house_id, phone)
+     VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING id`,
+    ['Operador Teste', operatorUser.id, house.id, '(11) 97777-1000'],
   );
 
   // Operator permissions: send messages + moderate
@@ -131,10 +132,24 @@ async function seed() {
   );
 
   // Relative linked to resident, with userId + mustChangePassword false
+  // (com telefone — login por telefone)
   const [relative] = await ds.query<{ id: string }[]>(
+    `INSERT INTO relatives (id, name, resident_id, relationship, user_id, phone)
+     VALUES (gen_random_uuid(), $1, $2, $3, $4, $5) RETURNING id`,
+    ['Maria Testadora', resident.id, 'Mãe', relativeUser.id, '(11) 97777-2000'],
+  );
+
+  // Relative em primeiro acesso (must_change_password = true) — fluxo de auto-login
+  // após definir a senha no app.fonte. Senha temporária: temp123.
+  const [firstAccessUser] = await ds.query<{ id: string }[]>(
+    `INSERT INTO users (id, email, password_hash, role, is_active, must_change_password)
+     VALUES (gen_random_uuid(), $1, $2, $3, true, true) RETURNING id`,
+    ['familiar2@fonte.com', relativeTempHash, Role.RELATIVE],
+  );
+  await ds.query(
     `INSERT INTO relatives (id, name, resident_id, relationship, user_id)
-     VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING id`,
-    ['Maria Testadora', resident.id, 'Mãe', relativeUser.id],
+     VALUES (gen_random_uuid(), $1, $2, $3, $4)`,
+    ['Pedro Testador', resident.id, 'Pai', firstAccessUser.id],
   );
 
   // Approved wishlist item for resident
@@ -183,7 +198,9 @@ async function seed() {
   console.log('  Coordenador:  coord@fonte.com / coord123');
   console.log('  Operador:     operator@fonte.com / operator123');
   console.log('  Residente:    resident@teste.com / resident123');
-  console.log('  Familiar:     familiar@fonte.com / familiar123');
+  console.log('  Familiar:     familiar@fonte.com / familiar123 (tel (11) 97777-2000)');
+  console.log('  Operador tel: (11) 97777-1000');
+  console.log('  1º acesso:    familiar2@fonte.com / temp123 (must_change_password)');
   console.log('  Casa:         Casa Teste');
   console.log('  Acolhido:     João Testador (com acesso gerado)');
   console.log('  Familiar:     Maria Testadora (com acesso gerado)');

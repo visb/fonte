@@ -5,7 +5,7 @@ const API = 'http://localhost:3001/api/v1';
 
 async function adminToken(request: APIRequestContext): Promise<string> {
   const res = await request.post(`${API}/auth/login`, {
-    data: { email: TEST_ADMIN.email, password: TEST_ADMIN.password },
+    data: { identifier: TEST_ADMIN.email, password: TEST_ADMIN.password },
   });
   return (await res.json()).accessToken as string;
 }

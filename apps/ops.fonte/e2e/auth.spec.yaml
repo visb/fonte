@@ -23,7 +23,7 @@ appId: org.fonte.ops
     text: "input-senha"
 - inputText: "senha_errada"
 - tapOn: "Entrar"
-- assertVisible: "E-mail ou senha incorretos."
+- assertVisible: "E-mail/telefone ou senha incorretos."
 
 # --- Cenário 3: logout ---
 - launchApp:

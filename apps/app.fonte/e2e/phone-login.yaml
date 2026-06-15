@@ -1,0 +1,34 @@
+appId: org.fonte.app
+---
+# Login por telefone — familiar (tel armazenado "(11) 97777-2000",
+# informado só com dígitos para provar a normalização no backend).
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Entrar"
+    timeout: 30000
+- tapOn:
+    text: "input-email"
+- inputText: "11977772000"
+- tapOn:
+    text: "input-senha"
+- inputText: "familiar123"
+- tapOn: "Entrar"
+- waitForAnimationToEnd
+- assertVisible: "Casa Teste"
+
+# Telefone correto + senha errada → recusa.
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Entrar"
+    timeout: 30000
+- tapOn:
+    text: "input-email"
+- inputText: "11977772000"
+- tapOn:
+    text: "input-senha"
+- inputText: "senha_errada"
+- tapOn: "Entrar"
+- waitForAnimationToEnd
+- assertVisible: "E-mail ou senha incorretos."

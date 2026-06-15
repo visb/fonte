@@ -9,7 +9,8 @@ Skill invocável pelo usuário via `/issue`. Conduz uma unidade de trabalho do p
 Pode receber um título/descrição como argumento (`/issue corrigir filtro de relatório`) ou nada
 (então levantar o escopo com o usuário).
 
-**Sem Pull Requests.** O fluxo deste repo é branch local → merge direto na main, sob confirmação.
+**Sem Pull Requests.** O plano da story é commitado na própria `main`. A implementação é feita
+numa branch nova, criada só na hora de executar, e mergeada de volta na main sob confirmação.
 Nunca abrir PR, nunca push automático.
 
 ## Convenções do repo (já existentes — respeitar)
@@ -35,18 +36,20 @@ Nunca abrir PR, nunca push automático.
 - Varrer `stories/*.md` **e** `stories/done/*.md`; pegar o maior `NN` e somar 1.
 - Slug em kebab-case curto e descritivo.
 
-### 3. Escrever a story
+### 3. Escrever a story — na `main`
 
+- Estar na `main` (`git switch main`). A story é escrita e commitada na main, não em branch.
 - Criar `stories/NN-slug.md` no formato das existentes (ver `stories/done/` como referência).
 - Conteúdo mínimo: **Context** (com decisões do usuário), **Desenho**, **Validação**
   (quais testes/builds), **Fora de escopo**.
-- Mostrar o plano ao usuário e confirmar antes de codar. Em modo autônomo, travar as decisões
+- Mostrar o plano ao usuário e confirmar antes de seguir. Em modo autônomo, travar as decisões
   na própria story e seguir.
+- Commitar o `.md` na main: `docs(stories): plano da story NN — <título>`.
 
-### 4. Branch nova — SEMPRE
+### 4. Branch nova — só ao executar
 
-- Toda story é desenvolvida numa branch nova. Nunca codar direto na main.
-- Criar a partir da main atualizada:
+- Só criar a branch quando for de fato implementar o trabalho planejado na story. Nunca codar na main.
+- Criar a partir da main (que já contém o plano commitado):
 
 ```
 git switch main
@@ -54,7 +57,6 @@ git switch -c <type>/<slug>
 ```
 
   `<type>` casa o commit: `feat/`, `fix/`, `chore/`, `docs/`. Ex.: `feat/relatorio-filtro-data`.
-- Commitar a story (o `.md`) primeiro nessa branch: `docs(stories): plano da story NN — <título>`.
 
 ### 5. Implementar
 

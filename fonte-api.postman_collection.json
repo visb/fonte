@@ -4139,6 +4139,24 @@
           }
         },
         {
+          "name": "Charge Associate (manual WhatsApp)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/associates/{{associateId}}/charge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "associates",
+                "{{associateId}}",
+                "charge"
+              ]
+            },
+            "description": "Dispara manualmente a cobrança via WhatsApp (Meta Cloud API) de um associado (ADMIN). Respeita o dedupe de 5 dias e os mesmos gatilhos do scheduler diário das 9h (PENDING vencido → ADHESION, PAST_DUE → REACTIVATION). ACTIVE/CANCELED ou associado inexistente retornam { sent: false, skipped: true }. Sem credencial Meta no ambiente, o envio é best-effort (loga e segue)."
+          }
+        },
+        {
           "name": "Public — Get Associate by token",
           "request": {
             "method": "GET",

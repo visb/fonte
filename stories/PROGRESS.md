@@ -236,7 +236,7 @@ parte depende de serviço externo sem credencial (mock nos testes) · `[BLOQUEAD
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 44 — overview de faturamento dos associados | [ ] | | | |
+| 1 | 44 — overview de faturamento dos associados | [OK] | api unit 384✓ (+5) + api e2e 190✓ (+4) + adm Playwright 7✓ + adm build✓ | 8afc6df | ede1b98 |
 | 2 | 46 — melhorias tela associados (detalhe + máscara + scroll infinito) | [ ] | | | |
 | 3 | 45 — link de autocancelamento no lembrete WhatsApp | [ ] | | | |
 | 4 | 47 — Contas a Pagar (módulo payable + adm) | [ ] | | | |
@@ -254,6 +254,8 @@ parte depende de serviço externo sem credencial (mock nos testes) · `[BLOQUEAD
 <!-- anexar uma linha por story concluída/bloqueada:
 [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <timestamp> — <bloqueio se houver>
 -->
+
+[OK] 44 — testes: api unit 384 passed (+5 novos no AssociateService.getOverview: nº de meses pedido terminando no corrente, default 12, mapeamento esperado(due_date)/arrecadado(paid), churn+recorrência a partir de contagens, mês sem dados = zeros sem div/0) + api e2e 190 passed (+4 em associates.e2e: overview 401 sem token / 403 coordinator / shape com 12 meses default / respeita ?months=3) + adm Playwright associates.spec 7 passed (overview default em /billing/associados, navegação overview↔lista, + CRUD/validação na lista) + adm build (tsc -b + vite) verde. Endpoint GET /associates/overview (ADMIN, declarado ANTES de :id) agrega via QueryBuilder (to_char/range, sem N+1): série esperado×arrecadado bruto+líquido dos últimos N meses (default 12) + índices do mês corrente (novos, ativos/recorrência, churn count+rate, inadimplência FAILED|PENDING vencida + PAST_DUE). Sem migration (só leitura). Tipo AssociatesOverview em @fonte/types + re-export api-client + associates.getOverview(months?). Frontend adm: rota /billing/associados→AssociatesOverviewPage (default) e /billing/associados/lista→AssociatesListPage (ex-AssociatesPage, ganhou "Voltar ao overview"); menu inalterado. Hook useAssociatesOverview + queryKeys.associates.overview(months). Página fina orquestra OverviewKpiCards/OverviewIndicesCards/BillingMonthlyChart (recharts, espelha SalesHistoryChart) + botão "Ver associados". Helper de moeda criado em features/associates/lib/format.ts (não havia em lib/; AssociateRow passou a reusá-lo). Postman atualizado (Associates Overview). — commit: 8afc6df — merge: ede1b98 — 2026-06-16
 
 ## Bloqueios esperados (dependência externa sem credencial)
 

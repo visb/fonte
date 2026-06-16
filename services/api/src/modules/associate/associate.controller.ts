@@ -4,13 +4,17 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@fonte/types';
 import { AssociateService } from './associate.service';
+import { AssociatePaymentService } from './associate-payment.service';
 import { CreateAssociateDto } from './dto/create-associate.dto';
 import { UpdateAssociateDto } from './dto/update-associate.dto';
 
 @Controller('associates')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AssociateController {
-  constructor(private service: AssociateService) {}
+  constructor(
+    private service: AssociateService,
+    private paymentService: AssociatePaymentService,
+  ) {}
 
   @Post()
   @Roles(Role.ADMIN)
@@ -40,5 +44,12 @@ export class AssociateController {
   @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.service.remove(id);
+  }
+
+  /** Cancela a recorrência de cartão do associado (admin faz por ele — sem login). */
+  @Post(':id/cancel-subscription')
+  @Roles(Role.ADMIN)
+  cancelSubscription(@Param('id') id: string) {
+    return this.paymentService.cancelSubscription(id);
   }
 }

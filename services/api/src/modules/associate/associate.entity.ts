@@ -41,8 +41,8 @@ export class Associate {
   @Column({ type: 'enum', enum: AssociateStatus, default: AssociateStatus.PENDING })
   status: AssociateStatus;
 
-  @Column({ name: 'abacatepay_customer_id', type: 'varchar', nullable: true })
-  abacatepayCustomerId: string | null;
+  @Column({ name: 'gateway_customer_id', type: 'varchar', nullable: true })
+  gatewayCustomerId: string | null;
 
   @Column({ name: 'payment_token', type: 'uuid' })
   paymentToken: string;

@@ -31,8 +31,8 @@ export class AssociateCharge {
   @JoinColumn({ name: 'subscription_id' })
   subscription: AssociateSubscription | null;
 
-  @Column({ name: 'abacatepay_charge_id', type: 'varchar', nullable: true })
-  abacatepayChargeId: string | null;
+  @Column({ name: 'gateway_charge_id', type: 'varchar', nullable: true })
+  gatewayChargeId: string | null;
 
   @Column({ name: 'net_amount', type: 'numeric', precision: 10, scale: 2, transformer: numericTransformer })
   netAmount: number;

@@ -24,7 +24,7 @@ function makeAssociate(overrides: Partial<Associate> = {}): Associate {
     contributionAmount: 50,
     dueDay: 10,
     status: AssociateStatus.PENDING,
-    abacatepayCustomerId: null,
+    gatewayCustomerId: null,
     paymentToken: 'token-uuid',
     subscriptions: [],
     charges: [],

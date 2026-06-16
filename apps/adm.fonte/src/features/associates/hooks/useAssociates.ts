@@ -45,3 +45,15 @@ export function useDeleteAssociate() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.associates.all }),
   });
 }
+
+/** Cancela a recorrência de cartão do associado (admin faz por ele — sem login). */
+export function useCancelAssociateSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.associates.cancelSubscription(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.associates.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.associates.detail(id) });
+    },
+  });
+}

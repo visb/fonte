@@ -53,6 +53,7 @@ export const queryKeys = {
     list: (status?: string) => ['bible-courses', 'list', status ?? null] as const,
     detail: (id: string) => ['bible-courses', id] as const,
     modules: ['bible-courses', 'modules'] as const,
+    grades: (classId: string) => ['bible-courses', classId, 'grades'] as const,
   },
   storeroom: {
     byHouse: (houseId: string) => ['storeroom', houseId] as const,

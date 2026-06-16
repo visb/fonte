@@ -9,15 +9,19 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { useBibleClassById, useUpdateBibleClass } from '../hooks/useBibleCourses';
 import { EnrollmentRow } from '../components/EnrollmentRow';
 import { EnrollResidentDialog } from '../components/EnrollResidentDialog';
+import { BibleClassGradesSection } from '../components/BibleClassGradesSection';
 import { CLASS_STATUS_OPTIONS, CLASS_STATUS_BADGE, CLASS_STATUS_LABELS } from '../constants';
 
 function formatDate(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR');
 }
 
+type DetailTab = 'enrollments' | 'grades';
+
 export function BibleClassDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [enrollOpen, setEnrollOpen] = useState(false);
+  const [tab, setTab] = useState<DetailTab>('enrollments');
   const { data: klass, isLoading, isError, refetch } = useBibleClassById(id ?? null);
   const updateMutation = useUpdateBibleClass();
 
@@ -27,7 +31,7 @@ export function BibleClassDetailPage() {
   const enrolledIds = klass.enrollments.map((e) => e.residentId);
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       <Link to="/bible-courses" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft size={14} /> Voltar
       </Link>
@@ -61,25 +65,53 @@ export function BibleClassDetailPage() {
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold">Matrículas ({klass.enrollments.length})</h2>
-          <Button size="sm" variant="outline" onClick={() => setEnrollOpen(true)}>
-            <Plus size={14} className="mr-1.5" />
-            Matricular filho
-          </Button>
-        </div>
-
-        {klass.enrollments.length === 0 ? (
-          <EmptyState title="Nenhum filho matriculado." />
-        ) : (
-          <div className="space-y-1">
-            {klass.enrollments.map((e) => (
-              <EnrollmentRow key={e.id} classId={klass.id} enrollment={e} />
-            ))}
-          </div>
-        )}
+      <div className="flex gap-1 border-b">
+        <button
+          type="button"
+          onClick={() => setTab('enrollments')}
+          className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
+            tab === 'enrollments'
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Matrículas ({klass.enrollments.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('grades')}
+          className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
+            tab === 'grades'
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Notas
+        </button>
       </div>
+
+      {tab === 'enrollments' ? (
+        <div>
+          <div className="flex items-center justify-end mb-2">
+            <Button size="sm" variant="outline" onClick={() => setEnrollOpen(true)}>
+              <Plus size={14} className="mr-1.5" />
+              Matricular filho
+            </Button>
+          </div>
+
+          {klass.enrollments.length === 0 ? (
+            <EmptyState title="Nenhum filho matriculado." />
+          ) : (
+            <div className="space-y-1">
+              {klass.enrollments.map((e) => (
+                <EnrollmentRow key={e.id} classId={klass.id} enrollment={e} />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <BibleClassGradesSection classId={klass.id} />
+      )}
 
       <EnrollResidentDialog
         open={enrollOpen}

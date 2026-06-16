@@ -10,6 +10,8 @@ import type {
   BibleCourseModule,
   CreateBibleCourseModuleInput,
   UpdateBibleCourseModuleInput,
+  BibleClassGrades,
+  UpsertBibleGradeInput,
 } from '../types.js';
 
 export function createBibleCourseModule(http: AxiosInstance) {
@@ -39,5 +41,12 @@ export function createBibleCourseModule(http: AxiosInstance) {
     updateEnrollment: (id: string, data: UpdateBibleCourseEnrollmentInput) =>
       http.patch<BibleCourseEnrollment>(`/bible-course/enrollments/${id}`, data).then((r) => r.data),
     removeEnrollment: (id: string) => http.delete(`/bible-course/enrollments/${id}`),
+
+    getClassGrades: (classId: string) =>
+      http.get<BibleClassGrades>(`/bible-course/classes/${classId}/grades`).then((r) => r.data),
+    upsertGrade: (enrollmentId: string, moduleId: string, data: UpsertBibleGradeInput) =>
+      http
+        .put<unknown>(`/bible-course/enrollments/${enrollmentId}/grades/${moduleId}`, data)
+        .then((r) => r.data),
   };
 }

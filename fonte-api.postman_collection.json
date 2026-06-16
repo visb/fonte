@@ -3468,6 +3468,53 @@
               ]
             }
           }
+        },
+        {
+          "name": "Get Class Grades (ADMIN)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}/grades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes",
+                "{{bibleClassId}}",
+                "grades"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upsert Grade (ADMIN)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"examGrade\": 8.5,\n  \"workGrade\": 9\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/enrollments/{{enrollmentId}}/grades/{{bibleModuleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "enrollments",
+                "{{enrollmentId}}",
+                "grades",
+                "{{bibleModuleId}}"
+              ]
+            }
+          }
         }
       ]
     },

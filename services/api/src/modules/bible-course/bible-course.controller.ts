@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -23,6 +24,7 @@ import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
+import { UpsertGradeDto } from './dto/upsert-grade.dto';
 
 @Controller('bible-course')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -120,5 +122,23 @@ export class BibleCourseController {
   @Roles(Role.ADMIN, Role.COORDINATOR)
   removeEnrollment(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.service.removeEnrollment(id);
+  }
+
+  // ─── Grades (notas por módulo, ADMIN) ────────────────────────────────────────
+
+  @Get('classes/:classId/grades')
+  @Roles(Role.ADMIN)
+  getClassGrades(@Param('classId', ParseUUIDPipe) classId: string) {
+    return this.service.getClassGrades(classId);
+  }
+
+  @Put('enrollments/:enrollmentId/grades/:moduleId')
+  @Roles(Role.ADMIN)
+  upsertGrade(
+    @Param('enrollmentId', ParseUUIDPipe) enrollmentId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Body() dto: UpsertGradeDto,
+  ) {
+    return this.service.upsertGrade(enrollmentId, moduleId, dto);
   }
 }

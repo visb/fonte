@@ -5,6 +5,7 @@ import { BibleCourseService } from './bible-course.service';
 import { BibleCourseClass } from './bible-course-class.entity';
 import { BibleCourseEnrollment } from './bible-course-enrollment.entity';
 import { BibleCourseModule } from './bible-course-module.entity';
+import { BibleCourseGrade } from './bible-course-grade.entity';
 
 function makeRepo(overrides: Record<string, jest.Mock> = {}, queryImpl?: jest.Mock) {
   return {
@@ -14,6 +15,10 @@ function makeRepo(overrides: Record<string, jest.Mock> = {}, queryImpl?: jest.Mo
     save: jest.fn().mockImplementation((v) => Promise.resolve({ id: 'class-1', ...v })),
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
     softDelete: jest.fn().mockResolvedValue({ affected: 1 }),
+    createQueryBuilder: jest.fn(() => ({
+      innerJoin: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+    })),
     manager: { query: queryImpl ?? jest.fn().mockResolvedValue([]) },
     ...overrides,
   };
@@ -23,11 +28,13 @@ function makeService(
   classRepo: ReturnType<typeof makeRepo>,
   enrollmentRepo = makeRepo(),
   moduleRepo = makeRepo(),
+  gradeRepo = makeRepo(),
 ) {
   return new BibleCourseService(
     classRepo as unknown as Repository<BibleCourseClass>,
     enrollmentRepo as unknown as Repository<BibleCourseEnrollment>,
     moduleRepo as unknown as Repository<BibleCourseModule>,
+    gradeRepo as unknown as Repository<BibleCourseGrade>,
   );
 }
 
@@ -165,5 +172,136 @@ describe('BibleCourseService modules (catalogo)', () => {
 
     await service.removeModule('m1');
     expect(moduleRepo.softDelete).toHaveBeenCalledWith('m1');
+  });
+});
+
+describe('BibleCourseService.average', () => {
+  it('returns null when there is nothing to average', () => {
+    expect(BibleCourseService.average([null, undefined])).toBeNull();
+  });
+
+  it('ignores nulls and averages only present values', () => {
+    expect(BibleCourseService.average([8, null])).toBe(8);
+    expect(BibleCourseService.average([7, 9])).toBe(8);
+    expect(BibleCourseService.average([null, 5])).toBe(5);
+  });
+
+  it('rounds to two decimals', () => {
+    expect(BibleCourseService.average([10, 9, 9])).toBe(9.33);
+  });
+});
+
+describe('BibleCourseService.upsertGrade', () => {
+  it('throws NotFound when the enrollment is missing', async () => {
+    const enrollmentRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const service = makeService(makeRepo(), enrollmentRepo);
+    await expect(
+      service.upsertGrade('nope', 'm1', { examGrade: 8 } as never),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('throws NotFound when the module is missing', async () => {
+    const enrollmentRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'e1' }) });
+    const moduleRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const service = makeService(makeRepo(), enrollmentRepo, moduleRepo);
+    await expect(
+      service.upsertGrade('e1', 'nope', { examGrade: 8 } as never),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('creates a new grade row when none exists', async () => {
+    const enrollmentRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'e1' }) });
+    const moduleRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'm1' }) });
+    const gradeRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const service = makeService(makeRepo(), enrollmentRepo, moduleRepo, gradeRepo);
+
+    await service.upsertGrade('e1', 'm1', { examGrade: 8, workGrade: 9 } as never);
+    expect(gradeRepo.create).toHaveBeenCalled();
+    expect(gradeRepo.save.mock.calls[0][0]).toMatchObject({
+      enrollmentId: 'e1',
+      moduleId: 'm1',
+      examGrade: 8,
+      workGrade: 9,
+    });
+  });
+
+  it('edits the existing row instead of duplicating', async () => {
+    const enrollmentRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'e1' }) });
+    const moduleRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'm1' }) });
+    const existing = { id: 'g1', enrollmentId: 'e1', moduleId: 'm1', examGrade: 5, workGrade: null };
+    const gradeRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(existing) });
+    const service = makeService(makeRepo(), enrollmentRepo, moduleRepo, gradeRepo);
+
+    await service.upsertGrade('e1', 'm1', { examGrade: 7 } as never);
+    expect(gradeRepo.create).not.toHaveBeenCalled();
+    expect(gradeRepo.save.mock.calls[0][0]).toMatchObject({ id: 'g1', examGrade: 7, workGrade: null });
+  });
+
+  it('clears a grade when null is sent', async () => {
+    const enrollmentRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'e1' }) });
+    const moduleRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'm1' }) });
+    const existing = { id: 'g1', enrollmentId: 'e1', moduleId: 'm1', examGrade: 5, workGrade: 6 };
+    const gradeRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(existing) });
+    const service = makeService(makeRepo(), enrollmentRepo, moduleRepo, gradeRepo);
+
+    await service.upsertGrade('e1', 'm1', { examGrade: null } as never);
+    expect(gradeRepo.save.mock.calls[0][0]).toMatchObject({ examGrade: null, workGrade: 6 });
+  });
+});
+
+describe('BibleCourseService.getClassGrades', () => {
+  it('throws NotFound when the class is missing', async () => {
+    const service = makeService(makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+    await expect(service.getClassGrades('nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('builds the matrix with per-module and overall averages ignoring blanks', async () => {
+    const classRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'c1' }) });
+    const moduleRepo = makeRepo({
+      find: jest.fn().mockResolvedValue([
+        { id: 'm1', name: 'Gênesis', sequence: 1 },
+        { id: 'm2', name: 'Êxodo', sequence: 2 },
+      ]),
+    });
+    const enrollmentRepo = makeRepo(
+      {},
+      jest.fn().mockResolvedValue([{ id: 'e1', residentName: 'Filho' }]),
+    );
+    const gradeRepo = makeRepo();
+    gradeRepo.createQueryBuilder = jest.fn(() => ({
+      innerJoin: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([
+        // m1: exam 8, work 10 → avg 9 ; m2: exam 6, work null → avg 6
+        { enrollmentId: 'e1', moduleId: 'm1', examGrade: '8', workGrade: '10' },
+        { enrollmentId: 'e1', moduleId: 'm2', examGrade: '6', workGrade: null },
+      ]),
+    })) as never;
+
+    const service = makeService(classRepo, enrollmentRepo, moduleRepo, gradeRepo);
+    const result = await service.getClassGrades('c1');
+
+    expect(result.modules).toHaveLength(2);
+    expect(result.rows).toHaveLength(1);
+    const row = result.rows[0];
+    expect(row.modules[0]).toMatchObject({ moduleId: 'm1', examGrade: 8, workGrade: 10, moduleAverage: 9 });
+    expect(row.modules[1]).toMatchObject({ moduleId: 'm2', examGrade: 6, workGrade: null, moduleAverage: 6 });
+    // student average = avg(9, 6) = 7.5
+    expect(row.average).toBe(7.5);
+  });
+
+  it('reports a null average for an enrollment without any grade', async () => {
+    const classRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'c1' }) });
+    const moduleRepo = makeRepo({
+      find: jest.fn().mockResolvedValue([{ id: 'm1', name: 'Gênesis', sequence: 1 }]),
+    });
+    const enrollmentRepo = makeRepo(
+      {},
+      jest.fn().mockResolvedValue([{ id: 'e1', residentName: 'Filho' }]),
+    );
+    const service = makeService(classRepo, enrollmentRepo, moduleRepo);
+
+    const result = await service.getClassGrades('c1');
+    expect(result.rows[0].average).toBeNull();
+    expect(result.rows[0].modules[0].moduleAverage).toBeNull();
   });
 });

@@ -179,4 +179,100 @@ describe('BibleCourseController (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(204));
   });
+
+  describe('grades (notas por módulo, ADMIN only)', () => {
+    let classId: string;
+    let enrollmentId: string;
+    let moduleId: string;
+
+    beforeAll(async () => {
+      // Turma própria para as notas.
+      const klass = await request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `Turma Notas ${Date.now()}`, houseId, startDate: '2026-06-01', endDate: '2026-09-01' })
+        .expect(201);
+      classId = klass.body.id;
+      createdClassIds.push(classId);
+
+      const residents = await request(app.getHttpServer())
+        .get(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      const residentId = residents.body.data[0].id;
+
+      const enrollment = await request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes/${classId}/enrollments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ residentId })
+        .expect(201);
+      enrollmentId = enrollment.body.id;
+
+      const module = await request(app.getHttpServer())
+        .post(`${BASE}/bible-course/modules`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `Módulo Notas ${Date.now()}`, sequence: 1 })
+        .expect(201);
+      moduleId = module.body.id;
+    });
+
+    it('GET grades → 403 for a non-ADMIN (coordinator)', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/bible-course/classes/${classId}/grades`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403));
+
+    it('PUT grade → 403 for a non-ADMIN (coordinator)', () =>
+      request(app.getHttpServer())
+        .put(`${BASE}/bible-course/enrollments/${enrollmentId}/grades/${moduleId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ examGrade: 8 })
+        .expect(403));
+
+    it('PUT grade → 400 when the grade is out of 0–10', () =>
+      request(app.getHttpServer())
+        .put(`${BASE}/bible-course/enrollments/${enrollmentId}/grades/${moduleId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ examGrade: 11 })
+        .expect(400));
+
+    it('ADMIN launches an exam grade (creates the row)', async () => {
+      const res = await request(app.getHttpServer())
+        .put(`${BASE}/bible-course/enrollments/${enrollmentId}/grades/${moduleId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ examGrade: 8 })
+        .expect(200);
+      expect(Number(res.body.examGrade)).toBe(8);
+    });
+
+    it('ADMIN edits the same grade row without duplicating + adds the work grade', async () => {
+      const res = await request(app.getHttpServer())
+        .put(`${BASE}/bible-course/enrollments/${enrollmentId}/grades/${moduleId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ examGrade: 10, workGrade: 8 })
+        .expect(200);
+      expect(Number(res.body.examGrade)).toBe(10);
+      expect(Number(res.body.workGrade)).toBe(8);
+    });
+
+    it('ADMIN reads the matrix with computed averages', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/bible-course/classes/${classId}/grades`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.body.classId).toBe(classId);
+      expect(res.body.modules.some((m: { id: string }) => m.id === moduleId)).toBe(true);
+
+      const row = res.body.rows.find((r: { enrollmentId: string }) => r.enrollmentId === enrollmentId);
+      expect(row).toBeDefined();
+      const cell = row.modules.find((m: { moduleId: string }) => m.moduleId === moduleId);
+      expect(cell.examGrade).toBe(10);
+      expect(cell.workGrade).toBe(8);
+      // média do módulo = (10 + 8) / 2 = 9
+      expect(cell.moduleAverage).toBe(9);
+      // média do aluno (só este módulo com nota) = 9
+      expect(row.average).toBe(9);
+    });
+  });
 });

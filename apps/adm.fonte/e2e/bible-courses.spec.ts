@@ -138,3 +138,53 @@ test.describe('Curso Bíblico — catálogo de módulos', () => {
     await expect(page.getByText(name)).not.toBeVisible();
   });
 });
+
+test.describe('Curso Bíblico — lançamento de notas', () => {
+  const ts = () => Date.now();
+
+  test('lança nota numa turma com filho e módulo e vê a média', async ({ page }) => {
+    await login(page);
+
+    // Garante um módulo no catálogo.
+    await page.getByRole('link', { name: 'Curso Bíblico' }).click();
+    await expect(page).toHaveURL('/bible-courses');
+    await page.getByRole('link', { name: 'Módulos' }).click();
+    await expect(page).toHaveURL('/bible-courses/modules');
+    await page.getByRole('button', { name: 'Novo módulo' }).click();
+    const moduleName = `Módulo Notas ${ts()}`;
+    await page.getByLabel('Nome *').fill(moduleName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+    await expect(page.getByText(moduleName)).toBeVisible();
+
+    // Cria turma.
+    await page.getByRole('link', { name: 'Curso Bíblico' }).click();
+    await expect(page).toHaveURL('/bible-courses');
+    const className = `Turma Notas ${ts()}`;
+    await page.getByRole('button', { name: 'Nova turma' }).click();
+    await page.getByLabel('Nome *').fill(className);
+    await page.getByLabel('Casa *').selectOption({ index: 1 });
+    await page.getByRole('button', { name: 'Criar' }).click();
+    await expect(page.getByText(className)).toBeVisible();
+
+    // Abre a turma e matricula um filho (se houver no seed).
+    await page.getByText(className).click();
+    await expect(page).toHaveURL(/\/bible-courses\/.+/);
+    await page.getByRole('button', { name: 'Matricular filho' }).click();
+    const dialog = page.getByRole('dialog');
+    const enrollButtons = dialog.getByRole('button', { name: 'Matricular' });
+    const count = await enrollButtons.count();
+    test.skip(count === 0, 'Sem filhos ativos no seed de teste');
+    await enrollButtons.first().click();
+    await page.keyboard.press('Escape');
+
+    // Vai para a aba Notas e lança uma nota de prova.
+    await page.getByRole('button', { name: 'Notas' }).click();
+    const examInput = page.getByLabel(/^Prova de /).first();
+    await expect(examInput).toBeVisible();
+    await examInput.fill('8');
+    await examInput.blur();
+
+    // A média do módulo (8,0) aparece após o autosave.
+    await expect(page.getByText('8,0').first()).toBeVisible();
+  });
+});

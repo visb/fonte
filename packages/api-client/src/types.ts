@@ -880,6 +880,37 @@ export interface UpdateBibleCourseModuleInput {
   notes?: string | null;
 }
 
+export interface BibleClassGradeModuleColumn {
+  id: string;
+  name: string;
+  sequence: number;
+}
+
+export interface BibleClassGradeCell {
+  moduleId: string;
+  examGrade: number | null;
+  workGrade: number | null;
+  moduleAverage: number | null;
+}
+
+export interface BibleClassGradeRow {
+  enrollmentId: string;
+  residentName: string;
+  modules: BibleClassGradeCell[];
+  average: number | null;
+}
+
+export interface BibleClassGrades {
+  classId: string;
+  modules: BibleClassGradeModuleColumn[];
+  rows: BibleClassGradeRow[];
+}
+
+export interface UpsertBibleGradeInput {
+  examGrade?: number | null;
+  workGrade?: number | null;
+}
+
 // ─── Document Template ───────────────────────────────────────────────────────
 
 export interface DocumentTemplate {

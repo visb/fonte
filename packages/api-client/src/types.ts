@@ -48,8 +48,20 @@ import type {
   Notification,
   UnreadCountResponse,
   NotificationPushPayload,
+  Payable,
+  PayablesSummary,
+  CreatePayableInput,
+  UpdatePayableInput,
+  PayPayableInput,
+  ListPayablesParams,
+  PayablesSummaryParams,
 } from '@fonte/types';
-import { NotificationType, HouseCapacityRequestStatus } from '@fonte/types';
+import {
+  NotificationType,
+  HouseCapacityRequestStatus,
+  PayableStatus,
+  PayableCategory,
+} from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
 export type {
@@ -80,6 +92,17 @@ export type {
   AssociatesOverviewCurrent,
 };
 export type { SupplyRoomCategory };
+
+export { PayableStatus, PayableCategory };
+export type {
+  Payable,
+  PayablesSummary,
+  CreatePayableInput,
+  UpdatePayableInput,
+  PayPayableInput,
+  ListPayablesParams,
+  PayablesSummaryParams,
+};
 
 export type { FamilyInvestment };
 

@@ -339,6 +339,78 @@ export interface StreetSalesReportResponse {
   previousPeriodTotal: number;
 }
 
+// ─── Payables (contas a pagar — story 47) ──────────────────────────────────────
+
+export enum PayableStatus {
+  OPEN = 'OPEN',
+  PAID = 'PAID',
+}
+
+export enum PayableCategory {
+  UTILITIES = 'UTILITIES',
+  SUPPLIES = 'SUPPLIES',
+  MAINTENANCE = 'MAINTENANCE',
+  PAYROLL = 'PAYROLL',
+  TAXES = 'TAXES',
+  OTHER = 'OTHER',
+}
+
+export interface Payable {
+  id: string;
+  description: string;
+  /** Valor em centavos (padrão do repo). */
+  amount: number;
+  dueDate: string;
+  category: PayableCategory;
+  supplier: string | null;
+  status: PayableStatus;
+  paidAt: string | null;
+  notes: string | null;
+  /** Derivado em runtime: dueDate < hoje && status === OPEN. Não persistido. */
+  overdue: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PayablesSummary {
+  /** Total em aberto (status OPEN), em centavos. */
+  totalOpen: number;
+  /** Total pago (status PAID), em centavos. */
+  totalPaid: number;
+  /** Total vencido (OPEN && dueDate < hoje), em centavos. */
+  totalOverdue: number;
+  countOpen: number;
+  countPaid: number;
+  countOverdue: number;
+}
+
+export interface CreatePayableInput {
+  description: string;
+  amount: number;
+  dueDate: string;
+  category: PayableCategory;
+  supplier?: string | null;
+  notes?: string | null;
+}
+
+export type UpdatePayableInput = Partial<CreatePayableInput>;
+
+export interface PayPayableInput {
+  paidAt?: string;
+}
+
+export interface ListPayablesParams {
+  status?: PayableStatus;
+  category?: PayableCategory;
+  from?: string;
+  to?: string;
+}
+
+export interface PayablesSummaryParams {
+  from?: string;
+  to?: string;
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

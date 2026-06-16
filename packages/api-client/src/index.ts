@@ -160,5 +160,12 @@ export type {
   ListNotificationsParams,
   BackupListItem,
   BackupSummary,
+  Payable,
+  PayablesSummary,
+  CreatePayableInput,
+  UpdatePayableInput,
+  PayPayableInput,
+  ListPayablesParams,
+  PayablesSummaryParams,
 } from './types.js';
-export { NotificationType, HouseCapacityRequestStatus } from './types.js';
+export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory } from './types.js';

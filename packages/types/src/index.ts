@@ -399,3 +399,81 @@ export interface UnreadCountResponse {
 /** Realtime payload pushed over the `notification:new` socket event. */
 export type NotificationPushPayload = Notification;
 
+// ─── Associados (faturamento/cobrança recorrente) ───────────────────────────────
+
+/** Status do associado, derivado da assinatura. PENDING ao cadastrar (story 37). */
+export enum AssociateStatus {
+  PENDING = 'PENDING',
+  ACTIVE = 'ACTIVE',
+  PAST_DUE = 'PAST_DUE',
+  CANCELED = 'CANCELED',
+}
+
+/** Status da assinatura recorrente no gateway (comportamento na story 38). */
+export enum SubscriptionStatus {
+  ACTIVE = 'ACTIVE',
+  PAST_DUE = 'PAST_DUE',
+  CANCELED = 'CANCELED',
+}
+
+/** Status de uma cobrança (adesão ou recorrente) (comportamento na story 38). */
+export enum ChargeStatus {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  FAILED = 'FAILED',
+}
+
+export interface AssociateSubscription {
+  id: string;
+  associateId: string;
+  abacatepaySubscriptionId: string | null;
+  netAmount: number;
+  feeAmount: number;
+  grossAmount: number;
+  status: SubscriptionStatus;
+  startedAt: string | null;
+  canceledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssociateCharge {
+  id: string;
+  associateId: string;
+  subscriptionId: string | null;
+  abacatepayChargeId: string | null;
+  netAmount: number;
+  feeAmount: number;
+  grossAmount: number;
+  status: ChargeStatus;
+  dueDate: string;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Associate {
+  id: string;
+  name: string;
+  whatsapp: string;
+  email: string | null;
+  contributionAmount: number;
+  dueDay: number;
+  status: AssociateStatus;
+  abacatepayCustomerId: string | null;
+  paymentToken: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Item da listagem: associado + última cobrança (para a tela de gestão). */
+export interface AssociateListItem extends Associate {
+  lastCharge: AssociateCharge | null;
+}
+
+/** Detalhe: associado + assinatura + histórico de cobranças. */
+export interface AssociateDetail extends Associate {
+  subscription: AssociateSubscription | null;
+  charges: AssociateCharge[];
+}
+

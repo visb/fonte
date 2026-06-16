@@ -14,6 +14,7 @@ import { createSupportGroupsModule } from './modules/support-groups.js';
 import { createWishlistModule } from './modules/wishlist.js';
 import { createAppSettingsModule } from './modules/app-settings.js';
 import { createStreetSalesModule } from './modules/street-sales.js';
+import { createAssociatesModule } from './modules/associates.js';
 import { createSupplyRoomModule } from './modules/supply-room.js';
 import { createBibleCourseModule } from './modules/bible-course.js';
 import { createNotificationsModule } from './modules/notifications.js';
@@ -64,6 +65,7 @@ export function createApiClient(config: ApiClientConfig) {
     wishlist: createWishlistModule(http),
     appSettings: createAppSettingsModule(http),
     streetSales: createStreetSalesModule(http),
+    associates: createAssociatesModule(http),
     supplyRoom: createSupplyRoomModule(http),
     bibleCourse: createBibleCourseModule(http),
     notifications: createNotificationsModule(http),

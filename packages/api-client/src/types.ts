@@ -28,6 +28,14 @@ import type {
   StreetSale,
   StreetSalesReportResponse,
   StreetSalesReportByHouse,
+  Associate,
+  AssociateListItem,
+  AssociateDetail,
+  AssociateSubscription,
+  AssociateCharge,
+  AssociateStatus,
+  SubscriptionStatus,
+  ChargeStatus,
   SupplyRoomCategory,
   Notification,
   UnreadCountResponse,
@@ -45,6 +53,16 @@ export type {
   SetContributionExemptInput,
 };
 export type { StreetSaleType, StreetSale, StreetSalesReportResponse, StreetSalesReportByHouse };
+export type {
+  Associate,
+  AssociateListItem,
+  AssociateDetail,
+  AssociateSubscription,
+  AssociateCharge,
+  AssociateStatus,
+  SubscriptionStatus,
+  ChargeStatus,
+};
 export type { SupplyRoomCategory };
 
 export type { FamilyInvestment };
@@ -1150,6 +1168,18 @@ export interface GetStreetSalesReportParams {
   month: string;
   houseId?: string;
 }
+
+// ─── Associados ─────────────────────────────────────────────────────────────────
+
+export interface CreateAssociateInput {
+  name: string;
+  whatsapp: string;
+  email?: string;
+  contributionAmount: number;
+  dueDay: number;
+}
+
+export type UpdateAssociateInput = Partial<CreateAssociateInput>;
 
 // ─── Backup ───────────────────────────────────────────────────────────────────
 

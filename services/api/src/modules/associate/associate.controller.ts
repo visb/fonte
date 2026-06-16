@@ -1,4 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  DefaultValuePipe,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -26,6 +38,15 @@ export class AssociateController {
   @Roles(Role.ADMIN)
   findAll() {
     return this.service.findAll();
+  }
+
+  /** Overview de faturamento — DEVE vir antes de :id para não colidir. */
+  @Get('overview')
+  @Roles(Role.ADMIN)
+  getOverview(
+    @Query('months', new DefaultValuePipe(12), ParseIntPipe) months: number,
+  ) {
+    return this.service.getOverview(months);
   }
 
   @Get(':id')

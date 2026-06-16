@@ -5,6 +5,7 @@ import type {
   Associate,
   AssociatePublicView,
   AssociateSubscription,
+  AssociatesOverview,
   CreateAssociateInput,
   UpdateAssociateInput,
   SubscribeInput,
@@ -14,6 +15,14 @@ import type {
 export function createAssociatesModule(http: AxiosInstance) {
   return {
     list: () => http.get<AssociateListItem[]>('/associates').then((r) => r.data),
+
+    /** Overview de faturamento (esperado vs arrecadado por mês + índices). ADMIN. */
+    getOverview: (months?: number) =>
+      http
+        .get<AssociatesOverview>('/associates/overview', {
+          params: months !== undefined ? { months } : undefined,
+        })
+        .then((r) => r.data),
 
     getById: (id: string) =>
       http.get<AssociateDetail>(`/associates/${id}`).then((r) => r.data),

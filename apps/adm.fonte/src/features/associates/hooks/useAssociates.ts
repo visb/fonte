@@ -10,6 +10,13 @@ export function useAssociates() {
   });
 }
 
+export function useAssociatesOverview(months = 12) {
+  return useQuery({
+    queryKey: queryKeys.associates.overview(months),
+    queryFn: () => api.associates.getOverview(months),
+  });
+}
+
 export function useAssociateById(id: string | null, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.associates.detail(id!),

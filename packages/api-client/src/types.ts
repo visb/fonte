@@ -39,6 +39,9 @@ import type {
   AssociatePublicView,
   SubscribeInput,
   SubscribeResult,
+  AssociatesOverview,
+  AssociatesOverviewMonth,
+  AssociatesOverviewCurrent,
   SupplyRoomCategory,
   Notification,
   UnreadCountResponse,
@@ -68,6 +71,9 @@ export type {
   AssociatePublicView,
   SubscribeInput,
   SubscribeResult,
+  AssociatesOverview,
+  AssociatesOverviewMonth,
+  AssociatesOverviewCurrent,
 };
 export type { SupplyRoomCategory };
 

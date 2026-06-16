@@ -511,3 +511,52 @@ export interface SubscribeResult {
   checkoutUrl: string | null;
 }
 
+// ─── Overview de faturamento dos associados (story 44 — só leitura) ──────────────
+
+/** Ponto da série histórica: esperado vs arrecadado de um mês. */
+export interface AssociatesOverviewMonth {
+  /** 'YYYY-MM'. */
+  month: string;
+  /** Soma de grossAmount das charges com due_date no mês. */
+  expectedGross: number;
+  /** Soma de netAmount das charges com due_date no mês. */
+  expectedNet: number;
+  /** Soma de grossAmount das charges PAID com paid_at no mês. */
+  collectedGross: number;
+  /** Soma de netAmount das charges PAID com paid_at no mês. */
+  collectedNet: number;
+}
+
+/** Índices e totais do mês corrente. */
+export interface AssociatesOverviewCurrent {
+  expectedGross: number;
+  expectedNet: number;
+  collectedGross: number;
+  collectedNet: number;
+  /** Associados criados no mês (exclui soft-deleted). */
+  newAssociates: number;
+  /** Nº de assinaturas ACTIVE. */
+  activeSubscriptions: number;
+  /** Ativos ÷ associados não-cancelados (0..1). */
+  recurrenceRate: number;
+  /** Assinaturas canceladas no mês. */
+  churnCount: number;
+  /** Cancelados no mês ÷ ativos no início do mês (0..1). */
+  churnRate: number;
+  /** Charges FAILED ou (PENDING vencida) no mês. */
+  delinquentCharges: number;
+  /** Associados atualmente PAST_DUE. */
+  pastDueAssociates: number;
+}
+
+/**
+ * Visão de gestão do faturamento de associados (story 44). Agregação de leitura
+ * sobre `associate_charges`/`associate_subscriptions`/`associates`. ADMIN only.
+ */
+export interface AssociatesOverview {
+  /** Série dos últimos N meses (ordem cronológica crescente). */
+  months: AssociatesOverviewMonth[];
+  /** Métricas do mês corrente. */
+  current: AssociatesOverviewCurrent;
+}
+

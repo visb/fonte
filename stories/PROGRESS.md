@@ -218,3 +218,48 @@ Epic 33 CONCLUÍDO: filhas 34 (catálogo de módulos) e 35 (lançamento de notas
 ## Story 41 — trocar gateway de associados para Pagar.me (substitui AbacatePay das stories 38/40)
 
 [OK] 41 — testes: api unit **379 passed** + api e2e **186 passed** (TODA a suíte) + `pnpm --filter associados build` e `pnpm --filter adm.fonte build` verdes + adm Playwright associates.spec **5 passed**. Gateway SEMPRE mockado (sem chave; Pagar.me real nunca chamada). DECISÃO (usuário, 2026-06-16): trocar **AbacatePay → Pagar.me** — o AbacatePay exige produto de preço fixo pré-cadastrado no painel (sem amount arbitrário na API) e usa checkout por redirect sem SDK de tokenização; a Pagar.me tem tokenização client-side + assinatura com valor inline + cancelamento. Doc confirmada: tokenizecard.js / `POST /tokens?appId=<public_key>` (token 60s, PAN não toca backend); `POST /subscriptions` com `items.pricing_scheme.price` (valor inline, sem plano) + `interval:month`; `DELETE /subscriptions/{id}`; webhooks `charge.paid`/`charge.payment_failed`/`subscription.canceled`. IMPLEMENTADO: camada `gateway/` (interface `PaymentGateway` + token DI `PAYMENT_GATEWAY` + impl `HttpPagarmeGateway`, base https://api.pagar.me/core/v5, auth Basic base64(secret:)); valor da assinatura agora **FIXO** (= contribution_amount) — subscribe recebe só `{ cardToken }`; `PagarmeWebhookService`+Controller `POST /webhooks/pagarme` (HTTP Basic via PAGARME_WEBHOOK_USER/PASSWORD; idempotente por gateway_charge_id; paga→PAID+ACTIVE, falhou→FAILED+PAST_DUE, cancelada→CANCELED); endpoint ADMIN `POST /associates/:id/cancel-subscription` (cancela no gateway + CANCELED) + botão "Cancelar recorrência" no adm.fonte (AssociateRow quando ACTIVE|PAST_DUE → AlertDialog → `useCancelAssociateSubscription`). Migration **1782700000000-AssociateGatewayRename** renomeia colunas `abacatepay_*` → `gateway_*` (genéricas) + índice de idempotência (aplicada no db de teste). App `associados`: tokenização REAL Pagar.me (`/tokens?appId=VITE_PAGARME_PUBLIC_KEY`; stub `dev_tok_*` em DEV sem chave) + valor read-only fixo (SubscribeForm sem campo de valor). Removida a camada `abacatepay/`. Tipos (@fonte/types: gatewaySubscriptionId/gatewayChargeId/gatewayCustomerId; `SubscribeInput` só cardToken) + api-client (`cancelSubscription`) + `.env.example` (PAGARME_*) + Postman (subscribe sem amount, "Cancelar recorrência" ADMIN, "Webhook — Pagar.me") atualizados. Atualiza os PARCIAIS das stories 38/40: o gateway agora é Pagar.me e a tokenização do app deixou de ser stub (vira real quando `VITE_PAGARME_PUBLIC_KEY` estiver setada). PENDENTE DE CREDENCIAL/MANUAL (não bloqueia o código): (1) `PAGARME_SECRET_KEY` + validar em sandbox com cartão de teste; confirmar contrato exato de `POST /subscriptions` e payload do webhook; (2) `PAGARME_WEBHOOK_USER/PASSWORD` (Basic configurado no painel); (3) `VITE_PAGARME_PUBLIC_KEY` no app + validar tokenizecard.js no caminho feliz; (4) confirmar taxas reais da conta (`PAGARME_CARD_FEE_PCT/FIXED`) p/ o gross-up. — commit: feat(story-41) — merge: "merge: story 41 — trocar gateway associados para Pagar.me + cancelamento no admin" — 2026-06-16
+
+---
+
+# PROGRESS — stories 44-55
+
+Associados (overview/autocancel/tela), Contas a Pagar, Atividades Kanban e o epic 49 (cobertura de
+testes + filhas 50–55). Conduzido por `AUTORUN.md`. Fonte de verdade: esta seção + `git log` de `main`.
+
+## Legenda
+
+`[OK]` story implementada, suíte tocada verde, commitada e mergeada · `[PARCIAL]` código completo mas
+parte depende de serviço externo sem credencial (mock nos testes) · `[BLOQUEADO]` impedida (ver motivo)
+· `[ ]` pendente
+
+## Fila (ordem: 44 → 46 → 45 → 47 → 48 → 49 → 55 → 51 → 52 → 50 → 53 → 54)
+
+| Ordem | Story | Status | Testes | Commit | Merge |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 44 — overview de faturamento dos associados | [ ] | | | |
+| 2 | 46 — melhorias tela associados (detalhe + máscara + scroll infinito) | [ ] | | | |
+| 3 | 45 — link de autocancelamento no lembrete WhatsApp | [ ] | | | |
+| 4 | 47 — Contas a Pagar (módulo payable + adm) | [ ] | | | |
+| 5 | 48 — Atividades Kanban (backend + adm + ops) | [ ] | | | |
+| 6 | 49 — EPIC cobertura de testes (código: skills + scripts; coordena 50–55) | [ ] | | | |
+| 7 | 55 — unit tests @fonte/api-client | [ ] | | | |
+| 8 | 51 — unit tests adm.fonte (Vitest + RTL) | [ ] | | | |
+| 9 | 52 — testes app associados (Vitest + Playwright) | [ ] | | | |
+| 10 | 50 — auditoria + gaps de teste services/api | [ ] | | | |
+| 11 | 53 — testes ops.fonte (jest-expo + Playwright web) | [ ] | | | |
+| 12 | 54 — testes app.fonte (jest-expo + Playwright web) | [ ] | | | |
+
+## Log
+
+<!-- anexar uma linha por story concluída/bloqueada:
+[OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <timestamp> — <bloqueio se houver>
+-->
+
+## Bloqueios esperados (dependência externa sem credencial)
+
+- **Story 45** — envio real Meta WhatsApp + **novo template aprovado** com os dois botões de URL
+  (pagar + cancelar). Sem `META_WA_*` no ambiente: cliente mockado nos testes, Meta nunca chamada.
+  Preencher `META_WA_TEMPLATE_NAME` com o template aprovado e ajustar os `components` ao formato real.
+- **Stories 48/53/54 (mobile nativo)** — e2e Maestro/emulador segue bloqueado por infra (ver stories
+  19/25 acima). Mitigação do epic 49: unit `jest-expo` + e2e web (Playwright contra `expo export
+  --platform web`), sem device. Maestro permanece opcional, não é gate de merge.

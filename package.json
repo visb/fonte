@@ -32,6 +32,7 @@
     "start:app": "pnpm --filter app.fonte start:web",
     "start:ops": "pnpm --filter ops.fonte start:web",
     "seed:api": "pnpm --filter api seed",
-    "seed:street-sales": "pnpm --filter api seed:street-sales"
+    "seed:street-sales": "pnpm --filter api seed:street-sales",
+    "seed:associates": "pnpm --filter api seed:associates"
   }
 }

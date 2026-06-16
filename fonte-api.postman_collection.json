@@ -4033,6 +4033,114 @@
       ]
     },
     {
+      "name": "Associates",
+      "item": [
+        {
+          "name": "Create Associate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Maria da Silva\",\n  \"whatsapp\": \"+5562999998888\",\n  \"email\": \"maria@example.com\",\n  \"contributionAmount\": 50,\n  \"dueDay\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/associates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "associates"
+              ]
+            },
+            "description": "Cria um associado (ADMIN). Gera payment_token uuid e status PENDING. whatsapp em E.164; email opcional; contributionAmount > 0; dueDay 1-31."
+          }
+        },
+        {
+          "name": "List Associates",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/associates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "associates"
+              ]
+            },
+            "description": "Lista associados com a última cobrança (ADMIN)."
+          }
+        },
+        {
+          "name": "Get Associate by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/associates/{{associateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "associates",
+                "{{associateId}}"
+              ]
+            },
+            "description": "Detalhe do associado com assinatura e histórico de cobranças (ADMIN)."
+          }
+        },
+        {
+          "name": "Update Associate",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Maria Atualizada\",\n  \"dueDay\": 20\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/associates/{{associateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "associates",
+                "{{associateId}}"
+              ]
+            },
+            "description": "Edita o cadastro do associado (ADMIN)."
+          }
+        },
+        {
+          "name": "Delete Associate",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/associates/{{associateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "associates",
+                "{{associateId}}"
+              ]
+            },
+            "description": "Soft delete do associado (ADMIN)."
+          }
+        }
+      ]
+    },
+    {
       "name": "Audit",
       "item": [
         {

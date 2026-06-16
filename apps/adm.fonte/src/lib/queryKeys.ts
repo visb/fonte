@@ -96,4 +96,8 @@ export const queryKeys = {
   backup: {
     all: ['backup'] as const,
   },
+  associates: {
+    all: ['associates'] as const,
+    detail: (id: string) => ['associates', id] as const,
+  },
 } as const;

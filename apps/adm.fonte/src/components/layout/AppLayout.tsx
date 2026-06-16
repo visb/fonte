@@ -107,7 +107,11 @@ function SettingsSubmenu({ closeSidebar }: SettingsSubmenuProps) {
   );
 }
 
-function FaturamentoSubmenu({ closeSidebar }: SettingsSubmenuProps) {
+interface FaturamentoSubmenuProps extends SettingsSubmenuProps {
+  isAdmin: boolean;
+}
+
+function FaturamentoSubmenu({ closeSidebar, isAdmin }: FaturamentoSubmenuProps) {
   const location = useLocation();
   const inBilling = location.pathname.startsWith("/billing");
   const [open, setOpen] = useState(inBilling);
@@ -161,13 +165,15 @@ function FaturamentoSubmenu({ closeSidebar }: SettingsSubmenuProps) {
           >
             Pão
           </NavLink>
-          <NavLink
-            to="/billing/associados"
-            onClick={closeSidebar}
-            className={subNavLinkClass}
-          >
-            Associados
-          </NavLink>
+          {isAdmin && (
+            <NavLink
+              to="/billing/associados"
+              onClick={closeSidebar}
+              className={subNavLinkClass}
+            >
+              Associados
+            </NavLink>
+          )}
         </div>
       )}
     </div>
@@ -288,7 +294,7 @@ export function AppLayout() {
             </Link>
           )}
           {isAdminOrCoordinator && (
-            <FaturamentoSubmenu closeSidebar={closeSidebar} />
+            <FaturamentoSubmenu closeSidebar={closeSidebar} isAdmin={isAdmin} />
           )}
           {isAdminOrCoordinator && (
             <SettingsSubmenu closeSidebar={closeSidebar} />

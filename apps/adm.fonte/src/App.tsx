@@ -32,7 +32,7 @@ import { BillingPage } from '@/features/billing/pages/BillingPage';
 import { FilhosPage } from '@/features/billing/pages/FilhosPage';
 import { PizzaPage } from '@/features/billing/pages/PizzaPage';
 import { BreadPage } from '@/features/billing/pages/BreadPage';
-import { AssociadosPage } from '@/features/billing/pages/AssociadosPage';
+import { AssociatesPage } from '@/features/associates/pages/AssociatesPage';
 import { MessagesPage } from '@/features/messages/pages/MessagesPage';
 import { ProfilePage } from '@/features/auth/pages/ProfilePage';
 import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage';
@@ -108,7 +108,7 @@ export default function App() {
                 <Route path="filhos" element={<FilhosPage />} />
                 <Route path="pizza" element={<PizzaPage />} />
                 <Route path="bread" element={<BreadPage />} />
-                <Route path="associados" element={<AssociadosPage />} />
+                <Route path="associados" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><AssociatesPage /></ProtectedRoute>} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -38,7 +38,7 @@ describe('StreetSaleController (e2e)', () => {
     // Authenticate as coordinator (seeded by seed-test.ts)
     const loginRes = await request(app.getHttpServer())
       .post(`${BASE}/auth/login`)
-      .send({ email: 'coord@fonte.com', password: 'coord123' })
+      .send({ identifier: 'coord@fonte.com', password: 'coord123' })
       .expect(200);
 
     coordToken = loginRes.body.accessToken;

@@ -45,7 +45,7 @@ describe('Promote Resident to Servant (e2e)', () => {
 
     const loginRes = await request(app.getHttpServer())
       .post(`${BASE}/auth/login`)
-      .send({ email: 'coord@fonte.com', password: 'coord123' })
+      .send({ identifier: 'coord@fonte.com', password: 'coord123' })
       .expect(200);
     coordToken = loginRes.body.accessToken;
 

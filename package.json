@@ -23,6 +23,8 @@
     "docker:reset": "docker compose down -v && docker compose up -d",
     "dev:adm:test": "pnpm --filter adm.fonte dev:test",
     "dev:adm": "pnpm build:types && pnpm build:doc-styles && pnpm build:api-client && pnpm --filter adm.fonte dev",
+    "dev:associados": "pnpm build:types && pnpm build:api-client && pnpm --filter associados dev",
+    "build:associados": "pnpm build:types && pnpm build:api-client && pnpm --filter associados build",
     "dev:ops": "pnpm build:types && pnpm build:api-client && pnpm --filter ops.fonte start -- --port 8082",
     "dev:app": "pnpm build:types && pnpm build:api-client && pnpm --filter app.fonte start",
     "build:ops": "pnpm build:types && pnpm build:api-client && pnpm --filter ops.fonte build:web",

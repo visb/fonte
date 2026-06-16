@@ -12,6 +12,10 @@ import { ABACATEPAY_CLIENT } from './abacatepay/abacatepay.types';
 import { HttpAbacatePayClient } from './abacatepay/abacatepay.client';
 import { AbacatePayWebhookController } from './abacatepay/abacatepay-webhook.controller';
 import { AbacatePayWebhookService } from './abacatepay/abacatepay-webhook.service';
+import { AssociateChargeScheduler } from './associate-charge.scheduler';
+import { WHATSAPP_CLIENT } from './whatsapp/whatsapp.types';
+import { MetaWhatsAppClient } from './whatsapp/whatsapp.client';
+import { AssociateChargeController } from './associate-charge.controller';
 
 @Module({
   imports: [
@@ -22,12 +26,19 @@ import { AbacatePayWebhookService } from './abacatepay/abacatepay-webhook.servic
       AssociateChargeNotification,
     ]),
   ],
-  controllers: [AssociateController, PublicAssociateController, AbacatePayWebhookController],
+  controllers: [
+    AssociateController,
+    AssociateChargeController,
+    PublicAssociateController,
+    AbacatePayWebhookController,
+  ],
   providers: [
     AssociateService,
     AssociatePaymentService,
     AbacatePayWebhookService,
+    AssociateChargeScheduler,
     { provide: ABACATEPAY_CLIENT, useClass: HttpAbacatePayClient },
+    { provide: WHATSAPP_CLIENT, useClass: MetaWhatsAppClient },
   ],
   exports: [AssociateService],
 })

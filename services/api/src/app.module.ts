@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { StorageUrlInterceptor } from './modules/storage/storage-url.interceptor';
 import { SensitiveDataInterceptor } from './common/interceptors/sensitive-data.interceptor';
@@ -39,6 +40,7 @@ import { AssociateModule } from './modules/associate/associate.module';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
@@ -81,6 +83,8 @@ import { AssociateModule } from './modules/associate/associate.module';
     AssociateModule,
   ],
   providers: [
+    // Captura exceptions não tratadas para o Sentry preservando o tratamento do Nest.
+    { provide: APP_FILTER, useClass: SentryGlobalFilter },
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },
     { provide: APP_INTERCEPTOR, useClass: StorageUrlInterceptor },
     // LGPD — mascaramento de CPF/RG nas respostas (minimização de dados).

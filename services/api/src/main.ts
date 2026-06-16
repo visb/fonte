@@ -1,3 +1,5 @@
+// Sentry primeiro de tudo — pré-requisito do auto-instrument (@sentry/nestjs).
+import "./instrument";
 import "reflect-metadata";
 import { types } from "pg";
 // TIMESTAMP WITHOUT TIME ZONE (OID 1114) — pg lê como string local; forçar UTC

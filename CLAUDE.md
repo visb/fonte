@@ -326,6 +326,24 @@ Consulte `BUSINESS_RULES.md` antes de tocar nestes fluxos:
 - Role `RESIDENT` (internos) está ativa no backend (login, mensagens, sessão de uso com limite diário); o app/kiosk dedicado (`resident.fonte`) ainda não foi scaffoldado.
 - JWT carrega `user_id`, `role`, `profile_type` (`STAFF` | `RELATIVE` | `RESIDENT`).
 
+---
+
+## Observabilidade (Sentry — story 43)
+
+Sentry SaaS, **1 projeto/DSN por app** (`fonte-api`, `fonte-adm`, `fonte-associados`,
+`fonte-ops`, `fonte-app`). Cobre errors, tracing, profiling e logs estruturados.
+
+- **DSN sempre via env.** Sem DSN o SDK fica inerte — dev local e testes não disparam eventos.
+  - api: `SENTRY_DSN` (+ `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_PROFILES_SAMPLE_RATE`).
+  - adm/associados: `VITE_SENTRY_DSN` (+ `VITE_SENTRY_*_SAMPLE_RATE`).
+  - ops/app: `EXPO_PUBLIC_SENTRY_DSN` (+ `EXPO_PUBLIC_SENTRY_*_SAMPLE_RATE`).
+- **Init**: api em `src/instrument.ts` (importado 1ª linha do `main.ts`); web em
+  `src/lib/sentry.ts` (chamado no `main.tsx`); RN em `lib/sentry.ts` (chamado no `app/_layout.tsx`,
+  export envolvido em `Sentry.wrap`).
+- **Source maps** (prod): upload via `@sentry/vite-plugin` (web) / config plugin EAS (RN), só com
+  `SENTRY_AUTH_TOKEN` no build/CI. Nunca commitar o token.
+- "Metrics" como produto foi descontinuado pelo Sentry — métricas vêm de tracing/spans.
+
 <!-- rtk-instructions v2 -->
 # RTK (Rust Token Killer) - Token-Optimized Commands
 

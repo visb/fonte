@@ -5,6 +5,8 @@ packages:
 nodeLinker: hoisted
 allowBuilds:
   '@nestjs/core': true
+  '@sentry/cli': true
+  '@sentry/node-cpu-profiler': true
   '@swc/core': true
   bcrypt: true
   esbuild: true
@@ -12,5 +14,7 @@ allowBuilds:
   sharp: true
 onlyBuiltDependencies:
   - "@nestjs/core"
+  - "@sentry/cli"
+  - "@sentry/node-cpu-profiler"
   - bcrypt
   - esbuild

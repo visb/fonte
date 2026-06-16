@@ -4186,7 +4186,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cardToken\": \"token_card_tokenizado_na_pagarme\"\n}"
+              "raw": "{\n  \"contributionAmount\": 50,\n  \"cardToken\": \"tok_card_tokenizado_no_gateway\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/public/associates/{{associatePaymentToken}}/subscribe",
@@ -4200,62 +4200,40 @@
                 "subscribe"
               ]
             },
-            "description": "PÚBLICO (sem JWT). Valor é FIXO (= contribution_amount do cadastro); body só traz cardToken. Calcula gross-up das taxas de cartão (gross=(net+fixed)/(1-pct)), cria customer+assinatura na Pagar.me e persiste a assinatura + 1ª cobrança PENDING (status final vem do webhook). Retorna { status, subscription, charge, checkoutUrl }. cardToken é tokenizado client-side na Pagar.me (PAN nunca chega ao backend). Throttle estrito por IP. Story 41."
+            "description": "PÚBLICO (sem JWT). Calcula gross-up das taxas de cartão (gross=(net+fixed)/(1-pct)), cria customer+assinatura no AbacatePay e persiste a assinatura + 1ª cobrança PENDING (status final vem do webhook). Retorna { status, subscription, charge, checkoutUrl }. cardToken é tokenizado client-side (PAN nunca chega ao backend). Throttle estrito por IP. Story 38."
           }
         },
         {
-          "name": "Cancelar recorrência (ADMIN)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/associates/{{associateId}}/cancel-subscription",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "associates",
-                "{{associateId}}",
-                "cancel-subscription"
-              ]
-            },
-            "description": "ADMIN. Cancela a recorrência de cartão do associado na Pagar.me (DELETE /subscriptions/{id}) e marca assinatura/associado como CANCELED. Sem login de associado — o admin cancela por ele. Retorna a assinatura cancelada. Story 41."
-          }
-        },
-        {
-          "name": "Webhook — Pagar.me",
+          "name": "Webhook — AbacatePay",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Basic {{pagarmeWebhookBasic}}"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"type\": \"charge.paid\",\n  \"data\": {\n    \"id\": \"ch_xxx\",\n    \"subscription_id\": \"sub_xxx\",\n    \"metadata\": { \"associate_id\": \"{{associateId}}\" }\n  }\n}"
+              "raw": "{\n  \"event\": \"subscription.completed\",\n  \"data\": {\n    \"chargeId\": \"chg_xxx\",\n    \"subscriptionId\": \"sub_xxx\",\n    \"externalId\": \"{{associateId}}\"\n  }\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/webhooks/pagarme",
+              "raw": "{{baseUrl}}/webhooks/abacatepay?webhookSecret={{abacatepayWebhookSecret}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "webhooks",
-                "pagarme"
+                "abacatepay"
+              ],
+              "query": [
+                {
+                  "key": "webhookSecret",
+                  "value": "{{abacatepayWebhookSecret}}"
+                }
               ]
             },
-            "description": "PÚBLICO (sem JWT) — autenticado por HTTP Basic (PAGARME_WEBHOOK_USER/PASSWORD). Idempotente por gateway_charge_id. Eventos: charge.paid → cobrança PAID + assinatura/associado ACTIVE; charge.payment_failed → FAILED + PAST_DUE; subscription.canceled → CANCELED. Story 41."
+            "description": "PÚBLICO (sem JWT) — autenticado pelo secret em ?webhookSecret= (ABACATEPAY_WEBHOOK_SECRET). Idempotente por abacatepay_charge_id. Eventos: subscription.completed/renewed/checkout.completed → cobrança PAID + assinatura/associado ACTIVE; charge.failed/billing.failed → FAILED + PAST_DUE; subscription.cancelled → CANCELED. Story 38."
           }
         }
       ]

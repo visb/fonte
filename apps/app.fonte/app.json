@@ -25,7 +25,8 @@
         {
           "cameraPermission": "Permitir acesso à câmera para escanear QR codes de check-in."
         }
-      ]
+      ],
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true

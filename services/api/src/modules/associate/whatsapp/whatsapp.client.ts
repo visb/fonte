@@ -15,9 +15,10 @@ import {
  * Env:
  *  - META_WA_PHONE_NUMBER_ID  — id do número remetente registrado na Meta.
  *  - META_WA_TOKEN            — token de acesso permanente (system user).
- *  - META_WA_TEMPLATE_NAME    — nome do template aprovado (fallback p/ sendTemplate).
- *  - META_WA_API_VERSION      — versão da Graph API (default `v21.0`).
- *  - APP_ASSOCIADOS_URL       — base do app público; o link é `<base>/p/<payment_token>`.
+ *  - META_WA_TEMPLATE_NAME            — nome do template padrão de cobrança.
+ *  - META_WA_TEMPLATE_NAME_CANCELABLE — template com 2 botões (pagar + cancelar), story 45.
+ *  - META_WA_API_VERSION              — versão da Graph API (default `v21.0`).
+ *  - APP_ASSOCIADOS_URL               — base do app público; links `<base>/p/<token>` e `<base>/cancelar/<token>`.
  *
  * Best-effort: qualquer falha (sem credencial, erro de rede, rejeição da Meta) é
  * LOGADA e devolve `{ sent: false }` — NUNCA derruba o job de cobrança.
@@ -52,6 +53,11 @@ export class MetaWhatsAppClient implements WhatsAppClient {
     return `${this.appAssociadosUrl}/p/${paymentToken}`;
   }
 
+  /** Monta o link público de autocancelamento a partir do payment_token (story 45). */
+  buildCancelLink(paymentToken: string): string {
+    return `${this.appAssociadosUrl}/cancelar/${paymentToken}`;
+  }
+
   async sendTemplate(input: SendTemplateInput): Promise<SendTemplateResult> {
     const phoneNumberId = this.phoneNumberId;
     const token = this.token;
@@ -65,6 +71,35 @@ export class MetaWhatsAppClient implements WhatsAppClient {
     }
 
     const link = this.buildPaymentLink(input.urlButtonParam);
+    const components: Array<Record<string, unknown>> = [
+      {
+        type: 'body',
+        parameters: input.variables.map((text) => ({ type: 'text', text })),
+      },
+      {
+        type: 'button',
+        sub_type: 'url',
+        index: '0',
+        // No template de URL dinâmica, o parâmetro completa o sufixo da URL.
+        // Enviamos o link inteiro como referência; a Meta concatena ao
+        // template conforme configurado. Guardamos o token como parâmetro.
+        parameters: [{ type: 'text', text: link }],
+      },
+    ];
+
+    // Story 45: a partir do 3º lembrete o template cancelável traz um 2º botão de
+    // URL (index '1') com o link de autocancelamento.
+    if (input.cancelUrlButtonParam) {
+      components.push({
+        type: 'button',
+        sub_type: 'url',
+        index: '1',
+        parameters: [
+          { type: 'text', text: this.buildCancelLink(input.cancelUrlButtonParam) },
+        ],
+      });
+    }
+
     const body = {
       messaging_product: 'whatsapp',
       to: input.toE164,
@@ -72,21 +107,7 @@ export class MetaWhatsAppClient implements WhatsAppClient {
       template: {
         name: input.templateName,
         language: { code: 'pt_BR' },
-        components: [
-          {
-            type: 'body',
-            parameters: input.variables.map((text) => ({ type: 'text', text })),
-          },
-          {
-            type: 'button',
-            sub_type: 'url',
-            index: '0',
-            // No template de URL dinâmica, o parâmetro completa o sufixo da URL.
-            // Enviamos o link inteiro como referência; a Meta concatena ao
-            // template conforme configurado. Guardamos o token como parâmetro.
-            parameters: [{ type: 'text', text: link }],
-          },
-        ],
+        components,
       },
     };
 

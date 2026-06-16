@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  AssociateCancelView,
   AssociatePublicView,
   AssociateStatus,
   ChargeStatus,
@@ -148,6 +149,63 @@ export class AssociatePaymentService {
       subscription: this.toSubscriptionView(subscription),
       charge: this.toChargeView(charge),
       checkoutUrl: null,
+    };
+  }
+
+  /**
+   * Dados mínimos da tela pública de autocancelamento (story 45): nome do
+   * associado + se há assinatura ativa/cancelável. Resolve por `payment_token`.
+   */
+  async getCancelView(token: string): Promise<AssociateCancelView> {
+    const associate = await this.findByToken(token);
+    const active = await this.subscriptionRepo.findOne({
+      where: [
+        { associateId: associate.id, status: SubscriptionStatus.ACTIVE },
+        { associateId: associate.id, status: SubscriptionStatus.PAST_DUE },
+      ],
+    });
+    return {
+      name: associate.name,
+      status: associate.status,
+      hasActiveSubscription: active !== null,
+    };
+  }
+
+  /**
+   * Autocancelamento público da assinatura (story 45). Resolve o associado por
+   * `payment_token` e REUSA a lógica de cancelamento da story 41 (cancela no
+   * gateway + assinatura/associado CANCELED). Idempotente: já cancelado → ok,
+   * sem chamar o gateway de novo.
+   */
+  async cancelByToken(token: string): Promise<AssociateCancelView> {
+    const associate = await this.findByToken(token);
+
+    const subscription = await this.subscriptionRepo.findOne({
+      where: [
+        { associateId: associate.id, status: SubscriptionStatus.ACTIVE },
+        { associateId: associate.id, status: SubscriptionStatus.PAST_DUE },
+      ],
+      order: { createdAt: 'DESC' },
+    });
+
+    if (subscription) {
+      if (subscription.gatewaySubscriptionId) {
+        await this.gateway.cancelSubscription(subscription.gatewaySubscriptionId);
+      }
+      subscription.status = SubscriptionStatus.CANCELED;
+      subscription.canceledAt = new Date();
+      await this.subscriptionRepo.save(subscription);
+    }
+
+    if (associate.status !== AssociateStatus.CANCELED) {
+      associate.status = AssociateStatus.CANCELED;
+      await this.repo.save(associate);
+    }
+
+    return {
+      name: associate.name,
+      status: AssociateStatus.CANCELED,
+      hasActiveSubscription: false,
     };
   }
 

@@ -26,6 +26,13 @@ export interface SendTemplateInput {
    * (`APP_ASSOCIADOS_URL/p/:payment_token`).
    */
   urlButtonParam: string;
+  /**
+   * Parâmetro do 2º botão de URL — link de autocancelamento (story 45). Presente
+   * apenas no template "cancelável" (a partir do 3º lembrete consecutivo); o
+   * cliente concatena à `APP_ASSOCIADOS_URL` montando `<base>/cancelar/:token`.
+   * Quando ausente, o payload tem só o botão de pagamento.
+   */
+  cancelUrlButtonParam?: string;
 }
 
 export interface SendTemplateResult {

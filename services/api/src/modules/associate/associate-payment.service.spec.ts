@@ -235,4 +235,73 @@ describe('AssociatePaymentService', () => {
       await expect(service.cancelSubscription('nope')).rejects.toBeInstanceOf(NotFoundException);
     });
   });
+
+  // ── Autocancelamento público por token (story 45) ──────────────────────────
+  describe('getCancelView', () => {
+    it('returns name + hasActiveSubscription for a valid token', async () => {
+      const { service } = makeService({
+        associate: makeAssociate({ status: AssociateStatus.ACTIVE }),
+        activeSub: { id: 's1', status: SubscriptionStatus.ACTIVE } as AssociateSubscription,
+      });
+      const view = await service.getCancelView(TOKEN);
+      expect(view).toEqual({
+        name: 'João Doador',
+        status: AssociateStatus.ACTIVE,
+        hasActiveSubscription: true,
+      });
+      expect(view).not.toHaveProperty('whatsapp');
+    });
+
+    it('throws NotFound for unknown token', async () => {
+      const { service } = makeService({ associate: null });
+      await expect(service.getCancelView('nope')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('cancelByToken', () => {
+    it('cancels at the gateway and marks subscription + associate CANCELED', async () => {
+      const { service, gateway, savedSubs, savedAssociates } = makeService({
+        associate: makeAssociate({ status: AssociateStatus.ACTIVE }),
+        activeSub: {
+          id: 's1',
+          associateId: ASSOCIATE_ID,
+          gatewaySubscriptionId: 'sub_123',
+          status: SubscriptionStatus.ACTIVE,
+          createdAt: new Date('2026-06-10T00:00:00Z'),
+          updatedAt: new Date('2026-06-10T00:00:00Z'),
+        } as AssociateSubscription,
+      });
+
+      const result = await service.cancelByToken(TOKEN);
+
+      expect(gateway.cancelSubscription).toHaveBeenCalledWith('sub_123');
+      expect(savedSubs[0].status).toBe(SubscriptionStatus.CANCELED);
+      expect(savedAssociates[0].status).toBe(AssociateStatus.CANCELED);
+      expect(result).toEqual({
+        name: 'João Doador',
+        status: AssociateStatus.CANCELED,
+        hasActiveSubscription: false,
+      });
+    });
+
+    it('is idempotent: already CANCELED with no active sub → ok, no gateway call', async () => {
+      const { service, gateway, savedAssociates } = makeService({
+        associate: makeAssociate({ status: AssociateStatus.CANCELED }),
+        activeSub: null,
+      });
+
+      const result = await service.cancelByToken(TOKEN);
+
+      expect(gateway.cancelSubscription).not.toHaveBeenCalled();
+      // já CANCELED → não re-salva o associado.
+      expect(savedAssociates).toHaveLength(0);
+      expect(result.status).toBe(AssociateStatus.CANCELED);
+      expect(result.hasActiveSubscription).toBe(false);
+    });
+
+    it('throws NotFound for an invalid token', async () => {
+      const { service } = makeService({ associate: null });
+      await expect(service.cancelByToken('nope')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
 });

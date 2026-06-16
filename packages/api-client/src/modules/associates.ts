@@ -1,5 +1,6 @@
 import type { AxiosInstance } from 'axios';
 import type {
+  AssociateCancelView,
   AssociateDetail,
   Associate,
   AssociatePublicView,
@@ -56,6 +57,17 @@ export function createAssociatesModule(http: AxiosInstance) {
       subscribe: (token: string, data: SubscribeInput) =>
         http
           .post<SubscribeResult>(`/public/associates/${token}/subscribe`, data)
+          .then((r) => r.data),
+
+      // ── Autocancelamento público (story 45) — acesso por payment_token ────────
+      getCancelView: (token: string) =>
+        http
+          .get<AssociateCancelView>(`/public/associates/${token}/cancel-view`)
+          .then((r) => r.data),
+
+      cancelByToken: (token: string) =>
+        http
+          .post<AssociateCancelView>(`/public/associates/${token}/cancel`)
           .then((r) => r.data),
     },
   };

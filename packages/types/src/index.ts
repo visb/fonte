@@ -517,6 +517,18 @@ export interface SubscribeResult {
   checkoutUrl: string | null;
 }
 
+/**
+ * Dados mínimos da página pública de autocancelamento (story 45). Resolve por
+ * `payment_token`; não vaza dados sensíveis. Reutilizada como resposta do POST
+ * de cancelamento (idempotente → sempre `status: CANCELED`).
+ */
+export interface AssociateCancelView {
+  name: string;
+  status: AssociateStatus;
+  /** Há assinatura ativa/cancelável? Após cancelar, sempre `false`. */
+  hasActiveSubscription: boolean;
+}
+
 // ─── Overview de faturamento dos associados (story 44 — só leitura) ──────────────
 
 /** Ponto da série histórica: esperado vs arrecadado de um mês. */

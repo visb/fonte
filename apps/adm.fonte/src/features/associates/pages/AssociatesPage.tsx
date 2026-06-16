@@ -24,7 +24,11 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { getErrorMessage } from '@/lib/errors';
-import { useAssociates, useDeleteAssociate } from '../hooks/useAssociates';
+import {
+  useAssociates,
+  useDeleteAssociate,
+  useCancelAssociateSubscription,
+} from '../hooks/useAssociates';
 import { AssociateRow } from '../components/AssociateRow';
 import { CreateAssociateDialog } from '../components/CreateAssociateDialog';
 import { EditAssociateDialog } from '../components/EditAssociateDialog';
@@ -33,9 +37,11 @@ export function AssociatesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<AssociateListItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AssociateListItem | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<AssociateListItem | null>(null);
 
   const { data: associates = [], isLoading, error, refetch } = useAssociates();
   const deleteMutation = useDeleteAssociate();
+  const cancelMutation = useCancelAssociateSubscription();
 
   return (
     <div className="space-y-6">
@@ -77,6 +83,7 @@ export function AssociatesPage() {
                   associate={a}
                   onEdit={setEditTarget}
                   onDelete={setDeleteTarget}
+                  onCancelSubscription={setCancelTarget}
                 />
               ))}
             </TableBody>
@@ -109,6 +116,47 @@ export function AssociatesPage() {
               }
             >
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!cancelTarget}
+        onOpenChange={(o) => {
+          if (!o) {
+            setCancelTarget(null);
+            cancelMutation.reset();
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar recorrência</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cancelar a contribuição mensal recorrente de <strong>{cancelTarget?.name}</strong>? O
+              cartão deixará de ser cobrado. Esta ação não pode ser desfeita pelo associado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {cancelMutation.isError && (
+            <p className="text-sm text-destructive">
+              {getErrorMessage(cancelMutation.error, 'Erro ao cancelar a recorrência.')}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                if (cancelTarget) {
+                  cancelMutation.mutate(cancelTarget.id, {
+                    onSuccess: () => setCancelTarget(null),
+                  });
+                }
+              }}
+            >
+              {cancelMutation.isPending ? 'Cancelando...' : 'Cancelar recorrência'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

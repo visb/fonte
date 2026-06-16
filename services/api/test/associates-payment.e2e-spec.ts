@@ -1,50 +1,57 @@
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.test' });
 process.env.NODE_ENV = 'test';
+process.env.PAGARME_WEBHOOK_USER = process.env.PAGARME_WEBHOOK_USER ?? 'hookuser';
+process.env.PAGARME_WEBHOOK_PASSWORD = process.env.PAGARME_WEBHOOK_PASSWORD ?? 'hookpass';
+// Taxas determinísticas para o gross-up do teste (50 → 52.44 com 3,5% + R$0,60).
+process.env.PAGARME_CARD_FEE_PCT = '0.035';
+process.env.PAGARME_CARD_FEE_FIXED = '0.60';
 
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
-import { bootstrapApp, login, BASE } from './helpers/e2e-app';
-import { ABACATEPAY_CLIENT } from '../src/modules/associate/abacatepay/abacatepay.types';
+import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
+import { PAYMENT_GATEWAY } from '../src/modules/associate/gateway/gateway.types';
 
 /**
- * E2E do checkout público + webhook AbacatePay (story 38). O gateway é mockado
- * via override do provider ABACATEPAY_CLIENT — a API real nunca é chamada (sem
- * chave). Cobre: GET público (token válido/inválido), subscribe (gross-up + 1ª
- * charge PENDING), webhook (transição de status + idempotência).
+ * E2E do checkout público + webhook Pagar.me (story 41). O gateway é mockado via
+ * override do provider PAYMENT_GATEWAY — a API real nunca é chamada (sem chave).
+ * Cobre: GET público (token válido/inválido), subscribe (valor FIXO + gross-up +
+ * 1ª charge PENDING), webhook (transição + idempotência) e cancelamento (ADMIN/403).
  */
 describe('Associates payment (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let adminToken: string;
+  let coordToken: string;
   let createSubscription: jest.Mock;
+  let cancelSubscription: jest.Mock;
 
-  const WEBHOOK_SECRET = process.env.ABACATEPAY_WEBHOOK_SECRET ?? 'test_webhook_secret';
+  const WH_AUTH = `Basic ${Buffer.from(
+    `${process.env.PAGARME_WEBHOOK_USER}:${process.env.PAGARME_WEBHOOK_PASSWORD}`,
+  ).toString('base64')}`;
 
   let seq = 0;
 
   beforeAll(async () => {
     // Cada subscribe recebe ids únicos do "gateway" (o índice único parcial em
-    // abacatepay_charge_id rejeitaria ids repetidos entre associados distintos).
+    // gateway_charge_id rejeitaria ids repetidos entre associados distintos).
     createSubscription = jest.fn().mockImplementation(() => {
       seq += 1;
-      return Promise.resolve({
-        subscriptionId: `sub_e2e_${seq}`,
-        chargeId: `chg_e2e_${seq}`,
-        checkoutUrl: 'https://pay/e2e',
-      });
+      return Promise.resolve({ subscriptionId: `sub_e2e_${seq}`, chargeId: `chg_e2e_${seq}` });
     });
+    cancelSubscription = jest.fn().mockResolvedValue({ canceled: true });
     const gatewayMock = {
       createCustomer: jest.fn().mockResolvedValue({ customerId: 'cust_e2e' }),
       createSubscription,
-      cancelSubscription: jest.fn().mockResolvedValue({ canceled: true }),
+      cancelSubscription,
     };
 
     app = await bootstrapApp({
-      overrideProvider: { token: ABACATEPAY_CLIENT, useValue: gatewayMock },
+      overrideProvider: { token: PAYMENT_GATEWAY, useValue: gatewayMock },
     });
     adminToken = await login(app, 'admin@fonte.com', 'admin123');
+    ({ token: coordToken } = await loginCoordinator(app));
     dataSource = app.get(DataSource);
   });
 
@@ -77,7 +84,6 @@ describe('Associates payment (e2e)', () => {
         status: 'PENDING',
         hasActiveSubscription: false,
       });
-      // não vaza dados sensíveis
       expect(res.body).not.toHaveProperty('whatsapp');
       expect(res.body).not.toHaveProperty('email');
       expect(res.body).not.toHaveProperty('paymentToken');
@@ -90,20 +96,20 @@ describe('Associates payment (e2e)', () => {
   });
 
   describe('POST /public/associates/:token/subscribe', () => {
-    it('creates subscription + PENDING charge with gross-up', async () => {
+    it('creates subscription + PENDING charge with gross-up over the fixed amount', async () => {
       const { token } = await createAssociate();
       const res = await request(app.getHttpServer())
         .post(`${BASE}/public/associates/${token}/subscribe`)
-        .send({ contributionAmount: 50, cardToken: 'tok_e2e' })
+        .send({ cardToken: 'tok_e2e' })
         .expect(201);
 
       expect(res.body.subscription.netAmount).toBe(50);
       expect(res.body.subscription.grossAmount).toBe(52.44);
       expect(res.body.subscription.feeAmount).toBe(2.44);
       expect(res.body.charge.status).toBe('PENDING');
-      expect(res.body.checkoutUrl).toBe('https://pay/e2e');
+      expect(res.body.checkoutUrl).toBeNull();
       expect(createSubscription).toHaveBeenCalledWith(
-        expect.objectContaining({ grossAmount: 52.44, cardToken: 'tok_e2e' }),
+        expect.objectContaining({ grossAmount: 52.44, cardToken: 'tok_e2e', interval: 'month' }),
       );
     });
 
@@ -111,40 +117,40 @@ describe('Associates payment (e2e)', () => {
       const { token } = await createAssociate();
       await request(app.getHttpServer())
         .post(`${BASE}/public/associates/${token}/subscribe`)
-        .send({ contributionAmount: 50 })
+        .send({})
         .expect(400);
     });
   });
 
-  describe('POST /webhooks/abacatepay', () => {
-    it('401 with wrong secret', () =>
+  describe('POST /webhooks/pagarme', () => {
+    it('401 with wrong credentials', () =>
       request(app.getHttpServer())
-        .post(`${BASE}/webhooks/abacatepay?webhookSecret=wrong`)
-        .send({ event: 'subscription.completed', data: {} })
+        .post(`${BASE}/webhooks/pagarme`)
+        .set('Authorization', 'Basic wrong')
+        .send({ type: 'charge.paid', data: {} })
         .expect(401));
 
-    it('marks charge PAID + associate ACTIVE on paid event (idempotent)', async () => {
+    it('marks charge PAID + associate ACTIVE on charge.paid (idempotent)', async () => {
       const { id, token } = await createAssociate();
       await request(app.getHttpServer())
         .post(`${BASE}/public/associates/${token}/subscribe`)
-        .send({ contributionAmount: 50, cardToken: 'tok' })
+        .send({ cardToken: 'tok' })
         .expect(201);
 
-      // Sem chargeId/subscriptionId do gateway: resolve pelo externalId (associate id);
-      // markPaid usa a cobrança PENDING mais recente da assinatura.
-      const paidBody = {
-        event: 'subscription.completed',
-        data: { externalId: id },
-      };
+      // Resolve a assinatura por metadata.associate_id; markPaid usa a cobrança
+      // PENDING mais recente quando o evento não traz o id da cobrança.
+      const paidBody = { type: 'charge.paid', data: { metadata: { associate_id: id } } };
 
       await request(app.getHttpServer())
-        .post(`${BASE}/webhooks/abacatepay?webhookSecret=${WEBHOOK_SECRET}`)
+        .post(`${BASE}/webhooks/pagarme`)
+        .set('Authorization', WH_AUTH)
         .send(paidBody)
         .expect(200);
 
-      // segunda entrega do mesmo evento = idempotente
+      // segunda entrega = idempotente
       await request(app.getHttpServer())
-        .post(`${BASE}/webhooks/abacatepay?webhookSecret=${WEBHOOK_SECRET}`)
+        .post(`${BASE}/webhooks/pagarme`)
+        .set('Authorization', WH_AUTH)
         .send(paidBody)
         .expect(200);
 
@@ -159,16 +165,17 @@ describe('Associates payment (e2e)', () => {
       expect(paid).toHaveLength(1);
     });
 
-    it('marks subscription/associate CANCELED on cancel event', async () => {
+    it('marks subscription/associate CANCELED on subscription.canceled', async () => {
       const { id, token } = await createAssociate();
       await request(app.getHttpServer())
         .post(`${BASE}/public/associates/${token}/subscribe`)
-        .send({ contributionAmount: 50, cardToken: 'tok' })
+        .send({ cardToken: 'tok' })
         .expect(201);
 
       await request(app.getHttpServer())
-        .post(`${BASE}/webhooks/abacatepay?webhookSecret=${WEBHOOK_SECRET}`)
-        .send({ event: 'subscription.cancelled', data: { externalId: id } })
+        .post(`${BASE}/webhooks/pagarme`)
+        .set('Authorization', WH_AUTH)
+        .send({ type: 'subscription.canceled', data: { metadata: { associate_id: id } } })
         .expect(200);
 
       const detail = await request(app.getHttpServer())
@@ -178,5 +185,35 @@ describe('Associates payment (e2e)', () => {
       expect(detail.body.status).toBe('CANCELED');
       expect(detail.body.subscription.status).toBe('CANCELED');
     });
+  });
+
+  describe('POST /associates/:id/cancel-subscription', () => {
+    it('cancels at the gateway and marks CANCELED (ADMIN)', async () => {
+      const { id, token } = await createAssociate();
+      await request(app.getHttpServer())
+        .post(`${BASE}/public/associates/${token}/subscribe`)
+        .send({ cardToken: 'tok' })
+        .expect(201);
+
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/associates/${id}/cancel-subscription`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(201);
+
+      expect(res.body.status).toBe('CANCELED');
+      expect(cancelSubscription).toHaveBeenCalled();
+
+      const detail = await request(app.getHttpServer())
+        .get(`${BASE}/associates/${id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(detail.body.status).toBe('CANCELED');
+    });
+
+    it('403 for non-ADMIN (coordinator)', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/associates/00000000-0000-0000-0000-000000000000/cancel-subscription`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(403));
   });
 });

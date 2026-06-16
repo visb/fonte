@@ -5,8 +5,8 @@ export function formatBRL(value: number): string {
   });
 }
 
-const FEE_PCT = Number(import.meta.env.VITE_ABACATEPAY_CARD_FEE_PCT ?? '0');
-const FEE_FIXED = Number(import.meta.env.VITE_ABACATEPAY_CARD_FEE_FIXED ?? '0');
+const FEE_PCT = Number(import.meta.env.VITE_PAGARME_CARD_FEE_PCT ?? '0');
+const FEE_FIXED = Number(import.meta.env.VITE_PAGARME_CARD_FEE_FIXED ?? '0');
 
 /**
  * Espelha o cálculo de gross-up do backend ([[38]]) para PREVIEW na tela:

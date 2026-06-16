@@ -49,8 +49,8 @@ export function PaymentPage() {
       <div className="card">
         <h2>Olá, {data.name}!</h2>
         <p className="hint" style={{ marginTop: 0 }}>
-          Confirme o valor da sua contribuição mensal e ative o pagamento
-          recorrente com cartão de crédito.
+          Ative sua contribuição mensal recorrente com cartão de crédito. O valor
+          abaixo é debitado automaticamente todo mês.
         </p>
         {subscribe.isError && (
           <p className="error-msg">
@@ -61,7 +61,7 @@ export function PaymentPage() {
           </p>
         )}
         <SubscribeForm
-          defaultAmount={data.suggestedAmount}
+          amount={data.suggestedAmount}
           submitting={subscribe.isPending}
           onSubmit={(values) => subscribe.mutate(values)}
         />

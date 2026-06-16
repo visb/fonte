@@ -7,9 +7,6 @@ import { getErrorMessage } from '@/lib/errors';
 import { AmountSummary } from './AmountSummary';
 
 const schema = z.object({
-  contributionAmount: z
-    .number({ invalid_type_error: 'Informe um valor' })
-    .positive('O valor deve ser maior que zero'),
   cardNumber: z
     .string()
     .min(13, 'Número do cartão inválido')
@@ -23,28 +20,23 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 interface SubscribeFormProps {
-  defaultAmount: number;
+  /** Valor FIXO da contribuição mensal (definido no cadastro; read-only aqui). */
+  amount: number;
   submitting: boolean;
-  onSubmit: (data: { contributionAmount: number; cardToken: string }) => void;
+  onSubmit: (data: { cardToken: string }) => void;
 }
 
-export function SubscribeForm({
-  defaultAmount,
-  submitting,
-  onSubmit,
-}: SubscribeFormProps) {
+export function SubscribeForm({ amount, submitting, onSubmit }: SubscribeFormProps) {
   const [tokenizing, setTokenizing] = useState(false);
   const [tokenizeError, setTokenizeError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      contributionAmount: defaultAmount,
       cardNumber: '',
       holderName: '',
       expMonth: '',
@@ -52,8 +44,6 @@ export function SubscribeForm({
       cvv: '',
     },
   });
-
-  const amount = watch('contributionAmount');
 
   const submit = handleSubmit(async (values) => {
     setTokenizeError(null);
@@ -66,7 +56,7 @@ export function SubscribeForm({
         expYear: values.expYear,
         cvv: values.cvv,
       });
-      onSubmit({ contributionAmount: values.contributionAmount, cardToken });
+      onSubmit({ cardToken });
     } catch (err) {
       setTokenizeError(getErrorMessage(err, 'Não foi possível validar o cartão.'));
     } finally {
@@ -78,21 +68,7 @@ export function SubscribeForm({
 
   return (
     <form onSubmit={submit} noValidate>
-      <div className="field">
-        <label htmlFor="contributionAmount">Valor da contribuição (R$)</label>
-        <input
-          id="contributionAmount"
-          type="number"
-          step="0.01"
-          inputMode="decimal"
-          {...register('contributionAmount', { valueAsNumber: true })}
-        />
-        {errors.contributionAmount && (
-          <p className="error-msg">{errors.contributionAmount.message}</p>
-        )}
-      </div>
-
-      <AmountSummary contributionAmount={Number.isFinite(amount) ? amount : 0} />
+      <AmountSummary contributionAmount={amount} />
 
       <h2>Dados do cartão</h2>
       <div className="field">
@@ -174,8 +150,8 @@ export function SubscribeForm({
       )}
 
       <p className="hint">
-        Seus dados de cartão são tokenizados com segurança e nunca passam pelos
-        servidores da Fonte.
+        Seus dados de cartão são tokenizados com segurança pela Pagar.me e nunca
+        passam pelos servidores da Fonte.
       </p>
     </form>
   );

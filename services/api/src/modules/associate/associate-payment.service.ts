@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -10,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   AssociatePublicView,
+  AssociateStatus,
   ChargeStatus,
   SubscribeInput,
   SubscribeResult,
@@ -21,12 +21,17 @@ import { Associate } from './associate.entity';
 import { AssociateSubscription } from './associate-subscription.entity';
 import { AssociateCharge } from './associate-charge.entity';
 import { computeGrossUp } from './gross-up';
-import { ABACATEPAY_CLIENT, AbacatePayClient } from './abacatepay/abacatepay.types';
+import { PAYMENT_GATEWAY, PaymentGateway } from './gateway/gateway.types';
 
 /**
- * Comportamento de pagamento dos endpoints públicos do checkout (story 38).
- * Acesso por `payment_token` (sem JWT). Calcula o gross-up, cria customer +
- * assinatura no gateway e persiste subscription + 1ª cobrança PENDING.
+ * Comportamento de pagamento do associado (story 41 — Pagar.me).
+ *  - Endpoints públicos do checkout (acesso por `payment_token`, sem JWT): calcula
+ *    o gross-up, cria customer + assinatura recorrente no gateway e persiste a
+ *    assinatura + 1ª cobrança PENDING.
+ *  - Cancelamento da recorrência (acionado pelo admin): cancela no gateway e marca
+ *    assinatura/associado como CANCELED.
+ *
+ * O valor é FIXO (= `contribution_amount` do cadastro) para todas as cobranças.
  */
 @Injectable()
 export class AssociatePaymentService {
@@ -37,17 +42,17 @@ export class AssociatePaymentService {
     private readonly subscriptionRepo: Repository<AssociateSubscription>,
     @InjectRepository(AssociateCharge)
     private readonly chargeRepo: Repository<AssociateCharge>,
-    @Inject(ABACATEPAY_CLIENT)
-    private readonly gateway: AbacatePayClient,
+    @Inject(PAYMENT_GATEWAY)
+    private readonly gateway: PaymentGateway,
     private readonly config: ConfigService,
   ) {}
 
-  /** Taxas de cartão configuráveis por env (default = 3,5% + R$ 0,60 do AbacatePay). */
+  /** Taxas de cartão configuráveis por env (defaults genéricos; ajustar à conta). */
   private get cardFeePct(): number {
-    return Number(this.config.get<string>('ABACATEPAY_CARD_FEE_PCT') ?? '0.035');
+    return Number(this.config.get<string>('PAGARME_CARD_FEE_PCT') ?? '0.0399');
   }
   private get cardFeeFixed(): number {
-    return Number(this.config.get<string>('ABACATEPAY_CARD_FEE_FIXED') ?? '0.60');
+    return Number(this.config.get<string>('PAGARME_CARD_FEE_FIXED') ?? '0.39');
   }
 
   private async findByToken(token: string): Promise<Associate> {
@@ -71,12 +76,13 @@ export class AssociatePaymentService {
     };
   }
 
+  /**
+   * Adesão à recorrência. Valor é FIXO (= contribuição do cadastro); o body só
+   * traz o `cardToken`. Calcula gross-up, cria assinatura no gateway e persiste
+   * assinatura ACTIVE + 1ª cobrança PENDING (status final vem do webhook).
+   */
   async subscribe(token: string, dto: SubscribeInput): Promise<SubscribeResult> {
     const associate = await this.findByToken(token);
-
-    if (dto.contributionAmount <= 0) {
-      throw new BadRequestException('contributionAmount must be positive');
-    }
 
     const existingActive = await this.subscriptionRepo.findOne({
       where: { associateId: associate.id, status: SubscriptionStatus.ACTIVE },
@@ -86,21 +92,21 @@ export class AssociatePaymentService {
     }
 
     const { net, fee, gross } = computeGrossUp(
-      dto.contributionAmount,
+      Number(associate.contributionAmount),
       this.cardFeePct,
       this.cardFeeFixed,
     );
 
     // Garante customer no gateway (reusa se já existir).
-    let customerId = associate.abacatepayCustomerId;
+    let customerId = associate.gatewayCustomerId;
     if (!customerId) {
       const customer = await this.gateway.createCustomer({
         name: associate.name,
         email: associate.email,
-        cellphone: associate.whatsapp,
+        phone: associate.whatsapp,
       });
       customerId = customer.customerId;
-      associate.abacatepayCustomerId = customerId;
+      associate.gatewayCustomerId = customerId;
       await this.repo.save(associate);
     }
 
@@ -108,15 +114,14 @@ export class AssociatePaymentService {
       customerId,
       cardToken: dto.cardToken,
       grossAmount: gross,
-      dueDay: associate.dueDay,
+      interval: 'month',
       externalId: associate.id,
     });
 
-    // Persiste a assinatura (ainda ACTIVE no nosso lado; status final virá do webhook).
     const subscription = await this.subscriptionRepo.save(
       this.subscriptionRepo.create({
         associateId: associate.id,
-        abacatepaySubscriptionId: created.subscriptionId,
+        gatewaySubscriptionId: created.subscriptionId,
         netAmount: net,
         feeAmount: fee,
         grossAmount: gross,
@@ -125,12 +130,11 @@ export class AssociatePaymentService {
       }),
     );
 
-    // Primeira cobrança (adesão) fica PENDING até o webhook confirmar o pagamento.
     const charge = await this.chargeRepo.save(
       this.chargeRepo.create({
         associateId: associate.id,
         subscriptionId: subscription.id,
-        abacatepayChargeId: created.chargeId,
+        gatewayChargeId: created.chargeId,
         netAmount: net,
         feeAmount: fee,
         grossAmount: gross,
@@ -143,11 +147,45 @@ export class AssociatePaymentService {
       status: associate.status,
       subscription: this.toSubscriptionView(subscription),
       charge: this.toChargeView(charge),
-      checkoutUrl: created.checkoutUrl,
+      checkoutUrl: null,
     };
   }
 
-  /** Próxima data de vencimento no formato YYYY-MM-DD, com clamp ao último dia do mês. */
+  /**
+   * Cancela a recorrência do associado (acionado pelo admin). Cancela no gateway,
+   * marca a assinatura e o associado como CANCELED. Idempotente o suficiente: se
+   * não houver assinatura cancelável, 404.
+   */
+  async cancelSubscription(associateId: string): Promise<AssociateSubscriptionDto> {
+    const associate = await this.repo.findOne({ where: { id: associateId } });
+    if (!associate) throw new NotFoundException('Associate not found');
+
+    const subscription = await this.subscriptionRepo.findOne({
+      where: [
+        { associateId, status: SubscriptionStatus.ACTIVE },
+        { associateId, status: SubscriptionStatus.PAST_DUE },
+      ],
+      order: { createdAt: 'DESC' },
+    });
+    if (!subscription) {
+      throw new NotFoundException('No cancelable subscription for this associate');
+    }
+
+    if (subscription.gatewaySubscriptionId) {
+      await this.gateway.cancelSubscription(subscription.gatewaySubscriptionId);
+    }
+
+    subscription.status = SubscriptionStatus.CANCELED;
+    subscription.canceledAt = new Date();
+    await this.subscriptionRepo.save(subscription);
+
+    associate.status = AssociateStatus.CANCELED;
+    await this.repo.save(associate);
+
+    return this.toSubscriptionView(subscription);
+  }
+
+  /** Próxima data de vencimento (YYYY-MM-DD), com clamp ao último dia do mês. */
   private computeDueDate(dueDay: number): string {
     const now = new Date();
     const lastDay = new Date(now.getUTCFullYear(), now.getUTCMonth() + 1, 0).getUTCDate();
@@ -160,7 +198,7 @@ export class AssociatePaymentService {
     return {
       id: s.id,
       associateId: s.associateId,
-      abacatepaySubscriptionId: s.abacatepaySubscriptionId,
+      gatewaySubscriptionId: s.gatewaySubscriptionId,
       netAmount: Number(s.netAmount),
       feeAmount: Number(s.feeAmount),
       grossAmount: Number(s.grossAmount),
@@ -177,7 +215,7 @@ export class AssociatePaymentService {
       id: c.id,
       associateId: c.associateId,
       subscriptionId: c.subscriptionId,
-      abacatepayChargeId: c.abacatepayChargeId,
+      gatewayChargeId: c.gatewayChargeId,
       netAmount: Number(c.netAmount),
       feeAmount: Number(c.feeAmount),
       grossAmount: Number(c.grossAmount),

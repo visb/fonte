@@ -1,7 +1,7 @@
 import { computeGrossUp } from './gross-up';
 
 describe('computeGrossUp', () => {
-  it('applies AbacatePay card fee (3.5% + R$0.60) to a R$50 contribution', () => {
+  it('applies card fee (3.5% + R$0.60) to a R$50 contribution', () => {
     const { net, fee, gross } = computeGrossUp(50, 0.035, 0.6);
     // gross = (50 + 0.60) / (1 - 0.035) = 50.60 / 0.965 = 52.4352... → 52.44
     expect(gross).toBe(52.44);

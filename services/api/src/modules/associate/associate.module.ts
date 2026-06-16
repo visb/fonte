@@ -8,10 +8,10 @@ import { AssociateController } from './associate.controller';
 import { AssociateService } from './associate.service';
 import { PublicAssociateController } from './public-associate.controller';
 import { AssociatePaymentService } from './associate-payment.service';
-import { ABACATEPAY_CLIENT } from './abacatepay/abacatepay.types';
-import { HttpAbacatePayClient } from './abacatepay/abacatepay.client';
-import { AbacatePayWebhookController } from './abacatepay/abacatepay-webhook.controller';
-import { AbacatePayWebhookService } from './abacatepay/abacatepay-webhook.service';
+import { PAYMENT_GATEWAY } from './gateway/gateway.types';
+import { HttpPagarmeGateway } from './gateway/pagarme.gateway';
+import { PagarmeWebhookController } from './gateway/pagarme-webhook.controller';
+import { PagarmeWebhookService } from './gateway/pagarme-webhook.service';
 import { AssociateChargeScheduler } from './associate-charge.scheduler';
 import { WHATSAPP_CLIENT } from './whatsapp/whatsapp.types';
 import { MetaWhatsAppClient } from './whatsapp/whatsapp.client';
@@ -30,14 +30,14 @@ import { AssociateChargeController } from './associate-charge.controller';
     AssociateController,
     AssociateChargeController,
     PublicAssociateController,
-    AbacatePayWebhookController,
+    PagarmeWebhookController,
   ],
   providers: [
     AssociateService,
     AssociatePaymentService,
-    AbacatePayWebhookService,
+    PagarmeWebhookService,
     AssociateChargeScheduler,
-    { provide: ABACATEPAY_CLIENT, useClass: HttpAbacatePayClient },
+    { provide: PAYMENT_GATEWAY, useClass: HttpPagarmeGateway },
     { provide: WHATSAPP_CLIENT, useClass: MetaWhatsAppClient },
   ],
   exports: [AssociateService],

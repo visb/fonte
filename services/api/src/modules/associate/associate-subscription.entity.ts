@@ -23,8 +23,8 @@ export class AssociateSubscription {
   @JoinColumn({ name: 'associate_id' })
   associate: Associate;
 
-  @Column({ name: 'abacatepay_subscription_id', type: 'varchar', nullable: true })
-  abacatepaySubscriptionId: string | null;
+  @Column({ name: 'gateway_subscription_id', type: 'varchar', nullable: true })
+  gatewaySubscriptionId: string | null;
 
   @Column({ name: 'net_amount', type: 'numeric', precision: 10, scale: 2, transformer: numericTransformer })
   netAmount: number;

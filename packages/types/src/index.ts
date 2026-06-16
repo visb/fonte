@@ -426,7 +426,7 @@ export enum ChargeStatus {
 export interface AssociateSubscription {
   id: string;
   associateId: string;
-  abacatepaySubscriptionId: string | null;
+  gatewaySubscriptionId: string | null;
   netAmount: number;
   feeAmount: number;
   grossAmount: number;
@@ -441,7 +441,7 @@ export interface AssociateCharge {
   id: string;
   associateId: string;
   subscriptionId: string | null;
-  abacatepayChargeId: string | null;
+  gatewayChargeId: string | null;
   netAmount: number;
   feeAmount: number;
   grossAmount: number;
@@ -460,7 +460,7 @@ export interface Associate {
   contributionAmount: number;
   dueDay: number;
   status: AssociateStatus;
-  abacatepayCustomerId: string | null;
+  gatewayCustomerId: string | null;
   paymentToken: string;
   createdAt: string;
   updatedAt: string;
@@ -493,11 +493,12 @@ export interface AssociatePublicView {
   hasActiveSubscription: boolean;
 }
 
-/** Corpo do POST /public/associates/:token/subscribe. */
+/**
+ * Corpo do POST /public/associates/:token/subscribe.
+ * O valor é FIXO (= contribution_amount do cadastro), então só o cartão é enviado.
+ */
 export interface SubscribeInput {
-  /** Valor líquido que o associado quer contribuir (a Fonte recebe cheio). */
-  contributionAmount: number;
-  /** Token do cartão tokenizado client-side no AbacatePay (PAN nunca chega aqui). */
+  /** Token do cartão tokenizado client-side na Pagar.me (PAN nunca chega aqui). */
   cardToken: string;
 }
 

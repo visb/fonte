@@ -7,12 +7,12 @@ jest.mock('@fonte/types', () => ({
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
-import { ChargeStatus, SubscriptionStatus } from '@fonte/types';
+import { AssociateStatus, ChargeStatus, SubscriptionStatus } from '@fonte/types';
 import { AssociatePaymentService } from './associate-payment.service';
 import { Associate } from './associate.entity';
 import { AssociateSubscription } from './associate-subscription.entity';
 import { AssociateCharge } from './associate-charge.entity';
-import { AbacatePayClient } from './abacatepay/abacatepay.types';
+import { PaymentGateway } from './gateway/gateway.types';
 
 const TOKEN = 'token-uuid';
 const ASSOCIATE_ID = 'associate-uuid';
@@ -26,7 +26,7 @@ function makeAssociate(overrides: Partial<Associate> = {}): Associate {
     contributionAmount: 50,
     dueDay: 10,
     status: 'PENDING',
-    abacatepayCustomerId: null,
+    gatewayCustomerId: null,
     paymentToken: TOKEN,
     createdAt: new Date('2026-06-01T12:00:00Z'),
     updatedAt: new Date('2026-06-01T12:00:00Z'),
@@ -35,12 +35,12 @@ function makeAssociate(overrides: Partial<Associate> = {}): Associate {
   } as unknown as Associate;
 }
 
-function makeMockClient(): jest.Mocked<AbacatePayClient> {
+function makeMockGateway(): jest.Mocked<PaymentGateway> {
   return {
     createCustomer: jest.fn().mockResolvedValue({ customerId: 'cust_123' }),
     createSubscription: jest
       .fn()
-      .mockResolvedValue({ subscriptionId: 'sub_123', chargeId: 'chg_123', checkoutUrl: 'https://pay/x' }),
+      .mockResolvedValue({ subscriptionId: 'sub_123', chargeId: 'chg_123' }),
     cancelSubscription: jest.fn().mockResolvedValue({ canceled: true }),
   };
 }
@@ -48,22 +48,26 @@ function makeMockClient(): jest.Mocked<AbacatePayClient> {
 function makeConfig(pct = '0.035', fixed = '0.60'): ConfigService {
   return {
     get: (key: string) =>
-      key === 'ABACATEPAY_CARD_FEE_PCT' ? pct : key === 'ABACATEPAY_CARD_FEE_FIXED' ? fixed : undefined,
+      key === 'PAGARME_CARD_FEE_PCT' ? pct : key === 'PAGARME_CARD_FEE_FIXED' ? fixed : undefined,
   } as unknown as ConfigService;
 }
 
 function makeService(opts: {
   associate?: Associate | null;
   activeSub?: AssociateSubscription | null;
-  client?: jest.Mocked<AbacatePayClient>;
+  gateway?: jest.Mocked<PaymentGateway>;
 }) {
-  const client = opts.client ?? makeMockClient();
+  const gateway = opts.gateway ?? makeMockGateway();
   const savedSubs: AssociateSubscription[] = [];
   const savedCharges: AssociateCharge[] = [];
+  const savedAssociates: Associate[] = [];
 
   const repo = {
     findOne: jest.fn().mockResolvedValue(opts.associate ?? null),
-    save: jest.fn((a) => Promise.resolve(a)),
+    save: jest.fn((a) => {
+      savedAssociates.push(a);
+      return Promise.resolve(a);
+    }),
   } as unknown as Repository<Associate>;
 
   const subRepo = {
@@ -95,8 +99,8 @@ function makeService(opts: {
     }),
   } as unknown as Repository<AssociateCharge>;
 
-  const service = new AssociatePaymentService(repo, subRepo, chargeRepo, client, makeConfig());
-  return { service, client, repo, subRepo, chargeRepo, savedSubs, savedCharges };
+  const service = new AssociatePaymentService(repo, subRepo, chargeRepo, gateway, makeConfig());
+  return { service, gateway, repo, subRepo, chargeRepo, savedSubs, savedCharges, savedAssociates };
 }
 
 describe('AssociatePaymentService', () => {
@@ -113,7 +117,7 @@ describe('AssociatePaymentService', () => {
       });
       expect(view).not.toHaveProperty('whatsapp');
       expect(view).not.toHaveProperty('email');
-      expect(view).not.toHaveProperty('abacatepayCustomerId');
+      expect(view).not.toHaveProperty('gatewayCustomerId');
     });
 
     it('throws NotFound for unknown token', async () => {
@@ -123,21 +127,27 @@ describe('AssociatePaymentService', () => {
   });
 
   describe('subscribe', () => {
-    it('computes gross-up, creates customer + subscription, persists PENDING charge', async () => {
-      const { service, client, savedSubs, savedCharges } = makeService({
+    it('uses fixed amount, computes gross-up, creates customer + subscription, persists PENDING charge', async () => {
+      const { service, gateway, savedSubs, savedCharges } = makeService({
         associate: makeAssociate(),
       });
 
-      const result = await service.subscribe(TOKEN, { contributionAmount: 50, cardToken: 'tok_abc' });
+      const result = await service.subscribe(TOKEN, { cardToken: 'tok_abc' });
 
-      expect(client.createCustomer).toHaveBeenCalledWith({
+      expect(gateway.createCustomer).toHaveBeenCalledWith({
         name: 'João Doador',
         email: 'joao@example.com',
-        cellphone: '+5562999998888',
+        phone: '+5562999998888',
       });
-      // gross = (50 + 0.60) / 0.965 = 52.44
-      expect(client.createSubscription).toHaveBeenCalledWith(
-        expect.objectContaining({ customerId: 'cust_123', cardToken: 'tok_abc', grossAmount: 52.44, dueDay: 10 }),
+      // valor FIXO do cadastro (50); gross = (50 + 0.60) / 0.965 = 52.44
+      expect(gateway.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customerId: 'cust_123',
+          cardToken: 'tok_abc',
+          grossAmount: 52.44,
+          interval: 'month',
+          externalId: ASSOCIATE_ID,
+        }),
       );
 
       const sub = savedSubs[0];
@@ -145,44 +155,84 @@ describe('AssociatePaymentService', () => {
       expect(sub.grossAmount).toBe(52.44);
       expect(sub.feeAmount).toBe(2.44);
       expect(sub.status).toBe(SubscriptionStatus.ACTIVE);
-      expect(sub.abacatepaySubscriptionId).toBe('sub_123');
+      expect(sub.gatewaySubscriptionId).toBe('sub_123');
 
       const charge = savedCharges[0];
       expect(charge.status).toBe(ChargeStatus.PENDING);
-      expect(charge.abacatepayChargeId).toBe('chg_123');
+      expect(charge.gatewayChargeId).toBe('chg_123');
       expect(charge.grossAmount).toBe(52.44);
 
-      expect(result.checkoutUrl).toBe('https://pay/x');
+      expect(result.checkoutUrl).toBeNull();
       expect(result.charge.status).toBe(ChargeStatus.PENDING);
     });
 
     it('reuses existing customer id (no second createCustomer)', async () => {
-      const { service, client } = makeService({
-        associate: makeAssociate({ abacatepayCustomerId: 'cust_existing' }),
+      const { service, gateway } = makeService({
+        associate: makeAssociate({ gatewayCustomerId: 'cust_existing' }),
       });
-      await service.subscribe(TOKEN, { contributionAmount: 50, cardToken: 'tok' });
-      expect(client.createCustomer).not.toHaveBeenCalled();
-      expect(client.createSubscription).toHaveBeenCalledWith(
+      await service.subscribe(TOKEN, { cardToken: 'tok' });
+      expect(gateway.createCustomer).not.toHaveBeenCalled();
+      expect(gateway.createSubscription).toHaveBeenCalledWith(
         expect.objectContaining({ customerId: 'cust_existing' }),
       );
     });
 
     it('rejects when an active subscription already exists', async () => {
-      const { service, client } = makeService({
+      const { service, gateway } = makeService({
         associate: makeAssociate(),
         activeSub: { id: 's1', status: SubscriptionStatus.ACTIVE } as AssociateSubscription,
       });
-      await expect(
-        service.subscribe(TOKEN, { contributionAmount: 50, cardToken: 'tok' }),
-      ).rejects.toBeInstanceOf(ConflictException);
-      expect(client.createSubscription).not.toHaveBeenCalled();
+      await expect(service.subscribe(TOKEN, { cardToken: 'tok' })).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(gateway.createSubscription).not.toHaveBeenCalled();
     });
 
     it('throws NotFound for unknown token', async () => {
       const { service } = makeService({ associate: null });
-      await expect(
-        service.subscribe('nope', { contributionAmount: 50, cardToken: 'tok' }),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.subscribe('nope', { cardToken: 'tok' })).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('cancelSubscription', () => {
+    it('cancels at the gateway and marks subscription + associate CANCELED', async () => {
+      const { service, gateway, savedSubs, savedAssociates } = makeService({
+        associate: makeAssociate({ status: AssociateStatus.ACTIVE }),
+        activeSub: {
+          id: 's1',
+          associateId: ASSOCIATE_ID,
+          gatewaySubscriptionId: 'sub_123',
+          status: SubscriptionStatus.ACTIVE,
+          createdAt: new Date('2026-06-10T00:00:00Z'),
+          updatedAt: new Date('2026-06-10T00:00:00Z'),
+        } as AssociateSubscription,
+      });
+
+      const result = await service.cancelSubscription(ASSOCIATE_ID);
+
+      expect(gateway.cancelSubscription).toHaveBeenCalledWith('sub_123');
+      expect(savedSubs[0].status).toBe(SubscriptionStatus.CANCELED);
+      expect(savedSubs[0].canceledAt).toBeInstanceOf(Date);
+      expect(savedAssociates[0].status).toBe(AssociateStatus.CANCELED);
+      expect(result.status).toBe(SubscriptionStatus.CANCELED);
+    });
+
+    it('throws NotFound when there is no cancelable subscription', async () => {
+      const { service, gateway } = makeService({
+        associate: makeAssociate({ status: AssociateStatus.PENDING }),
+        activeSub: null,
+      });
+      await expect(service.cancelSubscription(ASSOCIATE_ID)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(gateway.cancelSubscription).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound for unknown associate', async () => {
+      const { service } = makeService({ associate: null });
+      await expect(service.cancelSubscription('nope')).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });

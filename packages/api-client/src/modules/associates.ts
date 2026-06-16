@@ -4,6 +4,7 @@ import type {
   AssociateDetail,
   Associate,
   AssociatePublicView,
+  AssociateSubscription,
   CreateAssociateInput,
   UpdateAssociateInput,
   SubscribeInput,
@@ -24,6 +25,12 @@ export function createAssociatesModule(http: AxiosInstance) {
       http.patch<Associate>(`/associates/${id}`, data).then((r) => r.data),
 
     remove: (id: string) => http.delete(`/associates/${id}`).then((r) => r.data),
+
+    /** Cancela a recorrência de cartão do associado (admin). */
+    cancelSubscription: (id: string) =>
+      http
+        .post<AssociateSubscription>(`/associates/${id}/cancel-subscription`)
+        .then((r) => r.data),
 
     // ── Checkout público (story 38 — consumido pela página pública [[40]]) ──────
     // Acesso por payment_token, sem JWT.

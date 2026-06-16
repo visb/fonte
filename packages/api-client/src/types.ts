@@ -36,6 +36,9 @@ import type {
   AssociateStatus,
   SubscriptionStatus,
   ChargeStatus,
+  AssociatePublicView,
+  SubscribeInput,
+  SubscribeResult,
   SupplyRoomCategory,
   Notification,
   UnreadCountResponse,
@@ -62,6 +65,9 @@ export type {
   AssociateStatus,
   SubscriptionStatus,
   ChargeStatus,
+  AssociatePublicView,
+  SubscribeInput,
+  SubscribeResult,
 };
 export type { SupplyRoomCategory };
 

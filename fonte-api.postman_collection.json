@@ -4239,6 +4239,44 @@
           }
         },
         {
+          "name": "Public — Cancel view (autocancelamento)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/public/associates/{{associatePaymentToken}}/cancel-view",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "associates",
+                "{{associatePaymentToken}}",
+                "cancel-view"
+              ]
+            },
+            "description": "PÚBLICO (sem JWT). Tela de autocancelamento (story 45). Retorna { name, status, hasActiveSubscription } resolvendo o associado por payment_token. Não vaza dados sensíveis. Throttle por IP."
+          }
+        },
+        {
+          "name": "Public — Cancel subscription (autocancelamento)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/public/associates/{{associatePaymentToken}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "associates",
+                "{{associatePaymentToken}}",
+                "cancel"
+              ]
+            },
+            "description": "PÚBLICO (sem JWT). Autocancelamento da assinatura pelo associado (story 45). Resolve por payment_token, reusa a lógica de cancelamento (cancela no gateway + assinatura/associado CANCELED). Idempotente: já cancelado → ok sem nova chamada ao gateway. Retorna { name, status: CANCELED, hasActiveSubscription: false }. Throttle estrito por IP (5/min)."
+          }
+        },
+        {
           "name": "Webhook — AbacatePay",
           "request": {
             "method": "POST",

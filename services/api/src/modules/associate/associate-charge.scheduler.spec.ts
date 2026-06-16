@@ -14,6 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { AssociateChargeScheduler } from './associate-charge.scheduler';
 import { Associate } from './associate.entity';
+import { AssociateCharge } from './associate-charge.entity';
 import { AssociateChargeNotification } from './associate-charge-notification.entity';
 import { WhatsAppClient } from './whatsapp/whatsapp.types';
 
@@ -59,6 +60,10 @@ function makeScheduler(opts: {
   recentlyNotified?: boolean;
   config?: ConfigService;
   notifFindOne?: Associate | null;
+  /** Streak (nº de lembretes desde o último PAID) usado p/ escolher o template. */
+  reminderStreak?: number;
+  /** Última cobrança PAID; quando definida, zera o streak no seu paid_at. */
+  lastPaid?: Partial<AssociateCharge> | null;
 }) {
   const associateRepo = {
     find: jest.fn().mockResolvedValue(opts.candidates),
@@ -72,6 +77,7 @@ function makeScheduler(opts: {
   const saved: AssociateChargeNotification[] = [];
   const notificationRepo = {
     exists: jest.fn().mockResolvedValue(opts.recentlyNotified ?? false),
+    count: jest.fn().mockResolvedValue(opts.reminderStreak ?? 0),
     create: jest.fn().mockImplementation((v) => v),
     save: jest.fn().mockImplementation((v) => {
       saved.push(v);
@@ -79,15 +85,22 @@ function makeScheduler(opts: {
     }),
   } as unknown as Repository<AssociateChargeNotification>;
 
+  const chargeRepo = {
+    findOne: jest
+      .fn()
+      .mockResolvedValue(opts.lastPaid === undefined ? null : opts.lastPaid),
+  } as unknown as Repository<AssociateCharge>;
+
   const whatsapp = opts.whatsapp ?? makeWhatsApp();
   const scheduler = new AssociateChargeScheduler(
     associateRepo,
     notificationRepo,
+    chargeRepo,
     whatsapp,
     opts.config ?? makeConfig(),
   );
 
-  return { scheduler, associateRepo, notificationRepo, whatsapp, saved };
+  return { scheduler, associateRepo, notificationRepo, chargeRepo, whatsapp, saved };
 }
 
 // ─── runDailyChargeCheck — selection ─────────────────────────────────────────
@@ -212,6 +225,72 @@ describe('AssociateChargeScheduler.runDailyChargeCheck — best-effort', () => {
         variables: ['João Doador'],
       }),
     );
+  });
+});
+
+// ─── runDailyChargeCheck — autocancel streak (story 45) ──────────────────────
+
+describe('AssociateChargeScheduler.runDailyChargeCheck — autocancel streak', () => {
+  const config = makeConfig({
+    META_WA_TEMPLATE_NAME: 'cobranca_associado',
+    META_WA_TEMPLATE_NAME_CANCELABLE: 'cobranca_associado_cancelavel',
+  });
+
+  it('streak < 2 → uses the default template, no cancel button', async () => {
+    const assoc = makeAssociate({ status: AssociateStatus.PAST_DUE });
+    const { scheduler, whatsapp } = makeScheduler({
+      candidates: [assoc],
+      reminderStreak: 1,
+      config,
+    });
+
+    await scheduler.runDailyChargeCheck();
+
+    const input = (whatsapp.sendTemplate as jest.Mock).mock.calls[0][0];
+    expect(input.templateName).toBe('cobranca_associado');
+    expect(input.cancelUrlButtonParam).toBeUndefined();
+  });
+
+  it('streak >= 2 → uses the cancelable template + sets cancelUrlButtonParam', async () => {
+    const assoc = makeAssociate({
+      status: AssociateStatus.PAST_DUE,
+      paymentToken: 'tok-cancel',
+    });
+    const { scheduler, whatsapp } = makeScheduler({
+      candidates: [assoc],
+      reminderStreak: 2,
+      config,
+    });
+
+    await scheduler.runDailyChargeCheck();
+
+    const input = (whatsapp.sendTemplate as jest.Mock).mock.calls[0][0];
+    expect(input.templateName).toBe('cobranca_associado_cancelavel');
+    expect(input.urlButtonParam).toBe('tok-cancel');
+    expect(input.cancelUrlButtonParam).toBe('tok-cancel');
+  });
+
+  it('a recent PAID charge resets the streak (count scoped to sentAt after paid_at)', async () => {
+    const assoc = makeAssociate({ status: AssociateStatus.PAST_DUE });
+    const paidAt = new Date('2026-06-10T12:00:00Z');
+    const { scheduler, whatsapp, notificationRepo } = makeScheduler({
+      candidates: [assoc],
+      // Após o pagamento, só 1 lembrete foi enviado → streak 1 → template padrão.
+      reminderStreak: 1,
+      lastPaid: { paidAt },
+      config,
+    });
+
+    await scheduler.runDailyChargeCheck();
+
+    // O count do streak é filtrado por sentAt >= paid_at da última cobrança PAID.
+    const countWhere = (notificationRepo.count as jest.Mock).mock.calls[0][0].where;
+    expect(countWhere.associateId).toBe('a-1');
+    expect((countWhere.sentAt as { value: Date }).value).toEqual(paidAt);
+
+    const input = (whatsapp.sendTemplate as jest.Mock).mock.calls[0][0];
+    expect(input.templateName).toBe('cobranca_associado');
+    expect(input.cancelUrlButtonParam).toBeUndefined();
   });
 });
 

@@ -3,8 +3,9 @@ import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, MoreThanOrEqual, Repository } from 'typeorm';
-import { AssociateStatus } from '@fonte/types';
+import { AssociateStatus, ChargeStatus } from '@fonte/types';
 import { Associate } from './associate.entity';
+import { AssociateCharge } from './associate-charge.entity';
 import {
   AssociateChargeNotification,
   AssociateNotificationType,
@@ -39,11 +40,20 @@ export class AssociateChargeScheduler {
   /** Teto de frequência de cobrança por associado (decisão travada do epic [[36]]). */
   private static readonly DEDUPE_WINDOW_DAYS = 5;
 
+  /**
+   * A partir de quantos lembretes consecutivos o template ganha o link de
+   * autocancelamento (story 45). `reminderStreak >= 2` significa que já houve 2
+   * envios no streak atual e este é o 3º+ — só então oferecemos a saída.
+   */
+  private static readonly CANCEL_LINK_STREAK_THRESHOLD = 2;
+
   constructor(
     @InjectRepository(Associate)
     private readonly associateRepo: Repository<Associate>,
     @InjectRepository(AssociateChargeNotification)
     private readonly notificationRepo: Repository<AssociateChargeNotification>,
+    @InjectRepository(AssociateCharge)
+    private readonly chargeRepo: Repository<AssociateCharge>,
     @Inject(WHATSAPP_CLIENT)
     private readonly whatsapp: WhatsAppClient,
     private readonly config: ConfigService,
@@ -92,13 +102,9 @@ export class AssociateChargeScheduler {
         continue;
       }
 
-      const result = await this.whatsapp.sendTemplate({
-        toE164: associate.whatsapp,
-        templateName:
-          this.config.get<string>('META_WA_TEMPLATE_NAME') ?? 'cobranca_associado',
-        variables: [associate.name],
-        urlButtonParam: associate.paymentToken,
-      });
+      const result = await this.whatsapp.sendTemplate(
+        await this.buildSendInput(associate),
+      );
 
       if (!result.sent) {
         // Best-effort: envio falhou (sem credencial/erro) — loga e não grava log
@@ -152,6 +158,55 @@ export class AssociateChargeScheduler {
     return null;
   }
 
+  /**
+   * Conta o "streak" de lembretes consecutivos do associado (story 45) = nº de
+   * registros em `associate_charge_notifications` com `sent_at` APÓS o `paid_at`
+   * da cobrança `PAID` mais recente (ou desde sempre, se nunca pagou). Pagar e
+   * voltar a atrasar zera o streak.
+   */
+  private async reminderStreak(associateId: string): Promise<number> {
+    const lastPaid = await this.chargeRepo.findOne({
+      where: {
+        associateId,
+        status: ChargeStatus.PAID,
+      },
+      order: { paidAt: 'DESC' },
+    });
+
+    const sentSince =
+      lastPaid?.paidAt != null
+        ? { sentAt: MoreThanOrEqual(lastPaid.paidAt) }
+        : {};
+
+    return this.notificationRepo.count({
+      where: { associateId, ...sentSince },
+    });
+  }
+
+  /**
+   * Monta o payload do template de cobrança. A partir do 3º lembrete consecutivo
+   * (`reminderStreak >= 2`) usa o template cancelável (com o 2º botão de URL) e
+   * inclui `cancelUrlButtonParam`; caso contrário, o template padrão.
+   */
+  private async buildSendInput(associate: Associate) {
+    const streak = await this.reminderStreak(associate.id);
+    const cancelable =
+      streak >= AssociateChargeScheduler.CANCEL_LINK_STREAK_THRESHOLD;
+
+    const templateName = cancelable
+      ? this.config.get<string>('META_WA_TEMPLATE_NAME_CANCELABLE') ??
+        'cobranca_associado_cancelavel'
+      : this.config.get<string>('META_WA_TEMPLATE_NAME') ?? 'cobranca_associado';
+
+    return {
+      toE164: associate.whatsapp,
+      templateName,
+      variables: [associate.name],
+      urlButtonParam: associate.paymentToken,
+      ...(cancelable ? { cancelUrlButtonParam: associate.paymentToken } : {}),
+    };
+  }
+
   /** Disparo manual de cobrança (endpoint ADMIN), respeitando o dedupe de 5 dias. */
   async chargeManually(associateId: string): Promise<{ sent: boolean; skipped: boolean }> {
     const associate = await this.associateRepo.findOne({
@@ -183,13 +238,9 @@ export class AssociateChargeScheduler {
       return { sent: false, skipped: true };
     }
 
-    const result = await this.whatsapp.sendTemplate({
-      toE164: associate.whatsapp,
-      templateName:
-        this.config.get<string>('META_WA_TEMPLATE_NAME') ?? 'cobranca_associado',
-      variables: [associate.name],
-      urlButtonParam: associate.paymentToken,
-    });
+    const result = await this.whatsapp.sendTemplate(
+      await this.buildSendInput(associate),
+    );
     if (!result.sent) {
       return { sent: false, skipped: true };
     }

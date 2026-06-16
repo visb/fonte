@@ -25,4 +25,17 @@ export class PublicAssociateController {
   subscribe(@Param('token') token: string, @Body() dto: SubscribeDto) {
     return this.paymentService.subscribe(token, dto);
   }
+
+  /** Tela de autocancelamento (story 45): nome + se há assinatura cancelável. */
+  @Get(':token/cancel-view')
+  getCancelView(@Param('token') token: string) {
+    return this.paymentService.getCancelView(token);
+  }
+
+  /** Autocancelamento da assinatura pelo associado (idempotente). Throttle estrito. */
+  @Post(':token/cancel')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  cancel(@Param('token') token: string) {
+    return this.paymentService.cancelByToken(token);
+  }
 }

@@ -187,6 +187,74 @@ describe('Associates payment (e2e)', () => {
     });
   });
 
+  // ── Autocancelamento público por token (story 45) ──────────────────────────
+  // Insere a assinatura diretamente no banco para não consumir a cota de throttle
+  // do endpoint /subscribe (5/min por IP) — o foco aqui é só o cancel-view/cancel.
+  async function seedActiveSubscription(associateId: string): Promise<void> {
+    seq += 1;
+    await dataSource.query(
+      `INSERT INTO associate_subscriptions
+         (associate_id, gateway_subscription_id, net_amount, fee_amount, gross_amount, status, started_at)
+       VALUES ($1, $2, 50, 2.44, 52.44, 'ACTIVE', now())`,
+      [associateId, `sub_seed_${seq}`],
+    );
+    await dataSource.query(`UPDATE associates SET status = 'ACTIVE' WHERE id = $1`, [
+      associateId,
+    ]);
+  }
+
+  describe('GET /public/associates/:token/cancel-view', () => {
+    it('returns name + hasActiveSubscription for a subscribed associate', async () => {
+      const { id, token } = await createAssociate();
+      await seedActiveSubscription(id);
+
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/public/associates/${token}/cancel-view`)
+        .expect(200);
+      expect(res.body).toMatchObject({ name: 'Public Doador', hasActiveSubscription: true });
+      expect(res.body).not.toHaveProperty('whatsapp');
+      expect(res.body).not.toHaveProperty('paymentToken');
+    });
+
+    it('404 for an unknown token', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/public/associates/00000000-0000-0000-0000-000000000000/cancel-view`)
+        .expect(404));
+  });
+
+  describe('POST /public/associates/:token/cancel', () => {
+    it('cancels the subscription at the gateway and marks CANCELED (idempotent)', async () => {
+      const { id, token } = await createAssociate();
+      await seedActiveSubscription(id);
+      cancelSubscription.mockClear();
+
+      const first = await request(app.getHttpServer())
+        .post(`${BASE}/public/associates/${token}/cancel`)
+        .expect(201);
+      expect(first.body).toMatchObject({ status: 'CANCELED', hasActiveSubscription: false });
+      expect(cancelSubscription).toHaveBeenCalledTimes(1);
+
+      // Segunda chamada = idempotente; nada cancelável → gateway não é chamado de novo.
+      const second = await request(app.getHttpServer())
+        .post(`${BASE}/public/associates/${token}/cancel`)
+        .expect(201);
+      expect(second.body).toMatchObject({ status: 'CANCELED', hasActiveSubscription: false });
+      expect(cancelSubscription).toHaveBeenCalledTimes(1);
+
+      const detail = await request(app.getHttpServer())
+        .get(`${BASE}/associates/${id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(detail.body.status).toBe('CANCELED');
+      expect(detail.body.subscription.status).toBe('CANCELED');
+    });
+
+    it('404 for an unknown token', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/public/associates/00000000-0000-0000-0000-000000000000/cancel`)
+        .expect(404));
+  });
+
   describe('POST /associates/:id/cancel-subscription', () => {
     it('cancels at the gateway and marks CANCELED (ADMIN)', async () => {
       const { id, token } = await createAssociate();

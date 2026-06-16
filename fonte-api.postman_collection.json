@@ -4550,6 +4550,193 @@
           }
         }
       ]
+    },
+    {
+      "name": "Payables",
+      "item": [
+        {
+          "name": "Create Payable (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Conta de luz - junho\",\n  \"amount\": 25000,\n  \"dueDate\": \"2026-06-20\",\n  \"category\": \"UTILITIES\",\n  \"supplier\": \"Enel\",\n  \"notes\": \"Referencia 05/2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payables",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payables"
+              ]
+            },
+            "description": "Cria conta a pagar. amount em CENTAVOS. status inicia OPEN. ADMIN only."
+          }
+        },
+        {
+          "name": "List Payables (ADMIN)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payables?status=OPEN&category=UTILITIES&from=2026-06-01&to=2026-06-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payables"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "OPEN",
+                  "disabled": true
+                },
+                {
+                  "key": "category",
+                  "value": "UTILITIES",
+                  "disabled": true
+                },
+                {
+                  "key": "from",
+                  "value": "2026-06-01",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2026-06-30",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lista contas a pagar com filtros opcionais (status, category, periodo de vencimento). 'overdue' e derivado em runtime. ADMIN only."
+          }
+        },
+        {
+          "name": "Payables Summary (ADMIN)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payables/summary?from=2026-06-01&to=2026-06-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payables",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-06-01",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2026-06-30",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Totais a pagar / pagos / vencidos (em centavos) + contagens, para os cards. ADMIN only."
+          }
+        },
+        {
+          "name": "Get Payable (ADMIN)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payables/{{payableId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payables",
+                "{{payableId}}"
+              ]
+            },
+            "description": "Detalhe de uma conta a pagar. ADMIN only."
+          }
+        },
+        {
+          "name": "Update Payable (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 30000,\n  \"supplier\": \"CELG\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payables/{{payableId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payables",
+                "{{payableId}}"
+              ]
+            },
+            "description": "Edita parcialmente uma conta a pagar. ADMIN only."
+          }
+        },
+        {
+          "name": "Pay Payable (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paidAt\": \"2026-06-15\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payables/{{payableId}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payables",
+                "{{payableId}}",
+                "pay"
+              ]
+            },
+            "description": "Baixa: status OPEN -> PAID e seta paid_at (default hoje se body vazio). 400 se ja paga. ADMIN only."
+          }
+        },
+        {
+          "name": "Delete Payable (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/payables/{{payableId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payables",
+                "{{payableId}}"
+              ]
+            },
+            "description": "Soft delete de uma conta a pagar. ADMIN only."
+          }
+        }
+      ]
     }
   ]
 }

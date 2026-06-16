@@ -4137,6 +4137,86 @@
             },
             "description": "Soft delete do associado (ADMIN)."
           }
+        },
+        {
+          "name": "Public — Get Associate by token",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/public/associates/{{associatePaymentToken}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "associates",
+                "{{associatePaymentToken}}"
+              ]
+            },
+            "description": "PÚBLICO (sem JWT). Dados mínimos para pré-preencher a página de pagamento: name, suggestedAmount, dueDay, status, hasActiveSubscription. Não vaza dados sensíveis. Acesso por payment_token. Throttle por IP. Story 38."
+          }
+        },
+        {
+          "name": "Public — Subscribe (adesão recorrente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contributionAmount\": 50,\n  \"cardToken\": \"tok_card_tokenizado_no_gateway\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/public/associates/{{associatePaymentToken}}/subscribe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "associates",
+                "{{associatePaymentToken}}",
+                "subscribe"
+              ]
+            },
+            "description": "PÚBLICO (sem JWT). Calcula gross-up das taxas de cartão (gross=(net+fixed)/(1-pct)), cria customer+assinatura no AbacatePay e persiste a assinatura + 1ª cobrança PENDING (status final vem do webhook). Retorna { status, subscription, charge, checkoutUrl }. cardToken é tokenizado client-side (PAN nunca chega ao backend). Throttle estrito por IP. Story 38."
+          }
+        },
+        {
+          "name": "Webhook — AbacatePay",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"subscription.completed\",\n  \"data\": {\n    \"chargeId\": \"chg_xxx\",\n    \"subscriptionId\": \"sub_xxx\",\n    \"externalId\": \"{{associateId}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/abacatepay?webhookSecret={{abacatepayWebhookSecret}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "abacatepay"
+              ],
+              "query": [
+                {
+                  "key": "webhookSecret",
+                  "value": "{{abacatepayWebhookSecret}}"
+                }
+              ]
+            },
+            "description": "PÚBLICO (sem JWT) — autenticado pelo secret em ?webhookSecret= (ABACATEPAY_WEBHOOK_SECRET). Idempotente por abacatepay_charge_id. Eventos: subscription.completed/renewed/checkout.completed → cobrança PAID + assinatura/associado ACTIVE; charge.failed/billing.failed → FAILED + PAST_DUE; subscription.cancelled → CANCELED. Story 38."
+          }
         }
       ]
     },

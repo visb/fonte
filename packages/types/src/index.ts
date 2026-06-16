@@ -477,3 +477,36 @@ export interface AssociateDetail extends Associate {
   charges: AssociateCharge[];
 }
 
+// ─── Checkout público do associado (story 38 — consumido pela página [[40]]) ─────
+
+/**
+ * Dados mínimos para pré-preencher a página pública de pagamento. Acesso por
+ * `payment_token` (sem JWT). NÃO vazar dados sensíveis (whatsapp, e-mail, ids do
+ * gateway) — só o necessário ao checkout.
+ */
+export interface AssociatePublicView {
+  name: string;
+  suggestedAmount: number;
+  dueDay: number;
+  status: AssociateStatus;
+  /** Já existe assinatura ativa? Evita adesão duplicada na página. */
+  hasActiveSubscription: boolean;
+}
+
+/** Corpo do POST /public/associates/:token/subscribe. */
+export interface SubscribeInput {
+  /** Valor líquido que o associado quer contribuir (a Fonte recebe cheio). */
+  contributionAmount: number;
+  /** Token do cartão tokenizado client-side no AbacatePay (PAN nunca chega aqui). */
+  cardToken: string;
+}
+
+/** Resposta do subscribe: estado após criar assinatura + 1ª cobrança PENDING. */
+export interface SubscribeResult {
+  status: AssociateStatus;
+  subscription: AssociateSubscription;
+  charge: AssociateCharge;
+  /** URL de checkout do gateway, quando aplicável (fluxo hosted/redirect). */
+  checkoutUrl: string | null;
+}
+

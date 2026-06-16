@@ -1,13 +1,24 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModuleBuilder } from '@nestjs/testing';
 import * as request from 'supertest';
 import { AppModule } from '../../src/app.module';
 
 export const BASE = '/api/v1';
 
+interface BootstrapOptions {
+  /** Substitui um provider por um mock (ex.: o cliente AbacatePay). */
+  overrideProvider?: { token: unknown; useValue: unknown };
+}
+
 /** Boots the full Nest app the same way main.ts does (prefix + global validation). */
-export async function bootstrapApp(): Promise<INestApplication> {
-  const moduleFixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
+export async function bootstrapApp(options: BootstrapOptions = {}): Promise<INestApplication> {
+  let builder: TestingModuleBuilder = Test.createTestingModule({ imports: [AppModule] });
+  if (options.overrideProvider) {
+    builder = builder
+      .overrideProvider(options.overrideProvider.token)
+      .useValue(options.overrideProvider.useValue);
+  }
+  const moduleFixture = await builder.compile();
   const app = moduleFixture.createNestApplication();
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));

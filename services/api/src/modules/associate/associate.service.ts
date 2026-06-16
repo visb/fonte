@@ -9,6 +9,7 @@ import {
   AssociateListItem,
   AssociateStatus,
   AssociatesOverview,
+  PaginatedAssociates,
   AssociatesOverviewMonth,
   AssociateSubscription as AssociateSubscriptionDto,
   ChargeStatus,
@@ -45,9 +46,19 @@ export class AssociateService {
     return this.toView(saved);
   }
 
-  async findAll(): Promise<AssociateListItem[]> {
-    const associates = await this.repo.find({ order: { createdAt: 'DESC' } });
-    return Promise.all(
+  async findAll(
+    pagination: { limit?: number; offset?: number } = {},
+  ): Promise<PaginatedAssociates> {
+    const limit = pagination.limit ?? 20;
+    const offset = pagination.offset ?? 0;
+
+    const [associates, total] = await this.repo.findAndCount({
+      order: { createdAt: 'DESC' },
+      take: limit,
+      skip: offset,
+    });
+
+    const items = await Promise.all(
       associates.map(async (a) => {
         const lastCharge = await this.chargeRepo.findOne({
           where: { associateId: a.id },
@@ -59,6 +70,8 @@ export class AssociateService {
         };
       }),
     );
+
+    return { items, total };
   }
 
   /**

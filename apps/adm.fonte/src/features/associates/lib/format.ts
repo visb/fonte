@@ -18,6 +18,22 @@ export function formatPercent(rate: number): string {
   return percentFormatter.format(rate);
 }
 
+const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+
+/** Formata uma data ISO ('2026-06-16' ou ISO completo) como 'dd/mm/aaaa' (pt-BR). */
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  // Datas 'YYYY-MM-DD' viram UTC à meia-noite; força meio-dia p/ evitar voltar 1 dia.
+  const value = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T12:00:00` : iso;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return dateFormatter.format(d);
+}
+
 /** 'YYYY-MM' → 'Mai/26'. */
 export function formatMonthLabel(month: string): string {
   const [y, m] = month.split('-');

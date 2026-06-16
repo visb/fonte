@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus } from 'lucide-react';
 import type { AssociateListItem } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,24 +25,38 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { getErrorMessage } from '@/lib/errors';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import {
-  useAssociates,
+  useInfiniteAssociates,
   useDeleteAssociate,
   useCancelAssociateSubscription,
 } from '../hooks/useAssociates';
 import { AssociateRow } from '../components/AssociateRow';
 import { CreateAssociateDialog } from '../components/CreateAssociateDialog';
 import { EditAssociateDialog } from '../components/EditAssociateDialog';
+import { AssociateDetailDialog } from '../components/AssociateDetailDialog';
 
 export function AssociatesListPage() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<AssociateListItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AssociateListItem | null>(null);
   const [cancelTarget, setCancelTarget] = useState<AssociateListItem | null>(null);
 
-  const { data: associates = [], isLoading, error, refetch } = useAssociates();
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteAssociates();
   const deleteMutation = useDeleteAssociate();
   const cancelMutation = useCancelAssociateSubscription();
+
+  const associates = data?.pages.flatMap((p) => p.items) ?? [];
+  const sentinelRef = useInfiniteScroll({ hasNextPage, isFetchingNextPage, fetchNextPage });
 
   return (
     <div className="space-y-6">
@@ -88,6 +102,7 @@ export function AssociatesListPage() {
                 <AssociateRow
                   key={a.id}
                   associate={a}
+                  onOpenDetail={(assoc) => setDetailId(assoc.id)}
                   onEdit={setEditTarget}
                   onDelete={setDeleteTarget}
                   onCancelSubscription={setCancelTarget}
@@ -95,9 +110,20 @@ export function AssociatesListPage() {
               ))}
             </TableBody>
           </Table>
+          <div ref={sentinelRef} className="h-px" />
+          {isFetchingNextPage && (
+            <div className="flex justify-center py-4 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          )}
         </div>
       )}
 
+      <AssociateDetailDialog
+        associateId={detailId}
+        open={!!detailId}
+        onClose={() => setDetailId(null)}
+      />
       <CreateAssociateDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditAssociateDialog
         open={!!editTarget}

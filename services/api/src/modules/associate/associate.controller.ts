@@ -19,6 +19,7 @@ import { AssociateService } from './associate.service';
 import { AssociatePaymentService } from './associate-payment.service';
 import { CreateAssociateDto } from './dto/create-associate.dto';
 import { UpdateAssociateDto } from './dto/update-associate.dto';
+import { ListAssociatesDto } from './dto/list-associates.dto';
 
 @Controller('associates')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -36,8 +37,8 @@ export class AssociateController {
 
   @Get()
   @Roles(Role.ADMIN)
-  findAll() {
-    return this.service.findAll();
+  findAll(@Query() query: ListAssociatesDto) {
+    return this.service.findAll({ limit: query.limit, offset: query.offset });
   }
 
   /** Overview de faturamento — DEVE vir antes de :id para não colidir. */

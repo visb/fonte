@@ -167,21 +167,58 @@ describe('AssociateController (e2e)', () => {
       expect(res.body.email).toBeNull();
     });
 
-    it('lists associates with lastCharge field', async () => {
+    it('lists associates paginated as { items, total } with lastCharge field', async () => {
       const res = await request(app.getHttpServer())
         .get(`${BASE}/associates`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBeGreaterThanOrEqual(2);
-      for (const a of res.body) {
+      expect(Array.isArray(res.body.items)).toBe(true);
+      expect(typeof res.body.total).toBe('number');
+      expect(res.body.total).toBeGreaterThanOrEqual(2);
+      expect(res.body.items.length).toBeGreaterThanOrEqual(2);
+      for (const a of res.body.items) {
         expect(a).toHaveProperty('id');
         expect(a).toHaveProperty('status');
         expect(a).toHaveProperty('paymentToken');
         expect(a).toHaveProperty('lastCharge');
       }
     });
+
+    it('respects limit/offset (take/skip) keeping the full total', async () => {
+      const full = await request(app.getHttpServer())
+        .get(`${BASE}/associates`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/associates?limit=1&offset=0`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.body.items).toHaveLength(1);
+      expect(res.body.total).toBe(full.body.total);
+
+      const page2 = await request(app.getHttpServer())
+        .get(`${BASE}/associates?limit=1&offset=1`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(page2.body.items).toHaveLength(1);
+      expect(page2.body.items[0].id).not.toBe(res.body.items[0].id);
+    });
+
+    it('400 when limit exceeds the max (100)', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/associates?limit=101`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(400));
+
+    it('400 when offset is negative', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/associates?offset=-1`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(400));
 
     it('gets one associate with subscription + charges', async () => {
       const res = await request(app.getHttpServer())

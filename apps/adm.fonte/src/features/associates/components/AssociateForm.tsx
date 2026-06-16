@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Associate } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { DialogFooter } from '@/components/ui/dialog';
 import { getErrorMessage } from '@/lib/errors';
 import { associateSchema, type AssociateFormData } from '../lib/associateSchema';
+import { formatWhatsapp, toE164 } from '../lib/whatsappMask';
 
 interface Props {
   associate?: Associate | null;
@@ -20,6 +21,7 @@ interface Props {
 export function AssociateForm({ associate, isPending, error, onSubmit, onCancel }: Props) {
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
@@ -50,7 +52,20 @@ export function AssociateForm({ associate, isPending, error, onSubmit, onCancel 
 
         <div className="space-y-1">
           <Label htmlFor="assoc-whatsapp">WhatsApp *</Label>
-          <Input id="assoc-whatsapp" {...register('whatsapp')} placeholder="+5562999998888" />
+          <Controller
+            control={control}
+            name="whatsapp"
+            render={({ field }) => (
+              <Input
+                id="assoc-whatsapp"
+                placeholder="+55 (62) 99999-8888"
+                inputMode="tel"
+                value={formatWhatsapp(field.value ?? '')}
+                onChange={(e) => field.onChange(toE164(e.target.value))}
+                onBlur={field.onBlur}
+              />
+            )}
+          />
           {errors.whatsapp && <p className="text-xs text-destructive">{errors.whatsapp.message}</p>}
         </div>
 

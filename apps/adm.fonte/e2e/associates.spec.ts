@@ -53,15 +53,30 @@ test.describe('Associados', () => {
     ).toBeVisible();
   });
 
-  test('valida WhatsApp em formato inválido', async ({ page }) => {
+  test('máscara normaliza número nacional para E.164 válido e submete', async ({ page }) => {
     await gotoList(page);
+    const name = `Associado E164 ${ts()}`;
     await page.getByRole('button', { name: 'Novo associado' }).click();
-    await page.getByLabel('Nome *').fill('Sem E164');
+    await page.getByLabel('Nome *').fill(name);
+    // Número nacional sem DDI; a máscara grava E.164 (+55...), válido pelo schema.
     await page.getByLabel('WhatsApp *').fill('62999998888');
     await page.getByLabel('Contribuição (R$) *').fill('50');
     await page.getByLabel('Dia de vencimento *').fill('10');
     await page.getByRole('button', { name: 'Criar' }).click();
-    await expect(page.getByText(/E\.164/)).toBeVisible();
+    // Sem erro de E.164 e o dialog fecha (criou com sucesso).
+    await expect(page.getByText(/E\.164/)).toHaveCount(0);
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(page.getByRole('cell', { name })).toBeVisible();
+  });
+
+  test('valida WhatsApp obrigatório (schema continua a fonte da validação)', async ({ page }) => {
+    await gotoList(page);
+    await page.getByRole('button', { name: 'Novo associado' }).click();
+    await page.getByLabel('Nome *').fill('Sem WhatsApp');
+    await page.getByLabel('Contribuição (R$) *').fill('50');
+    await page.getByLabel('Dia de vencimento *').fill('10');
+    await page.getByRole('button', { name: 'Criar' }).click();
+    await expect(page.getByText('WhatsApp é obrigatório')).toBeVisible();
     await expect(page.getByRole('dialog')).toBeVisible();
   });
 
@@ -71,6 +86,40 @@ test.describe('Associados', () => {
     await createAssociate(page, name);
     const row = page.getByRole('row', { name: new RegExp(name) });
     await expect(row.getByText('Pendente')).toBeVisible();
+  });
+
+  test('aplica máscara de WhatsApp e grava E.164', async ({ page }) => {
+    await gotoList(page);
+    await page.getByRole('button', { name: 'Novo associado' }).click();
+    const wpp = page.getByLabel('WhatsApp *');
+    // Digitar só dígitos nacionais → exibição mascarada com +55 e parênteses.
+    await wpp.fill('62999998888');
+    await expect(wpp).toHaveValue('+55 (62) 99999-8888');
+  });
+
+  test('clicar na linha abre o detalhe com data de adesão e histórico', async ({ page }) => {
+    await gotoList(page);
+    const name = `Associado Detalhe ${ts()}`;
+    await createAssociate(page, name);
+
+    await page.getByRole('cell', { name }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Data de adesão')).toBeVisible();
+    await expect(dialog.getByText('Histórico de contribuições')).toBeVisible();
+    // Recém-criado não tem cobranças → empty state.
+    await expect(dialog.getByText('Nenhuma cobrança registrada.')).toBeVisible();
+  });
+
+  test('botões de ação na linha não abrem o detalhe', async ({ page }) => {
+    await gotoList(page);
+    const name = `Associado StopProp ${ts()}`;
+    await createAssociate(page, name);
+
+    const row = page.getByRole('row', { name: new RegExp(name) });
+    await row.getByTitle('Editar').click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: 'Editar associado' })).toBeVisible();
   });
 
   test('edita associado existente', async ({ page }) => {

@@ -477,6 +477,12 @@ export interface AssociateDetail extends Associate {
   charges: AssociateCharge[];
 }
 
+/** Página de associados (story 46 — scroll infinito via paginação real). */
+export interface PaginatedAssociates {
+  items: AssociateListItem[];
+  total: number;
+}
+
 // ─── Checkout público do associado (story 38 — consumido pela página [[40]]) ─────
 
 /**

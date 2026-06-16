@@ -123,6 +123,7 @@ export type {
   Associate,
   AssociateListItem,
   AssociateDetail,
+  PaginatedAssociates,
   AssociateSubscription,
   AssociateCharge,
   AssociateStatus,

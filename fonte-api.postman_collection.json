@@ -4066,15 +4066,27 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/associates",
+              "raw": "{{baseUrl}}/associates?limit=20&offset=0",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "associates"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Itens por página (1–100, default 20)."
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Deslocamento (>=0, default 0)."
+                }
               ]
             },
-            "description": "Lista associados com a última cobrança (ADMIN)."
+            "description": "Lista paginada de associados com a última cobrança (ADMIN). Query: limit (1–100, default 20) e offset (>=0, default 0). Response: { items: AssociateListItem[], total: number }."
           }
         },
         {

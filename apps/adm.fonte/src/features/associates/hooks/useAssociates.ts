@@ -1,12 +1,26 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { CreateAssociateInput, UpdateAssociateInput } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 
-export function useAssociates() {
-  return useQuery({
+const PAGE_SIZE = 20;
+
+/** Lista paginada de associados via scroll infinito (story 46). */
+export function useInfiniteAssociates() {
+  return useInfiniteQuery({
     queryKey: queryKeys.associates.all,
-    queryFn: () => api.associates.list(),
+    queryFn: ({ pageParam }) =>
+      api.associates.list({ limit: PAGE_SIZE, offset: pageParam as number }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.length * PAGE_SIZE;
+      return loaded < lastPage.total ? loaded : undefined;
+    },
   });
 }
 

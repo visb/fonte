@@ -134,9 +134,9 @@ describe('AssociateService.create', () => {
 // ─── findAll ─────────────────────────────────────────────────────────────────
 
 describe('AssociateService.findAll', () => {
-  it('returns associates ordered with their last charge', async () => {
+  it('returns a page { items, total } ordered with each last charge', async () => {
     const repo: Partial<Repository<Associate>> = {
-      find: jest.fn().mockResolvedValue([makeAssociate()]),
+      findAndCount: jest.fn().mockResolvedValue([[makeAssociate()], 1]),
     };
     const chargeRepo: Partial<Repository<AssociateCharge>> = {
       findOne: jest.fn().mockResolvedValue(null),
@@ -145,10 +145,48 @@ describe('AssociateService.findAll', () => {
     const service = makeService(repo, {}, chargeRepo);
     const result = await service.findAll();
 
-    expect(repo.find).toHaveBeenCalledWith({ order: { createdAt: 'DESC' } });
-    expect(result).toHaveLength(1);
-    expect(result[0].lastCharge).toBeNull();
-    expect(result[0].id).toBe(ASSOCIATE_ID);
+    expect(result.total).toBe(1);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].lastCharge).toBeNull();
+    expect(result.items[0].id).toBe(ASSOCIATE_ID);
+  });
+
+  it('applies default pagination (take 20 / skip 0) ordered by createdAt DESC', async () => {
+    const repo: Partial<Repository<Associate>> = {
+      findAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    const chargeRepo: Partial<Repository<AssociateCharge>> = {
+      findOne: jest.fn(),
+    };
+
+    const service = makeService(repo, {}, chargeRepo);
+    const result = await service.findAll();
+
+    expect(repo.findAndCount).toHaveBeenCalledWith({
+      order: { createdAt: 'DESC' },
+      take: 20,
+      skip: 0,
+    });
+    expect(result).toEqual({ items: [], total: 0 });
+  });
+
+  it('forwards the requested limit/offset as take/skip', async () => {
+    const repo: Partial<Repository<Associate>> = {
+      findAndCount: jest.fn().mockResolvedValue([[makeAssociate()], 57]),
+    };
+    const chargeRepo: Partial<Repository<AssociateCharge>> = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
+    const service = makeService(repo, {}, chargeRepo);
+    const result = await service.findAll({ limit: 10, offset: 40 });
+
+    expect(repo.findAndCount).toHaveBeenCalledWith({
+      order: { createdAt: 'DESC' },
+      take: 10,
+      skip: 40,
+    });
+    expect(result.total).toBe(57);
   });
 });
 

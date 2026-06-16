@@ -1,11 +1,11 @@
 import type { AxiosInstance } from 'axios';
 import type {
-  AssociateListItem,
   AssociateDetail,
   Associate,
   AssociatePublicView,
   AssociateSubscription,
   AssociatesOverview,
+  PaginatedAssociates,
   CreateAssociateInput,
   UpdateAssociateInput,
   SubscribeInput,
@@ -14,7 +14,11 @@ import type {
 
 export function createAssociatesModule(http: AxiosInstance) {
   return {
-    list: () => http.get<AssociateListItem[]>('/associates').then((r) => r.data),
+    /** Lista paginada de associados (story 46 — scroll infinito). */
+    list: (params?: { limit?: number; offset?: number }) =>
+      http
+        .get<PaginatedAssociates>('/associates', { params })
+        .then((r) => r.data),
 
     /** Overview de faturamento (esperado vs arrecadado por mês + índices). ADMIN. */
     getOverview: (months?: number) =>

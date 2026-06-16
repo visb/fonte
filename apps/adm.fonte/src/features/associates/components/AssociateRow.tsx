@@ -4,6 +4,7 @@ import type { AssociateListItem } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { AssociateStatusBadge } from './AssociateStatusBadge';
+import { formatBRL } from '../lib/format';
 
 interface Props {
   associate: AssociateListItem;
@@ -11,8 +12,6 @@ interface Props {
   onDelete: (associate: AssociateListItem) => void;
   onCancelSubscription: (associate: AssociateListItem) => void;
 }
-
-const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function AssociateRow({ associate, onEdit, onDelete, onCancelSubscription }: Props) {
   const canCancel =
@@ -23,7 +22,7 @@ export function AssociateRow({ associate, onEdit, onDelete, onCancelSubscription
       <TableCell className="font-medium">{associate.name}</TableCell>
       <TableCell>{associate.whatsapp}</TableCell>
       <TableCell className="text-muted-foreground">{associate.email ?? '—'}</TableCell>
-      <TableCell>{currency.format(associate.contributionAmount)}</TableCell>
+      <TableCell>{formatBRL(associate.contributionAmount)}</TableCell>
       <TableCell>Dia {associate.dueDay}</TableCell>
       <TableCell>
         <AssociateStatusBadge status={associate.status} />

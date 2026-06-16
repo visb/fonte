@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Plus } from 'lucide-react';
 import type { AssociateListItem } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,7 +34,7 @@ import { AssociateRow } from '../components/AssociateRow';
 import { CreateAssociateDialog } from '../components/CreateAssociateDialog';
 import { EditAssociateDialog } from '../components/EditAssociateDialog';
 
-export function AssociatesPage() {
+export function AssociatesListPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<AssociateListItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AssociateListItem | null>(null);
@@ -45,6 +46,12 @@ export function AssociatesPage() {
 
   return (
     <div className="space-y-6">
+      <Link
+        to="/billing/associados"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft size={14} /> Voltar ao overview
+      </Link>
       <PageHeader
         title="Associados"
         description="Cadastro de associados contribuintes."

@@ -95,6 +95,47 @@ describe('AssociateController (e2e)', () => {
         .expect(400));
   });
 
+  // ── Overview ──────────────────────────────────────────────────────────────────
+
+  describe('overview', () => {
+    it('GET /associates/overview → 401 without token', () =>
+      request(app.getHttpServer()).get(`${BASE}/associates/overview`).expect(401));
+
+    it('GET /associates/overview → 403 for non-ADMIN (coordinator)', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/associates/overview`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(403));
+
+    it('returns the overview shape with the default 12 months', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/associates/overview`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(Array.isArray(res.body.months)).toBe(true);
+      expect(res.body.months).toHaveLength(12);
+      for (const m of res.body.months) {
+        expect(m).toHaveProperty('month');
+        expect(m).toHaveProperty('expectedGross');
+        expect(m).toHaveProperty('collectedNet');
+      }
+      expect(res.body.current).toHaveProperty('newAssociates');
+      expect(res.body.current).toHaveProperty('churnRate');
+      expect(res.body.current).toHaveProperty('recurrenceRate');
+      expect(res.body.current).toHaveProperty('delinquentCharges');
+    });
+
+    it('honors the months query param', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/associates/overview?months=3`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.body.months).toHaveLength(3);
+    });
+  });
+
   // ── CRUD flow ───────────────────────────────────────────────────────────────
 
   describe('CRUD', () => {

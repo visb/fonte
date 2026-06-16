@@ -99,5 +99,6 @@ export const queryKeys = {
   associates: {
     all: ['associates'] as const,
     detail: (id: string) => ['associates', id] as const,
+    overview: (months: number) => ['associates', 'overview', months] as const,
   },
 } as const;

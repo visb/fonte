@@ -4078,6 +4078,29 @@
           }
         },
         {
+          "name": "Associates Overview",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/associates/overview?months=12",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "associates",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "months",
+                  "value": "12"
+                }
+              ]
+            },
+            "description": "Overview de faturamento (ADMIN). Série esperado×arrecadado (bruto e líquido) dos últimos N meses (default 12) + índices do mês corrente: novos associados, assinaturas ativas, recorrência, churn (contagem+taxa), inadimplência e associados PAST_DUE. Só leitura, sem mudança de schema."
+          }
+        },
+        {
           "name": "Get Associate by ID",
           "request": {
             "method": "GET",

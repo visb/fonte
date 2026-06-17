@@ -2,3 +2,6 @@ dist
 .env
 .env.local
 *.tsbuildinfo
+test-results
+playwright-report
+.last-run.json

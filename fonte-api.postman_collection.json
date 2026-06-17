@@ -4733,7 +4733,54 @@
                 "{{payableId}}"
               ]
             },
-            "description": "Soft delete de uma conta a pagar. ADMIN only."
+            "description": "Soft delete de uma conta a pagar. ADMIN only. Remove tambem o anexo do bucket."
+          }
+        },
+        {
+          "name": "Upload Payable Attachment (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payables/{{payableId}}/attachment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payables",
+                "{{payableId}}",
+                "attachment"
+              ]
+            },
+            "description": "Anexa (ou substitui) o boleto/comprovante da conta. multipart campo 'file' (imagem ou PDF, max 20MB). ADMIN only."
+          }
+        },
+        {
+          "name": "Delete Payable Attachment (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/payables/{{payableId}}/attachment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payables",
+                "{{payableId}}",
+                "attachment"
+              ]
+            },
+            "description": "Remove o anexo da conta (apaga do bucket e limpa as colunas). ADMIN only."
           }
         }
       ]

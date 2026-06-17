@@ -31,5 +31,15 @@ export function createPayablesModule(http: AxiosInstance) {
 
     remove: (id: string) =>
       http.delete(`/payables/${id}`).then((r) => r.data),
+
+    uploadAttachment: (id: string, formData: FormData) =>
+      http
+        .post<Payable>(`/payables/${id}/attachment`, formData, {
+          headers: { 'Content-Type': undefined },
+        })
+        .then((r) => r.data),
+
+    removeAttachment: (id: string) =>
+      http.delete<Payable>(`/payables/${id}/attachment`).then((r) => r.data),
   };
 }

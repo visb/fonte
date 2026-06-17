@@ -66,3 +66,29 @@ export function useDeletePayable() {
     onSuccess: () => invalidateAll(queryClient),
   });
 }
+
+export function useUploadPayableAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => {
+      const fd = new window.FormData();
+      fd.append('file', file);
+      return api.payables.uploadAttachment(id, fd);
+    },
+    onSuccess: (_data, { id }) => {
+      invalidateAll(queryClient);
+      queryClient.invalidateQueries({ queryKey: queryKeys.payables.detail(id) });
+    },
+  });
+}
+
+export function useDeletePayableAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.payables.removeAttachment(id),
+    onSuccess: (_data, id) => {
+      invalidateAll(queryClient);
+      queryClient.invalidateQueries({ queryKey: queryKeys.payables.detail(id) });
+    },
+  });
+}

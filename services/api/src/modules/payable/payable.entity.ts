@@ -38,6 +38,12 @@ export class Payable {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  @Column({ name: 'attachment_url', type: 'varchar', nullable: true })
+  attachmentUrl: string | null;
+
+  @Column({ name: 'attachment_name', type: 'varchar', nullable: true })
+  attachmentName: string | null;
+
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy: string | null;
 

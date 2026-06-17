@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react';
-import { CheckCircle2, Pencil, Trash2 } from 'lucide-react';
+import { CheckCircle2, Paperclip, Pencil, Trash2 } from 'lucide-react';
 import { PayableStatus } from '@fonte/types';
 import type { Payable } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,23 @@ export function PayableRow({ payable, onEdit, onPay, onDelete }: Props) {
 
   return (
     <TableRow className={payable.overdue && isOpen ? 'bg-destructive/5' : undefined}>
-      <TableCell className="font-medium">{payable.description}</TableCell>
+      <TableCell className="font-medium">
+        <span className="inline-flex items-center gap-1.5">
+          {payable.description}
+          {payable.attachmentUrl && (
+            <a
+              href={payable.attachmentUrl}
+              target="_blank"
+              rel="noreferrer"
+              title={payable.attachmentName ?? 'Ver conta anexada'}
+              onClick={(e) => e.stopPropagation()}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Paperclip size={13} />
+            </a>
+          )}
+        </span>
+      </TableCell>
       <TableCell>{PAYABLE_CATEGORY_LABELS[payable.category]}</TableCell>
       <TableCell className="text-muted-foreground">{payable.supplier ?? '—'}</TableCell>
       <TableCell>{formatCents(payable.amount)}</TableCell>

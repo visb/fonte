@@ -26,9 +26,8 @@ test.describe('Contas a Pagar (Financeiro)', () => {
     await expect(page.getByRole('cell', { name: description })).toBeVisible();
   }
 
-  test('ADMIN vê o menu Financeiro → Contas a Pagar e navega', async ({ page }) => {
+  test('ADMIN vê o menu Contas a Pagar (top-level) e navega', async ({ page }) => {
     await login(page);
-    await page.getByRole('button', { name: 'Financeiro' }).click();
     await page.getByRole('link', { name: 'Contas a Pagar' }).click();
     await expect(page).toHaveURL('/financeiro/contas-a-pagar');
     await expect(page.getByRole('heading', { name: 'Contas a Pagar' })).toBeVisible();
@@ -94,9 +93,9 @@ test.describe('Contas a Pagar (Financeiro)', () => {
     await expect(page.getByRole('cell', { name })).not.toBeVisible();
   });
 
-  test('não-admin (coordinator) não vê o menu Financeiro', async ({ page }) => {
+  test('não-admin (coordinator) não vê o menu Contas a Pagar', async ({ page }) => {
     await login(page, 'coord@fonte.com', 'coord123');
-    await expect(page.getByRole('button', { name: 'Financeiro' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Contas a Pagar' })).toHaveCount(0);
     // E o acesso direto à rota redireciona (ProtectedRoute ADMIN).
     await page.goto('/financeiro/contas-a-pagar');
     await expect(page.getByRole('heading', { name: 'Contas a Pagar' })).toHaveCount(0);

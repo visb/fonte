@@ -65,6 +65,19 @@ describe('payables module', () => {
     expect(http.delete).toHaveBeenCalledWith('/payables/pay-5');
   });
 
+  it('uploadAttachment envia FormData com Content-Type undefined', async () => {
+    const fd = new FormData();
+    await payables.uploadAttachment('pay-6', fd);
+    expect(http.post).toHaveBeenCalledWith('/payables/pay-6/attachment', fd, {
+      headers: { 'Content-Type': undefined },
+    });
+  });
+
+  it('removeAttachment chama DELETE no path de anexo', async () => {
+    await payables.removeAttachment('pay-7');
+    expect(http.delete).toHaveBeenCalledWith('/payables/pay-7/attachment');
+  });
+
   it('propaga erro HTTP no shape que getErrorMessage espera', async () => {
     const httpError = { response: { status: 403, data: { message: 'Sem permissão' } } };
     http.get.mockRejectedValueOnce(httpError);

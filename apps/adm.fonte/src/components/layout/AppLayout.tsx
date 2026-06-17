@@ -182,52 +182,6 @@ function FaturamentoSubmenu({ closeSidebar, isAdmin }: FaturamentoSubmenuProps) 
   );
 }
 
-function FinanceiroSubmenu({ closeSidebar }: SettingsSubmenuProps) {
-  const location = useLocation();
-  const inFinance = location.pathname.startsWith("/financeiro");
-  const [open, setOpen] = useState(inFinance);
-
-  useEffect(() => {
-    if (!location.pathname.startsWith("/financeiro")) {
-      setOpen(false);
-    }
-  }, [location.pathname]);
-
-  return (
-    <div>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          navLinkClass,
-          "w-full justify-between",
-          inFinance && "bg-accent text-foreground font-medium",
-        )}
-      >
-        <span className="flex items-center gap-3">
-          <Wallet size={16} />
-          Financeiro
-        </span>
-        <ChevronDown
-          size={14}
-          className={cn("transition-transform", open && "rotate-180")}
-        />
-      </button>
-
-      {open && (
-        <div className="ml-6 mt-1 space-y-1">
-          <NavLink
-            to="/financeiro/contas-a-pagar"
-            onClick={closeSidebar}
-            className={subNavLinkClass}
-          >
-            Contas a Pagar
-          </NavLink>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function AppLayout() {
   const { logout, role } = useAuth();
   const { theme, toggle } = useTheme();
@@ -352,7 +306,12 @@ export function AppLayout() {
           {isAdminOrCoordinator && (
             <FaturamentoSubmenu closeSidebar={closeSidebar} isAdmin={isAdmin} />
           )}
-          {isAdmin && <FinanceiroSubmenu closeSidebar={closeSidebar} />}
+          {isAdmin && (
+            <Link to="/financeiro/contas-a-pagar" onClick={closeSidebar} className={navLinkClass}>
+              <Wallet size={16} />
+              Contas a Pagar
+            </Link>
+          )}
           {isAdminOrCoordinator && (
             <SettingsSubmenu closeSidebar={closeSidebar} />
           )}

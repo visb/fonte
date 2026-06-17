@@ -366,6 +366,10 @@ export interface Payable {
   status: PayableStatus;
   paidAt: string | null;
   notes: string | null;
+  /** URL do comprovante/boleto anexado (null quando sem anexo). */
+  attachmentUrl: string | null;
+  /** Nome original do arquivo anexado, para exibição. */
+  attachmentName: string | null;
   /** Derivado em runtime: dueDate < hoje && status === OPEN. Não persistido. */
   overdue: boolean;
   createdAt: string;

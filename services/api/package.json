@@ -21,6 +21,7 @@
     "seed": "npx ts-node src/database/seed.ts",
     "seed:test": "npx ts-node src/database/seed-test.ts",
     "seed:street-sales": "npx ts-node src/database/seed-street-sales.ts",
+    "seed:payables": "npx ts-node src/database/seed-payables.ts",
     "seed:associates": "npx ts-node src/database/seed-associates.ts",
     "backfill:resident-thumbs": "npx ts-node src/database/backfill-resident-thumbnails.ts",
     "backup:restore": "npx ts-node src/database/restore-backup.ts",

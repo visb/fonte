@@ -49,8 +49,28 @@ function makeQb(items: Payable[] = []) {
   return qb;
 }
 
-function makeService(repoOverrides: Partial<Repository<Payable>> = {}) {
-  return new PayableService(repoOverrides as Repository<Payable>);
+type StorageMock = {
+  delete: jest.Mock;
+  decodeOriginalName: jest.Mock;
+  uniqueFilename: jest.Mock;
+  upload: jest.Mock;
+};
+
+function makeStorage(overrides: Partial<StorageMock> = {}): StorageMock {
+  return {
+    delete: jest.fn().mockResolvedValue(undefined),
+    decodeOriginalName: jest.fn((n: string) => n),
+    uniqueFilename: jest.fn((n: string, prefix = '') => `${prefix}${n}`),
+    upload: jest.fn().mockResolvedValue('https://bucket/payables/conta_boleto.pdf'),
+    ...overrides,
+  };
+}
+
+function makeService(
+  repoOverrides: Partial<Repository<Payable>> = {},
+  storage: StorageMock = makeStorage(),
+) {
+  return new PayableService(repoOverrides as Repository<Payable>, storage as never);
 }
 
 const TODAY = '2026-06-16';
@@ -246,6 +266,98 @@ describe('PayableService.remove', () => {
 
     await expect(service.remove('missing')).rejects.toBeInstanceOf(NotFoundException);
     expect(repo.softRemove).not.toHaveBeenCalled();
+  });
+});
+
+// ─── attachment ────────────────────────────────────────────────────────────────────
+
+describe('PayableService.uploadAttachment', () => {
+  const file = {
+    originalname: 'boleto.pdf',
+    buffer: Buffer.from('x'),
+    mimetype: 'application/pdf',
+  } as Express.Multer.File;
+
+  it('uploads the file and stores url + original name', async () => {
+    const payable = makePayable({ attachmentUrl: null, attachmentName: null });
+    const repo = {
+      findOne: jest.fn().mockResolvedValue(payable),
+      save: jest.fn().mockImplementation((p) => Promise.resolve(p)),
+    };
+    const storage = makeStorage();
+    const service = makeService(repo as never, storage);
+
+    const result = await service.uploadAttachment(PAYABLE_ID, file);
+
+    expect(storage.upload).toHaveBeenCalledWith(
+      'payables',
+      expect.stringContaining('conta_'),
+      file.buffer,
+      'application/pdf',
+    );
+    expect(result.attachmentUrl).toBe('https://bucket/payables/conta_boleto.pdf');
+    expect(result.attachmentName).toBe('boleto.pdf');
+  });
+
+  it('deletes the previous file before replacing it', async () => {
+    const payable = makePayable({ attachmentUrl: 'https://bucket/payables/old.pdf' });
+    const repo = {
+      findOne: jest.fn().mockResolvedValue(payable),
+      save: jest.fn().mockImplementation((p) => Promise.resolve(p)),
+    };
+    const storage = makeStorage();
+    const service = makeService(repo as never, storage);
+
+    await service.uploadAttachment(PAYABLE_ID, file);
+
+    expect(storage.delete).toHaveBeenCalledWith('https://bucket/payables/old.pdf');
+  });
+
+  it('throws NotFound for an unknown id', async () => {
+    const repo = { findOne: jest.fn().mockResolvedValue(null), save: jest.fn() };
+    const service = makeService(repo as never);
+
+    await expect(service.uploadAttachment('missing', file)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+});
+
+describe('PayableService.removeAttachment', () => {
+  it('deletes the file and clears the columns', async () => {
+    const payable = makePayable({
+      attachmentUrl: 'https://bucket/payables/old.pdf',
+      attachmentName: 'old.pdf',
+    });
+    const repo = {
+      findOne: jest.fn().mockResolvedValue(payable),
+      save: jest.fn().mockImplementation((p) => Promise.resolve(p)),
+    };
+    const storage = makeStorage();
+    const service = makeService(repo as never, storage);
+
+    const result = await service.removeAttachment(PAYABLE_ID);
+
+    expect(storage.delete).toHaveBeenCalledWith('https://bucket/payables/old.pdf');
+    expect(result.attachmentUrl).toBeNull();
+    expect(result.attachmentName).toBeNull();
+  });
+});
+
+describe('PayableService.remove with attachment', () => {
+  it('deletes the stored file before soft-removing', async () => {
+    const payable = makePayable({ attachmentUrl: 'https://bucket/payables/old.pdf' });
+    const repo = {
+      findOne: jest.fn().mockResolvedValue(payable),
+      softRemove: jest.fn().mockResolvedValue(payable),
+    };
+    const storage = makeStorage();
+    const service = makeService(repo as never, storage);
+
+    await service.remove(PAYABLE_ID);
+
+    expect(storage.delete).toHaveBeenCalledWith('https://bucket/payables/old.pdf');
+    expect(repo.softRemove).toHaveBeenCalledWith(payable);
   });
 });
 

@@ -13,6 +13,7 @@ import {
   Database,
   HandHeart,
   Home,
+  KanbanSquare,
   LogOut,
   Menu,
   MessageSquare,
@@ -234,6 +235,8 @@ export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isAdminOrCoordinator = role === Role.ADMIN || role === Role.COORDINATOR;
   const isAdmin = role === Role.ADMIN;
+  const isStaff =
+    role === Role.ADMIN || role === Role.COORDINATOR || role === Role.SERVANT;
 
   const closeSidebar = () => setSidebarOpen(false);
 
@@ -338,6 +341,12 @@ export function AppLayout() {
             >
               <MessageSquare size={16} />
               Mensagens
+            </Link>
+          )}
+          {isStaff && (
+            <Link to="/activities" onClick={closeSidebar} className={navLinkClass}>
+              <KanbanSquare size={16} />
+              Atividades
             </Link>
           )}
           {isAdminOrCoordinator && (

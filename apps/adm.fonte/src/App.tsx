@@ -35,6 +35,7 @@ import { BreadPage } from '@/features/billing/pages/BreadPage';
 import { AssociatesOverviewPage } from '@/features/associates/pages/AssociatesOverviewPage';
 import { AssociatesListPage } from '@/features/associates/pages/AssociatesListPage';
 import { PayablesPage } from '@/features/payables/pages/PayablesPage';
+import { ActivitiesPage } from '@/features/activities/pages/ActivitiesPage';
 import { MessagesPage } from '@/features/messages/pages/MessagesPage';
 import { ProfilePage } from '@/features/auth/pages/ProfilePage';
 import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage';
@@ -100,6 +101,7 @@ export default function App() {
               <Route path="messages" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><MessagesPage /></ProtectedRoute>} />
               <Route path="backup" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><BackupPage /></ProtectedRoute>} />
               <Route path="financeiro/contas-a-pagar" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><PayablesPage /></ProtectedRoute>} />
+              <Route path="activities" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR, Role.SERVANT]}><ActivitiesPage /></ProtectedRoute>} />
               <Route
                 path="billing"
                 element={

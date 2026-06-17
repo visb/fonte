@@ -28,6 +28,10 @@ export const queryKeys = {
     byHouse: (houseId: string) => ['incidents', houseId] as const,
     todayByHouse: (houseId: string) => ['incidents-today', houseId] as const,
   },
+  activities: {
+    all: ['activities'] as const,
+    byHouse: (houseId: string) => ['activities', houseId] as const,
+  },
   storeroom: {
     allItems: ['storeroom-items'] as const,
     items: (houseId: string) => ['storeroom-items', houseId] as const,

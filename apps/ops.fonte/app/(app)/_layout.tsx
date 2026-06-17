@@ -76,6 +76,17 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="activities"
+        options={{
+          title: "Atividades",
+          headerShown: false,
+          href: null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="checkbox-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="ministries"
         options={{
           title: "Ministérios",

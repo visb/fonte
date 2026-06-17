@@ -113,4 +113,13 @@ export const queryKeys = {
       ['payables', 'summary', filters] as const,
     detail: (id: string) => ['payables', id] as const,
   },
+  activities: {
+    all: ['activities'] as const,
+    list: (filters: {
+      houseId?: string;
+      status?: string;
+      responsibleStaffId?: string;
+    }) => ['activities', 'list', filters] as const,
+    detail: (id: string) => ['activities', id] as const,
+  },
 } as const;

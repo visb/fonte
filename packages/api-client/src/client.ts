@@ -16,6 +16,7 @@ import { createAppSettingsModule } from './modules/app-settings.js';
 import { createStreetSalesModule } from './modules/street-sales.js';
 import { createAssociatesModule } from './modules/associates.js';
 import { createPayablesModule } from './modules/payables.js';
+import { createActivitiesModule } from './modules/activities.js';
 import { createSupplyRoomModule } from './modules/supply-room.js';
 import { createBibleCourseModule } from './modules/bible-course.js';
 import { createNotificationsModule } from './modules/notifications.js';
@@ -68,6 +69,7 @@ export function createApiClient(config: ApiClientConfig) {
     streetSales: createStreetSalesModule(http),
     associates: createAssociatesModule(http),
     payables: createPayablesModule(http),
+    activities: createActivitiesModule(http),
     supplyRoom: createSupplyRoomModule(http),
     bibleCourse: createBibleCourseModule(http),
     notifications: createNotificationsModule(http),

@@ -167,5 +167,12 @@ export type {
   PayPayableInput,
   ListPayablesParams,
   PayablesSummaryParams,
+  Activity,
+  ActivityHouseRef,
+  ActivityStaffRef,
+  CreateActivityInput,
+  UpdateActivityInput,
+  ChangeActivityStatusInput,
+  ListActivitiesParams,
 } from './types.js';
-export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory } from './types.js';
+export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus } from './types.js';

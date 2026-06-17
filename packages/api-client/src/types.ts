@@ -55,12 +55,20 @@ import type {
   PayPayableInput,
   ListPayablesParams,
   PayablesSummaryParams,
+  Activity,
+  ActivityHouseRef,
+  ActivityStaffRef,
+  CreateActivityInput,
+  UpdateActivityInput,
+  ChangeActivityStatusInput,
+  ListActivitiesParams,
 } from '@fonte/types';
 import {
   NotificationType,
   HouseCapacityRequestStatus,
   PayableStatus,
   PayableCategory,
+  ActivityStatus,
 } from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
@@ -102,6 +110,17 @@ export type {
   PayPayableInput,
   ListPayablesParams,
   PayablesSummaryParams,
+};
+
+export { ActivityStatus };
+export type {
+  Activity,
+  ActivityHouseRef,
+  ActivityStaffRef,
+  CreateActivityInput,
+  UpdateActivityInput,
+  ChangeActivityStatusInput,
+  ListActivitiesParams,
 };
 
 export type { FamilyInvestment };

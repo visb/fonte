@@ -11,6 +11,13 @@ const ACTIONS = [
     route: "/(app)/incidents/new",
   },
   {
+    label: "Atividades",
+    icon: "checkbox-outline" as const,
+    color: "#4f46e5",
+    bg: "#eef2ff",
+    route: "/(app)/activities",
+  },
+  {
     label: "Ver filhos",
     icon: "people-outline" as const,
     color: "#9333ea",

@@ -411,6 +411,70 @@ export interface PayablesSummaryParams {
   to?: string;
 }
 
+// ─── Activities (board Kanban) ──────────────────────────────────────────────────
+
+export enum ActivityStatus {
+  DRAFT = 'DRAFT',
+  REQUESTED = 'REQUESTED',
+  TODO = 'TODO',
+  DOING = 'DOING',
+  BLOCKED = 'BLOCKED',
+  DONE = 'DONE',
+}
+
+/** Resumo de casa carregado na listagem de atividades. */
+export interface ActivityHouseRef {
+  id: string;
+  name: string;
+}
+
+/** Resumo do staff responsável carregado na listagem de atividades. */
+export interface ActivityStaffRef {
+  id: string;
+  name: string;
+  userId: string;
+}
+
+export interface Activity {
+  id: string;
+  title: string;
+  description: string | null;
+  status: ActivityStatus;
+  houseId: string | null;
+  house: ActivityHouseRef | null;
+  responsibleStaffId: string | null;
+  responsible: ActivityStaffRef | null;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateActivityInput {
+  title: string;
+  description?: string | null;
+  houseId?: string | null;
+  status?: ActivityStatus;
+  responsibleStaffId?: string | null;
+}
+
+export interface UpdateActivityInput {
+  title?: string;
+  description?: string | null;
+  houseId?: string | null;
+  responsibleStaffId?: string | null;
+}
+
+export interface ChangeActivityStatusInput {
+  status: ActivityStatus;
+  responsibleStaffId?: string | null;
+}
+
+export interface ListActivitiesParams {
+  houseId?: string;
+  status?: ActivityStatus;
+  responsibleStaffId?: string;
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

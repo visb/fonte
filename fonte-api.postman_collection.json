@@ -4737,6 +4737,159 @@
           }
         }
       ]
+    },
+    {
+      "name": "Activities",
+      "item": [
+        {
+          "name": "List Activities (STAFF)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/activities?houseId={{houseId}}&status=TODO&responsibleStaffId={{staffId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "houseId",
+                  "value": "{{houseId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "TODO",
+                  "disabled": true
+                },
+                {
+                  "key": "responsibleStaffId",
+                  "value": "{{staffId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lista atividades escopadas pelo usuario. ADMIN ve todas (filtros opcionais); COORDINATOR/SERVANT veem so a propria casa e nunca houseless. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
+          "name": "Get Activity (STAFF)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}"
+              ]
+            },
+            "description": "Detalhe de uma atividade. 404 se fora do escopo do usuario. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
+          "name": "Create Activity (STAFF)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Consertar o portao\",\n  \"description\": \"Portao da frente esta emperrando\",\n  \"houseId\": \"{{houseId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities"
+              ]
+            },
+            "description": "Cria atividade. ops (COORDINATOR/SERVANT) cria sempre em DRAFT. ADMIN pode criar em DRAFT ou TODO (status=TODO exige responsibleStaffId). created_by = usuario do JWT. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
+          "name": "Update Activity (STAFF)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Consertar o portao lateral\",\n  \"description\": \"Atualizado\",\n  \"houseId\": \"{{houseId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}"
+              ]
+            },
+            "description": "Edita conteudo (title/description/houseId). ADMIN sempre; criador so enquanto DRAFT. Reatribuir responsibleStaffId so ADMIN. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
+          "name": "Change Activity Status (STAFF)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"TODO\",\n  \"responsibleStaffId\": \"{{staffId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "status"
+              ]
+            },
+            "description": "Transicao de coluna. DRAFT->REQUESTED (criador ou ADMIN); REQUESTED->TODO (so ADMIN, exige responsavel); bloco de trabalho TODO/DOING/BLOCKED/DONE (ADMIN ou o responsavel). Transicao invalida -> 400. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
+          "name": "Delete Activity (STAFF)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}"
+              ]
+            },
+            "description": "Soft delete. ADMIN sempre; criador so o proprio DRAFT. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        }
+      ]
     }
   ]
 }

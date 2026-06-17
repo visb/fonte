@@ -345,3 +345,26 @@ pnpm test:ops:unit && pnpm test:ops:e2e
 pnpm test:app:unit && pnpm test:app:e2e
 ```
 Branches de cada story preservadas (não deletadas, sem push). Loop autônomo encerrado.
+
+---
+
+# PROGRESS — stories 56-58 (feature Eventos)
+
+Execução autônoma conduzida por `AUTORUN.md` (loop fixo 30m). Ordem rígida `56 → 57 → 58`.
+Fonte de verdade: esta seção + `git log` de `main`.
+
+## Fila
+
+| Ordem | Story | Status | Testes | Commit | Merge |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 56 — eventos backend (módulo event + CRUD admin + banner) | [OK] | api unit 460✓ (17 novos event.service) + api e2e 268✓ (19 novos events) + build:types + build:api-client | 231c134 | 5f70b7b |
+| 2 | 57 — eventos adm.fonte (CRUD + timeline) | [ ] | | | |
+| 3 | 58 — inscrição pública + rename associados→portal.fonte | [ ] | | | |
+
+## Log
+
+[OK] 56 — testes: api unit **460 passed** (40 suites; 17 novos no event.service: create persiste campos+id, capacity null, endAt<startAt 400, registrationClosesAt<opensAt 400, findAll upcoming/past/all filtra por start_at, update parcial+revalida datas+NotFound, remove soft+deleta banner+NotFound, uploadBanner grava/substitui key+NotFound) + api e2e **268 passed** (23 suites; 19 novos em events: 401 sem token, 201 COORDINATOR, 403 SERVANT/RELATIVE, validações 400 (body vazio/startAt inválido/capacity<1/endAt<startAt/closesAt<opensAt), CRUD, lista ordenada por start_at asc, filtro upcoming/past, 404 id desconhecido, upload banner devolve bannerUrl, rejeita banner não-imagem 400, soft delete→404). build:types + build:api-client verdes. Migration **1783200000000-Events** (tabela events: timestamptz em start_at/end_at/registration_*, soft delete, índice IDX_events_start_at; aplicada no db de teste). Endpoints (JWT, ADMIN+COORDINATOR): POST/GET/GET :id/PATCH/DELETE /events + POST /events/:id/banner. Banner: StorageService.upload grava a referência em `banner_key` e o StorageUrlInterceptor (global) assina no response como `bannerUrl` — mesmo padrão do payable; nos testes o StorageService é mockado (nenhum bucket real). DECISÃO de implementação: o módulo armazena em `banner_key` o retorno de `upload()` (URL canônica não-assinada, como o payable faz em attachment_url), não uma chave crua — para casar com o interceptor existente; a intenção da story ("nunca persistir URL [assinada]") é respeitada. Tipos em @fonte/types + recurso `events` no @fonte/api-client (list/getById/create/update/remove/uploadBanner). Postman atualizado (seção Events, 6 requests). — commit: 231c134 — merge: 5f70b7b — 2026-06-17
+
+## Nota de execução (2026-06-17)
+
+Um sub-agente disparado para a 56 sofreu um erro transitório 529 (Overloaded) da API e, antes de cair, commitou indevidamente só os 3 `.md` de plano direto na `main` (commit descartado). `main` foi resetada (--mixed) de volta a 78f8d13 sem perda de arquivos, worktree órfã podada, e a 56 foi reimplementada no contexto do orquestrador (git controlado manualmente) — daí a story ter sido feita inline em vez de via sub-agente.

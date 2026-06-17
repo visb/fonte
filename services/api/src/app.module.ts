@@ -39,6 +39,7 @@ import { RetentionModule } from './modules/retention/retention.module';
 import { AssociateModule } from './modules/associate/associate.module';
 import { PayableModule } from './modules/payable/payable.module';
 import { ActivityModule } from './modules/activity/activity.module';
+import { EventModule } from './modules/event/event.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { ActivityModule } from './modules/activity/activity.module';
     AssociateModule,
     PayableModule,
     ActivityModule,
+    EventModule,
   ],
   providers: [
     // Captura exceptions não tratadas para o Sentry preservando o tratamento do Nest.

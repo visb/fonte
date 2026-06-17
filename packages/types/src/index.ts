@@ -722,3 +722,47 @@ export interface AssociatesOverview {
   current: AssociatesOverviewCurrent;
 }
 
+
+// ─── Events (eventos da comunidade — story 56) ──────────────────────────────────
+
+export type EventFilter = 'all' | 'upcoming' | 'past';
+
+export interface Event {
+  id: string;
+  title: string;
+  description: string;
+  /** ISO string. Início do evento. */
+  startAt: string;
+  /** ISO string ou null. Fim do evento (opcional). */
+  endAt: string | null;
+  location: string | null;
+  /** null = vagas ilimitadas. */
+  capacity: number | null;
+  /** URL servida/assinada do banner (null quando sem banner). Nunca é a chave crua. */
+  bannerUrl: string | null;
+  /** ISO string ou null. Abertura da janela de inscrição. */
+  registrationOpensAt: string | null;
+  /** ISO string ou null. Fechamento da janela de inscrição. */
+  registrationClosesAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEventInput {
+  title: string;
+  description: string;
+  startAt: string;
+  endAt?: string | null;
+  location?: string | null;
+  capacity?: number | null;
+  registrationOpensAt?: string | null;
+  registrationClosesAt?: string | null;
+}
+
+export type UpdateEventInput = Partial<CreateEventInput>;
+
+export interface ListEventsParams {
+  filter?: EventFilter;
+  limit?: number;
+  offset?: number;
+}

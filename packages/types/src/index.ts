@@ -766,3 +766,44 @@ export interface ListEventsParams {
   limit?: number;
   offset?: number;
 }
+
+// ─── Event registrations / public events (story 58) ─────────────────────────────
+
+export interface EventPublic {
+  id: string;
+  title: string;
+  description: string;
+  startAt: string;
+  endAt: string | null;
+  location: string | null;
+  bannerUrl: string | null;
+  /** null = vagas ilimitadas. */
+  capacity: number | null;
+  /** Vagas restantes; null quando ilimitado. Nunca negativo. */
+  spotsLeft: number | null;
+  registrationOpensAt: string | null;
+  registrationClosesAt: string | null;
+  /** Inscrição aberta agora (janela respeitada, não passado, não esgotado). */
+  registrationOpen: boolean;
+}
+
+export interface EventRegistration {
+  id: string;
+  eventId: string;
+  name: string;
+  contact: string;
+  email: string | null;
+  createdAt: string;
+}
+
+export interface RegisterToEventInput {
+  name: string;
+  contact: string;
+  email?: string | null;
+}
+
+export interface EventRegistrationResult {
+  id: string;
+  eventId: string;
+  name: string;
+}

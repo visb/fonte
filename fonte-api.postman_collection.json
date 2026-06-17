@@ -5095,6 +5095,93 @@
             },
             "description": "Anexa/substitui o banner (apenas imagem, max 20 MB). Devolve o evento com bannerUrl assinado. Roles: ADMIN, COORDINATOR."
           }
+        },
+        {
+          "name": "List Event Registrations (ADMIN/COORDINATOR)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "{{eventId}}",
+                "registrations"
+              ]
+            },
+            "description": "Lista os inscritos de um evento (nome, contato, email). Roles: ADMIN, COORDINATOR."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public Events",
+      "item": [
+        {
+          "name": "List Public Events (no auth)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/public/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "events"
+              ]
+            },
+            "description": "Lista pública de eventos futuros (sem JWT). So campos seguros + spotsLeft/registrationOpen. Throttle por IP."
+          }
+        },
+        {
+          "name": "Get Public Event (no auth)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/public/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "events",
+                "{{eventId}}"
+              ]
+            },
+            "description": "Detalhe publico do evento + vagas restantes + se a inscricao esta aberta. Throttle por IP."
+          }
+        },
+        {
+          "name": "Register to Event (no auth)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Maria Silva\",\n  \"contact\": \"11999990000\",\n  \"email\": \"maria@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/public/events/{{eventId}}/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "events",
+                "{{eventId}}",
+                "register"
+              ]
+            },
+            "description": "Inscreve uma pessoa no evento (sem login). Valida janela de inscricao (400 fora) e lotacao (409 esgotado). Throttle estrito por IP."
+          }
         }
       ]
     }

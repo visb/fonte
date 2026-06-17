@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Sobe um Vite dedicado do associados (porta 5176, isolada do dev normal 5175 e
+// Sobe um Vite dedicado do portal (porta 5176, isolada do dev normal 5175 e
 // do adm 5173/5174) para a suíte e2e. Todos os endpoints públicos são mockados
 // via page.route nos specs — a API real nunca é chamada nesta suíte.
 const PORT = 5176;

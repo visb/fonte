@@ -4,6 +4,10 @@ import type {
   CreateEventInput,
   UpdateEventInput,
   ListEventsParams,
+  EventPublic,
+  EventRegistration,
+  RegisterToEventInput,
+  EventRegistrationResult,
 } from '../types.js';
 
 export function createEventsModule(http: AxiosInstance) {
@@ -30,5 +34,22 @@ export function createEventsModule(http: AxiosInstance) {
           headers: { 'Content-Type': undefined },
         })
         .then((r) => r.data),
+
+    /** Inscritos de um evento (ADMIN/COORDINATOR). */
+    listRegistrations: (id: string) =>
+      http.get<EventRegistration[]>(`/events/${id}/registrations`).then((r) => r.data),
+
+    /** Endpoints públicos (sem auth) — usados pelo portal. */
+    public: {
+      list: () => http.get<EventPublic[]>('/public/events').then((r) => r.data),
+
+      getById: (id: string) =>
+        http.get<EventPublic>(`/public/events/${id}`).then((r) => r.data),
+
+      register: (id: string, data: RegisterToEventInput) =>
+        http
+          .post<EventRegistrationResult>(`/public/events/${id}/register`, data)
+          .then((r) => r.data),
+    },
   };
 }

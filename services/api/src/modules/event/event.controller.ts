@@ -22,6 +22,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@fonte/types';
 import { EventService } from './event.service';
+import { EventRegistrationService } from './event-registration.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { ListEventsDto } from './dto/list-events.dto';
@@ -44,7 +45,10 @@ const bannerOptions = {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN, Role.COORDINATOR)
 export class EventController {
-  constructor(private service: EventService) {}
+  constructor(
+    private service: EventService,
+    private registrationService: EventRegistrationService,
+  ) {}
 
   @Post()
   create(@Body() dto: CreateEventDto) {
@@ -54,6 +58,11 @@ export class EventController {
   @Get()
   findAll(@Query() filters: ListEventsDto) {
     return this.service.findAll(filters);
+  }
+
+  @Get(':id/registrations')
+  listRegistrations(@Param('id', ParseUUIDPipe) id: string) {
+    return this.registrationService.listRegistrations(id);
   }
 
   @Get(':id')

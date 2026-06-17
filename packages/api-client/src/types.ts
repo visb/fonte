@@ -67,6 +67,10 @@ import type {
   CreateEventInput,
   UpdateEventInput,
   ListEventsParams,
+  EventPublic,
+  EventRegistration,
+  RegisterToEventInput,
+  EventRegistrationResult,
 } from '@fonte/types';
 import {
   NotificationType,
@@ -134,6 +138,10 @@ export type {
   CreateEventInput,
   UpdateEventInput,
   ListEventsParams,
+  EventPublic,
+  EventRegistration,
+  RegisterToEventInput,
+  EventRegistrationResult,
 };
 
 export type { FamilyInvestment };

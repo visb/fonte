@@ -287,3 +287,61 @@ parte depende de serviço externo sem credencial (mock nos testes) · `[BLOQUEAD
 - **Stories 48/53/54 (mobile nativo)** — e2e Maestro/emulador segue bloqueado por infra (ver stories
   19/25 acima). Mitigação do epic 49: unit `jest-expo` + e2e web (Playwright contra `expo export
   --platform web`), sem device. Maestro permanece opcional, não é gate de merge.
+
+## Resumo final 44–55 (2026-06-17, execução autônoma AUTORUN via /loop)
+
+**12/12 stories fechadas e mergeadas na main local (sem push, sem PR — revisar e subir manualmente).**
+10 `[OK]` 100% verdes + 1 `[PARCIAL]` (story 45, só o envio real Meta bloqueado) + a story 48 com
+ressalva de pendência manual (Maestro nativo, não-gate). Nenhuma story ficou `[BLOQUEADO]` integral.
+
+| Story | Status | Branch | Commit | Merge | Validação (suíte tocada verde) |
+|---|---|---|---|---|---|
+| 44 — overview faturamento associados | [OK] | feat/story-44-associados-overview | 8afc6df | ede1b98 | api 384 unit + 190 e2e + adm 7 PW + build |
+| 46 — melhorias tela associados | [OK] | feat/story-46-associados-tela-melhorias | 97f440f | 7518568 | api 386 unit + 193 e2e + adm 11 PW + build |
+| 45 — autocancelamento WhatsApp | [PARCIAL] | feat/story-45-associados-autocancelamento | 850af90 | 1e2b741 | api 394 unit + 197 e2e + associados/api build |
+| 47 — Contas a Pagar (payable) | [OK] | feat/story-47-contas-a-pagar | 75af27e | 46c0073 | api 406 unit + 215 e2e + adm 7 PW + build |
+| 48 — Atividades Kanban | [OK] | feat/story-48-atividades-kanban | a66ca73 | 9a034c2 | api 425 unit + 232 e2e + adm 5 PW + ops tsc |
+| 49 — EPIC cobertura de testes | [OK] | test/story-49-cobertura-epic | add1ccb | 561bba3 | test:api 425 + test:all (só docs/skills/scripts) |
+| 55 — unit @fonte/api-client | [OK] | test/story-55-api-client | 2c03db0 | 5669d7b | test:api-client 39 (Vitest v2) + build |
+| 51 — unit adm.fonte | [OK] | test/story-51-adm-unit | 2b445bb | 88c096a | test:adm:unit 29 (Vitest v2 + RTL) + build |
+| 52 — testes associados | [OK] | test/story-52-associados | 9fc58ed | 15c6d7a | 19 unit + 3 e2e (Playwright, rede mockada) + build |
+| 50 — gaps de teste services/api | [OK] | test/story-50-api-gaps | 5f6eaa5 | 11b7ea2 | api 437 unit + 249 e2e |
+| 53 — testes ops.fonte | [OK] | test/story-53-ops-web | 6e884e8 | 7f767c9 | ops 21 unit (jest-expo) + tsc + 4 e2e web |
+| 54 — testes app.fonte | [OK] | test/story-54-app-web | 1bf3a02 | b24dddf | app 20 unit (jest-expo) + tsc + 4 e2e web |
+
+**Estado final dos testes (após todos os merges):** backend = **437 unit + 249 e2e**; frontends
+ganharam piso de unit/e2e onde não havia (adm 29, associados 19+3, api-client 39, ops 21+4web,
+app 20+4web). `expo export --platform web` FUNCIONOU em ops e app — os dois apps Expo agora têm e2e
+web determinístico (Playwright) sem emulador.
+
+### Pendências de credencial/serviço externo (não bloqueiam o código; exigem ambiente)
+- **Story 45 (Meta WhatsApp)** — falta credencial Meta + **template aprovado com 2 botões de URL**
+  (pagar + cancelar). Cliente WhatsApp SEMPRE mockado nos testes; Meta nunca foi chamada. Preencher
+  `META_WA_TEMPLATE_NAME_CANCELABLE` (default `cobranca_associado_cancelavel`) e ajustar os
+  `components` do payload ao formato real do template aprovado. (Herda também o bloqueio da story 39:
+  `META_WA_PHONE_NUMBER_ID/TOKEN/API_VERSION` + `APP_ASSOCIADOS_URL`.)
+
+### Pendências manuais de infra (não-gate, herdadas das stories 19/25)
+- **e2e Maestro nativo (ops/app)** — bloqueio recorrente de build nativo Expo/Gradle (emulador).
+  Mitigado pelo epic 49: o gate dos apps Expo passou a ser unit jest-expo + e2e web Playwright; os
+  `e2e/*.yaml` do Maestro foram mantidos como e2e nativo opcional. Verificação do board de Atividades
+  (story 48) e telas só-nativo (checkin QR/câmera, push) no device fica como verificação manual.
+
+### Follow-ups de cobertura registrados (story 50, não silenciados)
+- `support-group.service` (66%), `storage.service` (57%), `wishlist.service` (66%) seguem abaixo do
+  piso; wishlist sem e2e; ministry/relative/resident-follow-up sem e2e dedicado. Sobem via a regra
+  do `/issue` (toda issue futura atualiza testes — story 49).
+
+### Reproduzir (serviços ficaram de pé)
+```
+pnpm docker:up && pnpm test:setup
+pnpm build:types && pnpm build:api-client   # OBRIGATÓRIO antes de subir API/adm
+pnpm dev:api:test                            # :3001 (NODE_ENV=test)
+pnpm --filter adm.fonte dev:test             # :5174
+pnpm test:api && pnpm test:api:e2e           # backend 437 + 249
+pnpm test:api-client && pnpm test:adm:unit   # 39 + 29
+pnpm test:associados && pnpm test:associados:e2e
+pnpm test:ops:unit && pnpm test:ops:e2e
+pnpm test:app:unit && pnpm test:app:e2e
+```
+Branches de cada story preservadas (não deletadas, sem push). Loop autônomo encerrado.

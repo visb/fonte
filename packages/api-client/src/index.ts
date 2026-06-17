@@ -174,5 +174,10 @@ export type {
   UpdateActivityInput,
   ChangeActivityStatusInput,
   ListActivitiesParams,
+  Event,
+  EventFilter,
+  CreateEventInput,
+  UpdateEventInput,
+  ListEventsParams,
 } from './types.js';
 export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus } from './types.js';

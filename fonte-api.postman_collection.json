@@ -4944,6 +4944,159 @@
           }
         }
       ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "List Events (ADMIN/COORDINATOR)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/events?filter=all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "filter",
+                  "value": "all",
+                  "description": "all | upcoming | past"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lista eventos ordenados por start_at asc. filter=upcoming (start_at >= agora) | past (start_at < agora) | all (default). Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Get Event (ADMIN/COORDINATOR)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "{{eventId}}"
+              ]
+            },
+            "description": "Detalhe de um evento. 404 se inexistente. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Create Event (ADMIN/COORDINATOR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Retiro de familias\",\n  \"description\": \"Encontro anual da comunidade\",\n  \"startAt\": \"2026-08-01T18:00:00.000Z\",\n  \"endAt\": \"2026-08-02T18:00:00.000Z\",\n  \"location\": \"Sede\",\n  \"capacity\": 100,\n  \"registrationOpensAt\": \"2026-07-01T00:00:00.000Z\",\n  \"registrationClosesAt\": \"2026-07-25T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ]
+            },
+            "description": "Cria evento. capacity null/omitido = ilimitado. Valida endAt >= startAt e registrationClosesAt >= registrationOpensAt (400 se violar). Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Update Event (ADMIN/COORDINATOR)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location\": \"Anexo\",\n  \"capacity\": 50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "{{eventId}}"
+              ]
+            },
+            "description": "Edicao parcial. Revalida coerencia das datas. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Delete Event (ADMIN/COORDINATOR)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "{{eventId}}"
+              ]
+            },
+            "description": "Soft delete. Remove o banner do storage. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Upload Event Banner (ADMIN/COORDINATOR)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}/banner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "{{eventId}}",
+                "banner"
+              ]
+            },
+            "description": "Anexa/substitui o banner (apenas imagem, max 20 MB). Devolve o evento com bannerUrl assinado. Roles: ADMIN, COORDINATOR."
+          }
+        }
+      ]
     }
   ]
 }

@@ -62,6 +62,11 @@ import type {
   UpdateActivityInput,
   ChangeActivityStatusInput,
   ListActivitiesParams,
+  Event,
+  EventFilter,
+  CreateEventInput,
+  UpdateEventInput,
+  ListEventsParams,
 } from '@fonte/types';
 import {
   NotificationType,
@@ -121,6 +126,14 @@ export type {
   UpdateActivityInput,
   ChangeActivityStatusInput,
   ListActivitiesParams,
+};
+
+export type {
+  Event,
+  EventFilter,
+  CreateEventInput,
+  UpdateEventInput,
+  ListEventsParams,
 };
 
 export type { FamilyInvestment };

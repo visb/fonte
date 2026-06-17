@@ -51,13 +51,21 @@ describe('payables module', () => {
 
   it('pay envia objeto vazio quando body ausente', async () => {
     await payables.pay('pay-3');
-    expect(http.patch).toHaveBeenCalledWith('/payables/pay-3/pay', {});
+    expect(http.patch).toHaveBeenCalledWith('/payables/pay-3/pay', {}, undefined);
   });
 
-  it('pay envia o body informado quando presente', async () => {
+  it('pay envia o body JSON informado quando presente', async () => {
     const body = { paidAt: '2026-06-17' } as never;
     await payables.pay('pay-4', body);
-    expect(http.patch).toHaveBeenCalledWith('/payables/pay-4/pay', body);
+    expect(http.patch).toHaveBeenCalledWith('/payables/pay-4/pay', body, undefined);
+  });
+
+  it('pay envia FormData com Content-Type undefined (comprovante)', async () => {
+    const fd = new FormData();
+    await payables.pay('pay-4b', fd);
+    expect(http.patch).toHaveBeenCalledWith('/payables/pay-4b/pay', fd, {
+      headers: { 'Content-Type': undefined },
+    });
   });
 
   it('remove chama DELETE no path com id', async () => {

@@ -227,6 +227,35 @@ describe('PayableService.pay', () => {
     expect(result.paidAt).toBe(TODAY);
   });
 
+  it('uploads the payment receipt when a file is provided', async () => {
+    const payable = makePayable({ status: PayableStatus.OPEN });
+    const repo = {
+      findOne: jest.fn().mockResolvedValue(payable),
+      save: jest.fn().mockImplementation((p) => Promise.resolve(p)),
+    };
+    const storage = makeStorage({
+      upload: jest.fn().mockResolvedValue('https://bucket/payables/comprovante_x.pdf'),
+    });
+    const service = makeService(repo as never, storage);
+    const file = {
+      originalname: 'comprovante.pdf',
+      buffer: Buffer.from('x'),
+      mimetype: 'application/pdf',
+    } as Express.Multer.File;
+
+    const result = await service.pay(PAYABLE_ID, { paidAt: '2026-06-15' }, file);
+
+    expect(storage.upload).toHaveBeenCalledWith(
+      'payables',
+      expect.stringContaining('comprovante_'),
+      file.buffer,
+      'application/pdf',
+    );
+    expect(result.status).toBe(PayableStatus.PAID);
+    expect(result.paymentReceiptUrl).toBe('https://bucket/payables/comprovante_x.pdf');
+    expect(result.paymentReceiptName).toBe('comprovante.pdf');
+  });
+
   it('rejects paying an already-paid payable', async () => {
     const payable = makePayable({ status: PayableStatus.PAID, paidAt: '2026-06-01' });
     const repo = { findOne: jest.fn().mockResolvedValue(payable), save: jest.fn() };

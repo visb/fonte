@@ -124,7 +124,7 @@ export class PayableService {
   }
 
   /** Transição OPEN → PAID (regra de negócio no service). */
-  async pay(id: string, dto: PayPayableDto): Promise<PayableDto> {
+  async pay(id: string, dto: PayPayableDto, file?: Express.Multer.File): Promise<PayableDto> {
     const payable = await this.repo.findOne({ where: { id } });
     if (!payable) throw new NotFoundException('Payable not found');
     if (payable.status === PayableStatus.PAID) {
@@ -134,6 +134,19 @@ export class PayableService {
     payable.status = PayableStatus.PAID;
     payable.paidAt = dto.paidAt ?? this.today();
 
+    if (file) {
+      if (payable.paymentReceiptUrl) await this.storageService.delete(payable.paymentReceiptUrl);
+      const originalName = this.storageService.decodeOriginalName(file.originalname);
+      const filename = this.storageService.uniqueFilename(originalName, 'comprovante_');
+      payable.paymentReceiptUrl = await this.storageService.upload(
+        'payables',
+        filename,
+        file.buffer,
+        file.mimetype,
+      );
+      payable.paymentReceiptName = originalName;
+    }
+
     const saved = await this.repo.save(payable);
     return this.toView(saved);
   }
@@ -142,6 +155,7 @@ export class PayableService {
     const payable = await this.repo.findOne({ where: { id } });
     if (!payable) throw new NotFoundException('Payable not found');
     if (payable.attachmentUrl) await this.storageService.delete(payable.attachmentUrl);
+    if (payable.paymentReceiptUrl) await this.storageService.delete(payable.paymentReceiptUrl);
     await this.repo.softRemove(payable);
   }
 
@@ -191,6 +205,8 @@ export class PayableService {
       notes: p.notes ?? null,
       attachmentUrl: p.attachmentUrl ?? null,
       attachmentName: p.attachmentName ?? null,
+      paymentReceiptUrl: p.paymentReceiptUrl ?? null,
+      paymentReceiptName: p.paymentReceiptName ?? null,
       overdue: this.isOverdue(p, today),
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),

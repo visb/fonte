@@ -78,8 +78,20 @@ export class PayableController {
   }
 
   @Patch(':id/pay')
-  pay(@Param('id') id: string, @Body() dto: PayPayableDto) {
-    return this.service.pay(id, dto);
+  @UseInterceptors(FileInterceptor('file', attachmentOptions))
+  pay(
+    @Param('id') id: string,
+    @Body() dto: PayPayableDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 20 * 1024 * 1024 })],
+        fileIsRequired: false,
+        exceptionFactory: () => new BadRequestException('Arquivo muito grande: máximo 20 MB'),
+      }),
+    )
+    file?: Express.Multer.File,
+  ) {
+    return this.service.pay(id, dto, file);
   }
 
   @Delete(':id')

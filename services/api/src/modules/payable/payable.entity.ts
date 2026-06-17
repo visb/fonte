@@ -44,6 +44,12 @@ export class Payable {
   @Column({ name: 'attachment_name', type: 'varchar', nullable: true })
   attachmentName: string | null;
 
+  @Column({ name: 'payment_receipt_url', type: 'varchar', nullable: true })
+  paymentReceiptUrl: string | null;
+
+  @Column({ name: 'payment_receipt_name', type: 'varchar', nullable: true })
+  paymentReceiptName: string | null;
+
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy: string | null;
 

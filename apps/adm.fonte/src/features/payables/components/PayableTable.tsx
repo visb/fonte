@@ -10,12 +10,13 @@ import { PayableRow } from './PayableRow';
 
 interface Props {
   payables: Payable[];
+  onView: (payable: Payable) => void;
   onEdit: (payable: Payable) => void;
   onPay: (payable: Payable) => void;
   onDelete: (payable: Payable) => void;
 }
 
-export function PayableTable({ payables, onEdit, onPay, onDelete }: Props) {
+export function PayableTable({ payables, onView, onEdit, onPay, onDelete }: Props) {
   return (
     <div className="rounded-lg border bg-card">
       <Table>
@@ -35,6 +36,7 @@ export function PayableTable({ payables, onEdit, onPay, onDelete }: Props) {
             <PayableRow
               key={p.id}
               payable={p}
+              onView={onView}
               onEdit={onEdit}
               onPay={onPay}
               onDelete={onDelete}

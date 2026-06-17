@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { DialogFooter } from '@/components/ui/dialog';
+import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { payableSchema, type PayableFormData } from '../lib/payableSchema';
 import { centsToReais } from '../lib/money';
@@ -168,7 +169,7 @@ export function PayableForm({ payable, isPending, error, onSubmit, onCancel }: P
             <div className="flex items-center gap-2 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
               <Paperclip size={14} className="shrink-0 text-muted-foreground" />
               <a
-                href={payable!.attachmentUrl!}
+                href={api.photoUrl(payable!.attachmentUrl) ?? undefined}
                 target="_blank"
                 rel="noreferrer"
                 className="flex-1 truncate text-foreground hover:underline"

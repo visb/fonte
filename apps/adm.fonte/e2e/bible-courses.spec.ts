@@ -177,14 +177,18 @@ test.describe('Curso Bíblico — lançamento de notas', () => {
     await enrollButtons.first().click();
     await page.keyboard.press('Escape');
 
-    // Vai para a aba Notas e lança uma nota de prova.
+    // Vai para a aba Notas e abre o lançamento do módulo (matriz read-only).
     await page.getByRole('button', { name: 'Notas' }).click();
-    const examInput = page.getByLabel(/^Prova de /).first();
+    await page.getByRole('button', { name: `Lançar notas — ${moduleName}` }).click();
+
+    // No dialog, lança a nota de prova e salva.
+    const gradeDialog = page.getByRole('dialog');
+    const examInput = gradeDialog.getByLabel(/^Prova de /).first();
     await expect(examInput).toBeVisible();
     await examInput.fill('8');
-    await examInput.blur();
+    await gradeDialog.getByRole('button', { name: 'Salvar' }).click();
 
-    // A média do módulo (8,0) aparece após o autosave.
+    // A média do módulo (8,0) aparece na matriz após salvar.
     await expect(page.getByText('8,0').first()).toBeVisible();
   });
 });

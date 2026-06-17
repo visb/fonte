@@ -27,10 +27,12 @@ import { PayablesFilters } from '../components/PayablesFilters';
 import { PayableTable } from '../components/PayableTable';
 import { PayableDialog } from '../components/PayableDialog';
 import { PayPayableDialog } from '../components/PayPayableDialog';
+import { PayableDetailDialog } from '../components/PayableDetailDialog';
 
 export function PayablesPage() {
   const [filters, setFilters] = useState<ListPayablesParams>({});
   const [createOpen, setCreateOpen] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<Payable | null>(null);
   const [editTarget, setEditTarget] = useState<Payable | null>(null);
   const [payTarget, setPayTarget] = useState<Payable | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Payable | null>(null);
@@ -65,11 +67,21 @@ export function PayablesPage() {
       ) : (
         <PayableTable
           payables={payables}
+          onView={setDetailTarget}
           onEdit={setEditTarget}
           onPay={setPayTarget}
           onDelete={setDeleteTarget}
         />
       )}
+
+      <PayableDetailDialog
+        open={!!detailTarget}
+        payable={detailTarget}
+        onClose={() => setDetailTarget(null)}
+        onEdit={(p) => { setDetailTarget(null); setEditTarget(p); }}
+        onPay={(p) => { setDetailTarget(null); setPayTarget(p); }}
+        onDelete={(p) => { setDetailTarget(null); setDeleteTarget(p); }}
+      />
 
       <PayableDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <PayableDialog

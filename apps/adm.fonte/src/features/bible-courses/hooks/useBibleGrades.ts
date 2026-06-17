@@ -27,3 +27,23 @@ export function useUpsertBibleGrade(classId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.grades(classId) }),
   });
 }
+
+/** Persiste as notas de um módulo em lote (uma chamada por aluno alterado). */
+export function useUpsertBibleGradesBulk(classId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      moduleId,
+      changes,
+    }: {
+      moduleId: string;
+      changes: { enrollmentId: string; data: UpsertBibleGradeInput }[];
+    }) => {
+      for (const change of changes) {
+        await api.bibleCourse.upsertGrade(change.enrollmentId, moduleId, change.data);
+      }
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.grades(classId) }),
+  });
+}

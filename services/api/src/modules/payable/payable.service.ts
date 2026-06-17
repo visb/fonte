@@ -16,12 +16,14 @@ import { UpdatePayableDto } from './dto/update-payable.dto';
 import { ListPayablesDto } from './dto/list-payables.dto';
 import { PayablesSummaryDto } from './dto/payables-summary.dto';
 import { PayPayableDto } from './dto/pay-payable.dto';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class PayableService {
   constructor(
     @InjectRepository(Payable)
     private repo: Repository<Payable>,
+    private storageService: StorageService,
   ) {}
 
   /** 'YYYY-MM-DD' de hoje (data local, sem fuso). */
@@ -122,7 +124,7 @@ export class PayableService {
   }
 
   /** Transição OPEN → PAID (regra de negócio no service). */
-  async pay(id: string, dto: PayPayableDto): Promise<PayableDto> {
+  async pay(id: string, dto: PayPayableDto, file?: Express.Multer.File): Promise<PayableDto> {
     const payable = await this.repo.findOne({ where: { id } });
     if (!payable) throw new NotFoundException('Payable not found');
     if (payable.status === PayableStatus.PAID) {
@@ -132,6 +134,19 @@ export class PayableService {
     payable.status = PayableStatus.PAID;
     payable.paidAt = dto.paidAt ?? this.today();
 
+    if (file) {
+      if (payable.paymentReceiptUrl) await this.storageService.delete(payable.paymentReceiptUrl);
+      const originalName = this.storageService.decodeOriginalName(file.originalname);
+      const filename = this.storageService.uniqueFilename(originalName, 'comprovante_');
+      payable.paymentReceiptUrl = await this.storageService.upload(
+        'payables',
+        filename,
+        file.buffer,
+        file.mimetype,
+      );
+      payable.paymentReceiptName = originalName;
+    }
+
     const saved = await this.repo.save(payable);
     return this.toView(saved);
   }
@@ -139,7 +154,42 @@ export class PayableService {
   async remove(id: string): Promise<void> {
     const payable = await this.repo.findOne({ where: { id } });
     if (!payable) throw new NotFoundException('Payable not found');
+    if (payable.attachmentUrl) await this.storageService.delete(payable.attachmentUrl);
+    if (payable.paymentReceiptUrl) await this.storageService.delete(payable.paymentReceiptUrl);
     await this.repo.softRemove(payable);
+  }
+
+  /** Anexa (ou substitui) o comprovante/boleto da conta. */
+  async uploadAttachment(id: string, file: Express.Multer.File): Promise<PayableDto> {
+    const payable = await this.repo.findOne({ where: { id } });
+    if (!payable) throw new NotFoundException('Payable not found');
+
+    if (payable.attachmentUrl) await this.storageService.delete(payable.attachmentUrl);
+
+    const originalName = this.storageService.decodeOriginalName(file.originalname);
+    const filename = this.storageService.uniqueFilename(originalName, 'conta_');
+    payable.attachmentUrl = await this.storageService.upload(
+      'payables',
+      filename,
+      file.buffer,
+      file.mimetype,
+    );
+    payable.attachmentName = originalName;
+
+    const saved = await this.repo.save(payable);
+    return this.toView(saved);
+  }
+
+  async removeAttachment(id: string): Promise<PayableDto> {
+    const payable = await this.repo.findOne({ where: { id } });
+    if (!payable) throw new NotFoundException('Payable not found');
+
+    if (payable.attachmentUrl) await this.storageService.delete(payable.attachmentUrl);
+    payable.attachmentUrl = null;
+    payable.attachmentName = null;
+
+    const saved = await this.repo.save(payable);
+    return this.toView(saved);
   }
 
   private toView(p: Payable, today = this.today()): PayableDto {
@@ -153,6 +203,10 @@ export class PayableService {
       status: p.status,
       paidAt: p.paidAt ?? null,
       notes: p.notes ?? null,
+      attachmentUrl: p.attachmentUrl ?? null,
+      attachmentName: p.attachmentName ?? null,
+      paymentReceiptUrl: p.paymentReceiptUrl ?? null,
+      paymentReceiptName: p.paymentReceiptName ?? null,
       overdue: this.isOverdue(p, today),
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),

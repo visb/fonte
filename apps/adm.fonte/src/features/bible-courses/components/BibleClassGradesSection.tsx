@@ -1,10 +1,11 @@
-import type { UpsertBibleGradeInput } from '@fonte/api-client';
+import { useState } from 'react';
+import type { BibleClassGradeModuleColumn } from '@fonte/api-client';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { getErrorMessage } from '@/lib/errors';
-import { useBibleClassGrades, useUpsertBibleGrade } from '../hooks/useBibleGrades';
+import { useBibleClassGrades, useUpsertBibleGradesBulk } from '../hooks/useBibleGrades';
 import { BibleGradesTable } from './BibleGradesTable';
+import { BibleModuleGradesDialog, type ModuleGradeChange } from './BibleModuleGradesDialog';
 
 interface Props {
   classId: string;
@@ -12,7 +13,8 @@ interface Props {
 
 export function BibleClassGradesSection({ classId }: Props) {
   const { data: grades, isLoading, isError, refetch } = useBibleClassGrades(classId);
-  const upsert = useUpsertBibleGrade(classId);
+  const bulkUpsert = useUpsertBibleGradesBulk(classId);
+  const [selectedModule, setSelectedModule] = useState<BibleClassGradeModuleColumn | null>(null);
 
   if (isLoading) return <LoadingState />;
   if (isError || !grades) return <ErrorState onRetry={() => refetch()} />;
@@ -29,18 +31,38 @@ export function BibleClassGradesSection({ classId }: Props) {
     );
   }
 
-  function handleSave(enrollmentId: string, moduleId: string, data: UpsertBibleGradeInput) {
-    upsert.mutate({ enrollmentId, moduleId, data });
-  }
+  const closeDialog = () => {
+    setSelectedModule(null);
+    bulkUpsert.reset();
+  };
+
+  const handleSave = (changes: ModuleGradeChange[]) => {
+    if (!selectedModule) return;
+    if (changes.length === 0) {
+      closeDialog();
+      return;
+    }
+    bulkUpsert.mutate(
+      { moduleId: selectedModule.id, changes },
+      { onSuccess: closeDialog },
+    );
+  };
 
   return (
     <div className="space-y-2">
-      <BibleGradesTable grades={grades} disabled={upsert.isPending} onSave={handleSave} />
-      {upsert.isError && (
-        <p className="text-xs text-destructive">
-          {getErrorMessage(upsert.error, 'Erro ao salvar nota.')}
-        </p>
-      )}
+      <p className="text-xs text-muted-foreground">
+        Clique no módulo para lançar ou editar as notas dos filhos.
+      </p>
+      <BibleGradesTable grades={grades} onSelectModule={setSelectedModule} />
+      <BibleModuleGradesDialog
+        open={!!selectedModule}
+        module={selectedModule}
+        rows={grades.rows}
+        isPending={bulkUpsert.isPending}
+        error={bulkUpsert.error}
+        onClose={closeDialog}
+        onSave={handleSave}
+      />
     </div>
   );
 }

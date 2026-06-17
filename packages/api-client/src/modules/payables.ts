@@ -26,10 +26,29 @@ export function createPayablesModule(http: AxiosInstance) {
     update: (id: string, data: UpdatePayableInput) =>
       http.patch<Payable>(`/payables/${id}`, data).then((r) => r.data),
 
-    pay: (id: string, data?: PayPayableInput) =>
-      http.patch<Payable>(`/payables/${id}/pay`, data ?? {}).then((r) => r.data),
+    /** Baixa a conta. Aceita FormData (campos paidAt + file de comprovante opcional). */
+    pay: (id: string, data?: PayPayableInput | FormData) => {
+      const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+      return http
+        .patch<Payable>(
+          `/payables/${id}/pay`,
+          data ?? {},
+          isFormData ? { headers: { 'Content-Type': undefined } } : undefined,
+        )
+        .then((r) => r.data);
+    },
 
     remove: (id: string) =>
       http.delete(`/payables/${id}`).then((r) => r.data),
+
+    uploadAttachment: (id: string, formData: FormData) =>
+      http
+        .post<Payable>(`/payables/${id}/attachment`, formData, {
+          headers: { 'Content-Type': undefined },
+        })
+        .then((r) => r.data),
+
+    removeAttachment: (id: string) =>
+      http.delete<Payable>(`/payables/${id}/attachment`).then((r) => r.data),
   };
 }

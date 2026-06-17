@@ -3,7 +3,6 @@ import type {
   CreatePayableInput,
   ListPayablesParams,
   PayablesSummaryParams,
-  PayPayableInput,
   UpdatePayableInput,
 } from '@fonte/api-client';
 import { api } from '@/lib/api';
@@ -50,8 +49,12 @@ export function useUpdatePayable() {
 export function usePayPayable() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data?: PayPayableInput }) =>
-      api.payables.pay(id, data),
+    mutationFn: ({ id, paidAt, file }: { id: string; paidAt?: string; file?: File | null }) => {
+      const fd = new window.FormData();
+      if (paidAt) fd.append('paidAt', paidAt);
+      if (file) fd.append('file', file);
+      return api.payables.pay(id, fd);
+    },
     onSuccess: (_data, { id }) => {
       invalidateAll(queryClient);
       queryClient.invalidateQueries({ queryKey: queryKeys.payables.detail(id) });
@@ -64,5 +67,31 @@ export function useDeletePayable() {
   return useMutation({
     mutationFn: (id: string) => api.payables.remove(id),
     onSuccess: () => invalidateAll(queryClient),
+  });
+}
+
+export function useUploadPayableAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => {
+      const fd = new window.FormData();
+      fd.append('file', file);
+      return api.payables.uploadAttachment(id, fd);
+    },
+    onSuccess: (_data, { id }) => {
+      invalidateAll(queryClient);
+      queryClient.invalidateQueries({ queryKey: queryKeys.payables.detail(id) });
+    },
+  });
+}
+
+export function useDeletePayableAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.payables.removeAttachment(id),
+    onSuccess: (_data, id) => {
+      invalidateAll(queryClient);
+      queryClient.invalidateQueries({ queryKey: queryKeys.payables.detail(id) });
+    },
   });
 }

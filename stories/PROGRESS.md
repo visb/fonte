@@ -242,7 +242,7 @@ parte depende de serviço externo sem credencial (mock nos testes) · `[BLOQUEAD
 | 4 | 47 — Contas a Pagar (módulo payable + adm) | [OK] | api unit 406✓ + api e2e 215✓ + adm Playwright 7✓ + adm build✓ | 75af27e | 46c0073 |
 | 5 | 48 — Atividades Kanban (backend + adm + ops) | [OK] | api unit 425✓ (+19) + api e2e 232✓ (+17) + adm Playwright 5✓ + adm build✓ + ops tsc✓ | a66ca73 | 9a034c2 |
 | 6 | 49 — EPIC cobertura de testes (código: skills + scripts; coordena 50–55) | [OK] | api unit 425✓ (sem regressão, só docs/skills/scripts) + test:all✓ | add1ccb | 561bba3 |
-| 7 | 55 — unit tests @fonte/api-client | [ ] | | | |
+| 7 | 55 — unit tests @fonte/api-client | [OK] | test:api-client 39✓ (Vitest, transporte mockado) + build:api-client sem regressão | 2c03db0 | 5669d7b |
 | 8 | 51 — unit tests adm.fonte (Vitest + RTL) | [ ] | | | |
 | 9 | 52 — testes app associados (Vitest + Playwright) | [ ] | | | |
 | 10 | 50 — auditoria + gaps de teste services/api | [ ] | | | |
@@ -254,6 +254,8 @@ parte depende de serviço externo sem credencial (mock nos testes) · `[BLOQUEAD
 <!-- anexar uma linha por story concluída/bloqueada:
 [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <timestamp> — <bloqueio se houver>
 -->
+
+[OK] 55 — testes: pnpm test:api-client 39 passed (Vitest v2, transporte HTTP mockado — sem rede real) + build:api-client (tsc) sem regressão, dist/ válido sem os *.test.ts. IMPLEMENTADO: vitest@^2.1.9 (pinado p/ compat com o Vite 5 hoisted no monorepo; vitest 4 exige Vite 6+) + @types/node já disponível; vitest.config.ts (environment node, include src/**/*.test.ts); scripts `test`=vitest run / `test:watch`=vitest no package do pacote; raiz `test:api-client` (reservado pela story 49) já apontava p/ `pnpm --filter @fonte/api-client test`; tsconfig de build com exclude ["src/**/*.test.ts","src/**/__tests__/**"] p/ não emitir testes no dist (tsbuildinfo limpo no rebuild). Testes (transporte = http stub com vi.fn() injetado nas factories create*Module, que recebem AxiosInstance): associates.test (13 — list repassa {limit,offset} no path certo + retorna r.data, getOverview com/sem months, getById/create/update/remove/cancelSubscription montam URL+body, public getByToken/subscribe/getCancelView/cancelByToken nos paths /public/..., erro HTTP propaga shape response.data.message); residents.test (10 — list params, listByHouse aninhado, getById/create/update/delete, uploadPhoto FormData+Content-Type undefined, contributionsReport, setContributionExempt, erro propaga message array); payables.test (9 — list/summary params, getById/create/update, pay {} default vs body, remove, erro propaga); client.test (7 — vi.mock('axios') stub, axios.create com baseURL, superfície expõe os 25 recursos esperados, interceptor request sempre registrado + response só com onUnauthorized, photoUrl null/absoluto/relativo sem o sufixo /api/vN). Sem skip/only/xfail. — commit: 2c03db0 — merge: 5669d7b — 2026-06-17
 
 [OK] 49 — testes: pnpm test:api verde (sem regressão, só docs/skills/scripts) — commit: add1ccb — merge: 561bba3 — 2026-06-17
 

@@ -122,4 +122,9 @@ export const queryKeys = {
     }) => ['activities', 'list', filters] as const,
     detail: (id: string) => ['activities', id] as const,
   },
+  events: {
+    all: ['events'] as const,
+    list: (filters: { filter?: string }) => ['events', 'list', filters] as const,
+    detail: (id: string) => ['events', id] as const,
+  },
 } as const;

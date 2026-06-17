@@ -9,6 +9,7 @@ import {
 import {
   BookOpen,
   Building2,
+  CalendarDays,
   ChevronDown,
   Database,
   HandHeart,
@@ -301,6 +302,12 @@ export function AppLayout() {
             <Link to="/activities" onClick={closeSidebar} className={navLinkClass}>
               <KanbanSquare size={16} />
               Atividades
+            </Link>
+          )}
+          {isAdminOrCoordinator && (
+            <Link to="/eventos" onClick={closeSidebar} className={navLinkClass}>
+              <CalendarDays size={16} />
+              Eventos
             </Link>
           )}
           {isAdminOrCoordinator && (

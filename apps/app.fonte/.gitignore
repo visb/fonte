@@ -8,3 +8,11 @@ expo-env.d.ts
 dist-android
 android/
 ios/
+
+# Expo web export e artefatos de teste
+/dist
+/.expo
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache

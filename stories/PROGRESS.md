@@ -359,7 +359,7 @@ Fonte de verdade: esta seção + `git log` de `main`.
 | --- | --- | --- | --- | --- | --- |
 | 1 | 56 — eventos backend (módulo event + CRUD admin + banner) | [OK] | api unit 460✓ (17 novos event.service) + api e2e 268✓ (19 novos events) + build:types + build:api-client | 231c134 | 5f70b7b |
 | 2 | 57 — eventos adm.fonte (CRUD + timeline) | [OK] | adm unit 40✓ (11 novos) + Playwright events 6✓ + suite adm 123/124 (1 flake pré-existente) + build✓ | 58efcc8 | 0482a48 |
-| 3 | 58 — inscrição pública + rename associados→portal.fonte | [ ] | | | |
+| 3 | 58 — inscrição pública + rename associados→portal.fonte | [OK] | api unit 475✓ (15 novos) + api e2e 276✓ (8 públicos; regressão pagamento verde) + portal build + unit 24✓ (5 novos) + e2e 6✓ | 8693cff | 76b8f1d |
 
 ## Log
 
@@ -370,3 +370,34 @@ Fonte de verdade: esta seção + `git log` de `main`.
 Um sub-agente disparado para a 56 sofreu um erro transitório 529 (Overloaded) da API e, antes de cair, commitou indevidamente só os 3 `.md` de plano direto na `main` (commit descartado). `main` foi resetada (--mixed) de volta a 78f8d13 sem perda de arquivos, worktree órfã podada, e a 56 foi reimplementada no contexto do orquestrador (git controlado manualmente) — daí a story ter sido feita inline em vez de via sub-agente.
 
 [OK] 57 — testes: adm unit **40 passed** (9 arquivos; 11 novos: `classifyEvents` — destaca os 3 futuros mais próximos, marca passados, ignora futuros além dos 3, estável em empate; `eventSchema` zod — endAt<startAt inválido, janela de inscrição incoerente inválida, capacity vazio=ilimitado, título obrigatório, capacity<=0 inválido) + Playwright **events.spec 6 passed** (menu+navegação, cria evento aparece na timeline, 3 próximos destacados via data-highlighted, evento passado opaco via data-past, edita, remove) + suite adm Playwright **123/124** (a única falha — activities "exibe as 6 colunas" — é flake de timing pré-existente por colisão de label quando o board acumula cards; passa isolada 5/5; não tocada pela story) + `pnpm --filter adm.fonte build` (tsc -b + vite) verde. Feature `events` (vertical slice MVVM): hooks (queryKeys.events), EventsPage (Loading/Empty/Error compartilhados), EventTimeline+EventTimelineItem (3 próximos destacados, passados opacos, badges de vagas/banner, ações editar/remover), EventForm rhf+zod (datetime-local↔ISO via eventDates), Create/EditEventDialog autossuficientes, EventBannerUpload (useUploadEventBanner). classifyEvents puro. Rota `/eventos` + item de menu (ADMIN+COORDINATOR). Consome `@fonte/api-client` events da 56 (sem HTTP novo). DIAGNÓSTICO (não-bug do código): a 1ª rodada do e2e falhou porque o dev server adm em :5174 (sessão anterior) tinha o **dep otimizado do Vite do @fonte/api-client desatualizado** (sem o módulo `events` da 56) → `api.events` undefined → mutation erra antes da rede. Corrigido reiniciando o dev:test com cache `.vite` limpo (re-otimiza deps); nenhuma mudança de código foi necessária por causa disso. — commit: 58efcc8 — merge: 0482a48 — 2026-06-17
+
+[OK] 58 — testes: api unit **475 passed** (41 suites; 15 novos no EventRegistrationService: register dentro da janela cria, evento passado 400, janela não-aberta 400, janela fechada 400, capacity esgotada 409, com vaga aceita, NotFound; getPublicView calcula spotsLeft+registrationOpen, esgotado fecha, ilimitado=null, passado fecha, não vaza bannerKey, NotFound; listPublic só futuros ordenados; listRegistrations + NotFound) + api e2e **276 passed** (24 suites; 8 novos em events-public: GET lista pública sem campos internos, GET detalhe com status, POST register sucesso, 400 body inválido, 409 esgotado + spotsLeft 0 na visão, 400 janela fechada, GET admin registrations 200 + 401 sem token; **regressão do fluxo de pagamento associate verde**) + portal **build** (tsc -b + vite) + portal **unit 24 passed** (6 arquivos; 5 novos em EventRegistrationForm: form quando aberto + vagas, "Vagas esgotadas" quando lotado, "Inscrições encerradas" quando fechado, valida obrigatórios, submete dados) + portal **e2e 6 passed** (3 novos eventos: lista, inscreve+confirmação, esgotado; **3 de pagamento regrediram verdes após o rename**). build:types + build:api-client verdes. Migration **1783300000000-EventRegistrations** (FK CASCADE → events, índice event_id; aplicada no db de teste). Endpoints PÚBLICOS (sem JWT, ThrottlerGuard por IP): GET /public/events, GET /public/events/:id, POST /public/events/:id/register; admin GET /events/:id/registrations (ADMIN+COORDINATOR). Service aplica janela (registration_opens_at/closes_at) e lotação (capacity vs count ativo, 409 esgotado), spotsLeft = capacity - inscritos (null se ilimitado). Tipos EventPublic/EventRegistration/RegisterToEventInput/EventRegistrationResult + events.public.{list,getById,register} + events.listRegistrations no @fonte/api-client. Postman (Public Events + List Registrations). RENAME: `git mv apps/associados apps/portal.fonte` (histórico preservado); package name → portal.fonte; scripts raiz dev/build/test:associados → :portal(+:e2e); index.html título; comentários. `pnpm install` reconciliou o workspace. Fluxo de pagamento (/p/:token, /cancelar/:token) intacto. Portal ganhou feature pública de eventos (EventsListPage /eventos, EventDetailPage /eventos/:id, EventRegistrationForm rhf+zod com estados esgotado/encerrado). PENDENTE/MANUAL (não bloqueia o código): (1) renomear o projeto Sentry `fonte-associados` (o DSN/projeto seguem com o nome antigo; `vite.config.ts` mantém `fonte-associados` como default — só troca de nome no painel Sentry); (2) a env `APP_ASSOCIADOS_URL` (link do WhatsApp, story 39) foi mantida com o nome antigo para não quebrar o link de pagamento — renomear para algo como `APP_PORTAL_URL` é opcional e deve ser feito junto com o deploy/infra. — commit: 8693cff — merge: 76b8f1d — 2026-06-17
+
+## Resumo final 56–58 (2026-06-17, execução autônoma AUTORUN)
+
+**3/3 stories implementadas, testadas (verde) e mergeadas na main.** Sem push, sem PR — revisar e subir manualmente. Feature **Eventos** completa: backend CRUD + banner (56) → gestão no adm em timeline (57) → inscrição pública + portal (58).
+
+| Story | Commit | Merge | Validação |
+|---|---|---|---|
+| 56 — eventos backend | 231c134 | 5f70b7b | api unit 460 (17 novos) + api e2e 268 (19 novos) + builds |
+| 57 — eventos adm timeline | 58efcc8 | 0482a48 | adm unit 40 (11 novos) + Playwright events 6 + suite adm 123/124 (1 flake) + build |
+| 58 — inscrição pública + portal | 8693cff | 76b8f1d | api unit 475 (15 novos) + api e2e 276 (8 novos) + portal build/unit 24/e2e 6 |
+
+**Modelo de dados:** `events` (56) + `event_registrations` (58), migrations 1783200000000 e 1783300000000. **Endpoints:** CRUD admin `/events/*` (ADMIN+COORDINATOR) + banner; públicos `/public/events/*` (sem auth, throttle por IP); admin `/events/:id/registrations`. **Banner** via StorageService.upload + StorageUrlInterceptor global (mockado nos testes; nenhum bucket real). **App renomeado** `associados`→`portal.fonte` (git mv, histórico preservado), guarda-chuva de funcionalidades públicas (doações + eventos), fluxo de pagamento intacto.
+
+**Nenhum BLOQUEIO de credencial** (feature sem pagamento/WhatsApp). PENDÊNCIAS-MANUAIS (não bloqueiam o código): renomear o projeto **Sentry** `fonte-associados` (DSN segue); decidir sobre a env `APP_ASSOCIADOS_URL` (mantida p/ não quebrar o link de pagamento); bucket real do banner em produção (em teste é mockado).
+
+**Incidente no início (resolvido, sem perda):** um sub-agente disparado para a 56 sofreu erro transitório 529 da API e commitou indevidamente só os `.md` de plano direto na `main`; commit descartado via `git reset --mixed` (de volta a 78f8d13, sem perda de arquivos), worktree órfã podada, e as stories foram reimplementadas no contexto do orquestrador (git controlado manualmente). Diagnóstico extra na 57: a 1ª rodada do e2e falhou por dep otimizado do Vite desatualizado no dev server adm (sem o módulo events da 56) — resolvido limpando o cache `.vite` e reiniciando o dev:test.
+
+**Reproduzir (serviços deixados de pé):**
+```
+pnpm docker:up && pnpm test:setup
+pnpm build:types && pnpm build:api-client
+pnpm dev:api:test                            # :3001
+pnpm --filter adm.fonte dev:test             # :5174
+pnpm test:api                                # api unit (475)
+pnpm test:api:e2e                            # api e2e (276)
+cd apps/adm.fonte && pnpm exec playwright test events.spec.ts   # 6
+pnpm --filter portal.fonte test:unit && pnpm --filter portal.fonte test:e2e
+```
+Serviços no ar ao fim: docker postgres, API teste :3001, adm teste :5174. Loop autônomo encerrado.

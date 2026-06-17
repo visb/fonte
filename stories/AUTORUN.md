@@ -30,9 +30,11 @@ nada e o próximo (após o reset) retoma. Colar exatamente (intervalo ~30 min):
 - **Sem push / sem PR**, mas **COM merge na main por story** (decisão do usuário): cada story, ao
   ficar verde, é mergeada na `main` local antes de seguir para a próxima. Sem push (usuário sobe
   depois).
-- **Testes verdes = critério de conclusão (DoD, epic 49)**: nenhum merge na main sem a suíte
-  tocada inteira verde. "Testes passando" é condição de fechamento da story — não só dos casos
-  novos, mas sem regressão no que a mudança tocou.
+- **Protocolo geral "teste-antes-do-merge" (DoD, epic 49)**: antes de **QUALQUER** merge na main —
+  qualquer story, qualquer área — rodar a suíte da área tocada e exigir **tudo verde**. "Atividade
+  concluída" = **implementada E testes verdes**; uma story não está pronta enquanto a suíte tocada
+  não passa inteira (casos novos **e** sem regressão no que a mudança tocou). Suíte vermelha = não
+  mergeia, corrige primeiro. Vale como regra permanente, não só para as stories desta fila.
 - **Não travar a fila**: se uma story bloquear (dependência externa, etc.), registrar em
   `PROGRESS.md`, pular e seguir.
 - **Plataforma**: Windows / PowerShell (Bash tool disponível p/ scripts POSIX).

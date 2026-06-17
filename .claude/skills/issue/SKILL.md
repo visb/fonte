@@ -61,12 +61,25 @@ git switch -c <type>/<slug>
 - Seguir a story à risca. Consultar as skills `fonte-*` para padrões de backend/frontend/workflow.
 - Reusar antes de criar (hooks, componentes, api-client) — checklist do `CLAUDE.md`.
 - Atualizar `fonte-api.postman_collection.json` se mexer em endpoint.
+- **Criar/atualizar os testes da mudança** (epic 49): toda issue **deve** deixar a cobertura em dia.
+  - **Unit sempre**: regra/lib/hook/serviço novo ou alterado ganha (ou atualiza) seu teste unit no
+    runner do workspace (Vitest web/packages, jest-expo nos Expo, Jest no backend) — ver o padrão
+    de testes em `fonte-workflow`. Arquivo `*.test.ts(x)` ao lado do código nos fronts/packages;
+    `*.spec.ts` no backend.
+  - **E2e quando houver fluxo de usuário**: fluxo novo/alterado (tela, formulário, endpoint que o
+    front consome) atualiza ou cria o spec e2e correspondente (Playwright nos web/Expo-web;
+    supertest no backend).
+  - Não deixar código novo sem teste nem teste obsoleto sem atualizar.
 
 ### 6. Validar
 
 - Rodar a validação mínima da tabela em `fonte-workflow` conforme a área tocada.
-- Backend: `pnpm test:api` (e `pnpm test:api:e2e` se houver e2e). adm: `pnpm test:adm` do spec.
-- Sem `skip`/`only`/`xfail` sem justificativa no código. Corrigir até verde.
+- Backend: `pnpm test:api` (e `pnpm test:api:e2e` se houver e2e). adm: `pnpm test:adm:unit` +
+  `pnpm test:adm` do spec. Demais workspaces: o `pnpm test:<workspace>:unit` (+ `:e2e` do fluxo).
+- **DoD = suíte tocada inteira verde** (epic 49): casos novos passando **e** sem regressão no que a
+  mudança tocou. Story só "concluída" quando implementada **e** com os testes verdes — não antes.
+- Sem `skip`/`only`/`xfail` sem justificativa no código (dependência externa sem credencial é
+  justificativa válida; mockar). Corrigir até verde.
 
 ### 7. Commitar a implementação
 
@@ -107,4 +120,8 @@ sem confirmação** — a menos que o usuário tenha autorizado o merge explicit
 - Codar na main.
 - Push sem pedido explícito.
 - Mergear na main sem confirmação.
-- Pular testes ou deletar trabalho não criado nesta story.
+- **Fechar a story sem criar/atualizar os testes da mudança** (unit sempre; e2e quando houver
+  fluxo). Cobertura em dia é parte do DoD, não um extra.
+- **Mergear na main com a suíte tocada vermelha** — "concluído" exige testes verdes (DoD, epic 49).
+- Pular testes (`skip`/`only`/`xfail`) sem justificativa no código, ou deletar trabalho não criado
+  nesta story.

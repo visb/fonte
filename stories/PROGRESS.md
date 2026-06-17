@@ -358,7 +358,7 @@ Fonte de verdade: esta seção + `git log` de `main`.
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 56 — eventos backend (módulo event + CRUD admin + banner) | [OK] | api unit 460✓ (17 novos event.service) + api e2e 268✓ (19 novos events) + build:types + build:api-client | 231c134 | 5f70b7b |
-| 2 | 57 — eventos adm.fonte (CRUD + timeline) | [ ] | | | |
+| 2 | 57 — eventos adm.fonte (CRUD + timeline) | [OK] | adm unit 40✓ (11 novos) + Playwright events 6✓ + suite adm 123/124 (1 flake pré-existente) + build✓ | 58efcc8 | 0482a48 |
 | 3 | 58 — inscrição pública + rename associados→portal.fonte | [ ] | | | |
 
 ## Log
@@ -368,3 +368,5 @@ Fonte de verdade: esta seção + `git log` de `main`.
 ## Nota de execução (2026-06-17)
 
 Um sub-agente disparado para a 56 sofreu um erro transitório 529 (Overloaded) da API e, antes de cair, commitou indevidamente só os 3 `.md` de plano direto na `main` (commit descartado). `main` foi resetada (--mixed) de volta a 78f8d13 sem perda de arquivos, worktree órfã podada, e a 56 foi reimplementada no contexto do orquestrador (git controlado manualmente) — daí a story ter sido feita inline em vez de via sub-agente.
+
+[OK] 57 — testes: adm unit **40 passed** (9 arquivos; 11 novos: `classifyEvents` — destaca os 3 futuros mais próximos, marca passados, ignora futuros além dos 3, estável em empate; `eventSchema` zod — endAt<startAt inválido, janela de inscrição incoerente inválida, capacity vazio=ilimitado, título obrigatório, capacity<=0 inválido) + Playwright **events.spec 6 passed** (menu+navegação, cria evento aparece na timeline, 3 próximos destacados via data-highlighted, evento passado opaco via data-past, edita, remove) + suite adm Playwright **123/124** (a única falha — activities "exibe as 6 colunas" — é flake de timing pré-existente por colisão de label quando o board acumula cards; passa isolada 5/5; não tocada pela story) + `pnpm --filter adm.fonte build` (tsc -b + vite) verde. Feature `events` (vertical slice MVVM): hooks (queryKeys.events), EventsPage (Loading/Empty/Error compartilhados), EventTimeline+EventTimelineItem (3 próximos destacados, passados opacos, badges de vagas/banner, ações editar/remover), EventForm rhf+zod (datetime-local↔ISO via eventDates), Create/EditEventDialog autossuficientes, EventBannerUpload (useUploadEventBanner). classifyEvents puro. Rota `/eventos` + item de menu (ADMIN+COORDINATOR). Consome `@fonte/api-client` events da 56 (sem HTTP novo). DIAGNÓSTICO (não-bug do código): a 1ª rodada do e2e falhou porque o dev server adm em :5174 (sessão anterior) tinha o **dep otimizado do Vite do @fonte/api-client desatualizado** (sem o módulo `events` da 56) → `api.events` undefined → mutation erra antes da rede. Corrigido reiniciando o dev:test com cache `.vite` limpo (re-otimiza deps); nenhuma mudança de código foi necessária por causa disso. — commit: 58efcc8 — merge: 0482a48 — 2026-06-17

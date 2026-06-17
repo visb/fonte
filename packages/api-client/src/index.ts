@@ -179,5 +179,9 @@ export type {
   CreateEventInput,
   UpdateEventInput,
   ListEventsParams,
+  EventPublic,
+  EventRegistration,
+  RegisterToEventInput,
+  EventRegistrationResult,
 } from './types.js';
 export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus } from './types.js';

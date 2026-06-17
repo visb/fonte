@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 /**
- * Fluxo público de adesão (app `associados`). Todos os endpoints
+ * Fluxo público de adesão (app `portal.fonte`). Todos os endpoints
  * `/public/associates/:token` são MOCKADOS via page.route — a API real e o
  * gateway de cartão (Pagar.me) nunca são chamados. O tokenizer roda em modo stub
  * (sem VITE_PAGARME_PUBLIC_KEY no dev).

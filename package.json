@@ -2,6 +2,7 @@
   "name": "fonte",
   "version": "0.0.1",
   "private": true,
+  "packageManager": "pnpm@11.3.0",
   "scripts": {
     "build:types": "pnpm --filter @fonte/types build",
     "build:doc-styles": "pnpm --filter @fonte/doc-styles build",

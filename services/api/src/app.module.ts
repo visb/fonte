@@ -40,6 +40,7 @@ import { AssociateModule } from './modules/associate/associate.module';
 import { PayableModule } from './modules/payable/payable.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { EventModule } from './modules/event/event.module';
+import { CacheModule } from './modules/cache/cache.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { EventModule } from './modules/event/event.module';
     }),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
+    CacheModule,
     // LGPD art. 46 — proteção contra força bruta. Janela global padrão; o login
     // recebe limite mais estrito via @Throttle no AuthController.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),

@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PRESENT_RESIDENT_STATUSES } from '@fonte/types';
@@ -12,9 +13,16 @@ import { CreateHouseDto } from './dto/create-house.dto';
 import { CreateHouseRuleDto } from './dto/create-house-rule.dto';
 import { UpdateHouseDto } from './dto/update-house.dto';
 import { StorageService } from '../storage/storage.service';
+import { CacheService } from '../cache/cache.service';
+import { RESIDENT_COUNTS_CHANGED_EVENT } from '../../common/events/resident-counts.event';
 
 @Injectable()
 export class HouseService {
+  // Mapa { houseId: contagem de filhos presentes }. Fonte única de findAll/findOne;
+  // invalidado por evento (RESIDENT_COUNTS_CHANGED_EVENT) + TTL de segurança.
+  private static readonly RESIDENT_COUNTS_KEY = 'house:resident-counts';
+  private static readonly RESIDENT_COUNTS_TTL = 3600;
+
   constructor(
     @InjectRepository(House)
     private houseRepository: Repository<House>,
@@ -23,23 +31,54 @@ export class HouseService {
     @InjectRepository(HouseRule)
     private houseRuleRepo: Repository<HouseRule>,
     private storageService: StorageService,
+    private cache: CacheService,
   ) {}
+
+  /**
+   * Contagem de filhos presentes por casa, cacheada no Redis. No miss roda o
+   * GROUP BY e grava com TTL; invalidada por {@link RESIDENT_COUNTS_CHANGED_EVENT}.
+   */
+  private async getResidentCountsMap(): Promise<Record<string, number>> {
+    const cached = await this.cache.get<Record<string, number>>(
+      HouseService.RESIDENT_COUNTS_KEY,
+    );
+    if (cached) return cached;
+
+    const rows = await this.houseRepository.manager.query<
+      Array<{ houseId: string; count: string }>
+    >(
+      `SELECT house_id AS "houseId", COUNT(id)::int AS count
+       FROM residents
+       WHERE status = ANY($1) AND deleted_at IS NULL
+       GROUP BY house_id`,
+      [[...PRESENT_RESIDENT_STATUSES]],
+    );
+
+    const map: Record<string, number> = {};
+    for (const r of rows) map[r.houseId] = Number(r.count);
+    await this.cache.set(
+      HouseService.RESIDENT_COUNTS_KEY,
+      map,
+      HouseService.RESIDENT_COUNTS_TTL,
+    );
+    return map;
+  }
+
+  /** Descarta o cache da contagem de filhos quando um resident muda. */
+  @OnEvent(RESIDENT_COUNTS_CHANGED_EVENT)
+  async invalidateResidentCounts(): Promise<void> {
+    await this.cache.del(HouseService.RESIDENT_COUNTS_KEY);
+  }
 
   async findAll(): Promise<
     Array<House & { activeResidentsCount: number; staffCount: number; thumbnailUrl: string | null }>
   > {
-    const [houses, residentCounts, staffCounts, thumbnails] = await Promise.all([
+    const [houses, residentMap, staffCounts, thumbnails] = await Promise.all([
       this.houseRepository.find({
         order: { name: 'ASC' },
         relations: ['coordinator'],
       }),
-      this.houseRepository.manager.query<Array<{ houseId: string; count: string }>>(
-        `SELECT house_id AS "houseId", COUNT(id)::int AS count
-         FROM residents
-         WHERE status = ANY($1) AND deleted_at IS NULL
-         GROUP BY house_id`,
-        [[...PRESENT_RESIDENT_STATUSES]],
-      ),
+      this.getResidentCountsMap(),
       this.houseRepository.manager.query<Array<{ houseId: string; count: string }>>(
         `SELECT house_id AS "houseId", COUNT(DISTINCT id)::int AS count
          FROM staff
@@ -53,13 +92,12 @@ export class HouseService {
       ),
     ]);
 
-    const residentMap = new Map(residentCounts.map((c) => [c.houseId, Number(c.count)]));
     const staffMap = new Map(staffCounts.map((c) => [c.houseId, Number(c.count)]));
     const thumbnailMap = new Map(thumbnails.map((t) => [t.houseId, t.thumbnailUrl]));
 
     return houses.map((h) =>
       Object.assign(h, {
-        activeResidentsCount: residentMap.get(h.id) ?? 0,
+        activeResidentsCount: residentMap[h.id] ?? 0,
         staffCount: staffMap.get(h.id) ?? 0,
         thumbnailUrl: thumbnailMap.get(h.id) ?? null,
       }),
@@ -67,15 +105,12 @@ export class HouseService {
   }
 
   async findOne(id: string): Promise<House & { activeResidentsCount: number; staffCount: number }> {
-    const [house, residentCounts, staffCounts] = await Promise.all([
+    const [house, residentMap, staffCounts] = await Promise.all([
       this.houseRepository.findOne({
         where: { id },
         relations: ['coordinator', 'photos'],
       }),
-      this.houseRepository.manager.query<Array<{ count: string }>>(
-        `SELECT COUNT(id)::int AS count FROM residents WHERE house_id = $1 AND status = ANY($2) AND deleted_at IS NULL`,
-        [id, [...PRESENT_RESIDENT_STATUSES]],
-      ),
+      this.getResidentCountsMap(),
       this.houseRepository.manager.query<Array<{ count: string }>>(
         `SELECT COUNT(DISTINCT id)::int AS count FROM staff WHERE house_id = $1 AND deleted_at IS NULL`,
         [id],
@@ -86,7 +121,7 @@ export class HouseService {
       house.photos.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     }
     return Object.assign(house, {
-      activeResidentsCount: Number(residentCounts[0]?.count ?? 0),
+      activeResidentsCount: residentMap[id] ?? 0,
       staffCount: Number(staffCounts[0]?.count ?? 0),
     });
   }

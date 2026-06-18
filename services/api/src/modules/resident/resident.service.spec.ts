@@ -148,6 +148,7 @@ function makeService(
     cancelFuturePending: jest.fn().mockResolvedValue(undefined),
     cancelAfterExit: jest.fn().mockResolvedValue(undefined),
   },
+  eventEmitter: { emit: jest.Mock } = { emit: jest.fn() },
 ) {
   return new ResidentService(
     residentRepo as Repository<Resident>,
@@ -161,6 +162,7 @@ function makeService(
     staffService as never, // StaffService
     { query: jest.fn().mockResolvedValue([]) } as never, // DataSource
     { create: jest.fn().mockResolvedValue(undefined) } as never, // NotificationService
+    eventEmitter as never, // EventEmitter2
   );
 }
 
@@ -358,6 +360,29 @@ describe('ResidentService.create', () => {
     );
     expect(admissionSave).toHaveBeenCalledTimes(1);
     expect(result).toBe(saved);
+  });
+
+  it('emits resident.counts.changed so the house count cache is invalidated', async () => {
+    const saved = makeResident({ id: RESIDENT_ID, houseId: HOUSE_ID });
+    const emitter = { emit: jest.fn() };
+    const service = makeService(
+      {
+        create: jest.fn().mockReturnValue(saved),
+        save: jest.fn().mockResolvedValue(saved),
+        findOne: jest.fn().mockResolvedValue(saved),
+        update: jest.fn(),
+      },
+      { create: jest.fn().mockReturnValue(makeAdmission()), save: jest.fn().mockResolvedValue(makeAdmission()) },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      emitter,
+    );
+
+    await service.create({ name: 'Ana', houseId: HOUSE_ID, status: 'PRE_ADMISSION' } as never);
+
+    expect(emitter.emit).toHaveBeenCalledWith('resident.counts.changed');
   });
 });
 
@@ -835,6 +860,7 @@ describe('ResidentService.getContributionsReport', () => {
       {} as never,
       { query } as never,
       { create: jest.fn().mockResolvedValue(undefined) } as never,
+      { emit: jest.fn() } as never,
     );
     return { service, query };
   }
@@ -917,6 +943,7 @@ describe('ResidentService.findAdmissionDocuments', () => {
       {} as never,                                                            // staffService
       {} as never,                                                            // dataSource
       {} as never,                                                            // notifications
+      { emit: jest.fn() } as never,                                           // eventEmitter
     );
 
     const result = await service.findAdmissionDocuments(RESIDENT_ID, [

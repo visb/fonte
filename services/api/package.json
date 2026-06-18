@@ -55,6 +55,7 @@
     "class-validator": "^0.14.1",
     "dotenv": "^16.4.7",
     "express": "^4.22.1",
+    "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.2",
     "jszip": "^3.10.1",
     "mammoth": "^1.12.0",

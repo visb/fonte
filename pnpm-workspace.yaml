@@ -3,6 +3,8 @@ packages:
   - "services/*"
   - "packages/*"
 nodeLinker: hoisted
+overrides:
+  react-server-dom-webpack: 19.0.2
 allowBuilds:
   '@nestjs/core': true
   '@sentry/cli': true

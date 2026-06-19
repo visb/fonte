@@ -32,6 +32,44 @@ test.describe('Atividades (board Kanban)', () => {
       .filter({ has: page.getByText(label, { exact: true }) });
   }
 
+  /**
+   * Arrasta o card (pela alça de arraste) até o centro da coluna de destino.
+   * O dnd-kit usa PointerSensor com distância mínima de ativação, então movemos
+   * o mouse em passos para disparar o início do arraste antes de soltar.
+   */
+  async function dragCardTo(page: Page, title: string, targetLabel: string) {
+    const handle = card(page, title).getByRole('button', { name: 'Arrastar atividade' });
+    const target = column(page, targetLabel);
+    // O board rola na horizontal; garante o alvo no viewport antes de medir.
+    await target.scrollIntoViewIfNeeded();
+    const from = await handle.boundingBox();
+    const to = await target.boundingBox();
+    if (!from || !to) throw new Error('Card ou coluna não encontrados para o arraste.');
+
+    // A alça fica na borda esquerda do card; o dnd-kit translada o overlay a partir
+    // da origem do card. Miramos a porção esquerda da coluna-alvo para o overlay
+    // cair sobre ela (e não sobre a coluna vizinha à direita).
+    const sx = from.x + from.width / 2;
+    const sy = from.y + from.height / 2;
+    const tx = to.x + 24;
+    const ty = to.y + Math.min(to.height / 2, 200);
+
+    // Eventos reais do mouse: o PointerSensor do dnd-kit os rastreia.
+    // Move em vários passos com pausas para a detecção de colisão (rAF) rodar.
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    // Primeiro passo curto vence a activation constraint (6px) sem chegar ao alvo.
+    await page.mouse.move(sx + 10, sy + 10, { steps: 5 });
+    await page.waitForTimeout(50);
+    await page.mouse.move((sx + tx) / 2, (sy + ty) / 2, { steps: 10 });
+    await page.waitForTimeout(50);
+    await page.mouse.move(tx, ty, { steps: 10 });
+    await page.waitForTimeout(100);
+    await page.mouse.move(tx, ty, { steps: 2 });
+    await page.waitForTimeout(120);
+    await page.mouse.up();
+  }
+
   test('ADMIN vê o item Atividades no menu e navega', async ({ page }) => {
     await login(page);
     await page.getByRole('link', { name: 'Atividades' }).click();
@@ -150,6 +188,78 @@ test.describe('Atividades (board Kanban)', () => {
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await card(page, title).click();
     await expect(page.getByRole('dialog').getByLabel('Descrição')).toHaveValue(desc);
+  });
+
+  test('arrasta um card de Fazendo para Impedimento (move)', async ({ page }) => {
+    await login(page);
+    await goto(page);
+    const title = `Arrastar impedir ${ts()}`;
+    await createActivity(page, title);
+
+    // Leva até "Fazendo" pelos botões (pré-condição do arraste).
+    await card(page, title).getByRole('button', { name: 'Enviar' }).click();
+    await card(page, title).getByRole('button', { name: 'Aprovar' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByLabel('Responsável *').selectOption({ index: 1 });
+    await page.getByRole('button', { name: 'Aprovar' }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await card(page, title).getByRole('button', { name: 'Iniciar' }).click();
+    await expect(card(page, title).getByText('Fazendo')).toBeVisible();
+
+    // Arrasta Fazendo → Impedimento (colunas adjacentes, transição válida).
+    await dragCardTo(page, title, 'Impedimento');
+    await expect(card(page, title).getByText('Impedimento')).toBeVisible();
+  });
+
+  test('arrastar para coluna inválida não move o card e mostra erro', async ({ page }) => {
+    await login(page);
+    await goto(page);
+    const title = `Arrastar inválido ${ts()}`;
+    await createActivity(page, title);
+
+    // Rascunho → Solicitações (Enviar) para posicionar o card em REQUESTED.
+    await card(page, title).getByRole('button', { name: 'Enviar' }).click();
+    await expect(card(page, title).getByText('Solicitações')).toBeVisible();
+
+    // REQUESTED → DRAFT (Solicitações → Rascunho, colunas adjacentes) não existe na
+    // matriz: o card volta sozinho (sem mutation otimista) e surge o erro.
+    await dragCardTo(page, title, 'Rascunho');
+    await expect(
+      page.getByText('Não é possível mover esta atividade para essa coluna.'),
+    ).toBeVisible();
+    // Continua em Solicitações.
+    await expect(card(page, title).getByText('Solicitações').first()).toBeVisible();
+  });
+
+  test('arrastar Solicitações → A fazer abre o dialog de aprovação (ADMIN)', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+    const title = `Arrastar aprovar ${ts()}`;
+    await createActivity(page, title);
+    await card(page, title).getByRole('button', { name: 'Enviar' }).click();
+    await expect(card(page, title).getByText('Solicitações')).toBeVisible();
+
+    // Soltar em "A fazer" abre o dialog em vez de mover direto.
+    await dragCardTo(page, title, 'A fazer');
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByLabel('Responsável *').selectOption({ index: 1 });
+    await page.getByRole('button', { name: 'Aprovar' }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(card(page, title).getByText('A fazer')).toBeVisible();
+  });
+
+  test('clicar no card (sem arrastar) ainda abre o modal de detalhes', async ({ page }) => {
+    await login(page);
+    await goto(page);
+    const title = `Click não arrasta ${ts()}`;
+    await createActivity(page, title);
+
+    await card(page, title).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(title)).toBeVisible();
   });
 
   test('coluna "A fazer" não exibe o quick-add', async ({ page }) => {

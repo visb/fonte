@@ -1,3 +1,4 @@
+import { useDroppable } from '@dnd-kit/core';
 import { ActivityStatus } from '@fonte/types';
 import type { Activity } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +11,10 @@ interface Props {
   activities: Activity[];
   isAdmin: boolean;
   role: string | null;
+  /** Há um card sendo arrastado neste exato momento? */
+  isDragActive: boolean;
+  /** O card arrastado pode ser solto aqui pelo usuário corrente? (UX, não autoridade) */
+  isValidDropTarget: boolean;
   onChangeStatus: (activity: Activity, status: ActivityStatus) => void;
   onApprove: (activity: Activity) => void;
   onEdit: (activity: Activity) => void;
@@ -22,6 +27,8 @@ export function ActivityColumn({
   activities,
   isAdmin,
   role,
+  isDragActive,
+  isValidDropTarget,
   onChangeStatus,
   onApprove,
   onEdit,
@@ -29,8 +36,22 @@ export function ActivityColumn({
   onOpenDetails,
 }: Props) {
   const canQuickAdd = canQuickAddInStatus(column.status, role);
+  const { setNodeRef, isOver } = useDroppable({ id: column.status });
+
+  // Durante o arraste: destaca alvos válidos; esmaece os inválidos.
+  const dropClass = isDragActive
+    ? isValidDropTarget
+      ? `ring-2 ring-primary/50 ${isOver ? 'bg-primary/10' : ''}`
+      : 'opacity-50'
+    : '';
+
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-lg bg-muted/40 p-2">
+    <div
+      ref={setNodeRef}
+      data-column-status={column.status}
+      data-valid-drop={isDragActive ? String(isValidDropTarget) : undefined}
+      className={`flex w-72 shrink-0 flex-col rounded-lg bg-muted/40 p-2 transition-colors ${dropClass}`}
+    >
       <div className="flex items-center justify-between px-1 py-1.5">
         <Badge variant={column.variant}>{column.label}</Badge>
         <span className="text-xs text-muted-foreground">{activities.length}</span>

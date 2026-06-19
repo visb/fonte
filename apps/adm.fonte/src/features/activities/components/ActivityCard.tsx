@@ -1,4 +1,6 @@
-import { ArrowLeft, ArrowRight, Ban, Check, Pencil, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Ban, Check, GripVertical, Pencil, Send, Trash2 } from 'lucide-react';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { ActivityStatus } from '@fonte/types';
 import type { Activity } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
@@ -30,12 +32,25 @@ export function ActivityCard({
   onOpenDetails,
 }: Props) {
   const { status } = activity;
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: activity.id,
+    data: { activity },
+  });
+
+  const style = transform
+    ? { transform: CSS.Translate.toString(transform), zIndex: 50 }
+    : undefined;
 
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       role="button"
       tabIndex={0}
-      className="cursor-pointer rounded-md border bg-card p-3 shadow-sm space-y-2 hover:border-primary/40"
+      data-activity-id={activity.id}
+      className={`cursor-pointer rounded-md border bg-card p-3 shadow-sm space-y-2 hover:border-primary/40 ${
+        isDragging ? 'opacity-50' : ''
+      }`}
       onClick={() => onOpenDetails(activity)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -45,7 +60,19 @@ export function ActivityCard({
       }}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium leading-tight">{activity.title}</p>
+        {/* Alça de arraste: o resto do card permanece clicável (abre detalhes). */}
+        <button
+          type="button"
+          aria-label="Arrastar atividade"
+          title="Arraste para mover de coluna"
+          className="-ml-1 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+          onClick={(e) => e.stopPropagation()}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical size={14} />
+        </button>
+        <p className="flex-1 text-sm font-medium leading-tight">{activity.title}</p>
         <Badge variant={ACTIVITY_STATUS_VARIANTS[status]} className="shrink-0">
           {ACTIVITY_STATUS_LABELS[status]}
         </Badge>

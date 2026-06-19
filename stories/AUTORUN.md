@@ -1,19 +1,21 @@
-# AUTORUN — Execução autônoma das stories 44–55 (associados: overview/autocancel/tela · contas a pagar · atividades kanban · epic de cobertura de testes)
+# AUTORUN — protocolo de execução autônoma de stories
 
-Protocolo para implementar, testar e commitar as stories `44`–`55` **sem intervenção humana**. As
-decisões já estão travadas dentro de cada `NN-*.md` (seções "Decisões do usuário (travadas)") —
-**não perguntar nada ao usuário**.
+Protocolo para **implementar, testar e commitar** um lote de stories **sem intervenção humana**. As
+decisões já estão travadas dentro de cada `stories/NN-*.md` (seção "Decisões travadas") — **não
+perguntar nada ao usuário** durante a execução.
 
-> Histórico de execuções anteriores (12–19, 21–25, 33–41) está em `PROGRESS.md`. Não confundir.
+> Preencha os placeholders `{...}` ao iniciar uma rodada (quais stories, ordem, dependências).
+> Histórico de execuções anteriores vive no `git log` + `stories/done/`. Estado da rodada corrente
+> em `PROGRESS.md`.
 
 ## Prompt de início (colar e sair)
 
-Iniciar com `/loop` **com intervalo fixo** (não auto-pacing). O harness redispara o prompt
-sozinho a cada intervalo, independente do limite de sessão — disparo que cair no limite não faz
-nada e o próximo (após o reset) retoma. Colar exatamente (intervalo ~30 min):
+Iniciar com `/loop` **com intervalo fixo** (não auto-pacing). O harness redispara o prompt sozinho
+a cada intervalo, independente do limite de sessão — disparo que cair no limite não faz nada e o
+próximo (após o reset) retoma. Colar (ajustar a faixa de stories e a ordem):
 
 ```
-/loop 30m Modo autônomo. Siga C:\code\fonte\stories\AUTORUN.md à risca, sem me perguntar nada. A cada disparo deste loop, releia stories/PROGRESS.md + git log e continue da próxima story NÃO commitada na ordem 44 → 46 → 45 → 47 → 48 → 49 → 55 → 51 → 52 → 50 → 53 → 54. Se a sessão tiver batido o limite, não faça nada e aguarde o próximo disparo (após o reset) — não tente rearmar nada. Implemente tudo de 44 a 55 que for autonomamente possível; ao terminar cada story, rode os testes automatizados (unit + e2e) e, com a suíte tocada TODA verde, faça merge --no-ff na main e siga para a próxima. O que depender de credencial/serviço externo (Meta WhatsApp) que você não tem: implemente atrás de interface com mocks nos testes, marque BLOQUEADO em PROGRESS.md com o motivo, e siga — não invente chaves, não chame API real, não dê push. Quando todas (44-55) estiverem commitadas ou BLOQUEADAS, escreva o resumo final em PROGRESS.md e encerre o loop.
+/loop 30m Modo autônomo. Siga C:\code\fonte\stories\AUTORUN.md à risca, sem me perguntar nada. A cada disparo deste loop, releia stories/PROGRESS.md + git log e continue da próxima story NÃO commitada na ordem {ORDEM}. Se a sessão tiver batido o limite, não faça nada e aguarde o próximo disparo (após o reset) — não tente rearmar nada. Implemente tudo que for autonomamente possível; ao terminar cada story, rode os testes automatizados (unit + e2e) e, com a suíte tocada TODA verde, faça merge --no-ff na main e siga para a próxima. O que depender de credencial/serviço externo que você não tem: implemente atrás de interface com mocks nos testes, marque BLOQUEADO em PROGRESS.md com o motivo, e siga — não invente chaves, não chame API real, não dê push. Quando todas estiverem commitadas ou BLOQUEADAS, escreva o resumo final em PROGRESS.md e encerre o loop.
 ```
 
 ---
@@ -27,233 +29,134 @@ nada e o próximo (após o reset) retoma. Colar exatamente (intervalo ~30 min):
     de sessão**: encerrar o turno sem fazer nada; o próximo disparo do `/loop` (após o reset)
     retoma sozinho. Não tentar rearmar nem insistir em loop apertado.
 - **Nenhum app rodado manualmente**: o orquestrador sobe docker, API teste, adm teste.
-- **Sem push / sem PR**, mas **COM merge na main por story** (decisão do usuário): cada story, ao
-  ficar verde, é mergeada na `main` local antes de seguir para a próxima. Sem push (usuário sobe
-  depois).
-- **Protocolo geral "teste-antes-do-merge" (DoD, epic 49)**: antes de **QUALQUER** merge na main —
-  qualquer story, qualquer área — rodar a suíte da área tocada e exigir **tudo verde**. "Atividade
-  concluída" = **implementada E testes verdes**; uma story não está pronta enquanto a suíte tocada
-  não passa inteira (casos novos **e** sem regressão no que a mudança tocou). Suíte vermelha = não
-  mergeia, corrige primeiro. Vale como regra permanente, não só para as stories desta fila.
+- **Sem push / sem PR**, mas **COM merge na main por story** (padrão; ajustar se a rodada pedir
+  outra coisa): cada story, ao ficar verde, é mergeada na `main` local antes da próxima. Sem push.
+- **Protocolo "teste-antes-do-merge" (DoD)**: antes de **QUALQUER** merge na main — rodar a suíte
+  da área tocada e exigir **tudo verde**. "Story concluída" = **implementada E testes verdes**
+  (casos novos **e** sem regressão no que a mudança tocou). Suíte vermelha = não mergeia, corrige.
 - **Não travar a fila**: se uma story bloquear (dependência externa, etc.), registrar em
-  `PROGRESS.md`, pular e seguir.
+  `PROGRESS.md`, pular e seguir — **a menos que** a ordem tenha dependência rígida (ver "Ordem").
 - **Plataforma**: Windows / PowerShell (Bash tool disponível p/ scripts POSIX).
 
-## Stories e o que são
+## Stories da rodada
 
-| #   | Tipo                                                                                                                                       | Implementar?                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 44  | Overview de faturamento dos associados (agregação backend + tela adm; split de rotas `/associados` overview ↔ `/associados/lista`)         | SIM — totalmente autônomo                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| 45  | Link de autocancelamento da assinatura no lembrete WhatsApp (3º+ lembrete) + página pública `/cancelar/:token` no app `associados`         | PARCIAL — envio Meta sem credencial (mock); código completo e testável                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 46  | Melhorias na tela de associados: detalhe (adesão + histórico, só front), máscara WhatsApp, scroll infinito = **paginação real** no backend | SIM — totalmente autônomo                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| 47  | **Contas a Pagar** — módulo `payable` (backend NestJS) + grupo "Financeiro" no adm (ADMIN)                                                 | SIM — greenfield full-stack autônomo                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| 48  | **Atividades** — board Kanban (backend + adm + ops), escopo por casa, 6 colunas                                                            | SIM — autônomo; ver "Dependências externas" (ops é RN)                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 49  | **EPIC** cobertura de testes                                                                                                               | **TEM código próprio** (não é coordenador puro): editar `.claude/skills/fonte-workflow/SKILL.md` (padrão de testes) + `.claude/skills/issue/SKILL.md` (toda issue futura atualiza testes) + reservar scripts raiz `test:*` (`test:adm:unit`, `test:associados`(+`:e2e`), `test:ops:unit`/`:e2e`, `test:app:unit`/`:e2e`, `test:api-client`) e agregador `test:all`; este AUTORUN já exige suíte verde antes do merge. Depois coordena 50–55 e fecha quando todas verdes. |
-| 50  | Auditoria + gaps de teste do `services/api` (jest unit + supertest e2e)                                                                    | SIM — autônomo                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| 51  | Unit tests do `adm.fonte` (Vitest + RTL + jsdom)                                                                                           | SIM — autônomo                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| 52  | Testes do app `associados` (Vitest unit + Playwright e2e web)                                                                              | SIM — autônomo                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| 53  | Testes do `ops.fonte` (jest-expo unit + Playwright contra export web)                                                                      | SIM — autônomo (sem emulador)                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| 54  | Testes do `app.fonte` (jest-expo unit + Playwright contra export web)                                                                      | SIM — autônomo (sem emulador)                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| 55  | Unit tests do `@fonte/api-client` (Vitest, transporte HTTP mockado)                                                                        | SIM — autônomo                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+Preencher ao iniciar:
 
-## Ordem (respeita dependências)
+| #   | Tipo / o que é | Implementar? |
+| --- | --- | --- |
+| {NN} | {descrição} | {SIM / depende de X} |
+
+## Ordem e dependências
 
 ```
-44 → 46 → 45            (associados — epic 36)
-47                      (contas a pagar — standalone)
-48                      (atividades kanban — standalone)
-49(epic+código) → 55 → 51 → 52 → 50 → 53 → 54   (cobertura de testes — epic 49)
+{NN → ... → MM}
 ```
 
-- **44 antes de 46/45**: 44 faz o split de rotas (`/associados` overview, `/associados/lista`
-  lista) e renomeia `AssociatesPage`→`AssociatesListPage`; 46 só então incrementa a página da
-  lista (detalhe + scroll infinito) sobre o nome já renomeado. 45 (autocancel) é independente dos
-  outros dois — fecha o trio.
-- **47 e 48** são greenfield independentes; vêm depois dos associados.
-- **Epic 49 por último**: 49 primeiro entrega seu código (skills + scripts + este AUTORUN), depois
-  as filhas. Ordem das filhas conforme a story 49: **55** (api-client, base de todos os fronts) e
-  **51** (adm unit) primeiro porque destravam o padrão Vitest reusado por **52** (associados);
-  **50** (gaps do backend) depois, já enxergando os módulos novos `payable`/`activity` (47/48)
-  mergeados; **53/54** (Expo web) por último por exigirem o setup de export web + Playwright.
+- Declarar dependências rígidas. Se houver (story B consome contrato de A), a fila é **sequencial**:
+  se A bloquear, B também fica bloqueada — registrar e **parar a fila**, não pular.
+- Sem dependência rígida, pode reordenar por conveniência (ex: do mais isolado ao mais acoplado).
 
 ## Branches — uma por story, mergeada na main ao fechar
 
-Como cada story é mergeada na main assim que fica verde, usar **uma branch por story**, sempre
-criada da `main` ATUAL (que já tem o merge da story anterior):
+Cada branch parte da `main` ATUAL (já com o merge da story anterior):
 
 ```
 git switch main
-git switch -c <prefixo>/story-NN-<slug>
+git switch -c {prefixo}/story-NN-{slug}
 ```
 
-- 44 → `feat/story-44-associados-overview`
-- 46 → `feat/story-46-associados-tela-melhorias`
-- 45 → `feat/story-45-associados-autocancelamento`
-- 47 → `feat/story-47-contas-a-pagar`
-- 48 → `feat/story-48-atividades-kanban`
-- 49 → `test/story-49-cobertura-epic` (skills + scripts raiz + este AUTORUN)
-- 55 → `test/story-55-api-client`
-- 51 → `test/story-51-adm-unit`
-- 52 → `test/story-52-associados`
-- 50 → `test/story-50-api-gaps`
-- 53 → `test/story-53-ops-web`
-- 54 → `test/story-54-app-web`
-
-> Cada branch parte da main atualizada, então as dependências entre stories ficam resolvidas pelo
-> merge sequencial (46/45 já enxergam 44; o epic de testes já enxerga 44–48).
-
-- Um commit por story: `feat(story-NN): <título>` para features (44–48) e `test(story-NN): <título>`
-  para as filhas de teste (50–55). Vários commits coesos se a story for grande.
-- Sempre rodar hooks; co-author `Claude Opus 4.8 <noreply@anthropic.com>`.
-- Merge na main (após suíte verde): `git switch main && git merge --no-ff <prefixo>/story-NN-<slug>
--m "merge: story NN — <título>"`. Sem push. Não deletar a branch.
+- Commitar o `.md` da story primeiro na branch: `docs(stories): plano da story NN — <título>`.
+- Um ou mais commits coesos da implementação: `feat(story-NN): <título>`. Sempre rodar hooks;
+  co-author `Claude Opus 4.8 <noreply@anthropic.com>` (ou o modelo corrente).
+- Merge na main (após suíte verde): `git switch main && git merge --no-ff {prefixo}/story-NN-{slug}
+  -m "merge: story NN — <título>"`. Sem push. Não deletar a branch.
+- Arquivar a story: `git mv stories/NN-*.md stories/done/` + commit
+  `docs(stories): arquiva story NN concluida em done/`.
 
 ## Dependências externas — o que fazer SEM credenciais (não perguntar, não inventar)
 
 Regra geral: **implementar a lógica e os contratos atrás de interface clara, com testes usando
-MOCK**; nunca chamar API real, nunca inventar chave, nunca commitar segredo. Marcar a parte que
-exige serviço externo como BLOQUEADO em `PROGRESS.md` com o motivo e o que falta.
+MOCK**; nunca chamar API real, nunca inventar chave, nunca commitar segredo. Pontos típicos
+(pagamento, WhatsApp/Meta, storage/bucket, Sentry): mockar nos testes; marcar PENDENTE-MANUAL em
+`PROGRESS.md` o que exige ambiente externo; não bloquear o código por falta de credencial.
 
-### Story 45 (autocancelamento via WhatsApp) — envio Meta bloqueado (igual story 39)
+## Cuidados específicos da rodada
 
-Não há credencial Meta WhatsApp neste ambiente. Implementar:
-
-- A **contagem de streak** (lembretes desde a última cobrança `PAID`) e o gatilho do 3º+ lembrete
-  no `AssociateChargeScheduler` — 100% testável com `Repository<AssociateCharge>` real (db de
-  teste) e `WhatsAppClient` **mockado**.
-- O **segundo botão de URL** (link de cancelamento) no `WhatsAppClient`/payload — testar a montagem
-  do payload (botão de pagamento + botão de cancelar) com o cliente mockado; Meta nunca é chamada.
-- A **página pública `/cancelar/:token`** no app `associados` (resolve pelo `payment_token`
-  existente) + o **endpoint público de cancelamento** no backend — testáveis por build/tsc (app) e
-  unit/e2e com gateway mockado (backend).
-- **BLOQUEADO** (registrar em `PROGRESS.md`): envio real Meta + **novo template aprovado** com os
-  dois botões de URL (sem credencial/template). Anotar o nome do template a preencher em
-  `META_WA_TEMPLATE_NAME` e que o formato dos `components` pode precisar de ajuste ao template real.
-
-### Story 48 (Atividades Kanban) — parte `ops.fonte` (React Native) sem emulador
-
-- Backend + adm: 100% autônomos (api unit + e2e; adm build/tsc + Playwright do board).
-- ops.fonte: implementar a tela do board em RN; validar por **`tsc --noEmit`** + sem regressão no
-  build dos demais. O e2e **mobile nativo** (Maestro/emulador) é bloqueio de infra recorrente
-  (ver PROGRESS 19/25) — **não bloquear a story por isso**. O e2e **web** do ops só passa a existir
-  na story 53; em 48 a validação do ops é estática (tsc) + a feature web roda depois. Registrar a
-  verificação do board no device como pendência manual.
+Listar operações de risco médio (renomear app, mexer em CI/scripts, migration destrutiva, etc.) e
+como validar cada uma. Preencher conforme as stories da rodada.
 
 ## Bootstrap de serviços (uma vez, no início, em background)
-
-Backend + adm cobrem 44/46/47/48(adm)/50/51/55. App `associados` (45/52) e Expo web (53/54) são
-build/export por story.
 
 1. `pnpm install` (se necessário)
 2. `pnpm docker:up`
 3. `pnpm test:setup` — db de teste + seed
 4. `pnpm build:types && pnpm build:api-client` — **obrigatório** antes de subir API/adm (sem o
-   `dist/` de `@fonte/api-client` a suíte adm inteira quebra). Rebuildar de novo sempre que a story
-   tocar `packages/types` ou `packages/api-client`.
+   `dist/` de `@fonte/api-client` a suíte adm inteira quebra). Rebuildar sempre que a story tocar
+   `packages/types` ou `packages/api-client`.
 5. **API teste** (background): `pnpm dev:api:test` (porta 3001). Esperar healthcheck antes de testar.
+   Rodar `migration:run:test` após criar migration nova.
 6. **adm teste** (background): `pnpm --filter adm.fonte dev:test` (porta 5174). Esperar responder.
 
 ## Por cada story (dentro do sub-agente)
 
-a. Ler `stories/NN-*.md` **inteiro** (e o epic-pai quando houver). Implementar exatamente o descrito.
+a. Ler `stories/NN-*.md` **inteiro**. Implementar exatamente o descrito.
 b. Se tocou `packages/types` / `packages/api-client`, rodar os builds correspondentes.
-c. Se adicionou dependência npm, instalar com `pnpm --filter <app> add <pkg>` conferindo compat
-(Vitest/RTL/jsdom no Vite instalado; jest-expo na major que o `expo` corrente recomenda).
-d. Atualizar/adicionar os testes da seção **Validação** da story (sem `skip`/`only`/`xfail` sem
-justificativa no código — dependência externa SEM credencial é justificativa válida; mockar).
-e. Atualizar `fonte-api.postman_collection.json` se a story mudar endpoints (44/45/46/47/48 mexem
-no backend; as filhas de teste 50–55 normalmente não mudam endpoint).
-f. Rodar os testes **automatizados** da story, usando os serviços já no ar:
-
-- Backend: `pnpm test:api` **e** `pnpm test:api:e2e` (sempre os dois — unit + e2e)
-- adm: `pnpm test:adm` filtrando pelo spec da story; unit (após 51) `pnpm test:adm:unit`
-- associados: `pnpm --filter associados build` + `pnpm test:associados` (após 52)
-- ops/app: `pnpm test:ops:unit`/`pnpm test:app:unit` (jest-expo) + e2e web Playwright contra
-  `expo export --platform web` (após 53/54). Maestro nativo é opcional, não é gate.
-- api-client (55): `pnpm test:api-client` + `pnpm build:api-client`
-  g. Corrigir até a suíte tocada passar **inteira** (casos novos + sem regressão). Suíte verde é
-  pré-requisito do merge (DoD, epic 49).
-  h. `git add` apenas arquivos da story + testes + postman; `git commit` na convenção
-  (`feat(story-NN)` para 44–48, `test(story-NN)` para 50–55).
-  i. **Merge na main**: `git switch main && git merge --no-ff <prefixo>/story-NN-<slug> -m "merge:
+c. Se criou migration, aplicá-la no db de teste (`migration:run:test`) antes do e2e.
+d. Se adicionou dependência npm, instalar com `pnpm --filter <app> add <pkg>` conferindo compat.
+e. Atualizar/adicionar os testes da seção **Validação** da story (sem `skip`/`only`/`xfail` sem
+   justificativa no código — dependência externa SEM credencial é justificativa válida; mockar).
+f. Atualizar `fonte-api.postman_collection.json` se a story mudar endpoints.
+g. Rodar os testes **automatizados** da story (serviços já no ar):
+   - Backend: `pnpm test:api` **e** `pnpm test:api:e2e` (sempre os dois).
+   - adm: `pnpm test:adm:unit` + `pnpm test:adm` filtrando pelo spec da story.
+   - portal: `pnpm --filter portal.fonte build` + `pnpm test:portal`(+`:e2e`).
+   - ops/app: `pnpm test:ops:unit`/`pnpm test:app:unit` + e2e web Playwright (Maestro nativo é
+     opcional, não-gate — bloqueio de infra recorrente).
+h. Corrigir até a suíte tocada passar **inteira** (casos novos + sem regressão). Suíte verde é
+   pré-requisito do merge (DoD).
+i. `git add` apenas arquivos da story + testes + postman; `git commit` (`feat(story-NN)`).
+j. **Merge na main**: `git switch main && git merge --no-ff {prefixo}/story-NN-{slug} -m "merge:
    story NN — <título>"`. Resolver conflito se houver. Sem push, não deletar a branch.
-  j. Devolver ao orquestrador: arquivos tocados, testes rodados (unit+e2e), hash do merge, BLOQUEIOS.
+k. Arquivar: `git mv stories/NN-*.md stories/done/` + commit de arquivamento.
+l. Devolver ao orquestrador: arquivos tocados, testes rodados (unit+e2e), hash do merge, BLOQUEIOS.
 
 ## Registro de progresso
 
-Manter `stories/PROGRESS.md` (seção "stories 44–55"). Após cada story, anexar:
+Manter `stories/PROGRESS.md` (seção nova da rodada). Após cada story, anexar:
 
 ```
-[OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <timestamp> — <bloqueio se houver>
+[OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver>
 ```
 
 Fonte de verdade para retomar após resumo de contexto / reinício / reset de limite: **git log +
-PROGRESS.md**. Stories já commitadas (`feat(story-NN)` / `test(story-NN)`) = feitas; pular.
+PROGRESS.md**. Stories já commitadas (`feat(story-NN)`) = feitas; pular.
 
 ## Limite de sessão / continuação automática (via `/loop`)
 
 **A continuação é responsabilidade do `/loop`, não do modelo.** A execução roda dentro de um
-`/loop` com **intervalo fixo** (~30 min): o **harness** redispara o prompt a cada intervalo,
-independente de o modelo conseguir inferir naquele momento. Por isso sobrevive ao limite de sessão
-sem o modelo precisar rearmar nada (era a fragilidade do esquema antigo com `ScheduleWakeup`:
-limite estourado → modelo não consegue rearmar → fila morria).
+`/loop` com **intervalo fixo** (~30 min): o **harness** redispara o prompt a cada intervalo. Por
+isso sobrevive ao limite de sessão sem o modelo precisar rearmar nada.
 
-Quando a conta bate o limite (`You've hit your session limit · resets <hora>`), o disparo atual
-não consegue fazer nada — **encerrar o turno sem ação**. O **próximo disparo do loop**, já depois
-do reset, retoma sozinho. Nada a armar, nada a rearmar.
+Quando a conta bate o limite (`You've hit your session limit · resets <hora>`), o disparo atual não
+consegue fazer nada — **encerrar o turno sem ação**. O **próximo disparo do loop**, já depois do
+reset, retoma sozinho.
 
 > Vale para o **limite de uso/sessão**. Encher a **janela de contexto** é outro caso — há
 > auto-compactação e a execução segue sozinha dentro do mesmo turno.
 
 ### A cada disparo do loop
 
-1. **Reler estado**: `stories/PROGRESS.md` + `git log`. Fonte de verdade do que já foi feito —
-   stories com commit `feat(story-NN)` / `test(story-NN)` estão prontas; pular.
+1. **Reler estado**: `stories/PROGRESS.md` + `git log`. Stories com commit `feat(story-NN)` estão
+   prontas; pular.
 2. **Se a sessão estiver no limite**: não fazer nada, encerrar o turno. O harness redispara depois.
-3. **Caso contrário**: identificar a próxima story NÃO commitada na ordem
-   `44 → 46 → 45 → 47 → 48 → 49 → 55 → 51 → 52 → 50 → 53 → 54` e executar do passo "Por cada
-   story" (idealmente várias por turno, em sequência, enquanto houver orçamento).
-4. **Salvar estado sempre**: progresso em `PROGRESS.md` + tudo commitado (cada story = checkpoint),
-   pra que o disparo seguinte saiba exatamente onde continuar.
+3. **Caso contrário**: identificar a próxima story NÃO commitada na ordem e executar do passo "Por
+   cada story" (várias por turno se houver orçamento).
+4. **Salvar estado sempre**: progresso em `PROGRESS.md` + tudo commitado (cada story = checkpoint).
 
 ### Encerrar o loop
 
-Quando **todas** (44–55) estiverem commitadas ou registradas BLOQUEADO em `PROGRESS.md`: escrever
-o resumo final (seção "Ao terminar") e **encerrar o loop** — não reagendar / parar de iterar.
-(Se o loop continuar disparando à toa, o usuário interrompe.)
-
-> Objetivo: a fila sobrevive a um esgotamento de limite no meio porque o redisparo é do harness
-> (`/loop`), não do modelo — retoma após o reset e fecha quando tudo estiver verde.
-
-## Epic 49 — TEM código próprio (não é coordenador puro)
-
-Diferente dos epics 33/36 (puros coordenadores), a story 49 entrega artefatos antes das filhas.
-Disparar um sub-agente para implementar `49-*.md` (branch `test/story-49-cobertura-epic`):
-
-1. **`.claude/skills/fonte-workflow/SKILL.md`** — documentar o padrão de testes: runner por tipo de
-   workspace (Vitest web/packages, jest-expo nos Expo, jest+supertest no backend), onde ficam os
-   arquivos (`*.test.ts(x)` ao lado do código nos fronts; `*.spec.ts` no backend), comandos
-   `pnpm test:*`, regra "toda mudança atualiza os testes".
-2. **`.claude/skills/issue/SKILL.md`** — toda issue futura DEVE criar/atualizar testes (unit + e2e
-   quando houver fluxo); reforçar passo "Validar" + seção "Proibido"; DoD inclui suíte verde.
-3. **Scripts raiz `package.json`** — reservar os nomes `test:adm:unit`, `test:associados`(+`:e2e`),
-   `test:ops:unit`/`:e2e`, `test:app:unit`/`:e2e`, `test:api-client` e um agregador `test:all` que
-   roda as suítes unit existentes (cresce conforme as filhas entram). Não quebrar `pnpm install`.
-4. Confirmar que este `AUTORUN.md` exige suíte verde antes de qualquer merge (já exige — DoD).
-
-Validar: `pnpm test:api` continua verde após mexer só em docs/skills/scripts (sem regressão).
-Merge na main como qualquer story. **Só então** seguir para as filhas (55 → 51 → 52 → 50 → 53 → 54).
-
-- O epic "fecha" quando as filhas 50–55 estão commitadas (ou registradas BLOQUEADO). Ao fechar,
-  anexar uma linha-resumo em `PROGRESS.md`.
-
-## Bloqueios
-
-- Não parar a fila. Registrar motivo + o que falta em `PROGRESS.md`, pular para a próxima.
-- Dependência externa sem credencial (Meta WhatsApp, story 45) = BLOQUEADO esperado, **não** é
-  falha do agente: entregar o máximo testável com mock e seguir.
-- e2e mobile nativo (Maestro/emulador) preso a infra (ops/app) = **não** é gate; usar unit
-  jest-expo + e2e web. Não bloquear story por isso.
+Quando **todas** as stories da rodada estiverem commitadas ou registradas BLOQUEADO em
+`PROGRESS.md`: escrever o resumo final (seção "Ao terminar") e **encerrar o loop** — não reagendar.
 
 ## Proibido
 
@@ -264,6 +167,5 @@ push.)
 
 ## Ao terminar
 
-Escrever resumo final em `PROGRESS.md`: o que passou, o que ficou BLOQUEADO e por quê (com o que
-o usuário precisa prover: credencial Meta + template aprovado com os dois botões de URL), branches
-e commits, comandos exatos para reproduzir. Deixar os serviços de pé.
+Escrever resumo final em `PROGRESS.md`: o que passou, o que ficou BLOQUEADO/PENDENTE-MANUAL e por
+quê, branches e commits, comandos exatos para reproduzir. Deixar os serviços de pé.

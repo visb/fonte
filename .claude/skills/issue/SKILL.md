@@ -21,6 +21,8 @@ Pode receber um título/descrição como argumento (`/issue corrigir filtro de r
   concluir a implementação, não nesta skill.
 - Formato de story segue as existentes: título `# Plan: ...`, seção **Context** (o *porquê*,
   decisões do usuário, trade-offs aceitos), **Desenho/Escopo**, **Validação**, **Fora de escopo**.
+- **A Validação é obrigatória e SEMPRE inclui instruções explícitas de teste** (ver
+  "Validação e gate de cobertura" abaixo). Nenhuma story é escrita sem elas.
 - Commits seguem `CONTRIBUTING.md`: `type(scope): descrição curta em português no infinitivo`.
 - Co-author: `Claude Opus 4.8 <noreply@anthropic.com>` (ou o modelo corrente).
 
@@ -42,8 +44,30 @@ Pode receber um título/descrição como argumento (`/issue corrigir filtro de r
 
 - Criar `stories/NN-slug.md` no formato das existentes (ver `stories/done/` como referência).
 - Conteúdo mínimo: **Context** (com decisões do usuário), **Desenho**, **Validação**
-  (quais testes/builds a implementação vai exigir), **Fora de escopo**.
+  (quais testes/builds a implementação vai exigir — ver abaixo), **Fora de escopo**.
 - Mostrar o plano ao usuário e confirmar antes de commitar.
+
+#### Validação e gate de cobertura (OBRIGATÓRIO em toda story)
+
+A seção **Validação** NUNCA pode ser vaga ("rodar os testes"). Ela SEMPRE:
+
+1. Lista os **testes específicos** que a implementação exige, por camada tocada:
+   - backend → `pnpm test:api` (unit do service) e, se houver fluxo HTTP novo/alterado,
+     `pnpm test:api:e2e`;
+   - `adm.fonte` → unit (Vitest/RTL) + e2e (Playwright) dos fluxos afetados;
+   - `ops.fonte`/`app.fonte` → o teste correspondente (Maestro) quando o fluxo for tocado;
+   - contratos → `pnpm build:types` / `pnpm build:api-client`; endpoint novo/alterado → Postman.
+2. Enumera os **casos a cobrir** (caminhos felizes, erros, permissões/roles, validações, ramos
+   novos) — não só "tem teste", mas *o que* o teste prova.
+3. Fecha com um **gate de cobertura** explícito, no mesmo espírito das stories já refinadas:
+   > **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente
+   > — nenhum código novo entra sem teste. Rodar `pnpm test:api:cov` (e o runner de cobertura dos
+   > apps tocados); **não reduzir** a cobertura dos módulos afetados. Sem `skip`/`only`/`xfail` sem
+   > justificativa no código (CLAUDE.md).
+
+Adaptar o gate ao escopo real: story **frontend-only** cita só os runners de cobertura dos apps
+(sem `test:api:cov`); story de backend cita `test:api:cov`. O princípio "código novo sem teste não
+fecha a story" vale sempre.
 
 ### 4. Commitar a story na MAIN
 

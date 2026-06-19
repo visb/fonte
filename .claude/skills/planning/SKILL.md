@@ -52,6 +52,12 @@ Sem essas flags, vale o fluxo interativo padrão (refina conversando + confirma 
 - Formato (ver `stories/done/` como referência): título `# Plan: ...`, seções **Context**
   (o *porquê* + decisões travadas + dependências), **Desenho**, **Validação** (testes/builds que
   a implementação vai exigir), **Fora de escopo**.
+- **Validação obrigatória com gate de cobertura.** Toda story refinada nesta sessão SEMPRE traz a
+  Validação no padrão definido em `issue/SKILL.md` → "Validação e gate de cobertura": testes
+  específicos por camada tocada, casos a cobrir, e o **gate** "código novo sem teste não fecha a
+  story" (`pnpm test:api:cov` + runners de cobertura dos apps tocados; sem `skip`/`only`/`xfail`
+  injustificado). Adaptar ao escopo (frontend-only vs backend). Nenhuma story sai da sessão sem
+  isso — vale inclusive no modo auto.
 - Slug em kebab-case curto.
 - Commits seguem `CONTRIBUTING.md`. Co-author: `Claude Opus 4.8 <noreply@anthropic.com>`.
 

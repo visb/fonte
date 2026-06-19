@@ -57,7 +57,7 @@ Ordem: `60 → 61 → 62 → 63 → 64 → 65 → 66` (a ordem numérica respeit
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 60 — cache resposta completa GET /houses (Redis) | [OK] | api 497✓ + e2e 276✓ | 4b4f962 | 4ad25ed |
-| 2 | 61 — atividades quick-add inline por coluna | [ ] | | | |
+| 2 | 61 — atividades quick-add inline por coluna | [OK] | adm build✓ + PW 7✓ + ops tsc✓ | fc15be5 | c91e3a6 |
 | 3 | 62 — atividades modal de detalhes + descrição editável | [ ] | | | |
 | 4 | 63 — atividades drag-and-drop entre colunas | [ ] | | | |
 | 5 | 64 — atividades visual do responsável no card | [ ] | | | |
@@ -69,4 +69,6 @@ Ordem: `60 → 61 → 62 → 63 → 64 → 65 → 66` (a ordem numérica respeit
 <!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio> -->
 
 [OK] 60 — testes: api unit 497 passed (42 suites) + api e2e 276 passed (24 suites). Cache `house:list` no HouseService (hit não toca o banco, miss monta+grava, TTL 3600 reusado); novo evento `HOUSE_STAFF_CHANGED_EVENT` (StaffService emite em create/update/remove via EventEmitter2 global; não em updateMe/removePermission); handler de RESIDENT_COUNTS_CHANGED apaga as duas chaves. Sem mudança de contrato (Postman intacto). — commit: 4b4f962 — merge: 4ad25ed — 2026-06-19
+
+[OK] 61 — testes: adm build (tsc -b + vite) limpo + adm e2e Playwright activities.spec 7 passed (5 pré + 2 novos: cria inline só título na coluna Rascunho aparece; "A fazer" não mostra quick-add) + ops tsc --noEmit limpo. Frontend puro: QuickAddCard adm (rhf+zod só title, Enter cria, mantém modo de adição) no rodapé da ActivityColumn quando `canQuickAddInStatus` (só DRAFT; TODO fora por exigir responsável); QuickAddCard ops (RN Controller) só na seção rascunho. ActivitiesPage adm/ops renderizam board/seção mesmo vazios p/ permitir 1ª criação. Sem backend (Postman/migrations intactos). — commit: fc15be5 — merge: c91e3a6 — 2026-06-19
 

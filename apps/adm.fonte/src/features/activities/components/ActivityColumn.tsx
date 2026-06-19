@@ -14,6 +14,7 @@ interface Props {
   onApprove: (activity: Activity) => void;
   onEdit: (activity: Activity) => void;
   onDelete: (activity: Activity) => void;
+  onOpenDetails: (activity: Activity) => void;
 }
 
 export function ActivityColumn({
@@ -25,6 +26,7 @@ export function ActivityColumn({
   onApprove,
   onEdit,
   onDelete,
+  onOpenDetails,
 }: Props) {
   const canQuickAdd = canQuickAddInStatus(column.status, role);
   return (
@@ -50,6 +52,7 @@ export function ActivityColumn({
               onApprove={onApprove}
               onEdit={onEdit}
               onDelete={onDelete}
+              onOpenDetails={onOpenDetails}
             />
           ))
         )}

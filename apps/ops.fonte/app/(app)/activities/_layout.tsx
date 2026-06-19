@@ -13,6 +13,7 @@ export default function ActivitiesLayout() {
     >
       <Stack.Screen name="index" options={{ title: "Atividades" }} />
       <Stack.Screen name="new" options={{ title: "Nova atividade" }} />
+      <Stack.Screen name="[id]" options={{ title: "Detalhes da atividade" }} />
     </Stack>
   );
 }

@@ -80,6 +80,9 @@ export function ActivitiesPage() {
             item={item}
             currentUserId={staff?.userId}
             onChangeStatus={handleChangeStatus}
+            onPress={(activity) =>
+              router.push(`/(app)/activities/${activity.id}`)
+            }
             pending={changeStatus.isPending}
           />
         )}

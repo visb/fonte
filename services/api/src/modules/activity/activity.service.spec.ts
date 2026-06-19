@@ -49,6 +49,21 @@ function makeStaffRepo(
       }
       return Promise.resolve(null);
     }),
+    // Batch lookup usado por resolveCreators (createdBy). Resolve cada userId
+    // contra staffByUser, devolvendo um Staff sintético com nome.
+    find: jest.fn().mockImplementation(({ where }: { where: Array<{ userId?: string }> }) => {
+      const conditions = Array.isArray(where) ? where : [where];
+      const result = conditions
+        .map((c) => c.userId)
+        .filter((uid): uid is string => uid !== undefined && staffByUser[uid] !== undefined)
+        .map((uid) => ({
+          id: `staff-${uid}`,
+          name: `Staff ${uid}`,
+          userId: uid,
+          ...staffByUser[uid],
+        }));
+      return Promise.resolve(result);
+    }),
   };
 }
 
@@ -301,6 +316,61 @@ describe('ActivityService.changeStatus (transitions)', () => {
     await expect(
       service.changeStatus('act-1', { status: ActivityStatus.DONE }, ADMIN),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe('ActivityService.update (description editing window — story 62)', () => {
+  it('creator can edit the description while TODO', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(
+          activity({ status: ActivityStatus.TODO, createdByUserId: 'coord-user' }),
+        )
+        .mockResolvedValue(
+          activity({ status: ActivityStatus.TODO, description: 'nova' }),
+        ),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const service = makeService(repo, staff);
+
+    await expect(
+      service.update('act-1', { description: 'nova' }, COORD),
+    ).resolves.toBeDefined();
+  });
+
+  it('creator cannot edit the description once DOING → 403', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValue(
+          activity({ status: ActivityStatus.DOING, createdByUserId: 'coord-user' }),
+        ),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const service = makeService(repo, staff);
+
+    await expect(
+      service.update('act-1', { description: 'tarde demais' }, COORD),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('admin can edit the description even when DOING', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(
+          activity({ status: ActivityStatus.DOING, createdByUserId: 'coord-user' }),
+        )
+        .mockResolvedValue(
+          activity({ status: ActivityStatus.DOING, description: 'override' }),
+        ),
+    });
+    const service = makeService(repo);
+
+    await expect(
+      service.update('act-1', { description: 'override' }, ADMIN),
+    ).resolves.toBeDefined();
   });
 });
 

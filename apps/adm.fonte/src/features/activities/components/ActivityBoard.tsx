@@ -11,6 +11,7 @@ interface Props {
   onApprove: (activity: Activity) => void;
   onEdit: (activity: Activity) => void;
   onDelete: (activity: Activity) => void;
+  onOpenDetails: (activity: Activity) => void;
 }
 
 export function ActivityBoard({
@@ -21,6 +22,7 @@ export function ActivityBoard({
   onApprove,
   onEdit,
   onDelete,
+  onOpenDetails,
 }: Props) {
   const byStatus = (status: ActivityStatus) =>
     activities.filter((a) => a.status === status);
@@ -38,6 +40,7 @@ export function ActivityBoard({
           onApprove={onApprove}
           onEdit={onEdit}
           onDelete={onDelete}
+          onOpenDetails={onOpenDetails}
         />
       ))}
     </div>

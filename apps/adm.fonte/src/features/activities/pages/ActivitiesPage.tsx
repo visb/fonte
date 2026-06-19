@@ -27,6 +27,7 @@ import { ActivityBoard } from '../components/ActivityBoard';
 import { ActivityFilters } from '../components/ActivityFilters';
 import { ActivityDialog } from '../components/ActivityDialog';
 import { ApproveActivityDialog } from '../components/ApproveActivityDialog';
+import { ActivityDetailsDialog } from '../components/ActivityDetailsDialog';
 
 export function ActivitiesPage() {
   const { role } = useAuth();
@@ -37,6 +38,7 @@ export function ActivitiesPage() {
   const [editTarget, setEditTarget] = useState<Activity | null>(null);
   const [approveTarget, setApproveTarget] = useState<Activity | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Activity | null>(null);
+  const [detailsTarget, setDetailsTarget] = useState<Activity | null>(null);
 
   const { data: activities, isLoading, error, refetch } = useActivities(filters);
   const changeStatus = useChangeActivityStatus();
@@ -85,8 +87,15 @@ export function ActivitiesPage() {
           onApprove={setApproveTarget}
           onEdit={setEditTarget}
           onDelete={setDeleteTarget}
+          onOpenDetails={setDetailsTarget}
         />
       )}
+
+      <ActivityDetailsDialog
+        open={!!detailsTarget}
+        activityId={detailsTarget?.id ?? null}
+        onClose={() => setDetailsTarget(null)}
+      />
 
       <ActivityDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <ActivityDialog

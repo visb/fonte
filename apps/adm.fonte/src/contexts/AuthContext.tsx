@@ -6,12 +6,17 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   mustChangePassword: boolean;
   role: string | null;
+  userId: string | null;
   login: (identifier: string, password: string) => Promise<void>;
   logout: () => void;
   onPasswordChanged: (newToken: string) => void;
 }
 
-function decodeToken(token: string): { mustChangePassword?: boolean; role?: string } {
+function decodeToken(token: string): {
+  mustChangePassword?: boolean;
+  role?: string;
+  sub?: string;
+} {
   try {
     return JSON.parse(atob(token.split('.')[1]));
   } catch {
@@ -29,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const decoded = token ? decodeToken(token) : {};
   const mustChangePassword = decoded.mustChangePassword ?? false;
   const role = decoded.role ?? null;
+  const userId = decoded.sub ?? null;
 
   const login = useCallback(async (identifier: string, password: string) => {
     const { accessToken } = await api.auth.login({ identifier, password });
@@ -47,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, isAuthenticated: token !== null, mustChangePassword, role, login, logout, onPasswordChanged }}>
+    <AuthContext.Provider value={{ token, isAuthenticated: token !== null, mustChangePassword, role, userId, login, logout, onPasswordChanged }}>
       {children}
     </AuthContext.Provider>
   );

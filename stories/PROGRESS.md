@@ -67,7 +67,7 @@ deps). Fonte de verdade: esta seção + git log. Base já mergeada: 62 (modal `A
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 64 — atividades: visual do responsável no card | [OK] | adm unit 71✓ + tsc✓ + PW activities 13✓; ops unit 27✓ + tsc✓ | b4fc409 | 3f6098a |
-| 2 | 65 — atividades: comentários no modal de detalhes | [ ] | | | |
+| 2 | 65 — atividades: comentários no modal de detalhes | [OK] | api unit 508✓ + e2e activities 30✓ (10 novos de comentário); adm unit 79✓ + tsc✓ + PW activities 15✓ (2 novos); ops unit 31✓ + tsc✓ | 1186713 | 9ad3206 |
 | 3 | 66 — atividades: histórico de eventos do card + abas | [ ] | | | |
 | 4 | 67 — eventos: toggle de inscrição por evento | [ ] | | | |
 | 5 | 68 — eventos: campos de formulário customizáveis | [ ] | | | |
@@ -84,6 +84,8 @@ deps). Fonte de verdade: esta seção + git log. Base já mergeada: 62 (modal `A
 <!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio> -->
 
 [OK] 64 — testes: adm unit 71✓ + tsc✓ + Playwright activities 13✓ (inclui caso novo de responsável visual); ops unit 27✓ + tsc✓ — commit: b4fc409 — merge: 3f6098a — 2026-06-19 — sem bloqueio (frontend puro, sem backend/types/api-client/postman)
+
+[OK] 65 — testes: api unit 508✓ + e2e activities 30✓ (10 novos: listar/criar/excluir comentário, escopo de casa, autor vs ADMIN vs terceiro); adm unit 79✓ + tsc✓ + Playwright activities 15✓ (2 novos: comentar/excluir + aba Histórico); ops unit 31✓ + tsc✓ — commit: 1186713 — merge: 9ad3206 — 2026-06-19 — sem bloqueio (texto puro, sem dependência externa); migration ActivityComments1783400000000; endpoints GET/POST/DELETE /activities/:id/comments no postman
 
 ## Resumo final
 

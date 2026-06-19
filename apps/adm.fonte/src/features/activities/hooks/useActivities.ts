@@ -15,11 +15,11 @@ export function useActivities(filters: ListActivitiesParams = {}) {
   });
 }
 
-export function useActivity(id: string) {
+export function useActivity(id: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.activities.detail(id),
     queryFn: () => api.activities.getById(id),
-    enabled: !!id,
+    enabled: !!id && (options?.enabled ?? true),
   });
 }
 

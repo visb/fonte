@@ -122,6 +122,36 @@ test.describe('Atividades (board Kanban)', () => {
     await expect(card(page, title).getByText('Rascunho')).toBeVisible();
   });
 
+  test('clicar num card abre o modal de detalhes e edita a descrição (ADMIN)', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+    const title = `Detalhe ${ts()}`;
+    await createActivity(page, title);
+
+    // Abre o modal de detalhes ao clicar no card.
+    await card(page, title).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(title)).toBeVisible();
+    // Infos do detalhe presentes.
+    await expect(dialog.getByText('Casa', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Responsável', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Criado por', { exact: true })).toBeVisible();
+
+    // ADMIN edita a descrição inline (campo liberado em qualquer status).
+    const desc = `Descrição atualizada ${ts()}`;
+    await dialog.getByLabel('Descrição').fill(desc);
+    await dialog.getByRole('button', { name: 'Salvar descrição' }).click();
+
+    // Após salvar, reabrir o card mostra a descrição persistida.
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await card(page, title).click();
+    await expect(page.getByRole('dialog').getByLabel('Descrição')).toHaveValue(desc);
+  });
+
   test('coluna "A fazer" não exibe o quick-add', async ({ page }) => {
     await login(page);
     await goto(page);

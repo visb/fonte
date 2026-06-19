@@ -453,6 +453,8 @@ export interface Activity {
   responsibleStaffId: string | null;
   responsible: ActivityStaffRef | null;
   createdByUserId: string;
+  /** Criador (staff) resolvido pelo nome quando disponível; null se não for staff. */
+  createdBy: ActivityStaffRef | null;
   createdAt: string;
   updatedAt: string;
 }

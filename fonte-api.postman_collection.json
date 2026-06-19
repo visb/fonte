@@ -4895,7 +4895,7 @@
                 "{{activityId}}"
               ]
             },
-            "description": "Edita conteudo (title/description/houseId). ADMIN sempre; criador so enquanto DRAFT. Reatribuir responsibleStaffId so ADMIN. Roles: ADMIN, COORDINATOR, SERVANT."
+            "description": "Edita conteudo. title/houseId: ADMIN sempre; criador so enquanto DRAFT. description: ADMIN em qualquer status; criador em DRAFT/REQUESTED/TODO (bloqueado a partir de DOING -> 403). Reatribuir responsibleStaffId so ADMIN. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {

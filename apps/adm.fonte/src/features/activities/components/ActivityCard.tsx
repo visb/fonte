@@ -12,6 +12,7 @@ interface Props {
   onApprove: (activity: Activity) => void;
   onEdit: (activity: Activity) => void;
   onDelete: (activity: Activity) => void;
+  onOpenDetails: (activity: Activity) => void;
 }
 
 /**
@@ -26,11 +27,23 @@ export function ActivityCard({
   onApprove,
   onEdit,
   onDelete,
+  onOpenDetails,
 }: Props) {
   const { status } = activity;
 
   return (
-    <div className="rounded-md border bg-card p-3 shadow-sm space-y-2">
+    <div
+      role="button"
+      tabIndex={0}
+      className="cursor-pointer rounded-md border bg-card p-3 shadow-sm space-y-2 hover:border-primary/40"
+      onClick={() => onOpenDetails(activity)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpenDetails(activity);
+        }
+      }}
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-tight">{activity.title}</p>
         <Badge variant={ACTIVITY_STATUS_VARIANTS[status]} className="shrink-0">
@@ -55,7 +68,10 @@ export function ActivityCard({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-1 pt-1">
+      <div
+        className="flex flex-wrap items-center gap-1 pt-1"
+        onClick={(e) => e.stopPropagation()}
+      >
         {status === ActivityStatus.DRAFT && (
           <Button size="sm" variant="outline" onClick={() => onChangeStatus(activity, ActivityStatus.REQUESTED)}>
             <Send size={12} className="mr-1" />

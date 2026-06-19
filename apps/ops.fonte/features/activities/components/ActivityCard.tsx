@@ -8,6 +8,8 @@ interface Props {
   /** userId do staff autenticado (do JWT). */
   currentUserId?: string;
   onChangeStatus: (activity: Activity, status: ActivityStatus) => void;
+  /** Abre a tela de detalhes ao tocar no corpo do card. */
+  onPress?: (activity: Activity) => void;
   pending?: boolean;
 }
 
@@ -36,29 +38,36 @@ function ActionButton({
   );
 }
 
-export function ActivityCard({ item, currentUserId, onChangeStatus, pending }: Props) {
+export function ActivityCard({ item, currentUserId, onChangeStatus, onPress, pending }: Props) {
   const isCreator = item.createdByUserId === currentUserId;
   const isResponsible = item.responsible?.userId === currentUserId;
   const { status } = item;
 
   return (
     <View className="bg-white rounded-xl border border-gray-100 px-4 py-3">
-      <View className="flex-row items-center justify-between mb-1">
-        <Text className="text-sm font-semibold text-gray-800 flex-1 pr-2" numberOfLines={2}>
-          {item.title}
-        </Text>
-        <StatusBadge status={status} />
-      </View>
+      <TouchableOpacity
+        accessibilityRole="button"
+        activeOpacity={onPress ? 0.6 : 1}
+        disabled={!onPress}
+        onPress={() => onPress?.(item)}
+      >
+        <View className="flex-row items-center justify-between mb-1">
+          <Text className="text-sm font-semibold text-gray-800 flex-1 pr-2" numberOfLines={2}>
+            {item.title}
+          </Text>
+          <StatusBadge status={status} />
+        </View>
 
-      {item.description ? (
-        <Text className="text-sm text-gray-600 mb-1.5" numberOfLines={3}>
-          {item.description}
-        </Text>
-      ) : null}
+        {item.description ? (
+          <Text className="text-sm text-gray-600 mb-1.5" numberOfLines={3}>
+            {item.description}
+          </Text>
+        ) : null}
 
-      {item.responsible ? (
-        <Text className="text-xs text-gray-400">Responsável: {item.responsible.name}</Text>
-      ) : null}
+        {item.responsible ? (
+          <Text className="text-xs text-gray-400">Responsável: {item.responsible.name}</Text>
+        ) : null}
+      </TouchableOpacity>
 
       <View className="flex-row flex-wrap gap-2 mt-2">
         {status === ActivityStatus.DRAFT && isCreator && (

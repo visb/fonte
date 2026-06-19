@@ -108,6 +108,22 @@ describe('ActivityController (e2e)', () => {
         .set('Authorization', `Bearer ${coordToken}`)
         .send({ status: ActivityStatus.REQUESTED })
         .expect(400));
+
+    it('creator cannot edit the description once DOING → 403 (story 62)', () =>
+      request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ description: 'tarde demais' })
+        .expect(403));
+
+    it('admin can edit the description even when DOING (story 62)', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ description: 'override pelo admin' })
+        .expect(200);
+      expect(res.body.description).toBe('override pelo admin');
+    });
   });
 
   // ── admin flow / scoping ────────────────────────────────────────────────────

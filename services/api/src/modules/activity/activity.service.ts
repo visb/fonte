@@ -65,6 +65,24 @@ export class ActivityService {
     return user.role === Role.ADMIN;
   }
 
+  /**
+   * Janela de edição da DESCRIÇÃO (story 62 — substitui a janela da story 48):
+   * - ADMIN edita a descrição em QUALQUER status (override).
+   * - Criador edita em DRAFT, REQUESTED e TODO; a partir de DOING (e BLOCKED/DONE)
+   *   fica bloqueado.
+   * - Ninguém além de ADMIN/criador edita a descrição.
+   * O backend é a autoridade; o front apenas espelha esta regra.
+   */
+  private canEditDescription(activity: Activity, user: ActivityUser): boolean {
+    if (this.isAdmin(user)) return true;
+    if (activity.createdByUserId !== user.userId) return false;
+    return (
+      activity.status === ActivityStatus.DRAFT ||
+      activity.status === ActivityStatus.REQUESTED ||
+      activity.status === ActivityStatus.TODO
+    );
+  }
+
   /** Resolve a casa do staff autenticado (null se não houver). Lazy via Staff repo. */
   async resolveHouseId(user: ActivityUser): Promise<string | null> {
     const staff = await this.staffRepo.findOne({
@@ -115,14 +133,38 @@ export class ActivityService {
     }
 
     const items = await qb.getMany();
-    return items.map((a) => this.toView(a));
+    const creators = await this.resolveCreators(
+      items.map((a) => a.createdByUserId),
+    );
+    return items.map((a) => this.toView(a, creators.get(a.createdByUserId) ?? null));
   }
 
   async findOne(id: string, user: ActivityUser): Promise<ActivityDto> {
     const activity = await this.loadOne(id);
     const houseId = await this.resolveHouseId(user);
     this.assertVisible(activity, user, houseId);
-    return this.toView(activity);
+    const creators = await this.resolveCreators([activity.createdByUserId]);
+    return this.toView(activity, creators.get(activity.createdByUserId) ?? null);
+  }
+
+  /**
+   * Resolve o staff criador (id, nome, userId) para cada userId informado.
+   * O nome do criador vive no Staff (User não tem nome). Familiares/internos
+   * não criam atividades, então quem não for staff fica sem ref (null).
+   */
+  private async resolveCreators(
+    userIds: string[],
+  ): Promise<Map<string, { id: string; name: string; userId: string }>> {
+    const unique = [...new Set(userIds.filter(Boolean))];
+    const map = new Map<string, { id: string; name: string; userId: string }>();
+    if (unique.length === 0) return map;
+    const staff = await this.staffRepo.find({
+      where: unique.map((userId) => ({ userId })),
+    });
+    for (const s of staff) {
+      if (s.userId) map.set(s.userId, { id: s.id, name: s.name, userId: s.userId });
+    }
+    return map;
   }
 
   async create(dto: CreateActivityDto, user: ActivityUser): Promise<ActivityDto> {
@@ -174,9 +216,23 @@ export class ActivityService {
     const admin = this.isAdmin(user);
     const isCreator = activity.createdByUserId === user.userId;
 
-    // Conteúdo: ADMIN sempre; criador só enquanto DRAFT.
-    if (!admin && !(isCreator && activity.status === ActivityStatus.DRAFT)) {
+    // Edição de título/casa segue a regra da story 48: ADMIN sempre; criador só
+    // enquanto DRAFT. A descrição tem janela própria (story 62) tratada abaixo.
+    const editsCoreContent = dto.title !== undefined || dto.houseId !== undefined;
+    if (
+      editsCoreContent &&
+      !admin &&
+      !(isCreator && activity.status === ActivityStatus.DRAFT)
+    ) {
       throw new ForbiddenException('You cannot edit this activity');
+    }
+
+    // Descrição: ADMIN em qualquer status; criador em DRAFT/REQUESTED/TODO.
+    // Bloqueia a partir de DOING (story 62).
+    if (dto.description !== undefined && !this.canEditDescription(activity, user)) {
+      throw new ForbiddenException(
+        'You cannot edit the description of this activity',
+      );
     }
 
     if (dto.title !== undefined) activity.title = dto.title;
@@ -295,7 +351,10 @@ export class ActivityService {
     if (!staff) throw new BadRequestException('Responsible staff not found');
   }
 
-  private toView(a: Activity): ActivityDto {
+  private toView(
+    a: Activity,
+    createdBy: { id: string; name: string; userId: string } | null = null,
+  ): ActivityDto {
     return {
       id: a.id,
       title: a.title,
@@ -308,6 +367,7 @@ export class ActivityService {
         ? { id: a.responsible.id, name: a.responsible.name, userId: a.responsible.userId }
         : null,
       createdByUserId: a.createdByUserId,
+      createdBy,
       createdAt:
         a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
       updatedAt:

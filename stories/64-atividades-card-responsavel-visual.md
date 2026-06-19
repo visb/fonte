@@ -43,6 +43,11 @@ Mudança **somente frontend** (apresentação).
 - `pnpm --filter adm.fonte build` (typecheck). Smoke adm: card com responsável mostra avatar+nome;
   card sem responsável mostra estado esmaecido.
 - ops: typecheck/compila; smoke visual se emulador disponível.
+- **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente —
+  nenhum código novo entra sem teste. Cobrir com unit o `ResponsibleBadge` nos dois estados (com
+  responsável → avatar+nome; sem responsável → estado esmaecido) e a derivação de iniciais. Rodar
+  o runner de cobertura do `adm.fonte`; **não reduzir** a cobertura da feature `activities`. Sem
+  `skip`/`only`/`xfail` sem justificativa no código (CLAUDE.md).
 
 ## Fora de escopo
 

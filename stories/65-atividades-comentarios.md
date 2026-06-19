@@ -87,6 +87,12 @@ terceiro barrado, ADMIN ok).
 - `pnpm dev:api` sobe e roda a migration nova.
 - adm: `pnpm --filter adm.fonte build`. Smoke: abrir card → aba Comentários, criar comentário,
   excluir o próprio; conferir que COORDINATOR/SERVANT só vê/comenta em atividade da própria casa.
+- **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente —
+  nenhum código novo entra sem teste. Backend: cobrir `assertVisible`/`assertCanDelete` (autor,
+  ADMIN, terceiro barrado) e criação/listagem por escopo de casa. Frontend: hooks + `CommentItem`/
+  form (validação `body` não vazio). Rodar `pnpm test:api:cov` + runner de cobertura do `adm.fonte`;
+  **não reduzir** a cobertura do módulo `activity` nem da feature `activities`. Sem
+  `skip`/`only`/`xfail` sem justificativa no código (CLAUDE.md).
 
 ## Fora de escopo
 

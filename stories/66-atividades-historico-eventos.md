@@ -84,6 +84,13 @@ visibilidade; status change grava `{ from, to }`.
 - `pnpm dev:api` sobe e roda a migration.
 - adm: `pnpm --filter adm.fonte build`. Smoke: abrir card → alternar abas Comentários/Histórico;
   criar/mover/renomear/comentar e ver os eventos aparecendo na timeline na ordem certa.
+- **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente —
+  nenhum código novo entra sem teste. Backend: cobrir que **cada mutação** (`create`, `update` de
+  título/descrição/responsável, `changeStatus`, `remove`, `COMMENTED`) registra o evento esperado
+  com os metadados certos (`{ from, to }`, `{ commentId }`), e a listagem por visibilidade.
+  Frontend: hook + render de cada tipo de evento (label/ícone). Rodar `pnpm test:api:cov` + runner
+  de cobertura do `adm.fonte`; **não reduzir** a cobertura do módulo `activity` nem da feature
+  `activities`. Sem `skip`/`only`/`xfail` sem justificativa no código (CLAUDE.md).
 
 ## Fora de escopo
 

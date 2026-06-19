@@ -53,6 +53,11 @@ Mudança **somente frontend** (`apps/adm.fonte/src/features/activities/`). Reapr
 - Smoke adm: arrastar card entre colunas adjacentes permitidas (move); arrastar para coluna
   proibida (volta + erro); arrastar de "solicitações" para "a fazer" como ADMIN abre o dialog de
   aprovação; clicar no card (sem arrastar) ainda abre o modal de detalhes.
+- **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente —
+  nenhum código novo entra sem teste. Cobrir com unit (Vitest) o helper `canTransition`
+  (destinos válidos/ inválidos por usuário e estado) e a resolução de `onDragEnd` (move / rollback /
+  abre dialog). Rodar o runner de cobertura do `adm.fonte`; **não reduzir** a cobertura da feature
+  `activities`. Sem `skip`/`only`/`xfail` sem justificativa no código (CLAUDE.md).
 
 ## Fora de escopo
 

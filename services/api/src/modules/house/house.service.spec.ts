@@ -42,6 +42,17 @@ function makeCache(get?: jest.Mock) {
   };
 }
 
+// Cache mock que devolve valores por chave (null = miss para as demais).
+function makeKeyedCache(values: Record<string, unknown>) {
+  return {
+    get: jest.fn().mockImplementation((key: string) =>
+      Promise.resolve(key in values ? values[key] : null),
+    ),
+    set: jest.fn().mockResolvedValue(undefined),
+    del: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 function makeService(
   houseRepo: ReturnType<typeof makeHouseRepo>,
   photoRepo = makeSimpleRepo(),
@@ -59,9 +70,24 @@ function makeService(
 }
 
 describe('HouseService.findAll', () => {
-  it('merges resident/staff counts and thumbnails per house', async () => {
-    // Cache hit: resident counts come straight from Redis, no GROUP BY query.
-    const cache = makeCache(jest.fn().mockResolvedValue({ h1: 3 }));
+  it('returns the cached house:list payload on a hit without touching the DB', async () => {
+    // house:list hit: full payload comes straight from Redis, no repo/DB access.
+    const cached = [{ id: 'h1', activeResidentsCount: 3, staffCount: 2, thumbnailUrl: 'thumb.jpg' }];
+    const cache = makeKeyedCache({ 'house:list': cached });
+    const query = jest.fn();
+    const houseRepo = makeHouseRepo({ find: jest.fn() }, query);
+    const service = makeService(houseRepo, undefined, undefined, undefined, cache);
+
+    const result = await service.findAll();
+
+    expect(result).toEqual(cached);
+    expect(houseRepo.find).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('merges resident/staff counts and thumbnails per house on a house:list miss', async () => {
+    // house:list miss; resident counts come from the resident-counts cache (no GROUP BY).
+    const cache = makeKeyedCache({ 'house:resident-counts': { h1: 3 } });
     const query = jest
       .fn()
       .mockResolvedValueOnce([{ houseId: 'h1', count: '2' }]) // staff
@@ -79,10 +105,12 @@ describe('HouseService.findAll', () => {
     expect(result[1]).toMatchObject({ id: 'h2', activeResidentsCount: 0, staffCount: 0, thumbnailUrl: null });
     // Only staff + thumbnails hit the DB; the resident count was served from cache.
     expect(query).toHaveBeenCalledTimes(2);
+    // Whole payload is cached under house:list for the next request.
+    expect(cache.set).toHaveBeenCalledWith('house:list', result, expect.any(Number));
   });
 
   it('computes and caches the resident count map on a cache miss', async () => {
-    const cache = makeCache(); // get → null (miss)
+    const cache = makeCache(); // get → null (miss) for every key, incl. house:list
     // Dispatch by SQL so the test is order-independent within Promise.all.
     const query = jest.fn().mockImplementation((sql: string) => {
       if (sql.includes('FROM residents')) return Promise.resolve([{ houseId: 'h1', count: '3' }]);
@@ -95,15 +123,67 @@ describe('HouseService.findAll', () => {
 
     expect(result[0]).toMatchObject({ id: 'h1', activeResidentsCount: 3 });
     expect(cache.set).toHaveBeenCalledWith('house:resident-counts', { h1: 3 }, expect.any(Number));
+    expect(cache.set).toHaveBeenCalledWith('house:list', result, expect.any(Number));
   });
 });
 
-describe('HouseService.invalidateResidentCounts', () => {
-  it('drops the cached resident-count key', async () => {
+describe('HouseService cache invalidation', () => {
+  it('invalidateResidentCounts drops both the resident-count and house:list keys', async () => {
     const cache = makeCache();
     const service = makeService(makeHouseRepo(), undefined, undefined, undefined, cache);
     await service.invalidateResidentCounts();
     expect(cache.del).toHaveBeenCalledWith('house:resident-counts');
+    expect(cache.del).toHaveBeenCalledWith('house:list');
+  });
+
+  it('invalidateHouseList (HOUSE_STAFF_CHANGED_EVENT handler) drops house:list', async () => {
+    const cache = makeCache();
+    const service = makeService(makeHouseRepo(), undefined, undefined, undefined, cache);
+    await service.invalidateHouseList();
+    expect(cache.del).toHaveBeenCalledWith('house:list');
+  });
+
+  it('create invalidates house:list', async () => {
+    const cache = makeCache();
+    const service = makeService(makeHouseRepo(), undefined, undefined, undefined, cache);
+    await service.create({ name: 'Comum', isMotherHouse: false } as never);
+    expect(cache.del).toHaveBeenCalledWith('house:list');
+  });
+
+  it('update invalidates house:list', async () => {
+    const cache = makeCache();
+    const houseRepo = makeHouseRepo({ findOne: jest.fn().mockResolvedValue({ id: 'h1', photos: [] }) });
+    const service = makeService(houseRepo, undefined, undefined, undefined, cache);
+    await service.update('h1', { name: 'Novo' } as never);
+    expect(cache.del).toHaveBeenCalledWith('house:list');
+  });
+
+  it('remove invalidates house:list', async () => {
+    const cache = makeCache();
+    const service = makeService(makeHouseRepo(), undefined, undefined, undefined, cache);
+    await service.remove('h1');
+    expect(cache.del).toHaveBeenCalledWith('house:list');
+  });
+
+  it('addPhoto invalidates house:list', async () => {
+    const cache = makeCache();
+    const photoRepo = makeSimpleRepo();
+    const storage = {
+      uniqueFilename: jest.fn().mockReturnValue('new.jpg'),
+      upload: jest.fn().mockResolvedValue('https://cdn/new.jpg'),
+    };
+    const service = makeService(makeHouseRepo(), photoRepo, makeSimpleRepo(), storage as never, cache);
+    await service.addPhoto('h1', { originalname: 'p.jpg', buffer: Buffer.from(''), mimetype: 'image/jpeg' } as never);
+    expect(cache.del).toHaveBeenCalledWith('house:list');
+  });
+
+  it('removePhoto invalidates house:list', async () => {
+    const cache = makeCache();
+    const photoRepo = makeSimpleRepo({ findOne: jest.fn().mockResolvedValue({ id: 'p1', url: 'x.jpg' }) });
+    const storage = { delete: jest.fn().mockResolvedValue(undefined) };
+    const service = makeService(makeHouseRepo(), photoRepo, makeSimpleRepo(), storage as never, cache);
+    await service.removePhoto('h1', 'p1');
+    expect(cache.del).toHaveBeenCalledWith('house:list');
   });
 });
 

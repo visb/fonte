@@ -43,17 +43,23 @@ function makeRepo(overrides: Partial<MockRepo> = {}): MockRepo {
   };
 }
 
+function makeEmitter() {
+  return { emit: jest.fn() };
+}
+
 function makeService(
   staffRepo: MockRepo,
   userRepo: MockRepo,
   permissionRepo: MockRepo,
   storage: Partial<StorageService> = {},
+  emitter: ReturnType<typeof makeEmitter> = makeEmitter(),
 ) {
   return new StaffService(
     staffRepo as unknown as Repository<Staff>,
     userRepo as unknown as Repository<User>,
     permissionRepo as unknown as Repository<StaffPermission>,
     storage as StorageService,
+    emitter as never,
   );
 }
 
@@ -257,6 +263,55 @@ describe('StaffService permissions', () => {
     const permRepo = makeRepo({ count: jest.fn().mockResolvedValue(0) });
     const service = makeService(makeRepo(), makeRepo(), permRepo);
     await expect(service.hasPermission('staff-1', 'MANAGE_STOREROOM' as never)).resolves.toBe(false);
+  });
+});
+
+describe('StaffService house:list cache invalidation', () => {
+  const HOUSE_STAFF_CHANGED_EVENT = 'house.staff.changed';
+
+  it('emits HOUSE_STAFF_CHANGED_EVENT on create', async () => {
+    const emitter = makeEmitter();
+    const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });
+    const service = makeService(makeRepo(), userRepo, makeRepo(), {}, emitter);
+
+    await service.create({
+      name: 'Servo',
+      email: 'servo3@fonte.com',
+      password: 'secret123',
+      role: 'SERVANT' as never,
+    } as never);
+
+    expect(emitter.emit).toHaveBeenCalledWith(HOUSE_STAFF_CHANGED_EVENT);
+  });
+
+  it('emits HOUSE_STAFF_CHANGED_EVENT on update', async () => {
+    const emitter = makeEmitter();
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }) });
+    const service = makeService(staffRepo, makeRepo(), makeRepo(), {}, emitter);
+
+    await service.update('staff-1', { houseId: 'house-2' } as never);
+
+    expect(emitter.emit).toHaveBeenCalledWith(HOUSE_STAFF_CHANGED_EVENT);
+  });
+
+  it('emits HOUSE_STAFF_CHANGED_EVENT on remove', async () => {
+    const emitter = makeEmitter();
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }) });
+    const service = makeService(staffRepo, makeRepo(), makeRepo(), {}, emitter);
+
+    await service.remove('staff-1');
+
+    expect(emitter.emit).toHaveBeenCalledWith(HOUSE_STAFF_CHANGED_EVENT);
+  });
+
+  it('does not emit on updateMe (own profile, no house/lotação change)', async () => {
+    const emitter = makeEmitter();
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }) });
+    const service = makeService(staffRepo, makeRepo(), makeRepo(), {}, emitter);
+
+    await service.updateMe('user-1', { phone: '11999' } as never);
+
+    expect(emitter.emit).not.toHaveBeenCalled();
   });
 });
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,6 +15,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { useActivity, useUpdateActivity } from '../hooks/useActivities';
 import { canEditDescription } from '../lib/permissions';
 import { ACTIVITY_STATUS_LABELS, ACTIVITY_STATUS_VARIANTS } from '../constants';
+import { ActivityComments } from './ActivityComments';
 
 interface Props {
   activityId: string | null;
@@ -116,12 +117,64 @@ function ActivityDetails({ activityId, onClose }: { activityId: string; onClose:
           onClose={onClose}
         />
 
-        {/* Área inferior preparada para abas (comentários — story 65; histórico — story 66). */}
-        <div className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
-          Comentários e histórico em breve.
-        </div>
+        {/* Abas inferiores: Comentários (story 65) | Histórico (preenchido na story 66). */}
+        <ActivityTabs activityId={activity.id} />
       </div>
     </>
+  );
+}
+
+type DetailsTab = 'comments' | 'history';
+
+function ActivityTabs({ activityId }: { activityId: string }) {
+  const [tab, setTab] = useState<DetailsTab>('comments');
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1 border-b" role="tablist">
+        <TabButton active={tab === 'comments'} onClick={() => setTab('comments')}>
+          Comentários
+        </TabButton>
+        <TabButton active={tab === 'history'} onClick={() => setTab('history')}>
+          Histórico
+        </TabButton>
+      </div>
+
+      {tab === 'comments' ? (
+        <ActivityComments activityId={activityId} />
+      ) : (
+        <div className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
+          Histórico em breve.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={
+        'border-b-2 px-3 py-1.5 text-sm font-medium transition-colors ' +
+        (active
+          ? 'border-primary text-foreground'
+          : 'border-transparent text-muted-foreground hover:text-foreground')
+      }
+    >
+      {children}
+    </button>
   );
 }
 

@@ -174,6 +174,8 @@ export type {
   UpdateActivityInput,
   ChangeActivityStatusInput,
   ListActivitiesParams,
+  ActivityComment,
+  CreateActivityCommentInput,
   Event,
   EventFilter,
   CreateEventInput,

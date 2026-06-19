@@ -31,6 +31,7 @@ describe('ActivityController (e2e)', () => {
   });
 
   afterAll(async () => {
+    await dataSource.query('DELETE FROM activity_comments');
     await dataSource.query('DELETE FROM activities');
     await app.close();
   });
@@ -185,6 +186,119 @@ describe('ActivityController (e2e)', () => {
         .get(`${BASE}/activities/${houselessId}`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200));
+  });
+
+  // ── comments (story 65) ──────────────────────────────────────────────────────
+
+  describe('comments', () => {
+    let activityId: string;
+    let houselessId: string;
+    let coordCommentId: string;
+    let adminCommentId: string;
+
+    beforeAll(async () => {
+      // atividade na casa do coordenador (visível ao coord e ao admin)
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/activities`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ title: 'Atividade para comentar', houseId: coordHouseId })
+        .expect(201);
+      activityId = res.body.id;
+
+      // atividade sem casa (só o admin enxerga)
+      const houseless = await request(app.getHttpServer())
+        .post(`${BASE}/activities`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ title: 'Atividade geral para comentar' })
+        .expect(201);
+      houselessId = houseless.body.id;
+    });
+
+    it('GET comments of a visible activity returns an empty list', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}/comments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      expect(res.body).toEqual([]);
+    });
+
+    it('POST → 400 with empty body', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/comments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ body: '' })
+        .expect(400));
+
+    it('coordinator comments on a visible activity', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/comments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ body: 'Primeiro comentário do coordenador' })
+        .expect(201);
+      expect(res.body.id).toBeDefined();
+      expect(res.body.body).toBe('Primeiro comentário do coordenador');
+      expect(res.body.activityId).toBe(activityId);
+      coordCommentId = res.body.id;
+    });
+
+    it('admin comments on the same activity (author resolved by name)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/comments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ body: 'Comentário do admin' })
+        .expect(201);
+      adminCommentId = res.body.id;
+    });
+
+    it('lists comments in chronological order', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}/comments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      expect(res.body.map((c: { body: string }) => c.body)).toEqual([
+        'Primeiro comentário do coordenador',
+        'Comentário do admin',
+      ]);
+    });
+
+    it('coordinator cannot list comments of a houseless activity → 404', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/activities/${houselessId}/comments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(404));
+
+    it('coordinator cannot comment on a houseless activity → 404', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/activities/${houselessId}/comments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ body: 'fora de escopo' })
+        .expect(404));
+
+    it('a third party (not author, not admin) cannot delete a comment → 403', () =>
+      request(app.getHttpServer())
+        .delete(`${BASE}/activities/${activityId}/comments/${adminCommentId}`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(403));
+
+    it('the author deletes its own comment → 204', () =>
+      request(app.getHttpServer())
+        .delete(`${BASE}/activities/${activityId}/comments/${coordCommentId}`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(204));
+
+    it('admin can delete another user comment → 204', () =>
+      request(app.getHttpServer())
+        .delete(`${BASE}/activities/${activityId}/comments/${adminCommentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(204));
+
+    it('deleted comments no longer appear in the list', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}/comments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      expect(res.body).toEqual([]);
+    });
   });
 
   describe('delete', () => {

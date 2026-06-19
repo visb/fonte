@@ -62,6 +62,8 @@ import type {
   UpdateActivityInput,
   ChangeActivityStatusInput,
   ListActivitiesParams,
+  ActivityComment,
+  CreateActivityCommentInput,
   Event,
   EventFilter,
   CreateEventInput,
@@ -130,6 +132,8 @@ export type {
   UpdateActivityInput,
   ChangeActivityStatusInput,
   ListActivitiesParams,
+  ActivityComment,
+  CreateActivityCommentInput,
 };
 
 export type {

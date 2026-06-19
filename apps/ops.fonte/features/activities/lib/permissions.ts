@@ -22,3 +22,15 @@ export function canEditDescription(
   if (!user.userId || activity.createdByUserId !== user.userId) return false;
   return CREATOR_EDITABLE_STATUSES.includes(activity.status);
 }
+
+/**
+ * Espelha `assertCanDelete` do backend (story 65): o autor do comentário ou um
+ * ADMIN pode excluí-lo.
+ */
+export function canDeleteComment(
+  comment: { createdByUserId: string },
+  user: { role: string | null | undefined; userId: string | null | undefined },
+): boolean {
+  if (user.role === Role.ADMIN) return true;
+  return !!user.userId && comment.createdByUserId === user.userId;
+}

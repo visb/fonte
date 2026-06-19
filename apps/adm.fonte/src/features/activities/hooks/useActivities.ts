@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ChangeActivityStatusInput,
+  CreateActivityCommentInput,
   CreateActivityInput,
   ListActivitiesParams,
   UpdateActivityInput,
@@ -64,5 +65,44 @@ export function useDeleteActivity() {
   return useMutation({
     mutationFn: (id: string) => api.activities.remove(id),
     onSuccess: () => invalidateAll(queryClient),
+  });
+}
+
+// ── comentários (story 65) ────────────────────────────────────────────────────
+
+export function useActivityComments(
+  activityId: string,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.activities.comments(activityId),
+    queryFn: () => api.activities.listComments(activityId),
+    enabled: !!activityId && (options?.enabled ?? true),
+  });
+}
+
+export function useAddComment(activityId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateActivityCommentInput) =>
+      api.activities.addComment(activityId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.activities.comments(activityId),
+      });
+    },
+  });
+}
+
+export function useDeleteComment(activityId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (commentId: string) =>
+      api.activities.deleteComment(activityId, commentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.activities.comments(activityId),
+      });
+    },
   });
 }

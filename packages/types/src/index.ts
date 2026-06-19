@@ -485,6 +485,21 @@ export interface ListActivitiesParams {
   responsibleStaffId?: string;
 }
 
+/** Comentário (texto puro) de uma atividade — story 65. */
+export interface ActivityComment {
+  id: string;
+  activityId: string;
+  body: string;
+  /** Autor resolvido (staff) pelo nome quando disponível; null se não for staff. */
+  author: ActivityStaffRef | null;
+  createdByUserId: string;
+  createdAt: string;
+}
+
+export interface CreateActivityCommentInput {
+  body: string;
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

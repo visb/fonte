@@ -4942,6 +4942,71 @@
             },
             "description": "Soft delete. ADMIN sempre; criador so o proprio DRAFT. Roles: ADMIN, COORDINATOR, SERVANT."
           }
+        },
+        {
+          "name": "List Activity Comments (STAFF)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "comments"
+              ]
+            },
+            "description": "Lista os comentarios da atividade em ordem cronologica. Valida visibilidade da atividade (ADMIN tudo; COORDINATOR/SERVANT so a propria casa) -> 404 fora de escopo. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
+          "name": "Add Activity Comment (STAFF)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Verifiquei e o portao precisa de WD-40\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "comments"
+              ]
+            },
+            "description": "Cria um comentario (texto puro) na atividade. body obrigatorio e nao vazio. created_by = usuario do JWT. Valida visibilidade -> 404 fora de escopo. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
+          "name": "Delete Activity Comment (STAFF)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/comments/{{commentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "comments",
+                "{{commentId}}"
+              ]
+            },
+            "description": "Soft delete de comentario. Somente o autor ou ADMIN. Valida visibilidade da atividade. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
         }
       ]
     },

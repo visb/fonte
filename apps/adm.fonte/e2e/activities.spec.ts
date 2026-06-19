@@ -25,6 +25,13 @@ test.describe('Atividades (board Kanban)', () => {
     return page.locator('div.rounded-md.border.bg-card').filter({ hasText: title });
   }
 
+  /** A coluna do board pelo rótulo do cabeçalho (Rascunho, A fazer, ...). */
+  function column(page: Page, label: string) {
+    return page
+      .locator('div.w-72')
+      .filter({ has: page.getByText(label, { exact: true }) });
+  }
+
   test('ADMIN vê o item Atividades no menu e navega', async ({ page }) => {
     await login(page);
     await page.getByRole('link', { name: 'Atividades' }).click();
@@ -93,5 +100,36 @@ test.describe('Atividades (board Kanban)', () => {
     // A fazer → Fazendo (Iniciar)
     await card(page, title).getByRole('button', { name: 'Iniciar' }).click();
     await expect(card(page, title).getByText('Fazendo')).toBeVisible();
+  });
+
+  test('cria atividade inline (quick-add) na coluna Rascunho com só o título', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+
+    const draft = column(page, 'Rascunho');
+    const title = `Quick add ${ts()}`;
+
+    // Abre o quick-add no rodapé da coluna e digita só o título.
+    await draft.getByRole('button', { name: 'Adicionar atividade' }).click();
+    const input = draft.getByLabel('Título da nova atividade');
+    await input.fill(title);
+    await input.press('Enter');
+
+    // O card aparece na coluna Rascunho.
+    await expect(card(page, title)).toBeVisible();
+    await expect(card(page, title).getByText('Rascunho')).toBeVisible();
+  });
+
+  test('coluna "A fazer" não exibe o quick-add', async ({ page }) => {
+    await login(page);
+    await goto(page);
+
+    const todo = column(page, 'A fazer');
+    await expect(
+      todo.getByRole('button', { name: 'Adicionar atividade' }),
+    ).toHaveCount(0);
+    await expect(todo.getByLabel('Título da nova atividade')).toHaveCount(0);
   });
 });

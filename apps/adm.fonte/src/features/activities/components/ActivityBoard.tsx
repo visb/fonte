@@ -6,6 +6,7 @@ import { ActivityColumn } from './ActivityColumn';
 interface Props {
   activities: Activity[];
   isAdmin: boolean;
+  role: string | null;
   onChangeStatus: (activity: Activity, status: ActivityStatus) => void;
   onApprove: (activity: Activity) => void;
   onEdit: (activity: Activity) => void;
@@ -15,6 +16,7 @@ interface Props {
 export function ActivityBoard({
   activities,
   isAdmin,
+  role,
   onChangeStatus,
   onApprove,
   onEdit,
@@ -31,6 +33,7 @@ export function ActivityBoard({
           column={column}
           activities={byStatus(column.status)}
           isAdmin={isAdmin}
+          role={role}
           onChangeStatus={onChangeStatus}
           onApprove={onApprove}
           onEdit={onEdit}

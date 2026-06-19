@@ -2,12 +2,14 @@ import { ActivityStatus } from '@fonte/types';
 import type { Activity } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
 import { ActivityCard } from './ActivityCard';
-import type { ActivityColumnDef } from '../constants';
+import { QuickAddCard } from './QuickAddCard';
+import { canQuickAddInStatus, type ActivityColumnDef } from '../constants';
 
 interface Props {
   column: ActivityColumnDef;
   activities: Activity[];
   isAdmin: boolean;
+  role: string | null;
   onChangeStatus: (activity: Activity, status: ActivityStatus) => void;
   onApprove: (activity: Activity) => void;
   onEdit: (activity: Activity) => void;
@@ -18,11 +20,13 @@ export function ActivityColumn({
   column,
   activities,
   isAdmin,
+  role,
   onChangeStatus,
   onApprove,
   onEdit,
   onDelete,
 }: Props) {
+  const canQuickAdd = canQuickAddInStatus(column.status, role);
   return (
     <div className="flex w-72 shrink-0 flex-col rounded-lg bg-muted/40 p-2">
       <div className="flex items-center justify-between px-1 py-1.5">
@@ -31,9 +35,11 @@ export function ActivityColumn({
       </div>
       <div className="flex flex-col gap-2 overflow-y-auto">
         {activities.length === 0 ? (
-          <p className="px-1 py-4 text-center text-xs text-muted-foreground">
-            Nenhuma atividade
-          </p>
+          !canQuickAdd && (
+            <p className="px-1 py-4 text-center text-xs text-muted-foreground">
+              Nenhuma atividade
+            </p>
+          )
         ) : (
           activities.map((activity) => (
             <ActivityCard
@@ -47,6 +53,7 @@ export function ActivityColumn({
             />
           ))
         )}
+        {canQuickAdd && <QuickAddCard status={column.status} />}
       </div>
     </div>
   );

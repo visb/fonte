@@ -13,6 +13,8 @@ import {
   useChangeActivityStatus,
 } from '@/features/activities/hooks/useActivities';
 import { ActivityCard } from '@/features/activities/components/ActivityCard';
+import { QuickAddCard } from '@/features/activities/components/QuickAddCard';
+import { canQuickAddInStatus } from '@/features/activities/constants';
 
 /** Ordem fixa das seções (colunas do board), igual ao backend. */
 const SECTION_ORDER: { status: ActivityStatus; title: string }[] = [
@@ -43,10 +45,17 @@ export function ActivitiesPage() {
     changeStatus.mutate({ id: activity.id, data: { status } });
   };
 
+  const role = staff?.user?.role ?? null;
+
   const sections = SECTION_ORDER.map((s) => ({
+    status: s.status,
     title: s.title,
     data: activities.filter((a) => a.status === s.status),
-  })).filter((s) => s.data.length > 0);
+  })).filter(
+    // Mostra seções com itens; mantém a seção de rascunho mesmo vazia para
+    // exibir o quick-add (criação inline da primeira atividade).
+    (s) => s.data.length > 0 || canQuickAddInStatus(s.status, role),
+  );
 
   if (isLoading) return <LoadingState />;
   if (error) {
@@ -74,6 +83,14 @@ export function ActivitiesPage() {
             pending={changeStatus.isPending}
           />
         )}
+        renderSectionFooter={({ section }) =>
+          canQuickAddInStatus(section.status, role) ? (
+            <QuickAddCard
+              status={section.status}
+              houseId={staff?.houseId}
+            />
+          ) : null
+        }
         ListEmptyComponent={<EmptyState message="Nenhuma atividade registrada." />}
       />
 

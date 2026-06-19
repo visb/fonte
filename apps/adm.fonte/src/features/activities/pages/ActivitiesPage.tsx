@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { getErrorMessage } from '@/lib/errors';
 import {
@@ -75,12 +74,13 @@ export function ActivitiesPage() {
           message={getErrorMessage(error, 'Erro ao carregar atividades.')}
           onRetry={refetch}
         />
-      ) : !activities || activities.length === 0 ? (
-        <EmptyState title="Nenhuma atividade encontrada." />
       ) : (
+        // O board sempre renderiza: mesmo sem atividades, o quick-add no rodapé
+        // da coluna "Rascunho" permite criar a primeira inline (estilo Trello).
         <ActivityBoard
-          activities={activities}
+          activities={activities ?? []}
           isAdmin={isAdmin}
+          role={role}
           onChangeStatus={handleChangeStatus}
           onApprove={setApproveTarget}
           onEdit={setEditTarget}

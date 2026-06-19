@@ -37,3 +37,22 @@ export const ACTIVITY_STATUS_VARIANTS: Record<ActivityStatus, BadgeVariant> =
     (acc, c) => ({ ...acc, [c.status]: c.variant }),
     {} as Record<ActivityStatus, BadgeVariant>,
   );
+
+/**
+ * Espelha a matriz de criação do backend (story 48). Quick-add só pede o título,
+ * então só aparece em colunas que NÃO exigem campo adicional:
+ *
+ * - `DRAFT`: qualquer usuário pode criar (ADMIN, COORDINATOR, SERVANT).
+ * - `TODO`: só ADMIN pode criar, mas exige responsável → fica fora do quick-add
+ *   (continua via dialog/aprovação).
+ * - demais colunas: não são pontos de criação direta.
+ *
+ * O `role` é recebido para manter a regra alinhada à matriz e fácil de ajustar
+ * caso a permissão por status passe a depender do papel.
+ */
+export function canQuickAddInStatus(
+  status: ActivityStatus,
+  _role: string | null,
+): boolean {
+  return status === ActivityStatus.DRAFT;
+}

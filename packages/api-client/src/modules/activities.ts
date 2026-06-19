@@ -5,6 +5,8 @@ import type {
   UpdateActivityInput,
   ChangeActivityStatusInput,
   ListActivitiesParams,
+  ActivityComment,
+  CreateActivityCommentInput,
 } from '../types.js';
 
 export function createActivitiesModule(http: AxiosInstance) {
@@ -26,5 +28,21 @@ export function createActivitiesModule(http: AxiosInstance) {
 
     remove: (id: string) =>
       http.delete(`/activities/${id}`).then((r) => r.data),
+
+    // ── comentários (story 65) ───────────────────────────────────────────────
+    listComments: (activityId: string) =>
+      http
+        .get<ActivityComment[]>(`/activities/${activityId}/comments`)
+        .then((r) => r.data),
+
+    addComment: (activityId: string, data: CreateActivityCommentInput) =>
+      http
+        .post<ActivityComment>(`/activities/${activityId}/comments`, data)
+        .then((r) => r.data),
+
+    deleteComment: (activityId: string, commentId: string) =>
+      http
+        .delete(`/activities/${activityId}/comments/${commentId}`)
+        .then((r) => r.data),
   };
 }

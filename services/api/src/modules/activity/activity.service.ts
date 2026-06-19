@@ -148,6 +148,30 @@ export class ActivityService {
   }
 
   /**
+   * Carrega a atividade e valida a visibilidade do usuário (mesma regra de escopo
+   * por casa). Reusado por features acopladas à atividade (ex.: comentários — story
+   * 65). Lança 404 se a atividade não existe ou está fora do escopo. Retorna a
+   * entidade para que o chamador use seus campos (ex.: `id`).
+   */
+  async loadVisibleOrFail(id: string, user: ActivityUser): Promise<Activity> {
+    const activity = await this.loadOne(id);
+    const houseId = await this.resolveHouseId(user);
+    this.assertVisible(activity, user, houseId);
+    return activity;
+  }
+
+  /**
+   * Resolve a referência de staff (id/nome/userId) por userId. Exposto para que
+   * features acopladas (comentários) exibam o autor pelo nome. Quem não for staff
+   * fica sem ref (null).
+   */
+  async resolveStaffRefs(
+    userIds: string[],
+  ): Promise<Map<string, { id: string; name: string; userId: string }>> {
+    return this.resolveCreators(userIds);
+  }
+
+  /**
    * Resolve o staff criador (id, nome, userId) para cada userId informado.
    * O nome do criador vive no Staff (User não tem nome). Familiares/internos
    * não criam atividades, então quem não for staff fica sem ref (null).

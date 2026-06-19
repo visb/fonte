@@ -215,6 +215,50 @@ test.describe('Atividades (board Kanban)', () => {
     await expect(page.getByRole('dialog').getByLabel('Descrição')).toHaveValue(desc);
   });
 
+  test('comenta numa atividade pelo modal de detalhes e exclui o próprio comentário (story 65)', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+    const title = `Comentários ${ts()}`;
+    await createActivity(page, title);
+
+    await card(page, title).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // A aba Comentários é a default; sem comentários ainda.
+    await expect(dialog.getByRole('tab', { name: 'Comentários' })).toBeVisible();
+    await expect(dialog.getByRole('tab', { name: 'Histórico' })).toBeVisible();
+    await expect(dialog.getByText('Nenhum comentário ainda.')).toBeVisible();
+
+    // Cria um comentário.
+    const body = `Verificar isso ${ts()}`;
+    await dialog.getByLabel('Novo comentário').fill(body);
+    await dialog.getByRole('button', { name: 'Comentar' }).click();
+    await expect(dialog.getByText(body)).toBeVisible();
+
+    // O autor (ADMIN) pode excluir o próprio comentário.
+    await dialog.getByRole('button', { name: 'Excluir' }).click();
+    await expect(dialog.getByText(body)).toHaveCount(0);
+    await expect(dialog.getByText('Nenhum comentário ainda.')).toBeVisible();
+  });
+
+  test('a aba Histórico mostra o placeholder "em breve" (moldura da story 65)', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+    const title = `Aba histórico ${ts()}`;
+    await createActivity(page, title);
+
+    await card(page, title).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('tab', { name: 'Histórico' }).click();
+    await expect(dialog.getByText('Histórico em breve.')).toBeVisible();
+  });
+
   test('arrasta um card de Fazendo para Impedimento (move)', async ({ page }) => {
     await login(page);
     await goto(page);

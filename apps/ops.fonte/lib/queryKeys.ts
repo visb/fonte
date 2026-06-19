@@ -32,6 +32,7 @@ export const queryKeys = {
     all: ['activities'] as const,
     byHouse: (houseId: string) => ['activities', houseId] as const,
     detail: (id: string) => ['activities', 'detail', id] as const,
+    comments: (activityId: string) => ['activities', 'comments', activityId] as const,
   },
   storeroom: {
     allItems: ['storeroom-items'] as const,

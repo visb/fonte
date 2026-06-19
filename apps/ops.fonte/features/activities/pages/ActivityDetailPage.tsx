@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { useActivity, useUpdateActivity } from '@/features/activities/hooks/useActivities';
 import { StatusBadge } from '@/features/activities/components/StatusBadge';
 import { canEditDescription } from '@/features/activities/lib/permissions';
+import { ActivityComments } from '@/features/activities/components/ActivityComments';
 
 const schema = z.object({ description: z.string().optional() });
 type FormData = z.infer<typeof schema>;
@@ -75,8 +76,71 @@ export function ActivityDetailPage() {
         </View>
 
         <DescriptionSection activity={activity} editable={editable} />
+
+        {/* Abas inferiores: Comentários (story 65) | Histórico (story 66). */}
+        <View className="mt-6">
+          <ActivityTabs activityId={activity.id} />
+        </View>
       </View>
     </ScrollView>
+  );
+}
+
+type DetailsTab = 'comments' | 'history';
+
+function ActivityTabs({ activityId }: { activityId: string }) {
+  const [tab, setTab] = useState<DetailsTab>('comments');
+
+  return (
+    <View>
+      <View className="flex-row border-b border-gray-200 mb-3">
+        <TabButton active={tab === 'comments'} onPress={() => setTab('comments')}>
+          Comentários
+        </TabButton>
+        <TabButton active={tab === 'history'} onPress={() => setTab('history')}>
+          Histórico
+        </TabButton>
+      </View>
+
+      {tab === 'comments' ? (
+        <ActivityComments activityId={activityId} />
+      ) : (
+        <Text className="text-sm text-gray-500 text-center py-4">Histórico em breve.</Text>
+      )}
+    </View>
+  );
+}
+
+function TabButton({
+  active,
+  onPress,
+  children,
+}: {
+  active: boolean;
+  onPress: () => void;
+  children: string;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      className="px-4 py-2"
+      style={{
+        borderBottomWidth: 2,
+        borderBottomColor: active ? '#4f46e5' : 'transparent',
+      }}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+    >
+      <Text
+        className={
+          active
+            ? 'text-sm font-semibold text-gray-900'
+            : 'text-sm font-medium text-gray-500'
+        }
+      >
+        {children}
+      </Text>
+    </TouchableOpacity>
   );
 }
 

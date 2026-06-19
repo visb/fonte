@@ -121,6 +121,7 @@ export const queryKeys = {
       responsibleStaffId?: string;
     }) => ['activities', 'list', filters] as const,
     detail: (id: string) => ['activities', id] as const,
+    comments: (activityId: string) => ['activities', activityId, 'comments'] as const,
   },
   events: {
     all: ['events'] as const,

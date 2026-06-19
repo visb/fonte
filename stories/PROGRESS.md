@@ -66,7 +66,7 @@ deps). Fonte de verdade: esta seção + git log. Base já mergeada: 62 (modal `A
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 64 — atividades: visual do responsável no card | [ ] | | | |
+| 1 | 64 — atividades: visual do responsável no card | [OK] | adm unit 71✓ + tsc✓ + PW activities 13✓; ops unit 27✓ + tsc✓ | b4fc409 | 3f6098a |
 | 2 | 65 — atividades: comentários no modal de detalhes | [ ] | | | |
 | 3 | 66 — atividades: histórico de eventos do card + abas | [ ] | | | |
 | 4 | 67 — eventos: toggle de inscrição por evento | [ ] | | | |
@@ -82,6 +82,8 @@ deps). Fonte de verdade: esta seção + git log. Base já mergeada: 62 (modal `A
 ## Log
 
 <!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio> -->
+
+[OK] 64 — testes: adm unit 71✓ + tsc✓ + Playwright activities 13✓ (inclui caso novo de responsável visual); ops unit 27✓ + tsc✓ — commit: b4fc409 — merge: 3f6098a — 2026-06-19 — sem bloqueio (frontend puro, sem backend/types/api-client/postman)
 
 ## Resumo final
 

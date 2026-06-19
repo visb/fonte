@@ -40,17 +40,33 @@ próximo (após o reset) retoma. Colar (ajustar a faixa de stories e a ordem):
 
 ## Stories da rodada
 
-Preencher ao iniciar:
-
 | #   | Tipo / o que é | Implementar? |
 | --- | --- | --- |
-| {NN} | {descrição} | {SIM / depende de X} |
+| 64 | Atividades — visual do responsável no card (frontend) | SIM |
+| 65 | Atividades — comentários no modal de detalhes (backend + adm + ops) | SIM |
+| 66 | Atividades — histórico de eventos do card + abas (depende 65) | SIM |
+| 67 | Eventos — toggle de inscrição por evento | SIM |
+| 68 | Eventos — campos de formulário customizáveis (depende 67) | SIM |
+| 69 | Eventos — pagamento avulso da inscrição (backend + gateway Pagar.me) | SIM (gateway mockado, sem secret real) |
+| 70 | Eventos — página de pagamento no portal + notificações (depende 69) | SIM (mail/WhatsApp mockados) |
+| 71 | Atividades — descrição fora do board (só nos detalhes) | SIM |
+| 72 | Atividades — editor WYSIWYG markdown na descrição (depende 71) | SIM |
+| 73 | Atividades — anexos na atividade e nos comentários (depende 65) | SIM (storage mockado se faltar credencial) |
+| 74 | Atividades — áudio upload+gravação com player (depende 73) | SIM |
+| 75 | Atividades — devolver solicitação para rascunho (REQUESTED → DRAFT) | SIM |
 
 ## Ordem e dependências
 
 ```
-{NN → ... → MM}
+64 → 65 → 66 → 67 → 68 → 69 → 70 → 71 → 72 → 73 → 74 → 75
 ```
+
+Dois tracks independentes; a ordem numérica respeita todas as deps:
+- **Atividades**: 65 e 71 dependem só da 62 (feita). 66 dep 65. 72 dep 71. 73 dep 65. 74 dep 73.
+  64 e 75 independentes.
+- **Eventos** (sub-chain rígida 67→68→69→70, não pular): 68 dep 67; 69 dep 67+58; 70 dep 69+portal 58.
+- Travou uma story → suas **filhas na sub-chain** travam junto: registrar e parar **aquela**
+  sub-chain. Os dois tracks (e sub-chains independentes) seguem normalmente — não parar a fila inteira.
 
 - Declarar dependências rígidas. Se houver (story B consome contrato de A), a fila é **sequencial**:
   se A bloquear, B também fica bloqueada — registrar e **parar a fila**, não pular.
@@ -82,8 +98,20 @@ MOCK**; nunca chamar API real, nunca inventar chave, nunca commitar segredo. Pon
 
 ## Cuidados específicos da rodada
 
-Listar operações de risco médio (renomear app, mexer em CI/scripts, migration destrutiva, etc.) e
-como validar cada uma. Preencher conforme as stories da rodada.
+- **Migrations novas** (65 `activity_comments`, 66 `activity_events`, 68 campos custom de evento,
+  69 pagamento de evento, 73 `activity_attachments`): sempre migration nova (nunca editar
+  existente); rodar `migration:run:test` antes do e2e. Aditivas, sem drop destrutivo.
+- **Contratos compartilhados**: 65/66/68/69/73/74 mexem em `packages/types` e/ou `api-client` →
+  rodar `build:types` + `build:api-client` antes de subir API/adm (suíte adm quebra sem o `dist/`).
+- **Endpoints novos** (65 comentários, 66 histórico, 69 pagamento, 73/74 anexos) → atualizar
+  `fonte-api.postman_collection.json` na mesma story.
+- **Externos sem credencial — MOCK, não bloquear** (regra geral da seção acima):
+  - 69/70 Pagar.me + mail/WhatsApp → mock do gateway/notificação; PENDENTE-MANUAL no PROGRESS.
+  - 73/74 storage/bucket de anexo/áudio → mock do upload nos testes se faltar credencial.
+- **74 áudio estende a allowlist de mimetype do controller da 73** — não criar modelo novo; reusar
+  `activity_attachments`. Verificar que a 73 já mergeou antes (sub-chain).
+- **72 WYSIWYG**: escopo só descrição da atividade; comentários (65) seguem texto puro — não
+  vazar o editor pros comentários.
 
 ## Bootstrap de serviços (uma vez, no início, em background)
 

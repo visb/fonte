@@ -11,9 +11,10 @@ abas). Esta story é greenfield de backend (entidade de comentários nova).
 
 ### Decisões travadas (defaults automáticos do modo auto — revisar se desejado)
 
-- **Escopo de UI: `adm.fonte`.** Os comentários entram no `ActivityDetailsDialog` da story 62
-  (web). O `ops.fonte` consome depois, se o usuário pedir — backend já fica pronto. (Default
-  conservador; pode expandir para ops numa story futura.)
+- **Escopo de UI: `adm.fonte` + `ops.fonte`.** Os comentários entram no `ActivityDetailsDialog`
+  da story 62 (web) **e** na tela/modal de detalhes equivalente do ops (story 62 entregou o
+  detalhe nos dois apps). Mesmo backend serve os dois. (Correção de escopo solicitada no planning —
+  era adm-only por default automático; o usuário pediu ops também.)
 - **Quem comenta = quem enxerga a atividade.** Qualquer staff com visibilidade da atividade
   (mesma regra de escopo por casa da story 48: ADMIN tudo; COORDINATOR/SERVANT a própria casa)
   pode comentar e ler comentários. Sem comentário de `RELATIVE`/`RESIDENT`.
@@ -75,7 +76,12 @@ terceiro barrado, ADMIN ok).
 - A estrutura de **abas** (Comentários | Histórico) é introduzida aqui de forma mínima; a aba
   Histórico é preenchida pela story 66.
 
-### Postman
+### Frontend ops.fonte (`apps/ops.fonte/features/activities/`)
+
+- Mesma feature de comentários na tela/modal de detalhes do ops (entregue pela story 62): hooks
+  equivalentes, lista de `CommentItem` (componente RN próprio) + campo de novo comentário com
+  `Controller` (RHF) + `zod`. Estados (loading/empty/error) e `getErrorMessage` equivalentes do ops.
+  Mesma regra de visibilidade/escopo por casa servida pelo backend.
 
 - Adicionar os 3 endpoints de comentários na coleção `fonte-api.postman_collection.json`.
 
@@ -87,15 +93,15 @@ terceiro barrado, ADMIN ok).
 - `pnpm dev:api` sobe e roda a migration nova.
 - adm: `pnpm --filter adm.fonte build`. Smoke: abrir card → aba Comentários, criar comentário,
   excluir o próprio; conferir que COORDINATOR/SERVANT só vê/comenta em atividade da própria casa.
+- ops: typecheck/compila. Smoke (se emulador): abrir detalhe → comentar, listar, excluir o próprio.
 - **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente —
   nenhum código novo entra sem teste. Backend: cobrir `assertVisible`/`assertCanDelete` (autor,
   ADMIN, terceiro barrado) e criação/listagem por escopo de casa. Frontend: hooks + `CommentItem`/
-  form (validação `body` não vazio). Rodar `pnpm test:api:cov` + runner de cobertura do `adm.fonte`;
-  **não reduzir** a cobertura do módulo `activity` nem da feature `activities`. Sem
-  `skip`/`only`/`xfail` sem justificativa no código (CLAUDE.md).
+  form (validação `body` não vazio) nos dois apps. Rodar `pnpm test:api:cov` + runners de cobertura
+  do `adm.fonte` e do `ops.fonte`; **não reduzir** a cobertura do módulo `activity` nem da feature
+  `activities`. Sem `skip`/`only`/`xfail` sem justificativa no código (CLAUDE.md).
 
 ## Fora de escopo
 
-- Comentários no `ops.fonte` (backend pronto; UI mobile fica para follow-up).
 - Edição de comentário, markdown, anexos, menções, notificações de novo comentário.
 - Histórico de eventos e a aba Histórico em si (story 66) — aqui só criamos a moldura de abas.

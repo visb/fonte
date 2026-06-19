@@ -80,6 +80,10 @@ seção própria do form de evento no adm.
   portal (ou ao menos o flag persiste e a seção habilita/desabilita os campos).
 - `pnpm --filter adm.fonte build` verde. `pnpm build:types`/`build:api-client` sem erro. Postman
   atualizado.
+- **Gate de cobertura (trava a story):** todo caminho novo ou alterado por esta story tem teste
+  correspondente — nenhum código novo entra sem teste. Rodar `pnpm test:api:cov` e o runner de
+  cobertura do `adm.fonte`; **não reduzir** a cobertura dos módulos tocados (`event`, feature
+  `events` do adm). Sem `skip`/`only`/`xfail` sem justificativa no código (CLAUDE.md).
 
 ## Fora de escopo
 

@@ -85,8 +85,14 @@ posteriormente".
 - `pnpm test:portal` — unit `EventPaymentPage`/hook: renderiza por status (PENDING/PAID/FAILED);
   PIX mostra QR; cartão envia cardToken. e2e Playwright: abrir `/pagamento/:token`, pagar (mock dos
   endpoints), ver confirmação.
-- `pnpm --filter portal.fonte build` verde. Regressão: fluxo de pagamento de associado intacto.
-  Postman atualizado. Sem skip/only/xfail sem justificativa.
+- `pnpm --filter portal.fonte build` verde. Regressão: fluxo de pagamento de associado intacto
+  (rodar `pnpm test:portal` do fluxo `/p/:token` existente — não pode quebrar com a generalização
+  do WhatsApp client / rename da env de URL).
+- **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente —
+  nenhum código novo entra sem teste. Cobrir `MailService` (com e sem credencial), disparo nos 2
+  canais, reenvio admin, e a página por status (PENDING/PAID/FAILED, PIX QR, cartão). Rodar
+  `pnpm test:api:cov` + runner de cobertura do `portal.fonte`; **não reduzir** a cobertura dos
+  módulos tocados. Sem `skip`/`only`/`xfail` sem justificativa no código (CLAUDE.md).
 
 ## Fora de escopo
 

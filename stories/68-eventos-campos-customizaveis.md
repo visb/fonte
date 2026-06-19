@@ -112,6 +112,11 @@ evento**, sem depender de dev.
   campos custom mockando endpoints.
 - Builds `adm.fonte` / `portal.fonte` verdes. `build:types`/`build:api-client` ok. Postman
   atualizado.
+- **Gate de cobertura (trava a story):** todo caminho novo ou alterado por esta story tem teste
+  correspondente — nenhum código novo entra sem teste. Cobrir explicitamente **cada tipo de
+  campo** (validação por tipo no backend e no form dinâmico). Rodar `pnpm test:api:cov` + runners
+  de cobertura de `adm.fonte` e `portal.fonte`; **não reduzir** a cobertura dos módulos tocados.
+  Sem `skip`/`only`/`xfail` sem justificativa no código (CLAUDE.md).
 
 ## Fora de escopo
 

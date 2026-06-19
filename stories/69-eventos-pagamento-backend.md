@@ -106,6 +106,11 @@ fatia entrega só o **backend**: configuração de cobrança no evento, criaçã
   webhook muda status; register grátis não gera token; admin vê `payment_status`.
 - `pnpm --filter adm.fonte build` verde. `build:types`/`build:api-client` ok. Postman atualizado.
   Sem skip/only/xfail sem justificativa.
+- **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente —
+  nenhum código novo entra sem teste. Cobrir explicitamente os ramos de pagamento (cartão, PIX,
+  webhook `paid`/`failed`, idempotência, 409 já-pago, gross-up). Rodar `pnpm test:api:cov`; **não
+  reduzir** a cobertura do módulo `event` nem da camada de gateway. Regressão: cobertura de
+  associados (subscription) não cai.
 
 ## Fora de escopo (vai p/ [[70]])
 

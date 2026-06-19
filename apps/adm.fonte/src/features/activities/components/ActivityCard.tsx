@@ -6,6 +6,7 @@ import type { Activity } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ACTIVITY_STATUS_LABELS, ACTIVITY_STATUS_VARIANTS } from '../constants';
+import { ResponsibleBadge } from './ResponsibleBadge';
 
 interface Props {
   activity: Activity;
@@ -82,17 +83,13 @@ export function ActivityCard({
         <p className="text-xs text-muted-foreground line-clamp-3">{activity.description}</p>
       )}
 
-      <div className="flex flex-wrap gap-1 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
         {activity.house ? (
           <span className="rounded bg-muted px-1.5 py-0.5">{activity.house.name}</span>
         ) : (
           <span className="rounded bg-muted px-1.5 py-0.5">Geral</span>
         )}
-        {activity.responsible && (
-          <span className="rounded bg-muted px-1.5 py-0.5">
-            {activity.responsible.name}
-          </span>
-        )}
+        <ResponsibleBadge responsible={activity.responsible} />
       </div>
 
       <div

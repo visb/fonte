@@ -30,7 +30,7 @@ import { ApproveActivityDialog } from '../components/ApproveActivityDialog';
 import { ActivityDetailsDialog } from '../components/ActivityDetailsDialog';
 
 export function ActivitiesPage() {
-  const { role } = useAuth();
+  const { role, userId } = useAuth();
   const isAdmin = role === Role.ADMIN;
 
   const [filters, setFilters] = useState<ListActivitiesParams>({});
@@ -39,13 +39,21 @@ export function ActivitiesPage() {
   const [approveTarget, setApproveTarget] = useState<Activity | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Activity | null>(null);
   const [detailsTarget, setDetailsTarget] = useState<Activity | null>(null);
+  const [dropError, setDropError] = useState<string | null>(null);
 
   const { data: activities, isLoading, error, refetch } = useActivities(filters);
   const changeStatus = useChangeActivityStatus();
   const deleteMutation = useDeleteActivity();
 
   const handleChangeStatus = (activity: Activity, status: ActivityStatus) => {
+    setDropError(null);
     changeStatus.mutate({ id: activity.id, data: { status } });
+  };
+
+  // Drop numa coluna onde a transição não é válida/permitida: o card já voltou
+  // sozinho (não houve mutation otimista) — só sinalizamos o erro ao usuário.
+  const handleInvalidDrop = (_activity: Activity, _to: ActivityStatus) => {
+    setDropError('Não é possível mover esta atividade para essa coluna.');
   };
 
   return (
@@ -69,6 +77,10 @@ export function ActivitiesPage() {
         </p>
       )}
 
+      {dropError != null && (
+        <p className="text-sm text-destructive">{dropError}</p>
+      )}
+
       {isLoading ? (
         <LoadingState />
       ) : error ? (
@@ -83,11 +95,13 @@ export function ActivitiesPage() {
           activities={activities ?? []}
           isAdmin={isAdmin}
           role={role}
+          userId={userId}
           onChangeStatus={handleChangeStatus}
           onApprove={setApproveTarget}
           onEdit={setEditTarget}
           onDelete={setDeleteTarget}
           onOpenDetails={setDetailsTarget}
+          onInvalidDrop={handleInvalidDrop}
         />
       )}
 

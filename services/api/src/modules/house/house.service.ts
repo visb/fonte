@@ -15,6 +15,7 @@ import { UpdateHouseDto } from './dto/update-house.dto';
 import { StorageService } from '../storage/storage.service';
 import { CacheService } from '../cache/cache.service';
 import { RESIDENT_COUNTS_CHANGED_EVENT } from '../../common/events/resident-counts.event';
+import { HOUSE_STAFF_CHANGED_EVENT } from '../../common/events/house-staff.event';
 
 @Injectable()
 export class HouseService {
@@ -22,6 +23,10 @@ export class HouseService {
   // invalidado por evento (RESIDENT_COUNTS_CHANGED_EVENT) + TTL de segurança.
   private static readonly RESIDENT_COUNTS_KEY = 'house:resident-counts';
   private static readonly RESIDENT_COUNTS_TTL = 3600;
+  // Resposta completa do GET /houses (lista + activeResidentsCount + staffCount +
+  // thumbnailUrl). Invalidada nas mutações da própria casa + eventos de resident/
+  // staff, com o mesmo TTL de segurança da contagem.
+  private static readonly HOUSE_LIST_KEY = 'house:list';
 
   constructor(
     @InjectRepository(House)
@@ -64,15 +69,30 @@ export class HouseService {
     return map;
   }
 
-  /** Descarta o cache da contagem de filhos quando um resident muda. */
+  /**
+   * Mudança de filho altera o activeResidentsCount dentro do payload cacheado,
+   * então descarta tanto a contagem de filhos quanto a lista completa.
+   */
   @OnEvent(RESIDENT_COUNTS_CHANGED_EVENT)
   async invalidateResidentCounts(): Promise<void> {
     await this.cache.del(HouseService.RESIDENT_COUNTS_KEY);
+    await this.invalidateHouseList();
+  }
+
+  /** Mudança de staff em outro módulo invalida o staffCount cacheado na lista. */
+  @OnEvent(HOUSE_STAFF_CHANGED_EVENT)
+  async invalidateHouseList(): Promise<void> {
+    await this.cache.del(HouseService.HOUSE_LIST_KEY);
   }
 
   async findAll(): Promise<
     Array<House & { activeResidentsCount: number; staffCount: number; thumbnailUrl: string | null }>
   > {
+    const cached = await this.cache.get<
+      Array<House & { activeResidentsCount: number; staffCount: number; thumbnailUrl: string | null }>
+    >(HouseService.HOUSE_LIST_KEY);
+    if (cached) return cached;
+
     const [houses, residentMap, staffCounts, thumbnails] = await Promise.all([
       this.houseRepository.find({
         order: { name: 'ASC' },
@@ -95,13 +115,19 @@ export class HouseService {
     const staffMap = new Map(staffCounts.map((c) => [c.houseId, Number(c.count)]));
     const thumbnailMap = new Map(thumbnails.map((t) => [t.houseId, t.thumbnailUrl]));
 
-    return houses.map((h) =>
+    const result = houses.map((h) =>
       Object.assign(h, {
         activeResidentsCount: residentMap[h.id] ?? 0,
         staffCount: staffMap.get(h.id) ?? 0,
         thumbnailUrl: thumbnailMap.get(h.id) ?? null,
       }),
     );
+    await this.cache.set(
+      HouseService.HOUSE_LIST_KEY,
+      result,
+      HouseService.RESIDENT_COUNTS_TTL,
+    );
+    return result;
   }
 
   async findOne(id: string): Promise<House & { activeResidentsCount: number; staffCount: number }> {
@@ -130,7 +156,9 @@ export class HouseService {
     // Clear before saving: partial unique index rejects two mother houses at once.
     if (dto.isMotherHouse) await this.clearOtherMotherHouses();
     const house = this.houseRepository.create(dto);
-    return this.houseRepository.save(house);
+    const saved = await this.houseRepository.save(house);
+    await this.invalidateHouseList();
+    return saved;
   }
 
   async update(id: string, dto: UpdateHouseDto): Promise<House> {
@@ -139,6 +167,7 @@ export class HouseService {
     // Clear before updating: partial unique index rejects two mother houses at once.
     if (dto.isMotherHouse) await this.clearOtherMotherHouses(id);
     await this.houseRepository.update(id, dto);
+    await this.invalidateHouseList();
     return this.findOne(id);
   }
 
@@ -157,6 +186,7 @@ export class HouseService {
     const count = await this.houseRepository.count({ where: { id } });
     if (!count) throw new NotFoundException(`House ${id} not found`);
     await this.houseRepository.softDelete(id);
+    await this.invalidateHouseList();
   }
 
   async addPhoto(houseId: string, file: Express.Multer.File): Promise<HousePhoto> {
@@ -170,7 +200,9 @@ export class HouseService {
       path: url,
       url,
     });
-    return this.photoRepository.save(photo);
+    const saved = await this.photoRepository.save(photo);
+    await this.invalidateHouseList();
+    return saved;
   }
 
   async removePhoto(houseId: string, photoId: string): Promise<void> {
@@ -180,6 +212,7 @@ export class HouseService {
     if (!photo) throw new NotFoundException(`Photo ${photoId} not found`);
     await this.storageService.delete(photo.url);
     await this.photoRepository.delete(photoId);
+    await this.invalidateHouseList();
   }
 
   // ─── Residents ──────────────────────────────────────────────────────────────

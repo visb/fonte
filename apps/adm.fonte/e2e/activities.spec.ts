@@ -122,6 +122,31 @@ test.describe('Atividades (board Kanban)', () => {
     await expect(card(page, title).getByText('A fazer')).toBeVisible();
   });
 
+  test('card sem responsável mostra "Sem responsável"; após aprovar mostra o nome', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+    const title = `Responsável visual ${ts()}`;
+    await createActivity(page, title);
+
+    // Rascunho recém-criado não tem responsável → estado esmaecido.
+    await expect(card(page, title).getByText('Sem responsável')).toBeVisible();
+
+    // Enviar e aprovar escolhendo um responsável.
+    await card(page, title).getByRole('button', { name: 'Enviar' }).click();
+    await card(page, title).getByRole('button', { name: 'Aprovar' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByLabel('Responsável *').selectOption({ index: 1 });
+    await page.getByRole('button', { name: 'Aprovar' }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+
+    // Agora o card exibe o badge do responsável (não mais "Sem responsável").
+    await expect(card(page, title).getByText('A fazer')).toBeVisible();
+    await expect(card(page, title).getByText('Sem responsável')).toHaveCount(0);
+    await expect(card(page, title).getByTitle(/^Responsável: /)).toBeVisible();
+  });
+
   test('move um card de A fazer para Fazendo', async ({ page }) => {
     await login(page);
     await goto(page);

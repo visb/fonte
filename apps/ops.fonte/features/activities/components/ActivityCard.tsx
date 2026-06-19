@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { ActivityStatus } from '@fonte/types';
 import type { Activity } from '@fonte/api-client';
 import { StatusBadge } from './StatusBadge';
+import { ResponsibleBadge } from './ResponsibleBadge';
 
 interface Props {
   item: Activity;
@@ -64,9 +65,9 @@ export function ActivityCard({ item, currentUserId, onChangeStatus, onPress, pen
           </Text>
         ) : null}
 
-        {item.responsible ? (
-          <Text className="text-xs text-gray-400">Responsável: {item.responsible.name}</Text>
-        ) : null}
+        <View className="mt-0.5">
+          <ResponsibleBadge responsible={item.responsible} />
+        </View>
       </TouchableOpacity>
 
       <View className="flex-row flex-wrap gap-2 mt-2">

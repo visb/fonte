@@ -71,12 +71,16 @@ export class EventRegistrationService {
     };
   }
 
-  /** Lista pública: apenas eventos futuros (start_at >= agora), ordenados por data. */
+  /**
+   * Lista pública: apenas eventos futuros (start_at >= agora) COM inscrição
+   * habilitada (story 67), ordenados por data. Eventos só-divulgação não vazam.
+   */
   async listPublic(): Promise<EventPublic[]> {
     const now = new Date();
     const events = await this.eventsRepo
       .createQueryBuilder('e')
       .where('e.start_at >= :now', { now })
+      .andWhere('e.registration_enabled = true')
       .orderBy('e.start_at', 'ASC')
       .getMany();
     return Promise.all(events.map((e) => this.toPublicView(e, now)));
@@ -84,7 +88,10 @@ export class EventRegistrationService {
 
   async getPublicView(id: string): Promise<EventPublic> {
     const event = await this.eventsRepo.findOne({ where: { id } });
-    if (!event) throw new NotFoundException('Event not found');
+    // Evento com inscrição desligada não tem detalhe público (não vaza interno).
+    if (!event || !event.registrationEnabled) {
+      throw new NotFoundException('Event not found');
+    }
     return this.toPublicView(event);
   }
 
@@ -92,6 +99,10 @@ export class EventRegistrationService {
   async register(id: string, dto: RegisterToEventDto): Promise<EventRegistrationResult> {
     const event = await this.eventsRepo.findOne({ where: { id } });
     if (!event) throw new NotFoundException('Event not found');
+    // Defesa em profundidade: inscrição desligada não aceita inscrito (story 67).
+    if (!event.registrationEnabled) {
+      throw new NotFoundException('Event not found');
+    }
 
     const now = new Date();
     if (event.startAt < now) {

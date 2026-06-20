@@ -782,6 +782,8 @@ export interface Event {
   location: string | null;
   /** null = vagas ilimitadas. */
   capacity: number | null;
+  /** Inscrição habilitada (story 67). false = evento só-divulgação. */
+  registrationEnabled: boolean;
   /** URL servida/assinada do banner (null quando sem banner). Nunca é a chave crua. */
   bannerUrl: string | null;
   /** ISO string ou null. Abertura da janela de inscrição. */
@@ -799,6 +801,8 @@ export interface CreateEventInput {
   endAt?: string | null;
   location?: string | null;
   capacity?: number | null;
+  /** Inscrição habilitada (story 67). Default false: evento só-divulgação. */
+  registrationEnabled?: boolean;
   registrationOpensAt?: string | null;
   registrationClosesAt?: string | null;
 }

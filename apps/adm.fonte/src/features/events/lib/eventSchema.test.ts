@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eventSchema } from './eventSchema';
+import { eventSchema, toEventInput, type EventFormData } from './eventSchema';
 
 const base = {
   title: 'Retiro',
@@ -34,9 +34,10 @@ describe('eventSchema', () => {
     expect(eventSchema.safeParse({ ...base, endAt: '2026-08-01T20:00' }).success).toBe(true);
   });
 
-  it('rejeita janela de inscrição incoerente (fecha antes de abrir)', () => {
+  it('rejeita janela de inscrição incoerente quando inscrição habilitada', () => {
     const result = eventSchema.safeParse({
       ...base,
+      registrationEnabled: true,
       registrationOpensAt: '2026-07-20T00:00',
       registrationClosesAt: '2026-07-10T00:00',
     });
@@ -48,6 +49,22 @@ describe('eventSchema', () => {
     }
   });
 
+  it('ignora a janela incoerente quando inscrição desligada (só-divulgação)', () => {
+    const result = eventSchema.safeParse({
+      ...base,
+      registrationEnabled: false,
+      registrationOpensAt: '2026-07-20T00:00',
+      registrationClosesAt: '2026-07-10T00:00',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('registrationEnabled default é false (só-divulgação)', () => {
+    const result = eventSchema.safeParse(base);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.registrationEnabled).toBe(false);
+  });
+
   it('rejeita título vazio', () => {
     expect(eventSchema.safeParse({ ...base, title: '' }).success).toBe(false);
   });
@@ -55,5 +72,47 @@ describe('eventSchema', () => {
   it('rejeita capacity zero ou negativo', () => {
     expect(eventSchema.safeParse({ ...base, capacity: '0' }).success).toBe(false);
     expect(eventSchema.safeParse({ ...base, capacity: '-3' }).success).toBe(false);
+  });
+});
+
+describe('toEventInput', () => {
+  const baseForm: EventFormData = {
+    title: 'Retiro',
+    description: 'Encontro',
+    startAt: '2026-08-01T18:00',
+    endAt: '',
+    location: '',
+    capacity: undefined,
+    registrationEnabled: false,
+    registrationOpensAt: '',
+    registrationClosesAt: '',
+  };
+
+  it('com inscrição desligada, zera capacidade e janela', () => {
+    const input = toEventInput({
+      ...baseForm,
+      registrationEnabled: false,
+      capacity: 50,
+      registrationOpensAt: '2026-07-01T00:00',
+      registrationClosesAt: '2026-07-20T00:00',
+    });
+    expect(input.registrationEnabled).toBe(false);
+    expect(input.capacity).toBeNull();
+    expect(input.registrationOpensAt).toBeNull();
+    expect(input.registrationClosesAt).toBeNull();
+  });
+
+  it('com inscrição ligada, propaga capacidade e janela', () => {
+    const input = toEventInput({
+      ...baseForm,
+      registrationEnabled: true,
+      capacity: 50,
+      registrationOpensAt: '2026-07-01T00:00',
+      registrationClosesAt: '2026-07-20T00:00',
+    });
+    expect(input.registrationEnabled).toBe(true);
+    expect(input.capacity).toBe(50);
+    expect(input.registrationOpensAt).not.toBeNull();
+    expect(input.registrationClosesAt).not.toBeNull();
   });
 });

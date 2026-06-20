@@ -24,11 +24,12 @@ describe('Public events (e2e)', () => {
     await app.close();
   });
 
+  // Por padrão cria com inscrição habilitada (story 67) para aparecer no portal.
   async function createEvent(body: Record<string, unknown>): Promise<string> {
     const res = await request(app.getHttpServer())
       .post(`${BASE}/events`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send(body)
+      .send({ registrationEnabled: true, ...body })
       .expect(201);
     return res.body.id;
   }
@@ -71,6 +72,50 @@ describe('Public events (e2e)', () => {
     expect(res.body.capacity).toBe(10);
     expect(res.body.spotsLeft).toBe(10);
     expect(res.body.registrationOpen).toBe(true);
+  });
+
+  // ── Registration toggle (story 67) ─────────────────────────────────────────────
+
+  it('GET /public/events omits events with registration disabled', async () => {
+    const hiddenTitle = `Só divulgação ${Date.now()}`;
+    await createEvent({
+      title: hiddenTitle,
+      description: 'd',
+      startAt: future(25),
+      registrationEnabled: false,
+    });
+
+    const res = await request(app.getHttpServer())
+      .get(`${BASE}/public/events`)
+      .expect(200);
+
+    const titles = res.body.map((e: { title: string }) => e.title);
+    expect(titles).not.toContain(hiddenTitle);
+  });
+
+  it('GET /public/events/:id → 404 when registration is disabled', async () => {
+    const id = await createEvent({
+      title: 'Interno',
+      description: 'd',
+      startAt: future(25),
+      registrationEnabled: false,
+    });
+
+    await request(app.getHttpServer()).get(`${BASE}/public/events/${id}`).expect(404);
+  });
+
+  it('POST /public/events/:id/register → 404 when registration is disabled', async () => {
+    const id = await createEvent({
+      title: 'Sem inscrição',
+      description: 'd',
+      startAt: future(25),
+      registrationEnabled: false,
+    });
+
+    await request(app.getHttpServer())
+      .post(`${BASE}/public/events/${id}/register`)
+      .send(validReg())
+      .expect(404);
   });
 
   // ── Register ──────────────────────────────────────────────────────────────────

@@ -19,6 +19,7 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
     endAt: null,
     location: 'Sede',
     capacity: null,
+    registrationEnabled: true,
     bannerKey: null,
     registrationOpensAt: null,
     registrationClosesAt: null,
@@ -138,6 +139,18 @@ describe('EventRegistrationService.register', () => {
 
     await expect(service.register('missing', validDto)).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('rejeita inscrição em evento com inscrição desligada (404)', async () => {
+    const event = makeEvent({ registrationEnabled: false });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const registrations = { count: jest.fn(), save: jest.fn() };
+    const service = makeService(events, registrations);
+
+    await expect(service.register('event-uuid', validDto)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(registrations.save).not.toHaveBeenCalled();
+  });
 });
 
 describe('EventRegistrationService.getPublicView', () => {
@@ -193,6 +206,13 @@ describe('EventRegistrationService.getPublicView', () => {
     const service = makeService(events, { count: jest.fn() });
     await expect(service.getPublicView('missing')).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('lança NotFound para evento com inscrição desligada (não vaza interno)', async () => {
+    const event = makeEvent({ registrationEnabled: false });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const service = makeService(events, { count: jest.fn() });
+    await expect(service.getPublicView('event-uuid')).rejects.toBeInstanceOf(NotFoundException);
+  });
 });
 
 describe('EventRegistrationService.listPublic', () => {
@@ -200,6 +220,7 @@ describe('EventRegistrationService.listPublic', () => {
     const future = makeEvent({ id: 'f', startAt: new Date('2026-07-01T12:00:00.000Z') });
     const qb = {
       where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       getMany: jest.fn().mockResolvedValue([future]),
     };
@@ -210,6 +231,8 @@ describe('EventRegistrationService.listPublic', () => {
     const list = await service.listPublic();
 
     expect(qb.where).toHaveBeenCalledWith('e.start_at >= :now', expect.any(Object));
+    // Story 67: filtra por inscrição habilitada.
+    expect(qb.andWhere).toHaveBeenCalledWith('e.registration_enabled = true');
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe('f');
   });

@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsInt,
   IsNotEmpty,
@@ -13,6 +14,11 @@ export class CreateEventDto {
   @IsNotEmpty()
   @MaxLength(255)
   title: string;
+
+  /** Inscrição habilitada (story 67). Default false: evento só-divulgação. */
+  @IsOptional()
+  @IsBoolean()
+  registrationEnabled?: boolean;
 
   @IsString()
   @IsNotEmpty()

@@ -113,16 +113,29 @@ describe('EventController (e2e)', () => {
         .send({ ...validBody(), endAt: '2026-07-01T18:00:00.000Z' })
         .expect(400));
 
-    it('400 when registrationClosesAt precedes registrationOpensAt', () =>
+    it('400 when registrationClosesAt precedes registrationOpensAt (registration on)', () =>
       request(app.getHttpServer())
         .post(`${BASE}/events`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           ...validBody(),
+          registrationEnabled: true,
           registrationOpensAt: '2026-07-20T00:00:00.000Z',
           registrationClosesAt: '2026-07-10T00:00:00.000Z',
         })
         .expect(400));
+
+    it('201 with an incoherent window when registration is off (window ignored)', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/events`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          ...validBody(),
+          registrationEnabled: false,
+          registrationOpensAt: '2026-07-20T00:00:00.000Z',
+          registrationClosesAt: '2026-07-10T00:00:00.000Z',
+        })
+        .expect(201));
   });
 
   // ── CRUD + banner ──────────────────────────────────────────────────────────────
@@ -141,7 +154,27 @@ describe('EventController (e2e)', () => {
       expect(res.body.title).toBe('Retiro de famílias');
       expect(res.body.capacity).toBe(100);
       expect(res.body.bannerUrl).toBeNull();
+      // Story 67: default só-divulgação.
+      expect(res.body.registrationEnabled).toBe(false);
       createdId = res.body.id;
+    });
+
+    it('persists registrationEnabled=true when set on create', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/events`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ ...validBody(), title: 'Com inscrição', registrationEnabled: true })
+        .expect(201);
+      expect(res.body.registrationEnabled).toBe(true);
+    });
+
+    it('toggles registrationEnabled via update', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`${BASE}/events/${createdId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ registrationEnabled: true })
+        .expect(200);
+      expect(res.body.registrationEnabled).toBe(true);
     });
 
     it('lists events ordered by start_at ascending', async () => {

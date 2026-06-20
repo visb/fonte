@@ -5,6 +5,7 @@ import { LoadingState, MessageScreen } from '@/components/StateScreens';
 import { getErrorMessage } from '@/lib/errors';
 import { usePublicEventById, useRegisterToEvent } from '../hooks/useEventsPublic';
 import { EventRegistrationForm } from '../components/EventRegistrationForm';
+import { RegistrationSuccess } from '../components/RegistrationSuccess';
 import { formatEventDate } from '../lib/formatEventDate';
 
 export function EventDetailPage() {
@@ -24,13 +25,7 @@ export function EventDetailPage() {
   }
 
   if (register.isSuccess) {
-    return (
-      <MessageScreen
-        emoji="✅"
-        title="Inscrição confirmada"
-        message={`Você está inscrito em "${event.title}". Até lá!`}
-      />
-    );
+    return <RegistrationSuccess result={register.data} eventTitle={event.title} />;
   }
 
   const handleSubmit = (data: RegisterToEventInput) => register.mutate(data);

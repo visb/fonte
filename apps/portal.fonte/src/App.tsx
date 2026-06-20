@@ -5,6 +5,7 @@ import { InvalidLinkPage } from '@/features/payment/pages/InvalidLinkPage';
 import { CancelPage } from '@/features/cancel/pages/CancelPage';
 import { EventsListPage } from '@/features/events/pages/EventsListPage';
 import { EventDetailPage } from '@/features/events/pages/EventDetailPage';
+import { EventPaymentPage } from '@/features/events/pages/EventPaymentPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +29,8 @@ export default function App() {
           {/* Eventos públicos (story 58): lista + detalhe com inscrição. */}
           <Route path="/eventos" element={<EventsListPage />} />
           <Route path="/eventos/:id" element={<EventDetailPage />} />
+          {/* Pagamento da inscrição em evento pago (story 70): /pagamento/:token */}
+          <Route path="/pagamento/:token" element={<EventPaymentPage />} />
           {/* Atalho: /:token também resolve a página de pagamento. */}
           <Route path="/:token" element={<PaymentPage />} />
           <Route path="/" element={<InvalidLinkPage />} />

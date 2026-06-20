@@ -65,6 +65,15 @@ export class EventController {
     return this.registrationService.listRegistrations(id);
   }
 
+  /** Reenvia o link de pagamento da inscrição por e-mail + WhatsApp (story 70). */
+  @Post(':id/registrations/:regId/resend-payment-link')
+  resendPaymentLink(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('regId', ParseUUIDPipe) regId: string,
+  ) {
+    return this.registrationService.resendPaymentLink(id, regId);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.findOne(id);

@@ -24,6 +24,7 @@ describe('Events payment (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let adminToken: string;
+  let servantToken: string;
   let createOrder: jest.Mock;
 
   const WH_AUTH = `Basic ${Buffer.from(
@@ -55,6 +56,7 @@ describe('Events payment (e2e)', () => {
       overrideProvider: { token: PAYMENT_GATEWAY, useValue: gatewayMock },
     });
     adminToken = await login(app, 'admin@fonte.com', 'admin123');
+    servantToken = await login(app, 'operator@fonte.com', 'operator123');
     dataSource = app.get(DataSource);
   });
 
@@ -252,5 +254,61 @@ describe('Events payment (e2e)', () => {
 
     expect(res.body[0]).toHaveProperty('paymentStatus', 'PENDING');
     expect(res.body[0]).toHaveProperty('amountCents', 5248);
+  });
+
+  // ── Reenvio do link (story 70) ──────────────────────────────────────────────────
+  // Sem credencial de e-mail/WhatsApp no ambiente de teste, os canais ficam inertes
+  // (best-effort → `{ email:false, whatsapp:false }`); nenhum serviço externo é
+  // chamado. Validamos o roteamento e a autorização do endpoint. As inscrições são
+  // semeadas via SQL p/ não esbarrar no throttle do register público.
+  describe('resend-payment-link', () => {
+    let eventId: string;
+    let paidRegId: string;
+    let freeRegId: string;
+
+    beforeAll(async () => {
+      eventId = await paidEvent();
+      const paid = await dataSource.query(
+        `INSERT INTO event_registrations
+           (event_id, name, contact, email, payment_token, payment_status, amount_cents)
+         VALUES ($1, 'Maria', '+5562999998888', 'maria@example.com', 'resend-tok-1', 'PENDING', 5248)
+         RETURNING id`,
+        [eventId],
+      );
+      paidRegId = paid[0].id;
+      const free = await dataSource.query(
+        `INSERT INTO event_registrations
+           (event_id, name, contact, email, payment_status)
+         VALUES ($1, 'João', '11999990000', null, 'NONE')
+         RETURNING id`,
+        [eventId],
+      );
+      freeRegId = free[0].id;
+    });
+
+    it('por ADMIN responde 201 (best-effort, canais inertes)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/events/${eventId}/registrations/${paidRegId}/resend-payment-link`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(201);
+      expect(res.body).toEqual({ email: false, whatsapp: false });
+    });
+
+    it('por SERVANT (sem permissão) → 403', async () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/events/${eventId}/registrations/${paidRegId}/resend-payment-link`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(403));
+
+    it('sem token (não autenticado) → 401', async () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/events/${eventId}/registrations/${paidRegId}/resend-payment-link`)
+        .expect(401));
+
+    it('p/ inscrição grátis → 400', async () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/events/${eventId}/registrations/${freeRegId}/resend-payment-link`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(400));
   });
 });

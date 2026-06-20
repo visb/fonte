@@ -8,4 +8,7 @@ export const queryKeys = {
     list: ['events', 'public'] as const,
     detail: (id: string) => ['events', 'public', id] as const,
   },
+  eventPayment: {
+    byToken: (token: string) => ['event-payment', 'public', token] as const,
+  },
 } as const;

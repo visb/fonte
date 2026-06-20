@@ -147,6 +147,52 @@ describe('ActivityService.findAll (scoping)', () => {
   });
 });
 
+describe('ActivityService view shape (story 71 — description fora da lista)', () => {
+  it('findAll omits description from each list item', async () => {
+    const qb = makeQb([
+      activity({ id: 'a-1', description: 'texto que a lista não usa' }),
+    ]);
+    const repo = makeActivityRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const service = makeService(repo, staff);
+
+    const result = await service.findAll(COORD, {});
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).not.toHaveProperty('description');
+    // Demais campos do item de lista seguem presentes.
+    expect(result[0]).toMatchObject({ id: 'a-1', title: 'Trocar lâmpada' });
+  });
+
+  it('findOne includes description in the detail view', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest.fn().mockResolvedValue(
+        activity({ houseId: 'house-1', description: 'detalhe completo' }),
+      ),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const service = makeService(repo, staff);
+
+    const result = await service.findOne('act-1', COORD);
+
+    expect(result).toHaveProperty('description', 'detalhe completo');
+  });
+
+  it('findOne includes description even when null', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest.fn().mockResolvedValue(
+        activity({ houseId: 'house-1', description: null }),
+      ),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const service = makeService(repo, staff);
+
+    const result = await service.findOne('act-1', COORD);
+
+    expect(result).toHaveProperty('description', null);
+  });
+});
+
 describe('ActivityService.findOne (visibility)', () => {
   it('coordinator cannot see another house (404)', async () => {
     const repo = makeActivityRepo({

@@ -79,9 +79,7 @@ export function ActivityCard({
         </Badge>
       </div>
 
-      {activity.description && (
-        <p className="text-xs text-muted-foreground line-clamp-3">{activity.description}</p>
-      )}
+      {/* Descrição não aparece no board (story 71): só na tela/modal de detalhes. */}
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
         {activity.house ? (

@@ -4825,7 +4825,7 @@
                 }
               ]
             },
-            "description": "Lista atividades escopadas pelo usuario. ADMIN ve todas (filtros opcionais); COORDINATOR/SERVANT veem so a propria casa e nunca houseless. Roles: ADMIN, COORDINATOR, SERVANT."
+            "description": "Lista atividades escopadas pelo usuario. ADMIN ve todas (filtros opcionais); COORDINATOR/SERVANT veem so a propria casa e nunca houseless. O item de lista NAO traz o campo `description` (story 71) — o board/lista nao usa o texto; busque o detalhe (GET /activities/:id) para a descricao. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {
@@ -4842,7 +4842,7 @@
                 "{{activityId}}"
               ]
             },
-            "description": "Detalhe de uma atividade. 404 se fora do escopo do usuario. Roles: ADMIN, COORDINATOR, SERVANT."
+            "description": "Detalhe de uma atividade, incluindo o campo `description` (string ou null) que a listagem omite (story 71). 404 se fora do escopo do usuario. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {

@@ -126,6 +126,27 @@ describe('ActivityController (e2e)', () => {
         .expect(200);
       expect(res.body.description).toBe('override pelo admin');
     });
+
+    it('list (GET /activities) does NOT carry description (story 71)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      const item = res.body.find(
+        (a: { id: string }) => a.id === activityId,
+      );
+      expect(item).toBeDefined();
+      // O texto existe (foi editado acima) mas a LISTA o omite do payload.
+      expect(item).not.toHaveProperty('description');
+    });
+
+    it('detail (GET /activities/:id) DOES carry description (story 71)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(res.body.description).toBe('override pelo admin');
+    });
   });
 
   // ── admin flow / scoping ────────────────────────────────────────────────────

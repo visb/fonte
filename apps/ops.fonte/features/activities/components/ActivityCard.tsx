@@ -59,11 +59,7 @@ export function ActivityCard({ item, currentUserId, onChangeStatus, onPress, pen
           <StatusBadge status={status} />
         </View>
 
-        {item.description ? (
-          <Text className="text-sm text-gray-600 mb-1.5" numberOfLines={3}>
-            {item.description}
-          </Text>
-        ) : null}
+        {/* Descrição não aparece na lista (story 71): só na tela de detalhes. */}
 
         <View className="mt-0.5">
           <ResponsibleBadge responsible={item.responsible} />

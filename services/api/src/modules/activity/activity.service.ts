@@ -144,7 +144,12 @@ export class ActivityService {
     const creators = await this.resolveCreators(
       items.map((a) => a.createdByUserId),
     );
-    return items.map((a) => this.toView(a, creators.get(a.createdByUserId) ?? null));
+    // Lista NÃO carrega `description` (story 71): o board/lista não usa o texto;
+    // o detalhe (findOne) continua trazendo. Corta payload e evita vazar texto
+    // que a listagem nunca renderiza.
+    return items.map((a) =>
+      this.toListView(a, creators.get(a.createdByUserId) ?? null),
+    );
   }
 
   async findOne(id: string, user: ActivityUser): Promise<ActivityDto> {
@@ -456,14 +461,17 @@ export class ActivityService {
     if (!staff) throw new BadRequestException('Responsible staff not found');
   }
 
-  private toView(
+  /**
+   * View base do item, SEM `description` (story 71). Usada na listagem do board,
+   * que não renderiza a descrição. O detalhe acrescenta `description` via `toView`.
+   */
+  private toListView(
     a: Activity,
     createdBy: { id: string; name: string; userId: string } | null = null,
   ): ActivityDto {
     return {
       id: a.id,
       title: a.title,
-      description: a.description ?? null,
       status: a.status,
       houseId: a.houseId ?? null,
       house: a.house ? { id: a.house.id, name: a.house.name } : null,
@@ -477,6 +485,21 @@ export class ActivityService {
         a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
       updatedAt:
         a.updatedAt instanceof Date ? a.updatedAt.toISOString() : String(a.updatedAt),
+    };
+  }
+
+  /**
+   * View de detalhe: a base + `description` (story 71). Usada em
+   * findOne/create/update/changeStatus, onde o consumidor (modal/tela de
+   * detalhes) precisa do texto.
+   */
+  private toView(
+    a: Activity,
+    createdBy: { id: string; name: string; userId: string } | null = null,
+  ): ActivityDto {
+    return {
+      ...this.toListView(a, createdBy),
+      description: a.description ?? null,
     };
   }
 }

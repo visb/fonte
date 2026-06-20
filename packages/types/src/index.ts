@@ -446,7 +446,12 @@ export interface ActivityStaffRef {
 export interface Activity {
   id: string;
   title: string;
-  description: string | null;
+  /**
+   * Descrição. Opcional no payload (story 71): a LISTAGEM (`GET /activities`)
+   * omite o campo; o DETALHE (`GET /activities/:id`) sempre o inclui (string ou
+   * null). Consumidores que precisam da descrição devem usar getById.
+   */
+  description?: string | null;
   status: ActivityStatus;
   houseId: string | null;
   house: ActivityHouseRef | null;

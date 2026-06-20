@@ -103,6 +103,20 @@ deps). Fonte de verdade: esta seção + git log. Base já mergeada: 62 (modal `A
 
 [OK] 73 — testes: api unit 636✓ (activity-attachment.service: allowlist de mimetype barrada, visibilidade por casa 404, upload image→type image / pdf→document grava no storage, comment attachment vinculado, delete por autor-DRAFT/ADMIN/comment-author OK e terceiro/criador-fora-de-DRAFT barrado 403, storage.delete chamado, canDelete na view; comment.service e activity.service specs atualizados p/ os novos deps) + e2e activities 51✓ (+12: allowlist 400, escopo 404, upload atividade pdf/imagem, detalhe embute attachments, upload comentário, comments embute attachments, admin delete, autor-comentário delete, criador-DRAFT delete, soft delete some do detalhe); adm unit 141✓ (+27: attachments.ts validação cliente, AttachmentItem botão condicional + link download, AttachmentUploader barra tipo/tamanho, CommentItem embute anexos) + tsc -b✓ + build✓ + Playwright activities 17✓ (+1: anexa pdf na atividade pelo modal e exclui); ops unit 49✓ (+18: attachments.ts) + tsc --noEmit✓ — commit: bb1ff51 — merge: 2a9fdda — 2026-06-20 — sem bloqueio. Migration ActivityAttachments1783900000000 (tabela activity_attachments: activity_id NOT NULL + comment_id nullable + FKs CASCADE/RESTRICT + índices). Endpoints novos: POST /activities/:id/attachments, POST /activities/:id/comments/:commentId/attachments, DELETE /activities/:id/attachments/:attachmentId (postman atualizado). Allowlist: imagens (jpeg/png/gif/webp) + pdf/doc/docx/xls/xlsx; limite 20 MB; SEM áudio (é a 74, que estende essa allowlist). Storage tratado nos testes via o StorageService já existente (S3 com fallback local) — em ambiente de teste sem credencial S3 grava em uploads/activities/ local, exatamente como as demais features de anexo (registration-files story 68, message); nenhum bucket real chamado, nenhuma chave inventada. Sem PENDENTE-MANUAL: o upload/download é testável localmente sem credencial; só uma futura ativação de S3 de produção exigiria as envs AWS_* (já existentes/compartilhadas com as outras features).
 
-## Resumo final
+## Rodada PAUSADA (2026-06-20) a pedido do usuário — após a story 73
 
-<pendente>
+Concluídas e mergeadas na main nesta rodada: **64, 65, 66, 67, 68, 71, 72, 73** [OK] · **69, 70**
+[PARCIAL] (lógica completa e testada com mock; só credencial externa pendente). PENDENTES (não
+iniciadas): **74 (áudio — depende da 73, já feita), 75 (devolver REQUESTED→DRAFT, independente)**.
+
+Loop `/loop` (cron d4502925) ENCERRADO. Para retomar: rearmar o AUTORUN a partir da 74 na ordem
+`74 → 75`. 74 estende a allowlist de mimetype do controller de anexos da 73 (reusa
+`activity_attachments`, não cria modelo novo) e adiciona gravação/player; 75 é transição de status
+independente. Última migration: `1783900000000-ActivityAttachments` (próxima ≥ 1784000000000).
+Serviços podem ter sido encerrados — reexecutar o bootstrap (docker:up, test:setup,
+build:types+api-client, dev:api:test em 3001, adm dev:test em 5174).
+
+### PENDENTE-MANUAL acumulado (stories PARCIAL)
+- **69**: `PAGARME_SECRET_KEY` de produção + registrar webhook no painel Pagar.me.
+- **70**: aprovar template WhatsApp na Meta (`META_WA_TEMPLATE_EVENT_PAYMENT`); credenciais
+  `RESEND_API_KEY`+`MAIL_FROM` e `META_WA_PHONE_NUMBER_ID`/`META_WA_TOKEN`; definir `PORTAL_URL`.

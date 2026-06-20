@@ -1,4 +1,13 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import { RegistrationAnswerValue } from '@fonte/types';
 
 export class RegisterToEventDto {
   @IsString()
@@ -15,4 +24,12 @@ export class RegisterToEventDto {
   @IsOptional()
   @IsEmail()
   email?: string | null;
+
+  /**
+   * Respostas dos campos custom (story 68). Mapa fieldId → valor; a validação
+   * por tipo é dinâmica (depende da definição do evento) e roda no service.
+   */
+  @IsOptional()
+  @IsObject()
+  answers?: Record<string, RegistrationAnswerValue>;
 }

@@ -11,9 +11,17 @@ interface Props {
   past: boolean;
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
+  onViewRegistrations: (event: Event) => void;
 }
 
-export function EventTimelineItem({ event, highlighted, past, onEdit, onDelete }: Props) {
+export function EventTimelineItem({
+  event,
+  highlighted,
+  past,
+  onEdit,
+  onDelete,
+  onViewRegistrations,
+}: Props) {
   return (
     <div className="relative pl-8">
       {/* Marcador da timeline */}
@@ -84,6 +92,17 @@ export function EventTimelineItem({ event, highlighted, past, onEdit, onDelete }
         )}
 
         <div className="mt-3 flex justify-end gap-2">
+          {event.registrationEnabled && (
+            <Button
+              size="sm"
+              variant="outline"
+              data-testid="view-registrations"
+              onClick={() => onViewRegistrations(event)}
+            >
+              <Users size={14} className="mr-1.5" />
+              Inscritos
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={() => onEdit(event)}>
             <Pencil size={14} className="mr-1.5" />
             Editar

@@ -771,6 +771,52 @@ export interface AssociatesOverview {
 
 export type EventFilter = 'all' | 'upcoming' | 'past';
 
+/**
+ * Tipos de campo do formulário de inscrição customizável (story 68). O admin
+ * monta os campos extras por cima da base fixa (name/contact/email?).
+ */
+export type RegistrationFieldType =
+  | 'short_text'
+  | 'long_text'
+  | 'number'
+  | 'boolean'
+  | 'select'
+  | 'multi_select'
+  | 'date'
+  | 'email'
+  | 'phone'
+  | 'file';
+
+export const REGISTRATION_FIELD_TYPES: RegistrationFieldType[] = [
+  'short_text',
+  'long_text',
+  'number',
+  'boolean',
+  'select',
+  'multi_select',
+  'date',
+  'email',
+  'phone',
+  'file',
+];
+
+/**
+ * Definição de um campo custom do formulário de inscrição (story 68). Mora em
+ * `Event.registrationFields`. `id` é estável (gerado na criação) para casar
+ * resposta↔campo mesmo se o label mudar.
+ */
+export interface RegistrationField {
+  id: string;
+  label: string;
+  type: RegistrationFieldType;
+  required: boolean;
+  /** Ordem de exibição (asc). */
+  order: number;
+  /** Obrigatório e não-vazio só para select/multi_select. */
+  options?: string[];
+  placeholder?: string;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -784,6 +830,8 @@ export interface Event {
   capacity: number | null;
   /** Inscrição habilitada (story 67). false = evento só-divulgação. */
   registrationEnabled: boolean;
+  /** Campos custom do formulário de inscrição (story 68). [] = só base fixa. */
+  registrationFields: RegistrationField[];
   /** URL servida/assinada do banner (null quando sem banner). Nunca é a chave crua. */
   bannerUrl: string | null;
   /** ISO string ou null. Abertura da janela de inscrição. */
@@ -803,6 +851,8 @@ export interface CreateEventInput {
   capacity?: number | null;
   /** Inscrição habilitada (story 67). Default false: evento só-divulgação. */
   registrationEnabled?: boolean;
+  /** Campos custom do formulário de inscrição (story 68). */
+  registrationFields?: RegistrationField[];
   registrationOpensAt?: string | null;
   registrationClosesAt?: string | null;
 }
@@ -829,11 +879,16 @@ export interface EventPublic {
   capacity: number | null;
   /** Vagas restantes; null quando ilimitado. Nunca negativo. */
   spotsLeft: number | null;
+  /** Campos custom do formulário de inscrição (story 68), p/ o portal renderizar. */
+  registrationFields: RegistrationField[];
   registrationOpensAt: string | null;
   registrationClosesAt: string | null;
   /** Inscrição aberta agora (janela respeitada, não passado, não esgotado). */
   registrationOpen: boolean;
 }
+
+/** Valor primitivo/array que uma resposta de campo custom pode assumir (story 68). */
+export type RegistrationAnswerValue = string | number | boolean | string[];
 
 export interface EventRegistration {
   id: string;
@@ -841,6 +896,11 @@ export interface EventRegistration {
   name: string;
   contact: string;
   email: string | null;
+  /**
+   * Respostas dos campos custom (story 68). Mapa `{ [fieldId]: value }`.
+   * Campos `file` chegam ao admin como URL assinada do arquivo.
+   */
+  answers: Record<string, RegistrationAnswerValue>;
   createdAt: string;
 }
 
@@ -848,6 +908,13 @@ export interface RegisterToEventInput {
   name: string;
   contact: string;
   email?: string | null;
+  /** Respostas dos campos custom (story 68). `file` carrega a storage key. */
+  answers?: Record<string, RegistrationAnswerValue>;
+}
+
+/** Resposta do upload de arquivo de inscrição (campo `file`, story 68). */
+export interface RegistrationFileResult {
+  fileKey: string;
 }
 
 export interface EventRegistrationResult {

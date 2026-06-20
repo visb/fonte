@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsInt,
@@ -7,7 +8,10 @@ import {
   IsString,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { RegistrationFieldDto } from './registration-field.dto';
 
 export class CreateEventDto {
   @IsString()
@@ -19,6 +23,13 @@ export class CreateEventDto {
   @IsOptional()
   @IsBoolean()
   registrationEnabled?: boolean;
+
+  /** Campos custom do formulário de inscrição (story 68). */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RegistrationFieldDto)
+  registrationFields?: RegistrationFieldDto[];
 
   @IsString()
   @IsNotEmpty()

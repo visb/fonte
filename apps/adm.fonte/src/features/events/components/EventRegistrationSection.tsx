@@ -1,11 +1,13 @@
-import type { FieldErrors, UseFormRegister } from 'react-hook-form';
+import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { EventFormData } from '../lib/eventSchema';
+import { RegistrationFieldsBuilder } from './RegistrationFieldsBuilder';
 
 interface Props {
   register: UseFormRegister<EventFormData>;
   errors: FieldErrors<EventFormData>;
+  control: Control<EventFormData>;
   /** Estado atual do toggle (via watch); habilita os demais campos. */
   enabled: boolean;
 }
@@ -15,7 +17,7 @@ interface Props {
  * `registrationEnabled` controla se o evento aceita inscrição; quando off,
  * vagas e janela ficam desabilitados (evento só-divulgação).
  */
-export function EventRegistrationSection({ register, errors, enabled }: Props) {
+export function EventRegistrationSection({ register, errors, control, enabled }: Props) {
   return (
     <fieldset className="space-y-3 rounded-md border p-3">
       <label className="flex items-center gap-2">
@@ -72,6 +74,10 @@ export function EventRegistrationSection({ register, errors, enabled }: Props) {
           )}
         </div>
       </div>
+
+      {enabled && (
+        <RegistrationFieldsBuilder register={register} control={control} errors={errors} />
+      )}
     </fieldset>
   );
 }

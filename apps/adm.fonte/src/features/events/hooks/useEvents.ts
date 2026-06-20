@@ -22,6 +22,15 @@ export function useEventById(id: string, options?: { enabled?: boolean }) {
   });
 }
 
+/** Inscritos de um evento, com as respostas custom (story 68). */
+export function useEventRegistrations(id: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.events.registrations(id),
+    queryFn: () => api.events.listRegistrations(id),
+    enabled: options?.enabled ?? true,
+  });
+}
+
 function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
 }

@@ -8,6 +8,7 @@ import type {
   EventRegistration,
   RegisterToEventInput,
   EventRegistrationResult,
+  RegistrationFileResult,
 } from '../types.js';
 
 export function createEventsModule(http: AxiosInstance) {
@@ -49,6 +50,17 @@ export function createEventsModule(http: AxiosInstance) {
       register: (id: string, data: RegisterToEventInput) =>
         http
           .post<EventRegistrationResult>(`/public/events/${id}/register`, data)
+          .then((r) => r.data),
+
+      /**
+       * Upload de arquivo de um campo `file` da inscrição (story 68). Recebe
+       * FormData com o campo `file`; devolve a fileKey p/ enviar em answers.
+       */
+      uploadRegistrationFile: (id: string, formData: FormData) =>
+        http
+          .post<RegistrationFileResult>(`/public/events/${id}/registration-files`, formData, {
+            headers: { 'Content-Type': undefined },
+          })
           .then((r) => r.data),
     },
   };

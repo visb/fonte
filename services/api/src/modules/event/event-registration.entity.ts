@@ -33,6 +33,13 @@ export class EventRegistration {
   @Column({ type: 'varchar', nullable: true })
   email: string | null;
 
+  /**
+   * Respostas dos campos custom (story 68). Mapa fieldId → valor. `file` guarda
+   * a storage key (nunca URL). Default {}.
+   */
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  answers: Record<string, unknown>;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

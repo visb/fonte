@@ -74,6 +74,10 @@ import type {
   EventRegistration,
   RegisterToEventInput,
   EventRegistrationResult,
+  RegistrationField,
+  RegistrationFieldType,
+  RegistrationAnswerValue,
+  RegistrationFileResult,
 } from '@fonte/types';
 import {
   NotificationType,
@@ -82,6 +86,7 @@ import {
   PayableCategory,
   ActivityStatus,
   ActivityEventType,
+  REGISTRATION_FIELD_TYPES,
 } from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
@@ -125,7 +130,7 @@ export type {
   PayablesSummaryParams,
 };
 
-export { ActivityStatus, ActivityEventType };
+export { ActivityStatus, ActivityEventType, REGISTRATION_FIELD_TYPES };
 export type {
   Activity,
   ActivityHouseRef,
@@ -149,6 +154,10 @@ export type {
   EventRegistration,
   RegisterToEventInput,
   EventRegistrationResult,
+  RegistrationField,
+  RegistrationFieldType,
+  RegistrationAnswerValue,
+  RegistrationFileResult,
 };
 
 export type { FamilyInvestment };

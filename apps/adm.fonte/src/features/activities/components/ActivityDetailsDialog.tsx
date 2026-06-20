@@ -11,13 +11,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { getErrorMessage } from '@/lib/errors';
-import { useActivity, useUpdateActivity } from '../hooks/useActivities';
+import {
+  useActivity,
+  useDeleteAttachment,
+  useUpdateActivity,
+  useUploadActivityAttachment,
+} from '../hooks/useActivities';
 import { canEditDescription } from '../lib/permissions';
 import { ACTIVITY_STATUS_LABELS, ACTIVITY_STATUS_VARIANTS } from '../constants';
 import { ActivityComments } from './ActivityComments';
 import { HistoryTimeline } from './HistoryTimeline';
 import { ActivityDescriptionEditor } from './ActivityDescriptionEditor';
 import { ActivityDescriptionView } from './ActivityDescriptionView';
+import { AttachmentList } from './AttachmentList';
 
 interface Props {
   activityId: string | null;
@@ -119,10 +125,33 @@ function ActivityDetails({ activityId, onClose }: { activityId: string; onClose:
           onClose={onClose}
         />
 
+        <ActivityAttachmentsSection activity={activity} />
+
         {/* Abas inferiores: Comentários (story 65) | Histórico (preenchido na story 66). */}
         <ActivityTabs activityId={activity.id} />
       </div>
     </>
+  );
+}
+
+/** Anexos da própria atividade (story 73): lista + uploader. */
+function ActivityAttachmentsSection({ activity }: { activity: Activity }) {
+  const uploadMutation = useUploadActivityAttachment(activity.id);
+  const deleteMutation = useDeleteAttachment(activity.id);
+  const attachments = activity.attachments ?? [];
+
+  return (
+    <div className="space-y-1.5">
+      <Label>Anexos</Label>
+      <AttachmentList
+        attachments={attachments}
+        onUpload={(file) => uploadMutation.mutate(file)}
+        onDelete={(id) => deleteMutation.mutate(id)}
+        uploading={uploadMutation.isPending}
+        deleting={deleteMutation.isPending}
+        uploadError={uploadMutation.error}
+      />
+    </div>
   );
 }
 

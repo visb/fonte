@@ -464,6 +464,11 @@ export interface Activity {
   createdByUserId: string;
   /** Criador (staff) resolvido pelo nome quando disponível; null se não for staff. */
   createdBy: ActivityStaffRef | null;
+  /**
+   * Anexos da própria atividade (story 73; `commentId` null). Embutido no
+   * DETALHE (`GET /activities/:id`); a LISTAGEM não traz. Vazio quando não há.
+   */
+  attachments?: ActivityAttachment[];
   createdAt: string;
   updatedAt: string;
 }
@@ -501,12 +506,38 @@ export interface ActivityComment {
   body: string;
   /** Autor resolvido (staff) pelo nome quando disponível; null se não for staff. */
   author: ActivityStaffRef | null;
+  /** Anexos deste comentário (story 73). Vazio quando não há. */
+  attachments?: ActivityAttachment[];
   createdByUserId: string;
   createdAt: string;
 }
 
 export interface CreateActivityCommentInput {
   body: string;
+}
+
+/** Tipo de anexo derivado do mimetype (story 73). */
+export type ActivityAttachmentType = 'image' | 'document';
+
+/**
+ * Anexo de uma atividade ou de um comentário (story 73). `commentId` nulo =
+ * anexo da própria atividade; preenchido = anexo daquele comentário. A `fileUrl`
+ * chega assinada pelo `StorageUrlInterceptor` em modo S3. `canDelete` indica se o
+ * usuário autenticado pode excluir este anexo (autoridade no backend; o front só
+ * espelha mostrando/escondendo o botão).
+ */
+export interface ActivityAttachment {
+  id: string;
+  activityId: string;
+  commentId: string | null;
+  fileUrl: string;
+  fileName: string;
+  fileType: ActivityAttachmentType;
+  mimeType: string;
+  sizeBytes: number;
+  createdByUserId: string;
+  createdAt: string;
+  canDelete: boolean;
 }
 
 /** Tipos de evento registrados na trilha de auditoria de uma atividade — story 66. */

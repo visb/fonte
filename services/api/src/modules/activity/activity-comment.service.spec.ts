@@ -4,6 +4,7 @@ import { Role } from '@fonte/types';
 import { ActivityCommentService } from './activity-comment.service';
 import { ActivityComment } from './activity-comment.entity';
 import { ActivityService, ActivityUser } from './activity.service';
+import { ActivityAttachmentService } from './activity-attachment.service';
 
 const ADMIN: ActivityUser = { userId: 'admin-user', role: Role.ADMIN };
 const COORD: ActivityUser = { userId: 'coord-user', role: Role.COORDINATOR };
@@ -36,13 +37,25 @@ function makeActivityService(
   } as unknown as ActivityService;
 }
 
+/** Stub do ActivityAttachmentService: por padrão sem anexos. */
+function makeAttachmentService(
+  overrides: Partial<Record<keyof ActivityAttachmentService, jest.Mock>> = {},
+) {
+  return {
+    attachmentsByComment: jest.fn().mockResolvedValue(new Map()),
+    ...overrides,
+  } as unknown as ActivityAttachmentService;
+}
+
 function makeService(
   commentRepo: ReturnType<typeof makeCommentRepo>,
   activityService: ActivityService = makeActivityService(),
+  attachmentService: ActivityAttachmentService = makeAttachmentService(),
 ) {
   return new ActivityCommentService(
     commentRepo as unknown as Repository<ActivityComment>,
     activityService,
+    attachmentService,
   );
 }
 

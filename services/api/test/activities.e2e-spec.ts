@@ -31,6 +31,7 @@ describe('ActivityController (e2e)', () => {
   });
 
   afterAll(async () => {
+    await dataSource.query('DELETE FROM activity_attachments');
     await dataSource.query('DELETE FROM activity_events');
     await dataSource.query('DELETE FROM activity_comments');
     await dataSource.query('DELETE FROM activities');
@@ -337,6 +338,160 @@ describe('ActivityController (e2e)', () => {
         .set('Authorization', `Bearer ${coordToken}`)
         .expect(200);
       expect(res.body).toEqual([]);
+    });
+  });
+
+  // ── attachments (story 73) ───────────────────────────────────────────────────
+
+  describe('attachments', () => {
+    let activityId: string;
+    let houselessId: string;
+    let commentId: string;
+    let attachmentId: string;
+    let commentAttachmentId: string;
+
+    beforeAll(async () => {
+      // atividade na casa do coordenador (DRAFT — editável pelo criador coord)
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/activities`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ title: 'Atividade para anexar', houseId: coordHouseId })
+        .expect(201);
+      activityId = res.body.id;
+
+      // atividade sem casa (só o admin enxerga)
+      const houseless = await request(app.getHttpServer())
+        .post(`${BASE}/activities`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ title: 'Atividade geral para anexar' })
+        .expect(201);
+      houselessId = houseless.body.id;
+
+      // um comentário do coordenador para anexar
+      const comment = await request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/comments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ body: 'Comentário com anexo' })
+        .expect(201);
+      commentId = comment.body.id;
+    });
+
+    it('rejects a file outside the mimetype allowlist → 400', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/attachments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .attach('file', Buffer.from('MZ-fake-exe'), {
+          filename: 'malware.exe',
+          contentType: 'application/x-msdownload',
+        })
+        .expect(400));
+
+    it('coordinator cannot attach to a houseless activity (out of scope) → 404', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/activities/${houselessId}/attachments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .attach('file', Buffer.from('%PDF-1.4'), {
+          filename: 'doc.pdf',
+          contentType: 'application/pdf',
+        })
+        .expect(404));
+
+    it('coordinator attaches a pdf to the activity → 201', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/attachments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .attach('file', Buffer.from('%PDF-1.4'), {
+          filename: 'plano.pdf',
+          contentType: 'application/pdf',
+        })
+        .expect(201);
+      expect(res.body.id).toBeDefined();
+      expect(res.body.fileType).toBe('document');
+      expect(res.body.commentId).toBeNull();
+      expect(res.body.fileName).toBe('plano.pdf');
+      attachmentId = res.body.id;
+    });
+
+    it('attaches an image to the activity → 201 (type image)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/attachments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .attach('file', Buffer.from('fake-png'), {
+          filename: 'foto.png',
+          contentType: 'image/png',
+        })
+        .expect(201);
+      expect(res.body.fileType).toBe('image');
+    });
+
+    it('activity detail embeds the activity attachments', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      expect(Array.isArray(res.body.attachments)).toBe(true);
+      expect(res.body.attachments.length).toBe(2);
+      // criador em DRAFT pode excluir
+      expect(res.body.attachments.every((a: { canDelete: boolean }) => a.canDelete)).toBe(true);
+    });
+
+    it('attaches a file to a comment → 201 (commentId set)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/comments/${commentId}/attachments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .attach('file', Buffer.from('%PDF-1.4'), {
+          filename: 'anexo-comentario.pdf',
+          contentType: 'application/pdf',
+        })
+        .expect(201);
+      expect(res.body.commentId).toBe(commentId);
+      commentAttachmentId = res.body.id;
+    });
+
+    it('comments list embeds each comment attachments', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}/comments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      const c = res.body.find((x: { id: string }) => x.id === commentId);
+      expect(c.attachments).toHaveLength(1);
+      expect(c.attachments[0].id).toBe(commentAttachmentId);
+    });
+
+    it('admin (not the creator) always deletes an activity attachment → 204', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/attachments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .attach('file', Buffer.from('%PDF-1.4'), {
+          filename: 'temp.pdf',
+          contentType: 'application/pdf',
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .delete(`${BASE}/activities/${activityId}/attachments/${res.body.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(204);
+    });
+
+    it('comment attachment: the comment author deletes it → 204', () =>
+      request(app.getHttpServer())
+        .delete(`${BASE}/activities/${activityId}/attachments/${commentAttachmentId}`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(204));
+
+    it('activity attachment: the creator deletes it while DRAFT → 204', () =>
+      request(app.getHttpServer())
+        .delete(`${BASE}/activities/${activityId}/attachments/${attachmentId}`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(204));
+
+    it('deleted attachments no longer appear in the detail', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      const ids = res.body.attachments.map((a: { id: string }) => a.id);
+      expect(ids).not.toContain(attachmentId);
     });
   });
 

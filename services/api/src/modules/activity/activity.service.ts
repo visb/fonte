@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -16,6 +18,7 @@ import {
 import { Activity } from './activity.entity';
 import { Staff } from '../staff/staff.entity';
 import { ActivityEventService } from './activity-event.service';
+import { ActivityAttachmentService } from './activity-attachment.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ChangeActivityStatusDto } from './dto/change-activity-status.dto';
@@ -68,6 +71,8 @@ export class ActivityService {
     @InjectRepository(Staff)
     private staffRepo: Repository<Staff>,
     private events: ActivityEventService,
+    @Inject(forwardRef(() => ActivityAttachmentService))
+    private attachments: ActivityAttachmentService,
   ) {}
 
   private isAdmin(user: ActivityUser): boolean {
@@ -158,7 +163,17 @@ export class ActivityService {
     const houseId = await this.resolveHouseId(user);
     this.assertVisible(activity, user, houseId);
     const creators = await this.resolveCreators([activity.createdByUserId]);
-    return this.toView(activity, creators.get(activity.createdByUserId) ?? null);
+    const view = this.toView(
+      activity,
+      creators.get(activity.createdByUserId) ?? null,
+    );
+    // Detalhe embute os anexos da própria atividade (story 73; commentId null),
+    // com `canDelete` por anexo, para o front renderizar sem GET extra.
+    view.attachments = await this.attachments.listActivityAttachments(
+      activity,
+      user,
+    );
+    return view;
   }
 
   /**

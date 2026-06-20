@@ -11,7 +11,9 @@ import { getErrorMessage } from '@/lib/errors';
 import {
   useActivityComments,
   useAddComment,
+  useDeleteAttachment,
   useDeleteComment,
+  useUploadCommentAttachment,
 } from '../hooks/useActivities';
 import { canDeleteComment } from '../lib/permissions';
 import { CommentItem } from './CommentItem';
@@ -26,6 +28,8 @@ export function ActivityComments({ activityId }: { activityId: string }) {
   const { data: comments, isLoading, error, refetch } = useActivityComments(activityId);
   const addMutation = useAddComment(activityId);
   const deleteMutation = useDeleteComment(activityId);
+  const uploadAttachment = useUploadCommentAttachment(activityId);
+  const deleteAttachment = useDeleteAttachment(activityId);
 
   const {
     register,
@@ -68,6 +72,15 @@ export function ActivityComments({ activityId }: { activityId: string }) {
               canDelete={canDeleteComment(comment, { role, userId })}
               onDelete={(id) => deleteMutation.mutate(id)}
               deleting={deleteMutation.isPending}
+              onUploadAttachment={(commentId, file) =>
+                uploadAttachment.mutate({ commentId, file })
+              }
+              onDeleteAttachment={(attachmentId) =>
+                deleteAttachment.mutate(attachmentId)
+              }
+              uploadingAttachment={uploadAttachment.isPending}
+              deletingAttachment={deleteAttachment.isPending}
+              uploadAttachmentError={uploadAttachment.error}
             />
           ))}
         </div>

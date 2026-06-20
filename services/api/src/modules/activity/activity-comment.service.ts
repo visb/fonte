@@ -1,13 +1,20 @@
 import {
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ActivityComment as ActivityCommentDto, Role } from '@fonte/types';
+import {
+  ActivityAttachment as ActivityAttachmentDto,
+  ActivityComment as ActivityCommentDto,
+  Role,
+} from '@fonte/types';
 import { ActivityComment } from './activity-comment.entity';
 import { ActivityService, ActivityUser } from './activity.service';
+import { ActivityAttachmentService } from './activity-attachment.service';
 import { CreateActivityCommentDto } from './dto/create-activity-comment.dto';
 
 @Injectable()
@@ -16,6 +23,8 @@ export class ActivityCommentService {
     @InjectRepository(ActivityComment)
     private repo: Repository<ActivityComment>,
     private activityService: ActivityService,
+    @Inject(forwardRef(() => ActivityAttachmentService))
+    private attachments: ActivityAttachmentService,
   ) {}
 
   private isAdmin(user: ActivityUser): boolean {
@@ -37,9 +46,19 @@ export class ActivityCommentService {
     const authors = await this.activityService.resolveStaffRefs(
       comments.map((c) => c.createdByUserId),
     );
+    // Embute os anexos de cada comentário (story 73) sem GET extra nem N+1.
+    const attachmentsByComment = await this.attachments.attachmentsByComment(
+      activityId,
+      comments,
+      user,
+    );
 
     return comments.map((c) =>
-      this.toView(c, authors.get(c.createdByUserId) ?? null),
+      this.toView(
+        c,
+        authors.get(c.createdByUserId) ?? null,
+        attachmentsByComment.get(c.id) ?? [],
+      ),
     );
   }
 
@@ -60,7 +79,7 @@ export class ActivityCommentService {
     await this.activityService.recordCommentEvent(activityId, saved.id, user);
 
     const authors = await this.activityService.resolveStaffRefs([user.userId]);
-    return this.toView(saved, authors.get(user.userId) ?? null);
+    return this.toView(saved, authors.get(user.userId) ?? null, []);
   }
 
   /** Soft delete; somente o autor ou ADMIN. Valida visibilidade da atividade. */
@@ -90,12 +109,14 @@ export class ActivityCommentService {
   private toView(
     c: ActivityComment,
     author: { id: string; name: string; userId: string } | null,
+    attachments: ActivityAttachmentDto[],
   ): ActivityCommentDto {
     return {
       id: c.id,
       activityId: c.activityId,
       body: c.body,
       author,
+      attachments,
       createdByUserId: c.createdByUserId,
       createdAt:
         c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt),

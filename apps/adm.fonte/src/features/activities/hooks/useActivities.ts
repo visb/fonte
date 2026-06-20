@@ -123,3 +123,63 @@ export function useDeleteComment(activityId: string) {
     },
   });
 }
+
+// ── anexos (story 73) ───────────────────────────────────────────────────────
+
+function toFormData(file: File): FormData {
+  const fd = new FormData();
+  fd.append('file', file);
+  return fd;
+}
+
+/** Anexa um arquivo à própria atividade; invalida o detalhe (que embute anexos). */
+export function useUploadActivityAttachment(activityId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) =>
+      api.activities.uploadAttachment(activityId, toFormData(file)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.activities.detail(activityId),
+      });
+    },
+  });
+}
+
+/** Anexa um arquivo a um comentário; invalida a lista de comentários. */
+export function useUploadCommentAttachment(activityId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentId, file }: { commentId: string; file: File }) =>
+      api.activities.uploadCommentAttachment(
+        activityId,
+        commentId,
+        toFormData(file),
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.activities.comments(activityId),
+      });
+    },
+  });
+}
+
+/**
+ * Exclui um anexo (da atividade ou de comentário). Invalida tanto o detalhe
+ * quanto a lista de comentários, pois o anexo pode pertencer a qualquer um.
+ */
+export function useDeleteAttachment(activityId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (attachmentId: string) =>
+      api.activities.deleteAttachment(activityId, attachmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.activities.detail(activityId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.activities.comments(activityId),
+      });
+    },
+  });
+}

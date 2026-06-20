@@ -284,6 +284,38 @@ test.describe('Atividades (board Kanban)', () => {
     await expect(dialog.getByText('Nenhum comentário ainda.')).toBeVisible();
   });
 
+  test('anexa um arquivo à atividade pelo modal e exclui o anexo (story 73)', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+    const title = `Anexar arquivo ${ts()}`;
+    await createActivity(page, title);
+
+    await card(page, title).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // Seção de anexos com o uploader (input file escondido com aria-label).
+    await expect(
+      dialog.getByText('Anexos', { exact: true }),
+    ).toBeVisible();
+    await dialog.getByLabel('Adicionar anexo').setInputFiles({
+      name: 'plano.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4 conteudo'),
+    });
+
+    // O anexo aparece na lista com o nome do arquivo.
+    await expect(dialog.getByText('plano.pdf')).toBeVisible();
+
+    // ADMIN é criador (criou pelo board) e a atividade está em Rascunho → pode excluir.
+    await dialog
+      .getByRole('button', { name: 'Excluir anexo plano.pdf' })
+      .click();
+    await expect(dialog.getByText('plano.pdf')).toHaveCount(0);
+  });
+
   test('a aba Histórico mostra a timeline de eventos do card (story 66)', async ({
     page,
   }) => {

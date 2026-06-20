@@ -6,9 +6,16 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Activity as ActivityDto, ActivityStatus, Role } from '@fonte/types';
+import {
+  Activity as ActivityDto,
+  ActivityEvent as ActivityEventDto,
+  ActivityEventType,
+  ActivityStatus,
+  Role,
+} from '@fonte/types';
 import { Activity } from './activity.entity';
 import { Staff } from '../staff/staff.entity';
+import { ActivityEventService } from './activity-event.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ChangeActivityStatusDto } from './dto/change-activity-status.dto';
@@ -59,6 +66,7 @@ export class ActivityService {
     private repo: Repository<Activity>,
     @InjectRepository(Staff)
     private staffRepo: Repository<Staff>,
+    private events: ActivityEventService,
   ) {}
 
   private isAdmin(user: ActivityUser): boolean {
@@ -161,6 +169,22 @@ export class ActivityService {
   }
 
   /**
+   * Registra o evento COMMENTED na trilha (story 66). Exposto para o
+   * `ActivityCommentService` chamar ao criar um comentário, mantendo o registro
+   * de eventos centralizado no módulo activity sem acoplar o comment service ao
+   * repositório de eventos.
+   */
+  async recordCommentEvent(
+    activityId: string,
+    commentId: string,
+    user: ActivityUser,
+  ): Promise<void> {
+    await this.events.record(activityId, ActivityEventType.COMMENTED, user, {
+      commentId,
+    });
+  }
+
+  /**
    * Resolve a referência de staff (id/nome/userId) por userId. Exposto para que
    * features acopladas (comentários) exibam o autor pelo nome. Quem não for staff
    * fica sem ref (null).
@@ -225,6 +249,7 @@ export class ActivityService {
       createdByUserId: user.userId,
     });
     const saved = await this.repo.save(activity);
+    await this.events.record(saved.id, ActivityEventType.CREATED, user);
     return this.findOne(saved.id, user);
   }
 
@@ -259,6 +284,13 @@ export class ActivityService {
       );
     }
 
+    // Captura o "antes" para registrar os eventos de mudança (story 66).
+    const before = {
+      title: activity.title,
+      description: activity.description ?? null,
+      responsibleStaffId: activity.responsibleStaffId ?? null,
+    };
+
     if (dto.title !== undefined) activity.title = dto.title;
     if (dto.description !== undefined) activity.description = dto.description ?? null;
     if (dto.houseId !== undefined) activity.houseId = dto.houseId ?? null;
@@ -271,7 +303,39 @@ export class ActivityService {
     }
 
     await this.repo.save(activity);
+    await this.recordUpdateEvents(activity.id, before, activity, user);
     return this.findOne(id, user);
+  }
+
+  /** Registra um evento por campo efetivamente alterado no update (story 66). */
+  private async recordUpdateEvents(
+    activityId: string,
+    before: { title: string; description: string | null; responsibleStaffId: string | null },
+    after: Activity,
+    user: ActivityUser,
+  ): Promise<void> {
+    if (after.title !== before.title) {
+      await this.events.record(activityId, ActivityEventType.TITLE_CHANGED, user, {
+        from: before.title,
+        to: after.title,
+      });
+    }
+    if ((after.description ?? null) !== before.description) {
+      await this.events.record(
+        activityId,
+        ActivityEventType.DESCRIPTION_CHANGED,
+        user,
+        { before: before.description, after: after.description ?? null },
+      );
+    }
+    if ((after.responsibleStaffId ?? null) !== before.responsibleStaffId) {
+      await this.events.record(
+        activityId,
+        ActivityEventType.RESPONSIBLE_CHANGED,
+        user,
+        { from: before.responsibleStaffId, to: after.responsibleStaffId ?? null },
+      );
+    }
   }
 
   async changeStatus(
@@ -295,6 +359,10 @@ export class ActivityService {
 
     activity.status = to;
     await this.repo.save(activity);
+    await this.events.record(activity.id, ActivityEventType.STATUS_CHANGED, user, {
+      from,
+      to,
+    });
     return this.findOne(id, user);
   }
 
@@ -358,7 +426,20 @@ export class ActivityService {
     if (!admin && !isOwnDraft) {
       throw new ForbiddenException('You cannot delete this activity');
     }
+    await this.events.record(activity.id, ActivityEventType.DELETED, user);
     await this.repo.softRemove(activity);
+  }
+
+  /**
+   * Lista a trilha de auditoria da atividade (story 66). Valida visibilidade
+   * (mesma regra de escopo por casa) e resolve o nome do ator (staff) por userId,
+   * delegando a montagem da view ao `ActivityEventService`.
+   */
+  async listEvents(id: string, user: ActivityUser): Promise<ActivityEventDto[]> {
+    await this.loadVisibleOrFail(id, user);
+    const actorUserIds = await this.events.actorUserIds(id);
+    const actorRefs = await this.resolveCreators(actorUserIds);
+    return this.events.findAll(id, actorRefs);
   }
 
   private async loadOne(id: string): Promise<Activity> {

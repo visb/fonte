@@ -5,9 +5,11 @@ import {
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { ActivityStatus, Role } from '@fonte/types';
+import { ActivityEventType } from '@fonte/types';
 import { ActivityService, ActivityUser } from './activity.service';
 import { Activity } from './activity.entity';
 import { Staff } from '../staff/staff.entity';
+import { ActivityEventService } from './activity-event.service';
 
 const ADMIN: ActivityUser = { userId: 'admin-user', role: Role.ADMIN };
 const COORD: ActivityUser = { userId: 'coord-user', role: Role.COORDINATOR };
@@ -67,14 +69,26 @@ function makeStaffRepo(
   };
 }
 
+/** Mock do ActivityEventService — registra chamadas a `record` para asserção. */
+function makeEvents() {
+  return {
+    record: jest.fn().mockResolvedValue(undefined),
+    actorUserIds: jest.fn().mockResolvedValue([]),
+    findAll: jest.fn().mockResolvedValue([]),
+  };
+}
+
 function makeService(
   activityRepo: ReturnType<typeof makeActivityRepo>,
   staffRepo: ReturnType<typeof makeStaffRepo> = makeStaffRepo(),
+  events: ReturnType<typeof makeEvents> = makeEvents(),
 ) {
-  return new ActivityService(
+  const service = new ActivityService(
     activityRepo as unknown as Repository<Activity>,
     staffRepo as unknown as Repository<Staff>,
+    events as unknown as ActivityEventService,
   );
+  return service;
 }
 
 function activity(partial: Partial<Activity> = {}): Activity {
@@ -393,5 +407,186 @@ describe('ActivityService.remove (soft delete)', () => {
     const service = makeService(repo, staff);
 
     await expect(service.remove('act-1', COORD)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
+
+describe('ActivityService — registro de eventos (story 66)', () => {
+  it('create registra CREATED', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest.fn().mockResolvedValue(activity({ status: ActivityStatus.DRAFT })),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const events = makeEvents();
+    const service = makeService(repo, staff, events);
+
+    await service.create({ title: 'x', houseId: 'house-1' } as never, COORD);
+
+    expect(events.record).toHaveBeenCalledWith('act-1', ActivityEventType.CREATED, COORD);
+  });
+
+  it('changeStatus registra STATUS_CHANGED com { from, to }', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(
+          activity({ status: ActivityStatus.DRAFT, createdByUserId: 'coord-user' }),
+        )
+        .mockResolvedValue(activity({ status: ActivityStatus.REQUESTED })),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const events = makeEvents();
+    const service = makeService(repo, staff, events);
+
+    await service.changeStatus('act-1', { status: ActivityStatus.REQUESTED }, COORD);
+
+    expect(events.record).toHaveBeenCalledWith(
+      'act-1',
+      ActivityEventType.STATUS_CHANGED,
+      COORD,
+      { from: ActivityStatus.DRAFT, to: ActivityStatus.REQUESTED },
+    );
+  });
+
+  it('update de título registra TITLE_CHANGED com { from, to }', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(
+          activity({ title: 'antigo', createdByUserId: 'coord-user', status: ActivityStatus.DRAFT }),
+        )
+        .mockResolvedValue(activity({ title: 'novo' })),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const events = makeEvents();
+    const service = makeService(repo, staff, events);
+
+    await service.update('act-1', { title: 'novo' }, COORD);
+
+    expect(events.record).toHaveBeenCalledWith(
+      'act-1',
+      ActivityEventType.TITLE_CHANGED,
+      COORD,
+      { from: 'antigo', to: 'novo' },
+    );
+  });
+
+  it('update de descrição registra DESCRIPTION_CHANGED com { before, after }', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(
+          activity({ description: null, createdByUserId: 'coord-user', status: ActivityStatus.TODO }),
+        )
+        .mockResolvedValue(activity({ description: 'detalhe' })),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const events = makeEvents();
+    const service = makeService(repo, staff, events);
+
+    await service.update('act-1', { description: 'detalhe' }, COORD);
+
+    expect(events.record).toHaveBeenCalledWith(
+      'act-1',
+      ActivityEventType.DESCRIPTION_CHANGED,
+      COORD,
+      { before: null, after: 'detalhe' },
+    );
+  });
+
+  it('update de responsável (ADMIN) registra RESPONSIBLE_CHANGED com { from, to }', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(
+          activity({ responsibleStaffId: null, status: ActivityStatus.TODO }),
+        )
+        .mockResolvedValue(activity({ responsibleStaffId: 'staff-9' })),
+    });
+    const staff = makeStaffRepo({}, { 'staff-9': { id: 'staff-9', userId: 'u9' } as Staff });
+    const events = makeEvents();
+    const service = makeService(repo, staff, events);
+
+    await service.update('act-1', { responsibleStaffId: 'staff-9' }, ADMIN);
+
+    expect(events.record).toHaveBeenCalledWith(
+      'act-1',
+      ActivityEventType.RESPONSIBLE_CHANGED,
+      ADMIN,
+      { from: null, to: 'staff-9' },
+    );
+  });
+
+  it('update sem mudança efetiva não registra evento', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(
+          activity({ title: 'mesmo', createdByUserId: 'coord-user', status: ActivityStatus.DRAFT }),
+        )
+        .mockResolvedValue(activity({ title: 'mesmo' })),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const events = makeEvents();
+    const service = makeService(repo, staff, events);
+
+    await service.update('act-1', { title: 'mesmo' }, COORD);
+
+    expect(events.record).not.toHaveBeenCalled();
+  });
+
+  it('remove registra DELETED', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest.fn().mockResolvedValue(activity({ status: ActivityStatus.TODO })),
+    });
+    const events = makeEvents();
+    const service = makeService(repo, makeStaffRepo(), events);
+
+    await service.remove('act-1', ADMIN);
+
+    expect(events.record).toHaveBeenCalledWith('act-1', ActivityEventType.DELETED, ADMIN);
+  });
+
+  it('recordCommentEvent registra COMMENTED com { commentId }', async () => {
+    const repo = makeActivityRepo();
+    const events = makeEvents();
+    const service = makeService(repo, makeStaffRepo(), events);
+
+    await service.recordCommentEvent('act-1', 'comment-9', COORD);
+
+    expect(events.record).toHaveBeenCalledWith(
+      'act-1',
+      ActivityEventType.COMMENTED,
+      COORD,
+      { commentId: 'comment-9' },
+    );
+  });
+
+  it('listEvents valida visibilidade e delega resolvendo atores', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest.fn().mockResolvedValue(activity({ houseId: 'house-1' })),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const events = makeEvents();
+    events.actorUserIds = jest.fn().mockResolvedValue(['coord-user']);
+    events.findAll = jest.fn().mockResolvedValue([{ id: 'evt-1' }]);
+    const service = makeService(repo, staff, events);
+
+    const result = await service.listEvents('act-1', COORD);
+
+    expect(events.actorUserIds).toHaveBeenCalledWith('act-1');
+    expect(events.findAll).toHaveBeenCalled();
+    expect(result).toEqual([{ id: 'evt-1' }]);
+  });
+
+  it('listEvents barra atividade fora de escopo (404)', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest.fn().mockResolvedValue(activity({ houseId: 'house-OTHER' })),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const service = makeService(repo, staff);
+
+    await expect(service.listEvents('act-1', COORD)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

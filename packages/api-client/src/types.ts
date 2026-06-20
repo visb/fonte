@@ -64,6 +64,7 @@ import type {
   ListActivitiesParams,
   ActivityComment,
   CreateActivityCommentInput,
+  ActivityEvent,
   Event,
   EventFilter,
   CreateEventInput,
@@ -80,6 +81,7 @@ import {
   PayableStatus,
   PayableCategory,
   ActivityStatus,
+  ActivityEventType,
 } from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
@@ -123,7 +125,7 @@ export type {
   PayablesSummaryParams,
 };
 
-export { ActivityStatus };
+export { ActivityStatus, ActivityEventType };
 export type {
   Activity,
   ActivityHouseRef,
@@ -134,6 +136,7 @@ export type {
   ListActivitiesParams,
   ActivityComment,
   CreateActivityCommentInput,
+  ActivityEvent,
 };
 
 export type {

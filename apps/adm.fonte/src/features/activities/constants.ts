@@ -1,4 +1,14 @@
-import { ActivityStatus } from '@fonte/types';
+import {
+  ArrowRightLeft,
+  FileText,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Trash2,
+  UserCog,
+  type LucideIcon,
+} from 'lucide-react';
+import { ActivityEventType, ActivityStatus } from '@fonte/types';
 
 type BadgeVariant =
   | 'default'
@@ -55,4 +65,42 @@ export function canQuickAddInStatus(
   _role: string | null,
 ): boolean {
   return status === ActivityStatus.DRAFT;
+}
+
+// ── Histórico de eventos (story 66) ─────────────────────────────────────────────
+
+export interface ActivityEventConfig {
+  icon: LucideIcon;
+  /** Verbo/descrição humana do evento (sem o ator, que é renderizado à parte). */
+  label: string;
+}
+
+/** Mapa tipo de evento → ícone + label humano exibido na timeline do histórico. */
+export const ACTIVITY_EVENT_CONFIG: Record<ActivityEventType, ActivityEventConfig> = {
+  [ActivityEventType.CREATED]: { icon: Plus, label: 'criou a atividade' },
+  [ActivityEventType.STATUS_CHANGED]: { icon: ArrowRightLeft, label: 'moveu' },
+  [ActivityEventType.TITLE_CHANGED]: { icon: Pencil, label: 'alterou o título' },
+  [ActivityEventType.DESCRIPTION_CHANGED]: {
+    icon: FileText,
+    label: 'alterou a descrição',
+  },
+  [ActivityEventType.RESPONSIBLE_CHANGED]: {
+    icon: UserCog,
+    label: 'alterou o responsável',
+  },
+  [ActivityEventType.COMMENTED]: { icon: MessageSquare, label: 'comentou' },
+  [ActivityEventType.DELETED]: { icon: Trash2, label: 'excluiu a atividade' },
+};
+
+/**
+ * Texto humano completo de um evento de status, usando os rótulos das colunas
+ * (ex.: "moveu de A fazer para Fazendo"). Cai para o label genérico se faltar
+ * metadado.
+ */
+export function describeStatusChange(metadata: unknown): string {
+  const meta = metadata as { from?: ActivityStatus; to?: ActivityStatus } | null;
+  if (!meta?.from || !meta?.to) return ACTIVITY_EVENT_CONFIG.STATUS_CHANGED.label;
+  const from = ACTIVITY_STATUS_LABELS[meta.from] ?? meta.from;
+  const to = ACTIVITY_STATUS_LABELS[meta.to] ?? meta.to;
+  return `moveu de ${from} para ${to}`;
 }

@@ -122,6 +122,7 @@ export const queryKeys = {
     }) => ['activities', 'list', filters] as const,
     detail: (id: string) => ['activities', id] as const,
     comments: (activityId: string) => ['activities', activityId, 'comments'] as const,
+    events: (activityId: string) => ['activities', activityId, 'events'] as const,
   },
   events: {
     all: ['events'] as const,

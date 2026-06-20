@@ -57,6 +57,7 @@ export class ActivityCommentService {
       createdByUserId: user.userId,
     });
     const saved = await this.repo.save(comment);
+    await this.activityService.recordCommentEvent(activityId, saved.id, user);
 
     const authors = await this.activityService.resolveStaffRefs([user.userId]);
     return this.toView(saved, authors.get(user.userId) ?? null);

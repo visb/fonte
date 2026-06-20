@@ -31,6 +31,7 @@ function makeActivityService(
   return {
     loadVisibleOrFail: jest.fn().mockResolvedValue({ id: 'act-1' }),
     resolveStaffRefs: jest.fn().mockResolvedValue(new Map()),
+    recordCommentEvent: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as ActivityService;
 }
@@ -130,6 +131,24 @@ describe('ActivityCommentService.create', () => {
     expect(created[0].activityId).toBe('act-1');
     expect(created[0].body).toBe('novo comentário');
     expect(result.body).toBe('novo comentário');
+  });
+
+  it('registra o evento COMMENTED na trilha (story 66)', async () => {
+    const activityService = makeActivityService();
+    const repo = makeCommentRepo({
+      save: jest
+        .fn()
+        .mockResolvedValue({ id: 'comment-99', createdAt: new Date(), activityId: 'act-1', body: 'x', createdByUserId: 'coord-user' }),
+    });
+    const service = makeService(repo, activityService);
+
+    await service.create('act-1', { body: 'x' }, COORD);
+
+    expect(activityService.recordCommentEvent).toHaveBeenCalledWith(
+      'act-1',
+      'comment-99',
+      COORD,
+    );
   });
 });
 

@@ -5007,6 +5007,24 @@
             },
             "description": "Soft delete de comentario. Somente o autor ou ADMIN. Valida visibilidade da atividade. Roles: ADMIN, COORDINATOR, SERVANT."
           }
+        },
+        {
+          "name": "List Activity Events / History (STAFF)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "events"
+              ]
+            },
+            "description": "Trilha de auditoria (historico) da atividade em ordem cronologica decrescente. Eventos: CREATED, STATUS_CHANGED ({from,to}), TITLE_CHANGED ({from,to}), DESCRIPTION_CHANGED ({before,after}), RESPONSIBLE_CHANGED ({from,to}), COMMENTED ({commentId}), DELETED. Cada evento traz ator (staff resolvido pelo nome), tipo, metadata e created_at. Valida visibilidade da atividade -> 404 fora de escopo. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
         }
       ]
     },

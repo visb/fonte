@@ -47,6 +47,14 @@ export class ActivityController {
     return this.service.findOne(id, user);
   }
 
+  @Get(':id/events')
+  listEvents(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.listEvents(id, user);
+  }
+
   @Post()
   create(
     @Body() dto: CreateActivityDto,

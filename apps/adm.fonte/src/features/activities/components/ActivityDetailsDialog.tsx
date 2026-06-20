@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Activity } from '@fonte/api-client';
@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
@@ -17,6 +16,8 @@ import { canEditDescription } from '../lib/permissions';
 import { ACTIVITY_STATUS_LABELS, ACTIVITY_STATUS_VARIANTS } from '../constants';
 import { ActivityComments } from './ActivityComments';
 import { HistoryTimeline } from './HistoryTimeline';
+import { ActivityDescriptionEditor } from './ActivityDescriptionEditor';
+import { ActivityDescriptionView } from './ActivityDescriptionView';
 
 interface Props {
   activityId: string | null;
@@ -188,7 +189,7 @@ function DescriptionSection({
 }) {
   const updateMutation = useUpdateActivity();
   const {
-    register,
+    control,
     handleSubmit,
     reset,
     formState: { isDirty },
@@ -212,13 +213,8 @@ function DescriptionSection({
     return (
       <div className="space-y-1">
         <Label>Descrição</Label>
-        {activity.description ? (
-          <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-            {activity.description}
-          </p>
-        ) : (
-          <p className="text-sm italic text-muted-foreground">Sem descrição.</p>
-        )}
+        {/* Markdown renderizado read-only e sanitizado (story 72). */}
+        <ActivityDescriptionView markdown={activity.description} />
       </div>
     );
   }
@@ -226,11 +222,17 @@ function DescriptionSection({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
       <Label htmlFor="activity-details-description">Descrição</Label>
-      <Textarea
-        id="activity-details-description"
-        {...register('description')}
-        placeholder="Descreva a atividade"
-        rows={4}
+      {/* Editor WYSIWYG → serializa markdown no valor do form (story 72). */}
+      <Controller
+        control={control}
+        name="description"
+        render={({ field: { value, onChange } }) => (
+          <ActivityDescriptionEditor
+            value={value ?? ''}
+            onChange={onChange}
+            placeholder="Descreva a atividade"
+          />
+        )}
       />
       {updateMutation.error != null && (
         <p className="text-xs text-destructive">

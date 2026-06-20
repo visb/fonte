@@ -447,9 +447,13 @@ export interface Activity {
   id: string;
   title: string;
   /**
-   * Descrição. Opcional no payload (story 71): a LISTAGEM (`GET /activities`)
-   * omite o campo; o DETALHE (`GET /activities/:id`) sempre o inclui (string ou
-   * null). Consumidores que precisam da descrição devem usar getById.
+   * Descrição em **markdown** (story 72). Suporta negrito, itálico, listas e
+   * links (http/https/mailto). É sanitizada no backend ao salvar (HTML bruto e
+   * protocolos de link perigosos removidos) e deve ser sanitizada de novo no
+   * render (DOMPurify no adm; render lib com HTML off no ops).
+   * Opcional no payload (story 71): a LISTAGEM (`GET /activities`) omite o campo;
+   * o DETALHE (`GET /activities/:id`) sempre o inclui (string ou null).
+   * Consumidores que precisam da descrição devem usar getById.
    */
   description?: string | null;
   status: ActivityStatus;

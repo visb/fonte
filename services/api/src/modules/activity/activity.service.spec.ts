@@ -379,6 +379,58 @@ describe('ActivityService.changeStatus (transitions)', () => {
   });
 });
 
+describe('ActivityService description sanitization (story 72)', () => {
+  it('create sanitizes the markdown description (strips raw HTML)', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest.fn().mockResolvedValue(activity({ description: null })),
+    });
+    const service = makeService(repo);
+
+    await service.create(
+      { title: 'T', description: 'Oi <script>alert(1)</script>' },
+      ADMIN,
+    );
+
+    const saved = (repo.create as jest.Mock).mock.calls[0][0];
+    expect(saved.description).not.toContain('<script');
+    expect(saved.description).toContain('Oi');
+  });
+
+  it('update sanitizes the markdown description (neutralizes javascript: link)', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(
+          activity({ status: ActivityStatus.DRAFT, createdByUserId: 'coord-user' }),
+        )
+        .mockResolvedValue(activity({ description: '[x](#)' })),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const saveSpy = jest.fn().mockImplementation((v) => Promise.resolve(v));
+    repo.save = saveSpy;
+    const service = makeService(repo, staff);
+
+    await service.update('act-1', { description: '[x](javascript:alert(1))' }, COORD);
+
+    const savedEntity = saveSpy.mock.calls[0][0];
+    expect(savedEntity.description).not.toContain('javascript:');
+    expect(savedEntity.description).toBe('[x](#)');
+  });
+
+  it('create preserves legitimate markdown (bold, list, http link)', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest.fn().mockResolvedValue(activity({ description: null })),
+    });
+    const service = makeService(repo);
+    const md = '**bold**\n- item\n[site](https://ok.com)';
+
+    await service.create({ title: 'T', description: md }, ADMIN);
+
+    const saved = (repo.create as jest.Mock).mock.calls[0][0];
+    expect(saved.description).toBe(md);
+  });
+});
+
 describe('ActivityService.update (description editing window — story 62)', () => {
   it('creator can edit the description while TODO', async () => {
     const repo = makeActivityRepo({

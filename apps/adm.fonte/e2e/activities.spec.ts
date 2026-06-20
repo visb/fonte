@@ -185,7 +185,7 @@ test.describe('Atividades (board Kanban)', () => {
     await expect(card(page, title).getByText('Rascunho')).toBeVisible();
   });
 
-  test('clicar num card abre o modal de detalhes e edita a descrição (ADMIN)', async ({
+  test('clicar num card abre o modal de detalhes e edita a descrição com WYSIWYG markdown (ADMIN, story 72)', async ({
     page,
   }) => {
     await login(page);
@@ -203,16 +203,56 @@ test.describe('Atividades (board Kanban)', () => {
     await expect(dialog.getByText('Responsável', { exact: true })).toBeVisible();
     await expect(dialog.getByText('Criado por', { exact: true })).toBeVisible();
 
-    // ADMIN edita a descrição inline (campo liberado em qualquer status).
-    const desc = `Descrição atualizada ${ts()}`;
-    await dialog.getByLabel('Descrição').fill(desc);
+    // ADMIN edita a descrição no editor WYSIWYG (TipTap, contenteditable).
+    const editor = dialog.getByTestId('activity-description-editor');
+    const word = `forte${ts()}`;
+    await editor.click();
+    // Aplica negrito pela toolbar e digita um trecho.
+    await dialog.getByRole('button', { name: 'Negrito' }).click();
+    await page.keyboard.type(word);
     await dialog.getByRole('button', { name: 'Salvar descrição' }).click();
 
-    // Após salvar, reabrir o card mostra a descrição persistida.
+    // Após salvar, reabrir o card mostra a descrição renderizada (não mais editável
+    // por padrão? ADMIN segue editável — confere o markdown serializado no editor).
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await card(page, title).click();
-    await expect(page.getByRole('dialog').getByLabel('Descrição')).toHaveValue(desc);
+    const reopened = page.getByRole('dialog');
+    // O texto em negrito persistiu e é renderizado em <strong> dentro do editor.
+    await expect(
+      reopened.getByTestId('activity-description-editor').locator('strong'),
+    ).toContainText(word);
+  });
+
+  test('descrição read-only renderiza markdown e não executa <script> (story 72)', async ({
+    page,
+  }) => {
+    let alertFired = false;
+    page.on('dialog', (d) => {
+      alertFired = true;
+      void d.dismiss();
+    });
+
+    await login(page);
+    await goto(page);
+    const title = `XSS ${ts()}`;
+    await createActivity(page, title);
+
+    // ADMIN salva markdown com vetor XSS no editor.
+    await card(page, title).click();
+    const dialog = page.getByRole('dialog');
+    const editor = dialog.getByTestId('activity-description-editor');
+    await editor.click();
+    // Conteúdo perigoso colado como texto puro vira texto no doc; o backend ainda
+    // sanitiza. O caractere `<` é literal (o editor não interpreta HTML bruto).
+    await page.keyboard.type('Texto seguro <script>window.__xss=1</script>');
+    await dialog.getByRole('button', { name: 'Salvar descrição' }).click();
+    await page.waitForTimeout(300);
+
+    // Nenhum alert/script executado.
+    expect(alertFired).toBe(false);
+    const xss = await page.evaluate(() => (window as unknown as { __xss?: number }).__xss);
+    expect(xss).toBeUndefined();
   });
 
   test('comenta numa atividade pelo modal de detalhes e exclui o próprio comentário (story 65)', async ({

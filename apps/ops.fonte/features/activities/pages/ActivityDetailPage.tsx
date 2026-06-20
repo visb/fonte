@@ -21,6 +21,7 @@ import { useActivity, useUpdateActivity } from '@/features/activities/hooks/useA
 import { StatusBadge } from '@/features/activities/components/StatusBadge';
 import { canEditDescription } from '@/features/activities/lib/permissions';
 import { ActivityComments } from '@/features/activities/components/ActivityComments';
+import { DescriptionMarkdown } from '@/features/activities/components/DescriptionMarkdown';
 
 const schema = z.object({ description: z.string().optional() });
 type FormData = z.infer<typeof schema>;
@@ -180,9 +181,8 @@ function DescriptionSection({
     return (
       <View>
         <Text className="text-sm font-medium text-gray-700 mb-1.5">Descrição</Text>
-        <Text className="text-sm text-gray-600">
-          {activity.description || 'Sem descrição.'}
-        </Text>
+        {/* Markdown renderizado read-only (negrito, listas, links) — story 72. */}
+        <DescriptionMarkdown markdown={activity.description} />
       </View>
     );
   }

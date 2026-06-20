@@ -4,15 +4,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
+import { randomUUID } from 'crypto';
 import {
+  EventPaymentStatus,
   EventPublic,
   EventRegistration as EventRegistrationDto,
   EventRegistrationResult,
   RegistrationAnswerValue,
   RegistrationFileResult,
 } from '@fonte/types';
+import { computeGrossUp } from '../associate/gross-up';
 import { Event } from './event.entity';
 import { EventRegistration } from './event-registration.entity';
 import { RegisterToEventDto } from './dto/register-to-event.dto';
@@ -27,7 +31,25 @@ export class EventRegistrationService {
     @InjectRepository(EventRegistration)
     private registrationsRepo: Repository<EventRegistration>,
     private storageService: StorageService,
+    private config: ConfigService,
   ) {}
+
+  /** Taxas de cartão configuráveis por env (mesmas dos associados, story 41). */
+  private get cardFeePct(): number {
+    return Number(this.config.get<string>('PAGARME_CARD_FEE_PCT') ?? '0.0399');
+  }
+  private get cardFeeFixed(): number {
+    return Number(this.config.get<string>('PAGARME_CARD_FEE_FIXED') ?? '0.39');
+  }
+
+  /**
+   * Valor gross-up (em centavos) a cobrar p/ a Fonte receber `priceCents` líquido.
+   * Reusa `computeGrossUp` dos associados (story 38/41), convertendo cents↔reais.
+   */
+  grossUpCents(priceCents: number): number {
+    const { gross } = computeGrossUp(priceCents / 100, this.cardFeePct, this.cardFeeFixed);
+    return Math.round(gross * 100);
+  }
 
   private async activeCount(eventId: string): Promise<number> {
     return this.registrationsRepo.count({ where: { eventId } });
@@ -74,6 +96,8 @@ export class EventRegistrationService {
         ? event.registrationClosesAt.toISOString()
         : null,
       registrationOpen: this.isRegistrationOpen(event, now, spotsLeft),
+      paymentEnabled: event.paymentEnabled,
+      priceCents: event.priceCents ?? null,
     };
   }
 
@@ -134,15 +158,32 @@ export class EventRegistrationService {
       dto.answers,
     );
 
+    // Evento pago (story 69): gera token, calcula gross-up e nasce PENDING.
+    // A cobrança só é criada quando o inscrito escolhe o método na página de
+    // pagamento (POST /public/event-payments/:token/pay). Evento grátis → NONE.
+    const paid = event.paymentEnabled && event.priceCents != null;
+    const paymentStatus = paid ? EventPaymentStatus.PENDING : EventPaymentStatus.NONE;
+    const paymentToken = paid ? randomUUID() : null;
+    const amountCents = paid ? this.grossUpCents(event.priceCents as number) : null;
+
     const registration = this.registrationsRepo.create({
       eventId: id,
       name: dto.name,
       contact: dto.contact,
       email: dto.email ?? null,
       answers,
+      paymentStatus,
+      paymentToken,
+      amountCents,
     });
     const saved = await this.registrationsRepo.save(registration);
-    return { id: saved.id, eventId: id, name: saved.name };
+    return {
+      id: saved.id,
+      eventId: id,
+      name: saved.name,
+      paymentStatus: saved.paymentStatus,
+      paymentToken: saved.paymentToken,
+    };
   }
 
   /**
@@ -187,6 +228,8 @@ export class EventRegistrationService {
       // Campos `file` guardam a storage key; se for URL S3, o
       // StorageUrlInterceptor (global) a assina ao serializar a resposta.
       answers: (r.answers ?? {}) as Record<string, RegistrationAnswerValue>,
+      paymentStatus: r.paymentStatus,
+      amountCents: r.amountCents ?? null,
       createdAt: r.createdAt.toISOString(),
     }));
   }

@@ -18,6 +18,8 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
     location: 'Sede',
     capacity: null,
     registrationEnabled: false,
+    paymentEnabled: false,
+    priceCents: null,
     bannerKey: null,
     registrationOpensAt: null,
     registrationClosesAt: null,
@@ -144,6 +146,78 @@ describe('EventService.create', () => {
       expect.objectContaining({ registrationEnabled: true }),
     );
     expect(result.registrationEnabled).toBe(true);
+  });
+
+  // ── Pagamento (story 69) ────────────────────────────────────────────────────
+
+  it('rejects paymentEnabled without a positive priceCents (400)', async () => {
+    const repo = {
+      create: jest.fn().mockImplementation((v) => makeEvent(v)),
+      save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
+    };
+    const service = makeService(repo as never);
+
+    await expect(
+      service.create({
+        title: 'Retiro pago',
+        description: 'd',
+        startAt: '2026-07-01T12:00:00Z',
+        paymentEnabled: true,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(
+      service.create({
+        title: 'Retiro pago',
+        description: 'd',
+        startAt: '2026-07-01T12:00:00Z',
+        paymentEnabled: true,
+        priceCents: 0,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('persists paymentEnabled + priceCents when paid', async () => {
+    const repo = {
+      create: jest.fn().mockImplementation((v) => makeEvent(v)),
+      save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
+    };
+    const service = makeService(repo as never);
+
+    const result = await service.create({
+      title: 'Retiro pago',
+      description: 'd',
+      startAt: '2026-07-01T12:00:00Z',
+      paymentEnabled: true,
+      priceCents: 5000,
+    });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentEnabled: true, priceCents: 5000 }),
+    );
+    expect(result.paymentEnabled).toBe(true);
+    expect(result.priceCents).toBe(5000);
+  });
+
+  it('forces priceCents to null when payment is off', async () => {
+    const repo = {
+      create: jest.fn().mockImplementation((v) => makeEvent(v)),
+      save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
+    };
+    const service = makeService(repo as never);
+
+    const result = await service.create({
+      title: 'Grátis',
+      description: 'd',
+      startAt: '2026-07-01T12:00:00Z',
+      paymentEnabled: false,
+      priceCents: 5000,
+    });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentEnabled: false, priceCents: null }),
+    );
+    expect(result.priceCents).toBeNull();
   });
 
   it('skips the registration window coherence check when registration is off', async () => {

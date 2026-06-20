@@ -48,15 +48,24 @@ function makeStorage(overrides: Partial<StorageMock> = {}): StorageMock {
   };
 }
 
+function makeConfig(pct = '0.0399', fixed = '0.39') {
+  return {
+    get: (key: string) =>
+      key === 'PAGARME_CARD_FEE_PCT' ? pct : key === 'PAGARME_CARD_FEE_FIXED' ? fixed : undefined,
+  } as never;
+}
+
 function makeService(
   events: Partial<Repository<Event>>,
   registrations: Partial<Repository<EventRegistration>>,
   storage: StorageMock = makeStorage(),
+  config = makeConfig(),
 ) {
   return new EventRegistrationService(
     events as Repository<Event>,
     registrations as Repository<EventRegistration>,
     storage as never,
+    config,
   );
 }
 
@@ -78,13 +87,20 @@ describe('EventRegistrationService.register', () => {
     const registrations = {
       count: jest.fn().mockResolvedValue(0),
       create: jest.fn().mockImplementation((v) => v),
-      save: jest.fn().mockResolvedValue({ id: 'reg-uuid', eventId: 'event-uuid', name: 'Maria' }),
+      save: jest.fn().mockImplementation((v) => Promise.resolve({ id: 'reg-uuid', ...v })),
     };
     const service = makeService(events, registrations);
 
     const result = await service.register('event-uuid', validDto);
 
-    expect(result).toEqual({ id: 'reg-uuid', eventId: 'event-uuid', name: 'Maria' });
+    // Evento grátis: sem token, status NONE.
+    expect(result).toMatchObject({
+      id: 'reg-uuid',
+      eventId: 'event-uuid',
+      name: 'Maria',
+      paymentStatus: 'NONE',
+      paymentToken: null,
+    });
     expect(registrations.save).toHaveBeenCalled();
   });
 
@@ -170,6 +186,46 @@ describe('EventRegistrationService.register', () => {
       NotFoundException,
     );
     expect(registrations.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('EventRegistrationService.register — pagamento (story 69)', () => {
+  it('evento pago: gera token, status PENDING e amount_cents com gross-up', async () => {
+    const event = makeEvent({ paymentEnabled: true, priceCents: 5000 });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const created: Record<string, unknown>[] = [];
+    const registrations = {
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn().mockImplementation((v) => {
+        created.push(v);
+        return v;
+      }),
+      save: jest.fn().mockImplementation((v) => Promise.resolve({ id: 'reg-uuid', ...v })),
+    };
+    // Taxa 3,99% + R$0,39 sobre R$50,00 → gross = round2((50+0.39)/(1-0.0399)) = 52.48 → 5248c.
+    const service = makeService(events, registrations, makeStorage(), makeConfig('0.0399', '0.39'));
+
+    const result = await service.register('event-uuid', validDto);
+
+    expect(result.paymentStatus).toBe('PENDING');
+    expect(typeof result.paymentToken).toBe('string');
+    expect(result.paymentToken).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+    const arg = created[0];
+    expect(arg.paymentStatus).toBe('PENDING');
+    expect(arg.amountCents).toBe(5248);
+  });
+
+  it('grossUpCents arredonda corretamente o valor cobrado', () => {
+    const service = makeService(
+      { findOne: jest.fn() },
+      { count: jest.fn(), create: jest.fn(), save: jest.fn() },
+      makeStorage(),
+      makeConfig('0.0399', '0.39'),
+    );
+    expect(service.grossUpCents(5000)).toBe(5248);
+    expect(service.grossUpCents(10000)).toBe(10456);
   });
 });
 
@@ -405,6 +461,31 @@ describe('EventRegistrationService.listRegistrations', () => {
 
     const list = await service.listRegistrations('event-uuid');
     expect(list[0].answers).toEqual({ shirt: 'M', file1: 'event-registrations/x.pdf' });
+  });
+
+  it('inclui paymentStatus e amountCents de cada inscrito (story 69)', async () => {
+    const event = makeEvent({ paymentEnabled: true, priceCents: 5000 });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const registrations = {
+      find: jest.fn().mockResolvedValue([
+        {
+          id: 'r1',
+          eventId: 'event-uuid',
+          name: 'Maria',
+          contact: '11999990000',
+          email: null,
+          answers: {},
+          paymentStatus: 'PAID',
+          amountCents: 5248,
+          createdAt: NOW,
+        },
+      ]),
+    };
+    const service = makeService(events, registrations);
+
+    const list = await service.listRegistrations('event-uuid');
+    expect(list[0].paymentStatus).toBe('PAID');
+    expect(list[0].amountCents).toBe(5248);
   });
 
   it('lança NotFound para evento inexistente', async () => {

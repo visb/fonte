@@ -2,6 +2,7 @@ jest.mock('@fonte/types', () => ({
   AssociateStatus: { PENDING: 'PENDING', ACTIVE: 'ACTIVE', PAST_DUE: 'PAST_DUE', CANCELED: 'CANCELED' },
   SubscriptionStatus: { ACTIVE: 'ACTIVE', PAST_DUE: 'PAST_DUE', CANCELED: 'CANCELED' },
   ChargeStatus: { PENDING: 'PENDING', PAID: 'PAID', FAILED: 'FAILED' },
+  EventPaymentStatus: { NONE: 'NONE', PENDING: 'PENDING', PAID: 'PAID', FAILED: 'FAILED' },
 }));
 
 import { UnauthorizedException } from '@nestjs/common';
@@ -12,6 +13,7 @@ import { PagarmeWebhookService } from './pagarme-webhook.service';
 import { Associate } from '../associate.entity';
 import { AssociateSubscription } from '../associate-subscription.entity';
 import { AssociateCharge } from '../associate-charge.entity';
+import { EventRegistration } from '../../event/event-registration.entity';
 
 const WH_USER = 'hookuser';
 const WH_PASS = 'hookpass';
@@ -31,6 +33,7 @@ function makeConfig(configured = true): ConfigService {
 function makeService(opts: {
   charge?: AssociateCharge | null;
   subscription?: AssociateSubscription | null;
+  eventRegistration?: EventRegistration | null;
   configured?: boolean;
 }) {
   const associateUpdates: Array<{ id: unknown; status: AssociateStatus }> = [];
@@ -52,13 +55,19 @@ function makeService(opts: {
     save: jest.fn((c) => Promise.resolve(c)),
   } as unknown as Repository<AssociateCharge>;
 
+  const eventRegistrationRepo = {
+    findOne: jest.fn().mockResolvedValue(opts.eventRegistration ?? null),
+    save: jest.fn((r) => Promise.resolve(r)),
+  } as unknown as Repository<EventRegistration>;
+
   const service = new PagarmeWebhookService(
     associateRepo,
     subscriptionRepo,
     chargeRepo,
+    eventRegistrationRepo,
     makeConfig(opts.configured ?? true),
   );
-  return { service, subscriptionRepo, chargeRepo, associateUpdates };
+  return { service, subscriptionRepo, chargeRepo, eventRegistrationRepo, associateUpdates };
 }
 
 describe('PagarmeWebhookService', () => {
@@ -160,6 +169,80 @@ describe('PagarmeWebhookService', () => {
       const { service } = makeService({});
       const res = await service.handle({ type: 'order.created', data: {} });
       expect(res.processed).toBe(false);
+    });
+
+    // ── Charges de evento (story 69) ──────────────────────────────────────────
+
+    it('charge.paid de evento (metadata) → inscrição PAID, sem tocar associado', async () => {
+      const eventRegistration = {
+        id: 'reg-1',
+        paymentStatus: 'PENDING',
+        gatewayChargeId: null,
+      } as unknown as EventRegistration;
+      const { service, eventRegistrationRepo, chargeRepo } = makeService({ eventRegistration });
+
+      const res = await service.handle({
+        type: 'charge.paid',
+        data: { id: 'ch_evt', metadata: { origin: 'event', event_registration_id: 'reg-1' } },
+      });
+
+      expect(res.processed).toBe(true);
+      expect((eventRegistrationRepo.save as jest.Mock).mock.calls[0][0].paymentStatus).toBe('PAID');
+      // Não roteou para o fluxo de associado.
+      expect(chargeRepo.save as jest.Mock).not.toHaveBeenCalled();
+    });
+
+    it('charge.paid de evento por order.code resolve a inscrição', async () => {
+      const eventRegistration = {
+        id: 'reg-2',
+        paymentStatus: 'PENDING',
+        gatewayChargeId: null,
+      } as unknown as EventRegistration;
+      const { service, eventRegistrationRepo } = makeService({ eventRegistration });
+
+      const res = await service.handle({
+        type: 'charge.paid',
+        data: { id: 'ch_x', order: { id: 'or_1', code: 'reg-2' } },
+      });
+
+      expect(res.processed).toBe(true);
+      expect((eventRegistrationRepo.save as jest.Mock).mock.calls[0][0].paymentStatus).toBe('PAID');
+    });
+
+    it('charge.paid de evento é idempotente (já PAID → no re-save)', async () => {
+      const eventRegistration = {
+        id: 'reg-3',
+        paymentStatus: 'PAID',
+        gatewayChargeId: 'ch_3',
+      } as unknown as EventRegistration;
+      const { service, eventRegistrationRepo } = makeService({ eventRegistration });
+
+      const res = await service.handle({
+        type: 'charge.paid',
+        data: { id: 'ch_3', metadata: { event_registration_id: 'reg-3' } },
+      });
+
+      expect(res.processed).toBe(true);
+      expect(eventRegistrationRepo.save as jest.Mock).not.toHaveBeenCalled();
+    });
+
+    it('charge.payment_failed de evento → inscrição FAILED', async () => {
+      const eventRegistration = {
+        id: 'reg-4',
+        paymentStatus: 'PENDING',
+        gatewayChargeId: null,
+      } as unknown as EventRegistration;
+      const { service, eventRegistrationRepo } = makeService({ eventRegistration });
+
+      const res = await service.handle({
+        type: 'charge.payment_failed',
+        data: { id: 'ch_4', metadata: { event_registration_id: 'reg-4' } },
+      });
+
+      expect(res.processed).toBe(true);
+      expect((eventRegistrationRepo.save as jest.Mock).mock.calls[0][0].paymentStatus).toBe(
+        'FAILED',
+      );
     });
   });
 });

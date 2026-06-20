@@ -54,6 +54,16 @@ export const eventSchema = z
     ),
     /** Inscrição habilitada (story 67). Default false: evento só-divulgação. */
     registrationEnabled: z.boolean().default(false),
+    /** Cobrança da inscrição (story 69). Default false: inscrição grátis. */
+    paymentEnabled: z.boolean().default(false),
+    /** Preço da inscrição em reais (story 69). '' quando grátis. */
+    priceReais: z.preprocess(
+      (v) => (v === '' || v == null ? undefined : v),
+      z.coerce
+        .number({ invalid_type_error: 'Informe um valor' })
+        .positive('O valor deve ser maior que zero')
+        .optional(),
+    ),
     /** Campos custom do formulário de inscrição (story 68). */
     registrationFields: z.array(registrationFieldSchema).default([]),
     registrationOpensAt: z.string().optional().or(z.literal('')),
@@ -76,6 +86,17 @@ export const eventSchema = z
     {
       message: 'O fechamento das inscrições deve ser posterior à abertura',
       path: ['registrationClosesAt'],
+    },
+  )
+  .refine(
+    (data) =>
+      // Inscrição paga exige valor > 0 (story 69); só quando a inscrição está ligada.
+      !data.registrationEnabled ||
+      !data.paymentEnabled ||
+      (data.priceReais != null && data.priceReais > 0),
+    {
+      message: 'Informe um valor maior que zero para a inscrição paga',
+      path: ['priceReais'],
     },
   );
 
@@ -140,6 +161,12 @@ export function fieldsToForm(
  */
 export function toEventInput(data: EventFormData): CreateEventInput {
   const enabled = data.registrationEnabled;
+  // Cobrança só vale com inscrição ligada (story 69); preço em reais → centavos.
+  const paymentEnabled = enabled && data.paymentEnabled;
+  const priceCents =
+    paymentEnabled && data.priceReais != null
+      ? Math.round(data.priceReais * 100)
+      : null;
   return {
     title: data.title,
     description: data.description,
@@ -147,6 +174,8 @@ export function toEventInput(data: EventFormData): CreateEventInput {
     endAt: localInputToIso(data.endAt),
     location: data.location ? data.location : null,
     registrationEnabled: enabled,
+    paymentEnabled,
+    priceCents,
     capacity: enabled ? (data.capacity ?? null) : null,
     registrationFields: enabled ? toRegistrationFields(data.registrationFields) : [],
     registrationOpensAt: enabled ? localInputToIso(data.registrationOpensAt) : null,

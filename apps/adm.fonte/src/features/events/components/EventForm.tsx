@@ -27,6 +27,8 @@ const emptyForm: EventFormData = {
   location: '',
   capacity: undefined,
   registrationEnabled: false,
+  paymentEnabled: false,
+  priceReais: undefined,
   registrationFields: [],
   registrationOpensAt: '',
   registrationClosesAt: '',
@@ -42,6 +44,8 @@ function eventToForm(event?: Event | null): EventFormData {
     location: event.location ?? '',
     capacity: event.capacity ?? undefined,
     registrationEnabled: event.registrationEnabled,
+    paymentEnabled: event.paymentEnabled,
+    priceReais: event.priceCents != null ? event.priceCents / 100 : undefined,
     registrationFields: fieldsToForm(event.registrationFields),
     registrationOpensAt: event.registrationOpensAt
       ? isoToLocalInput(event.registrationOpensAt)
@@ -67,6 +71,7 @@ export function EventForm({ event, isPending, error, onSubmit, onCancel }: Props
   });
 
   const registrationEnabled = watch('registrationEnabled');
+  const paymentEnabled = watch('paymentEnabled');
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
@@ -108,6 +113,7 @@ export function EventForm({ event, isPending, error, onSubmit, onCancel }: Props
           errors={errors}
           control={control}
           enabled={registrationEnabled}
+          paymentEnabled={paymentEnabled}
         />
 
         {error != null && (

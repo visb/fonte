@@ -830,6 +830,10 @@ export interface Event {
   capacity: number | null;
   /** Inscrição habilitada (story 67). false = evento só-divulgação. */
   registrationEnabled: boolean;
+  /** Cobrança da inscrição habilitada (story 69). false = inscrição grátis. */
+  paymentEnabled: boolean;
+  /** Preço líquido da inscrição em centavos (story 69). null quando grátis. */
+  priceCents: number | null;
   /** Campos custom do formulário de inscrição (story 68). [] = só base fixa. */
   registrationFields: RegistrationField[];
   /** URL servida/assinada do banner (null quando sem banner). Nunca é a chave crua. */
@@ -851,6 +855,10 @@ export interface CreateEventInput {
   capacity?: number | null;
   /** Inscrição habilitada (story 67). Default false: evento só-divulgação. */
   registrationEnabled?: boolean;
+  /** Cobrança da inscrição (story 69). Default false: inscrição grátis. */
+  paymentEnabled?: boolean;
+  /** Preço líquido em centavos (story 69). Obrigatório quando paymentEnabled. */
+  priceCents?: number | null;
   /** Campos custom do formulário de inscrição (story 68). */
   registrationFields?: RegistrationField[];
   registrationOpensAt?: string | null;
@@ -885,10 +893,31 @@ export interface EventPublic {
   registrationClosesAt: string | null;
   /** Inscrição aberta agora (janela respeitada, não passado, não esgotado). */
   registrationOpen: boolean;
+  /** Cobrança da inscrição habilitada (story 69). */
+  paymentEnabled: boolean;
+  /** Preço líquido em centavos (story 69). null quando grátis. */
+  priceCents: number | null;
 }
 
 /** Valor primitivo/array que uma resposta de campo custom pode assumir (story 68). */
 export type RegistrationAnswerValue = string | number | boolean | string[];
+
+/**
+ * Estado do pagamento de uma inscrição (story 69).
+ *  - `NONE`    — inscrição grátis (evento sem cobrança);
+ *  - `PENDING` — inscrição paga aguardando pagamento;
+ *  - `PAID`    — pagamento confirmado pelo gateway (webhook);
+ *  - `FAILED`  — pagamento recusado pelo gateway.
+ */
+export enum EventPaymentStatus {
+  NONE = 'NONE',
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  FAILED = 'FAILED',
+}
+
+/** Método de pagamento avulso da inscrição (story 69). */
+export type EventPaymentMethod = 'credit_card' | 'pix';
 
 export interface EventRegistration {
   id: string;
@@ -901,6 +930,10 @@ export interface EventRegistration {
    * Campos `file` chegam ao admin como URL assinada do arquivo.
    */
   answers: Record<string, RegistrationAnswerValue>;
+  /** Estado do pagamento da inscrição (story 69). */
+  paymentStatus: EventPaymentStatus;
+  /** Valor gross-up cobrado em centavos (story 69). null quando grátis. */
+  amountCents: number | null;
   createdAt: string;
 }
 
@@ -921,4 +954,45 @@ export interface EventRegistrationResult {
   id: string;
   eventId: string;
   name: string;
+  /** Estado do pagamento (story 69). `NONE` p/ inscrição grátis. */
+  paymentStatus: EventPaymentStatus;
+  /**
+   * Token de pagamento da inscrição (story 69). Presente só p/ inscrição paga;
+   * abre a página pública `/pagamento/:token` (parte [[70]]).
+   */
+  paymentToken: string | null;
+}
+
+// ─── Event payments (story 69) ──────────────────────────────────────────────────
+
+/** Dados da inscrição p/ a página pública de pagamento (story 69). */
+export interface EventPaymentInfo {
+  eventTitle: string;
+  /** Valor gross-up a cobrar em centavos. */
+  amountCents: number;
+  paymentStatus: EventPaymentStatus;
+  /** Método já escolhido numa tentativa anterior, se houver. */
+  paymentMethod: EventPaymentMethod | null;
+  registrantName: string;
+}
+
+/** Body do POST de pagamento por token (story 69). Cartão exige `cardToken`. */
+export interface PayEventInput {
+  method: EventPaymentMethod;
+  /** Token do cartão tokenizado client-side (obrigatório p/ credit_card). */
+  cardToken?: string;
+}
+
+/** Resultado de uma cobrança PIX (copia-e-cola + QR) (story 69). */
+export interface PixPaymentResult {
+  qrCode: string | null;
+  qrCodeUrl: string | null;
+  expiresAt: string | null;
+}
+
+/** Resposta do POST de pagamento (story 69). PIX traz o `pix`; cartão não. */
+export interface PayEventResult {
+  paymentStatus: EventPaymentStatus;
+  method: EventPaymentMethod;
+  pix: PixPaymentResult | null;
 }

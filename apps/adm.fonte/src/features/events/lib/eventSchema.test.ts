@@ -91,6 +91,8 @@ describe('toEventInput', () => {
     location: '',
     capacity: undefined,
     registrationEnabled: false,
+    paymentEnabled: false,
+    priceReais: undefined,
     registrationOpensAt: '',
     registrationClosesAt: '',
   };
@@ -148,6 +150,74 @@ describe('toEventInput', () => {
       ],
     });
     expect(input.registrationFields).toEqual([]);
+  });
+
+  // ── Pagamento (story 69) ───────────────────────────────────────────────────
+
+  it('inscrição paga: converte reais → centavos', () => {
+    const input = toEventInput({
+      ...baseForm,
+      registrationEnabled: true,
+      paymentEnabled: true,
+      priceReais: 50,
+    });
+    expect(input.paymentEnabled).toBe(true);
+    expect(input.priceCents).toBe(5000);
+  });
+
+  it('inscrição grátis: paymentEnabled false e priceCents null', () => {
+    const input = toEventInput({
+      ...baseForm,
+      registrationEnabled: true,
+      paymentEnabled: false,
+      priceReais: 50,
+    });
+    expect(input.paymentEnabled).toBe(false);
+    expect(input.priceCents).toBeNull();
+  });
+
+  it('inscrição desligada anula a cobrança', () => {
+    const input = toEventInput({
+      ...baseForm,
+      registrationEnabled: false,
+      paymentEnabled: true,
+      priceReais: 50,
+    });
+    expect(input.paymentEnabled).toBe(false);
+    expect(input.priceCents).toBeNull();
+  });
+});
+
+describe('eventSchema — pagamento (story 69)', () => {
+  it('rejeita inscrição paga sem valor', () => {
+    const result = eventSchema.safeParse({
+      ...base,
+      registrationEnabled: true,
+      paymentEnabled: true,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('priceReais'))).toBe(true);
+    }
+  });
+
+  it('aceita inscrição paga com valor positivo', () => {
+    const result = eventSchema.safeParse({
+      ...base,
+      registrationEnabled: true,
+      paymentEnabled: true,
+      priceReais: '50',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('ignora o valor quando a cobrança está desligada', () => {
+    const result = eventSchema.safeParse({
+      ...base,
+      registrationEnabled: true,
+      paymentEnabled: false,
+    });
+    expect(result.success).toBe(true);
   });
 });
 

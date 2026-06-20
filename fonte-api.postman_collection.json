@@ -5093,7 +5093,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Retiro de familias\",\n  \"description\": \"Encontro anual da comunidade\",\n  \"startAt\": \"2026-08-01T18:00:00.000Z\",\n  \"endAt\": \"2026-08-02T18:00:00.000Z\",\n  \"location\": \"Sede\",\n  \"registrationEnabled\": true,\n  \"capacity\": 100,\n  \"registrationOpensAt\": \"2026-07-01T00:00:00.000Z\",\n  \"registrationClosesAt\": \"2026-07-25T00:00:00.000Z\",\n  \"registrationFields\": [\n    { \"label\": \"Tamanho da camiseta\", \"type\": \"select\", \"required\": true, \"order\": 0, \"options\": [\"P\", \"M\", \"G\"] },\n    { \"label\": \"Observacoes\", \"type\": \"long_text\", \"required\": false, \"order\": 1 }\n  ]\n}"
+              "raw": "{\n  \"title\": \"Retiro de familias\",\n  \"description\": \"Encontro anual da comunidade\",\n  \"startAt\": \"2026-08-01T18:00:00.000Z\",\n  \"endAt\": \"2026-08-02T18:00:00.000Z\",\n  \"location\": \"Sede\",\n  \"registrationEnabled\": true,\n  \"paymentEnabled\": true,\n  \"priceCents\": 5000,\n  \"capacity\": 100,\n  \"registrationOpensAt\": \"2026-07-01T00:00:00.000Z\",\n  \"registrationClosesAt\": \"2026-07-25T00:00:00.000Z\",\n  \"registrationFields\": [\n    { \"label\": \"Tamanho da camiseta\", \"type\": \"select\", \"required\": true, \"order\": 0, \"options\": [\"P\", \"M\", \"G\"] },\n    { \"label\": \"Observacoes\", \"type\": \"long_text\", \"required\": false, \"order\": 1 }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/events",
@@ -5104,7 +5104,7 @@
                 "events"
               ]
             },
-            "description": "Cria evento. registrationEnabled (default false) liga a inscricao; com false o evento e so-divulgacao (nao aparece no portal publico) e a janela/capacity sao ignorados. capacity null/omitido = ilimitado. Valida endAt >= startAt e (quando inscricao ligada) registrationClosesAt >= registrationOpensAt (400 se violar). registrationFields (story 68): campos custom do formulario de inscricao; cada item { id?, label, type, required, order, options?, placeholder? }. type ∈ short_text|long_text|number|boolean|select|multi_select|date|email|phone|file. options obrigatorio e nao-vazio para select/multi_select (400 se faltar). id e gerado no backend quando ausente (estavel). Roles: ADMIN, COORDINATOR."
+            "description": "Cria evento. registrationEnabled (default false) liga a inscricao; com false o evento e so-divulgacao (nao aparece no portal publico) e a janela/capacity sao ignorados. capacity null/omitido = ilimitado. Valida endAt >= startAt e (quando inscricao ligada) registrationClosesAt >= registrationOpensAt (400 se violar). paymentEnabled (story 69, default false) liga a cobranca avulsa da inscricao; quando true exige priceCents > 0 (preco LIQUIDO em centavos, 400 se faltar/<=0). Com paymentEnabled=false o priceCents e forcado a null (inscricao gratis). registrationFields (story 68): campos custom do formulario de inscricao; cada item { id?, label, type, required, order, options?, placeholder? }. type ∈ short_text|long_text|number|boolean|select|multi_select|date|email|phone|file. options obrigatorio e nao-vazio para select/multi_select (400 se faltar). id e gerado no backend quando ausente (estavel). Roles: ADMIN, COORDINATOR."
           }
         },
         {
@@ -5194,7 +5194,7 @@
                 "registrations"
               ]
             },
-            "description": "Lista os inscritos de um evento (nome, contato, email + answers dos campos custom da story 68). Campos do tipo file vem como URL assinada do arquivo. Roles: ADMIN, COORDINATOR."
+            "description": "Lista os inscritos de um evento (nome, contato, email + answers dos campos custom da story 68 + paymentStatus/amountCents da story 69). paymentStatus ∈ NONE|PENDING|PAID|FAILED; amountCents = valor gross-up cobrado (null quando gratis). Campos do tipo file vem como URL assinada do arquivo. Roles: ADMIN, COORDINATOR."
           }
         }
       ]
@@ -5263,7 +5263,7 @@
                 "register"
               ]
             },
-            "description": "Inscreve uma pessoa no evento (sem login). 404 se a inscricao estiver desligada (registrationEnabled=false). Valida janela de inscricao (400 fora) e lotacao (409 esgotado). answers (story 68): mapa { fieldId: valor } com as respostas dos campos custom; validacao dinamica por tipo (required ausente -> 400; tipo incompativel -> 400; select/multi_select fora das options -> 400). Campos file recebem a fileKey devolvida por registration-files. So fieldIds conhecidos sao persistidos. Throttle estrito por IP."
+            "description": "Inscreve uma pessoa no evento (sem login). 404 se a inscricao estiver desligada (registrationEnabled=false). Valida janela de inscricao (400 fora) e lotacao (409 esgotado). answers (story 68): mapa { fieldId: valor } com as respostas dos campos custom; validacao dinamica por tipo (required ausente -> 400; tipo incompativel -> 400; select/multi_select fora das options -> 400). Campos file recebem a fileKey devolvida por registration-files. So fieldIds conhecidos sao persistidos. Resposta: { id, eventId, name, paymentStatus, paymentToken }. Story 69: evento gratis -> paymentStatus=NONE, paymentToken=null. Evento pago -> paymentStatus=PENDING + paymentToken (abre a pagina /pagamento/:token) + amount_cents (gross-up) gravados; a cobranca so e criada no /public/event-payments/:token/pay. Throttle estrito por IP."
           }
         },
         {
@@ -5293,6 +5293,89 @@
               ]
             },
             "description": "Upload de arquivo de um campo do tipo file da inscricao (story 68). Sem login. Apenas imagem ou PDF, max 20 MB (400 fora). 404 se a inscricao estiver desligada. Devolve { fileKey } para enviar em answers[fieldId] no register. Throttle estrito por IP."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public Event Payments",
+      "item": [
+        {
+          "name": "Get Event Payment Info (no auth)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/public/event-payments/{{eventPaymentToken}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "event-payments",
+                "{{eventPaymentToken}}"
+              ]
+            },
+            "description": "Dados da inscricao para a pagina de pagamento (story 69). Sem JWT, acesso pelo payment_token gerado no register de evento pago. Devolve { eventTitle, amountCents, paymentStatus, paymentMethod, registrantName }. 404 se o token for invalido. Throttle por IP."
+          }
+        },
+        {
+          "name": "Pay Event Registration (no auth)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"credit_card\",\n  \"cardToken\": \"card_xxxxxxxx\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/public/event-payments/{{eventPaymentToken}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "event-payments",
+                "{{eventPaymentToken}}",
+                "pay"
+              ]
+            },
+            "description": "Cria a cobranca avulsa (1x) no gateway Pagar.me (story 69, reusa a camada de gateway dos associados). method ∈ credit_card|pix. credit_card exige cardToken tokenizado client-side (400 sem ele). pix dispensa dados de cartao e devolve { pix: { qrCode, qrCodeUrl, expiresAt } } (copia-e-cola). Persiste gateway_order_id/gateway_charge_id/payment_method; o status final (PAID/FAILED) vem pelo webhook. Idempotente: inscricao ja PAID -> 409 (nao cobra de novo); inscricao gratis (NONE) -> 400; token invalido -> 404. Throttle estrito por IP. NOTA: sem PAGARME_SECRET_KEY o gateway dispara ServiceUnavailable; configurar a secret key real e registrar o webhook sao pendencias manuais."
+          }
+        },
+        {
+          "name": "Pagarme Webhook — order/charge avulsa (no JWT, Basic auth)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Basic {{pagarmeWebhookBasic}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"charge.paid\",\n  \"data\": {\n    \"id\": \"ch_xxxxxxxx\",\n    \"metadata\": { \"origin\": \"event\", \"event_registration_id\": \"{{eventRegistrationId}}\" }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/pagarme",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "pagarme"
+              ]
+            },
+            "description": "Webhook unico da Pagar.me (mesmo endpoint dos associados, story 41). Story 69: charges de order avulsa de EVENTO sao roteadas primeiro (por metadata.event_registration_id, order.code ou gateway_charge_id). charge.paid -> inscricao PAID; charge.payment_failed -> FAILED. Idempotente por gateway_charge_id. Se nao for charge de evento, cai no fluxo de assinatura dos associados. Auth: HTTP Basic (PAGARME_WEBHOOK_USER/PASSWORD)."
           }
         }
       ]

@@ -42,6 +42,14 @@ function makeMockGateway(): jest.Mocked<PaymentGateway> {
       .fn()
       .mockResolvedValue({ subscriptionId: 'sub_123', chargeId: 'chg_123' }),
     cancelSubscription: jest.fn().mockResolvedValue({ canceled: true }),
+    createOrder: jest.fn().mockResolvedValue({
+      orderId: 'or_123',
+      chargeId: 'ch_123',
+      status: 'pending',
+      pixQrCode: null,
+      pixQrCodeUrl: null,
+      pixExpiresAt: null,
+    }),
   };
 }
 

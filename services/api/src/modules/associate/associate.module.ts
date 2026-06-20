@@ -4,6 +4,7 @@ import { Associate } from './associate.entity';
 import { AssociateSubscription } from './associate-subscription.entity';
 import { AssociateCharge } from './associate-charge.entity';
 import { AssociateChargeNotification } from './associate-charge-notification.entity';
+import { EventRegistration } from '../event/event-registration.entity';
 import { AssociateController } from './associate.controller';
 import { AssociateService } from './associate.service';
 import { PublicAssociateController } from './public-associate.controller';
@@ -24,6 +25,8 @@ import { AssociateChargeController } from './associate-charge.controller';
       AssociateSubscription,
       AssociateCharge,
       AssociateChargeNotification,
+      // Webhook Pagar.me roteia charges avulsas de evento (story 69) → precisa do repo.
+      EventRegistration,
     ]),
   ],
   controllers: [
@@ -40,6 +43,7 @@ import { AssociateChargeController } from './associate-charge.controller';
     { provide: PAYMENT_GATEWAY, useClass: HttpPagarmeGateway },
     { provide: WHATSAPP_CLIENT, useClass: MetaWhatsAppClient },
   ],
-  exports: [AssociateService],
+  // PAYMENT_GATEWAY exportado p/ o EventModule reusar a mesma impl (story 69).
+  exports: [AssociateService, PAYMENT_GATEWAY],
 })
 export class AssociateModule {}

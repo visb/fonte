@@ -153,6 +153,52 @@ button.primary:disabled {
   cursor: not-allowed;
 }
 
+button.secondary {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--brand-dark);
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+button.secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.row-2 > button {
+  flex: 1;
+}
+
+textarea {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* Pagamento PIX de evento (story 70) */
+.pix-block {
+  text-align: center;
+}
+
+.pix-qr {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  margin: 12px auto;
+  display: block;
+}
+
 .center {
   text-align: center;
   padding: 48px 16px;

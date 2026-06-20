@@ -44,6 +44,8 @@ import { AssociateChargeController } from './associate-charge.controller';
     { provide: WHATSAPP_CLIENT, useClass: MetaWhatsAppClient },
   ],
   // PAYMENT_GATEWAY exportado p/ o EventModule reusar a mesma impl (story 69).
-  exports: [AssociateService, PAYMENT_GATEWAY],
+  // WHATSAPP_CLIENT exportado p/ o EventModule enviar o link de pagamento de
+  // evento pelo mesmo cliente Meta (story 70).
+  exports: [AssociateService, PAYMENT_GATEWAY, WHATSAPP_CLIENT],
 })
 export class AssociateModule {}

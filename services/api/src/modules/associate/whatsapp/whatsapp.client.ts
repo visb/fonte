@@ -70,7 +70,9 @@ export class MetaWhatsAppClient implements WhatsAppClient {
       return { sent: false, messageId: null };
     }
 
-    const link = this.buildPaymentLink(input.urlButtonParam);
+    // Story 70: se um link completo for fornecido (ex.: pagamento de evento), usa-o
+    // direto; senão, mantém o comportamento de associado (`<base>/p/:token`).
+    const link = input.urlLink ?? this.buildPaymentLink(input.urlButtonParam);
     const components: Array<Record<string, unknown>> = [
       {
         type: 'body',

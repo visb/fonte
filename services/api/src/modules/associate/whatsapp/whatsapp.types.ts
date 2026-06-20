@@ -27,6 +27,14 @@ export interface SendTemplateInput {
    */
   urlButtonParam: string;
   /**
+   * Link COMPLETO já montado para o botão de URL (story 70). Quando presente, o
+   * cliente usa este link diretamente como parâmetro do botão, em vez de derivá-lo
+   * de `urlButtonParam`/`APP_ASSOCIADOS_URL`. Permite reusar o mesmo cliente para
+   * outros fluxos (ex.: pagamento de evento → `<PORTAL_URL>/pagamento/:token`) sem
+   * quebrar o link de associado existente.
+   */
+  urlLink?: string;
+  /**
    * Parâmetro do 2º botão de URL — link de autocancelamento (story 45). Presente
    * apenas no template "cancelável" (a partir do 3º lembrete consecutivo); o
    * cliente concatena à `APP_ASSOCIADOS_URL` montando `<base>/cancelar/:token`.

@@ -22,6 +22,7 @@ import { EventRegistration } from './event-registration.entity';
 import { RegisterToEventDto } from './dto/register-to-event.dto';
 import { validateAndPickAnswers } from './registration-fields.util';
 import { StorageService } from '../storage/storage.service';
+import { EventPaymentNotifierService } from './event-payment-notifier.service';
 
 @Injectable()
 export class EventRegistrationService {
@@ -32,6 +33,7 @@ export class EventRegistrationService {
     private registrationsRepo: Repository<EventRegistration>,
     private storageService: StorageService,
     private config: ConfigService,
+    private paymentNotifier: EventPaymentNotifierService,
   ) {}
 
   /** Taxas de cartão configuráveis por env (mesmas dos associados, story 41). */
@@ -177,6 +179,13 @@ export class EventRegistrationService {
       amountCents,
     });
     const saved = await this.registrationsRepo.save(registration);
+
+    // Evento pago (story 70): envia o link da página de pagamento por e-mail e
+    // WhatsApp. Best-effort — não derruba a inscrição se os envios falharem.
+    if (paid) {
+      await this.paymentNotifier.sendPaymentLink(saved, event.title);
+    }
+
     return {
       id: saved.id,
       eventId: id,
@@ -184,6 +193,31 @@ export class EventRegistrationService {
       paymentStatus: saved.paymentStatus,
       paymentToken: saved.paymentToken,
     };
+  }
+
+  /**
+   * Reenvio manual do link de pagamento (story 70). Endpoint admin, útil quando o
+   * inscrito não recebeu. Só faz sentido p/ inscrição paga ainda não confirmada.
+   */
+  async resendPaymentLink(
+    eventId: string,
+    registrationId: string,
+  ): Promise<{ email: boolean; whatsapp: boolean }> {
+    const registration = await this.registrationsRepo.findOne({
+      where: { id: registrationId, eventId, deletedAt: IsNull() },
+    });
+    if (!registration) throw new NotFoundException('Registration not found');
+    if (
+      registration.paymentStatus === EventPaymentStatus.NONE ||
+      !registration.paymentToken
+    ) {
+      throw new BadRequestException('Inscrição não requer pagamento');
+    }
+
+    const event = await this.eventsRepo.findOne({ where: { id: eventId } });
+    if (!event) throw new NotFoundException('Event not found');
+
+    return this.paymentNotifier.sendPaymentLink(registration, event.title);
   }
 
   /**

@@ -55,17 +55,25 @@ function makeConfig(pct = '0.0399', fixed = '0.39') {
   } as never;
 }
 
+function makeNotifier() {
+  return {
+    sendPaymentLink: jest.fn().mockResolvedValue({ email: false, whatsapp: false }),
+  };
+}
+
 function makeService(
   events: Partial<Repository<Event>>,
   registrations: Partial<Repository<EventRegistration>>,
   storage: StorageMock = makeStorage(),
   config = makeConfig(),
+  notifier = makeNotifier(),
 ) {
   return new EventRegistrationService(
     events as Repository<Event>,
     registrations as Repository<EventRegistration>,
     storage as never,
     config,
+    notifier as never,
   );
 }
 
@@ -215,6 +223,42 @@ describe('EventRegistrationService.register — pagamento (story 69)', () => {
     const arg = created[0];
     expect(arg.paymentStatus).toBe('PENDING');
     expect(arg.amountCents).toBe(5248);
+  });
+
+  it('evento pago: dispara o link de pagamento (email + WhatsApp) best-effort (story 70)', async () => {
+    const event = makeEvent({ paymentEnabled: true, priceCents: 5000 });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const registrations = {
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn().mockImplementation((v) => v),
+      save: jest.fn().mockImplementation((v) => Promise.resolve({ id: 'reg-uuid', ...v })),
+    };
+    const notifier = makeNotifier();
+    const service = makeService(events, registrations, makeStorage(), makeConfig(), notifier);
+
+    await service.register('event-uuid', validDto);
+
+    expect(notifier.sendPaymentLink).toHaveBeenCalledTimes(1);
+    const [reg, title] = notifier.sendPaymentLink.mock.calls[0];
+    expect(reg.paymentStatus).toBe('PENDING');
+    expect(typeof reg.paymentToken).toBe('string');
+    expect(title).toBe('Retiro');
+  });
+
+  it('evento grátis NÃO dispara envio de link (story 70)', async () => {
+    const event = makeEvent();
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const registrations = {
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn().mockImplementation((v) => v),
+      save: jest.fn().mockImplementation((v) => Promise.resolve({ id: 'reg-uuid', ...v })),
+    };
+    const notifier = makeNotifier();
+    const service = makeService(events, registrations, makeStorage(), makeConfig(), notifier);
+
+    await service.register('event-uuid', validDto);
+
+    expect(notifier.sendPaymentLink).not.toHaveBeenCalled();
   });
 
   it('grossUpCents arredonda corretamente o valor cobrado', () => {
@@ -492,5 +536,56 @@ describe('EventRegistrationService.listRegistrations', () => {
     const events = { findOne: jest.fn().mockResolvedValue(null) };
     const service = makeService(events, { find: jest.fn() });
     await expect(service.listRegistrations('missing')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('EventRegistrationService.resendPaymentLink (story 70)', () => {
+  it('reenvia o link por email + WhatsApp p/ inscrição paga', async () => {
+    const event = makeEvent({ paymentEnabled: true, priceCents: 5000 });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const registration = {
+      id: 'reg-1',
+      eventId: 'event-uuid',
+      name: 'Maria',
+      paymentStatus: 'PENDING',
+      paymentToken: 'tok-1',
+    };
+    const registrations = { findOne: jest.fn().mockResolvedValue(registration) };
+    const notifier = makeNotifier();
+    notifier.sendPaymentLink.mockResolvedValue({ email: true, whatsapp: true });
+    const service = makeService(events, registrations, makeStorage(), makeConfig(), notifier);
+
+    const result = await service.resendPaymentLink('event-uuid', 'reg-1');
+
+    expect(notifier.sendPaymentLink).toHaveBeenCalledWith(registration, 'Retiro');
+    expect(result).toEqual({ email: true, whatsapp: true });
+  });
+
+  it('lança NotFound quando a inscrição não existe', async () => {
+    const events = { findOne: jest.fn() };
+    const registrations = { findOne: jest.fn().mockResolvedValue(null) };
+    const service = makeService(events, registrations);
+    await expect(
+      service.resendPaymentLink('event-uuid', 'missing'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejeita reenvio p/ inscrição grátis (sem token de pagamento)', async () => {
+    const registration = {
+      id: 'reg-1',
+      eventId: 'event-uuid',
+      name: 'Maria',
+      paymentStatus: 'NONE',
+      paymentToken: null,
+    };
+    const events = { findOne: jest.fn() };
+    const registrations = { findOne: jest.fn().mockResolvedValue(registration) };
+    const notifier = makeNotifier();
+    const service = makeService(events, registrations, makeStorage(), makeConfig(), notifier);
+
+    await expect(
+      service.resendPaymentLink('event-uuid', 'reg-1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(notifier.sendPaymentLink).not.toHaveBeenCalled();
   });
 });

@@ -8,13 +8,24 @@ import { PublicEventPaymentController } from './public-event-payment.controller'
 import { EventService } from './event.service';
 import { EventRegistrationService } from './event-registration.service';
 import { EventPaymentService } from './event-payment.service';
+import { EventPaymentNotifierService } from './event-payment-notifier.service';
 import { AssociateModule } from '../associate/associate.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
-  // AssociateModule exporta PAYMENT_GATEWAY (story 41) — reusado p/ cobrança
-  // avulsa da inscrição (story 69).
-  imports: [TypeOrmModule.forFeature([Event, EventRegistration]), AssociateModule],
+  // AssociateModule exporta PAYMENT_GATEWAY (story 41) e WHATSAPP_CLIENT (story 70).
+  // MailModule exporta MAIL_SENDER (story 70) p/ enviar o link de pagamento.
+  imports: [
+    TypeOrmModule.forFeature([Event, EventRegistration]),
+    AssociateModule,
+    MailModule,
+  ],
   controllers: [EventController, PublicEventController, PublicEventPaymentController],
-  providers: [EventService, EventRegistrationService, EventPaymentService],
+  providers: [
+    EventService,
+    EventRegistrationService,
+    EventPaymentService,
+    EventPaymentNotifierService,
+  ],
 })
 export class EventModule {}

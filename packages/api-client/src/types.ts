@@ -78,6 +78,11 @@ import type {
   RegistrationFieldType,
   RegistrationAnswerValue,
   RegistrationFileResult,
+  EventPaymentMethod,
+  EventPaymentInfo,
+  PayEventInput,
+  PayEventResult,
+  PixPaymentResult,
 } from '@fonte/types';
 import {
   NotificationType,
@@ -87,6 +92,7 @@ import {
   ActivityStatus,
   ActivityEventType,
   REGISTRATION_FIELD_TYPES,
+  EventPaymentStatus,
 } from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
@@ -144,6 +150,7 @@ export type {
   ActivityEvent,
 };
 
+export { EventPaymentStatus };
 export type {
   Event,
   EventFilter,
@@ -158,6 +165,11 @@ export type {
   RegistrationFieldType,
   RegistrationAnswerValue,
   RegistrationFileResult,
+  EventPaymentMethod,
+  EventPaymentInfo,
+  PayEventInput,
+  PayEventResult,
+  PixPaymentResult,
 };
 
 export type { FamilyInvestment };

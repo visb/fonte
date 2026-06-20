@@ -42,6 +42,17 @@ export class Event {
   registrationEnabled: boolean;
 
   /**
+   * Cobrança da inscrição habilitada (story 69). false = inscrição grátis (fluxo
+   * da story 58). Default false na criação.
+   */
+  @Column({ name: 'payment_enabled', type: 'boolean', default: false })
+  paymentEnabled: boolean;
+
+  /** Preço líquido da inscrição em centavos (story 69). Obrigatório quando pago. */
+  @Column({ name: 'price_cents', type: 'integer', nullable: true })
+  priceCents: number | null;
+
+  /**
    * Campos custom do formulário de inscrição (story 68). JSONB. Default []
    * (só base fixa name/contact/email?). `id` estável por campo.
    */

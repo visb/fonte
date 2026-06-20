@@ -9,6 +9,9 @@ import type {
   RegisterToEventInput,
   EventRegistrationResult,
   RegistrationFileResult,
+  EventPaymentInfo,
+  PayEventInput,
+  PayEventResult,
 } from '../types.js';
 
 export function createEventsModule(http: AxiosInstance) {
@@ -61,6 +64,20 @@ export function createEventsModule(http: AxiosInstance) {
           .post<RegistrationFileResult>(`/public/events/${id}/registration-files`, formData, {
             headers: { 'Content-Type': undefined },
           })
+          .then((r) => r.data),
+    },
+
+    /**
+     * Pagamento avulso da inscrição (story 69). Endpoints públicos por
+     * `payment_token`; usados pela página `/pagamento/:token` do portal (parte 70).
+     */
+    payments: {
+      getByToken: (token: string) =>
+        http.get<EventPaymentInfo>(`/public/event-payments/${token}`).then((r) => r.data),
+
+      pay: (token: string, data: PayEventInput) =>
+        http
+          .post<PayEventResult>(`/public/event-payments/${token}/pay`, data)
           .then((r) => r.data),
     },
   };

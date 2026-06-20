@@ -8,6 +8,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { EventPaymentStatus } from '@fonte/types';
 import { Event } from './event.entity';
 
 @Entity('event_registrations')
@@ -39,6 +40,35 @@ export class EventRegistration {
    */
   @Column({ type: 'jsonb', default: () => "'{}'" })
   answers: Record<string, unknown>;
+
+  // ── Pagamento avulso (story 69) ───────────────────────────────────────────────
+
+  /** Token p/ a página pública de pagamento. Gerado só p/ inscrição paga. */
+  @Column({ name: 'payment_token', type: 'varchar', nullable: true })
+  paymentToken: string | null;
+
+  @Column({
+    name: 'payment_status',
+    type: 'varchar',
+    default: EventPaymentStatus.NONE,
+  })
+  paymentStatus: EventPaymentStatus;
+
+  /** Valor gross-up cobrado em centavos (snapshot no momento da inscrição). */
+  @Column({ name: 'amount_cents', type: 'integer', nullable: true })
+  amountCents: number | null;
+
+  /** Id genérico da order no gateway (story 41/69). */
+  @Column({ name: 'gateway_order_id', type: 'varchar', nullable: true })
+  gatewayOrderId: string | null;
+
+  /** Id genérico da charge no gateway (idempotência do webhook). */
+  @Column({ name: 'gateway_charge_id', type: 'varchar', nullable: true })
+  gatewayChargeId: string | null;
+
+  /** Método escolhido (`credit_card` | `pix`). */
+  @Column({ name: 'payment_method', type: 'varchar', nullable: true })
+  paymentMethod: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

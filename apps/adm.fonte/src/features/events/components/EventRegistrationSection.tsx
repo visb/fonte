@@ -10,6 +10,8 @@ interface Props {
   control: Control<EventFormData>;
   /** Estado atual do toggle (via watch); habilita os demais campos. */
   enabled: boolean;
+  /** Estado do toggle de cobrança (story 69); habilita o campo de valor. */
+  paymentEnabled: boolean;
 }
 
 /**
@@ -17,7 +19,13 @@ interface Props {
  * `registrationEnabled` controla se o evento aceita inscrição; quando off,
  * vagas e janela ficam desabilitados (evento só-divulgação).
  */
-export function EventRegistrationSection({ register, errors, control, enabled }: Props) {
+export function EventRegistrationSection({
+  register,
+  errors,
+  control,
+  enabled,
+  paymentEnabled,
+}: Props) {
   return (
     <fieldset className="space-y-3 rounded-md border p-3">
       <label className="flex items-center gap-2">
@@ -71,6 +79,36 @@ export function EventRegistrationSection({ register, errors, control, enabled }:
           />
           {errors.registrationClosesAt && (
             <p className="text-xs text-destructive">{errors.registrationClosesAt.message}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Cobrança da inscrição (story 69). */}
+      <div className="space-y-2 rounded-md border border-dashed p-3">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            data-testid="payment-enabled"
+            disabled={!enabled}
+            {...register('paymentEnabled')}
+          />
+          <span className="text-sm font-medium">Inscrição paga</span>
+        </label>
+        <div className="space-y-1">
+          <Label htmlFor="event-price">Valor da inscrição (R$)</Label>
+          <Input
+            id="event-price"
+            type="number"
+            min={0}
+            step="0.01"
+            data-testid="event-price"
+            disabled={!enabled || !paymentEnabled}
+            {...register('priceReais')}
+            placeholder="Ex: 50,00"
+          />
+          {errors.priceReais && (
+            <p className="text-xs text-destructive">{errors.priceReais.message}</p>
           )}
         </div>
       </div>

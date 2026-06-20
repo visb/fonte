@@ -46,11 +46,48 @@ export interface CancelSubscriptionResult {
   canceled: boolean;
 }
 
+/** Método de cobrança avulsa (story 69 — pagamento único de inscrição em evento). */
+export type OrderPaymentMethod = 'credit_card' | 'pix';
+
+/**
+ * Cobrança avulsa (1x) — Pagar.me `POST /orders` com uma única charge (story 69).
+ * Diferente da assinatura recorrente dos associados: não cria plano, cobra uma vez.
+ */
+export interface CreateOrderInput {
+  /** Valor cobrado (gross, em reais) — já com gross-up das taxas. */
+  grossAmount: number;
+  method: OrderPaymentMethod;
+  /** Token do cartão tokenizado client-side (obrigatório p/ credit_card). */
+  cardToken?: string;
+  /** Expiração do PIX em segundos (default no gateway quando ausente). */
+  pixExpiresIn?: number;
+  /** Descrição do item exibida no checkout/recibo. */
+  itemName: string;
+  /** Id interno da inscrição (rastreabilidade no gateway via code/metadata). */
+  externalId: string;
+  customer?: CreateCustomerInput;
+}
+
+export interface CreateOrderResult {
+  orderId: string;
+  chargeId: string | null;
+  /** Status devolvido pelo gateway (informativo; status final vem do webhook). */
+  status: string | null;
+  /** Conteúdo PIX copia-e-cola (emv), presente só p/ method = pix. */
+  pixQrCode: string | null;
+  /** URL da imagem do QR Code do PIX, quando o gateway a devolve. */
+  pixQrCodeUrl: string | null;
+  /** Expiração do PIX (ISO), quando o gateway a devolve. */
+  pixExpiresAt: string | null;
+}
+
 /** Interface do gateway de pagamento. Implementação HTTP trocável por mock. */
 export interface PaymentGateway {
   createCustomer(input: CreateCustomerInput): Promise<CreateCustomerResult>;
   createSubscription(input: CreateSubscriptionInput): Promise<CreateSubscriptionResult>;
   cancelSubscription(subscriptionId: string): Promise<CancelSubscriptionResult>;
+  /** Cobrança avulsa (1x): cartão ou PIX. Story 69. */
+  createOrder(input: CreateOrderInput): Promise<CreateOrderResult>;
 }
 
 /** Token de injeção do gateway (permite trocar a impl por mock nos testes). */

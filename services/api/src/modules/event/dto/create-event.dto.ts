@@ -24,6 +24,17 @@ export class CreateEventDto {
   @IsBoolean()
   registrationEnabled?: boolean;
 
+  /** Cobrança da inscrição (story 69). Default false: inscrição grátis. */
+  @IsOptional()
+  @IsBoolean()
+  paymentEnabled?: boolean;
+
+  /** Preço líquido em centavos (story 69). Obrigatório quando paymentEnabled. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  priceCents?: number | null;
+
   /** Campos custom do formulário de inscrição (story 68). */
   @IsOptional()
   @IsArray()

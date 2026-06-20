@@ -47,6 +47,18 @@ export class EventService {
     }
   }
 
+  /**
+   * Cobrança coerente (story 69): inscrição paga exige preço > 0. Validado no
+   * service (regra de negócio), não no controller.
+   */
+  private validatePayment(paymentEnabled: boolean, priceCents: number | null): void {
+    if (paymentEnabled && (priceCents == null || priceCents <= 0)) {
+      throw new BadRequestException(
+        'priceCents deve ser maior que zero quando paymentEnabled = true',
+      );
+    }
+  }
+
   async create(dto: CreateEventDto): Promise<EventDto> {
     const startAt = new Date(dto.startAt);
     const endAt = this.toDate(dto.endAt);
@@ -59,6 +71,9 @@ export class EventService {
       closesAt,
       dto.registrationEnabled ?? false,
     );
+    const paymentEnabled = dto.paymentEnabled ?? false;
+    const priceCents = paymentEnabled ? (dto.priceCents ?? null) : null;
+    this.validatePayment(paymentEnabled, priceCents);
 
     const event = this.repo.create({
       title: dto.title,
@@ -68,6 +83,8 @@ export class EventService {
       location: dto.location ?? null,
       capacity: dto.capacity ?? null,
       registrationEnabled: dto.registrationEnabled ?? false,
+      paymentEnabled,
+      priceCents,
       registrationFields: normalizeRegistrationFields(dto.registrationFields),
       registrationOpensAt: opensAt,
       registrationClosesAt: closesAt,
@@ -111,6 +128,10 @@ export class EventService {
     if (dto.capacity !== undefined) event.capacity = dto.capacity ?? null;
     if (dto.registrationEnabled !== undefined)
       event.registrationEnabled = dto.registrationEnabled;
+    if (dto.paymentEnabled !== undefined) event.paymentEnabled = dto.paymentEnabled;
+    if (dto.priceCents !== undefined) event.priceCents = dto.priceCents ?? null;
+    // Inscrição grátis nunca carrega preço.
+    if (!event.paymentEnabled) event.priceCents = null;
     if (dto.registrationFields !== undefined)
       event.registrationFields = normalizeRegistrationFields(dto.registrationFields);
     if (dto.registrationOpensAt !== undefined)
@@ -125,6 +146,7 @@ export class EventService {
       event.registrationClosesAt,
       event.registrationEnabled,
     );
+    this.validatePayment(event.paymentEnabled, event.priceCents);
 
     const saved = await this.repo.save(event);
     return this.toView(saved);
@@ -167,6 +189,8 @@ export class EventService {
       location: e.location ?? null,
       capacity: e.capacity ?? null,
       registrationEnabled: e.registrationEnabled,
+      paymentEnabled: e.paymentEnabled,
+      priceCents: e.priceCents ?? null,
       registrationFields: e.registrationFields ?? [],
       // O StorageUrlInterceptor (global) assina esta string se for uma URL S3.
       bannerUrl: e.bannerKey ?? null,

@@ -1,11 +1,17 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IsNull, Repository } from 'typeorm';
-import { AssociateStatus, ChargeStatus, SubscriptionStatus } from '@fonte/types';
+import {
+  AssociateStatus,
+  ChargeStatus,
+  EventPaymentStatus,
+  SubscriptionStatus,
+} from '@fonte/types';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Associate } from '../associate.entity';
 import { AssociateSubscription } from '../associate-subscription.entity';
 import { AssociateCharge } from '../associate-charge.entity';
+import { EventRegistration } from '../../event/event-registration.entity';
 
 /**
  * Payload de webhook da Pagar.me v5: `{ type, data: {...} }`.
@@ -22,7 +28,9 @@ export interface PagarmeWebhookPayload {
     code?: string;
     subscription?: { id?: string; code?: string };
     invoice?: { subscription_id?: string; subscription?: { id?: string } };
-    metadata?: { associate_id?: string };
+    metadata?: { associate_id?: string; event_registration_id?: string; origin?: string };
+    /** Order que contém a charge (Pagar.me v5). `code` carrega o id da inscrição. */
+    order?: { id?: string; code?: string; metadata?: { event_registration_id?: string } };
     [k: string]: unknown;
   };
   [k: string]: unknown;
@@ -46,6 +54,8 @@ export class PagarmeWebhookService {
     private readonly subscriptionRepo: Repository<AssociateSubscription>,
     @InjectRepository(AssociateCharge)
     private readonly chargeRepo: Repository<AssociateCharge>,
+    @InjectRepository(EventRegistration)
+    private readonly eventRegistrationRepo: Repository<EventRegistration>,
     private readonly config: ConfigService,
   ) {}
 
@@ -70,12 +80,83 @@ export class PagarmeWebhookService {
     const type = payload.type ?? '';
     const data = payload.data ?? {};
 
-    if (type === 'charge.paid') return this.markPaid(data);
-    if (type === 'charge.payment_failed') return this.markFailed(data);
+    // Story 69: charges de order avulsa (evento) primeiro; cai p/ associados se
+    // não for de evento. Roteamento por metadata/order.code/charge id.
+    if (type === 'charge.paid') {
+      const evt = await this.markEventPaid(data);
+      if (evt.processed) return evt;
+      return this.markPaid(data);
+    }
+    if (type === 'charge.payment_failed') {
+      const evt = await this.markEventFailed(data);
+      if (evt.processed) return evt;
+      return this.markFailed(data);
+    }
     if (type === 'subscription.canceled') return this.markCanceled(data);
 
     this.logger.debug(`Ignoring unhandled Pagar.me event: ${type}`);
     return { processed: false };
+  }
+
+  /** Resolve a inscrição-alvo de uma charge de evento (metadata/code/charge id). */
+  private async resolveEventRegistration(
+    data: PagarmeWebhookPayload['data'],
+  ): Promise<EventRegistration | null> {
+    const registrationId =
+      data?.metadata?.event_registration_id ??
+      data?.order?.metadata?.event_registration_id ??
+      data?.order?.code;
+    if (registrationId) {
+      const byId = await this.eventRegistrationRepo.findOne({
+        where: { id: registrationId },
+      });
+      if (byId) return byId;
+    }
+    const chargeId = data?.id;
+    if (chargeId) {
+      return this.eventRegistrationRepo.findOne({
+        where: { gatewayChargeId: chargeId },
+      });
+    }
+    return null;
+  }
+
+  /** Charge de evento paga → inscrição PAID. Idempotente por charge. */
+  private async markEventPaid(
+    data: PagarmeWebhookPayload['data'],
+  ): Promise<{ processed: boolean }> {
+    const registration = await this.resolveEventRegistration(data);
+    if (!registration) return { processed: false };
+    if (registration.paymentStatus === EventPaymentStatus.PAID) {
+      return { processed: true };
+    }
+    registration.paymentStatus = EventPaymentStatus.PAID;
+    if (data?.id && !registration.gatewayChargeId) {
+      registration.gatewayChargeId = data.id;
+    }
+    await this.eventRegistrationRepo.save(registration);
+    return { processed: true };
+  }
+
+  /** Charge de evento recusada → inscrição FAILED. Idempotente por charge. */
+  private async markEventFailed(
+    data: PagarmeWebhookPayload['data'],
+  ): Promise<{ processed: boolean }> {
+    const registration = await this.resolveEventRegistration(data);
+    if (!registration) return { processed: false };
+    if (registration.paymentStatus === EventPaymentStatus.PAID) {
+      // Já pago: não rebaixa.
+      return { processed: true };
+    }
+    if (registration.paymentStatus === EventPaymentStatus.FAILED) {
+      return { processed: true };
+    }
+    registration.paymentStatus = EventPaymentStatus.FAILED;
+    if (data?.id && !registration.gatewayChargeId) {
+      registration.gatewayChargeId = data.id;
+    }
+    await this.eventRegistrationRepo.save(registration);
+    return { processed: true };
   }
 
   private subscriptionIdFromCharge(data: PagarmeWebhookPayload['data']): string | undefined {

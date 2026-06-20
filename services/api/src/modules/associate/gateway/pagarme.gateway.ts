@@ -4,6 +4,8 @@ import {
   CancelSubscriptionResult,
   CreateCustomerInput,
   CreateCustomerResult,
+  CreateOrderInput,
+  CreateOrderResult,
   CreateSubscriptionInput,
   CreateSubscriptionResult,
   PaymentGateway,
@@ -112,6 +114,72 @@ export class HttpPagarmeGateway implements PaymentGateway {
   async cancelSubscription(subscriptionId: string): Promise<CancelSubscriptionResult> {
     await this.request('DELETE', `/subscriptions/${subscriptionId}`);
     return { canceled: true };
+  }
+
+  /**
+   * Cobrança avulsa (1x) — Pagar.me `POST /orders` com uma única charge (story 69).
+   *  - cartão: `payments[].credit_card.card_token`;
+   *  - PIX: `payments[].pix.expires_in` → a charge devolve `last_transaction` com
+   *    `qr_code` (copia-e-cola) e `qr_code_url`.
+   * `closed: true` fecha o pedido imediatamente. `code` carrega a inscrição p/ o
+   * webhook rotear a origem.
+   */
+  async createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
+    const amountCents = Math.round(input.grossAmount * 100);
+    const payment =
+      input.method === 'pix'
+        ? { payment_method: 'pix', pix: { expires_in: input.pixExpiresIn ?? 3600 } }
+        : {
+            payment_method: 'credit_card',
+            credit_card: { card_token: input.cardToken },
+          };
+
+    const data = await this.request<{
+      id: string;
+      status?: string;
+      charges?: Array<{
+        id?: string;
+        status?: string;
+        last_transaction?: {
+          qr_code?: string;
+          qr_code_url?: string;
+          expires_at?: string;
+        };
+      }>;
+    }>('POST', '/orders', {
+      closed: true,
+      code: input.externalId,
+      ...(input.customer
+        ? {
+            customer: {
+              name: input.customer.name,
+              email: input.customer.email ?? undefined,
+              type: 'individual',
+            },
+          }
+        : {}),
+      items: [
+        {
+          amount: amountCents,
+          description: input.itemName,
+          quantity: 1,
+          code: input.externalId,
+        },
+      ],
+      payments: [payment],
+      metadata: { event_registration_id: input.externalId, origin: 'event' },
+    });
+
+    const charge = data.charges?.[0];
+    const tx = charge?.last_transaction;
+    return {
+      orderId: data.id,
+      chargeId: charge?.id ?? null,
+      status: charge?.status ?? data.status ?? null,
+      pixQrCode: tx?.qr_code ?? null,
+      pixQrCodeUrl: tx?.qr_code_url ?? null,
+      pixExpiresAt: tx?.expires_at ?? null,
+    };
   }
 
   /** E.164 (+5511999999999) → { country_code, area_code, number } do Pagar.me. */

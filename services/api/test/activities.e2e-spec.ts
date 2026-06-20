@@ -147,6 +147,23 @@ describe('ActivityController (e2e)', () => {
         .expect(200);
       expect(res.body.description).toBe('override pelo admin');
     });
+
+    it('sanitizes the markdown description on update (story 72)', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          description:
+            'Tarefa **importante** [ok](https://x.com) [ruim](javascript:alert(1)) <script>steal()</script>',
+        })
+        .expect(200);
+      // HTML bruto removido + protocolo perigoso neutralizado; markdown legítimo preservado.
+      expect(res.body.description).toContain('**importante**');
+      expect(res.body.description).toContain('[ok](https://x.com)');
+      expect(res.body.description).toContain('[ruim](#)');
+      expect(res.body.description).not.toContain('javascript:');
+      expect(res.body.description).not.toContain('<script');
+    });
   });
 
   // ── admin flow / scoping ────────────────────────────────────────────────────

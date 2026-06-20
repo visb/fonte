@@ -20,6 +20,7 @@ import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ChangeActivityStatusDto } from './dto/change-activity-status.dto';
 import { ListActivitiesQueryDto } from './dto/list-activities.dto';
+import { sanitizeMarkdown } from './sanitize-markdown';
 
 /** Identidade autenticada que o service precisa (JWT não carrega houseId). */
 export interface ActivityUser {
@@ -247,7 +248,9 @@ export class ActivityService {
 
     const activity = this.repo.create({
       title: dto.title,
-      description: dto.description ?? null,
+      // Descrição é markdown (story 72): sanitiza no servidor antes de persistir
+      // (remove HTML bruto e protocolo de link perigoso — defesa em profundidade).
+      description: sanitizeMarkdown(dto.description),
       status,
       houseId: dto.houseId ?? null,
       responsibleStaffId,
@@ -297,7 +300,11 @@ export class ActivityService {
     };
 
     if (dto.title !== undefined) activity.title = dto.title;
-    if (dto.description !== undefined) activity.description = dto.description ?? null;
+    // Descrição é markdown (story 72): sanitiza no servidor (HTML bruto + link
+    // perigoso) antes de persistir.
+    if (dto.description !== undefined) {
+      activity.description = sanitizeMarkdown(dto.description);
+    }
     if (dto.houseId !== undefined) activity.houseId = dto.houseId ?? null;
 
     // Reatribuir responsável: só ADMIN.

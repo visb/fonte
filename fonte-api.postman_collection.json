@@ -4842,7 +4842,7 @@
                 "{{activityId}}"
               ]
             },
-            "description": "Detalhe de uma atividade, incluindo o campo `description` (string ou null) que a listagem omite (story 71). 404 se fora do escopo do usuario. Roles: ADMIN, COORDINATOR, SERVANT."
+            "description": "Detalhe de uma atividade, incluindo o campo `description` (string ou null) que a listagem omite (story 71). `description` e MARKDOWN (story 72): negrito/italico/listas/links (http/https/mailto); ja sanitizado no servidor (HTML bruto e protocolos perigosos removidos) — renderize sanitizando de novo no cliente. 404 se fora do escopo do usuario. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {
@@ -4868,7 +4868,7 @@
                 "activities"
               ]
             },
-            "description": "Cria atividade. ops (COORDINATOR/SERVANT) cria sempre em DRAFT. ADMIN pode criar em DRAFT ou TODO (status=TODO exige responsibleStaffId). created_by = usuario do JWT. Roles: ADMIN, COORDINATOR, SERVANT."
+            "description": "Cria atividade. ops (COORDINATOR/SERVANT) cria sempre em DRAFT. ADMIN pode criar em DRAFT ou TODO (status=TODO exige responsibleStaffId). `description` e MARKDOWN (story 72) e e sanitizada no servidor ao salvar (remove HTML bruto e protocolo de link perigoso). created_by = usuario do JWT. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {
@@ -4895,7 +4895,7 @@
                 "{{activityId}}"
               ]
             },
-            "description": "Edita conteudo. title/houseId: ADMIN sempre; criador so enquanto DRAFT. description: ADMIN em qualquer status; criador em DRAFT/REQUESTED/TODO (bloqueado a partir de DOING -> 403). Reatribuir responsibleStaffId so ADMIN. Roles: ADMIN, COORDINATOR, SERVANT."
+            "description": "Edita conteudo. title/houseId: ADMIN sempre; criador so enquanto DRAFT. description (MARKDOWN, story 72 — sanitizada no servidor ao salvar): ADMIN em qualquer status; criador em DRAFT/REQUESTED/TODO (bloqueado a partir de DOING -> 403). Reatribuir responsibleStaffId so ADMIN. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {

@@ -24,17 +24,22 @@ export class EventService {
     return value != null ? new Date(value) : null;
   }
 
-  /** Coerência das datas (regra de negócio no service, 400 se violar). */
+  /**
+   * Coerência das datas (regra de negócio no service, 400 se violar).
+   * A coerência da janela de inscrição só é exigida quando a inscrição está
+   * habilitada (story 67); evento só-divulgação ignora a janela.
+   */
   private validateDates(
     startAt: Date,
     endAt: Date | null,
     opensAt: Date | null,
     closesAt: Date | null,
+    registrationEnabled: boolean,
   ): void {
     if (endAt && endAt < startAt) {
       throw new BadRequestException('endAt deve ser maior ou igual a startAt');
     }
-    if (opensAt && closesAt && closesAt < opensAt) {
+    if (registrationEnabled && opensAt && closesAt && closesAt < opensAt) {
       throw new BadRequestException(
         'registrationClosesAt deve ser maior ou igual a registrationOpensAt',
       );
@@ -46,7 +51,13 @@ export class EventService {
     const endAt = this.toDate(dto.endAt);
     const opensAt = this.toDate(dto.registrationOpensAt);
     const closesAt = this.toDate(dto.registrationClosesAt);
-    this.validateDates(startAt, endAt, opensAt, closesAt);
+    this.validateDates(
+      startAt,
+      endAt,
+      opensAt,
+      closesAt,
+      dto.registrationEnabled ?? false,
+    );
 
     const event = this.repo.create({
       title: dto.title,
@@ -55,6 +66,7 @@ export class EventService {
       endAt,
       location: dto.location ?? null,
       capacity: dto.capacity ?? null,
+      registrationEnabled: dto.registrationEnabled ?? false,
       registrationOpensAt: opensAt,
       registrationClosesAt: closesAt,
       bannerKey: null,
@@ -95,6 +107,8 @@ export class EventService {
     if (dto.endAt !== undefined) event.endAt = this.toDate(dto.endAt);
     if (dto.location !== undefined) event.location = dto.location ?? null;
     if (dto.capacity !== undefined) event.capacity = dto.capacity ?? null;
+    if (dto.registrationEnabled !== undefined)
+      event.registrationEnabled = dto.registrationEnabled;
     if (dto.registrationOpensAt !== undefined)
       event.registrationOpensAt = this.toDate(dto.registrationOpensAt);
     if (dto.registrationClosesAt !== undefined)
@@ -105,6 +119,7 @@ export class EventService {
       event.endAt,
       event.registrationOpensAt,
       event.registrationClosesAt,
+      event.registrationEnabled,
     );
 
     const saved = await this.repo.save(event);
@@ -147,6 +162,7 @@ export class EventService {
       endAt: e.endAt ? e.endAt.toISOString() : null,
       location: e.location ?? null,
       capacity: e.capacity ?? null,
+      registrationEnabled: e.registrationEnabled,
       // O StorageUrlInterceptor (global) assina esta string se for uma URL S3.
       bannerUrl: e.bannerKey ?? null,
       registrationOpensAt: e.registrationOpensAt

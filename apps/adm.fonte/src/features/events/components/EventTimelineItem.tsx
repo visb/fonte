@@ -44,6 +44,15 @@ export function EventTimelineItem({ event, highlighted, past, onEdit, onDelete }
                   Encerrado
                 </Badge>
               )}
+              {event.registrationEnabled ? (
+                <Badge variant="outline" className="font-normal" data-testid="registration-badge">
+                  Inscrição aberta
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="font-normal" data-testid="registration-badge">
+                  Só divulgação
+                </Badge>
+              )}
             </div>
             <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <CalendarClock size={14} />

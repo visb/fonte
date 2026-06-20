@@ -33,6 +33,13 @@ export class Event {
   @Column({ type: 'integer', nullable: true })
   capacity: number | null;
 
+  /**
+   * Inscrição habilitada (story 67). false = evento só-divulgação: não aparece
+   * no portal público nem aceita inscrição. Default false na criação.
+   */
+  @Column({ name: 'registration_enabled', type: 'boolean', default: false })
+  registrationEnabled: boolean;
+
   /** Referência do banner no storage (resultado de StorageService.upload). Nunca uma URL assinada. */
   @Column({ name: 'banner_key', type: 'varchar', nullable: true })
   bannerKey: string | null;

@@ -5093,7 +5093,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Retiro de familias\",\n  \"description\": \"Encontro anual da comunidade\",\n  \"startAt\": \"2026-08-01T18:00:00.000Z\",\n  \"endAt\": \"2026-08-02T18:00:00.000Z\",\n  \"location\": \"Sede\",\n  \"capacity\": 100,\n  \"registrationOpensAt\": \"2026-07-01T00:00:00.000Z\",\n  \"registrationClosesAt\": \"2026-07-25T00:00:00.000Z\"\n}"
+              "raw": "{\n  \"title\": \"Retiro de familias\",\n  \"description\": \"Encontro anual da comunidade\",\n  \"startAt\": \"2026-08-01T18:00:00.000Z\",\n  \"endAt\": \"2026-08-02T18:00:00.000Z\",\n  \"location\": \"Sede\",\n  \"registrationEnabled\": true,\n  \"capacity\": 100,\n  \"registrationOpensAt\": \"2026-07-01T00:00:00.000Z\",\n  \"registrationClosesAt\": \"2026-07-25T00:00:00.000Z\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/events",
@@ -5104,7 +5104,7 @@
                 "events"
               ]
             },
-            "description": "Cria evento. capacity null/omitido = ilimitado. Valida endAt >= startAt e registrationClosesAt >= registrationOpensAt (400 se violar). Roles: ADMIN, COORDINATOR."
+            "description": "Cria evento. registrationEnabled (default false) liga a inscricao; com false o evento e so-divulgacao (nao aparece no portal publico) e a janela/capacity sao ignorados. capacity null/omitido = ilimitado. Valida endAt >= startAt e (quando inscricao ligada) registrationClosesAt >= registrationOpensAt (400 se violar). Roles: ADMIN, COORDINATOR."
           }
         },
         {
@@ -5119,7 +5119,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"location\": \"Anexo\",\n  \"capacity\": 50\n}"
+              "raw": "{\n  \"location\": \"Anexo\",\n  \"registrationEnabled\": true,\n  \"capacity\": 50\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/events/{{eventId}}",
@@ -5216,7 +5216,7 @@
                 "events"
               ]
             },
-            "description": "Lista pública de eventos futuros (sem JWT). So campos seguros + spotsLeft/registrationOpen. Throttle por IP."
+            "description": "Lista pública de eventos futuros COM inscricao habilitada (registrationEnabled=true), sem JWT. Eventos so-divulgacao nao aparecem. So campos seguros + spotsLeft/registrationOpen. Throttle por IP."
           }
         },
         {
@@ -5234,7 +5234,7 @@
                 "{{eventId}}"
               ]
             },
-            "description": "Detalhe publico do evento + vagas restantes + se a inscricao esta aberta. Throttle por IP."
+            "description": "Detalhe publico do evento + vagas restantes + se a inscricao esta aberta. 404 se o evento tiver a inscricao desligada (registrationEnabled=false). Throttle por IP."
           }
         },
         {
@@ -5263,7 +5263,7 @@
                 "register"
               ]
             },
-            "description": "Inscreve uma pessoa no evento (sem login). Valida janela de inscricao (400 fora) e lotacao (409 esgotado). Throttle estrito por IP."
+            "description": "Inscreve uma pessoa no evento (sem login). 404 se a inscricao estiver desligada (registrationEnabled=false). Valida janela de inscricao (400 fora) e lotacao (409 esgotado). Throttle estrito por IP."
           }
         }
       ]

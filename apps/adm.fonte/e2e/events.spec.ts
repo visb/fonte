@@ -85,6 +85,32 @@ test.describe('Eventos (timeline)', () => {
     await expect(page.getByText(newTitle)).toBeVisible();
   });
 
+  test('evento nasce só-divulgação e o toggle habilita a inscrição', async ({ page }) => {
+    await login(page);
+    await goto(page);
+    const title = `Toggle ${ts()}`;
+    await createEvent(page, title, inDays(45));
+
+    // Default: só-divulgação (story 67).
+    await expect(
+      item(page, title).getByTestId('registration-badge'),
+    ).toHaveText('Só divulgação');
+
+    // Edita e liga a inscrição.
+    await item(page, title).getByRole('button', { name: 'Editar' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    // Campo de vagas começa desabilitado quando inscrição off.
+    await expect(page.getByLabel('Vagas')).toBeDisabled();
+    await page.getByTestId('registration-enabled').check();
+    await expect(page.getByLabel('Vagas')).toBeEnabled();
+    await page.getByRole('button', { name: 'Salvar' }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+
+    await expect(
+      item(page, title).getByTestId('registration-badge'),
+    ).toHaveText('Inscrição aberta');
+  });
+
   test('remove um evento', async ({ page }) => {
     await login(page);
     await goto(page);

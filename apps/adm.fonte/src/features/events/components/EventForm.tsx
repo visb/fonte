@@ -9,6 +9,7 @@ import { DialogFooter } from '@/components/ui/dialog';
 import { getErrorMessage } from '@/lib/errors';
 import { eventSchema, type EventFormData } from '../lib/eventSchema';
 import { isoToLocalInput } from '../lib/eventDates';
+import { EventRegistrationSection } from './EventRegistrationSection';
 
 interface Props {
   event?: Event | null;
@@ -25,6 +26,7 @@ const emptyForm: EventFormData = {
   endAt: '',
   location: '',
   capacity: undefined,
+  registrationEnabled: false,
   registrationOpensAt: '',
   registrationClosesAt: '',
 };
@@ -38,6 +40,7 @@ function eventToForm(event?: Event | null): EventFormData {
     endAt: event.endAt ? isoToLocalInput(event.endAt) : '',
     location: event.location ?? '',
     capacity: event.capacity ?? undefined,
+    registrationEnabled: event.registrationEnabled,
     registrationOpensAt: event.registrationOpensAt
       ? isoToLocalInput(event.registrationOpensAt)
       : '',
@@ -53,11 +56,14 @@ export function EventForm({ event, isPending, error, onSubmit, onCancel }: Props
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
     defaultValues: eventToForm(event),
   });
+
+  const registrationEnabled = watch('registrationEnabled');
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
@@ -89,43 +95,16 @@ export function EventForm({ event, isPending, error, onSubmit, onCancel }: Props
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="event-location">Local</Label>
-            <Input id="event-location" {...register('location')} placeholder="Opcional" />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="event-capacity">Vagas</Label>
-            <Input
-              id="event-capacity"
-              type="number"
-              min={1}
-              {...register('capacity')}
-              placeholder="Ilimitado"
-            />
-            {errors.capacity && (
-              <p className="text-xs text-destructive">{errors.capacity.message}</p>
-            )}
-          </div>
+        <div className="space-y-1">
+          <Label htmlFor="event-location">Local</Label>
+          <Input id="event-location" {...register('location')} placeholder="Opcional" />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="event-reg-opens">Inscrições abrem</Label>
-            <Input id="event-reg-opens" type="datetime-local" {...register('registrationOpensAt')} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="event-reg-closes">Inscrições fecham</Label>
-            <Input
-              id="event-reg-closes"
-              type="datetime-local"
-              {...register('registrationClosesAt')}
-            />
-            {errors.registrationClosesAt && (
-              <p className="text-xs text-destructive">{errors.registrationClosesAt.message}</p>
-            )}
-          </div>
-        </div>
+        <EventRegistrationSection
+          register={register}
+          errors={errors}
+          enabled={registrationEnabled}
+        />
 
         {error != null && (
           <p className="text-xs text-destructive">{getErrorMessage(error, 'Erro ao salvar evento.')}</p>

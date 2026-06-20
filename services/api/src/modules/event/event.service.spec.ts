@@ -17,6 +17,7 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
     endAt: null,
     location: 'Sede',
     capacity: null,
+    registrationEnabled: false,
     bannerKey: null,
     registrationOpensAt: null,
     registrationClosesAt: null,
@@ -106,6 +107,83 @@ describe('EventService.create', () => {
     expect(result.capacity).toBeNull();
   });
 
+  it('defaults registrationEnabled to false when omitted', async () => {
+    const repo = {
+      create: jest.fn().mockImplementation((v) => makeEvent(v)),
+      save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
+    };
+    const service = makeService(repo as never);
+
+    const result = await service.create({
+      title: 'Culto',
+      description: 'Aberto',
+      startAt: '2026-07-01T12:00:00Z',
+    });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ registrationEnabled: false }),
+    );
+    expect(result.registrationEnabled).toBe(false);
+  });
+
+  it('persists registrationEnabled when true', async () => {
+    const repo = {
+      create: jest.fn().mockImplementation((v) => makeEvent(v)),
+      save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
+    };
+    const service = makeService(repo as never);
+
+    const result = await service.create({
+      title: 'Retiro',
+      description: 'Com inscrição',
+      startAt: '2026-07-01T12:00:00Z',
+      registrationEnabled: true,
+    });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ registrationEnabled: true }),
+    );
+    expect(result.registrationEnabled).toBe(true);
+  });
+
+  it('skips the registration window coherence check when registration is off', async () => {
+    const repo = {
+      create: jest.fn().mockImplementation((v) => makeEvent(v)),
+      save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
+    };
+    const service = makeService(repo as never);
+
+    // Janela incoerente, mas inscrição desligada → não valida a janela.
+    await expect(
+      service.create({
+        title: 'X',
+        description: 'Y',
+        startAt: '2026-07-01T12:00:00Z',
+        registrationEnabled: false,
+        registrationOpensAt: '2026-06-20T12:00:00Z',
+        registrationClosesAt: '2026-06-10T12:00:00Z',
+      }),
+    ).resolves.toBeDefined();
+    expect(repo.save).toHaveBeenCalled();
+  });
+
+  it('still validates the window when registration is on (400)', async () => {
+    const repo = { create: jest.fn(), save: jest.fn() };
+    const service = makeService(repo as never);
+
+    await expect(
+      service.create({
+        title: 'X',
+        description: 'Y',
+        startAt: '2026-07-01T12:00:00Z',
+        registrationEnabled: true,
+        registrationOpensAt: '2026-06-20T12:00:00Z',
+        registrationClosesAt: '2026-06-10T12:00:00Z',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
   it('rejects endAt before startAt (400)', async () => {
     const repo = { create: jest.fn(), save: jest.fn() };
     const service = makeService(repo as never);
@@ -130,6 +208,7 @@ describe('EventService.create', () => {
         title: 'X',
         description: 'Y',
         startAt: '2026-07-01T12:00:00Z',
+        registrationEnabled: true,
         registrationOpensAt: '2026-06-20T12:00:00Z',
         registrationClosesAt: '2026-06-10T12:00:00Z',
       }),
@@ -204,6 +283,19 @@ describe('EventService.update', () => {
 
     expect(result.title).toBe('Novo título');
     expect(result.location).toBe('Anexo');
+  });
+
+  it('toggles registrationEnabled on', async () => {
+    const event = makeEvent({ registrationEnabled: false });
+    const repo = {
+      findOne: jest.fn().mockResolvedValue(event),
+      save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
+    };
+    const service = makeService(repo as never);
+
+    const result = await service.update(EVENT_ID, { registrationEnabled: true });
+
+    expect(result.registrationEnabled).toBe(true);
   });
 
   it('rejects an update that makes endAt precede startAt (400)', async () => {

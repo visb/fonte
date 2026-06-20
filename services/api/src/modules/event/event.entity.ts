@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { RegistrationField } from '@fonte/types';
 
 @Entity('events')
 export class Event {
@@ -39,6 +40,13 @@ export class Event {
    */
   @Column({ name: 'registration_enabled', type: 'boolean', default: false })
   registrationEnabled: boolean;
+
+  /**
+   * Campos custom do formulário de inscrição (story 68). JSONB. Default []
+   * (só base fixa name/contact/email?). `id` estável por campo.
+   */
+  @Column({ name: 'registration_fields', type: 'jsonb', default: () => "'[]'" })
+  registrationFields: RegistrationField[];
 
   /** Referência do banner no storage (resultado de StorageService.upload). Nunca uma URL assinada. */
   @Column({ name: 'banner_key', type: 'varchar', nullable: true })

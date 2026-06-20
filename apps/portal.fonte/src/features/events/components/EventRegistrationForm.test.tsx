@@ -15,6 +15,7 @@ function makeEvent(overrides: Partial<EventPublic> = {}): EventPublic {
     bannerUrl: null,
     capacity: 10,
     spotsLeft: 5,
+    registrationFields: [],
     registrationOpensAt: null,
     registrationClosesAt: null,
     registrationOpen: true,
@@ -88,6 +89,59 @@ describe('EventRegistrationForm', () => {
         name: 'Maria',
         contact: '11999990000',
         email: null,
+        answers: {},
+      });
+    });
+  });
+
+  it('renderiza os campos custom e valida um select obrigatório (story 68)', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+    const event = makeEvent({
+      registrationFields: [
+        { id: 'shirt', label: 'Tamanho', type: 'select', required: true, order: 0, options: ['P', 'M'] },
+      ],
+    });
+    render(
+      <EventRegistrationForm event={event} submitting={false} error={null} onSubmit={onSubmit} />,
+    );
+
+    expect(screen.getByText('Tamanho *')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Nome'), 'Maria');
+    await user.type(screen.getByLabelText('Telefone / WhatsApp'), '11999990000');
+    await user.click(screen.getByRole('button', { name: 'Confirmar inscrição' }));
+
+    // Select obrigatório não preenchido bloqueia o submit.
+    await waitFor(() => {
+      expect(screen.getByText('Selecione uma opção')).toBeInTheDocument();
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('envia as respostas custom em answers quando preenchidas (story 68)', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+    const event = makeEvent({
+      registrationFields: [
+        { id: 'shirt', label: 'Tamanho', type: 'select', required: true, order: 0, options: ['P', 'M'] },
+      ],
+    });
+    render(
+      <EventRegistrationForm event={event} submitting={false} error={null} onSubmit={onSubmit} />,
+    );
+
+    await user.type(screen.getByLabelText('Nome'), 'Maria');
+    await user.type(screen.getByLabelText('Telefone / WhatsApp'), '11999990000');
+    await user.selectOptions(screen.getByLabelText('Tamanho *'), 'M');
+    await user.click(screen.getByRole('button', { name: 'Confirmar inscrição' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Maria',
+        contact: '11999990000',
+        email: null,
+        answers: { shirt: 'M' },
       });
     });
   });

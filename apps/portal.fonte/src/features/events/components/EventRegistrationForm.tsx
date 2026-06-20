@@ -1,20 +1,9 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import type { EventPublic, RegisterToEventInput } from '@fonte/types';
+import type { EventPublic, RegisterToEventInput, RegistrationAnswerValue } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
-
-const schema = z.object({
-  name: z.string().min(1, 'Informe seu nome'),
-  contact: z.string().min(5, 'Informe um telefone/WhatsApp ou e-mail de contato'),
-  email: z
-    .string()
-    .email('E-mail inválido')
-    .optional()
-    .or(z.literal('')),
-});
-
-type FormValues = z.infer<typeof schema>;
+import { buildRegistrationSchema, buildDefaultValues } from '../lib/registrationSchema';
+import { DynamicField, type RegistrationFormValues } from './DynamicField';
 
 interface Props {
   event: EventPublic;
@@ -23,14 +12,29 @@ interface Props {
   onSubmit: (data: RegisterToEventInput) => void;
 }
 
+/** Remove respostas vazias antes de enviar (campos opcionais não preenchidos). */
+function cleanAnswers(
+  answers: Record<string, unknown>,
+): Record<string, RegistrationAnswerValue> {
+  const out: Record<string, RegistrationAnswerValue> = {};
+  for (const [key, value] of Object.entries(answers)) {
+    if (value === undefined || value === null || value === '') continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    out[key] = value as RegistrationAnswerValue;
+  }
+  return out;
+}
+
 export function EventRegistrationForm({ event, submitting, error, onSubmit }: Props) {
+  const fields = event.registrationFields ?? [];
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { name: '', contact: '', email: '' },
+  } = useForm<RegistrationFormValues>({
+    resolver: zodResolver(buildRegistrationSchema(fields)),
+    defaultValues: buildDefaultValues(fields),
   });
 
   // Inscrição fechada: mostra o motivo, sem formulário.
@@ -54,6 +58,7 @@ export function EventRegistrationForm({ event, submitting, error, onSubmit }: Pr
       name: values.name,
       contact: values.contact,
       email: values.email ? values.email : null,
+      answers: cleanAnswers(values.answers),
     });
   });
 
@@ -87,6 +92,16 @@ export function EventRegistrationForm({ event, submitting, error, onSubmit }: Pr
         <input id="reg-email" inputMode="email" autoComplete="email" {...register('email')} />
         {errors.email && <p className="error-msg">{errors.email.message}</p>}
       </div>
+
+      {fields.map((field) => (
+        <DynamicField
+          key={field.id}
+          field={field}
+          eventId={event.id}
+          control={control}
+          errors={errors}
+        />
+      ))}
 
       {error != null && (
         <p className="error-msg">{getErrorMessage(error, 'Não foi possível concluir a inscrição.')}</p>

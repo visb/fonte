@@ -20,6 +20,7 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
     location: 'Sede',
     capacity: null,
     registrationEnabled: true,
+    registrationFields: [],
     bannerKey: null,
     registrationOpensAt: null,
     registrationClosesAt: null,
@@ -30,13 +31,32 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
   } as unknown as Event;
 }
 
+type StorageMock = {
+  decodeOriginalName: jest.Mock;
+  uniqueFilename: jest.Mock;
+  upload: jest.Mock;
+};
+
+function makeStorage(overrides: Partial<StorageMock> = {}): StorageMock {
+  return {
+    decodeOriginalName: jest.fn((n: string) => n),
+    uniqueFilename: jest.fn((n: string, prefix = '') => `${prefix}${n}`),
+    upload: jest
+      .fn()
+      .mockResolvedValue('https://bucket/event-registrations/reg_file.pdf'),
+    ...overrides,
+  };
+}
+
 function makeService(
   events: Partial<Repository<Event>>,
   registrations: Partial<Repository<EventRegistration>>,
+  storage: StorageMock = makeStorage(),
 ) {
   return new EventRegistrationService(
     events as Repository<Event>,
     registrations as Repository<EventRegistration>,
+    storage as never,
   );
 }
 
@@ -153,6 +173,97 @@ describe('EventRegistrationService.register', () => {
   });
 });
 
+describe('EventRegistrationService.register — custom answers (story 68)', () => {
+  const shirtField = {
+    id: 'shirt',
+    label: 'Tamanho',
+    type: 'select' as const,
+    required: true,
+    order: 0,
+    options: ['P', 'M', 'G'],
+  };
+
+  it('persiste só os fieldIds conhecidos das respostas', async () => {
+    const event = makeEvent({ registrationFields: [shirtField] });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    let savedAnswers: unknown;
+    const registrations = {
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn().mockImplementation((v) => {
+        savedAnswers = v.answers;
+        return v;
+      }),
+      save: jest.fn().mockResolvedValue({ id: 'reg', eventId: 'event-uuid', name: 'Maria' }),
+    };
+    const service = makeService(events, registrations);
+
+    await service.register('event-uuid', {
+      ...validDto,
+      answers: { shirt: 'M', bogus: 'x' },
+    });
+
+    expect(savedAnswers).toEqual({ shirt: 'M' });
+  });
+
+  it('rejeita quando um campo obrigatório falta (400)', async () => {
+    const event = makeEvent({ registrationFields: [shirtField] });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const registrations = { count: jest.fn().mockResolvedValue(0), create: jest.fn(), save: jest.fn() };
+    const service = makeService(events, registrations);
+
+    await expect(
+      service.register('event-uuid', { ...validDto, answers: {} }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(registrations.save).not.toHaveBeenCalled();
+  });
+
+  it('rejeita valor fora das options de select (400)', async () => {
+    const event = makeEvent({ registrationFields: [shirtField] });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const registrations = { count: jest.fn().mockResolvedValue(0), create: jest.fn(), save: jest.fn() };
+    const service = makeService(events, registrations);
+
+    await expect(
+      service.register('event-uuid', { ...validDto, answers: { shirt: 'XL' } }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe('EventRegistrationService.uploadRegistrationFile (story 68)', () => {
+  const file = {
+    originalname: 'comprovante.pdf',
+    buffer: Buffer.from('x'),
+    mimetype: 'application/pdf',
+  } as Express.Multer.File;
+
+  it('grava o arquivo e devolve a fileKey', async () => {
+    const event = makeEvent();
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const storage = makeStorage();
+    const service = makeService(events, {}, storage);
+
+    const result = await service.uploadRegistrationFile('event-uuid', file);
+
+    expect(storage.upload).toHaveBeenCalledWith(
+      'event-registrations',
+      expect.stringContaining('reg_'),
+      file.buffer,
+      'application/pdf',
+    );
+    expect(result.fileKey).toBe('https://bucket/event-registrations/reg_file.pdf');
+  });
+
+  it('lança NotFound para evento com inscrição desligada', async () => {
+    const event = makeEvent({ registrationEnabled: false });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const service = makeService(events, {}, makeStorage());
+
+    await expect(service.uploadRegistrationFile('event-uuid', file)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+});
+
 describe('EventRegistrationService.getPublicView', () => {
   it('calcula vagas restantes e marca a inscrição aberta', async () => {
     const event = makeEvent({ capacity: 10 });
@@ -213,6 +324,19 @@ describe('EventRegistrationService.getPublicView', () => {
     const service = makeService(events, { count: jest.fn() });
     await expect(service.getPublicView('event-uuid')).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('expõe os registrationFields para o portal renderizar (story 68)', async () => {
+    const fields = [
+      { id: 'shirt', label: 'Tamanho', type: 'select' as const, required: true, order: 0, options: ['P', 'M'] },
+    ];
+    const event = makeEvent({ registrationFields: fields });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const registrations = { count: jest.fn().mockResolvedValue(0) };
+    const service = makeService(events, registrations);
+
+    const view = await service.getPublicView('event-uuid');
+    expect(view.registrationFields).toEqual(fields);
+  });
 });
 
 describe('EventRegistrationService.listPublic', () => {
@@ -259,6 +383,28 @@ describe('EventRegistrationService.listRegistrations', () => {
     const list = await service.listRegistrations('event-uuid');
     expect(list).toHaveLength(1);
     expect(list[0].name).toBe('Maria');
+  });
+
+  it('inclui as answers custom de cada inscrito (story 68)', async () => {
+    const event = makeEvent();
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const registrations = {
+      find: jest.fn().mockResolvedValue([
+        {
+          id: 'r1',
+          eventId: 'event-uuid',
+          name: 'Maria',
+          contact: '11999990000',
+          email: null,
+          answers: { shirt: 'M', file1: 'event-registrations/x.pdf' },
+          createdAt: NOW,
+        },
+      ]),
+    };
+    const service = makeService(events, registrations);
+
+    const list = await service.listRegistrations('event-uuid');
+    expect(list[0].answers).toEqual({ shirt: 'M', file1: 'event-registrations/x.pdf' });
   });
 
   it('lança NotFound para evento inexistente', async () => {

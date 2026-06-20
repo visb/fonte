@@ -111,6 +111,36 @@ test.describe('Eventos (timeline)', () => {
     ).toHaveText('Inscrição aberta');
   });
 
+  test('adiciona campos custom de inscrição e abre a lista de inscritos (story 68)', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+    const title = `Campos ${ts()}`;
+    await createEvent(page, title, inDays(48));
+
+    // Edita, liga inscrição e adiciona um campo select com opções.
+    await item(page, title).getByRole('button', { name: 'Editar' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByTestId('registration-enabled').check();
+
+    await page.getByTestId('add-registration-field').click();
+    const row = page.getByTestId('registration-field-row').first();
+    await expect(row).toBeVisible();
+    await row.getByLabel('Rótulo *').fill('Tamanho da camiseta');
+    await row.getByLabel('Tipo').selectOption('select');
+    // Campo de opções aparece só para select/multi_select.
+    await row.getByLabel('Opções (uma por linha)').fill('P\nM\nG');
+
+    await page.getByRole('button', { name: 'Salvar' }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+
+    // O botão "Inscritos" aparece (inscrição habilitada) e abre o dialog.
+    await item(page, title).getByTestId('view-registrations').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByText('Nenhuma inscrição ainda.')).toBeVisible();
+  });
+
   test('remove um evento', async ({ page }) => {
     await login(page);
     await goto(page);

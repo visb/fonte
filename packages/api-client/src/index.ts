@@ -186,5 +186,9 @@ export type {
   EventRegistration,
   RegisterToEventInput,
   EventRegistrationResult,
+  RegistrationField,
+  RegistrationFieldType,
+  RegistrationAnswerValue,
+  RegistrationFileResult,
 } from './types.js';
-export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus, ActivityEventType } from './types.js';
+export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus, ActivityEventType, REGISTRATION_FIELD_TYPES } from './types.js';

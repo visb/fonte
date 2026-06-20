@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { eventSchema, toEventInput, type EventFormData } from './eventSchema';
+import {
+  eventSchema,
+  registrationFieldSchema,
+  toEventInput,
+  toRegistrationFields,
+  fieldsToForm,
+  type EventFormData,
+} from './eventSchema';
 
 const base = {
   title: 'Retiro',
@@ -114,5 +121,78 @@ describe('toEventInput', () => {
     expect(input.capacity).toBe(50);
     expect(input.registrationOpensAt).not.toBeNull();
     expect(input.registrationClosesAt).not.toBeNull();
+  });
+
+  it('com inscrição ligada, propaga os campos custom (story 68)', () => {
+    const input = toEventInput({
+      ...baseForm,
+      registrationEnabled: true,
+      registrationFields: [
+        { label: 'Tamanho', type: 'select', required: true, optionsText: 'P\nM\nG' },
+        { label: 'Obs', type: 'long_text', required: false, optionsText: '' },
+      ],
+    });
+    expect(input.registrationFields).toHaveLength(2);
+    expect(input.registrationFields![0].options).toEqual(['P', 'M', 'G']);
+    expect(input.registrationFields![1].options).toBeUndefined();
+    // Sem id → backend gera; a chave não é enviada.
+    expect(input.registrationFields![0]).not.toHaveProperty('id');
+  });
+
+  it('com inscrição desligada, zera os campos custom', () => {
+    const input = toEventInput({
+      ...baseForm,
+      registrationEnabled: false,
+      registrationFields: [
+        { label: 'Tamanho', type: 'select', required: true, optionsText: 'P\nM' },
+      ],
+    });
+    expect(input.registrationFields).toEqual([]);
+  });
+});
+
+describe('registrationFieldSchema (story 68)', () => {
+  it('exige rótulo', () => {
+    const r = registrationFieldSchema.safeParse({ label: '', type: 'short_text' });
+    expect(r.success).toBe(false);
+  });
+
+  it('select exige ao menos uma opção', () => {
+    const r = registrationFieldSchema.safeParse({
+      label: 'Tamanho',
+      type: 'select',
+      optionsText: '   \n  ',
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues.some((i) => i.path.includes('optionsText'))).toBe(true);
+    }
+  });
+
+  it('select com opções é válido', () => {
+    const r = registrationFieldSchema.safeParse({
+      label: 'Tamanho',
+      type: 'select',
+      optionsText: 'P\nM',
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it('campo sem options (texto) é válido sem optionsText', () => {
+    const r = registrationFieldSchema.safeParse({ label: 'Nome', type: 'short_text' });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe('fieldsToForm / toRegistrationFields round-trip', () => {
+  it('converte options ↔ optionsText', () => {
+    const form = fieldsToForm([
+      { id: 'shirt', label: 'Tamanho', type: 'select', required: true, order: 0, options: ['P', 'M'] },
+    ]);
+    expect(form[0].optionsText).toBe('P\nM');
+
+    const back = toRegistrationFields(form);
+    expect(back[0].id).toBe('shirt');
+    expect(back[0].options).toEqual(['P', 'M']);
   });
 });

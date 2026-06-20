@@ -10,10 +10,14 @@ import {
   EventPublic,
   EventRegistration as EventRegistrationDto,
   EventRegistrationResult,
+  RegistrationAnswerValue,
+  RegistrationFileResult,
 } from '@fonte/types';
 import { Event } from './event.entity';
 import { EventRegistration } from './event-registration.entity';
 import { RegisterToEventDto } from './dto/register-to-event.dto';
+import { validateAndPickAnswers } from './registration-fields.util';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class EventRegistrationService {
@@ -22,6 +26,7 @@ export class EventRegistrationService {
     private eventsRepo: Repository<Event>,
     @InjectRepository(EventRegistration)
     private registrationsRepo: Repository<EventRegistration>,
+    private storageService: StorageService,
   ) {}
 
   private async activeCount(eventId: string): Promise<number> {
@@ -61,6 +66,7 @@ export class EventRegistrationService {
       bannerUrl: event.bannerKey ?? null,
       capacity: event.capacity ?? null,
       spotsLeft,
+      registrationFields: event.registrationFields ?? [],
       registrationOpensAt: event.registrationOpensAt
         ? event.registrationOpensAt.toISOString()
         : null,
@@ -121,14 +127,46 @@ export class EventRegistrationService {
       }
     }
 
+    // Valida e filtra as respostas custom (story 68) pela definição do evento.
+    // Persiste só os fieldIds conhecidos (ignora chaves estranhas).
+    const answers = validateAndPickAnswers(
+      event.registrationFields ?? [],
+      dto.answers,
+    );
+
     const registration = this.registrationsRepo.create({
       eventId: id,
       name: dto.name,
       contact: dto.contact,
       email: dto.email ?? null,
+      answers,
     });
     const saved = await this.registrationsRepo.save(registration);
     return { id: saved.id, eventId: id, name: saved.name };
+  }
+
+  /**
+   * Upload público de arquivo de um campo `file` da inscrição (story 68).
+   * O multipart não cabe no JSON do register; este endpoint grava no storage e
+   * devolve a `fileKey`, que o register recebe em `answers[fieldId]`.
+   */
+  async uploadRegistrationFile(
+    eventId: string,
+    file: Express.Multer.File,
+  ): Promise<RegistrationFileResult> {
+    const event = await this.eventsRepo.findOne({ where: { id: eventId } });
+    if (!event || !event.registrationEnabled) {
+      throw new NotFoundException('Event not found');
+    }
+    const originalName = this.storageService.decodeOriginalName(file.originalname);
+    const filename = this.storageService.uniqueFilename(originalName, 'reg_');
+    const fileKey = await this.storageService.upload(
+      'event-registrations',
+      filename,
+      file.buffer,
+      file.mimetype,
+    );
+    return { fileKey };
   }
 
   /** Inscritos de um evento (uso administrativo). */
@@ -146,6 +184,9 @@ export class EventRegistrationService {
       name: r.name,
       contact: r.contact,
       email: r.email ?? null,
+      // Campos `file` guardam a storage key; se for URL S3, o
+      // StorageUrlInterceptor (global) a assina ao serializar a resposta.
+      answers: (r.answers ?? {}) as Record<string, RegistrationAnswerValue>,
       createdAt: r.createdAt.toISOString(),
     }));
   }

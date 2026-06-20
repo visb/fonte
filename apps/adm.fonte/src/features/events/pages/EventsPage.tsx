@@ -21,11 +21,13 @@ import { useEvents, useDeleteEvent } from '../hooks/useEvents';
 import { EventTimeline } from '../components/EventTimeline';
 import { CreateEventDialog } from '../components/CreateEventDialog';
 import { EditEventDialog } from '../components/EditEventDialog';
+import { EventRegistrationsDialog } from '../components/EventRegistrationsDialog';
 
 export function EventsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Event | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Event | null>(null);
+  const [registrationsTarget, setRegistrationsTarget] = useState<Event | null>(null);
 
   const { data: events, isLoading, error, refetch } = useEvents();
   const deleteMutation = useDeleteEvent();
@@ -50,7 +52,12 @@ export function EventsPage() {
       ) : !events || events.length === 0 ? (
         <EmptyState title="Nenhum evento cadastrado." />
       ) : (
-        <EventTimeline events={events} onEdit={setEditTarget} onDelete={setDeleteTarget} />
+        <EventTimeline
+          events={events}
+          onEdit={setEditTarget}
+          onDelete={setDeleteTarget}
+          onViewRegistrations={setRegistrationsTarget}
+        />
       )}
 
       <CreateEventDialog open={createOpen} onClose={() => setCreateOpen(false)} />
@@ -58,6 +65,11 @@ export function EventsPage() {
         open={!!editTarget}
         event={editTarget}
         onClose={() => setEditTarget(null)}
+      />
+      <EventRegistrationsDialog
+        open={!!registrationsTarget}
+        event={registrationsTarget}
+        onClose={() => setRegistrationsTarget(null)}
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

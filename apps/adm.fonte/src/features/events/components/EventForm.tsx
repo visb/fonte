@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DialogFooter } from '@/components/ui/dialog';
 import { getErrorMessage } from '@/lib/errors';
-import { eventSchema, type EventFormData } from '../lib/eventSchema';
+import { eventSchema, fieldsToForm, type EventFormData } from '../lib/eventSchema';
 import { isoToLocalInput } from '../lib/eventDates';
 import { EventRegistrationSection } from './EventRegistrationSection';
 
@@ -27,6 +27,7 @@ const emptyForm: EventFormData = {
   location: '',
   capacity: undefined,
   registrationEnabled: false,
+  registrationFields: [],
   registrationOpensAt: '',
   registrationClosesAt: '',
 };
@@ -41,6 +42,7 @@ function eventToForm(event?: Event | null): EventFormData {
     location: event.location ?? '',
     capacity: event.capacity ?? undefined,
     registrationEnabled: event.registrationEnabled,
+    registrationFields: fieldsToForm(event.registrationFields),
     registrationOpensAt: event.registrationOpensAt
       ? isoToLocalInput(event.registrationOpensAt)
       : '',
@@ -57,6 +59,7 @@ export function EventForm({ event, isPending, error, onSubmit, onCancel }: Props
     register,
     handleSubmit,
     watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
@@ -103,6 +106,7 @@ export function EventForm({ event, isPending, error, onSubmit, onCancel }: Props
         <EventRegistrationSection
           register={register}
           errors={errors}
+          control={control}
           enabled={registrationEnabled}
         />
 

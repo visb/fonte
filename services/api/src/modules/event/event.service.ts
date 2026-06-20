@@ -11,6 +11,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventFilterDto, ListEventsDto } from './dto/list-events.dto';
 import { StorageService } from '../storage/storage.service';
+import { normalizeRegistrationFields } from './registration-fields.util';
 
 @Injectable()
 export class EventService {
@@ -67,6 +68,7 @@ export class EventService {
       location: dto.location ?? null,
       capacity: dto.capacity ?? null,
       registrationEnabled: dto.registrationEnabled ?? false,
+      registrationFields: normalizeRegistrationFields(dto.registrationFields),
       registrationOpensAt: opensAt,
       registrationClosesAt: closesAt,
       bannerKey: null,
@@ -109,6 +111,8 @@ export class EventService {
     if (dto.capacity !== undefined) event.capacity = dto.capacity ?? null;
     if (dto.registrationEnabled !== undefined)
       event.registrationEnabled = dto.registrationEnabled;
+    if (dto.registrationFields !== undefined)
+      event.registrationFields = normalizeRegistrationFields(dto.registrationFields);
     if (dto.registrationOpensAt !== undefined)
       event.registrationOpensAt = this.toDate(dto.registrationOpensAt);
     if (dto.registrationClosesAt !== undefined)
@@ -163,6 +167,7 @@ export class EventService {
       location: e.location ?? null,
       capacity: e.capacity ?? null,
       registrationEnabled: e.registrationEnabled,
+      registrationFields: e.registrationFields ?? [],
       // O StorageUrlInterceptor (global) assina esta string se for uma URL S3.
       bannerUrl: e.bannerKey ?? null,
       registrationOpensAt: e.registrationOpensAt

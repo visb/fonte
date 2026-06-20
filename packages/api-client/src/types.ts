@@ -65,6 +65,8 @@ import type {
   ActivityComment,
   CreateActivityCommentInput,
   ActivityEvent,
+  ActivityAttachment,
+  ActivityAttachmentType,
   Event,
   EventFilter,
   CreateEventInput,
@@ -148,6 +150,8 @@ export type {
   ActivityComment,
   CreateActivityCommentInput,
   ActivityEvent,
+  ActivityAttachment,
+  ActivityAttachmentType,
 };
 
 export { EventPaymentStatus };

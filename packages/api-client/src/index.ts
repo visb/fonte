@@ -177,6 +177,8 @@ export type {
   ActivityComment,
   CreateActivityCommentInput,
   ActivityEvent,
+  ActivityAttachment,
+  ActivityAttachmentType,
   Event,
   EventFilter,
   CreateEventInput,

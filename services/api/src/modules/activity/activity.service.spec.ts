@@ -78,15 +78,24 @@ function makeEvents() {
   };
 }
 
+/** Mock do ActivityAttachmentService — detalhe sem anexos por padrão. */
+function makeAttachments() {
+  return {
+    listActivityAttachments: jest.fn().mockResolvedValue([]),
+  };
+}
+
 function makeService(
   activityRepo: ReturnType<typeof makeActivityRepo>,
   staffRepo: ReturnType<typeof makeStaffRepo> = makeStaffRepo(),
   events: ReturnType<typeof makeEvents> = makeEvents(),
+  attachments: ReturnType<typeof makeAttachments> = makeAttachments(),
 ) {
   const service = new ActivityService(
     activityRepo as unknown as Repository<Activity>,
     staffRepo as unknown as Repository<Staff>,
     events as unknown as ActivityEventService,
+    attachments as unknown as import('./activity-attachment.service').ActivityAttachmentService,
   );
   return service;
 }

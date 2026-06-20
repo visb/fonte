@@ -8,6 +8,7 @@ import type {
   ActivityComment,
   CreateActivityCommentInput,
   ActivityEvent,
+  ActivityAttachment,
 } from '../types.js';
 
 export function createActivitiesModule(http: AxiosInstance) {
@@ -50,6 +51,35 @@ export function createActivitiesModule(http: AxiosInstance) {
     listEvents: (activityId: string) =>
       http
         .get<ActivityEvent[]>(`/activities/${activityId}/events`)
+        .then((r) => r.data),
+
+    // ── anexos (story 73) ────────────────────────────────────────────────────
+    /** Anexa um arquivo à atividade. Recebe FormData com o campo `file`. */
+    uploadAttachment: (activityId: string, formData: FormData) =>
+      http
+        .post<ActivityAttachment>(`/activities/${activityId}/attachments`, formData, {
+          headers: { 'Content-Type': undefined },
+        })
+        .then((r) => r.data),
+
+    /** Anexa um arquivo a um comentário. Recebe FormData com o campo `file`. */
+    uploadCommentAttachment: (
+      activityId: string,
+      commentId: string,
+      formData: FormData,
+    ) =>
+      http
+        .post<ActivityAttachment>(
+          `/activities/${activityId}/comments/${commentId}/attachments`,
+          formData,
+          { headers: { 'Content-Type': undefined } },
+        )
+        .then((r) => r.data),
+
+    /** Exclui um anexo (da atividade ou de comentário). */
+    deleteAttachment: (activityId: string, attachmentId: string) =>
+      http
+        .delete(`/activities/${activityId}/attachments/${attachmentId}`)
         .then((r) => r.data),
   };
 }

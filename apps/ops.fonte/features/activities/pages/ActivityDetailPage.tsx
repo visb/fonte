@@ -17,10 +17,16 @@ import { useAuth } from '@/lib/auth';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { getErrorMessage } from '@/lib/errors';
-import { useActivity, useUpdateActivity } from '@/features/activities/hooks/useActivities';
+import {
+  useActivity,
+  useDeleteAttachment,
+  useUpdateActivity,
+  useUploadActivityAttachment,
+} from '@/features/activities/hooks/useActivities';
 import { StatusBadge } from '@/features/activities/components/StatusBadge';
 import { canEditDescription } from '@/features/activities/lib/permissions';
 import { ActivityComments } from '@/features/activities/components/ActivityComments';
+import { ActivityAttachments } from '@/features/activities/components/ActivityAttachments';
 import { DescriptionMarkdown } from '@/features/activities/components/DescriptionMarkdown';
 
 const schema = z.object({ description: z.string().optional() });
@@ -78,12 +84,34 @@ export function ActivityDetailPage() {
 
         <DescriptionSection activity={activity} editable={editable} />
 
+        {/* Anexos da atividade (story 73). */}
+        <View className="mt-6">
+          <Text className="text-sm font-medium text-gray-700 mb-1.5">Anexos</Text>
+          <ActivityAttachmentsSection activity={activity} />
+        </View>
+
         {/* Abas inferiores: Comentários (story 65) | Histórico (story 66). */}
         <View className="mt-6">
           <ActivityTabs activityId={activity.id} />
         </View>
       </View>
     </ScrollView>
+  );
+}
+
+function ActivityAttachmentsSection({ activity }: { activity: Activity }) {
+  const uploadMutation = useUploadActivityAttachment(activity.id);
+  const deleteMutation = useDeleteAttachment(activity.id);
+
+  return (
+    <ActivityAttachments
+      attachments={activity.attachments ?? []}
+      onUpload={(att) => uploadMutation.mutate(att)}
+      onDelete={(id) => deleteMutation.mutate(id)}
+      uploading={uploadMutation.isPending}
+      deleting={deleteMutation.isPending}
+      uploadError={uploadMutation.error}
+    />
   );
 }
 

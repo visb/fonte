@@ -5025,6 +5025,85 @@
             },
             "description": "Trilha de auditoria (historico) da atividade em ordem cronologica decrescente. Eventos: CREATED, STATUS_CHANGED ({from,to}), TITLE_CHANGED ({from,to}), DESCRIPTION_CHANGED ({before,after}), RESPONSIBLE_CHANGED ({from,to}), COMMENTED ({commentId}), DELETED. Cada evento traz ator (staff resolvido pelo nome), tipo, metadata e created_at. Valida visibilidade da atividade -> 404 fora de escopo. Roles: ADMIN, COORDINATOR, SERVANT."
           }
+        },
+        {
+          "name": "Upload Activity Attachment (STAFF)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "attachments"
+              ]
+            },
+            "description": "Anexa um arquivo (campo multipart 'file') a propria atividade (story 73). Allowlist de mimetype: imagens (jpeg/png/gif/webp) + documentos (pdf, doc/docx, xls/xlsx) -> 400 fora da allowlist. Limite 20 MB. Valida visibilidade -> 404 fora de escopo. Retorna o anexo (fileUrl assinada em modo S3, fileType image|document, canDelete). Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
+          "name": "Upload Comment Attachment (STAFF)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/comments/{{commentId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "comments",
+                "{{commentId}}",
+                "attachments"
+              ]
+            },
+            "description": "Anexa um arquivo (campo multipart 'file') a um comentario da atividade (story 73). Mesma allowlist/limite do anexo de atividade. Valida visibilidade da atividade + comentario pertencente a ela -> 404. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
+          "name": "Delete Activity/Comment Attachment (STAFF)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}/attachments/{{attachmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activities",
+                "{{activityId}}",
+                "attachments",
+                "{{attachmentId}}"
+              ]
+            },
+            "description": "Exclui um anexo (da atividade ou de comentario). Permissao pela entidade-pai: anexo de comentario -> autor do comentario ou ADMIN; anexo de atividade -> ADMIN sempre, criador da atividade enquanto ela e DRAFT. Remove o arquivo do storage e faz soft delete. -> 403 sem permissao, 404 fora de escopo. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
         }
       ]
     },

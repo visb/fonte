@@ -31,6 +31,7 @@ describe('ActivityController (e2e)', () => {
   });
 
   afterAll(async () => {
+    await dataSource.query('DELETE FROM activity_events');
     await dataSource.query('DELETE FROM activity_comments');
     await dataSource.query('DELETE FROM activities');
     await app.close();
@@ -299,6 +300,102 @@ describe('ActivityController (e2e)', () => {
         .expect(200);
       expect(res.body).toEqual([]);
     });
+  });
+
+  // ── history / events (story 66) ──────────────────────────────────────────────
+
+  describe('events (history)', () => {
+    let activityId: string;
+    let houselessId: string;
+
+    beforeAll(async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/activities`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ title: 'Atividade com histórico', houseId: coordHouseId })
+        .expect(201);
+      activityId = res.body.id;
+
+      const houseless = await request(app.getHttpServer())
+        .post(`${BASE}/activities`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ title: 'Atividade geral com histórico' })
+        .expect(201);
+      houselessId = houseless.body.id;
+    });
+
+    it('a criação já registra um evento CREATED', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}/events`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.some((e: { type: string }) => e.type === 'CREATED')).toBe(true);
+    });
+
+    it('mudança de status registra STATUS_CHANGED com { from, to }', async () => {
+      await request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}/status`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ status: ActivityStatus.REQUESTED })
+        .expect(200);
+
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}/events`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+
+      const statusEvent = res.body.find(
+        (e: { type: string }) => e.type === 'STATUS_CHANGED',
+      );
+      expect(statusEvent).toBeDefined();
+      expect(statusEvent.metadata).toEqual({
+        from: ActivityStatus.DRAFT,
+        to: ActivityStatus.REQUESTED,
+      });
+      // ordem cronológica decrescente: o STATUS_CHANGED vem antes do CREATED
+      expect(res.body[0].type).toBe('STATUS_CHANGED');
+    });
+
+    it('comentar registra um evento COMMENTED com { commentId }', async () => {
+      const comment = await request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/comments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ body: 'comentário que vira evento' })
+        .expect(201);
+
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}/events`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+
+      const commented = res.body.find(
+        (e: { type: string }) => e.type === 'COMMENTED',
+      );
+      expect(commented).toBeDefined();
+      expect(commented.metadata).toEqual({ commentId: comment.body.id });
+    });
+
+    it('o evento resolve o ator pelo nome (staff)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}/events`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      const created = res.body.find((e: { type: string }) => e.type === 'CREATED');
+      expect(created.actor).toBeTruthy();
+      expect(typeof created.actor.name).toBe('string');
+    });
+
+    it('coordinator não vê o histórico de atividade fora de escopo → 404', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/activities/${houselessId}/events`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(404));
+
+    it('GET events → 401 sem token', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}/events`)
+        .expect(401));
   });
 
   describe('delete', () => {

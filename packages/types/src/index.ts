@@ -500,6 +500,33 @@ export interface CreateActivityCommentInput {
   body: string;
 }
 
+/** Tipos de evento registrados na trilha de auditoria de uma atividade — story 66. */
+export enum ActivityEventType {
+  CREATED = 'CREATED',
+  STATUS_CHANGED = 'STATUS_CHANGED',
+  TITLE_CHANGED = 'TITLE_CHANGED',
+  DESCRIPTION_CHANGED = 'DESCRIPTION_CHANGED',
+  RESPONSIBLE_CHANGED = 'RESPONSIBLE_CHANGED',
+  COMMENTED = 'COMMENTED',
+  DELETED = 'DELETED',
+}
+
+/**
+ * Evento (só-leitura, append-only) do histórico de uma atividade — story 66.
+ * Gerado pelo backend a cada mutação relevante. `metadata` carrega o contexto
+ * do evento (ex.: `{ from, to }` em STATUS_CHANGED, `{ commentId }` em COMMENTED).
+ */
+export interface ActivityEvent {
+  id: string;
+  activityId: string;
+  type: ActivityEventType;
+  /** Ator (staff) resolvido pelo nome quando disponível; null se não for staff. */
+  actor: ActivityStaffRef | null;
+  actorUserId: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

@@ -90,7 +90,24 @@ export function useAddComment(activityId: string) {
       queryClient.invalidateQueries({
         queryKey: queryKeys.activities.comments(activityId),
       });
+      // comentar gera um evento COMMENTED na trilha (story 66).
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.activities.events(activityId),
+      });
     },
+  });
+}
+
+// ── histórico de eventos (story 66) ─────────────────────────────────────────────
+
+export function useActivityEvents(
+  activityId: string,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.activities.events(activityId),
+    queryFn: () => api.activities.listEvents(activityId),
+    enabled: !!activityId && (options?.enabled ?? true),
   });
 }
 

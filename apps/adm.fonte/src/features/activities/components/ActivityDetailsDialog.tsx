@@ -16,6 +16,7 @@ import { useActivity, useUpdateActivity } from '../hooks/useActivities';
 import { canEditDescription } from '../lib/permissions';
 import { ACTIVITY_STATUS_LABELS, ACTIVITY_STATUS_VARIANTS } from '../constants';
 import { ActivityComments } from './ActivityComments';
+import { HistoryTimeline } from './HistoryTimeline';
 
 interface Props {
   activityId: string | null;
@@ -143,9 +144,7 @@ function ActivityTabs({ activityId }: { activityId: string }) {
       {tab === 'comments' ? (
         <ActivityComments activityId={activityId} />
       ) : (
-        <div className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
-          Histórico em breve.
-        </div>
+        <HistoryTimeline activityId={activityId} />
       )}
     </div>
   );

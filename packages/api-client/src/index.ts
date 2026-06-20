@@ -176,6 +176,7 @@ export type {
   ListActivitiesParams,
   ActivityComment,
   CreateActivityCommentInput,
+  ActivityEvent,
   Event,
   EventFilter,
   CreateEventInput,
@@ -186,4 +187,4 @@ export type {
   RegisterToEventInput,
   EventRegistrationResult,
 } from './types.js';
-export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus } from './types.js';
+export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus, ActivityEventType } from './types.js';

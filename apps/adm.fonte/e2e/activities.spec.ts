@@ -244,7 +244,7 @@ test.describe('Atividades (board Kanban)', () => {
     await expect(dialog.getByText('Nenhum comentário ainda.')).toBeVisible();
   });
 
-  test('a aba Histórico mostra o placeholder "em breve" (moldura da story 65)', async ({
+  test('a aba Histórico mostra a timeline de eventos do card (story 66)', async ({
     page,
   }) => {
     await login(page);
@@ -255,8 +255,22 @@ test.describe('Atividades (board Kanban)', () => {
     await card(page, title).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
+
+    // A criação já registra um evento CREATED na trilha.
     await dialog.getByRole('tab', { name: 'Histórico' }).click();
-    await expect(dialog.getByText('Histórico em breve.')).toBeVisible();
+    await expect(dialog.getByText('criou a atividade')).toBeVisible();
+
+    // Comentar gera um evento COMMENTED, que aparece na timeline.
+    await dialog.getByRole('tab', { name: 'Comentários' }).click();
+    const body = `Comentário histórico ${ts()}`;
+    await dialog.getByLabel('Novo comentário').fill(body);
+    await dialog.getByRole('button', { name: 'Comentar' }).click();
+    await expect(dialog.getByText(body)).toBeVisible();
+
+    await dialog.getByRole('tab', { name: 'Histórico' }).click();
+    await expect(dialog.getByText('comentou')).toBeVisible();
+    // Ordem decrescente: o evento mais recente (comentou) vem antes de criou.
+    await expect(dialog.getByText('criou a atividade')).toBeVisible();
   });
 
   test('arrasta um card de Fazendo para Impedimento (move)', async ({ page }) => {

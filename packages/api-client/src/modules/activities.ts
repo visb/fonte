@@ -7,6 +7,7 @@ import type {
   ListActivitiesParams,
   ActivityComment,
   CreateActivityCommentInput,
+  ActivityEvent,
 } from '../types.js';
 
 export function createActivitiesModule(http: AxiosInstance) {
@@ -43,6 +44,12 @@ export function createActivitiesModule(http: AxiosInstance) {
     deleteComment: (activityId: string, commentId: string) =>
       http
         .delete(`/activities/${activityId}/comments/${commentId}`)
+        .then((r) => r.data),
+
+    // ── histórico de eventos (story 66) ──────────────────────────────────────
+    listEvents: (activityId: string) =>
+      http
+        .get<ActivityEvent[]>(`/activities/${activityId}/events`)
         .then((r) => r.data),
   };
 }

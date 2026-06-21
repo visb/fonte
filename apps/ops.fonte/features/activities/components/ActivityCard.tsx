@@ -76,6 +76,17 @@ export function ActivityCard({ item, currentUserId, onChangeStatus, onPress, pen
           />
         )}
 
+        {/* Devolver para rascunho (story 75): o criador desfaz o próprio envio.
+            ADMIN não opera pelo ops (segue a story 48). */}
+        {status === ActivityStatus.REQUESTED && isCreator && (
+          <ActionButton
+            label="Devolver para rascunho"
+            color="#6b7280"
+            disabled={pending}
+            onPress={() => onChangeStatus(item, ActivityStatus.DRAFT)}
+          />
+        )}
+
         {isResponsible && status === ActivityStatus.TODO && (
           <ActionButton
             label="Iniciar"

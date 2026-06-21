@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Ban, Check, GripVertical, Pencil, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Ban, Check, GripVertical, Pencil, Send, Trash2, Undo2 } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { ActivityStatus } from '@fonte/types';
@@ -6,11 +6,14 @@ import type { Activity } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ACTIVITY_STATUS_LABELS, ACTIVITY_STATUS_VARIANTS } from '../constants';
+import { canTransition } from '../lib/transitions';
 import { ResponsibleBadge } from './ResponsibleBadge';
 
 interface Props {
   activity: Activity;
   isAdmin: boolean;
+  role: string | null;
+  userId: string | null;
   onChangeStatus: (activity: Activity, status: ActivityStatus) => void;
   onApprove: (activity: Activity) => void;
   onEdit: (activity: Activity) => void;
@@ -26,6 +29,8 @@ interface Props {
 export function ActivityCard({
   activity,
   isAdmin,
+  role,
+  userId,
   onChangeStatus,
   onApprove,
   onEdit,
@@ -33,6 +38,11 @@ export function ActivityCard({
   onOpenDetails,
 }: Props) {
   const { status } = activity;
+  // "Devolver para rascunho" (story 75): criador ou ADMIN, espelhando o backend.
+  const canReturnToDraft = canTransition(activity, ActivityStatus.DRAFT, {
+    role,
+    userId,
+  });
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
     data: { activity },
@@ -105,6 +115,17 @@ export function ActivityCard({
           <Button size="sm" onClick={() => onApprove(activity)}>
             <Check size={12} className="mr-1" />
             Aprovar
+          </Button>
+        )}
+
+        {status === ActivityStatus.REQUESTED && canReturnToDraft && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onChangeStatus(activity, ActivityStatus.DRAFT)}
+          >
+            <Undo2 size={12} className="mr-1" />
+            Devolver para rascunho
           </Button>
         )}
 

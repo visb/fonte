@@ -4923,7 +4923,7 @@
                 "status"
               ]
             },
-            "description": "Transicao de coluna. DRAFT->REQUESTED (criador ou ADMIN); REQUESTED->TODO (so ADMIN, exige responsavel); bloco de trabalho TODO/DOING/BLOCKED/DONE (ADMIN ou o responsavel). Transicao invalida -> 400. Roles: ADMIN, COORDINATOR, SERVANT."
+            "description": "Transicao de coluna. DRAFT->REQUESTED (criador ou ADMIN); REQUESTED->TODO (so ADMIN, exige responsavel); REQUESTED->DRAFT (criador ou ADMIN — devolver/desfazer envio, story 75; responsibleStaffId preservado); bloco de trabalho TODO/DOING/BLOCKED/DONE (ADMIN ou o responsavel). Transicao invalida -> 400. Exemplo de devolucao: { \"status\": \"DRAFT\" }. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {

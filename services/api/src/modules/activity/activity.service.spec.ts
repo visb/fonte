@@ -341,6 +341,110 @@ describe('ActivityService.changeStatus (transitions)', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('REQUESTED → DRAFT allowed for the creator (return to draft)', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(
+          activity({ status: ActivityStatus.REQUESTED, createdByUserId: 'coord-user' }),
+        )
+        .mockResolvedValue(activity({ status: ActivityStatus.DRAFT })),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const service = makeService(repo, staff);
+
+    await expect(
+      service.changeStatus('act-1', { status: ActivityStatus.DRAFT }, COORD),
+    ).resolves.toBeDefined();
+  });
+
+  it('REQUESTED → DRAFT allowed for ADMIN even if not the creator', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(
+          activity({ status: ActivityStatus.REQUESTED, createdByUserId: 'coord-user' }),
+        )
+        .mockResolvedValue(activity({ status: ActivityStatus.DRAFT })),
+    });
+    const service = makeService(repo);
+
+    await expect(
+      service.changeStatus('act-1', { status: ActivityStatus.DRAFT }, ADMIN),
+    ).resolves.toBeDefined();
+  });
+
+  it('REQUESTED → DRAFT forbidden for a staff who is neither creator nor ADMIN', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValue(
+          activity({ status: ActivityStatus.REQUESTED, createdByUserId: 'coord-user' }),
+        ),
+    });
+    const staff = makeStaffRepo({ 'coord2-user': { houseId: 'house-1' } });
+    const service = makeService(repo, staff);
+
+    await expect(
+      service.changeStatus('act-1', { status: ActivityStatus.DRAFT }, COORD2),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('REQUESTED → DRAFT keeps scope: coord of another house gets 404', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest.fn().mockResolvedValue(
+        activity({
+          status: ActivityStatus.REQUESTED,
+          houseId: 'house-OTHER',
+          createdByUserId: 'coord-user',
+        }),
+      ),
+    });
+    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const service = makeService(repo, staff);
+
+    await expect(
+      service.changeStatus('act-1', { status: ActivityStatus.DRAFT }, COORD),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('REQUESTED → DRAFT preserves a pre-set responsibleStaffId', async () => {
+    const saved: Activity[] = [];
+    const repo = makeActivityRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(
+          activity({
+            status: ActivityStatus.REQUESTED,
+            createdByUserId: 'coord-user',
+            responsibleStaffId: 'staff-9',
+          }),
+        )
+        .mockResolvedValue(activity({ status: ActivityStatus.DRAFT })),
+      save: jest.fn(async (a: Activity) => {
+        saved.push(a);
+        return a;
+      }),
+    });
+    const service = makeService(repo);
+
+    await service.changeStatus('act-1', { status: ActivityStatus.DRAFT }, ADMIN);
+
+    expect(saved[0].status).toBe(ActivityStatus.DRAFT);
+    expect(saved[0].responsibleStaffId).toBe('staff-9');
+  });
+
+  it('rejects an invalid transition from REQUESTED (REQUESTED → DOING)', async () => {
+    const repo = makeActivityRepo({
+      findOne: jest.fn().mockResolvedValue(activity({ status: ActivityStatus.REQUESTED })),
+    });
+    const service = makeService(repo);
+
+    await expect(
+      service.changeStatus('act-1', { status: ActivityStatus.DOING }, ADMIN),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('work transition (TODO → DOING) only by responsible or ADMIN', async () => {
     const repo = makeActivityRepo({
       findOne: jest

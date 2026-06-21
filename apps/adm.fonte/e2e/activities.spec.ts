@@ -409,18 +409,53 @@ test.describe('Atividades (board Kanban)', () => {
     const title = `Arrastar inválido ${ts()}`;
     await createActivity(page, title);
 
+    // Rascunho → A fazer (DRAFT → TODO) não existe na matriz (só DRAFT → REQUESTED):
+    // o card volta sozinho (sem mutation otimista) e surge o erro.
+    await dragCardTo(page, title, 'A fazer');
+    await expect(
+      page.getByText('Não é possível mover esta atividade para essa coluna.'),
+    ).toBeVisible();
+    // Continua em Rascunho.
+    await expect(card(page, title).getByText('Rascunho').first()).toBeVisible();
+  });
+
+  test('arrastar Solicitações → Rascunho devolve a solicitação (REQUESTED → DRAFT, story 75)', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+    const title = `Devolver rascunho ${ts()}`;
+    await createActivity(page, title);
+
     // Rascunho → Solicitações (Enviar) para posicionar o card em REQUESTED.
     await card(page, title).getByRole('button', { name: 'Enviar' }).click();
     await expect(card(page, title).getByText('Solicitações')).toBeVisible();
 
-    // REQUESTED → DRAFT (Solicitações → Rascunho, colunas adjacentes) não existe na
-    // matriz: o card volta sozinho (sem mutation otimista) e surge o erro.
+    // REQUESTED → DRAFT: como ADMIN, devolve direto (move, sem dialog de aprovação).
     await dragCardTo(page, title, 'Rascunho');
-    await expect(
-      page.getByText('Não é possível mover esta atividade para essa coluna.'),
-    ).toBeVisible();
-    // Continua em Solicitações.
-    await expect(card(page, title).getByText('Solicitações').first()).toBeVisible();
+    // O card voltou para a coluna Rascunho (oferece "Enviar" de novo) e saiu de
+    // Solicitações; a transição não abre o dialog de aprovação.
+    await expect(card(page, title).getByRole('button', { name: 'Enviar' })).toBeVisible();
+    await expect(card(page, title).getByText('Solicitações')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+  });
+
+  test('botão "Devolver para rascunho" aparece em Solicitações e devolve o card (story 75)', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+    const title = `Botão devolver ${ts()}`;
+    await createActivity(page, title);
+    await card(page, title).getByRole('button', { name: 'Enviar' }).click();
+    await expect(card(page, title).getByText('Solicitações')).toBeVisible();
+
+    await card(page, title)
+      .getByRole('button', { name: 'Devolver para rascunho' })
+      .click();
+    // Voltou para Rascunho: oferece "Enviar" e não está mais em Solicitações.
+    await expect(card(page, title).getByRole('button', { name: 'Enviar' })).toBeVisible();
+    await expect(card(page, title).getByText('Solicitações')).toHaveCount(0);
   });
 
   test('arrastar Solicitações → A fazer abre o dialog de aprovação (ADMIN)', async ({

@@ -6,6 +6,7 @@ import { resolveDrop } from './resolveDrop';
 const ADMIN = { role: Role.ADMIN, userId: 'admin-user' };
 const RESPONSIBLE = { role: Role.SERVANT, userId: 'resp-user' };
 const STRANGER = { role: Role.SERVANT, userId: 'other-user' };
+const CREATOR = { role: Role.SERVANT, userId: 'creator-user' };
 
 function makeActivity(status: ActivityStatus, overrides: Partial<Activity> = {}): Activity {
   return {
@@ -55,6 +56,33 @@ describe('resolveDrop', () => {
       kind: 'approve',
       activity: act,
       to: ActivityStatus.TODO,
+    });
+  });
+
+  it('move (sem dialog) em REQUESTED → DRAFT pelo criador — devolver', () => {
+    const act = makeActivity(ActivityStatus.REQUESTED);
+    expect(resolveDrop(act, ActivityStatus.DRAFT, CREATOR)).toEqual({
+      kind: 'move',
+      activity: act,
+      to: ActivityStatus.DRAFT,
+    });
+  });
+
+  it('move (sem dialog) em REQUESTED → DRAFT pelo ADMIN — devolver', () => {
+    const act = makeActivity(ActivityStatus.REQUESTED);
+    expect(resolveDrop(act, ActivityStatus.DRAFT, ADMIN)).toEqual({
+      kind: 'move',
+      activity: act,
+      to: ActivityStatus.DRAFT,
+    });
+  });
+
+  it('invalid (rollback) em REQUESTED → DRAFT por terceiro sem permissão', () => {
+    const act = makeActivity(ActivityStatus.REQUESTED);
+    expect(resolveDrop(act, ActivityStatus.DRAFT, STRANGER)).toEqual({
+      kind: 'invalid',
+      activity: act,
+      to: ActivityStatus.DRAFT,
     });
   });
 

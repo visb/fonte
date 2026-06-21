@@ -167,6 +167,70 @@ describe('ActivityController (e2e)', () => {
     });
   });
 
+  // ── return a request to draft (story 75) ────────────────────────────────────
+
+  describe('return request to draft (REQUESTED → DRAFT)', () => {
+    let activityId: string;
+
+    beforeAll(async () => {
+      const created = await request(app.getHttpServer())
+        .post(`${BASE}/activities`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ title: 'Solicitação a devolver', houseId: coordHouseId })
+        .expect(201);
+      activityId = created.body.id;
+      await request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}/status`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ status: ActivityStatus.REQUESTED })
+        .expect(200);
+    });
+
+    it('creator returns its own request to draft (REQUESTED → DRAFT)', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}/status`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ status: ActivityStatus.DRAFT })
+        .expect(200);
+      expect(res.body.status).toBe(ActivityStatus.DRAFT);
+    });
+
+    it('admin returns a request to draft and preserves a pre-set responsible', async () => {
+      // resubmete e pré-atribui responsável (admin reassign mantido na devolução).
+      await request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}/status`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ status: ActivityStatus.REQUESTED })
+        .expect(200);
+      await request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ responsibleStaffId: coordStaffId })
+        .expect(200);
+
+      const res = await request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: ActivityStatus.DRAFT })
+        .expect(200);
+      expect(res.body.status).toBe(ActivityStatus.DRAFT);
+      expect(res.body.responsibleStaffId).toBe(coordStaffId);
+    });
+
+    it('rejects an invalid transition out of REQUESTED (REQUESTED → DOING) → 400', async () => {
+      await request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}/status`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ status: ActivityStatus.REQUESTED })
+        .expect(200);
+      await request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}/status`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ status: ActivityStatus.DOING })
+        .expect(400);
+    });
+  });
+
   // ── admin flow / scoping ────────────────────────────────────────────────────
 
   describe('admin create in TODO requires a responsible', () => {

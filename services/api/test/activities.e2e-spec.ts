@@ -262,12 +262,20 @@ describe('ActivityController (e2e)', () => {
       expect(res.body).toEqual([]);
     });
 
-    it('POST → 400 with empty body', () =>
-      request(app.getHttpServer())
+    it('POST with empty body is accepted (audio-only comment, story 74) and is then removed', async () => {
+      // story 74: body opcional — comentário só de áudio nasce com body vazio.
+      const res = await request(app.getHttpServer())
         .post(`${BASE}/activities/${activityId}/comments`)
         .set('Authorization', `Bearer ${coordToken}`)
         .send({ body: '' })
-        .expect(400));
+        .expect(201);
+      expect(res.body.body).toBe('');
+      // remove para não vazar estado nos testes de listagem deste bloco
+      await request(app.getHttpServer())
+        .delete(`${BASE}/activities/${activityId}/comments/${res.body.id}`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(204);
+    });
 
     it('coordinator comments on a visible activity', async () => {
       const res = await request(app.getHttpServer())
@@ -492,6 +500,55 @@ describe('ActivityController (e2e)', () => {
         .expect(200);
       const ids = res.body.attachments.map((a: { id: string }) => a.id);
       expect(ids).not.toContain(attachmentId);
+    });
+
+    // ── áudio (story 74) ────────────────────────────────────────────────────
+
+    it('attaches an audio recording to the activity → 201 (type audio + duration)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/attachments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .field('durationSeconds', '37')
+        .attach('file', Buffer.from('fake-webm-audio'), {
+          filename: 'gravacao.webm',
+          contentType: 'audio/webm',
+        })
+        .expect(201);
+      expect(res.body.fileType).toBe('audio');
+      expect(res.body.durationSeconds).toBe(37);
+    });
+
+    it('rejects an audio mimetype outside the allowlist → 400', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/attachments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .attach('file', Buffer.from('fake-flac'), {
+          filename: 'audio.flac',
+          contentType: 'audio/flac',
+        })
+        .expect(400));
+
+    it('audio-only comment: empty body + audio attachment is accepted', async () => {
+      // comentário sem body (só de áudio) — story 74 permite body vazio
+      const comment = await request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/comments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({})
+        .expect(201);
+      expect(comment.body.body).toBe('');
+
+      const audio = await request(app.getHttpServer())
+        .post(`${BASE}/activities/${activityId}/comments/${comment.body.id}/attachments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .field('durationSeconds', '12')
+        .attach('file', Buffer.from('fake-m4a-audio'), {
+          filename: 'voz.m4a',
+          contentType: 'audio/m4a',
+        })
+        .expect(201);
+      expect(audio.body.fileType).toBe('audio');
+      expect(audio.body.commentId).toBe(comment.body.id);
+      expect(audio.body.durationSeconds).toBe(12);
     });
   });
 

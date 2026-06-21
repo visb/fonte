@@ -54,6 +54,13 @@ export class ActivityAttachment {
   @Column({ name: 'size_bytes', type: 'int' })
   sizeBytes: number;
 
+  /**
+   * Duração em segundos para anexos de áudio (story 74). Medida no cliente e
+   * enviada no upload; nullable (anexos não-áudio ou sem duração informada).
+   */
+  @Column({ name: 'duration_seconds', type: 'int', nullable: true })
+  durationSeconds: number | null;
+
   @Column({ name: 'created_by_user_id', type: 'uuid' })
   createdByUserId: string;
 

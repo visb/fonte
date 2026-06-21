@@ -146,6 +146,22 @@ describe('ActivityCommentService.create', () => {
     expect(result.body).toBe('novo comentário');
   });
 
+  it('aceita comentário só de áudio: body ausente vira string vazia (story 74)', async () => {
+    const created: Partial<ActivityComment>[] = [];
+    const repo = makeCommentRepo({
+      create: jest.fn().mockImplementation((v) => {
+        created.push(v);
+        return v;
+      }),
+    });
+    const service = makeService(repo);
+
+    const result = await service.create('act-1', {}, COORD);
+
+    expect(created[0].body).toBe('');
+    expect(result.body).toBe('');
+  });
+
   it('registra o evento COMMENTED na trilha (story 66)', async () => {
     const activityService = makeActivityService();
     const repo = makeCommentRepo({

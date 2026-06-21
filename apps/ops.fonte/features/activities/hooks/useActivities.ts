@@ -9,16 +9,21 @@ import type {
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 
-/** Anexo escolhido pelo picker (story 73): uri local + metadados. */
+/**
+ * Anexo escolhido pelo picker ou gravado (story 73 + áudio 74): uri local +
+ * metadados. `durationSeconds` só é enviado para áudio (o backend ignora os demais).
+ */
 export interface PickedAttachment {
   uri: string;
   mimeType: string;
   name: string;
+  durationSeconds?: number | null;
 }
 
 /**
  * Monta o FormData multipart do anexo (mesmo padrão de message): no web busca o
- * blob da uri; no nativo passa { uri, type, name } direto ao RN.
+ * blob da uri; no nativo passa { uri, type, name } direto ao RN. Anexa
+ * `durationSeconds` quando informado (story 74).
  */
 async function toAttachmentFormData(att: PickedAttachment): Promise<FormData> {
   const formData = new FormData();
@@ -34,6 +39,9 @@ async function toAttachmentFormData(att: PickedAttachment): Promise<FormData> {
       type: att.mimeType,
       name: att.name,
     } as unknown as Blob);
+  }
+  if (att.durationSeconds != null && Number.isFinite(att.durationSeconds)) {
+    formData.append('durationSeconds', String(Math.round(att.durationSeconds)));
   }
   return formData;
 }

@@ -17,6 +17,7 @@ import {
 } from '../hooks/useActivities';
 import { canDeleteComment } from '../lib/permissions';
 import { CommentItem } from './CommentItem';
+import { AudioRecorder } from './AudioRecorder';
 
 const commentSchema = z.object({
   body: z.string().trim().min(1, 'Escreva um comentário.'),
@@ -48,6 +49,18 @@ export function ActivityComments({ activityId }: { activityId: string }) {
     );
   };
 
+  // Comentário só de áudio (story 74): cria o comentário com body vazio e, em
+  // seguida, anexa o áudio gravado a ele.
+  const onRecordAudioComment = (file: File, durationSeconds: number) => {
+    addMutation.mutate(
+      { body: '' },
+      {
+        onSuccess: (comment) =>
+          uploadAttachment.mutate({ commentId: comment.id, file, durationSeconds }),
+      },
+    );
+  };
+
   return (
     <div className="space-y-3">
       {isLoading && <LoadingState />}
@@ -72,8 +85,8 @@ export function ActivityComments({ activityId }: { activityId: string }) {
               canDelete={canDeleteComment(comment, { role, userId })}
               onDelete={(id) => deleteMutation.mutate(id)}
               deleting={deleteMutation.isPending}
-              onUploadAttachment={(commentId, file) =>
-                uploadAttachment.mutate({ commentId, file })
+              onUploadAttachment={(commentId, file, durationSeconds) =>
+                uploadAttachment.mutate({ commentId, file, durationSeconds })
               }
               onDeleteAttachment={(attachmentId) =>
                 deleteAttachment.mutate(attachmentId)
@@ -101,7 +114,11 @@ export function ActivityComments({ activityId }: { activityId: string }) {
             {getErrorMessage(addMutation.error, 'Erro ao enviar o comentário.')}
           </p>
         )}
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-2">
+          <AudioRecorder
+            onRecorded={onRecordAudioComment}
+            uploading={addMutation.isPending || uploadAttachment.isPending}
+          />
           <Button type="submit" size="sm" disabled={addMutation.isPending}>
             {addMutation.isPending ? 'Enviando...' : 'Comentar'}
           </Button>

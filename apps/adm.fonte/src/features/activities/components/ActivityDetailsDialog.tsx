@@ -145,7 +145,9 @@ function ActivityAttachmentsSection({ activity }: { activity: Activity }) {
       <Label>Anexos</Label>
       <AttachmentList
         attachments={attachments}
-        onUpload={(file) => uploadMutation.mutate(file)}
+        onUpload={(file, durationSeconds) =>
+          uploadMutation.mutate({ file, durationSeconds })
+        }
         onDelete={(id) => deleteMutation.mutate(id)}
         uploading={uploadMutation.isPending}
         deleting={deleteMutation.isPending}

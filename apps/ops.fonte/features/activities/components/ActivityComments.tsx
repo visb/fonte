@@ -22,6 +22,8 @@ import {
 } from '@/features/activities/hooks/useActivities';
 import { canDeleteComment } from '@/features/activities/lib/permissions';
 import { CommentItem } from './CommentItem';
+import { AudioRecorder } from './AudioRecorder';
+import type { PickedAttachment } from '@/features/activities/hooks/useActivities';
 
 const schema = z.object({ body: z.string().trim().min(1, 'Escreva um comentário.') });
 type FormData = z.infer<typeof schema>;
@@ -53,6 +55,18 @@ export function ActivityComments({ activityId }: { activityId: string }) {
     addMutation.mutate(
       { body: data.body.trim() },
       { onSuccess: () => reset({ body: '' }) },
+    );
+  };
+
+  // Comentário só de áudio (story 74): cria o comentário com body vazio e anexa
+  // o áudio gravado a ele.
+  const onRecordAudioComment = (att: PickedAttachment) => {
+    addMutation.mutate(
+      { body: '' },
+      {
+        onSuccess: (comment) =>
+          uploadAttachment.mutate({ commentId: comment.id, att }),
+      },
     );
   };
 
@@ -116,6 +130,12 @@ export function ActivityComments({ activityId }: { activityId: string }) {
           {getErrorMessage(addMutation.error, 'Erro ao enviar o comentário.')}
         </Text>
       )}
+
+      {/* Comentário só de áudio (story 74). */}
+      <AudioRecorder
+        onRecorded={onRecordAudioComment}
+        uploading={addMutation.isPending || uploadAttachment.isPending}
+      />
 
       <TouchableOpacity
         className="bg-indigo-600 rounded-lg py-3 items-center mt-3"

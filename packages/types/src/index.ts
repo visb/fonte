@@ -513,11 +513,18 @@ export interface ActivityComment {
 }
 
 export interface CreateActivityCommentInput {
-  body: string;
+  /**
+   * Texto do comentário. Opcional (story 74): um comentário só de áudio é criado
+   * com body vazio e o anexo de áudio é enviado em seguida.
+   */
+  body?: string;
 }
 
-/** Tipo de anexo derivado do mimetype (story 73). */
-export type ActivityAttachmentType = 'image' | 'document';
+/**
+ * Tipo de anexo derivado do mimetype: `image`/`document` (story 73) e `audio`
+ * (story 74). O front escolhe o player/preview por este campo.
+ */
+export type ActivityAttachmentType = 'image' | 'document' | 'audio';
 
 /**
  * Anexo de uma atividade ou de um comentário (story 73). `commentId` nulo =
@@ -535,6 +542,11 @@ export interface ActivityAttachment {
   fileType: ActivityAttachmentType;
   mimeType: string;
   sizeBytes: number;
+  /**
+   * Duração em segundos para anexos de áudio (story 74); medida no cliente. Null
+   * para anexos não-áudio ou quando não foi informada.
+   */
+  durationSeconds?: number | null;
   createdByUserId: string;
   createdAt: string;
   canDelete: boolean;

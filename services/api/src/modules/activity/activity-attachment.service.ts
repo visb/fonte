@@ -53,12 +53,13 @@ export class ActivityAttachmentService {
     activityId: string,
     file: Express.Multer.File,
     user: ActivityUser,
+    durationSeconds?: number | null,
   ): Promise<ActivityAttachmentDto> {
     const activity = await this.activityService.loadVisibleOrFail(
       activityId,
       user,
     );
-    return this.store(activity, null, file, user);
+    return this.store(activity, null, file, user, durationSeconds);
   }
 
   /**
@@ -70,6 +71,7 @@ export class ActivityAttachmentService {
     commentId: string,
     file: Express.Multer.File,
     user: ActivityUser,
+    durationSeconds?: number | null,
   ): Promise<ActivityAttachmentDto> {
     const activity = await this.activityService.loadVisibleOrFail(
       activityId,
@@ -79,7 +81,7 @@ export class ActivityAttachmentService {
       where: { id: commentId, activityId },
     });
     if (!comment) throw new NotFoundException('Comment not found');
-    return this.store(activity, comment, file, user);
+    return this.store(activity, comment, file, user, durationSeconds);
   }
 
   private async store(
@@ -87,6 +89,7 @@ export class ActivityAttachmentService {
     comment: ActivityComment | null,
     file: Express.Multer.File,
     user: ActivityUser,
+    durationSeconds?: number | null,
   ): Promise<ActivityAttachmentDto> {
     if (!file) throw new BadRequestException('File not provided');
     if (!isAllowedAttachmentMimetype(file.mimetype)) {
@@ -102,14 +105,17 @@ export class ActivityAttachmentService {
       file.mimetype,
     );
 
+    const fileType = attachmentTypeFromMimetype(file.mimetype);
     const attachment = this.repo.create({
       activityId: activity.id,
       commentId: comment?.id ?? null,
       fileUrl,
       fileName,
-      fileType: attachmentTypeFromMimetype(file.mimetype),
+      fileType,
       mimeType: file.mimetype,
       sizeBytes: file.size,
+      // Duração só faz sentido para áudio; ignora valores inválidos.
+      durationSeconds: this.normalizeDuration(fileType, durationSeconds),
       createdByUserId: user.userId,
     });
     const saved = await this.repo.save(attachment);
@@ -211,6 +217,21 @@ export class ActivityAttachmentService {
     );
   }
 
+  /**
+   * Normaliza a duração recebida do cliente: só persiste para áudio, descarta
+   * valores não-positivos/NaN (o backend não decodifica áudio — confia no cliente
+   * apenas como metadado de exibição).
+   */
+  private normalizeDuration(
+    fileType: ActivityAttachmentDto['fileType'],
+    durationSeconds?: number | null,
+  ): number | null {
+    if (fileType !== 'audio') return null;
+    if (durationSeconds == null) return null;
+    const rounded = Math.round(durationSeconds);
+    return Number.isFinite(rounded) && rounded > 0 ? rounded : null;
+  }
+
   private toView(
     a: ActivityAttachment,
     activity: Activity | null,
@@ -226,6 +247,7 @@ export class ActivityAttachmentService {
       fileType: a.fileType,
       mimeType: a.mimeType,
       sizeBytes: a.sizeBytes,
+      durationSeconds: a.durationSeconds ?? null,
       createdByUserId: a.createdByUserId,
       createdAt:
         a.createdAt instanceof Date

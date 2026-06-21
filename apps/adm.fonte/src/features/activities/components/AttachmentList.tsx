@@ -1,10 +1,11 @@
 import type { ActivityAttachment } from '@fonte/api-client';
 import { AttachmentItem } from './AttachmentItem';
 import { AttachmentUploader } from './AttachmentUploader';
+import { AudioRecorder } from './AudioRecorder';
 
 interface Props {
   attachments: ActivityAttachment[];
-  onUpload: (file: File) => void;
+  onUpload: (file: File, durationSeconds?: number | null) => void;
   onDelete: (attachmentId: string) => void;
   uploading: boolean;
   deleting: boolean;
@@ -14,8 +15,8 @@ interface Props {
 
 /**
  * Lista de anexos reutilizável (atividade ou comentário): itens com download/
- * preview + excluir condicional, e o uploader logo abaixo. Estado vazio fica a
- * cargo do uploader (sempre visível).
+ * preview/player + excluir condicional, e os controles de envio abaixo (upload de
+ * arquivo + gravação de áudio, story 74). Estado vazio fica a cargo dos controles.
  */
 export function AttachmentList({
   attachments,
@@ -40,12 +41,18 @@ export function AttachmentList({
           ))}
         </div>
       )}
-      <AttachmentUploader
-        onUpload={onUpload}
-        uploading={uploading}
-        error={uploadError}
-        label={uploadLabel}
-      />
+      <div className="flex flex-wrap items-start gap-2">
+        <AttachmentUploader
+          onUpload={onUpload}
+          uploading={uploading}
+          error={uploadError}
+          label={uploadLabel}
+        />
+        <AudioRecorder
+          onRecorded={(file, durationSeconds) => onUpload(file, durationSeconds)}
+          uploading={uploading}
+        />
+      </div>
     </div>
   );
 }

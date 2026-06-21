@@ -1,10 +1,16 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/lib/errors';
-import { ATTACHMENT_ACCEPT, validateAttachment } from '../lib/attachments';
+import {
+  ATTACHMENT_ACCEPT,
+  isAudioMimetype,
+  readAudioDuration,
+  validateAttachment,
+  validateAudioDuration,
+} from '../lib/attachments';
 
 interface Props {
-  onUpload: (file: File) => void;
+  onUpload: (file: File, durationSeconds?: number | null) => void;
   uploading: boolean;
   error?: unknown;
   label?: string;
@@ -12,7 +18,8 @@ interface Props {
 
 /**
  * Botão de upload de anexo: abre o seletor de arquivo, valida tipo/tamanho no
- * cliente (UX; o backend revalida) e dispara `onUpload`. Mensagens em pt-BR.
+ * cliente (UX; o backend revalida) e dispara `onUpload`. Para áudio (story 74)
+ * lê os metadados e valida a duração ≤ 2 min antes de subir. Mensagens em pt-BR.
  */
 export function AttachmentUploader({
   onUpload,
@@ -23,13 +30,26 @@ export function AttachmentUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [clientError, setClientError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ''; // permite reenviar o mesmo arquivo
     if (!file) return;
     const message = validateAttachment(file);
     if (message) {
       setClientError(message);
+      return;
+    }
+    if (isAudioMimetype(file.type)) {
+      const duration = await readAudioDuration(file).catch(() => null);
+      if (duration != null) {
+        const durationError = validateAudioDuration(duration);
+        if (durationError) {
+          setClientError(durationError);
+          return;
+        }
+      }
+      setClientError(null);
+      onUpload(file, duration);
       return;
     }
     setClientError(null);

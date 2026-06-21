@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Delete,
   HttpCode,
@@ -39,15 +40,34 @@ const uploadOptions = {
 export class ActivityAttachmentController {
   constructor(private service: ActivityAttachmentService) {}
 
+  /**
+   * `durationSeconds` chega como string no multipart (story 74). Só é usada para
+   * áudio; o service descarta valores inválidos e zera para não-áudio.
+   */
+  private parseDuration(body: {
+    durationSeconds?: string;
+  }): number | null {
+    const raw = body?.durationSeconds;
+    if (raw == null || raw === '') return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
   @Post('attachments')
   @UseInterceptors(FileInterceptor('file', uploadOptions))
   uploadActivityAttachment(
     @Param('activityId', ParseUUIDPipe) activityId: string,
     @UploadedFile() file: Express.Multer.File,
+    @Body() body: { durationSeconds?: string },
     @CurrentUser() user: AuthenticatedUser,
   ) {
     if (!file) throw new BadRequestException('File not provided');
-    return this.service.addActivityAttachment(activityId, file, user);
+    return this.service.addActivityAttachment(
+      activityId,
+      file,
+      user,
+      this.parseDuration(body),
+    );
   }
 
   @Post('comments/:commentId/attachments')
@@ -56,10 +76,17 @@ export class ActivityAttachmentController {
     @Param('activityId', ParseUUIDPipe) activityId: string,
     @Param('commentId', ParseUUIDPipe) commentId: string,
     @UploadedFile() file: Express.Multer.File,
+    @Body() body: { durationSeconds?: string },
     @CurrentUser() user: AuthenticatedUser,
   ) {
     if (!file) throw new BadRequestException('File not provided');
-    return this.service.addCommentAttachment(activityId, commentId, file, user);
+    return this.service.addCommentAttachment(
+      activityId,
+      commentId,
+      file,
+      user,
+      this.parseDuration(body),
+    );
   }
 
   @Delete('attachments/:attachmentId')

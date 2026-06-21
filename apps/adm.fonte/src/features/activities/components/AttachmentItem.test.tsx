@@ -53,4 +53,26 @@ describe('AttachmentItem', () => {
     fireEvent.click(screen.getByRole('button', { name: /Excluir anexo/i }));
     expect(onDelete).toHaveBeenCalledWith('att-1');
   });
+
+  it('renderiza o player de áudio (story 74) quando fileType=audio, sem link de download', () => {
+    render(
+      <AttachmentItem
+        attachment={attachment({
+          fileType: 'audio',
+          mimeType: 'audio/webm',
+          fileName: 'gravacao.webm',
+          fileUrl: 'https://files.example/gravacao.webm',
+          durationSeconds: 42,
+        })}
+        onDelete={vi.fn()}
+        deleting={false}
+      />,
+    );
+    // controle de play do player presente
+    expect(
+      screen.getByRole('button', { name: /Reproduzir áudio/i }),
+    ).toBeInTheDocument();
+    // não há link de download para áudio (o player substitui)
+    expect(screen.queryByText('gravacao.webm')?.closest('a')).toBeNull();
+  });
 });

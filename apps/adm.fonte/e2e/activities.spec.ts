@@ -316,6 +316,43 @@ test.describe('Atividades (board Kanban)', () => {
     await expect(dialog.getByText('plano.pdf')).toHaveCount(0);
   });
 
+  test('anexa um áudio à atividade por upload e mostra o player (story 74)', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+    const title = `Anexar áudio ${ts()}`;
+    await createActivity(page, title);
+
+    await card(page, title).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    await expect(dialog.getByText('Anexos', { exact: true })).toBeVisible();
+    // Sobe um arquivo de áudio pelo mesmo input file (allowlist estendida na 74).
+    await dialog.getByLabel('Adicionar anexo').setInputFiles({
+      name: 'gravacao.webm',
+      mimeType: 'audio/webm',
+      buffer: Buffer.from('fake-webm-audio-bytes'),
+    });
+
+    // O anexo de áudio renderiza o player (botão de reproduzir), não um link.
+    await expect(dialog.getByText('gravacao.webm')).toBeVisible();
+    await expect(
+      dialog.getByRole('button', { name: 'Reproduzir áudio' }),
+    ).toBeVisible();
+    // Seletor de velocidade do player presente.
+    await expect(
+      dialog.getByRole('button', { name: 'Velocidade 1x' }),
+    ).toBeVisible();
+
+    // Criador em rascunho pode excluir.
+    await dialog
+      .getByRole('button', { name: 'Excluir anexo gravacao.webm' })
+      .click();
+    await expect(dialog.getByText('gravacao.webm')).toHaveCount(0);
+  });
+
   test('a aba Histórico mostra a timeline de eventos do card (story 66)', async ({
     page,
   }) => {

@@ -126,18 +126,33 @@ export function useDeleteComment(activityId: string) {
 
 // ── anexos (story 73) ───────────────────────────────────────────────────────
 
-function toFormData(file: File): FormData {
+/**
+ * Monta o multipart do anexo. `durationSeconds` (story 74) só é enviado para
+ * áudio; o backend ignora para os demais tipos.
+ */
+function toFormData(file: File, durationSeconds?: number | null): FormData {
   const fd = new FormData();
   fd.append('file', file);
+  if (durationSeconds != null && Number.isFinite(durationSeconds)) {
+    fd.append('durationSeconds', String(Math.round(durationSeconds)));
+  }
   return fd;
+}
+
+interface UploadAttachmentVars {
+  file: File;
+  durationSeconds?: number | null;
 }
 
 /** Anexa um arquivo à própria atividade; invalida o detalhe (que embute anexos). */
 export function useUploadActivityAttachment(activityId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (file: File) =>
-      api.activities.uploadAttachment(activityId, toFormData(file)),
+    mutationFn: ({ file, durationSeconds }: UploadAttachmentVars) =>
+      api.activities.uploadAttachment(
+        activityId,
+        toFormData(file, durationSeconds),
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.activities.detail(activityId),
@@ -150,11 +165,15 @@ export function useUploadActivityAttachment(activityId: string) {
 export function useUploadCommentAttachment(activityId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ commentId, file }: { commentId: string; file: File }) =>
+    mutationFn: ({
+      commentId,
+      file,
+      durationSeconds,
+    }: UploadAttachmentVars & { commentId: string }) =>
       api.activities.uploadCommentAttachment(
         activityId,
         commentId,
-        toFormData(file),
+        toFormData(file, durationSeconds),
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({

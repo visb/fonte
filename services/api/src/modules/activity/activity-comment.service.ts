@@ -72,7 +72,8 @@ export class ActivityCommentService {
 
     const comment = this.repo.create({
       activityId,
-      body: dto.body,
+      // body opcional (story 74): comentário só de áudio nasce com body vazio.
+      body: dto.body ?? '',
       createdByUserId: user.userId,
     });
     const saved = await this.repo.save(comment);

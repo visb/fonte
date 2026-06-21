@@ -12,7 +12,11 @@ interface Props {
   canDelete: boolean;
   onDelete: (commentId: string) => void;
   deleting: boolean;
-  onUploadAttachment: (commentId: string, file: File) => void;
+  onUploadAttachment: (
+    commentId: string,
+    file: File,
+    durationSeconds?: number | null,
+  ) => void;
   onDeleteAttachment: (attachmentId: string) => void;
   uploadingAttachment: boolean;
   deletingAttachment: boolean;
@@ -45,7 +49,9 @@ export function CommentItem({
       {/* Anexos do comentário (story 73): lista + uploader. */}
       <AttachmentList
         attachments={comment.attachments ?? []}
-        onUpload={(file) => onUploadAttachment(comment.id, file)}
+        onUpload={(file, durationSeconds) =>
+          onUploadAttachment(comment.id, file, durationSeconds)
+        }
         onDelete={onDeleteAttachment}
         uploading={uploadingAttachment}
         deleting={deletingAttachment}

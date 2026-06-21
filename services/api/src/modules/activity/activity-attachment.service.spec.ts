@@ -181,6 +181,66 @@ describe('ActivityAttachmentService.addActivityAttachment (allowlist + storage)'
     const result = await service.addActivityAttachment('act-1', pdfFile(), CREATOR);
     expect(result.fileType).toBe('document');
   });
+
+  // ── áudio (story 74) ──────────────────────────────────────────────────────
+
+  it.each([
+    'audio/webm',
+    'audio/mp4',
+    'audio/m4a',
+    'audio/aac',
+    'audio/mpeg',
+    'audio/ogg',
+    'audio/wav',
+  ])('aceita áudio %s e deriva type=audio', async (mimetype) => {
+    const service = makeService(makeAttachmentRepo());
+    const result = await service.addActivityAttachment(
+      'act-1',
+      pdfFile({ mimetype, originalname: 'nota.m4a' }),
+      CREATOR,
+    );
+    expect(result.fileType).toBe('audio');
+  });
+
+  it('persiste a duração (arredondada) para áudio', async () => {
+    const service = makeService(makeAttachmentRepo());
+    const result = await service.addActivityAttachment(
+      'act-1',
+      pdfFile({ mimetype: 'audio/webm', originalname: 'gravacao.webm' }),
+      CREATOR,
+      42.6,
+    );
+    expect(result.durationSeconds).toBe(43);
+  });
+
+  it('ignora duração de não-áudio (fica null)', async () => {
+    const service = makeService(makeAttachmentRepo());
+    const result = await service.addActivityAttachment(
+      'act-1',
+      pdfFile(),
+      CREATOR,
+      90,
+    );
+    expect(result.durationSeconds).toBeNull();
+  });
+
+  it('descarta duração inválida (<= 0 ou NaN) mesmo para áudio', async () => {
+    const service = makeService(makeAttachmentRepo());
+    const zero = await service.addActivityAttachment(
+      'act-1',
+      pdfFile({ mimetype: 'audio/webm', originalname: 'a.webm' }),
+      CREATOR,
+      0,
+    );
+    expect(zero.durationSeconds).toBeNull();
+    const nan = await service.addActivityAttachment(
+      'act-1',
+      pdfFile({ mimetype: 'audio/webm', originalname: 'a.webm' }),
+      CREATOR,
+      Number.NaN,
+    );
+    expect(nan.durationSeconds).toBeNull();
+  });
 });
 
 describe('ActivityAttachmentService.addCommentAttachment', () => {

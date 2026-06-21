@@ -107,20 +107,34 @@ deps). Fonte de verdade: esta seção + git log. Base já mergeada: 62 (modal `A
 
 [OK] 74 — testes: api unit 647✓ (+11: activity-attachment.service aceita audio/webm|mp4|m4a|aac|mpeg|ogg|wav → type=audio, persiste durationSeconds arredondada, ignora duração de não-áudio e valores inválidos; comment.service aceita body ausente → string vazia) + e2e activities 53✓ (+3: upload de áudio com durationSeconds, mimetype de áudio fora da allowlist 400, comentário só-de-áudio body vazio + anexo de áudio; teste antigo "POST 400 com body vazio" reescrito p/ a nova regra) ; adm unit 163✓ (+ attachments.ts: allowlist com áudio, isAudioMimetype, validateAudioDuration, formatDuration, readAudioDuration; AudioPlayer: play/pause + ciclo 1x→1.5x→2x→1x ajusta playbackRate; AttachmentItem renderiza player p/ áudio) + tsc -b✓ + build✓ + Playwright activities 18✓ (+1: anexa áudio por upload, mostra player com botões Reproduzir/Velocidade, exclui) ; ops unit 67✓ (+ attachments.ts áudio: allowlist, isAudioMimetype, validateAudioDuration, formatDuration) + tsc --noEmit✓ — commit: 21db17e — merge: 481823e — 2026-06-21 — sem bloqueio. Estende a infra de anexos da 73 (NÃO cria modelo novo). Migration aditiva ActivityAttachmentDuration1784000000000 (activity_attachments.duration_seconds INTEGER nullable; client envia, backend não decodifica áudio). Allowlist do controller estendida com audio/webm, audio/mp4, audio/m4a, audio/aac, audio/mpeg, audio/ogg, audio/wav; attachmentTypeFromMimetype deriva 'audio'. Limite 20 MB (igual 73); duração máx 2 min validada NO CLIENTE (gravação auto-stop em 2:00; upload lê metadados e rejeita >2min). Comentário só-de-áudio = comentário com body vazio (DTO relaxado p/ body opcional, service normaliza p/ '') + 1 anexo de áudio. adm: AudioRecorder (MediaRecorder, output audio/webm) + AudioPlayer (<audio> + playbackRate). ops: AudioRecorder (expo-av Recording, audio/m4a, auto-stop 2:00) + AudioPlayer (expo-av Sound + setRateAsync) + pick de áudio via expo-document-picker. types: ActivityAttachmentType += 'audio', ActivityAttachment.durationSeconds, CreateActivityCommentInput.body opcional (build:types + build:api-client refeitos). Postman atualizado (allowlist de áudio, campo durationSeconds, body de comentário opcional). Storage testável local em uploads/activities/ via o StorageService da 73 — nenhum bucket real, nenhuma chave inventada; sem PENDENTE-MANUAL. Nota: 6 testes pré-existentes do payables.e2e (overdue sensível à data 2026-06-21) falham na main limpa também — não relacionados à 74.
 
-## Rodada PAUSADA (2026-06-20) a pedido do usuário — após a story 73
+## Resumo final da rodada 64–75 (CONCLUÍDA 2026-06-21)
 
-Concluídas e mergeadas na main nesta rodada: **64, 65, 66, 67, 68, 71, 72, 73** [OK] · **69, 70**
-[PARCIAL] (lógica completa e testada com mock; só credencial externa pendente). PENDENTES (não
-iniciadas): **74 (áudio — depende da 73, já feita), 75 (devolver REQUESTED→DRAFT, independente)**.
+**Todas as 12 stories mergeadas na main** (`--no-ff`, sem push; branches preservadas). 10 [OK] +
+2 [PARCIAL] (69, 70 — lógica completa e testada com mock; só falta credencial externa).
+Loop `/loop` (cron d4502925) encerrado.
 
-Loop `/loop` (cron d4502925) ENCERRADO. Para retomar: rearmar o AUTORUN a partir da 74 na ordem
-`74 → 75`. 74 estende a allowlist de mimetype do controller de anexos da 73 (reusa
-`activity_attachments`, não cria modelo novo) e adiciona gravação/player; 75 é transição de status
-independente. Última migration: `1783900000000-ActivityAttachments` (próxima ≥ 1784000000000).
-Serviços podem ter sido encerrados — reexecutar o bootstrap (docker:up, test:setup,
-build:types+api-client, dev:api:test em 3001, adm dev:test em 5174).
+- **Atividades** (track): 64 visual responsável, 65 comentários, 66 histórico, 71 descrição fora
+  do board, 72 WYSIWYG markdown, 73 anexos, 74 áudio, 75 devolver REQUESTED→DRAFT — todas [OK].
+- **Eventos** (track): 67 toggle inscrição, 68 campos custom [OK]; 69 pagamento backend, 70
+  pagamento portal+notificações [PARCIAL].
 
-### PENDENTE-MANUAL acumulado (stories PARCIAL)
+Migrations novas da rodada: ActivityComments(1783400000000), ActivityEvents(1783500000000),
+EventRegistrationEnabled(**1783600000000** — corrigida de 1783000000000, que rodava antes da tabela
+events e colidia com PayableAttachment; agora idempotente), EventRegistrationFields(1783700000000),
+EventPayments(1783800000000), ActivityAttachments(1783900000000),
+ActivityAttachmentDuration(1784000000000). Próxima migration livre: ≥ 1784100000000.
+
+### PENDENTE-MANUAL (necessário p/ ativar 69 e 70 em produção)
 - **69**: `PAGARME_SECRET_KEY` de produção + registrar webhook no painel Pagar.me.
 - **70**: aprovar template WhatsApp na Meta (`META_WA_TEMPLATE_EVENT_PAYMENT`); credenciais
   `RESEND_API_KEY`+`MAIL_FROM` e `META_WA_PHONE_NUMBER_ID`/`META_WA_TOKEN`; definir `PORTAL_URL`.
+
+### Dívida técnica observada (fora do escopo desta rodada)
+- `payables.e2e-spec.ts`: 6 testes falham por dependência de data (cálculo de `overdue` vs data de
+  hoje). Confirmado falhando na main limpa, sem relação com as stories desta rodada. Vale uma story
+  de correção (mockar a data/clock no teste).
+
+### Reproduzir
+Bootstrap: `pnpm docker:up && pnpm test:setup && pnpm build:types && pnpm build:api-client`, depois
+`pnpm dev:api:test` (3001) e `pnpm --filter adm.fonte dev:test` (5174). Suíte por área conforme
+cada linha do Log acima.

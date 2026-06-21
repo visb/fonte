@@ -100,6 +100,7 @@ export function ActivityBoard({
             activities={byStatus(column.status)}
             isAdmin={isAdmin}
             role={role}
+            userId={userId}
             isDragActive={dragging != null}
             isValidDropTarget={
               dragging != null && canTransition(dragging, column.status, user)

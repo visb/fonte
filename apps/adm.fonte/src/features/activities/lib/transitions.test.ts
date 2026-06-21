@@ -39,6 +39,8 @@ describe('isTransitionAllowed (matriz, ignora permissão)', () => {
     expect(isTransitionAllowed(ActivityStatus.BLOCKED, ActivityStatus.DOING)).toBe(true);
     expect(isTransitionAllowed(ActivityStatus.BLOCKED, ActivityStatus.DONE)).toBe(true);
     expect(isTransitionAllowed(ActivityStatus.DONE, ActivityStatus.DOING)).toBe(true);
+    // story 75: devolver solicitação para rascunho.
+    expect(isTransitionAllowed(ActivityStatus.REQUESTED, ActivityStatus.DRAFT)).toBe(true);
   });
 
   it('rejeita transições fora da matriz', () => {
@@ -85,6 +87,26 @@ describe('canTransition (matriz + permissão)', () => {
     it('nega ao criador não-ADMIN', () => {
       expect(
         canTransition(activity(ActivityStatus.REQUESTED), ActivityStatus.TODO, CREATOR),
+      ).toBe(false);
+    });
+  });
+
+  describe('REQUESTED → DRAFT (criador ou ADMIN — devolver)', () => {
+    it('permite ao criador', () => {
+      expect(
+        canTransition(activity(ActivityStatus.REQUESTED), ActivityStatus.DRAFT, CREATOR),
+      ).toBe(true);
+    });
+
+    it('permite ao ADMIN mesmo não sendo o criador', () => {
+      expect(
+        canTransition(activity(ActivityStatus.REQUESTED), ActivityStatus.DRAFT, ADMIN),
+      ).toBe(true);
+    });
+
+    it('nega a um terceiro que não é criador nem ADMIN', () => {
+      expect(
+        canTransition(activity(ActivityStatus.REQUESTED), ActivityStatus.DRAFT, STRANGER),
       ).toBe(false);
     });
   });

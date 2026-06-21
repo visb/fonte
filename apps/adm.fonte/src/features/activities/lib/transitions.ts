@@ -8,7 +8,7 @@ import type { Activity } from '@fonte/api-client';
  * por engano ainda é rejeitado lá e o card volta (rollback otimista).
  *
  *   DRAFT      → REQUESTED
- *   REQUESTED  → TODO
+ *   REQUESTED  → TODO | DRAFT
  *   TODO       → DOING
  *   DOING      → TODO | BLOCKED | DONE
  *   BLOCKED    → DOING | DONE
@@ -16,7 +16,7 @@ import type { Activity } from '@fonte/api-client';
  */
 export const ACTIVITY_TRANSITIONS: Record<ActivityStatus, ActivityStatus[]> = {
   [ActivityStatus.DRAFT]: [ActivityStatus.REQUESTED],
-  [ActivityStatus.REQUESTED]: [ActivityStatus.TODO],
+  [ActivityStatus.REQUESTED]: [ActivityStatus.TODO, ActivityStatus.DRAFT],
   [ActivityStatus.TODO]: [ActivityStatus.DOING],
   [ActivityStatus.DOING]: [
     ActivityStatus.TODO,
@@ -56,6 +56,7 @@ export function isTransitionAllowed(
  *
  * - DRAFT → REQUESTED: criador ou ADMIN.
  * - REQUESTED → TODO: só ADMIN (exige responsável; na UI abre o dialog de aprovação).
+ * - REQUESTED → DRAFT: criador ou ADMIN (devolver / desfazer envio).
  * - bloco de trabalho (TODO/DOING/BLOCKED/DONE entre si): ADMIN ou o responsável.
  */
 export function canTransition(
@@ -74,6 +75,10 @@ export function canTransition(
 
   if (from === ActivityStatus.REQUESTED && to === ActivityStatus.TODO) {
     return isAdmin;
+  }
+
+  if (from === ActivityStatus.REQUESTED && to === ActivityStatus.DRAFT) {
+    return isAdmin || (!!user.userId && activity.createdByUserId === user.userId);
   }
 
   if (WORK_STATUSES.includes(from) && WORK_STATUSES.includes(to)) {

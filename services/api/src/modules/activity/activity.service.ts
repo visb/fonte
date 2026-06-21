@@ -37,6 +37,7 @@ export interface ActivityUser {
  *
  *   DRAFT      → REQUESTED            (enviar)
  *   REQUESTED  → TODO                 (aprovar; exige responsável)
+ *   REQUESTED  → DRAFT                 (devolver / desfazer envio)
  *   TODO       ↔ DOING                (iniciar / voltar a fazer)
  *   DOING      ↔ BLOCKED              (impedir / desimpedir)
  *   DOING      ↔ DONE                 (concluir / reabrir)
@@ -44,7 +45,7 @@ export interface ActivityUser {
  */
 const TRANSITIONS: Record<ActivityStatus, ActivityStatus[]> = {
   [ActivityStatus.DRAFT]: [ActivityStatus.REQUESTED],
-  [ActivityStatus.REQUESTED]: [ActivityStatus.TODO],
+  [ActivityStatus.REQUESTED]: [ActivityStatus.TODO, ActivityStatus.DRAFT],
   [ActivityStatus.TODO]: [ActivityStatus.DOING],
   [ActivityStatus.DOING]: [
     ActivityStatus.TODO,
@@ -407,6 +408,17 @@ export class ActivityService {
     if (from === ActivityStatus.DRAFT && to === ActivityStatus.REQUESTED) {
       if (!admin && activity.createdByUserId !== user.userId) {
         throw new ForbiddenException('Only the creator or ADMIN can submit a draft');
+      }
+      return;
+    }
+
+    // REQUESTED → DRAFT: criador ou ADMIN (espelha o "enviar"). Devolve a
+    // solicitação para rascunho; `responsibleStaffId` (se houver) é preservado.
+    if (from === ActivityStatus.REQUESTED && to === ActivityStatus.DRAFT) {
+      if (!admin && activity.createdByUserId !== user.userId) {
+        throw new ForbiddenException(
+          'Only the creator or ADMIN can return a request to draft',
+        );
       }
       return;
     }

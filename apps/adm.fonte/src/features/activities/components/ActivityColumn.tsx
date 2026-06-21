@@ -11,6 +11,7 @@ interface Props {
   activities: Activity[];
   isAdmin: boolean;
   role: string | null;
+  userId: string | null;
   /** Há um card sendo arrastado neste exato momento? */
   isDragActive: boolean;
   /** O card arrastado pode ser solto aqui pelo usuário corrente? (UX, não autoridade) */
@@ -27,6 +28,7 @@ export function ActivityColumn({
   activities,
   isAdmin,
   role,
+  userId,
   isDragActive,
   isValidDropTarget,
   onChangeStatus,
@@ -69,6 +71,8 @@ export function ActivityColumn({
               key={activity.id}
               activity={activity}
               isAdmin={isAdmin}
+              role={role}
+              userId={userId}
               onChangeStatus={onChangeStatus}
               onApprove={onApprove}
               onEdit={onEdit}

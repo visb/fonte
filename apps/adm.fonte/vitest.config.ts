@@ -35,11 +35,12 @@ export default defineConfig({
       // Catraca de cobertura (story 80). Sobe a cada sub-fase (80a→80e), nunca
       // desce. Re-baseline honesto após excluir pages: 7.16% statements.
       // 80a (residents+activities+staff): 16% statements.
+      // 80b (houses+payables+billing): 19% statements.
       thresholds: {
-        statements: 16,
-        branches: 68,
-        functions: 52,
-        lines: 16,
+        statements: 19,
+        branches: 73,
+        functions: 62,
+        lines: 19,
       },
     },
   },

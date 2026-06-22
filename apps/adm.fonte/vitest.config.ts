@@ -36,11 +36,12 @@ export default defineConfig({
       // desce. Re-baseline honesto após excluir pages: 7.16% statements.
       // 80a (residents+activities+staff): 16% statements.
       // 80b (houses+payables+billing): 19% statements.
+      // 80c (events+support-groups+associates+census): 20% statements.
       thresholds: {
-        statements: 19,
-        branches: 73,
-        functions: 62,
-        lines: 19,
+        statements: 20,
+        branches: 75,
+        functions: 68,
+        lines: 20,
       },
     },
   },

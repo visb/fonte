@@ -112,7 +112,30 @@
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "\\.module\\.ts$",
+      "/main\\.ts$",
+      "/instrument\\.ts$",
+      "/database/migrations/",
+      "/database/data-source\\.ts$",
+      "/database/seed.*\\.ts$",
+      "/database/backfill.*\\.ts$",
+      "/database/backup.*\\.ts$",
+      "/database/restore.*\\.ts$",
+      "\\.dto\\.ts$",
+      "\\.entity\\.ts$",
+      "\\.d\\.ts$"
+    ],
     "coverageDirectory": "../coverage",
+    "coverageThreshold": {
+      "global": {
+        "statements": 80,
+        "branches": 69,
+        "functions": 78,
+        "lines": 84
+      }
+    },
     "testEnvironment": "node",
     "moduleNameMapper": {
       "^@fonte/types$": "<rootDir>/../../../packages/types/src/index.ts",

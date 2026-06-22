@@ -66,7 +66,7 @@ excluir orquestração sobe o % sem teste novo; não contar como progresso.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 77 — e2e document-templates (CRUD + auth) | [ ] | | | |
+| 1 | 77 — e2e document-templates (CRUD + auth) | [OK] | api e2e document-templates 19✓ (auth/role/validação/CRUD/upload/no-op img s76); suíte e2e 355✓ (só payables 6✗ pré-existente por data); api unit 672✓ | d6884d5 | ba0b41d |
 | 2 | 79 — cobertura services/api 46→80% | [ ] | | | |
 | 3 | 80 — cobertura adm.fonte 6→80% (80a–80e) | [ ] | | | |
 | 4 | 81 — cobertura ops.fonte 2.87→80% (81a–81e) | [ ] | | | |
@@ -77,6 +77,8 @@ excluir orquestração sobe o % sem teste novo; não contar como progresso.
 ## Log
 
 <!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver> -->
+
+[OK] 77 — testes: novo spec services/api/test/document-templates.e2e-spec.ts com 19 casos✓ (401 sem token; lista 200 p/ SERVANT; 403 SERVANT em detalhe/POST/PUT/DELETE/upload; 400 UUID inválido; 409 nome duplicado no create e no rename; CRUD feliz create→get→list→update→delete→404 com flags isRequired/signAtAdmission; upload sem arquivo 400, não-imagem text/plain 400, PNG 1x1 válido 201 { url } em /uploads/documents/; pass-through no-op de <img> assinado em modo não-S3 documentando story 76); suíte e2e completa 355✓ (única falha = payables.e2e 6✗ por overdue date-dependent, tech debt pré-existente e não-regressão); api unit 672✓ — commit: d6884d5 — merge: ba0b41d — 2026-06-22 — sem bloqueio. Backend-only: nenhuma mudança de produção/contrato/DTO/endpoint/migration/Postman — read-only dos endpoints existentes (GET, GET/:id, POST, PUT/:id, DELETE/:id, POST /images). Espelha activities.e2e-spec.ts e reusa o harness e2e-app.ts (bootstrapApp/login/BASE). SERVANT = operator@fonte.com/operator123 (seed-test). Limpeza no afterAll por nome único (tag e2e-<timestamp>), apagando resident_documents dependentes antes dos templates. Fluxo de URL assinada da story 76 segue fora do e2e (sem S3 no .env.test) — coberto no unit.
 
 ## Resumo final
 

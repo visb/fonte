@@ -30,7 +30,10 @@ export class DocumentTemplateService implements OnModuleDestroy {
   private getBrowser(): Promise<Browser> {
     if (!this.browserPromise) {
       this.browserPromise = import('puppeteer').then((p) =>
-        p.default.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] }),
+        p.default.launch({
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        }),
       );
     }
     return this.browserPromise;

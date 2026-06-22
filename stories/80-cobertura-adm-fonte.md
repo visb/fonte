@@ -10,6 +10,10 @@ helpers de `activities/lib` e alguns badges estavam testados. 17 features:
 `activities associates auth backup bible-courses billing census dashboard events houses messages
 notifications payables residents settings staff support-groups`.
 
+> **Re-baseline:** os 6.00% incluem `pages/**` (39 dos 281 arquivos) no denominador. Ao adicionar
+> `src/**/pages/**` ao `coverage.exclude`, o denominador cai e o % **sobe sem testar nada** — medir e
+> registrar o novo ponto de partida no 1º PR. Excluir page **não** é progresso de teste (caveat do 78).
+
 ### Decisões travadas
 
 - **`pages/**` fora do denominador** (orquestração → Playwright E2E). Configurar `coverage.exclude`
@@ -32,12 +36,15 @@ Para cada feature, na ordem: **lib → hooks → componentes** (pages ficam de f
 3. **componentes de apresentação** (cards/rows/badges/forms) — RTL; branches de estado
    (`LoadingState/EmptyState/ErrorState`), variantes, submit de form.
 
-### Ordem sugerida de features (risco × tamanho)
-`residents` → `activities` → `staff` → `houses` → `payables`/`billing` → `events` →
-`support-groups` → `associates` → `census` → `messages`/`notifications` → `bible-courses` →
-`backup`/`settings`/`dashboard`/`auth` (menores, fecham o piso).
+### Sub-fases (cada uma um PR; ordem por risco × tamanho)
 
-Cada PR de feature sobe a catraca. Meta agregada: **80% statements** com `pages/**` excluído.
+- **80a** — `residents` + `activities` + `staff` (núcleo administrativo, maior superfície).
+- **80b** — `houses` + `payables` + `billing` (financeiro/casas).
+- **80c** — `events` + `support-groups` + `associates` + `census`.
+- **80d** — `messages` + `notifications` + `bible-courses`.
+- **80e** — `backup` + `settings` + `dashboard` + `auth` (menores, fecham o piso).
+
+Cada PR de sub-fase sobe a catraca. Meta agregada: **80% statements** com `pages/**` excluído.
 
 ## Fora de escopo
 

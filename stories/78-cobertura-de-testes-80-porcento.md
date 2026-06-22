@@ -16,12 +16,18 @@ a cobertura **real** apareceu.
 | Pacote | % Stmts real | Coberto/Total | Δ p/ 80% | Story filha |
 |---|---:|---:|---:|---|
 | **services/api** | 46.64% | ~3950/8466 | +33 pp | **79** |
-| **adm.fonte** | **6.00%** | 1039/17300 | +74 pp | **80** |
-| **ops.fonte** | **2.87%** | — | +77 pp | **81** |
-| **app.fonte** | **4.61%** | — | +75 pp | **81** |
+| **adm.fonte** | **6.00%** | 1039/17300 | +74 pp | **80** (80a–80e) |
+| **ops.fonte** | **2.87%** | — | +77 pp | **81** (81a–81e) |
+| **app.fonte** | **4.61%** | — | +75 pp | **84** (84a–84b) |
 | **portal.fonte** | 64.26% | 723/1125 | +16 pp | **82** |
 | **api-client** | 59.62% | 446/748 | +20 pp | **82** |
 | **resident.fonte** | — | — | — | (não scaffoldado) |
+
+> **Caveat — exclusão não é cobertura.** Esses baselines foram medidos com `pages/**` (web) e rotas
+> `app/**` (RN) **dentro** do denominador. As filhas excluem orquestração do denominador (justo: é
+> alvo de E2E), o que **sobe o %** sem nenhum teste novo. Cada filha deve **re-baselinar** após
+> aplicar as exclusões e tratar esse salto como ponto de partida — não como progresso. O número que
+> conta é cobertura de `lib/hooks/components/services`.
 
 Tamanho do código (`.ts/.tsx` sem testes): api 344 · adm 281 · ops 213 · app 47 · portal 31.
 
@@ -70,10 +76,11 @@ branch/function no valor atingido) e fazer o CI falhar abaixo do piso. Documenta
 | # | Escopo | Δ pp | Risco |
 |---|---|---:|---|
 | **79** | `services/api` 46→80% | +33 | Alto (regra de domínio) |
-| **80** | `adm.fonte` 6→80% (subfatias por feature) | +74 | Muito alto |
-| **81** | `ops.fonte` 2.87→80% + `app.fonte` 4.61→80% (RN) | +75/77 | Alto |
+| **80** | `adm.fonte` 6→80% — sub-fases 80a–80e por feature | +74 | Muito alto |
+| **81** | `ops.fonte` 2.87→80% (RN) — sub-fases 81a–81e por feature | +77 | Muito alto |
+| **84** | `app.fonte` 4.61→80% (RN) — 84a–84b | +75 | Médio |
 | **82** | `portal.fonte` 64→80% + `api-client` 60→80% | +16/20 | Baixo |
-| **83** | Catraca global + gate CI (depende de 79–82) | — | Baixo |
+| **83** | Catraca global + gate CI (depende de 79–82, 84) | — | Baixo |
 
 ## Fora de escopo (epic)
 

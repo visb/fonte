@@ -1,10 +1,10 @@
 # Plan: Catraca de cobertura + gate CI a 80%
 
-> Filha do epic **78**. **Depende de 79–82** (todos os pacotes ≥ 80%). Última a mergear.
+> Filha do epic **78**. **Depende de 79, 80, 81, 82 e 84** (todos os pacotes ≥ 80%). Última a mergear.
 
 ## Context
 
-Com 79–82 entregues, todos os pacotes testáveis estão ≥ 80% statements. Falta **travar** o piso para
+Com 79, 80, 81, 82 e 84 entregues, todos os pacotes testáveis estão ≥ 80% statements. Falta **travar** o piso para
 que regressões quebrem o build, fechando o ciclo do epic 78.
 
 ### Decisões travadas

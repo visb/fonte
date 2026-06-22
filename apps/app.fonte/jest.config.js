@@ -1,6 +1,16 @@
 module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  // Mede cobertura sobre todo o código-fonte, não só arquivos importados por testes.
+  collectCoverageFrom: [
+    'app/**/*.{ts,tsx}',
+    'components/**/*.{ts,tsx}',
+    'features/**/*.{ts,tsx}',
+    'lib/**/*.{ts,tsx}',
+    '!**/*.test.{ts,tsx}',
+    '!**/*.d.ts',
+    '!**/_layout.tsx',
+  ],
   // Unit tests ficam ao lado do código (*.test.ts(x)).
   // Maestro (e2e/) e Playwright web (e2e-web/) NÃO são coletados pelo jest.
   testPathIgnorePatterns: [

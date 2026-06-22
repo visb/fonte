@@ -18,10 +18,15 @@ export default defineConfig({
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     coverage: {
       provider: 'v8',
+      all: true,
       reporter: ['text', 'text-summary'],
-      // Foco da cobertura: a lógica pura testável (helpers de transição/resolução).
-      // Componentes com DnD/efeitos são cobertos pelos E2E (Playwright).
-      include: ['src/features/activities/lib/**'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.d.ts',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+      ],
     },
   },
 });

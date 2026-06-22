@@ -16,5 +16,17 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     // e2e/** é Playwright — fora do Vitest.
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    coverage: {
+      provider: 'v8',
+      all: true,
+      reporter: ['text', 'text-summary'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.d.ts',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+      ],
+    },
   },
 });

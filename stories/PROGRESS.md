@@ -38,6 +38,52 @@ Ordem: <NN → ... → MM>. Fonte de verdade: esta seção + git log.
 <o que passou, o que ficou pendente/bloqueado e por quê, comandos para reproduzir>
 -->
 
+# PROGRESS — stories 77–84 (cobertura de testes — piso 80%)
+
+Rodada autônoma (AUTORUN). Epic **78** (guarda-chuva, config `all:true`/`collectCoverageFrom` já
+mergeada — NÃO se implementa) + filhas de cobertura + e2e document-templates (77).
+
+Ordem: `77 → 79 → 80 → 81 → 84 → 82 → 83`. Fonte de verdade: esta seção + git log.
+
+**Natureza**: rodada de TESTES. Salvo 77 (e2e novo) e 83 (config de gate CI), nenhuma story muda
+código de produção/contrato/migration/Postman. Sem dependência externa → **nenhum PENDENTE-MANUAL
+esperado**.
+
+## Dependências
+- **77, 79, 80, 81, 82, 84 são independentes** — cada uma toca só o seu pacote; se uma travar,
+  registrar e seguir (não para a fila).
+- **83 (gate) depende de 79, 80, 81, 82 e 84 ≥ 80%** — só mergear o gate quando todas no piso;
+  senão travar threshold parcial dos prontos e registrar BLOQUEADO os demais.
+- **Sub-fases (80a–e, 81a–e, 84a–b)** = checkpoints commitáveis/mergeáveis que sobem a catraca; a
+  story é arquivada quando o pacote inteiro bate 80% statements.
+
+## Baseline real medido em 2026-06-22 (após `all:true`, COM orquestração no denominador)
+api 46.64% · adm 6.00% (1039/17300) · ops 2.87% · app 4.61% · portal 64.26% (723/1125) ·
+api-client 59.62% (446/748). **Re-baselinar cada frontend após excluir `pages/**`/rotas `app/**`** —
+excluir orquestração sobe o % sem teste novo; não contar como progresso.
+
+## Fila
+
+| Ordem | Story | Status | Testes | Commit | Merge |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 77 — e2e document-templates (CRUD + auth) | [ ] | | | |
+| 2 | 79 — cobertura services/api 46→80% | [ ] | | | |
+| 3 | 80 — cobertura adm.fonte 6→80% (80a–80e) | [ ] | | | |
+| 4 | 81 — cobertura ops.fonte 2.87→80% (81a–81e) | [ ] | | | |
+| 5 | 84 — cobertura app.fonte 4.61→80% (84a–84b) | [ ] | | | |
+| 6 | 82 — cobertura portal.fonte + api-client →80% | [ ] | | | |
+| 7 | 83 — catraca global + gate CI | [ ] | | | |
+
+## Log
+
+<!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver> -->
+
+## Resumo final
+
+<preencher ao terminar>
+
+---
+
 # PROGRESS — stories 64–75
 
 Rodada autônoma (AUTORUN). Dois tracks independentes:

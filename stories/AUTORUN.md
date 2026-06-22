@@ -40,37 +40,46 @@ próximo (após o reset) retoma. Colar (ajustar a faixa de stories e a ordem):
 
 ## Stories da rodada
 
+Epic **78** (piso de cobertura 80%) + filhas + e2e document-templates (77). **78 NÃO se implementa**
+— é guarda-chuva; a instrumentação (`all:true`/`collectCoverageFrom`) já foi aplicada e mergeada.
+Trabalho = escrever testes até cada pacote bater **80% statements** e travar a catraca.
+
 | #   | Tipo / o que é | Implementar? |
 | --- | --- | --- |
-| 64 | Atividades — visual do responsável no card (frontend) | SIM |
-| 65 | Atividades — comentários no modal de detalhes (backend + adm + ops) | SIM |
-| 66 | Atividades — histórico de eventos do card + abas (depende 65) | SIM |
-| 67 | Eventos — toggle de inscrição por evento | SIM |
-| 68 | Eventos — campos de formulário customizáveis (depende 67) | SIM |
-| 69 | Eventos — pagamento avulso da inscrição (backend + gateway Pagar.me) | SIM (gateway mockado, sem secret real) |
-| 70 | Eventos — página de pagamento no portal + notificações (depende 69) | SIM (mail/WhatsApp mockados) |
-| 71 | Atividades — descrição fora do board (só nos detalhes) | SIM |
-| 72 | Atividades — editor WYSIWYG markdown na descrição (depende 71) | SIM |
-| 73 | Atividades — anexos na atividade e nos comentários (depende 65) | SIM (storage mockado se faltar credencial) |
-| 74 | Atividades — áudio upload+gravação com player (depende 73) | SIM |
-| 75 | Atividades — devolver solicitação para rascunho (REQUESTED → DRAFT) | SIM |
+| 77 | e2e document-templates (CRUD + auth) — backend | SIM |
+| 78 | EPIC cobertura 80% (meta/estratégia/config) | NÃO — guarda-chuva, config já mergeada |
+| 79 | Cobertura `services/api` 46→80% | SIM (testes; sem mudar contrato) |
+| 80 | Cobertura `adm.fonte` 6→80% — sub-fases 80a–80e | SIM (sub-fase = checkpoint/merge) |
+| 81 | Cobertura `ops.fonte` 2.87→80% — sub-fases 81a–81e | SIM (sub-fase = checkpoint/merge) |
+| 84 | Cobertura `app.fonte` 4.61→80% — 84a–84b | SIM |
+| 82 | Cobertura `portal.fonte` 64→80% + `api-client` 60→80% | SIM |
+| 83 | Catraca global + gate CI (`coverageThreshold`/`thresholds`) | SIM (depende de 79,80,81,82,84) |
 
 ## Ordem e dependências
 
 ```
-64 → 65 → 66 → 67 → 68 → 69 → 70 → 71 → 72 → 73 → 74 → 75
+77 → 79 → 80 → 81 → 84 → 82 → 83
 ```
 
-Dois tracks independentes; a ordem numérica respeita todas as deps:
-- **Atividades**: 65 e 71 dependem só da 62 (feita). 66 dep 65. 72 dep 71. 73 dep 65. 74 dep 73.
-  64 e 75 independentes.
-- **Eventos** (sub-chain rígida 67→68→69→70, não pular): 68 dep 67; 69 dep 67+58; 70 dep 69+portal 58.
-- Travou uma story → suas **filhas na sub-chain** travam junto: registrar e parar **aquela**
-  sub-chain. Os dois tracks (e sub-chains independentes) seguem normalmente — não parar a fila inteira.
+- **Sem dependência rígida de contrato entre 77, 79, 80, 81, 82, 84** — cada uma toca **só o seu
+  pacote** (api / adm / ops / app / portal+api-client). Podem ser reordenadas/puladas sem travar a
+  fila: se uma bloquear, registrar e seguir para a próxima.
+- **83 é a ÚNICA com dependência rígida**: trava o piso de TODOS os pacotes — só rodar quando 79, 80,
+  81, 82 e 84 estiverem ≥ 80%. Se alguma dessas ficar abaixo de 80%, **83 fica BLOQUEADA** (registrar
+  e não mergear o gate; pode-se travar threshold parcial só dos pacotes já no piso).
+- **Sub-fases internas (80a–e, 81a–e, 84a–b)**: cada sub-fase é um **checkpoint commitável e
+  mergeável** que sobe a catraca daquele pacote (não um PR gigante). A story só é **arquivada** quando
+  o pacote inteiro atinge 80% statements. Registrar cada sub-fase no Log do PROGRESS.
 
-- Declarar dependências rígidas. Se houver (story B consome contrato de A), a fila é **sequencial**:
-  se A bloquear, B também fica bloqueada — registrar e **parar a fila**, não pular.
-- Sem dependência rígida, pode reordenar por conveniência (ex: do mais isolado ao mais acoplado).
+### Regra de honestidade da cobertura (vale p/ 79–84)
+
+- **Re-baseline após exclusões**: ao adicionar `pages/**` (web) / rotas `app/**` (RN) ao
+  `coverage.exclude`/`collectCoverageFrom`, o % sobe **sem teste novo**. Medir e registrar o novo
+  ponto de partida ANTES de contar progresso. Excluir orquestração ≠ progresso de teste.
+- **Sem teste de fumaça sem assert** (CLAUDE.md). Arquivo que só atinge 80% testando orquestração vai
+  para `exclude` **com comentário justificando**, não com teste vazio.
+- **Catraca sobe, nunca desce**: a cada sub-fase mergeada, subir o threshold do pacote ao valor
+  atingido. Baixar threshold = proibido sem justificativa no PROGRESS.
 
 ## Branches — uma por story, mergeada na main ao fechar
 
@@ -98,20 +107,27 @@ MOCK**; nunca chamar API real, nunca inventar chave, nunca commitar segredo. Pon
 
 ## Cuidados específicos da rodada
 
-- **Migrations novas** (65 `activity_comments`, 66 `activity_events`, 68 campos custom de evento,
-  69 pagamento de evento, 73 `activity_attachments`): sempre migration nova (nunca editar
-  existente); rodar `migration:run:test` antes do e2e. Aditivas, sem drop destrutivo.
-- **Contratos compartilhados**: 65/66/68/69/73/74 mexem em `packages/types` e/ou `api-client` →
-  rodar `build:types` + `build:api-client` antes de subir API/adm (suíte adm quebra sem o `dist/`).
-- **Endpoints novos** (65 comentários, 66 histórico, 69 pagamento, 73/74 anexos) → atualizar
-  `fonte-api.postman_collection.json` na mesma story.
-- **Externos sem credencial — MOCK, não bloquear** (regra geral da seção acima):
-  - 69/70 Pagar.me + mail/WhatsApp → mock do gateway/notificação; PENDENTE-MANUAL no PROGRESS.
-  - 73/74 storage/bucket de anexo/áudio → mock do upload nos testes se faltar credencial.
-- **74 áudio estende a allowlist de mimetype do controller da 73** — não criar modelo novo; reusar
-  `activity_attachments`. Verificar que a 73 já mergeou antes (sub-chain).
-- **72 WYSIWYG**: escopo só descrição da atividade; comentários (65) seguem texto puro — não
-  vazar o editor pros comentários.
+- **Rodada de TESTES, não de feature.** Salvo a 77 (e2e novo) e a 83 (config de gate), **nenhuma
+  story muda código de produção, contrato, DTO, endpoint, migration ou Postman.** Se um teste só
+  passa mudando o código-fonte, é refactor mínimo de testabilidade (extrair lógica de tela p/
+  hook/lib) — citar no commit; nada de mudar comportamento.
+- **Sem migrations, sem `packages/types`/`api-client`** alterados (exceto 82 que ESCREVE testes do
+  api-client, sem mudar o código dele). Ainda assim rodar `build:types && build:api-client` no
+  bootstrap — a suíte adm/portal precisa do `dist/`.
+- **Sem dependência externa / credencial** em nenhuma destas stories → **nada de PENDENTE-MANUAL**
+  esperado. Cobertura é teste puro + mocks locais.
+- **77 (e2e document-templates)**: requer `pnpm test:setup` + `pnpm dev:api:test`. Sem S3 no test env,
+  o caminho de URL assinada (story 76) fica fora — cobrir só CRUD/auth/validação/upload local, como o
+  `.md` descreve. Sem novo endpoint; limpeza no `afterAll`.
+- **80/81/84 (frontends)**: excluir orquestração do denominador (`pages/**` web, rotas `app/**` +
+  `_layout.tsx` RN) e **re-baselinar** (ver "Regra de honestidade"). Mock central do `@fonte/api-client`
+  num helper de teste reutilizável entre features. Forms: rhf+zod (web) / `Controller` (RN).
+- **83 (gate)**: editar `coverageThreshold` (jest: api/ops/app) e `coverage.thresholds` (vitest:
+  adm/portal/api-client) p/ `statements: 80` (+ branch/function no valor atingido) e garantir que o
+  CI roda `*:cov` e falha abaixo do piso. SÓ mergear quando 79–82+84 estiverem no piso; caso
+  contrário, travar threshold só dos pacotes prontos e registrar BLOQUEADO os demais.
+- **DoD por sub-fase**: a suíte do pacote tocado (`test:<pkg>:unit -- --coverage` / `test:api(:cov)`)
+  **verde** e cobertura **≥ piso vigente** antes de mergear. Cobertura abaixo do piso = não mergeia.
 
 ## Bootstrap de serviços (uma vez, no início, em background)
 

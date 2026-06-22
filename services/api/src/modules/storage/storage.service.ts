@@ -141,6 +141,53 @@ export class StorageService implements OnModuleInit {
     return signedUrl;
   }
 
+  // Matches the `src="..."`/`src='...'` of an <img> tag. The non-greedy
+  // `[^>]*?` keeps the match inside a single tag and the quote backref (\2)
+  // bounds the URL, so other attributes/tags are never touched.
+  private static readonly IMG_SRC_RE = /(<img\b[^>]*?\bsrc=)(["'])(.*?)\2/gi;
+
+  // Strips the presign query (?X-Amz-...) from an S3 URL, recovering the stable
+  // canonical object URL. Non-S3 URLs (local /uploads, external) pass through.
+  canonicalizeS3Url(url: string): string {
+    if (!this.publicBaseUrl) return url;
+    const qIdx = url.indexOf("?");
+    const base = qIdx >= 0 ? url.slice(0, qIdx) : url;
+    return this.isS3Url(base) ? base : url;
+  }
+
+  // Rewrites every <img src> S3 URL in an HTML blob to its canonical form.
+  // Applied on write so persisted content never holds an expiring signature.
+  stripContentSignatures(html: string): string {
+    if (!this.publicBaseUrl || !html) return html;
+    return html.replace(
+      StorageService.IMG_SRC_RE,
+      (_m, pre: string, quote: string, src: string) =>
+        `${pre}${quote}${this.canonicalizeS3Url(src)}${quote}`,
+    );
+  }
+
+  // Signs every <img src> S3 URL in an HTML blob (canonicalizing first, so an
+  // already-signed src is re-signed fresh). Applied on read/render so the editor
+  // and the PDF always receive a valid, non-expired URL. No-op outside S3 mode.
+  async signContentUrls(html: string): Promise<string> {
+    if (!this.isS3Mode() || !this.publicBaseUrl || !html) return html;
+    const matches = [...html.matchAll(StorageService.IMG_SRC_RE)];
+    if (!matches.length) return html;
+    let result = "";
+    let last = 0;
+    for (const m of matches) {
+      const [full, pre, quote, src] = m as unknown as [string, string, string, string];
+      const start = m.index ?? 0;
+      result += html.slice(last, start);
+      const canonical = this.canonicalizeS3Url(src);
+      const signed = this.isS3Url(canonical) ? await this.signUrl(canonical) : src;
+      result += `${pre}${quote}${signed}${quote}`;
+      last = start + full.length;
+    }
+    result += html.slice(last);
+    return result;
+  }
+
   // Removes expired cache entries. Called by SignedUrlCacheScheduler so memory
   // is reclaimed even for entries that are never read again.
   sweepExpiredUrls(): number {

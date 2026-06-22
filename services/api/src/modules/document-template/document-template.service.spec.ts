@@ -19,11 +19,25 @@ function makeRepo(overrides: Record<string, jest.Mock> = {}) {
   };
 }
 
-function makeService(repo: ReturnType<typeof makeRepo>, relativeRepo = makeRepo()) {
+// Storage stub: identity transforms by default so existing tests are unaffected.
+// Tests that assert signing/stripping pass their own spies via `storage`.
+function makeStorage(overrides: Partial<StorageService> = {}): StorageService {
+  return {
+    stripContentSignatures: (html: string) => html,
+    signContentUrls: async (html: string) => html,
+    ...overrides,
+  } as unknown as StorageService;
+}
+
+function makeService(
+  repo: ReturnType<typeof makeRepo>,
+  relativeRepo = makeRepo(),
+  storage: StorageService = makeStorage(),
+) {
   return new DocumentTemplateService(
     repo as unknown as Repository<DocumentTemplate>,
     relativeRepo as unknown as Repository<Relative>,
-    {} as StorageService,
+    storage,
   );
 }
 
@@ -60,6 +74,98 @@ describe('DocumentTemplateService.update', () => {
     });
     const service = makeService(repo);
     await expect(service.update('tpl-1', { name: 'Outro' })).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+// Story 76 — o content guarda a URL CANÔNICA (sem assinatura, que expira em
+// 24h); a assinatura é aplicada na hora de servir (GET/PDF). Sem isso, a URL
+// assinada gravada no <img src> expirava e a imagem quebrava.
+describe('DocumentTemplateService signed-url handling (story 76)', () => {
+  it('strips signatures from content before persisting on create', async () => {
+    const repo = makeRepo();
+    const strip = jest.fn().mockReturnValue('<img src="https://s3/doc.png">');
+    const service = makeService(repo, makeRepo(), makeStorage({ stripContentSignatures: strip }));
+
+    await service.create('Termo', '<img src="https://s3/doc.png?X-Amz-sig">');
+
+    expect(strip).toHaveBeenCalledWith('<img src="https://s3/doc.png?X-Amz-sig">');
+    expect(repo.create.mock.calls[0][0].content).toBe('<img src="https://s3/doc.png">');
+  });
+
+  it('strips signatures from content before persisting on update', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '' }),
+    });
+    const strip = jest.fn().mockReturnValue('<img src="https://s3/doc.png">');
+    const service = makeService(repo, makeRepo(), makeStorage({ stripContentSignatures: strip }));
+
+    await service.update('tpl-1', { content: '<img src="https://s3/doc.png?X-Amz-sig">' });
+
+    expect(strip).toHaveBeenCalledWith('<img src="https://s3/doc.png?X-Amz-sig">');
+    expect(repo.update.mock.calls[0][1]).toMatchObject({ content: '<img src="https://s3/doc.png">' });
+  });
+
+  it('does not call strip on update when content is not provided', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '' }),
+    });
+    const strip = jest.fn((h: string) => h);
+    const service = makeService(repo, makeRepo(), makeStorage({ stripContentSignatures: strip }));
+
+    await service.update('tpl-1', { isRequired: true });
+
+    expect(strip).not.toHaveBeenCalled();
+    expect(repo.update.mock.calls[0][1]).toEqual({ isRequired: true });
+  });
+
+  it('signs content urls on findOne', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', content: '<img src="https://s3/doc.png">' }),
+    });
+    const sign = jest.fn().mockResolvedValue('<img src="https://s3/doc.png?X-Amz-signed">');
+    const service = makeService(repo, makeRepo(), makeStorage({ signContentUrls: sign }));
+
+    const result = await service.findOne('tpl-1');
+
+    expect(sign).toHaveBeenCalledWith('<img src="https://s3/doc.png">');
+    expect(result.content).toBe('<img src="https://s3/doc.png?X-Amz-signed">');
+  });
+
+  it('signs content urls for every template on findAll', async () => {
+    const repo = makeRepo({
+      find: jest.fn().mockResolvedValue([
+        { id: 'a', content: '<img src="https://s3/a.png">' },
+        { id: 'b', content: '<img src="https://s3/b.png">' },
+      ]),
+    });
+    const sign = jest.fn(async (h: string) => h.replace('">', '?signed">'));
+    const service = makeService(repo, makeRepo(), makeStorage({ signContentUrls: sign }));
+
+    const result = await service.findAll();
+
+    expect(sign).toHaveBeenCalledTimes(2);
+    expect(result[0].content).toBe('<img src="https://s3/a.png?signed">');
+    expect(result[1].content).toBe('<img src="https://s3/b.png?signed">');
+  });
+
+  it('injects signed image urls into the PDF html (puppeteer must fetch a valid URL)', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({
+        id: 'tpl-1',
+        name: 'Termo',
+        content: '<img src="https://s3/logo.png"><p>{{name}}</p>',
+      }),
+    });
+    const sign = jest
+      .fn()
+      .mockResolvedValue('<img src="https://s3/logo.png?X-Amz-signed"><p>{{name}}</p>');
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }), makeStorage({ signContentUrls: sign }));
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'João' } as Resident);
+
+    expect(html).toContain('src="https://s3/logo.png?X-Amz-signed"');
+    expect(html).not.toContain('src="https://s3/logo.png"><p>');
+    expect(html).toContain('<p>João</p>');
   });
 });
 

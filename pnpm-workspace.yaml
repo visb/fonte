@@ -12,7 +12,7 @@ allowBuilds:
   '@swc/core': true
   bcrypt: true
   esbuild: true
-  puppeteer: false
+  puppeteer: true
   sharp: true
 onlyBuiltDependencies:
   - "@nestjs/core"
@@ -20,3 +20,4 @@ onlyBuiltDependencies:
   - "@sentry/node-cpu-profiler"
   - bcrypt
   - esbuild
+  - puppeteer

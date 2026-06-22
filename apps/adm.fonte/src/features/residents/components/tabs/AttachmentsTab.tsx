@@ -1,9 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import {
-  ChevronDown, Download, ExternalLink, FileText, Loader2, Paperclip, Trash2, Upload,
+  AlertCircle, ChevronDown, Download, ExternalLink, FileText, Loader2, Paperclip, Trash2, Upload,
 } from 'lucide-react';
 import { MaritalStatus } from '@fonte/types';
 import { api } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -234,6 +235,7 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
   const { data: templates = [] } = useDocumentTemplates();
 
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [missingDialog, setMissingDialog] = useState<{
     missingFields: MissingField[];
     template: DocumentTemplate;
@@ -241,6 +243,7 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
 
   const downloadPdf = useCallback(async (template: DocumentTemplate) => {
     setGeneratingId(template.id);
+    setGenerateError(null);
     try {
       const blob = await api.residents.downloadDocumentPdf(residentId, template.id);
       const url = URL.createObjectURL(blob);
@@ -251,6 +254,8 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+    } catch (e) {
+      setGenerateError(getErrorMessage(e, `Falha ao gerar "${template.name}". Tente novamente em instantes.`));
     } finally {
       setGeneratingId(null);
     }
@@ -277,6 +282,23 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
 
   return (
     <div className="space-y-6">
+      {generateError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+        >
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span className="flex-1">{generateError}</span>
+          <button
+            type="button"
+            onClick={() => setGenerateError(null)}
+            className="text-xs underline underline-offset-2 hover:no-underline"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
+
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

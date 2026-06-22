@@ -66,8 +66,10 @@ export class DocumentTemplateService implements OnModuleDestroy {
       .replace(/^-|-$/g, '');
   }
 
-  findAll(): Promise<DocumentTemplate[]> {
-    return this.repo.find({ order: { name: 'ASC' } });
+  async findAll(): Promise<DocumentTemplate[]> {
+    const templates = await this.repo.find({ order: { name: 'ASC' } });
+    await Promise.all(templates.map((t) => this.signContent(t)));
+    return templates;
   }
 
   // Templates marcados para assinatura no acolhimento.
@@ -75,17 +77,31 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return this.repo.find({ where: { signAtAdmission: true }, order: { name: 'ASC' } });
   }
 
+  // Signs every embedded <img src> S3 URL in the template content so the editor
+  // and the PDF always receive a valid, non-expired URL. Mutates and returns the
+  // entity for convenience. No-op outside S3 mode.
+  private async signContent(template: DocumentTemplate): Promise<DocumentTemplate> {
+    template.content = await this.storageService.signContentUrls(template.content);
+    return template;
+  }
+
   async findOne(id: string): Promise<DocumentTemplate> {
     const template = await this.repo.findOne({ where: { id } });
     if (!template) throw new NotFoundException(`Template ${id} not found`);
-    return template;
+    return this.signContent(template);
   }
 
   async create(name: string, content: string, isRequired = false, signAtAdmission = false): Promise<DocumentTemplate> {
     const existing = await this.repo.findOne({ where: { name } });
     if (existing) throw new ConflictException(`Template com nome "${name}" já existe`);
-    const template = this.repo.create({ name, content, isRequired, signAtAdmission });
-    return this.repo.save(template);
+    // Persist the canonical (unsigned) S3 URLs — never an expiring signature.
+    const template = this.repo.create({
+      name,
+      content: this.storageService.stripContentSignatures(content),
+      isRequired,
+      signAtAdmission,
+    });
+    return this.signContent(await this.repo.save(template));
   }
 
   async update(id: string, data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired' | 'signAtAdmission'>>): Promise<DocumentTemplate> {
@@ -94,7 +110,12 @@ export class DocumentTemplateService implements OnModuleDestroy {
       const conflict = await this.repo.findOne({ where: { name: data.name } });
       if (conflict && conflict.id !== id) throw new ConflictException(`Template com nome "${data.name}" já existe`);
     }
-    await this.repo.update(id, data);
+    // Persist the canonical (unsigned) S3 URLs — never an expiring signature.
+    const persisted =
+      data.content !== undefined
+        ? { ...data, content: this.storageService.stripContentSignatures(data.content) }
+        : data;
+    await this.repo.update(id, persisted);
     return this.findOne(id);
   }
 

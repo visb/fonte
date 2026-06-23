@@ -33,4 +33,8 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|nativewind|react-native-css-interop|@fonte/.*))',
   ],
+  // Catraca de cobertura (story 81): sobe a cada sub-fase, nunca desce. Meta final 80%.
+  coverageThreshold: {
+    global: { statements: 27, branches: 25, functions: 24, lines: 28 },
+  },
 };

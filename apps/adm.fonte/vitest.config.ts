@@ -72,11 +72,13 @@ export default defineConfig({
       //   residents/houses OverviewTab): 64.96% statements.
       // climbing 13 (reset-password dialogs + ActivityDetailsDialog + payables
       //   detail/row/filters): 69.80% statements.
+      // climbing 14 (residents: ContributionPlanCard/RelativeCard/
+      //   ResidentsFilters/ReceivableRow/TrackingEventItem): 72.11% statements.
       thresholds: {
-        statements: 69,
-        branches: 81,
-        functions: 79,
-        lines: 69,
+        statements: 72,
+        branches: 82,
+        functions: 80,
+        lines: 72,
       },
     },
   },

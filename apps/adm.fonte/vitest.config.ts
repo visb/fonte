@@ -37,11 +37,12 @@ export default defineConfig({
       // 80a (residents+activities+staff): 16% statements.
       // 80b (houses+payables+billing): 19% statements.
       // 80c (events+support-groups+associates+census): 20% statements.
+      // 80d (messages+notifications+bible-courses): 25% statements.
       thresholds: {
-        statements: 20,
-        branches: 75,
-        functions: 68,
-        lines: 20,
+        statements: 25,
+        branches: 79,
+        functions: 74,
+        lines: 25,
       },
     },
   },

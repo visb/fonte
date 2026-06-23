@@ -31,6 +31,22 @@ export default defineConfig({
         // Pages são orquestração (layout + composição de hooks/componentes) —
         // cobertas por E2E Playwright, fora do denominador unitário (story 80).
         'src/**/pages/**',
+        // Shell de roteamento/layout (react-router-dom) — orquestração coberta
+        // por E2E Playwright, não por unit. (story 80)
+        'src/App.tsx',
+        'src/components/layout/AppLayout.tsx',
+        // Editor TipTap e seus menus — wiring fino de @tiptap/* + ProseMirror.
+        // Editor real exige um DOM/contenteditable de browser que o jsdom não
+        // implementa; comportamento coberto por E2E. (story 80)
+        'src/features/settings/components/TemplateEditor.tsx',
+        'src/features/settings/components/TableBlockMenu.tsx',
+        'src/features/settings/components/TableToolbar.tsx',
+        'src/features/settings/components/LinkToolbar.tsx',
+        'src/features/settings/components/LinkBubbleMenu.tsx',
+        'src/features/activities/components/ActivityDescriptionEditor.tsx',
+        // AvatarUpload — react-easy-crop + react-webcam (getUserMedia / canvas de
+        // crop). APIs de mídia do browser indisponíveis no jsdom. (story 80)
+        'src/components/AvatarUpload.tsx',
       ],
       // Catraca de cobertura (story 80). Sobe a cada sub-fase (80a→80e), nunca
       // desce. Re-baseline honesto após excluir pages: 7.16% statements.
@@ -50,11 +66,13 @@ export default defineConfig({
       // climbing 9 (ActivityBoard + ResidentFormSections): 45% statements.
       // climbing 10 (ActivityComments + BibleModuleGradesDialog): 47% statements.
       // climbing 11 (ImportReviewStep + ThreadPanel): 48% statements.
+      // exclui orquestração (App/AppLayout/TipTap editors+menus/AvatarUpload) do
+      // denominador — re-baseline honesto 48.82%→54.94% SEM teste novo. (story 80)
       thresholds: {
-        statements: 48,
+        statements: 54,
         branches: 81,
         functions: 79,
-        lines: 48,
+        lines: 54,
       },
     },
   },

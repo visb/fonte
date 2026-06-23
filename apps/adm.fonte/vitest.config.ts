@@ -70,11 +70,13 @@ export default defineConfig({
       // denominador — re-baseline honesto 48.82%→54.94% SEM teste novo. (story 80)
       // climbing 12 (import wizard steps + AttachmentsTab + ReadmissionForm +
       //   residents/houses OverviewTab): 64.96% statements.
+      // climbing 13 (reset-password dialogs + ActivityDetailsDialog + payables
+      //   detail/row/filters): 69.80% statements.
       thresholds: {
-        statements: 64,
+        statements: 69,
         branches: 81,
         functions: 79,
-        lines: 64,
+        lines: 69,
       },
     },
   },

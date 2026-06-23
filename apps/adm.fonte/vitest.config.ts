@@ -74,11 +74,13 @@ export default defineConfig({
       //   detail/row/filters): 69.80% statements.
       // climbing 14 (residents: ContributionPlanCard/RelativeCard/
       //   ResidentsFilters/ReceivableRow/TrackingEventItem): 72.11% statements.
+      // climbing 15 (Approve/CapacityActions/ActivityForm/PayableDialog/
+      //   MissingFieldsDialog/Contributions+Relatives tabs): 75.79% statements.
       thresholds: {
-        statements: 72,
-        branches: 82,
+        statements: 75,
+        branches: 83,
         functions: 80,
-        lines: 72,
+        lines: 75,
       },
     },
   },

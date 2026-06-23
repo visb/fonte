@@ -68,11 +68,13 @@ export default defineConfig({
       // climbing 11 (ImportReviewStep + ThreadPanel): 48% statements.
       // exclui orquestração (App/AppLayout/TipTap editors+menus/AvatarUpload) do
       // denominador — re-baseline honesto 48.82%→54.94% SEM teste novo. (story 80)
+      // climbing 12 (import wizard steps + AttachmentsTab + ReadmissionForm +
+      //   residents/houses OverviewTab): 64.96% statements.
       thresholds: {
-        statements: 54,
+        statements: 64,
         branches: 81,
         functions: 79,
-        lines: 54,
+        lines: 64,
       },
     },
   },

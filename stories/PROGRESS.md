@@ -68,7 +68,7 @@ excluir orquestração sobe o % sem teste novo; não contar como progresso.
 | --- | --- | --- | --- | --- | --- |
 | 1 | 77 — e2e document-templates (CRUD + auth) | [OK] | api e2e document-templates 19✓ (auth/role/validação/CRUD/upload/no-op img s76); suíte e2e 355✓ (só payables 6✗ pré-existente por data); api unit 672✓ | d6884d5 | ba0b41d |
 | 2 | 79 — cobertura services/api 46→80% | [OK] | api unit 813✓/82 suites; cov 81.69% stmt (br 69.76 / fn 78.23 / ln 84.10); e2e 355✓ (só payables 6✗ pré-existente por data) | b9a02f9/b2e0c91/bfc20bd (waves 1-3) | 455d229 |
-| 3 | 80 — cobertura adm.fonte 6→80% (80a–80e) | [ ] | | | |
+| 3 | 80 — cobertura adm.fonte 6→80% (80a–80e) | [PARCIAL] 48.82% | adm unit 589✓ (92 arq); cov 48.82% stmt (br 81.58 / fn 79.06 / ln 48.82); catraca vitest statements:48. 80a–80e completos + 11 rodadas de climbing. Falta p/ 80%: editores TipTap (TemplateEditor 585, ActivityDescriptionEditor, Table*/Link* menus), wizard de import restante (Upload/Documents/Relatives/Summary steps), AttachmentsTab, ReadmissionForm, AppLayout/App, OverviewTab(houses/residents), AvatarUpload (react-easy-crop/webcam). | 80a..80e + climbing 1-11 | 180d065 |
 | 4 | 81 — cobertura ops.fonte 2.87→80% (81a–81e) | [ ] | | | |
 | 5 | 84 — cobertura app.fonte 4.61→80% (84a–84b) | [ ] | | | |
 | 6 | 82 — cobertura portal.fonte + api-client →80% | [ ] | | | |
@@ -77,6 +77,8 @@ excluir orquestração sobe o % sem teste novo; não contar como progresso.
 ## Log
 
 <!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver> -->
+
+[PARCIAL] 80 climbing-11 — testes: adm unit 589✓ (92 arquivos), cobertura 48.82% statements (7081/14504, branches 81.58 / functions 79.06 / lines 48.82). Catraca statements:48. ImportReviewStep (loading de casas, título+avatar+seções, aviso de casa detectada, voltar, submit válido avança) com useHouses + AvatarUpload mockados; ThreadPanel (sem título, loading, vazio, modo lista MessageBubble, link do residente no header, modo chat aprova/rejeita pendente) com hooks de mensagem mockados + vi.hoisted + scrollIntoView stub. — commit: 180d065 (merge) — 2026-06-23 — sem bloqueio. TESTES-ONLY.
 
 [PARCIAL] 80 climbing-10 — testes: adm unit 577✓ (90 arquivos), cobertura 47.06% statements (6826/14504, branches 81.72 / functions 78.69 / lines 47.06). Catraca statements:47. ActivityComments (vazio/lista/erro, submit vazio bloqueia, submit válido muta) com useAuth + hooks + AudioRecorder/CommentItem mockados + vi.hoisted; BibleModuleGradesDialog (null não renderiza, notas atuais nos campos, salvar só células alteradas, nota inválida erro+não salva, sem alteração salva [], erro+pending) — dialog puro, sem hooks. — commit: 04562ed (merge) — 2026-06-23 — sem bloqueio. TESTES-ONLY.
 

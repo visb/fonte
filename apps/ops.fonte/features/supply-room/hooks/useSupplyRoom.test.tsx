@@ -18,12 +18,16 @@ jest.mock('@/lib/api', () => ({
 import { api } from '@/lib/api';
 import {
   useSupplyRoomItems,
+  useSupplyRoomMovements,
+  useCreateSupplyMovement,
   useCreateSupplyItem,
 } from './useSupplyRoom';
 
 const mockApi = api as unknown as {
   supplyRoom: {
     listItems: jest.Mock;
+    listMovements: jest.Mock;
+    createMovement: jest.Mock;
     createItem: jest.Mock;
   };
 };
@@ -63,6 +67,42 @@ describe('useSupplyRoom', () => {
     it('não dispara a query quando houseId é nulo (enabled=false)', () => {
       renderHook(() => useSupplyRoomItems(null), { wrapper: createWrapper() });
       expect(mockApi.supplyRoom.listItems).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('useSupplyRoomMovements', () => {
+    it('busca movimentos por item', async () => {
+      mockApi.supplyRoom.listMovements.mockResolvedValue([{ id: 'mv1' }]);
+      const { result } = renderHook(() => useSupplyRoomMovements('i1'), {
+        wrapper: createWrapper(),
+      });
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(mockApi.supplyRoom.listMovements).toHaveBeenCalledWith({ itemId: 'i1' });
+    });
+
+    it('não dispara sem item', () => {
+      renderHook(() => useSupplyRoomMovements(undefined), { wrapper: createWrapper() });
+      expect(mockApi.supplyRoom.listMovements).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('useCreateSupplyMovement', () => {
+    it('repassa o payload (sem estorno: correção é novo lançamento)', async () => {
+      mockApi.supplyRoom.createMovement.mockResolvedValue({ id: 'mv1' });
+      const { result } = renderHook(() => useCreateSupplyMovement(), {
+        wrapper: createWrapper(),
+      });
+      const input = {
+        itemId: 'i1',
+        type: MovementType.OUT,
+        quantity: 3,
+        responsibleId: 'staff-1',
+        date: '2026-01-01',
+        notes: null,
+      };
+      result.current.mutate(input);
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(mockApi.supplyRoom.createMovement).toHaveBeenCalledWith(input);
     });
   });
 

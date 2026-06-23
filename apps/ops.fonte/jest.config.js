@@ -3,13 +3,19 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   // Mede cobertura sobre todo o código-fonte, não só arquivos importados por testes.
   collectCoverageFrom: [
-    'app/**/*.{ts,tsx}',
     'components/**/*.{ts,tsx}',
     'features/**/*.{ts,tsx}',
     'lib/**/*.{ts,tsx}',
     '!**/*.test.{ts,tsx}',
     '!**/*.d.ts',
     '!**/_layout.tsx',
+    // Rotas Expo Router (app/**) sao orquestracao de navegacao/telas → cobertas por
+    // Maestro E2E, fora do denominador unit (decisao travada story 81 / AUTORUN honestidade).
+    '!app/**/*.{ts,tsx}',
+    // Pages de feature sao orquestracao (layout + composicao de hooks/componentes,
+    // sem logica de negocio — CLAUDE.md: "pages nao fazem fetch"). Cobertas por
+    // Maestro E2E nativo. Mesmo criterio do adm.fonte (src/**/pages/** excluido na story 80).
+    '!features/**/pages/**',
   ],
   // Unit tests ficam ao lado do código (*.test.ts(x)).
   // Maestro (e2e/) e Playwright web (e2e-web/) NÃO são coletados pelo jest.

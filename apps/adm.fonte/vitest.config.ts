@@ -48,11 +48,12 @@ export default defineConfig({
       // climbing 7 (EventTimelineItem + ResidentsTab): 42% statements.
       // climbing 8 (AddFollowUpDialog + PrivacyTab): 44% statements.
       // climbing 9 (ActivityBoard + ResidentFormSections): 45% statements.
+      // climbing 10 (ActivityComments + BibleModuleGradesDialog): 47% statements.
       thresholds: {
-        statements: 45,
+        statements: 47,
         branches: 81,
         functions: 78,
-        lines: 45,
+        lines: 47,
       },
     },
   },

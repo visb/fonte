@@ -41,11 +41,12 @@ export default defineConfig({
       // 80e (backup+settings+dashboard+auth): 27% statements.
       // climbing 1 (forms: payable/event/associate): 30% statements.
       // climbing 2 (dialogs: resident access/promote, support-group): 33% statements.
+      // climbing 3 (ActivityCard + StaffOverviewTab): 35% statements.
       thresholds: {
-        statements: 33,
+        statements: 35,
         branches: 80,
-        functions: 76,
-        lines: 33,
+        functions: 77,
+        lines: 35,
       },
     },
   },

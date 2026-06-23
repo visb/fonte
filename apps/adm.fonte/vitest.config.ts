@@ -39,11 +39,12 @@ export default defineConfig({
       // 80c (events+support-groups+associates+census): 20% statements.
       // 80d (messages+notifications+bible-courses): 25% statements.
       // 80e (backup+settings+dashboard+auth): 27% statements.
+      // climbing 1 (forms: payable/event/associate): 30% statements.
       thresholds: {
-        statements: 27,
-        branches: 80,
-        functions: 76,
-        lines: 27,
+        statements: 30,
+        branches: 81,
+        functions: 77,
+        lines: 30,
       },
     },
   },

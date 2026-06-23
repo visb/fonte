@@ -47,11 +47,12 @@ export default defineConfig({
       // climbing 6 (RegisterPayment/ChangePlan/QuickAdd): 40% statements.
       // climbing 7 (EventTimelineItem + ResidentsTab): 42% statements.
       // climbing 8 (AddFollowUpDialog + PrivacyTab): 44% statements.
+      // climbing 9 (ActivityBoard + ResidentFormSections): 45% statements.
       thresholds: {
-        statements: 44,
+        statements: 45,
         branches: 81,
         functions: 78,
-        lines: 44,
+        lines: 45,
       },
     },
   },

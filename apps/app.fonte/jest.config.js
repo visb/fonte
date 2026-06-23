@@ -19,7 +19,7 @@ module.exports = {
   ],
   // Catraca de cobertura (story 84). Sobe a cada sub-fase mergeada, nunca desce.
   coverageThreshold: {
-    global: { statements: 6, branches: 5, functions: 8, lines: 7 },
+    global: { statements: 28, branches: 29, functions: 29, lines: 30 },
   },
   // Unit tests ficam ao lado do código (*.test.ts(x)).
   // Maestro (e2e/) e Playwright web (e2e-web/) NÃO são coletados pelo jest.

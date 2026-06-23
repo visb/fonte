@@ -23,6 +23,9 @@ jest.mock('expo-av', () => ({
 }));
 jest.mock('@/lib/api', () => ({ resolveAssetUrl: (u: string | null) => u }));
 
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Audio } from 'expo-av';
 import { MessageBubble } from './MessageBubble';
 import { AttachmentPreviews } from './AttachmentPreviews';
 import { AttachmentMenuSheet } from './AttachmentMenuSheet';
@@ -137,6 +140,47 @@ describe('MessageInput', () => {
     render(<MessageInput onSend={jest.fn()} />);
     fireEvent.press(screen.getByText('icon:add'));
     expect(screen.getByText('Enviar')).toBeTruthy();
+  });
+
+  it('galeria adiciona preview de anexo', async () => {
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file://f.jpg', mimeType: 'image/jpeg', fileName: 'f.jpg' }],
+    });
+    render(<MessageInput onSend={jest.fn()} />);
+    fireEvent.press(screen.getByText('icon:add'));
+    fireEvent.press(screen.getByText('Galeria'));
+    await waitFor(() => expect(screen.getAllByText('icon:close').length).toBeGreaterThan(0));
+  });
+
+  it('documento cancelado não adiciona anexo', async () => {
+    (DocumentPicker.getDocumentAsync as jest.Mock).mockResolvedValue({ canceled: true });
+    render(<MessageInput onSend={jest.fn()} />);
+    fireEvent.press(screen.getByText('icon:add'));
+    fireEvent.press(screen.getByText('Documento'));
+    await waitFor(() => expect(DocumentPicker.getDocumentAsync).toHaveBeenCalled());
+  });
+
+  it('gravar áudio (pressIn) sem permissão não inicia', async () => {
+    (Audio.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: false });
+    render(<MessageInput onSend={jest.fn()} />);
+    fireEvent(screen.getByText('icon:mic').parent as never, 'pressIn');
+    await waitFor(() => expect(Audio.requestPermissionsAsync).toHaveBeenCalled());
+    expect(Audio.Recording.createAsync).not.toHaveBeenCalled();
+  });
+
+  it('gravar áudio com permissão inicia a gravação (mostra "Gravando...")', async () => {
+    (Audio.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (Audio.setAudioModeAsync as jest.Mock).mockResolvedValue(undefined);
+    (Audio.Recording.createAsync as jest.Mock).mockResolvedValue({
+      recording: {
+        stopAndUnloadAsync: jest.fn().mockResolvedValue({}),
+        getURI: () => 'file://r.m4a',
+      },
+    });
+    render(<MessageInput onSend={jest.fn()} />);
+    fireEvent(screen.getByText('icon:mic').parent as never, 'pressIn');
+    await waitFor(() => expect(screen.getByText(/Gravando/)).toBeTruthy());
   });
 });
 

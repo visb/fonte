@@ -78,11 +78,13 @@ export default defineConfig({
       //   MissingFieldsDialog/Contributions+Relatives tabs): 75.79% statements.
       // climbing 16 (associates detail/row + SalesSummaryCards + AdmissionsTab +
       //   NotificationsPanel + HouseFormFields): 79.01% statements.
+      // climbing 17 (PayablesSummaryCards + OverviewIndicesCards + RegistrationCard):
+      //   80.02% statements — META 80% ATINGIDA. Catraca final.
       thresholds: {
-        statements: 79,
+        statements: 80,
         branches: 83,
         functions: 80,
-        lines: 79,
+        lines: 80,
       },
     },
   },

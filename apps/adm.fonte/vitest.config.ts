@@ -76,11 +76,15 @@ export default defineConfig({
       //   ResidentsFilters/ReceivableRow/TrackingEventItem): 72.11% statements.
       // climbing 15 (Approve/CapacityActions/ActivityForm/PayableDialog/
       //   MissingFieldsDialog/Contributions+Relatives tabs): 75.79% statements.
+      // climbing 16 (associates detail/row + SalesSummaryCards + AdmissionsTab +
+      //   NotificationsPanel + HouseFormFields): 79.01% statements.
+      // climbing 17 (PayablesSummaryCards + OverviewIndicesCards + RegistrationCard):
+      //   80.02% statements — META 80% ATINGIDA. Catraca final.
       thresholds: {
-        statements: 75,
+        statements: 80,
         branches: 83,
         functions: 80,
-        lines: 75,
+        lines: 80,
       },
     },
   },

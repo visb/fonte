@@ -45,11 +45,12 @@ export default defineConfig({
       // climbing 4 (PersonalDataFields + BibleClassDialog): 36% statements.
       // climbing 5 (PayPayable/BibleModule/AddMinistry dialogs): 38% statements.
       // climbing 6 (RegisterPayment/ChangePlan/QuickAdd): 40% statements.
+      // climbing 7 (EventTimelineItem + ResidentsTab): 42% statements.
       thresholds: {
-        statements: 40,
+        statements: 42,
         branches: 80,
-        functions: 77,
-        lines: 40,
+        functions: 78,
+        lines: 42,
       },
     },
   },

@@ -35,6 +35,6 @@ module.exports = {
   ],
   // Catraca de cobertura (story 81): sobe a cada sub-fase, nunca desce. Meta final 80%.
   coverageThreshold: {
-    global: { statements: 65, branches: 60, functions: 67, lines: 66 },
+    global: { statements: 73, branches: 66, functions: 76, lines: 76 },
   },
 };

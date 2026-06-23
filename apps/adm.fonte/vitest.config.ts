@@ -46,11 +46,12 @@ export default defineConfig({
       // climbing 5 (PayPayable/BibleModule/AddMinistry dialogs): 38% statements.
       // climbing 6 (RegisterPayment/ChangePlan/QuickAdd): 40% statements.
       // climbing 7 (EventTimelineItem + ResidentsTab): 42% statements.
+      // climbing 8 (AddFollowUpDialog + PrivacyTab): 44% statements.
       thresholds: {
-        statements: 42,
-        branches: 80,
+        statements: 44,
+        branches: 81,
         functions: 78,
-        lines: 42,
+        lines: 44,
       },
     },
   },

@@ -38,6 +38,50 @@ Ordem: <NN → ... → MM>. Fonte de verdade: esta seção + git log.
 <o que passou, o que ficou pendente/bloqueado e por quê, comandos para reproduzir>
 -->
 
+# PROGRESS — stories 85–91 (cobertura de testes — piso 90%)
+
+Rodada autônoma (AUTORUN). Epic **85** (guarda-chuva, NÃO se implementa) + filhas. Sequência do epic
+78 (que travou 80%, já arquivado). Trabalho = subir cada pacote a **90% statements** e a catraca.
+
+Ordem: `86 → 87 → 88 → 89 → 90 → 91`. Fonte de verdade: esta seção + git log.
+
+**Natureza**: rodada de TESTES. Salvo 91 (config de gate CI), nenhuma story muda código de produção/
+contrato/migration/Postman. Sem dependência externa → **nenhum PENDENTE-MANUAL esperado**.
+
+## Dependências
+- **86, 87, 88, 89, 90 são independentes** — cada uma toca só o seu pacote; se uma travar, registrar
+  e seguir (não para a fila).
+- **91 (gate) depende de 86–90 ≥ 90%** — só mergear o gate quando todas no piso; senão travar
+  threshold parcial dos prontos e registrar BLOQUEADO os demais.
+- **Sub-fases (87a–e)** = checkpoints commitáveis/mergeáveis que sobem a catraca; a story é arquivada
+  quando o pacote inteiro bate 90% statements.
+
+## Baseline (verificado 2026-06-26, gate 80% verde)
+api 81.69% (4359/5336) · adm 80.02% (10314/12888) · ops 81.4% (1545/1898) · app 83.77% (284/339) ·
+portal 83.17% (717/862) · api-client 99.06% (741/748). Exclusões de orquestração já aplicadas (epic
+78) — **não ampliar** para inflar; catraca só sobe.
+
+## Fila
+
+| Ordem | Story | Status | Testes | Commit | Merge |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 86 — cobertura services/api 81.69→90% | [ ] | | | |
+| 2 | 87 — cobertura adm.fonte 80.02→90% (87a–87e) | [ ] | | | |
+| 3 | 88 — cobertura ops.fonte 81.4→90% | [ ] | | | |
+| 4 | 89 — cobertura app.fonte 83.77→90% | [ ] | | | |
+| 5 | 90 — cobertura portal.fonte 83.17→90% + api-client trava 90% | [ ] | | | |
+| 6 | 91 — catraca global 90% + gate CI | [ ] | | | |
+
+## Log
+
+<!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver> -->
+
+## Resumo final
+
+<preencher ao terminar>
+
+---
+
 # PROGRESS — stories 77–84 (cobertura de testes — piso 80%)
 
 Rodada autônoma (AUTORUN). Epic **78** (guarda-chuva, config `all:true`/`collectCoverageFrom` já

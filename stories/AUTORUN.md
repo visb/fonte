@@ -40,38 +40,37 @@ próximo (após o reset) retoma. Colar (ajustar a faixa de stories e a ordem):
 
 ## Stories da rodada
 
-Epic **78** (piso de cobertura 80%) + filhas + e2e document-templates (77). **78 NÃO se implementa**
-— é guarda-chuva; a instrumentação (`all:true`/`collectCoverageFrom`) já foi aplicada e mergeada.
-Trabalho = escrever testes até cada pacote bater **80% statements** e travar a catraca.
+Epic **85** (piso de cobertura **90%**) + filhas 86–91. Sequência do epic 78 (que já travou 80% e
+foi arquivado). **85 NÃO se implementa** — é guarda-chuva. Trabalho = escrever testes até cada
+pacote bater **90% statements** e subir a catraca (story 91 trava o gate).
 
 | #   | Tipo / o que é | Implementar? |
 | --- | --- | --- |
-| 77 | e2e document-templates (CRUD + auth) — backend | SIM |
-| 78 | EPIC cobertura 80% (meta/estratégia/config) | NÃO — guarda-chuva, config já mergeada |
-| 79 | Cobertura `services/api` 46→80% | SIM (testes; sem mudar contrato) |
-| 80 | Cobertura `adm.fonte` 6→80% — sub-fases 80a–80e | SIM (sub-fase = checkpoint/merge) |
-| 81 | Cobertura `ops.fonte` 2.87→80% — sub-fases 81a–81e | SIM (sub-fase = checkpoint/merge) |
-| 84 | Cobertura `app.fonte` 4.61→80% — 84a–84b | SIM |
-| 82 | Cobertura `portal.fonte` 64→80% + `api-client` 60→80% | SIM |
-| 83 | Catraca global + gate CI (`coverageThreshold`/`thresholds`) | SIM (depende de 79,80,81,82,84) |
+| 85 | EPIC cobertura 90% (meta/estratégia/fila) | NÃO — guarda-chuva |
+| 86 | Cobertura `services/api` 81.69→90% | SIM (testes; sem mudar contrato) |
+| 87 | Cobertura `adm.fonte` 80.02→90% — sub-fases 87a–87e | SIM (sub-fase = checkpoint/merge) |
+| 88 | Cobertura `ops.fonte` 81.4→90% | SIM |
+| 89 | Cobertura `app.fonte` 83.77→90% | SIM |
+| 90 | Cobertura `portal.fonte` 83.17→90% + `api-client` 99→trava 90% | SIM |
+| 91 | Catraca global 90% + gate CI (`coverageThreshold`/`thresholds`) | SIM (depende de 86–90) |
 
 ## Ordem e dependências
 
 ```
-77 → 79 → 80 → 81 → 84 → 82 → 83
+86 → 87 → 88 → 89 → 90 → 91
 ```
 
-- **Sem dependência rígida de contrato entre 77, 79, 80, 81, 82, 84** — cada uma toca **só o seu
+- **Sem dependência rígida de contrato entre 86, 87, 88, 89, 90** — cada uma toca **só o seu
   pacote** (api / adm / ops / app / portal+api-client). Podem ser reordenadas/puladas sem travar a
   fila: se uma bloquear, registrar e seguir para a próxima.
-- **83 é a ÚNICA com dependência rígida**: trava o piso de TODOS os pacotes — só rodar quando 79, 80,
-  81, 82 e 84 estiverem ≥ 80%. Se alguma dessas ficar abaixo de 80%, **83 fica BLOQUEADA** (registrar
+- **91 é a ÚNICA com dependência rígida**: sobe o piso de TODOS os pacotes para 90 — só rodar quando
+  86, 87, 88, 89 e 90 estiverem ≥ 90%. Se alguma ficar abaixo de 90%, **91 fica BLOQUEADA** (registrar
   e não mergear o gate; pode-se travar threshold parcial só dos pacotes já no piso).
-- **Sub-fases internas (80a–e, 81a–e, 84a–b)**: cada sub-fase é um **checkpoint commitável e
-  mergeável** que sobe a catraca daquele pacote (não um PR gigante). A story só é **arquivada** quando
-  o pacote inteiro atinge 80% statements. Registrar cada sub-fase no Log do PROGRESS.
+- **Sub-fases internas (87a–e)**: cada sub-fase é um **checkpoint commitável e mergeável** que sobe a
+  catraca daquele pacote (não um PR gigante). A story só é **arquivada** quando o pacote inteiro
+  atinge 90% statements. Registrar cada sub-fase no Log do PROGRESS.
 
-### Regra de honestidade da cobertura (vale p/ 79–84)
+### Regra de honestidade da cobertura (vale p/ 86–91)
 
 - **Re-baseline após exclusões**: ao adicionar `pages/**` (web) / rotas `app/**` (RN) ao
   `coverage.exclude`/`collectCoverageFrom`, o % sobe **sem teste novo**. Medir e registrar o novo
@@ -107,27 +106,30 @@ MOCK**; nunca chamar API real, nunca inventar chave, nunca commitar segredo. Pon
 
 ## Cuidados específicos da rodada
 
-- **Rodada de TESTES, não de feature.** Salvo a 77 (e2e novo) e a 83 (config de gate), **nenhuma
-  story muda código de produção, contrato, DTO, endpoint, migration ou Postman.** Se um teste só
-  passa mudando o código-fonte, é refactor mínimo de testabilidade (extrair lógica de tela p/
-  hook/lib) — citar no commit; nada de mudar comportamento.
-- **Sem migrations, sem `packages/types`/`api-client`** alterados (exceto 82 que ESCREVE testes do
+- **Rodada de TESTES, não de feature.** Salvo a 91 (config de gate), **nenhuma story muda código de
+  produção, contrato, DTO, endpoint, migration ou Postman.** Se um teste só passa mudando o
+  código-fonte, é refactor mínimo de testabilidade (extrair lógica de tela p/ hook/lib) — citar no
+  commit; nada de mudar comportamento.
+- **Sem migrations, sem `packages/types`/`api-client`** alterados (90 só ESCREVE testes do
   api-client, sem mudar o código dele). Ainda assim rodar `build:types && build:api-client` no
   bootstrap — a suíte adm/portal precisa do `dist/`.
 - **Sem dependência externa / credencial** em nenhuma destas stories → **nada de PENDENTE-MANUAL**
   esperado. Cobertura é teste puro + mocks locais.
-- **77 (e2e document-templates)**: requer `pnpm test:setup` + `pnpm dev:api:test`. Sem S3 no test env,
-  o caminho de URL assinada (story 76) fica fora — cobrir só CRUD/auth/validação/upload local, como o
-  `.md` descreve. Sem novo endpoint; limpeza no `afterAll`.
-- **80/81/84 (frontends)**: excluir orquestração do denominador (`pages/**` web, rotas `app/**` +
-  `_layout.tsx` RN) e **re-baselinar** (ver "Regra de honestidade"). Mock central do `@fonte/api-client`
-  num helper de teste reutilizável entre features. Forms: rhf+zod (web) / `Controller` (RN).
-- **83 (gate)**: editar `coverageThreshold` (jest: api/ops/app) e `coverage.thresholds` (vitest:
-  adm/portal/api-client) p/ `statements: 80` (+ branch/function no valor atingido) e garantir que o
-  CI roda `*:cov` e falha abaixo do piso. SÓ mergear quando 79–82+84 estiverem no piso; caso
-  contrário, travar threshold só dos pacotes prontos e registrar BLOQUEADO os demais.
-- **DoD por sub-fase**: a suíte do pacote tocado (`test:<pkg>:unit -- --coverage` / `test:api(:cov)`)
-  **verde** e cobertura **≥ piso vigente** antes de mergear. Cobertura abaixo do piso = não mergeia.
+- **Pisos já em 80%**: o ponto de partida de cada pacote já é a catraca do epic 78 (api 81.69 / adm
+  80.02 / ops 81.4 / app 83.77 / portal 83.17 / api-client 99.06). **Não baixar** nenhum threshold; só
+  subir até 90. Não há re-baseline novo esperado (exclusões de orquestração já aplicadas) — qualquer
+  exclusão nova é re-baseline com comentário, não progresso.
+- **87/88/89 (frontends) + 86 (api)**: fechar os branches descobertos (erro/empty/validação/role/
+  transição de estado). Reusar o mock central do `@fonte/api-client` e os helpers de teste já
+  existentes por pacote. Forms: rhf+zod (web) / `Controller` (RN).
+- **90 (portal + api-client)**: api-client já ≥ 90% — **só subir** `thresholds.statements` p/ 90;
+  portal fecha ~59 statements de branches dos hooks/libs de pagamento.
+- **91 (gate)**: editar `coverageThreshold` (jest: api/ops/app) e `coverage.thresholds` (vitest:
+  adm/portal/api-client) p/ `statements: 90` (+ branch/function no valor atingido) e garantir que
+  `test:cov:all` + CI falham abaixo do piso. SÓ mergear quando 86–90 estiverem ≥ 90%; caso contrário,
+  travar threshold só dos pacotes prontos e registrar BLOQUEADO os demais.
+- **DoD por sub-fase**: a suíte do pacote tocado (`test:<pkg>:unit:cov` / `test:api:cov`) **verde** e
+  cobertura **≥ piso vigente** antes de mergear. Cobertura abaixo do piso = não mergeia.
 
 ## Bootstrap de serviços (uma vez, no início, em background)
 

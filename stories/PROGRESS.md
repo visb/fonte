@@ -72,11 +72,13 @@ excluir orquestração sobe o % sem teste novo; não contar como progresso.
 | 4 | 81 — cobertura ops.fonte 2.87→80% (81a–81e) | [OK] 81.4% | ops unit 442✓ (43 suites); cov 81.4% stmt (br 70.29 / fn 82.4 / ln 83.4); catraca jest statements:80 (br 70 / fn 82 / ln 83). 81a–81e + climbing. Story arquivada em done/. | 81a..81e+climbing | 7029c18/15c3e69/2427687/51749e1/f20efea/0d6cfdc |
 | 5 | 84 — cobertura app.fonte 4.61→80% (84a–84b) | [OK] 83.77% | app unit 99✓ (18 suites); cov 83.77% stmt (br 76.65 / fn 82.57 / ln 86.49); catraca jest statements:80 (br 76 / fn 82 / ln 86). Re-baseline honesto 4.61%→6.78% (exclui rotas app/** + pages/**). 84a→28.9%, 84b→63.71%, climbing→83.77%. Helper central lib/test/utils.tsx. Story arquivada em done/. | 84a/84b/climbing | 18bf52d/70b3202/f1ebb25 |
 | 6 | 82 — cobertura portal.fonte + api-client →80% | [OK] | api-client 99.06% stmt (487/488 br / 259/262 fn) 248✓/5 suites; portal 83.17% stmt (148/191 br / 50/57 fn) 69✓/15 suites; catraca vitest statements:80 em ambos | 0e22d20 | c0c2bdc |
-| 7 | 83 — catraca global + gate CI | [ ] | | | |
+| 7 | 83 — catraca global + gate CI | [OK] | gate `pnpm test:cov:all` verde nos 6 pacotes (api 813 / api-client 248 / adm 784 / portal 69 / ops 442 / app 99); thresholds statements:80 travados por pacote; regressão proposital quebra build (exit 1) | ff1e0c6 | 6da94ab |
 
 ## Log
 
 <!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver> -->
+
+[OK] 83 — gate: `pnpm test:cov:all` (novo) builda os shared e roda os 6 pacotes testáveis com `--coverage` em sequência — TODOS VERDES no piso de 80% statements: api 813✓ / api-client 248✓ (99.06%) / adm 784✓ (80.02%) / portal 69✓ (83.17%) / ops 442✓ (81.4%) / app 99✓ (83.77%). Catraca por pacote já travada pelas stories 79–82/84 (jest `coverageThreshold.global` em api/ops/app; vitest `coverage.thresholds` em adm/portal/api-client) com statements:80 + branches/functions/lines no valor atingido — NENHUM baixado. Story 83 ADICIONOU: scripts de cobertura faltantes (portal/ops/app `test:unit:cov`, api-client `test:cov`) p/ que o threshold seja efetivamente enforçado (jest/vitest só aplicam o piso com `--coverage`); root `test:<pkg>:cov` passthrough + agregador `test:cov:all`; CI `.github/workflows/ci.yml` (push/PR na main → `pnpm test:cov:all`, exit != 0 = build vermelho); docs do gate em CONTRIBUTING.md + skill fonte-workflow (novo código vem com teste; subir piso é PR próprio; nunca baixar sem justificativa). DoD-regressão: subi o threshold do api-client p/ statements:100 e o build quebrou com exit 1 (`ERROR: Coverage for statements (99.06%) does not meet global threshold (100%)`), revertido p/ 80. — commit: ff1e0c6 — merge: 6da94ab — arquivo: 7985310 — 2026-06-26 — sem bloqueio. CONFIG-ONLY: nenhuma mudança de código de produção/contrato/endpoint. CI não executado de fato (sem runner GitHub local + docker/serviços fora do ar); validado localmente via `test:cov:all`. Story 83 CONCLUÍDA e arquivada em stories/done/. **Dependência satisfeita**: 79/80/81/82/84 todos ≥80% antes do gate.
 
 [OK] 82 — testes: api-client unit 248✓ (5 suites), cobertura final 99.06% statements (741/748, branches 99.79 / functions 98.85 / lines 99.06); portal.fonte unit 69✓ (15 suites), cobertura final 83.17% statements (717/862, branches 77.48 / functions 87.71 / lines 83.17) — META 80% ATINGIDA em AMBOS. Catraca vitest travada: api-client statements:80/branches:99/functions:98/lines:99; portal statements:80/branches:77/functions:87/lines:83. api-client: testes de contrato mockando o transport axios (helper central createHttpMock; asserta método+URL+body+desserialização r.data) — um por método público dos 22 service-wrappers. portal: cobre features/payment+cancel+events hooks (mock @fonte/api-client via vi.mock), queryKeys, money, branch gateway-success do cardTokenizer. Re-baseline honesto: portal exclui src/**/pages/** + src/lib/sentry.ts (denom 1125→862), 64.26%→76.79% SEM teste novo (orquestração → E2E Playwright); api-client já excluía o barrel src/index.ts (baseline 59.62% mantido, todo o ganho é teste novo). — commit: 0e22d20 — merge: c0c2bdc — arquivo: 0857287 — 2026-06-26 — sem bloqueio. TESTES-ONLY: nenhuma mudança de produção/contrato/DTO/endpoint; só arquivos de teste + coverage.exclude/thresholds dos vitest configs. E2E portal não rodado neste disparo (docker/API teste fora do ar); por ser tests-only SEM mudança de produção, não há regressão de e2e possível por construção. Story 82 CONCLUÍDA e arquivada em stories/done/.
 
@@ -126,9 +128,53 @@ excluir orquestração sobe o % sem teste novo; não contar como progresso.
 
 [OK] 77 — testes: novo spec services/api/test/document-templates.e2e-spec.ts com 19 casos✓ (401 sem token; lista 200 p/ SERVANT; 403 SERVANT em detalhe/POST/PUT/DELETE/upload; 400 UUID inválido; 409 nome duplicado no create e no rename; CRUD feliz create→get→list→update→delete→404 com flags isRequired/signAtAdmission; upload sem arquivo 400, não-imagem text/plain 400, PNG 1x1 válido 201 { url } em /uploads/documents/; pass-through no-op de <img> assinado em modo não-S3 documentando story 76); suíte e2e completa 355✓ (única falha = payables.e2e 6✗ por overdue date-dependent, tech debt pré-existente e não-regressão); api unit 672✓ — commit: d6884d5 — merge: ba0b41d — 2026-06-22 — sem bloqueio. Backend-only: nenhuma mudança de produção/contrato/DTO/endpoint/migration/Postman — read-only dos endpoints existentes (GET, GET/:id, POST, PUT/:id, DELETE/:id, POST /images). Espelha activities.e2e-spec.ts e reusa o harness e2e-app.ts (bootstrapApp/login/BASE). SERVANT = operator@fonte.com/operator123 (seed-test). Limpeza no afterAll por nome único (tag e2e-<timestamp>), apagando resident_documents dependentes antes dos templates. Fluxo de URL assinada da story 76 segue fora do e2e (sem S3 no .env.test) — coberto no unit.
 
-## Resumo final
+## Resumo final da rodada 77–84 (CONCLUÍDA 2026-06-26)
 
-<preencher ao terminar>
+**Todas as 7 stories mergeadas na main** (`--no-ff`, sem push; branches preservadas). 7 [OK],
+0 PARCIAL, 0 BLOQUEADO. Epic 78 (piso de cobertura 80%) FECHADO: todos os pacotes testáveis ≥80%
+statements + catraca travada por pacote + gate CI.
+
+Ordem executada: `77 → 79 → 80 → 81 → 84 → 82 → 83`.
+
+### Cobertura final por pacote (statements)
+| Pacote | Final | Catraca (stmt/br/fn/ln) | Runner |
+| --- | --- | --- | --- |
+| services/api | 81.69% | 80/69/78/84 | jest |
+| @fonte/api-client | 99.06% | 80/99/98/99 | vitest |
+| adm.fonte | 80.02% | 80/83/80/80 | vitest |
+| portal.fonte | 83.17% | 80/77/87/83 | vitest |
+| ops.fonte | 81.4% | 80/70/82/83 | jest-expo |
+| app.fonte | 83.77% | 80/76/82/86 | jest-expo |
+
+### Entregas
+- **77**: novo e2e `services/api/test/document-templates.e2e-spec.ts` (19✓: auth/role/validação/CRUD/upload).
+- **79–82/84**: testes de cobertura puros (mocks locais; sem tocar produção). Re-baseline honesto
+  excluindo orquestração do denominador (`pages/**` web, rotas `app/**`+`_layout` RN, `sentry.ts`,
+  barrel `index.ts`) — registrado antes de contar progresso. Helper central de teste por pacote.
+- **83**: gate. `pnpm test:cov:all` (builda shared + roda os 6 com `--coverage`); scripts `*:cov`
+  faltantes adicionados; CI `.github/workflows/ci.yml`; docs do gate (CONTRIBUTING + fonte-workflow).
+
+### Natureza / honestidade
+TESTES-ONLY salvo 77 (e2e novo) e 83 (config de gate). Nenhuma mudança de contrato/DTO/endpoint/
+migration/Postman em 79–82/84. Catraca só sobe, nunca desce — pisos travados no valor atingido.
+
+### Não executado (fora do gate / ambiente)
+- E2E (Playwright adm/portal, Maestro ops/app) e o workflow CI real não rodaram neste turno
+  (docker/API de teste fora do ar; sem runner GitHub local). Por serem stories tests-only/config,
+  sem mudança de produção, não há regressão de e2e possível por construção. Gate validado localmente.
+- Dívida pré-existente (não-regressão, fora do escopo): `payables.e2e-spec.ts` 6✗ por dependência
+  de data (`overdue` vs hoje) — confirmado falhando na main limpa desde a rodada 64–75.
+
+### Nota de reconciliação (story 82)
+Houve duas implementações paralelas da story 82 (branches diferindo por um hífen:
+`...portal-api-client` — esta rodada, mergeada e verde — vs `...portal-apiclient` — WIP do usuário,
+commit `a1e7c0c "up"`, não mergeado). Por decisão do usuário (2026-06-26): **manter a versão
+mergeada**; a branch WIP `test/story-82-cobertura-portal-apiclient` foi deixada intacta para o
+usuário descartar (não removo trabalho que não criei).
+
+### Reproduzir o gate
+`pnpm install && pnpm test:cov:all` (builda types/doc-styles/api-client e roda os 6 pacotes com
+cobertura; sai != 0 abaixo do piso). CI equivalente em `.github/workflows/ci.yml`.
 
 ---
 

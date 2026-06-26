@@ -10,6 +10,14 @@ export default defineConfig({
       reporter: ['text', 'text-summary'],
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/index.ts'],
+      // Catraca (story 82): piso de 80% em statements; branches/functions/lines
+      // travados no valor efetivamente atingido (arredondado para baixo).
+      thresholds: {
+        statements: 80,
+        branches: 99,
+        functions: 98,
+        lines: 99,
+      },
     },
   },
 });

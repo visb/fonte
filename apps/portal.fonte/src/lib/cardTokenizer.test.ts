@@ -56,6 +56,26 @@ describe('cardTokenizer (com chave pública, gateway indisponível)', () => {
     );
   });
 
+  it('devolve o id do token quando o gateway responde ok', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'tok_pagarme_123' }),
+    } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const { cardTokenizer } = await import('./cardTokenizer');
+
+    const token = await cardTokenizer.tokenize(SAMPLE_CARD);
+
+    expect(token).toBe('tok_pagarme_123');
+    // PAN vai direto à Pagar.me, com appId na query e sem espaços no número.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/tokens?appId=pk_test_fake');
+    const body = JSON.parse(init.body as string);
+    expect(body.card.number).toBe('4111111111111111');
+    expect(body.card.exp_month).toBe(12);
+  });
+
   it('lança erro quando a resposta do gateway não traz id', async () => {
     vi.stubGlobal(
       'fetch',

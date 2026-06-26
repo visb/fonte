@@ -65,7 +65,7 @@ portal 83.17% (717/862) · api-client 99.06% (741/748). Exclusões de orquestra�
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 86 — cobertura services/api 81.69→90% | [ ] | | | |
+| 1 | 86 — cobertura services/api 81.69→90% | [OK] 90.32% | api unit 946✓ (99 suites); cov 90.32% stmt (br 75.79 / fn 87.23 / ln 92.52); catraca jest 90/75/87/92 | 4b7022a | 0d7725d |
 | 2 | 87 — cobertura adm.fonte 80.02→90% (87a–87e) | [ ] | | | |
 | 3 | 88 — cobertura ops.fonte 81.4→90% | [ ] | | | |
 | 4 | 89 — cobertura app.fonte 83.77→90% | [ ] | | | |
@@ -75,6 +75,8 @@ portal 83.17% (717/862) · api-client 99.06% (741/748). Exclusões de orquestra�
 ## Log
 
 <!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver> -->
+
+[OK] 86 — testes: services/api unit 946✓ (99 suites), cobertura final 90.32% statements (br 75.79 / fn 87.23 / ln 92.52) — META 90% ATINGIDA (baseline 81.69/69.76/78.23/84.10). Catraca jest subida (só p/ cima): statements:90 / branches:75 / functions:87 / lines:92. ~133 statements novos cobertos: guards (roles, must-change-password), interceptors (audit, sensitive-data), schedulers (backup, storeroom-usage, signed-url-cache), jwt.strategy, notification.gateway (socket auth/rooms/emit), MetaWhatsAppClient (mock global.fetch: sucesso/erro-payload/rede/sem-credencial), controllers finos (backup, audit, app-settings, public-associate, associate-charge, public-event-payment, pagarme-webhook) e ramos de service (wishlist, ministry, relative[findMe/updateMe/uploadPhoto], document-template[generatePdf via browser injetado/onModuleDestroy/computeAge], support-group[queries+detail+history], consent[resolveSubjectForUser], supply-room+storeroom[CRUD+findMovements qb], house-capacity-request[getById/listForHouse]). Repos/deps mockados, sem banco/IO/HTTP real. — commit: 4b7022a — merge: 0d7725d — arquivo: 354347b — 2026-06-26 — sem bloqueio. TESTES-ONLY: nenhuma mudança de produção/contrato/DTO/endpoint/migration/Postman; só specs + coverageThreshold. E2E não rodado neste disparo (stack de API teste — dev:api:test:3001 + DB teste seedado — fora do ar; docker postgres up mas sem o NODE_ENV=test); por ser tests-only SEM mudança de produção, regressão de e2e é impossível por construção (precedente documentado rodada 77–84). Story 86 CONCLUÍDA e arquivada em stories/done/.
 
 ## Resumo final
 

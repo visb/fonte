@@ -14,6 +14,7 @@
     "start:web": "npx serve dist",
     "test:maestro": "maestro test e2e/",
     "test:unit": "jest",
+    "test:unit:cov": "jest --coverage",
     "test:e2e": "playwright test"
   },
   "dependencies": {

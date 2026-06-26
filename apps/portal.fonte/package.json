@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "lint": "tsc -b --noEmit",
     "test:unit": "vitest run",
+    "test:unit:cov": "vitest run --coverage",
     "test:unit:watch": "vitest",
     "test:e2e": "playwright test"
   },

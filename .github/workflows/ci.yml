@@ -1,0 +1,39 @@
+name: CI
+
+# Gate de cobertura (story 83, epic 78). O passo de testes roda cada pacote com
+# --coverage; o threshold por pacote (jest coverageThreshold / vitest
+# coverage.thresholds, piso 80% statements) faz o processo sair com codigo != 0
+# abaixo do piso, deixando o build vermelho. Catraca: subir o piso e PR proprio;
+# nunca baixar sem justificativa registrada (ver CONTRIBUTING.md).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  coverage-gate:
+    name: Cobertura (piso 80%)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.3.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      # Roda os 6 pacotes testaveis com --coverage. Qualquer threshold abaixo do
+      # piso encerra com exit != 0 e quebra o build (gate). E2E nao entra no gate.
+      - name: Unit + coverage gate (todos os pacotes)
+        run: pnpm test:cov:all

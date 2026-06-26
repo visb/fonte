@@ -106,6 +106,25 @@ emulador — o e2e nativo Maestro permanece no repo como opcional e **não** blo
 workspace, e então o nome reservado vira executável. e2e fica sob demanda (exige serviços/builds
 no ar), fora do `test:all`.
 
+### Catraca de cobertura — gate 80% (epic 78 / story 83)
+
+Piso de **80% statements** por pacote, travado no config (jest `coverageThreshold.global` em
+`services/api`/`ops.fonte`/`app.fonte`; vitest `coverage.thresholds` em
+`adm.fonte`/`portal.fonte`/`@fonte/api-client`). `branches`/`functions`/`lines` travados no valor
+já atingido. **Novo código vem com teste**; abaixo do piso o processo sai != 0 e quebra o build.
+
+| Comando | Roda |
+| --- | --- |
+| `pnpm test:cov:all` | os 6 pacotes com `--coverage` em sequência (gate completo) |
+| `pnpm test:api:cov` / `test:api-client:cov` | backend / api-client com cobertura |
+| `pnpm test:adm:unit:cov` / `test:portal:cov` | web com cobertura |
+| `pnpm test:ops:unit:cov` / `test:app:unit:cov` | apps Expo (web) com cobertura |
+
+CI: `.github/workflows/ci.yml` roda `pnpm test:cov:all` em push/PR na `main` — threshold abaixo
+do piso = build vermelho. E2E **não** entra no gate. **Subir o piso é PR próprio; nunca baixar**
+sem justificativa registrada (a catraca só sobe). Excluir orquestração do denominador
+(`pages/**`/`app/**`/`sentry.ts`) sobe o % **sem teste novo** — não conta como progresso.
+
 ## Cuidados
 
 - Não rode `pnpm docker:reset` sem confirmação explícita.

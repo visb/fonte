@@ -122,6 +122,154 @@ describe('RelativeService.resetPassword', () => {
   });
 });
 
+function buildWithStorage(
+  relativeRepo: ReturnType<typeof makeRepo>,
+  storage: Partial<StorageService> = {},
+) {
+  return new RelativeService(
+    relativeRepo as unknown as Repository<Relative>,
+    makeRepo() as unknown as Repository<Resident>,
+    makeRepo() as never,
+    makeRepo() as unknown as Repository<User>,
+    storage as StorageService,
+    { createAuto: jest.fn() } as unknown as ResidentFollowUpService,
+  );
+}
+
+const meRow = {
+  id: 'rel-1',
+  userId: 'user-1',
+  name: 'Mãe',
+  phone: '999',
+  photoUrl: null,
+  relationship: 'MOTHER',
+  resident: {
+    id: 'res-1',
+    name: 'João',
+    photoUrl: 'res.jpg',
+    house: {
+      id: 'h1',
+      name: 'Casa 1',
+      address: 'Rua 1',
+      city: 'Goiânia',
+      phone: '111',
+      coordinator: { name: 'Coord', phone: '222' },
+    },
+  },
+};
+
+describe('RelativeService.findMe', () => {
+  it('throws NotFound when there is no relative profile', async () => {
+    const service = buildWithStorage(makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+    await expect(service.findMe('user-x')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('maps the relative + resident + house + coordinator into the view', async () => {
+    const service = buildWithStorage(
+      makeRepo({ findOne: jest.fn().mockResolvedValue(meRow) }),
+    );
+    const view = await service.findMe('user-1');
+    expect(view).toMatchObject({
+      residentId: 'res-1',
+      residentName: 'João',
+      houseName: 'Casa 1',
+      coordinatorName: 'Coord',
+      coordinatorPhone: '222',
+    });
+  });
+});
+
+describe('RelativeService.updateMe', () => {
+  it('throws NotFound for a missing profile', async () => {
+    const service = buildWithStorage(makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+    await expect(service.updateMe('user-x', {} as never)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('updates then returns the refreshed view', async () => {
+    const relativeRepo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'rel-1', userId: 'user-1' })
+        .mockResolvedValue(meRow),
+    });
+    const service = buildWithStorage(relativeRepo);
+    await service.updateMe('user-1', { phone: '000' } as never);
+    expect(relativeRepo.update).toHaveBeenCalledWith('rel-1', { phone: '000' });
+  });
+});
+
+describe('RelativeService.uploadPhoto', () => {
+  const file = {
+    originalname: 'p.jpg',
+    buffer: Buffer.from('x'),
+    mimetype: 'image/jpeg',
+  } as Express.Multer.File;
+
+  it('throws NotFound for a missing profile', async () => {
+    const service = buildWithStorage(makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+    await expect(service.uploadPhoto('user-x', file)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('deletes the previous photo and stores the new one', async () => {
+    const relativeRepo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'rel-1', userId: 'user-1', photoUrl: 'old.jpg' })
+        .mockResolvedValue(meRow),
+    });
+    const storage = {
+      delete: jest.fn().mockResolvedValue(undefined),
+      uniqueFilename: jest.fn().mockReturnValue('new.jpg'),
+      upload: jest.fn().mockResolvedValue('relatives/new.jpg'),
+    };
+    const service = buildWithStorage(relativeRepo, storage);
+    await service.uploadPhoto('user-1', file);
+    expect(storage.delete).toHaveBeenCalledWith('old.jpg');
+    expect(relativeRepo.update).toHaveBeenCalledWith('rel-1', { photoUrl: 'relatives/new.jpg' });
+  });
+
+  it('skips deletion when there is no previous photo', async () => {
+    const relativeRepo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'rel-1', userId: 'user-1', photoUrl: null })
+        .mockResolvedValue(meRow),
+    });
+    const storage = {
+      delete: jest.fn(),
+      uniqueFilename: jest.fn().mockReturnValue('new.jpg'),
+      upload: jest.fn().mockResolvedValue('relatives/new.jpg'),
+    };
+    const service = buildWithStorage(relativeRepo, storage);
+    await service.uploadPhoto('user-1', file);
+    expect(storage.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('RelativeService.remove (success) and resetPassword (success)', () => {
+  it('soft-deletes an existing relative', async () => {
+    const relativeRepo = makeRepo({ count: jest.fn().mockResolvedValue(1) });
+    const service = buildWithStorage(relativeRepo);
+    await service.remove('rel-1');
+    expect(relativeRepo.softDelete).toHaveBeenCalledWith('rel-1');
+  });
+
+  it('resets the password for a relative with access', async () => {
+    const relativeRepo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'rel-1', userId: 'user-1', user: { id: 'user-1' } }),
+    });
+    const userRepo = makeRepo();
+    const service = makeService(relativeRepo, userRepo);
+    await service.resetPassword('rel-1', 'newsecret');
+    expect(userRepo.update).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ mustChangePassword: true }),
+    );
+  });
+});
+
 describe('RelativeService.findByResident house scoping', () => {
   function build(staffFindOne: jest.Mock, residentFindOne: jest.Mock, relFind: jest.Mock) {
     return new RelativeService(

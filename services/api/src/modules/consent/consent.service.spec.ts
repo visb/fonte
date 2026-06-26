@@ -51,4 +51,64 @@ describe('ConsentService', () => {
     expect(status.map((s) => s.purpose)).toEqual(['IMAGE_PUBLICATION', 'RELIGIOUS_DISCLOSURE']);
     expect(status.every((s) => s.granted === false)).toBe(true);
   });
+
+  it('history lists records newest-first for the subject', async () => {
+    const find = jest.fn().mockResolvedValue([{ id: 'c1' }]);
+    const service = makeService({ find: find as never });
+    await expect(service.history('RESIDENT', 'r1')).resolves.toEqual([{ id: 'c1' }]);
+    expect(find).toHaveBeenCalledWith({
+      where: { subjectType: 'RESIDENT', subjectId: 'r1' },
+      order: { createdAt: 'DESC' },
+    });
+  });
+});
+
+describe('ConsentService.resolveSubjectForUser', () => {
+  function build(relative: unknown, resident: unknown) {
+    return new ConsentService(
+      {} as never,
+      { findOne: jest.fn().mockResolvedValue(relative) } as never,
+      { findOne: jest.fn().mockResolvedValue(resident) } as never,
+    );
+  }
+
+  it('resolves a RELATIVE subject', async () => {
+    const service = build({ id: 'rel-1' }, null);
+    await expect(service.resolveSubjectForUser('u1', 'RELATIVE')).resolves.toEqual({
+      subjectType: 'RELATIVE',
+      subjectId: 'rel-1',
+    });
+  });
+
+  it('throws NotFound when the relative profile is missing', async () => {
+    const { NotFoundException } = jest.requireActual('@nestjs/common');
+    const service = build(null, null);
+    await expect(service.resolveSubjectForUser('u1', 'RELATIVE')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('resolves a RESIDENT subject', async () => {
+    const service = build(null, { id: 'res-1' });
+    await expect(service.resolveSubjectForUser('u1', 'RESIDENT')).resolves.toEqual({
+      subjectType: 'RESIDENT',
+      subjectId: 'res-1',
+    });
+  });
+
+  it('throws NotFound when the resident profile is missing', async () => {
+    const { NotFoundException } = jest.requireActual('@nestjs/common');
+    const service = build(null, null);
+    await expect(service.resolveSubjectForUser('u1', 'RESIDENT')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('forbids other profile types (e.g. STAFF)', async () => {
+    const { ForbiddenException } = jest.requireActual('@nestjs/common');
+    const service = build(null, null);
+    await expect(service.resolveSubjectForUser('u1', 'STAFF')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
 });

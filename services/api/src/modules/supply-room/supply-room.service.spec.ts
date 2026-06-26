@@ -39,6 +39,67 @@ describe('SupplyRoomService.findItems', () => {
     await service.findItems('house-1');
     expect(itemRepo.find.mock.calls[0][0].where).toEqual({ houseId: 'house-1' });
   });
+
+  it('lists all items when no house is given', async () => {
+    const itemRepo = makeRepo();
+    const service = makeService(itemRepo);
+    await service.findItems();
+    expect(itemRepo.find.mock.calls[0][0].where).toEqual({});
+  });
+});
+
+describe('SupplyRoomService item CRUD', () => {
+  it('creates an item', async () => {
+    const itemRepo = makeRepo();
+    const service = makeService(itemRepo);
+    await service.createItem({ name: 'Arroz', category: 'Alimento' } as never);
+    expect(itemRepo.create).toHaveBeenCalledWith({ name: 'Arroz', category: 'Alimento' });
+    expect(itemRepo.save).toHaveBeenCalled();
+  });
+
+  it('updates an existing item', async () => {
+    const itemRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'item-1' }) });
+    const service = makeService(itemRepo);
+    await service.updateItem('item-1', { name: 'Feijão' } as never);
+    expect(itemRepo.update).toHaveBeenCalledWith('item-1', { name: 'Feijão' });
+  });
+
+  it('soft-deletes an existing item', async () => {
+    const itemRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'item-1' }) });
+    const service = makeService(itemRepo);
+    await service.removeItem('item-1');
+    expect(itemRepo.softDelete).toHaveBeenCalledWith('item-1');
+  });
+});
+
+describe('SupplyRoomService.findMovements', () => {
+  function makeQb() {
+    const qb: Record<string, jest.Mock> = {};
+    for (const m of ['leftJoinAndSelect', 'orderBy', 'addOrderBy', 'andWhere']) {
+      qb[m] = jest.fn().mockReturnValue(qb);
+    }
+    qb.getMany = jest.fn().mockResolvedValue([{ id: 'mov-1' }]);
+    return qb;
+  }
+
+  it('filters by item and house when both are given', async () => {
+    const qb = makeQb();
+    const movementRepo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(makeRepo(), movementRepo);
+
+    await expect(service.findMovements('house-1', 'item-1')).resolves.toEqual([{ id: 'mov-1' }]);
+    expect(qb.andWhere).toHaveBeenCalledWith('m.item_id = :itemId', { itemId: 'item-1' });
+    expect(qb.andWhere).toHaveBeenCalledWith('item.house_id = :houseId', { houseId: 'house-1' });
+  });
+
+  it('applies no filters when neither is given', async () => {
+    const qb = makeQb();
+    const movementRepo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(makeRepo(), movementRepo);
+
+    await service.findMovements();
+    expect(qb.andWhere).not.toHaveBeenCalled();
+  });
 });
 
 describe('SupplyRoomService.createMovement', () => {

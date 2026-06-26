@@ -202,6 +202,73 @@ describe('DocumentTemplateService.uploadImage', () => {
   });
 });
 
+describe('DocumentTemplateService.findAdmissionTemplates', () => {
+  it('queries templates flagged for admission signing', async () => {
+    const repo = makeRepo();
+    const service = makeService(repo);
+    await service.findAdmissionTemplates();
+    expect(repo.find).toHaveBeenCalledWith({
+      where: { signAtAdmission: true },
+      order: { name: 'ASC' },
+    });
+  });
+});
+
+describe('DocumentTemplateService.remove', () => {
+  it('deletes after asserting the template exists', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', content: '' }),
+    });
+    const service = makeService(repo);
+    await service.remove('tpl-1');
+    expect(repo.delete).toHaveBeenCalledWith('tpl-1');
+  });
+
+  it('throws NotFound when the template is missing', async () => {
+    const service = makeService(makeRepo());
+    await expect(service.remove('nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('DocumentTemplateService.generatePdf', () => {
+  it('renders via an injected browser and returns a slugified filename', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo de Adesão', content: '<p>{{name}}</p>' }),
+    });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+
+    const page = {
+      setContent: jest.fn().mockResolvedValue(undefined),
+      pdf: jest.fn().mockResolvedValue(Buffer.from('PDFDATA')),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+    const browser = { newPage: jest.fn().mockResolvedValue(page) };
+    // Inject a ready browser so puppeteer is never actually launched.
+    (service as any).browserPromise = Promise.resolve(browser);
+
+    const result = await service.generatePdf('tpl-1', { id: 'res-1', name: 'João Silva' } as Resident);
+
+    expect(result.filename).toBe('joao-silva-termo-de-adesao.pdf');
+    expect(Buffer.isBuffer(result.buffer)).toBe(true);
+    expect(page.close).toHaveBeenCalled();
+  });
+});
+
+describe('DocumentTemplateService.onModuleDestroy', () => {
+  it('closes an open browser', async () => {
+    const close = jest.fn().mockResolvedValue(undefined);
+    const service = makeService(makeRepo());
+    (service as any).browserPromise = Promise.resolve({ close });
+    await service.onModuleDestroy();
+    expect(close).toHaveBeenCalled();
+  });
+
+  it('no-ops when no browser was ever launched', async () => {
+    const service = makeService(makeRepo());
+    await expect(service.onModuleDestroy()).resolves.toBeUndefined();
+  });
+});
+
 describe('DocumentTemplateService.renderForResident', () => {
   it('substitutes resident variables in the template content', async () => {
     const repo = makeRepo({
@@ -214,6 +281,32 @@ describe('DocumentTemplateService.renderForResident', () => {
     const html = await service.renderForResident('tpl-1', resident);
 
     expect(html).toContain('Eu, João, CPF 123.456.789-01.');
+  });
+
+  it('computes age, formats dates and maps marital status + responsible', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({
+        id: 'tpl-1',
+        name: 'Termo',
+        content: 'Idade: {{age}}; Estado: {{maritalStatus}}; Resp: {{responsibleName}} ({{responsibleRelationship}})',
+      }),
+    });
+    const relativeRepo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ name: 'Maria', relationship: 'Mãe', phone: '999' }),
+    });
+    const service = makeService(repo, relativeRepo);
+
+    const resident = {
+      id: 'res-1',
+      name: 'João',
+      birthDate: '2000-01-01',
+      maritalStatus: 'MARRIED',
+    } as unknown as Resident;
+    const html = await service.renderForResident('tpl-1', resident);
+
+    expect(html).toMatch(/Idade: \d+ anos/);
+    expect(html).toContain('Estado: Casado(a)');
+    expect(html).toContain('Resp: Maria (Mãe)');
   });
 
   it('falls back to "não informado" for missing fields', async () => {

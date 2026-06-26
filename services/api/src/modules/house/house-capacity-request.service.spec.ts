@@ -110,6 +110,55 @@ describe('HouseCapacityRequestService.createRequest', () => {
   });
 });
 
+describe('HouseCapacityRequestService.createRequest guards', () => {
+  it('throws NotFound when the house does not exist', async () => {
+    const { NotFoundException } = jest.requireActual('@nestjs/common');
+    const { service } = makeService(makeRepo(), makeRepo());
+    await expect(
+      service.createRequest('nope', { generalCapacity: 1, staffCapacity: 1 }, 'user-1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('forbids when the requester has no staff profile', async () => {
+    const houseRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(HOUSE) });
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const { service } = makeService(makeRepo(), houseRepo, staffRepo);
+    await expect(
+      service.createRequest('house-1', { generalCapacity: 1, staffCapacity: 1 }, 'user-1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
+
+describe('HouseCapacityRequestService.getById', () => {
+  it('returns the request with its requester', async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'req-1' }) });
+    const { service } = makeService(repo);
+    await expect(service.getById('req-1')).resolves.toEqual({ id: 'req-1' });
+  });
+
+  it('throws NotFound when the request is missing', async () => {
+    const { NotFoundException } = jest.requireActual('@nestjs/common');
+    const { service } = makeService(makeRepo());
+    await expect(service.getById('nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('HouseCapacityRequestService.listForHouse', () => {
+  it('lists the history when the house exists', async () => {
+    const repo = makeRepo({ find: jest.fn().mockResolvedValue([{ id: 'req-1' }]) });
+    const houseRepo = makeRepo({ count: jest.fn().mockResolvedValue(1) });
+    const { service } = makeService(repo, houseRepo);
+    await expect(service.listForHouse('house-1')).resolves.toEqual([{ id: 'req-1' }]);
+  });
+
+  it('throws NotFound when the house does not exist', async () => {
+    const { NotFoundException } = jest.requireActual('@nestjs/common');
+    const houseRepo = makeRepo({ count: jest.fn().mockResolvedValue(0) });
+    const { service } = makeService(makeRepo(), houseRepo);
+    await expect(service.listForHouse('nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
 describe('HouseCapacityRequestService.approve', () => {
   it('applies the capacity to the house and notifies the house', async () => {
     const pending = {

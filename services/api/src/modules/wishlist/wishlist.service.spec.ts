@@ -133,6 +133,102 @@ describe('WishlistService.reject', () => {
   });
 });
 
+describe('WishlistService.findAll', () => {
+  it('lists all non-deleted items for a resident ordered by createdAt', async () => {
+    const item = makeRepo();
+    const service = makeService({ item });
+    await service.findAll('res-1');
+    expect(item.find.mock.calls[0][0]).toMatchObject({
+      where: { residentId: 'res-1' },
+      order: { createdAt: 'ASC' },
+    });
+  });
+});
+
+describe('WishlistService.findAllForCaller', () => {
+  it('returns only approved items for a RELATIVE bound to the resident', async () => {
+    const relative = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ residentId: 'res-1' }),
+    });
+    const item = makeRepo();
+    const service = makeService({ item, relative });
+    await service.findAllForCaller('user-rel', 'RELATIVE', 'res-1');
+    expect(item.find.mock.calls[0][0].where).toMatchObject({
+      status: WishlistStatus.APPROVED,
+    });
+  });
+
+  it('forbids a RELATIVE not linked to the resident', async () => {
+    const relative = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ residentId: 'other' }),
+    });
+    const service = makeService({ relative });
+    await expect(
+      service.findAllForCaller('user-rel', 'RELATIVE', 'res-1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('returns the full list for staff callers', async () => {
+    const item = makeRepo();
+    const service = makeService({ item });
+    await service.findAllForCaller('user-staff', 'COORDINATOR', 'res-1');
+    // findAll path: no status filter
+    expect(item.find.mock.calls[0][0].where.status).toBeUndefined();
+  });
+});
+
+describe('WishlistService.findPending (happy path)', () => {
+  it('maps resident names onto pending items', async () => {
+    const staff = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1' }) });
+    const permission = makeRepo({ count: jest.fn().mockResolvedValue(1) });
+    const item = makeRepo({
+      find: jest.fn().mockResolvedValue([
+        Object.assign(new WishlistItem(), { id: 'i1', residentId: 'res-1' }),
+      ]),
+    });
+    const resident = makeRepo({
+      findByIds: jest.fn().mockResolvedValue([{ id: 'res-1', name: 'João' }]),
+    });
+    const service = makeService({ item, staff, permission, resident });
+    const result = await service.findPending('user-1');
+    expect(result[0].residentName).toBe('João');
+  });
+});
+
+describe('WishlistService.requestRemoval', () => {
+  it('forbids when the caller is not the resident', async () => {
+    const resident = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'other' }) });
+    const service = makeService({ resident });
+    await expect(
+      service.requestRemoval('user-1', 'res-1', 'item-1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('throws NotFound when the item does not exist', async () => {
+    const resident = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'res-1', userId: 'user-1' }),
+    });
+    const item = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const service = makeService({ resident, item });
+    await expect(
+      service.requestRemoval('user-1', 'res-1', 'item-1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('flags removal requested and resets to pending approval', async () => {
+    const resident = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'res-1', userId: 'user-1' }),
+    });
+    const item = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'item-1' }) });
+    const service = makeService({ resident, item });
+    await service.requestRemoval('user-1', 'res-1', 'item-1');
+    expect(item.update).toHaveBeenCalledWith('item-1', {
+      isRemovalRequested: true,
+      status: WishlistStatus.PENDING_APPROVAL,
+    });
+  });
+});
+
 // Ensure the permission enum referenced by the service is exercised.
 it('uses MODERATE_MESSAGES for moderation gating', () => {
   expect(StaffPermissionType.MODERATE_MESSAGES).toBeDefined();

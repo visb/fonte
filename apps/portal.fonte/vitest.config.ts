@@ -30,14 +30,19 @@ export default defineConfig({
         // init do Sentry não dispara sem DSN em testes.
         'src/**/pages/**',
         'src/lib/sentry.ts',
+        // Story 90 — App.tsx é o shell do roteador (orquestração pura: providers +
+        // <Routes>), análogo ao App/AppLayout do adm excluído na story 80. Coberto
+        // por E2E (Playwright); re-baseline registrado no PROGRESS, não progresso de teste.
+        'src/App.tsx',
       ],
-      // Catraca (story 82): piso de 80% em statements; branches/functions/lines
-      // travados no valor efetivamente atingido (arredondado para baixo).
+      // Catraca: story 90 sobe statements para o piso 90 (atingido 99,16%);
+      // branches/functions/lines travados no valor efetivamente atingido
+      // (arredondado para baixo). Catraca só sobe, nunca desce.
       thresholds: {
-        statements: 80,
-        branches: 77,
-        functions: 87,
-        lines: 83,
+        statements: 90,
+        branches: 86,
+        functions: 98,
+        lines: 99,
       },
     },
   },

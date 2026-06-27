@@ -244,6 +244,37 @@ describe('AudioPlayer', () => {
     fireEvent.press(screen.getByLabelText('Velocidade 1x'));
     await waitFor(() => expect(screen.getByText('1.5x')).toBeTruthy());
   });
+
+  it('status atualiza posição/duração; tocando permite pausar', async () => {
+    let statusCb: (s: Record<string, unknown>) => void = () => {};
+    const sound = { playAsync: jest.fn(), pauseAsync: jest.fn(), setRateAsync: jest.fn(), unloadAsync: jest.fn() };
+    (Audio.Sound.createAsync as jest.Mock).mockImplementation((_u, _o, cb) => {
+      statusCb = cb;
+      return Promise.resolve({ sound });
+    });
+    render(<AudioPlayer uri="https://x/a.m4a" durationSeconds={null} />);
+    fireEvent.press(screen.getByLabelText('Reproduzir áudio'));
+    await waitFor(() => expect(sound.playAsync).toHaveBeenCalled());
+    // status: tocando, posição 10s / duração 40s → botão vira "Pausar"
+    statusCb({ isLoaded: true, isPlaying: true, positionMillis: 10000, durationMillis: 40000 });
+    await waitFor(() => expect(screen.getByLabelText('Pausar áudio')).toBeTruthy());
+    fireEvent.press(screen.getByLabelText('Pausar áudio'));
+    await waitFor(() => expect(sound.pauseAsync).toHaveBeenCalled());
+    // status não-carregado é ignorado; didJustFinish volta para play
+    statusCb({ isLoaded: false });
+    statusCb({ isLoaded: true, isPlaying: false, positionMillis: 0, durationMillis: 40000, didJustFinish: true });
+    await waitFor(() => expect(screen.getByLabelText('Reproduzir áudio')).toBeTruthy());
+  });
+
+  it('cycleSpeed aplica setRateAsync no som carregado', async () => {
+    const sound = { playAsync: jest.fn(), pauseAsync: jest.fn(), setRateAsync: jest.fn(), unloadAsync: jest.fn() };
+    (Audio.Sound.createAsync as jest.Mock).mockResolvedValue({ sound });
+    render(<AudioPlayer uri="https://x/a.m4a" durationSeconds={30} />);
+    fireEvent.press(screen.getByLabelText('Reproduzir áudio'));
+    await waitFor(() => expect(sound.playAsync).toHaveBeenCalled());
+    fireEvent.press(screen.getByLabelText('Velocidade 1x'));
+    await waitFor(() => expect(sound.setRateAsync).toHaveBeenCalledWith(1.5, true));
+  });
 });
 
 describe('ActivityFormFields', () => {

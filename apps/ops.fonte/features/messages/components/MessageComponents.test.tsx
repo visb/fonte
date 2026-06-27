@@ -182,6 +182,84 @@ describe('MessageInput', () => {
     fireEvent(screen.getByText('icon:mic').parent as never, 'pressIn');
     await waitFor(() => expect(screen.getByText(/Gravando/)).toBeTruthy());
   });
+
+  it('gravar e soltar (pressOut) envia o áudio gravado', async () => {
+    (Audio.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (Audio.setAudioModeAsync as jest.Mock).mockResolvedValue(undefined);
+    const stopAndUnloadAsync = jest.fn().mockResolvedValue({});
+    (Audio.Recording.createAsync as jest.Mock).mockResolvedValue({
+      recording: { stopAndUnloadAsync, getURI: () => 'file://r.m4a' },
+    });
+    const onSend = jest.fn();
+    render(<MessageInput onSend={onSend} />);
+    const mic = screen.getByText('icon:mic').parent as never;
+    fireEvent(mic, 'pressIn');
+    await waitFor(() => expect(screen.getByText(/Gravando/)).toBeTruthy());
+    fireEvent(mic, 'pressOut');
+    await waitFor(() =>
+      expect(onSend).toHaveBeenCalledWith({
+        attachments: [{ uri: 'file://r.m4a', mimeType: 'audio/m4a', name: 'audio.m4a', type: 'audio' }],
+      }),
+    );
+  });
+
+  it('cancelar gravação (lixeira) não envia áudio', async () => {
+    (Audio.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (Audio.setAudioModeAsync as jest.Mock).mockResolvedValue(undefined);
+    (Audio.Recording.createAsync as jest.Mock).mockResolvedValue({
+      recording: { stopAndUnloadAsync: jest.fn().mockResolvedValue({}), getURI: () => 'file://r.m4a' },
+    });
+    const onSend = jest.fn();
+    render(<MessageInput onSend={onSend} />);
+    fireEvent(screen.getByText('icon:mic').parent as never, 'pressIn');
+    await waitFor(() => expect(screen.getByText(/Gravando/)).toBeTruthy());
+    fireEvent.press(screen.getByText('icon:trash-outline'));
+    await waitFor(() => expect(screen.queryByText(/Gravando/)).toBeNull());
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it('câmera com permissão adiciona preview e envia anexo', async () => {
+    (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file://c.jpg', mimeType: 'image/jpeg', fileName: 'c.jpg' }],
+    });
+    const onSend = jest.fn();
+    render(<MessageInput onSend={onSend} />);
+    fireEvent.press(screen.getByText('icon:add'));
+    fireEvent.press(screen.getByText('Câmera'));
+    await waitFor(() => expect(screen.getAllByText('icon:close').length).toBeGreaterThan(0));
+    // com anexo, o botão de enviar aparece e envia o anexo
+    fireEvent.press(screen.getByText('icon:send'));
+    expect(onSend).toHaveBeenCalledWith({
+      content: undefined,
+      attachments: [
+        { uri: 'file://c.jpg', mimeType: 'image/jpeg', name: 'c.jpg', type: 'image' },
+      ],
+    });
+  });
+
+  it('câmera sem permissão não adiciona anexo', async () => {
+    (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: false });
+    render(<MessageInput onSend={jest.fn()} />);
+    fireEvent.press(screen.getByText('icon:add'));
+    fireEvent.press(screen.getByText('Câmera'));
+    await waitFor(() => expect(ImagePicker.requestCameraPermissionsAsync).toHaveBeenCalled());
+    expect(screen.queryByText('icon:close')).toBeNull();
+  });
+
+  it('documento selecionado adiciona preview e remove pelo X', async () => {
+    (DocumentPicker.getDocumentAsync as jest.Mock).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file://d.pdf', mimeType: 'application/pdf', name: 'd.pdf' }],
+    });
+    render(<MessageInput onSend={jest.fn()} />);
+    fireEvent.press(screen.getByText('icon:add'));
+    fireEvent.press(screen.getByText('Documento'));
+    await waitFor(() => expect(screen.getAllByText('icon:close').length).toBeGreaterThan(0));
+    fireEvent.press(screen.getAllByText('icon:close')[0]);
+    await waitFor(() => expect(screen.queryByText('icon:close')).toBeNull());
+  });
 });
 
 describe('AudioPlayer (messages)', () => {

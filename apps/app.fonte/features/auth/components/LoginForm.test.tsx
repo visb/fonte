@@ -62,4 +62,31 @@ describe('LoginForm', () => {
 
     expect(await screen.findByText('E-mail ou senha incorretos.')).toBeOnTheScreen();
   });
+
+  it('preenche credenciais de teste válidas (__DEV__) e faz login', async () => {
+    mockLogin.mockResolvedValue(undefined);
+    const onSuccess = jest.fn();
+    render(<LoginForm onSuccess={onSuccess} onMustChangePassword={jest.fn()} />);
+
+    fireEvent.press(screen.getByLabelText('fill-test-credentials'));
+    fireEvent.press(screen.getByText('Entrar'));
+
+    await waitFor(() =>
+      expect(mockLogin).toHaveBeenCalledWith('familiar@fonte.com', 'familiar123'),
+    );
+    expect(onSuccess).toHaveBeenCalled();
+  });
+
+  it('preenche credenciais de teste inválidas (__DEV__)', async () => {
+    mockLogin.mockRejectedValue(new Error('401'));
+    render(<LoginForm onSuccess={jest.fn()} onMustChangePassword={jest.fn()} />);
+
+    fireEvent.press(screen.getByLabelText('fill-test-credentials-invalid'));
+    fireEvent.press(screen.getByText('Entrar'));
+
+    await waitFor(() =>
+      expect(mockLogin).toHaveBeenCalledWith('familiar@fonte.com', 'senha_errada'),
+    );
+    expect(await screen.findByText('E-mail ou senha incorretos.')).toBeOnTheScreen();
+  });
 });

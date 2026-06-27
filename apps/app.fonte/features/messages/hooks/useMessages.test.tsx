@@ -1,4 +1,5 @@
 import { waitFor } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 
 // api-client mockado: nenhuma chamada HTTP real é feita.
 jest.mock('@/lib/api', () => ({
@@ -94,6 +95,58 @@ describe('useSendMessage', () => {
       relativeId: 'rel-1',
       attachmentUrl: 'u://a.jpg',
       attachmentType: 'image',
+    });
+  });
+
+  describe('na plataforma web (upload via fetch+blob+File)', () => {
+    const originalOS = Platform.OS;
+    const originalFetch = global.fetch;
+    const originalFile = (global as { File?: unknown }).File;
+
+    beforeEach(() => {
+      (Platform as { OS: string }).OS = 'web';
+      global.fetch = jest.fn().mockResolvedValue({
+        blob: () => Promise.resolve({ type: 'image/jpeg' }),
+      }) as unknown as typeof fetch;
+      // garante File no ambiente de teste (node) p/ a montagem do FormData web
+      (global as { File: unknown }).File = class FileStub {
+        parts: unknown[];
+        name: string;
+        type?: string;
+        constructor(parts: unknown[], name: string, opts?: { type?: string }) {
+          this.parts = parts;
+          this.name = name;
+          this.type = opts?.type;
+        }
+      };
+    });
+
+    afterEach(() => {
+      (Platform as { OS: string }).OS = originalOS;
+      global.fetch = originalFetch;
+      (global as { File?: unknown }).File = originalFile;
+    });
+
+    it('monta o nome com extensão derivada do mime e envia o anexo', async () => {
+      mockApi.messages.uploadAttachment.mockResolvedValue({ url: 'u://web.jpg', type: 'image' });
+      mockApi.messages.send.mockResolvedValue({ id: 'm-web' });
+
+      const { result } = renderHookWithClient(() => useSendMessage('res-1', 'rel-1'));
+      // att.name sem ponto → recebe a extensão derivada do mime (jpeg)
+      result.current.mutate({
+        attachments: [{ uri: 'blob://a', mimeType: 'image/jpeg', name: 'foto' }],
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(global.fetch).toHaveBeenCalledWith('blob://a');
+      const fd = mockApi.messages.uploadAttachment.mock.calls[0][0];
+      expect(fd).toBeInstanceOf(FormData);
+      expect(mockApi.messages.send).toHaveBeenCalledWith({
+        residentId: 'res-1',
+        relativeId: 'rel-1',
+        attachmentUrl: 'u://web.jpg',
+        attachmentType: 'image',
+      });
     });
   });
 });

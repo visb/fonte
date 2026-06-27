@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { View } from 'react-native';
 
 // expo-av mockado: Audio.Sound controlado pelo teste (sem áudio nativo).
 const mockSound = {
@@ -93,5 +94,46 @@ describe('AudioPlayer', () => {
 
     fireEvent.press(screen.getByLabelText('Ionicons:pause-circle'));
     await waitFor(() => expect(mockSound.pauseAsync).toHaveBeenCalledTimes(1));
+  });
+
+  it('retoma a reprodução (playAsync) quando o som já existe e está pausado', async () => {
+    render(<AudioPlayer url="u://a.m4a" isMine={false} />);
+    fireEvent.press(screen.getByLabelText('Ionicons:play-circle'));
+    await waitFor(() => expect(Audio.Sound.createAsync).toHaveBeenCalledTimes(1));
+
+    // som criado mas isPlaying ainda false → o segundo toque chama playAsync
+    fireEvent.press(screen.getByLabelText('Ionicons:play-circle'));
+    await waitFor(() => expect(mockSound.playAsync).toHaveBeenCalledTimes(1));
+  });
+
+  it('busca a posição ao tocar na barra de progresso (seek)', async () => {
+    render(<AudioPlayer url="u://a.m4a" isMine />);
+    fireEvent.press(screen.getByLabelText('Ionicons:play-circle'));
+    await waitFor(() => expect(lastOnStatus).toBeDefined());
+
+    act(() => {
+      lastOnStatus!({ isLoaded: true, positionMillis: 0, durationMillis: 10000, isPlaying: true });
+    });
+
+    // a trilha de progresso é a View com onTouchEnd (handleSeek)
+    const track = screen.UNSAFE_getAllByType(View).find((v) => typeof v.props.onTouchEnd === 'function');
+    expect(track).toBeDefined();
+    // define a largura da trilha (onLayout) e toca no meio dela (locationX 50 de 100)
+    fireEvent(track!, 'layout', { nativeEvent: { layout: { width: 100 } } });
+    fireEvent(track!, 'touchEnd', { nativeEvent: { locationX: 50 } });
+
+    // ratio 0.5 * 10000ms = 5000ms
+    await waitFor(() => expect(mockSound.setPositionAsync).toHaveBeenCalledWith(5000));
+  });
+
+  it('ignora o seek quando ainda não há duração/largura', async () => {
+    render(<AudioPlayer url="u://a.m4a" isMine={false} />);
+    fireEvent.press(screen.getByLabelText('Ionicons:play-circle'));
+    await waitFor(() => expect(Audio.Sound.createAsync).toHaveBeenCalled());
+
+    const track = screen.UNSAFE_getAllByType(View).find((v) => typeof v.props.onTouchEnd === 'function');
+    // sem onLayout/duração: trackWidth e duration são 0 → handleSeek retorna cedo
+    fireEvent(track!, 'touchEnd', { nativeEvent: { locationX: 50 } });
+    expect(mockSound.setPositionAsync).not.toHaveBeenCalled();
   });
 });

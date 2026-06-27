@@ -55,17 +55,13 @@ epic 78 / story 83). Vale como gate de merge:
   - jest (`services/api`, `ops.fonte`, `app.fonte`): `coverageThreshold.global`.
   - vitest (`adm.fonte`, `portal.fonte`, `@fonte/api-client`): `coverage.thresholds`.
   - `statements: 90` (piso); `branches`/`functions`/`lines` travados no valor já atingido.
-  - **Exceção `adm.fonte`** (story 87 BLOQUEADA): segue em `statements: 80`. A cobertura do
-    pacote **não pôde ser medida nesta máquina** — o provider v8 com `all:true` degenera (remap
-    CPU-bound que não conclui) e o istanbul derruba o worker (OOM em paralelo; single-fork lento
-    demais para o ciclo medir-escrever-medir). Subir o piso do adm para 90 depende de medir a
-    cobertura num ambiente onde o runner conclua (CI Linux ou máquina mais rápida). Ver
-    `stories/PROGRESS.md`.
+  - **Os 6 pacotes no piso 90**, inclusive `adm.fonte` (90.65% statements, story 87). O coverage do
+    adm "não medível" era um loop de render em `HouseDialog` (default `[]` instável na dep do
+    `useEffect`) que pendurava o worker do vitest no fim da suíte — confundido com "remap v8
+    degenerado". Corrigido o bug, a cov roda em ~100s. Ver `stories/PROGRESS.md`.
 - **Rodar o gate local:** `pnpm test:cov:all` roda os 6 pacotes com `--coverage`; sai com código
   != 0 (build vermelho) se algum cair abaixo do piso. CI (`.github/workflows/ci.yml`) roda o mesmo
-  em push/PR na `main`. E2E **não** entra no gate. (Em máquinas onde o coverage do `adm.fonte` não
-  conclui — ver exceção acima — rode os outros 5 pacotes individualmente: `pnpm test:api:cov`,
-  `pnpm test:api-client:cov`, `pnpm test:portal:cov`, `pnpm test:ops:unit:cov`, `pnpm test:app:unit:cov`.)
+  em push/PR na `main`. E2E **não** entra no gate.
 - **Subir o piso é PR próprio**; **nunca baixar** um threshold sem justificativa registrada no PR
   (a catraca só sobe).
 - Re-baseline honesto: excluir orquestração do denominador (`pages/**`/rotas `app/**`/`sentry.ts`)

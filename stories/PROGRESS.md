@@ -66,15 +66,17 @@ portal 83.17% (717/862) · api-client 99.06% (741/748). Exclusões de orquestra�
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 86 — cobertura services/api 81.69→90% | [OK] 90.32% | api unit 946✓ (99 suites); cov 90.32% stmt (br 75.79 / fn 87.23 / ln 92.52); catraca jest 90/75/87/92 | 4b7022a | 0d7725d |
-| 2 | 87 — cobertura adm.fonte 80.02→90% (87a–87e) | [BLOQUEADO] medição | 87a mergeado (suíte adm verde ~40s; +19 specs residents+houses); catraca mantida 80. **Cobertura do adm NÃO é mensurável nesta máquina** (v8 `all:true` degenera no remap; istanbul derruba o worker por OOM em paralelo e é lento demais single-fork) → não dá p/ medir nem climbar 80→90 | bb17540 | 0cc97ea |
+| 2 | 87 — cobertura adm.fonte 80.02→90% (87a–87b) | [OK] 90.65% | adm unit verde; cov 90.65% stmt (br 85.88 / fn 83.87 / ln 90.65) medida em ~100s; catraca vitest 90/85/83/90. **Bloqueio era falso**: não era o provider v8 — um loop de render em `HouseDialog` (default `[]` instável na dep do `useEffect`) pendurava o worker do tinypool no fim da suíte. Corrigido o bug, a cov roda normal | bb17540 + 87b | 0cc97ea + 87b |
 | 3 | 88 — cobertura ops.fonte 81.4→90% | [OK] 91.3% | ops unit 513✓ (52 suites); cov 91.3% stmt (br 81.12 / fn 89.97 / ln 93.1); catraca jest 90/81/89/93 | 727a505 | 71dbc6f |
 | 4 | 89 — cobertura app.fonte 83.77→90% | [OK] 91.74% | app unit 111✓ (21 suites); cov 91.74% stmt (br 81.71 / fn 91.66 / ln 93.89); catraca jest 90/81/91/93 | 9138c02 | bea9e86 |
 | 5 | 90 — cobertura portal.fonte 83.17→90% + api-client trava 90% | [OK] portal 99.16% / api-client 99.06% | portal unit 93✓ (19 suites); cov 99.16% stmt (br 86.99 / fn 98.27 / ln 99.16); catraca vitest portal 90/86/98/99, api-client 90/99/98/99 | 094370f | 906c66e |
-| 6 | 91 — catraca global 90% + gate CI | [PARCIAL] 5/6 | thresholds:90 travados em api/ops/app/portal/api-client (pelas stories 86/88/89/90); docs (CONTRIBUTING+fonte-workflow) subidas 80→90 com a exceção adm. adm fica em 80 (story 87 bloqueada) | ced6d88 | d37c20f |
+| 6 | 91 — catraca global 90% + gate CI | [OK] 6/6 | thresholds:90 travados nos 6 pacotes (api/ops/app/portal/api-client + adm 90/85/83/90); docs (CONTRIBUTING+fonte-workflow) subidas 80→90 sem exceção — adm destravado pela 87b | ced6d88 + 87b | d37c20f + 87b |
 
 ## Log
 
 <!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver> -->
+
+[OK] 87b + 91 (DESBLOQUEIO 2026-06-27) — **o bloqueio do adm era um diagnóstico errado.** A cobertura do adm.fonte não era "não mensurável por causa do provider v8": a suíte rodava todos os 147 arquivos e passava, mas **nunca encerrava** — um loop de render em `apps/adm.fonte/src/features/houses/components/HouseDialog.tsx` mantinha o event loop do worker do tinypool vivo, e o worker era morto/pendurava no fim. Causa exata: `const { data: staffList = [] } = useStaff(...)` cria uma **nova referência de array a cada render** e `staffList` estava nas deps de um `useEffect` que **nem o usa** → render→effect→`reset()`→render→… (em produção o react-query memoiza `data`, então o loop só disparava no teste, onde o mock devolvia array novo a cada render). Bissecção binária (grupos→arquivo→par→componente) isolou `HouseDialog`; probe com `process.getActiveResourcesInfo()` confirmou o worker morrendo. **Fix de 1 linha** (remover `staffList` das deps — bug real de hook, não só de teste). Depois disso a cov do adm roda em **~100s** (v8 `all:true`, 4 forks). **87b**: 80.02→**90.65% statements** (br 85.88 / fn 83.87 / ln 90.65) com 16 specs novos (StaffServiceSelector, ActivityFilters, Create/EditAssociateDialog, EnrollResidentDialog, CensusReviewModal, MeetingFamiliesModal, ActivityDialog, AuthContext, Create/EditEventDialog, SalesByHouseTable, ContributionSummaryCards, useTheme, useInfiniteScroll). Catraca vitest do adm subida 80→90 (br 83→85 / fn 80→83 / ln 80→90); rodada COM threshold enforçado verde (exit 0). **91**: gate global fecha 6/6 — adm destravado; exceção do adm removida de CONTRIBUTING.md e da skill fonte-workflow. TESTES-ONLY + 1 fix de produção (HouseDialog, bug de hook). — 2026-06-27 — sem bloqueio.
 
 [PARCIAL] 91 — gate de cobertura subido para 90%, parcial. Os thresholds por pacote já tinham sido travados em `statements:90` pelas próprias filhas: api 90/75/87/92 (story 86, jest), ops 90/81/89/93 (88, jest), app 90/81/91/93 (89, jest), portal 90/86/98/99 (90, vitest), api-client 90/99/98/99 (90, vitest) — verificado lendo os 5 configs. Esta story só (a) subiu a documentação do gate de 80→90 em `CONTRIBUTING.md` e na skill `fonte-workflow`, com a **exceção do adm.fonte** explícita, e (b) registrou o estado. **adm.fonte fica em `statements:80`** (não subido) porque a story 87 está BLOQUEADA na medição (ver abaixo) — subir o piso do adm às cegas arriscaria gate vermelho permanente. `pnpm test:cov:all` completo não roda nesta máquina (trava no coverage do adm); os outros 5 pacotes são verdes individualmente no piso de 90 (ops/app/portal medidos neste turno; api na story 86; api-client 99% trivial). DOC-ONLY: nenhuma mudança de código de produção/contrato/endpoint; nenhum threshold baixado. — commit: ced6d88 — merge: d37c20f — 2026-06-27 — **BLOQUEIO PARCIAL**: o piso global de 90 só fecha 100% quando o adm for medido e climbado (depende da story 87). Story 91 NÃO arquivada (fica em stories/ aguardando o adm).
 
@@ -92,55 +94,51 @@ portal 83.17% (717/862) · api-client 99.06% (741/748). Exclusões de orquestra�
 
 ## Resumo final da rodada 85–91 (ENCERRADA 2026-06-27)
 
-Epic **85** (piso de cobertura 90%): **4 stories [OK] + 1 [PARCIAL] + 1 [BLOQUEADO]**. Todas
-mergeadas na `main` (`--no-ff`, sem push, branches preservadas).
+Epic **85** (piso de cobertura 90%): **6 stories [OK]** (87 e 91 destravadas em 2026-06-27 — ver
+log 87b+91). Todas mergeadas na `main` (`--no-ff`, sem push, branches preservadas).
 
 | Story | Pacote | Status | Cobertura final (stmts) | Catraca (stmt/br/fn/ln) |
 | --- | --- | --- | --- | --- |
 | 86 | services/api | [OK] | 90.32% | 90/75/87/92 (jest) |
-| 87 | adm.fonte | **[BLOQUEADO]** | não mensurável (≥80.02%) | 80 mantida (vitest) |
+| 87 | adm.fonte | **[OK]** | 90.65% | 90/85/83/90 (vitest) |
 | 88 | ops.fonte | [OK] | 91.3% | 90/81/89/93 (jest) |
 | 89 | app.fonte | [OK] | 91.74% | 90/81/91/93 (jest) |
 | 90 | portal.fonte | [OK] | 99.16% | 90/86/98/99 (vitest) |
 | 90 | @fonte/api-client | [OK] | 99.06% | 90/99/98/99 (vitest) |
-| 91 | gate global | **[PARCIAL]** | 5/6 pacotes no piso 90 | docs 80→90 + exceção adm |
+| 91 | gate global | **[OK]** | 6/6 pacotes no piso 90 | docs 80→90, sem exceção |
 
 ### O que passou
 - **86/88/89/90**: cobertura subida a ≥90% statements por testes puros (mocks locais; sem tocar
   produção). Catraca de cada pacote travada em `statements:90` (branch/fn/lines no valor atingido).
   Helper central de teste por pacote reusado. Ops 81.4→91.3, app 83.77→91.74, portal 83.17→99.16
   (com re-baseline honesto do App.tsx, orquestração), api-client 99% (só threshold).
-- **91**: docs do gate (CONTRIBUTING + skill fonte-workflow) subidas de 80% para 90%, com a exceção
-  do adm documentada. Os thresholds por pacote já vinham travados em 90 pelas filhas 86/88/89/90.
+- **91**: docs do gate (CONTRIBUTING + skill fonte-workflow) subidas de 80% para 90%, agora **sem
+  exceção** — adm destravado. Os thresholds por pacote travados em 90 pelas filhas 86/88/89/90 + 87b.
 
-### O que ficou BLOQUEADO e por quê
-- **87 (adm.fonte) — medição de cobertura inviável nesta máquina.** Dois providers testados, ambos
-  falham: v8 `all:true` degenera no remap (CPU-bound, nunca conclui); istanbul derruba o worker
-  (OOM em paralelo) e é lento demais single-fork (~1,5 h só de execução). Sem medir não dá p/
-  verificar nem climbar o adm de 80→90 (~1286 statements, o maior denominador do repo). O 87a (+19
-  specs, já mergeado) segue válido — só pode elevar a cobertura acima de 80.02%, logo a catraca:80 é
-  honesta. **Desbloqueio**: medir em CI Linux / máquina mais rápida, então subir a catraca do adm +
-  87b–87e + fechar a 91.
-- **91 (gate) — PARCIAL** por dependência rígida do adm: o piso global de 90 só fecha 100% quando o
-  adm for medido. 5/6 pacotes já enforçam 90; adm fica em 80 documentado. 91 não arquivada.
+### O desbloqueio do adm (87b, 2026-06-27)
+O "bloqueio de medição" da rodada original foi **mau diagnóstico**: não era o provider v8/istanbul.
+A suíte do adm rodava e passava os 147 arquivos, mas **nunca encerrava** — `HouseDialog.tsx` tinha
+`useStaff` com default `= []` (ref nova por render) numa dep de `useEffect` que nem usava a var →
+loop de render que mantinha o worker do tinypool vivo (morria/pendurava no fim; com 12 forks ainda
+dava OOM por pressão). Em produção o react-query memoiza `data`, então o loop só aparecia no teste.
+Isolado por bissecção binária + probe `process.getActiveResourcesInfo()`; **fix de 1 linha** (bug
+real de hook). Cov do adm passou a rodar em ~100s. Então 87b subiu 80.02→**90.65% statements** com
+16 specs e travou a catraca vitest do adm em 90/85/83/90 (rodada COM threshold verde, exit 0). 91
+fechou 6/6 e removeu a exceção do adm dos docs.
 
 ### Natureza / honestidade
-TESTES-ONLY (91 é DOC-ONLY). Nenhuma mudança de contrato/DTO/endpoint/migration/Postman em 86–90.
-Catraca só sobe, nunca desce. A tentativa de instalar `@vitest/coverage-istanbul` para medir o adm
-foi **revertida** do `package.json`/`pnpm-lock.yaml` (não adotada). A churn pré-existente em
-`stories/AUTORUN.md` (preenchimento do template do loop) foi deixada intacta, não commitada.
+TESTES-ONLY + **1 fix de produção** (HouseDialog, bug de hook — dep instável). Nenhuma mudança de
+contrato/DTO/endpoint/migration/Postman. Catraca só sobe, nunca desce.
 
 ### Não executado (fora do gate / ambiente)
 - E2E (Playwright adm/portal, Maestro ops/app) e o workflow CI real não rodaram (docker/API de
-  teste fora do ar; sem runner GitHub local). Stories tests-only/doc sem mudança de produção →
-  regressão de e2e impossível por construção.
-- `pnpm test:cov:all` completo não roda nesta máquina (trava no coverage do adm); 5 pacotes
-  validados individualmente no piso 90.
+  teste fora do ar; sem runner GitHub local). Stories tests-only + 1 fix isolado → regressão de e2e
+  improvável; o fix do HouseDialog é coberto pelo unit (6 specs verdes).
 
 ### Reproduzir
-5 pacotes prontos: `pnpm test:api:cov && pnpm test:api-client:cov && pnpm test:portal:cov &&
-pnpm test:ops:unit:cov && pnpm test:app:unit:cov` (todos verdes no piso 90). adm: pendente de
-ambiente onde o coverage conclua.
+6 pacotes no piso 90: `pnpm test:api:cov && pnpm test:api-client:cov && pnpm test:portal:cov &&
+pnpm test:ops:unit:cov && pnpm test:app:unit:cov && pnpm --filter adm.fonte test:unit:cov` (todos
+verdes; adm 90.65% em ~100s).
 
 ---
 

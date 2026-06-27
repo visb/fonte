@@ -112,9 +112,9 @@ Piso de **90% statements** por pacote, travado no config (jest `coverageThreshol
 `services/api`/`ops.fonte`/`app.fonte`; vitest `coverage.thresholds` em
 `adm.fonte`/`portal.fonte`/`@fonte/api-client`). `branches`/`functions`/`lines` travados no valor
 já atingido. **Novo código vem com teste**; abaixo do piso o processo sai != 0 e quebra o build.
-**Exceção `adm.fonte`** (story 87 BLOQUEADA): segue em `statements: 80` — a cobertura do pacote não
-pôde ser medida nesta máquina (v8 `all:true` degenera no remap; istanbul derruba o worker). Subir o
-piso do adm depende de medir em ambiente onde o runner conclua (CI/máquina mais rápida). Ver
+**Os 6 pacotes no piso 90**, inclusive `adm.fonte` (90.65% statements, story 87). O coverage do adm
+"não medível" era um loop de render em `HouseDialog` (default `[]` instável na dep do `useEffect`)
+que pendurava o worker do vitest no fim da suíte — corrigido; a cov roda em ~100s. Ver
 `stories/PROGRESS.md`.
 
 | Comando | Roda |

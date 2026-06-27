@@ -79,12 +79,21 @@ export default defineConfig({
       // climbing 16 (associates detail/row + SalesSummaryCards + AdmissionsTab +
       //   NotificationsPanel + HouseFormFields): 79.01% statements.
       // climbing 17 (PayablesSummaryCards + OverviewIndicesCards + RegistrationCard):
-      //   80.02% statements — META 80% ATINGIDA. Catraca final.
+      //   80.02% statements — META 80% ATINGIDA (epic 78).
+      // ─── story 87 (epic 85, piso 90%) ───────────────────────────────────────
+      // A cobertura do adm "não era mensurável" não por causa do provider v8: um
+      // loop de render em HouseDialog (staffList instável nas deps do useEffect)
+      // derrubava/pendurava o worker do tinypool no fim da suíte, e o sintoma foi
+      // confundido com "remap degenerado". Corrigido o bug, a cov roda em ~100s.
+      // 87b (StaffServiceSelector/ActivityFilters/Create+EditAssociateDialog/
+      //   EnrollResidentDialog/CensusReviewModal/MeetingFamiliesModal/ActivityDialog/
+      //   AuthContext/Create+EditEventDialog/SalesByHouseTable/ContributionSummaryCards/
+      //   useTheme/useInfiniteScroll): 80.02→90% statements. META 90% ATINGIDA.
       thresholds: {
-        statements: 80,
-        branches: 83,
-        functions: 80,
-        lines: 80,
+        statements: 90,
+        branches: 85,
+        functions: 83,
+        lines: 90,
       },
     },
   },

@@ -42,7 +42,9 @@ export function HouseDialog({ open, house, onClose }: Props) {
         isMotherHouse: house.isMotherHouse ?? false,
       } : emptyForm);
     }
-  }, [open, house, staffList, reset]);
+    // `staffList` não é usado aqui; mantê-lo nas deps causava loop de render
+    // quando a ref do array muda a cada render (default `[]` / data instável).
+  }, [open, house, reset]);
 
   const onSubmit = (data: HouseFormData) => {
     const payload = sanitizeHouseData(data);

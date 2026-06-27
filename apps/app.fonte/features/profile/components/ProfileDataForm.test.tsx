@@ -53,4 +53,14 @@ describe('ProfileDataForm', () => {
 
     expect(await screen.findByText('Telefone inválido')).toBeOnTheScreen();
   });
+
+  it('botões de teste (__DEV__) preenchem e resetam o nome via setValue', () => {
+    render(<ProfileDataForm defaultValues={{ name: 'Maria', phone: '' }} onSuccess={jest.fn()} />);
+
+    fireEvent.press(screen.getByLabelText('fill-test-profile-name'));
+    expect(screen.getByLabelText('input-nome').props.value).toBe('Maria Testadora Editada');
+
+    fireEvent.press(screen.getByLabelText('fill-test-profile-name-reset'));
+    expect(screen.getByLabelText('input-nome').props.value).toBe('Maria Testadora');
+  });
 });

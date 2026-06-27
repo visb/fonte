@@ -1,4 +1,5 @@
 import { waitFor } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 
 jest.mock('@/lib/api', () => ({
   api: { relatives: { updateMe: jest.fn(), uploadPhotoMe: jest.fn() } },
@@ -46,5 +47,37 @@ describe('useUploadProfilePhoto', () => {
     const fd = mockApi.relatives.uploadPhotoMe.mock.calls[0][0];
     expect(fd).toBeInstanceOf(FormData);
     expect(result.current.data).toEqual(updated);
+  });
+
+  describe('na plataforma web (FormData via fetch+blob)', () => {
+    const originalOS = Platform.OS;
+    const originalFetch = global.fetch;
+
+    beforeEach(() => {
+      (Platform as { OS: string }).OS = 'web';
+      // no web a foto é lida via fetch(uri).blob() e anexada ao FormData
+      global.fetch = jest.fn().mockResolvedValue({
+        blob: () => Promise.resolve(new Blob(['x'], { type: 'image/jpeg' })),
+      }) as unknown as typeof fetch;
+    });
+
+    afterEach(() => {
+      (Platform as { OS: string }).OS = originalOS;
+      global.fetch = originalFetch;
+    });
+
+    it('busca o blob via fetch e envia o FormData ao api-client', async () => {
+      const updated = { id: 'rel-1', name: 'Ana', photoUrl: 'photos/web.jpg' };
+      mockApi.relatives.uploadPhotoMe.mockResolvedValue(updated);
+
+      const { result } = renderHookWithClient(() => useUploadProfilePhoto());
+      result.current.mutate({ uri: 'blob://web.jpg', type: 'image/jpeg' });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(global.fetch).toHaveBeenCalledWith('blob://web.jpg');
+      const fd = mockApi.relatives.uploadPhotoMe.mock.calls[0][0];
+      expect(fd).toBeInstanceOf(FormData);
+      expect(result.current.data).toEqual(updated);
+    });
   });
 });

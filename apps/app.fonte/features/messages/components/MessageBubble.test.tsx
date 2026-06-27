@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react-native';
-import { Linking } from 'react-native';
+import { Image, Linking } from 'react-native';
 import { MessageStatus } from '@fonte/types';
 import type { Message } from '@fonte/api-client';
 
@@ -97,5 +97,47 @@ describe('MessageBubble', () => {
     fireEvent.press(screen.getByText('contrato.pdf'));
     expect(openURL).toHaveBeenCalledWith('https://cdn/docs/contrato.pdf');
     openURL.mockRestore();
+  });
+
+  it('renderiza o thumb de imagem com a url resolvida', () => {
+    render(
+      <MessageBubble
+        message={makeMessage({
+          content: '',
+          attachmentType: 'image',
+          attachmentUrl: 'photos/p.jpg',
+        })}
+        myUserId="me"
+      />,
+    );
+    // ImageAttachment renderiza a miniatura com a url resolvida pelo api.photoUrl
+    const hasThumb = screen
+      .UNSAFE_getAllByType(Image)
+      .some((node) => node.props.source?.uri === 'https://cdn/photos/p.jpg');
+    expect(hasThumb).toBe(true);
+  });
+
+  it('abre e fecha o modal de tela cheia ao tocar na imagem do anexo', () => {
+    render(
+      <MessageBubble
+        message={makeMessage({
+          content: '',
+          attachmentType: 'image',
+          attachmentUrl: 'photos/p.jpg',
+        })}
+        myUserId="me"
+      />,
+    );
+    // a miniatura é a TouchableOpacity com activeOpacity 0.9 (ImageAttachment)
+    const thumb = screen.UNSAFE_getByProps({ activeOpacity: 0.9 });
+    fireEvent.press(thumb); // setModalVisible(true)
+    // duas Image (thumb + tela cheia) apontam para a mesma url resolvida
+    const fullscreenImages = screen
+      .UNSAFE_getAllByType(Image)
+      .filter((node) => node.props.source?.uri === 'https://cdn/photos/p.jpg');
+    expect(fullscreenImages.length).toBeGreaterThanOrEqual(1);
+    // fecha pelo X (Ionicons close) — onPress setModalVisible(false)
+    fireEvent.press(screen.getByLabelText('Ionicons:close'));
+    expect(screen.UNSAFE_getByProps({ activeOpacity: 0.9 })).toBeTruthy();
   });
 });

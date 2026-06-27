@@ -191,4 +191,21 @@ describe('MessageInput', () => {
     });
     expect(screen.queryByText(/Gravando/)).toBeNull();
   });
+
+  it('botão de teste (__DEV__) preenche o campo de mensagem', () => {
+    render(<MessageInput onSend={jest.fn()} />);
+    // o atalho de teste só aparece quando não há texto nem gravação
+    fireEvent.press(screen.getByLabelText('fill-test-message'));
+    expect(screen.getByPlaceholderText('Escreva uma mensagem...').props.value).toBe(
+      'Mensagem de teste',
+    );
+  });
+
+  // stopRecording (linhas 72-89) e o ramo onPressOut (196-207) só são alcançáveis
+  // pelo ciclo onPressIn/onPressOut do Pressable do RN. No jsdom esse ciclo é
+  // instável: o tracking interno de press do Pressable quebra entre re-renders e o
+  // recordingRef fica inacessível no momento do stop (mesmo via o lixo do
+  // RecordingBar → stopRecording(true), o corpo da função não é exercido). startRecording
+  // é coberto por "inicia a gravação"/"não grava quando a permissão é negada"; o
+  // stop/envio de áudio fim-a-fim fica para o E2E Maestro (decisão herdada da story 84).
 });

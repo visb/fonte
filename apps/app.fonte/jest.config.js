@@ -17,9 +17,9 @@ module.exports = {
     // Helpers de teste não entram no denominador de cobertura.
     '!lib/test/**',
   ],
-  // Catraca de cobertura (story 84). Sobe a cada sub-fase mergeada, nunca desce.
+  // Catraca de cobertura (stories 84, 89). Sobe a cada sub-fase mergeada, nunca desce.
   coverageThreshold: {
-    global: { statements: 80, branches: 76, functions: 82, lines: 86 },
+    global: { statements: 90, branches: 81, functions: 91, lines: 93 },
   },
   // Unit tests ficam ao lado do código (*.test.ts(x)).
   // Maestro (e2e/) e Playwright web (e2e-web/) NÃO são coletados pelo jest.

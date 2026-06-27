@@ -170,6 +170,19 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(screen.getByLabelText('relative')).toHaveTextContent('Atualizada'));
   });
 
+  it('cai no catch da hidratação quando o AsyncStorage falha', async () => {
+    const spy = jest
+      .spyOn(AsyncStorage, 'getItem')
+      .mockRejectedValueOnce(new Error('storage boom'));
+
+    renderAuth();
+
+    await waitFor(() => expect(screen.getByLabelText('loading')).toHaveTextContent('false'));
+    expect(screen.getByLabelText('token')).toHaveTextContent('none');
+    expect(screen.getByLabelText('relative')).toHaveTextContent('none');
+    spy.mockRestore();
+  });
+
   it('useAuth fora do provider lança erro', () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     expect(() => render(<Consumer />)).toThrow('useAuth must be used within AuthProvider');

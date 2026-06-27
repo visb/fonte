@@ -66,15 +66,19 @@ portal 83.17% (717/862) · api-client 99.06% (741/748). Exclusões de orquestra�
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 86 — cobertura services/api 81.69→90% | [OK] 90.32% | api unit 946✓ (99 suites); cov 90.32% stmt (br 75.79 / fn 87.23 / ln 92.52); catraca jest 90/75/87/92 | 4b7022a | 0d7725d |
-| 2 | 87 — cobertura adm.fonte 80.02→90% (87a–87e) | [PARCIAL] 87a | adm unit suite verde (~40s); +19 specs residents+houses; catraca mantida 80 (medição de cobertura BLOQUEADA: remap v8 `all:true` degenerado nesta máquina) | bb17540 | 0cc97ea |
+| 2 | 87 — cobertura adm.fonte 80.02→90% (87a–87e) | [BLOQUEADO] medição | 87a mergeado (suíte adm verde ~40s; +19 specs residents+houses); catraca mantida 80. **Cobertura do adm NÃO é mensurável nesta máquina** (v8 `all:true` degenera no remap; istanbul derruba o worker por OOM em paralelo e é lento demais single-fork) → não dá p/ medir nem climbar 80→90 | bb17540 | 0cc97ea |
 | 3 | 88 — cobertura ops.fonte 81.4→90% | [OK] 91.3% | ops unit 513✓ (52 suites); cov 91.3% stmt (br 81.12 / fn 89.97 / ln 93.1); catraca jest 90/81/89/93 | 727a505 | 71dbc6f |
 | 4 | 89 — cobertura app.fonte 83.77→90% | [OK] 91.74% | app unit 111✓ (21 suites); cov 91.74% stmt (br 81.71 / fn 91.66 / ln 93.89); catraca jest 90/81/91/93 | 9138c02 | bea9e86 |
 | 5 | 90 — cobertura portal.fonte 83.17→90% + api-client trava 90% | [OK] portal 99.16% / api-client 99.06% | portal unit 93✓ (19 suites); cov 99.16% stmt (br 86.99 / fn 98.27 / ln 99.16); catraca vitest portal 90/86/98/99, api-client 90/99/98/99 | 094370f | 906c66e |
-| 6 | 91 — catraca global 90% + gate CI | [ ] | | | |
+| 6 | 91 — catraca global 90% + gate CI | [PARCIAL] 5/6 | thresholds:90 travados em api/ops/app/portal/api-client (pelas stories 86/88/89/90); docs (CONTRIBUTING+fonte-workflow) subidas 80→90 com a exceção adm. adm fica em 80 (story 87 bloqueada) | ced6d88 | d37c20f |
 
 ## Log
 
 <!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver> -->
+
+[PARCIAL] 91 — gate de cobertura subido para 90%, parcial. Os thresholds por pacote já tinham sido travados em `statements:90` pelas próprias filhas: api 90/75/87/92 (story 86, jest), ops 90/81/89/93 (88, jest), app 90/81/91/93 (89, jest), portal 90/86/98/99 (90, vitest), api-client 90/99/98/99 (90, vitest) — verificado lendo os 5 configs. Esta story só (a) subiu a documentação do gate de 80→90 em `CONTRIBUTING.md` e na skill `fonte-workflow`, com a **exceção do adm.fonte** explícita, e (b) registrou o estado. **adm.fonte fica em `statements:80`** (não subido) porque a story 87 está BLOQUEADA na medição (ver abaixo) — subir o piso do adm às cegas arriscaria gate vermelho permanente. `pnpm test:cov:all` completo não roda nesta máquina (trava no coverage do adm); os outros 5 pacotes são verdes individualmente no piso de 90 (ops/app/portal medidos neste turno; api na story 86; api-client 99% trivial). DOC-ONLY: nenhuma mudança de código de produção/contrato/endpoint; nenhum threshold baixado. — commit: ced6d88 — merge: d37c20f — 2026-06-27 — **BLOQUEIO PARCIAL**: o piso global de 90 só fecha 100% quando o adm for medido e climbado (depende da story 87). Story 91 NÃO arquivada (fica em stories/ aguardando o adm).
+
+[BLOQUEADO] 87 (atualização do turno 2026-06-27) — confirmada e aprofundada a investigação do bloqueio de medição da cobertura do adm.fonte, agora com **dois providers testados e ambos inviáveis nesta máquina**: (1) **v8 com `all:true`** — degenera no passo de remap (CPU-bound; reproduzido de novo neste turno: ~204 testes em alguns minutos e nunca emite `coverage-summary.json`); (2) **istanbul** (instalado `@vitest/coverage-istanbul@2.1.9` só para o teste e depois revertido do package.json/lock) — em paralelo derruba o worker do tinypool (`Worker exited unexpectedly`, OOM); em **single-fork + 6 GB de heap** roda sem crashar mas é lento demais (~37 de ~130 arquivos em ~30 min → ~1,5 h só de execução, antes do remap). Conclusão: a cobertura do adm **não pode ser medida** num ciclo prático aqui — e como o adm precisa climbar ~1286 statements de 80→90 (o maior denominador do monorepo), o trabalho iterativo medir-escrever-medir é **inviável autonomamente nesta máquina**. O 87a (já mergeado) segue válido: specs que passam só elevam a cobertura acima do baseline 80.02%, então a catraca:80 continua honesta. **Desbloqueio**: medir o adm num ambiente onde o runner conclua (CI Linux ou máquina mais rápida) — aí subir a catraca do adm e fazer 87b–87e + fechar a 91. Nada de produção tocado. — 2026-06-27.
 
 [OK] 90 — testes: portal.fonte unit 93✓ (19 suites), cobertura final 99.16% statements (br 86.99 / fn 98.27 / ln 99.16) — META 90% SUPERADA. **Re-baseline**: App.tsx (shell do roteador — providers + <Routes>, orquestração pura, análogo ao App/AppLayout do adm excluído na story 80) adicionado ao coverage.exclude COM comentário justificando (coberto por E2E Playwright); isso mexeu o baseline de 83.17% (717/862) para 85.86% (717/835) SEM teste novo, registrado antes de contar progresso. Catraca vitest portal subida (só p/ cima): statements 80→90 / branches 77→86 / functions 87→98 / lines 83→99; rodada COM threshold enforçado verde. api-client já em 99.06% (741/748) — apenas subiu thresholds.statements 80→90 (br/fn/ln mantidos 99/98/99), verde com folga, sem teste novo. +5 arquivos de spec com asserts reais (vi.mock de @/lib/api como na story 82): DynamicField (todos os 10 tipos de campo — short_text/long_text/number/date/email/phone/boolean/select/multi_select/file — + required, options vazio, add/remove do multi_select, mensagem de erro), RegistrationFileField (upload→fileKey, "Arquivo enviado.", erro→getErrorMessage+clear, early-return sem arquivo), PixPayment (render QR+copia-e-cola, ausências, copiar via fireEvent→"Copiado!", catch da cópia), formatEventDate (só início / intervalo início–fim), e copy-link de RegistrationSuccess (sucesso→"Link copiado!" / catch). Nota técnica: cópia testada via fireEvent.click + Object.defineProperty(navigator.clipboard) — userEvent.setup() instala clipboard próprio e sobrescreve o mock. — commit: 094370f — merge: 906c66e — arquivo: 4a130db — 2026-06-27 — sem bloqueio. TESTES-ONLY: nenhuma mudança de produção/contrato/DTO/endpoint/migration/Postman; só *.test.* + coverage.thresholds/exclude dos dois vitest.config. Exclusões da story 82 mantidas (portal pages/** + sentry.ts; api-client barrel src/index.ts) — NÃO ampliadas além da exclusão justificada do App.tsx. E2E Playwright do portal (precisa docker/API) não rodado aqui — non-gate; DoD = cobertura unit ≥90% verde. Story 90 CONCLUÍDA e arquivada em stories/done/.
 
@@ -86,9 +90,57 @@ portal 83.17% (717/862) · api-client 99.06% (741/748). Exclusões de orquestra�
 
 [OK] 86 — testes: services/api unit 946✓ (99 suites), cobertura final 90.32% statements (br 75.79 / fn 87.23 / ln 92.52) — META 90% ATINGIDA (baseline 81.69/69.76/78.23/84.10). Catraca jest subida (só p/ cima): statements:90 / branches:75 / functions:87 / lines:92. ~133 statements novos cobertos: guards (roles, must-change-password), interceptors (audit, sensitive-data), schedulers (backup, storeroom-usage, signed-url-cache), jwt.strategy, notification.gateway (socket auth/rooms/emit), MetaWhatsAppClient (mock global.fetch: sucesso/erro-payload/rede/sem-credencial), controllers finos (backup, audit, app-settings, public-associate, associate-charge, public-event-payment, pagarme-webhook) e ramos de service (wishlist, ministry, relative[findMe/updateMe/uploadPhoto], document-template[generatePdf via browser injetado/onModuleDestroy/computeAge], support-group[queries+detail+history], consent[resolveSubjectForUser], supply-room+storeroom[CRUD+findMovements qb], house-capacity-request[getById/listForHouse]). Repos/deps mockados, sem banco/IO/HTTP real. — commit: 4b7022a — merge: 0d7725d — arquivo: 354347b — 2026-06-26 — sem bloqueio. TESTES-ONLY: nenhuma mudança de produção/contrato/DTO/endpoint/migration/Postman; só specs + coverageThreshold. E2E não rodado neste disparo (stack de API teste — dev:api:test:3001 + DB teste seedado — fora do ar; docker postgres up mas sem o NODE_ENV=test); por ser tests-only SEM mudança de produção, regressão de e2e é impossível por construção (precedente documentado rodada 77–84). Story 86 CONCLUÍDA e arquivada em stories/done/.
 
-## Resumo final
+## Resumo final da rodada 85–91 (ENCERRADA 2026-06-27)
 
-<preencher ao terminar>
+Epic **85** (piso de cobertura 90%): **4 stories [OK] + 1 [PARCIAL] + 1 [BLOQUEADO]**. Todas
+mergeadas na `main` (`--no-ff`, sem push, branches preservadas).
+
+| Story | Pacote | Status | Cobertura final (stmts) | Catraca (stmt/br/fn/ln) |
+| --- | --- | --- | --- | --- |
+| 86 | services/api | [OK] | 90.32% | 90/75/87/92 (jest) |
+| 87 | adm.fonte | **[BLOQUEADO]** | não mensurável (≥80.02%) | 80 mantida (vitest) |
+| 88 | ops.fonte | [OK] | 91.3% | 90/81/89/93 (jest) |
+| 89 | app.fonte | [OK] | 91.74% | 90/81/91/93 (jest) |
+| 90 | portal.fonte | [OK] | 99.16% | 90/86/98/99 (vitest) |
+| 90 | @fonte/api-client | [OK] | 99.06% | 90/99/98/99 (vitest) |
+| 91 | gate global | **[PARCIAL]** | 5/6 pacotes no piso 90 | docs 80→90 + exceção adm |
+
+### O que passou
+- **86/88/89/90**: cobertura subida a ≥90% statements por testes puros (mocks locais; sem tocar
+  produção). Catraca de cada pacote travada em `statements:90` (branch/fn/lines no valor atingido).
+  Helper central de teste por pacote reusado. Ops 81.4→91.3, app 83.77→91.74, portal 83.17→99.16
+  (com re-baseline honesto do App.tsx, orquestração), api-client 99% (só threshold).
+- **91**: docs do gate (CONTRIBUTING + skill fonte-workflow) subidas de 80% para 90%, com a exceção
+  do adm documentada. Os thresholds por pacote já vinham travados em 90 pelas filhas 86/88/89/90.
+
+### O que ficou BLOQUEADO e por quê
+- **87 (adm.fonte) — medição de cobertura inviável nesta máquina.** Dois providers testados, ambos
+  falham: v8 `all:true` degenera no remap (CPU-bound, nunca conclui); istanbul derruba o worker
+  (OOM em paralelo) e é lento demais single-fork (~1,5 h só de execução). Sem medir não dá p/
+  verificar nem climbar o adm de 80→90 (~1286 statements, o maior denominador do repo). O 87a (+19
+  specs, já mergeado) segue válido — só pode elevar a cobertura acima de 80.02%, logo a catraca:80 é
+  honesta. **Desbloqueio**: medir em CI Linux / máquina mais rápida, então subir a catraca do adm +
+  87b–87e + fechar a 91.
+- **91 (gate) — PARCIAL** por dependência rígida do adm: o piso global de 90 só fecha 100% quando o
+  adm for medido. 5/6 pacotes já enforçam 90; adm fica em 80 documentado. 91 não arquivada.
+
+### Natureza / honestidade
+TESTES-ONLY (91 é DOC-ONLY). Nenhuma mudança de contrato/DTO/endpoint/migration/Postman em 86–90.
+Catraca só sobe, nunca desce. A tentativa de instalar `@vitest/coverage-istanbul` para medir o adm
+foi **revertida** do `package.json`/`pnpm-lock.yaml` (não adotada). A churn pré-existente em
+`stories/AUTORUN.md` (preenchimento do template do loop) foi deixada intacta, não commitada.
+
+### Não executado (fora do gate / ambiente)
+- E2E (Playwright adm/portal, Maestro ops/app) e o workflow CI real não rodaram (docker/API de
+  teste fora do ar; sem runner GitHub local). Stories tests-only/doc sem mudança de produção →
+  regressão de e2e impossível por construção.
+- `pnpm test:cov:all` completo não roda nesta máquina (trava no coverage do adm); 5 pacotes
+  validados individualmente no piso 90.
+
+### Reproduzir
+5 pacotes prontos: `pnpm test:api:cov && pnpm test:api-client:cov && pnpm test:portal:cov &&
+pnpm test:ops:unit:cov && pnpm test:app:unit:cov` (todos verdes no piso 90). adm: pendente de
+ambiente onde o coverage conclua.
 
 ---
 

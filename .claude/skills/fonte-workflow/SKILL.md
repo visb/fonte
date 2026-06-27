@@ -106,12 +106,16 @@ emulador — o e2e nativo Maestro permanece no repo como opcional e **não** blo
 workspace, e então o nome reservado vira executável. e2e fica sob demanda (exige serviços/builds
 no ar), fora do `test:all`.
 
-### Catraca de cobertura — gate 80% (epic 78 / story 83)
+### Catraca de cobertura — gate 90% (epic 85 / stories 86–91)
 
-Piso de **80% statements** por pacote, travado no config (jest `coverageThreshold.global` em
+Piso de **90% statements** por pacote, travado no config (jest `coverageThreshold.global` em
 `services/api`/`ops.fonte`/`app.fonte`; vitest `coverage.thresholds` em
 `adm.fonte`/`portal.fonte`/`@fonte/api-client`). `branches`/`functions`/`lines` travados no valor
 já atingido. **Novo código vem com teste**; abaixo do piso o processo sai != 0 e quebra o build.
+**Exceção `adm.fonte`** (story 87 BLOQUEADA): segue em `statements: 80` — a cobertura do pacote não
+pôde ser medida nesta máquina (v8 `all:true` degenera no remap; istanbul derruba o worker). Subir o
+piso do adm depende de medir em ambiente onde o runner conclua (CI/máquina mais rápida). Ver
+`stories/PROGRESS.md`.
 
 | Comando | Roda |
 | --- | --- |

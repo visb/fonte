@@ -45,18 +45,27 @@ Exemplos inválidos:
 - "fix bug"
 - "feat: coisa nova"
 
-## Catraca de cobertura (gate 80%)
+## Catraca de cobertura (gate 90%)
 
-Piso de **80% statements** travado por pacote (epic 78 / story 83). Vale como gate de merge:
+Piso de **90% statements** travado por pacote (epic 85 / stories 86–91; sucede o piso de 80% do
+epic 78 / story 83). Vale como gate de merge:
 
 - **Novo código vem com teste.** PR que derruba a cobertura abaixo do piso **quebra o build** e
   não mergeia. Cada pacote tem o threshold no seu config:
   - jest (`services/api`, `ops.fonte`, `app.fonte`): `coverageThreshold.global`.
   - vitest (`adm.fonte`, `portal.fonte`, `@fonte/api-client`): `coverage.thresholds`.
-  - `statements: 80` (piso); `branches`/`functions`/`lines` travados no valor já atingido.
+  - `statements: 90` (piso); `branches`/`functions`/`lines` travados no valor já atingido.
+  - **Exceção `adm.fonte`** (story 87 BLOQUEADA): segue em `statements: 80`. A cobertura do
+    pacote **não pôde ser medida nesta máquina** — o provider v8 com `all:true` degenera (remap
+    CPU-bound que não conclui) e o istanbul derruba o worker (OOM em paralelo; single-fork lento
+    demais para o ciclo medir-escrever-medir). Subir o piso do adm para 90 depende de medir a
+    cobertura num ambiente onde o runner conclua (CI Linux ou máquina mais rápida). Ver
+    `stories/PROGRESS.md`.
 - **Rodar o gate local:** `pnpm test:cov:all` roda os 6 pacotes com `--coverage`; sai com código
   != 0 (build vermelho) se algum cair abaixo do piso. CI (`.github/workflows/ci.yml`) roda o mesmo
-  em push/PR na `main`. E2E **não** entra no gate.
+  em push/PR na `main`. E2E **não** entra no gate. (Em máquinas onde o coverage do `adm.fonte` não
+  conclui — ver exceção acima — rode os outros 5 pacotes individualmente: `pnpm test:api:cov`,
+  `pnpm test:api-client:cov`, `pnpm test:portal:cov`, `pnpm test:ops:unit:cov`, `pnpm test:app:unit:cov`.)
 - **Subir o piso é PR próprio**; **nunca baixar** um threshold sem justificativa registrada no PR
   (a catraca só sobe).
 - Re-baseline honesto: excluir orquestração do denominador (`pages/**`/rotas `app/**`/`sentry.ts`)

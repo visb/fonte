@@ -161,4 +161,73 @@ describe('AudioRecorder', () => {
     fireEvent.press(screen.getByLabelText('Gravar áudio'));
     await waitFor(() => expect(screen.getByLabelText('Parar gravação')).toBeTruthy());
   });
+
+  it('parar gravação chama onRecorded com m4a e duração medida', async () => {
+    (Audio.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (Audio.setAudioModeAsync as jest.Mock).mockResolvedValue(undefined);
+    (Audio.Recording.createAsync as jest.Mock).mockResolvedValue({
+      recording: {
+        stopAndUnloadAsync: jest.fn().mockResolvedValue({ durationMillis: 3000 }),
+        getURI: () => 'file://r.m4a',
+      },
+    });
+    const onRecorded = jest.fn();
+    render(<AudioRecorder onRecorded={onRecorded} uploading={false} />);
+    fireEvent.press(screen.getByLabelText('Gravar áudio'));
+    await waitFor(() => expect(screen.getByLabelText('Parar gravação')).toBeTruthy());
+    fireEvent.press(screen.getByLabelText('Parar gravação'));
+    await waitFor(() =>
+      expect(onRecorded).toHaveBeenCalledWith(
+        expect.objectContaining({ mimeType: 'audio/m4a', durationSeconds: 3 }),
+      ),
+    );
+  });
+
+  it('uri .webm gera anexo audio/webm', async () => {
+    (Audio.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (Audio.setAudioModeAsync as jest.Mock).mockResolvedValue(undefined);
+    (Audio.Recording.createAsync as jest.Mock).mockResolvedValue({
+      recording: {
+        stopAndUnloadAsync: jest.fn().mockResolvedValue({}),
+        getURI: () => 'blob://r.webm',
+      },
+    });
+    const onRecorded = jest.fn();
+    render(<AudioRecorder onRecorded={onRecorded} uploading={false} />);
+    fireEvent.press(screen.getByLabelText('Gravar áudio'));
+    await waitFor(() => expect(screen.getByLabelText('Parar gravação')).toBeTruthy());
+    fireEvent.press(screen.getByLabelText('Parar gravação'));
+    await waitFor(() =>
+      expect(onRecorded).toHaveBeenCalledWith(
+        expect.objectContaining({ mimeType: 'audio/webm', durationSeconds: 0 }),
+      ),
+    );
+  });
+
+  it('falha ao finalizar a gravação mostra Alert de erro', async () => {
+    (Audio.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (Audio.setAudioModeAsync as jest.Mock).mockResolvedValue(undefined);
+    (Audio.Recording.createAsync as jest.Mock).mockResolvedValue({
+      recording: {
+        stopAndUnloadAsync: jest.fn().mockRejectedValue(new Error('boom')),
+        getURI: () => 'file://r.m4a',
+      },
+    });
+    const onRecorded = jest.fn();
+    render(<AudioRecorder onRecorded={onRecorded} uploading={false} />);
+    fireEvent.press(screen.getByLabelText('Gravar áudio'));
+    await waitFor(() => expect(screen.getByLabelText('Parar gravação')).toBeTruthy());
+    fireEvent.press(screen.getByLabelText('Parar gravação'));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Erro', expect.any(String)));
+    expect(onRecorded).not.toHaveBeenCalled();
+  });
+
+  it('erro ao acessar microfone no start mostra Alert', async () => {
+    (Audio.requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (Audio.setAudioModeAsync as jest.Mock).mockResolvedValue(undefined);
+    (Audio.Recording.createAsync as jest.Mock).mockRejectedValue(new Error('no mic'));
+    render(<AudioRecorder onRecorded={jest.fn()} uploading={false} />);
+    fireEvent.press(screen.getByLabelText('Gravar áudio'));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Erro', expect.any(String)));
+  });
 });

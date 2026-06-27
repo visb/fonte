@@ -76,6 +76,36 @@ describe('CreateMeetingModal', () => {
     // o botão Criar fica disponível
     expect(screen.getByText('Criar')).toBeTruthy();
   });
+
+  it('selecionar grupo + Criar chama createMeeting com data e observação', async () => {
+    m.supportGroups.list.mockResolvedValue([
+      { id: 'g1', name: 'Grupo A', dayOfWeek: 1, churchName: 'Igreja X' },
+    ]);
+    m.supportGroups.createMeeting.mockResolvedValue({ id: 'mt1' });
+    const onSuccess = jest.fn();
+    const onClose = jest.fn();
+    rc(<CreateMeetingModal visible onClose={onClose} onSuccess={onSuccess} />);
+    await waitFor(() => expect(screen.getByText('Grupo A')).toBeTruthy());
+    fireEvent.press(screen.getByText('Grupo A'));
+    fireEvent.changeText(screen.getByPlaceholderText(/Local alternativo/), 'Tema especial');
+    fireEvent.press(screen.getByText('Criar'));
+    await waitFor(() =>
+      expect(m.supportGroups.createMeeting).toHaveBeenCalledWith(
+        'g1',
+        expect.objectContaining({ notes: 'Tema especial' }),
+      ),
+    );
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('Criar sem grupo selecionado não muta', async () => {
+    m.supportGroups.list.mockResolvedValue([]);
+    rc(<CreateMeetingModal {...props} />);
+    await waitFor(() => expect(screen.getByText('Nenhum grupo cadastrado.')).toBeTruthy());
+    fireEvent.press(screen.getByText('Criar'));
+    expect(m.supportGroups.createMeeting).not.toHaveBeenCalled();
+  });
 });
 
 describe('QRCodeModal', () => {
@@ -91,5 +121,25 @@ describe('QRCodeModal', () => {
     render(<QRCodeModal visible onClose={onClose} meetingId="mt1" groupName="Grupo A" date="2026-06-23" />);
     fireEvent.press(screen.getByText('Fechar'));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('Exportar (nativo) gera SVG, grava em cache e compartilha', async () => {
+    const QRCodeGenerator = require('qrcode');
+    const FileSystem = require('expo-file-system');
+    const Sharing = require('expo-sharing');
+    (QRCodeGenerator.toString as jest.Mock).mockResolvedValue('<svg/>');
+    (FileSystem.writeAsStringAsync as jest.Mock).mockResolvedValue(undefined);
+    (Sharing.shareAsync as jest.Mock).mockResolvedValue(undefined);
+
+    render(<QRCodeModal visible onClose={jest.fn()} meetingId="mt1" groupName="Grupo A" date="2026-06-23" />);
+    fireEvent.press(screen.getByText('Exportar'));
+    await waitFor(() =>
+      expect(QRCodeGenerator.toString).toHaveBeenCalledWith(
+        'support-group-meeting:mt1',
+        expect.objectContaining({ type: 'svg' }),
+      ),
+    );
+    await waitFor(() => expect(FileSystem.writeAsStringAsync).toHaveBeenCalled());
+    await waitFor(() => expect(Sharing.shareAsync).toHaveBeenCalled());
   });
 });

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createTestQueryClient } from '@/lib/test/utils';
 
@@ -80,5 +81,49 @@ describe('HousePhotoGallery', () => {
     rc(<HousePhotoGallery house={{ id: 'h1', photos: [{ id: 'p1', url: 'https://x/p.jpg' }] } as never} />);
     expect(screen.queryByText('Nenhuma foto adicionada.')).toBeNull();
     expect(screen.getByText('icon:trash-outline')).toBeTruthy();
+  });
+
+  it('sem permissão de galeria alerta e não envia foto', async () => {
+    (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied' });
+    jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    rc(<HousePhotoGallery house={{ id: 'h1', photos: [] } as never} />);
+    fireEvent.press(screen.getByText('Adicionar foto'));
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith('Permissão necessária', expect.any(String)),
+    );
+    expect(m.houses.addPhoto).not.toHaveBeenCalled();
+  });
+
+  it('seleção cancelada não envia foto', async () => {
+    (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({ canceled: true, assets: [] });
+    rc(<HousePhotoGallery house={{ id: 'h1', photos: [] } as never} />);
+    fireEvent.press(screen.getByText('Adicionar foto'));
+    await waitFor(() => expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalled());
+    expect(m.houses.addPhoto).not.toHaveBeenCalled();
+  });
+
+  it('foto selecionada chama addPhoto com uri e tipo', async () => {
+    (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file://p.jpg', mimeType: 'image/jpeg' }],
+    });
+    m.houses.addPhoto.mockResolvedValue({ id: 'p9' });
+    rc(<HousePhotoGallery house={{ id: 'h1', photos: [] } as never} />);
+    fireEvent.press(screen.getByText('Adicionar foto'));
+    await waitFor(() => expect(m.houses.addPhoto).toHaveBeenCalledWith('h1', expect.anything()));
+  });
+
+  it('remover foto chama deletePhoto via confirmação do item', async () => {
+    m.houses.deletePhoto.mockResolvedValue(undefined);
+    let confirm: (() => void) | undefined;
+    jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
+      confirm = (buttons?.[1] as { onPress?: () => void })?.onPress;
+    });
+    rc(<HousePhotoGallery house={{ id: 'h1', photos: [{ id: 'p1', url: 'https://x/p.jpg' }] } as never} />);
+    fireEvent.press(screen.getByText('icon:trash-outline'));
+    confirm?.();
+    await waitFor(() => expect(m.houses.deletePhoto).toHaveBeenCalledWith('h1', 'p1'));
   });
 });

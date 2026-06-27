@@ -69,3 +69,58 @@ describe('ActivityCard — devolver para rascunho (story 75)', () => {
     expect(screen.queryByText('Devolver para rascunho')).toBeNull();
   });
 });
+
+describe('ActivityCard — transições por papel/status', () => {
+  const responsible = { userId: 'resp-user', name: 'Servo R' } as Activity['responsible'];
+
+  it('criador em DRAFT envia (REQUESTED)', () => {
+    const onChangeStatus = jest.fn();
+    const item = makeActivity({ status: ActivityStatus.DRAFT });
+    render(<ActivityCard item={item} currentUserId="creator-user" onChangeStatus={onChangeStatus} />);
+    fireEvent.press(screen.getByText('Enviar'));
+    expect(onChangeStatus).toHaveBeenCalledWith(item, ActivityStatus.REQUESTED);
+  });
+
+  it('responsável em TODO inicia (DOING)', () => {
+    const onChangeStatus = jest.fn();
+    const item = makeActivity({ status: ActivityStatus.TODO, responsible });
+    render(<ActivityCard item={item} currentUserId="resp-user" onChangeStatus={onChangeStatus} />);
+    fireEvent.press(screen.getByText('Iniciar'));
+    expect(onChangeStatus).toHaveBeenCalledWith(item, ActivityStatus.DOING);
+  });
+
+  it('responsável em DOING pode impedir e concluir', () => {
+    const onChangeStatus = jest.fn();
+    const item = makeActivity({ status: ActivityStatus.DOING, responsible });
+    render(<ActivityCard item={item} currentUserId="resp-user" onChangeStatus={onChangeStatus} />);
+    fireEvent.press(screen.getByText('Impedir'));
+    expect(onChangeStatus).toHaveBeenCalledWith(item, ActivityStatus.BLOCKED);
+    fireEvent.press(screen.getByText('Concluir'));
+    expect(onChangeStatus).toHaveBeenCalledWith(item, ActivityStatus.DONE);
+  });
+
+  it('responsável em BLOCKED pode retomar e concluir', () => {
+    const onChangeStatus = jest.fn();
+    const item = makeActivity({ status: ActivityStatus.BLOCKED, responsible });
+    render(<ActivityCard item={item} currentUserId="resp-user" onChangeStatus={onChangeStatus} />);
+    fireEvent.press(screen.getByText('Retomar'));
+    expect(onChangeStatus).toHaveBeenCalledWith(item, ActivityStatus.DOING);
+    fireEvent.press(screen.getByText('Concluir'));
+    expect(onChangeStatus).toHaveBeenCalledWith(item, ActivityStatus.DONE);
+  });
+
+  it('toca no corpo do card e dispara onPress', () => {
+    const onPress = jest.fn();
+    const item = makeActivity({ status: ActivityStatus.TODO });
+    render(<ActivityCard item={item} currentUserId="x" onChangeStatus={jest.fn()} onPress={onPress} />);
+    fireEvent.press(screen.getByText('Trocar lâmpada'));
+    expect(onPress).toHaveBeenCalledWith(item);
+  });
+
+  it('quem não é responsável não vê ações de execução', () => {
+    const item = makeActivity({ status: ActivityStatus.DOING, responsible });
+    render(<ActivityCard item={item} currentUserId="outro" onChangeStatus={jest.fn()} />);
+    expect(screen.queryByText('Concluir')).toBeNull();
+    expect(screen.queryByText('Impedir')).toBeNull();
+  });
+});

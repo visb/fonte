@@ -108,6 +108,49 @@ describe('CreateMinistryModal', () => {
     // (ambos continuam como opção de líder, por isso usamos getAllByText).
     await waitFor(() => expect(screen.getAllByText('Pedro').length).toBeGreaterThan(0));
   });
+
+  it('seleciona líder, marca filhos e cria com o contador atualizado', async () => {
+    m.houses.listStaff.mockResolvedValue([{ id: 's1', name: 'Servo X' }]);
+    m.houses.listResidents.mockResolvedValue([{ id: 'r1', name: 'João' }]);
+    m.houses.addMinistry.mockResolvedValue({ id: 'min1' });
+    const onSuccess = jest.fn();
+    const onClose = jest.fn();
+    rc(<CreateMinistryModal {...props} onSuccess={onSuccess} onClose={onClose} />);
+    await waitFor(() => expect(screen.getByText('Servo X')).toBeTruthy());
+    fireEvent.changeText(screen.getByPlaceholderText(/Ex: Cozinha/), 'Cozinha');
+    // seleciona o líder staff
+    fireEvent.press(screen.getByText('Servo X'));
+    // marca o filho João (aparece como opção de líder e como checkbox de filho;
+    // o último é o item da lista de filhos)
+    const joaos = screen.getAllByText('João');
+    fireEvent.press(joaos[joaos.length - 1]);
+    expect(screen.getByText(/1 selecionados/)).toBeTruthy();
+    fireEvent.press(screen.getByText('Criar'));
+    await waitFor(() => expect(m.houses.addMinistry).toHaveBeenCalled());
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('seleciona e desmarca "Sem líder"; Cancelar fecha o modal', async () => {
+    m.houses.listStaff.mockResolvedValue([{ id: 's1', name: 'Servo X' }]);
+    m.houses.listResidents.mockResolvedValue([]);
+    const onClose = jest.fn();
+    rc(<CreateMinistryModal {...props} onClose={onClose} />);
+    await waitFor(() => expect(screen.getByText('Servo X')).toBeTruthy());
+    fireEvent.press(screen.getByText('Servo X'));
+    fireEvent.press(screen.getByText('— Sem líder'));
+    fireEvent.press(screen.getByText('Cancelar'));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('Criar sem nome não muta', async () => {
+    m.houses.listStaff.mockResolvedValue([]);
+    m.houses.listResidents.mockResolvedValue([]);
+    rc(<CreateMinistryModal {...props} />);
+    await waitFor(() => expect(screen.getByText('Novo ministério')).toBeTruthy());
+    fireEvent.press(screen.getByText('Criar'));
+    expect(m.houses.addMinistry).not.toHaveBeenCalled();
+  });
 });
 
 describe('AddTaskModal', () => {

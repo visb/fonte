@@ -186,4 +186,22 @@ describe('ResidentPhoto', () => {
     fireEvent.press(img.parent as never);
     expect(screen.getByText('João')).toBeTruthy();
   });
+
+  it('fecha o modal pelo botão de fechar', () => {
+    render(<ResidentPhoto name="Maria" photoUrl="https://x/full.jpg" />);
+    const img = screen.UNSAFE_getAllByType(require('react-native').Image)[0];
+    fireEvent.press(img.parent as never);
+    expect(screen.getByText('Maria')).toBeTruthy();
+    // botão X (Ionicons close) fecha o modal
+    fireEvent.press(screen.getByText('icon:close'));
+    expect(screen.queryByText('Maria')).toBeNull();
+  });
+
+  it('usa só a thumb quando não há URL cheia (fallback)', () => {
+    render(<ResidentPhoto name="Ana" photoThumbUrl="https://x/t.jpg" />);
+    // thumb existe → mostra Image; fullUrl resolve para a thumb (toca e abre)
+    const img = screen.UNSAFE_getAllByType(require('react-native').Image)[0];
+    fireEvent.press(img.parent as never);
+    expect(screen.getByText('Ana')).toBeTruthy();
+  });
 });

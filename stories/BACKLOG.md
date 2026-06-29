@@ -1,7 +1,5 @@
 # Backlog
 
-Nos eventos, precisamos ter a possibilidade de criar "eventos internos", geralmente focados para servos.
-
 Adicionar funcionalidade de enviar convite via whatsapp para servos em todos os eventos.
 
 ---

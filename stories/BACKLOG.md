@@ -1,9 +1,5 @@
 # Backlog
 
-Adicionar funcionalidade de enviar convite via whatsapp para servos em todos os eventos.
-
----
-
 O perfil dos servos tem muita semelhança com o perfil de filhos. quero remover esta impressao.
 Tudo q é campo referente a tratamento, dependencia, quero remover.
 No cadastro de servos, da pra separar em abas. Ex: sistema, pessoal, endereço e contato, etc.

@@ -15,7 +15,7 @@ a cada intervalo, independente do limite de sessão — disparo que cair no limi
 próximo (após o reset) retoma. Colar (ajustar a faixa de stories e a ordem):
 
 ```
-/loop 30m Modo autônomo. Siga C:\code\fonte\stories\AUTORUN.md à risca, sem me perguntar nada. A cada disparo deste loop, releia stories/PROGRESS.md + git log e continue da próxima story NÃO commitada na ordem {ORDEM}. Se a sessão tiver batido o limite, não faça nada e aguarde o próximo disparo (após o reset) — não tente rearmar nada. Implemente tudo que for autonomamente possível; ao terminar cada story, rode os testes automatizados (unit + e2e) e, com a suíte tocada TODA verde, faça merge --no-ff na main e siga para a próxima. O que depender de credencial/serviço externo que você não tem: implemente atrás de interface com mocks nos testes, marque BLOQUEADO em PROGRESS.md com o motivo, e siga — não invente chaves, não chame API real, não dê push. Quando todas estiverem commitadas ou BLOQUEADAS, escreva o resumo final em PROGRESS.md e encerre o loop.
+/loop 30m Modo autônomo. Siga C:\code\fonte\stories\AUTORUN.md à risca, sem me perguntar nada. A cada disparo deste loop, releia stories/PROGRESS.md + git log e continue da próxima story NÃO commitada na ordem 92 → 93 → 94 → 96 → 97 → 98 → 95. Se a sessão tiver batido o limite, não faça nada e aguarde o próximo disparo (após o reset) — não tente rearmar nada. Implemente tudo que for autonomamente possível; ao terminar cada story, rode os testes automatizados (unit + e2e) e, com a suíte tocada TODA verde, faça merge --no-ff na main e siga para a próxima. O que depender de credencial/serviço externo que você não tem (WhatsApp/Meta na 95): implemente atrás de interface com mocks nos testes, marque PENDENTE-MANUAL em PROGRESS.md com o motivo, e siga — não invente chaves, não chame API real, não dê push. Quando todas estiverem commitadas ou bloqueadas, escreva o resumo final em PROGRESS.md e encerre o loop.
 ```
 
 ---
@@ -40,45 +40,47 @@ próximo (após o reset) retoma. Colar (ajustar a faixa de stories e a ordem):
 
 ## Stories da rodada
 
-Epic **85** (piso de cobertura **90%**) + filhas 86–91. Sequência do epic 78 (que já travou 80% e
-foi arquivado). **85 NÃO se implementa** — é guarda-chuva. Trabalho = escrever testes até cada
-pacote bater **90% statements** e subir a catraca (story 91 trava o gate).
+Rodada de **features** (92–98). Cada story muda código de produção: entidade, migration, DTO,
+endpoint, contrato (`packages/types`/`api-client`), Postman e frontends. Decisões já travadas em
+cada `stories/NN-*.md` (seção "Decisões travadas"). **Não perguntar nada.**
 
-| #   | Tipo / o que é | Implementar? |
+| #   | Tipo / o que é | Toca |
 | --- | --- | --- |
-| 85 | EPIC cobertura 90% (meta/estratégia/fila) | NÃO — guarda-chuva |
-| 86 | Cobertura `services/api` 81.69→90% | SIM (testes; sem mudar contrato) |
-| 87 | Cobertura `adm.fonte` 80.02→90% — sub-fases 87a–87e | SIM (sub-fase = checkpoint/merge) |
-| 88 | Cobertura `ops.fonte` 81.4→90% | SIM |
-| 89 | Cobertura `app.fonte` 83.77→90% | SIM |
-| 90 | Cobertura `portal.fonte` 83.17→90% + `api-client` 99→trava 90% | SIM |
-| 91 | Catraca global 90% + gate CI (`coverageThreshold`/`thresholds`) | SIM (depende de 86–90) |
+| 92 | Fotos por turma no curso bíblico (galeria + bucket) | api (migration) · types · api-client · adm · ops |
+| 93 | Limpeza de órfãos no bucket (diff wysiwyg + reconcile ADMIN one-shot) | api · adm |
+| 94 | Eventos internos (`audience` enum, só divulgação) | api (migration) · types · api-client · adm · ops (feature nova) |
+| 95 | Convite WhatsApp p/ servos nos eventos | api · types · api-client · adm · associados (página detalhe) |
+| 96 | Perfil servo: remove campos de tratamento + form em abas | api (migration, DROP colunas) · types · api-client · adm |
+| 97 | Servo: `telefone`→`whatsapp` + login por whatsapp | api (migration, RENAME) · types · api-client · adm |
+| 98 | Aba de anexos do servo (`staff_attachments` + bucket) | api (migration) · types · api-client · adm |
 
 ## Ordem e dependências
 
 ```
-86 → 87 → 88 → 89 → 90 → 91
+92 → 93 → 94 → 96 → 97 → 98 → 95
 ```
 
-- **Sem dependência rígida de contrato entre 86, 87, 88, 89, 90** — cada uma toca **só o seu
-  pacote** (api / adm / ops / app / portal+api-client). Podem ser reordenadas/puladas sem travar a
-  fila: se uma bloquear, registrar e seguir para a próxima.
-- **91 é a ÚNICA com dependência rígida**: sobe o piso de TODOS os pacotes para 90 — só rodar quando
-  86, 87, 88, 89 e 90 estiverem ≥ 90%. Se alguma ficar abaixo de 90%, **91 fica BLOQUEADA** (registrar
-  e não mergear o gate; pode-se travar threshold parcial só dos pacotes já no piso).
-- **Sub-fases internas (87a–e)**: cada sub-fase é um **checkpoint commitável e mergeável** que sobe a
-  catraca daquele pacote (não um PR gigante). A story só é **arquivada** quando o pacote inteiro
-  atinge 90% statements. Registrar cada sub-fase no Log do PROGRESS.
+(95 vai por último de propósito — depois de 94 e 97, das quais depende.)
 
-### Regra de honestidade da cobertura (vale p/ 86–91)
+- **92, 93** — independentes; podem ser puladas sem travar a fila se uma bloquear.
+- **94 antes de 95 (rígida)**: a 95 usa a página pública de detalhe do evento e o conceito de
+  audiência introduzidos pela 94 (link de convite resolve evento interno por link direto).
+- **96 → 97 → 98 (rígida, nessa ordem)**: a 96 monta a estrutura de **abas** do form de servo; a 97
+  renomeia o campo dentro da aba Endereço/Contato; a 98 acrescenta a aba Anexos. Fazer fora de ordem
+  gera conflito de form.
+- **97 antes de 95 (semi-rígida)**: a 95 usa o whatsapp do servo como destinatário. A 95 tem
+  **fallback** para `staff.phone` se a 97 ainda não entrou — então não é bloqueio absoluto, mas o
+  ideal é 97 já estar mergeada. Por isso 95 fica no fim da fila.
+- Se uma story bloquear, registrar em `PROGRESS.md`, pular e seguir — respeitando as dependências
+  rígidas acima (não rodar 95 sem 94; não rodar 98/97 sem 96).
 
-- **Re-baseline após exclusões**: ao adicionar `pages/**` (web) / rotas `app/**` (RN) ao
-  `coverage.exclude`/`collectCoverageFrom`, o % sobe **sem teste novo**. Medir e registrar o novo
-  ponto de partida ANTES de contar progresso. Excluir orquestração ≠ progresso de teste.
-- **Sem teste de fumaça sem assert** (CLAUDE.md). Arquivo que só atinge 80% testando orquestração vai
-  para `exclude` **com comentário justificando**, não com teste vazio.
-- **Catraca sobe, nunca desce**: a cada sub-fase mergeada, subir o threshold do pacote ao valor
-  atingido. Baixar threshold = proibido sem justificativa no PROGRESS.
+### Gate de cobertura (já é config, story 91)
+
+O threshold global de **90% statements** já está travado no `coverageThreshold`/`thresholds` de cada
+pacote (story 91). Logo, **código novo destas features precisa vir com teste ou a suíte de cobertura
+falha** — é o gate automático. DoD por story = suíte tocada verde **e** cobertura ≥ 90 no pacote
+tocado (`pnpm test:api:cov` / runner `:cov` do app). **Nunca baixar threshold** para fechar story:
+falta de teste = escrever teste, não afrouxar o gate.
 
 ## Branches — uma por story, mergeada na main ao fechar
 
@@ -106,30 +108,38 @@ MOCK**; nunca chamar API real, nunca inventar chave, nunca commitar segredo. Pon
 
 ## Cuidados específicos da rodada
 
-- **Rodada de TESTES, não de feature.** Salvo a 91 (config de gate), **nenhuma story muda código de
-  produção, contrato, DTO, endpoint, migration ou Postman.** Se um teste só passa mudando o
-  código-fonte, é refactor mínimo de testabilidade (extrair lógica de tela p/ hook/lib) — citar no
-  commit; nada de mudar comportamento.
-- **Sem migrations, sem `packages/types`/`api-client`** alterados (90 só ESCREVE testes do
-  api-client, sem mudar o código dele). Ainda assim rodar `build:types && build:api-client` no
-  bootstrap — a suíte adm/portal precisa do `dist/`.
-- **Sem dependência externa / credencial** em nenhuma destas stories → **nada de PENDENTE-MANUAL**
-  esperado. Cobertura é teste puro + mocks locais.
-- **Pisos já em 80%**: o ponto de partida de cada pacote já é a catraca do epic 78 (api 81.69 / adm
-  80.02 / ops 81.4 / app 83.77 / portal 83.17 / api-client 99.06). **Não baixar** nenhum threshold; só
-  subir até 90. Não há re-baseline novo esperado (exclusões de orquestração já aplicadas) — qualquer
-  exclusão nova é re-baseline com comentário, não progresso.
-- **87/88/89 (frontends) + 86 (api)**: fechar os branches descobertos (erro/empty/validação/role/
-  transição de estado). Reusar o mock central do `@fonte/api-client` e os helpers de teste já
-  existentes por pacote. Forms: rhf+zod (web) / `Controller` (RN).
-- **90 (portal + api-client)**: api-client já ≥ 90% — **só subir** `thresholds.statements` p/ 90;
-  portal fecha ~59 statements de branches dos hooks/libs de pagamento.
-- **91 (gate)**: editar `coverageThreshold` (jest: api/ops/app) e `coverage.thresholds` (vitest:
-  adm/portal/api-client) p/ `statements: 90` (+ branch/function no valor atingido) e garantir que
-  `test:cov:all` + CI falham abaixo do piso. SÓ mergear quando 86–90 estiverem ≥ 90%; caso contrário,
-  travar threshold só dos pacotes prontos e registrar BLOQUEADO os demais.
-- **DoD por sub-fase**: a suíte do pacote tocado (`test:<pkg>:unit:cov` / `test:api:cov`) **verde** e
-  cobertura **≥ piso vigente** antes de mergear. Cobertura abaixo do piso = não mergeia.
+- **Rodada de FEATURES.** Cada story muda código de produção (entidade, service, controller,
+  migration, DTO, endpoint, frontends). Implementar **exatamente** o descrito no `.md`, respeitando
+  as regras arquiteturais do `CLAUDE.md` (controller fino, DTO+class-validator, query keys em
+  `lib/queryKeys.ts`, rhf+zod / `Controller` no RN, dialogs autossuficientes, `getErrorMessage`,
+  componentes de estado, < ~150 linhas por componente).
+- **Migrations**: 92, 94, 96 (DROP colunas), 97 (RENAME coluna), 98 criam migration nova. **Nunca
+  editar migration existente.** Timestamp da migration nova **≥ 1784200000000** (última usada =
+  `1784100000000-NormalizeTemplateImageUrls`). Após criar, rodar `migration:run:test` no db de teste
+  **antes** do e2e. Registrar o timestamp usado no Log do PROGRESS (evitar colisão entre stories da
+  rodada). 96 dropa `addiction/health_issues/continuous_medication/weight/height`; 97 faz `RENAME
+  COLUMN phone TO whatsapp` (preserva dados) e ajusta o SELECT de `findActiveUserIdsByPhone`.
+- **Contratos compartilhados**: 92/94/95/96/97/98 mexem em `packages/types` e `@fonte/api-client`.
+  Após alterar, rodar `pnpm build:types && pnpm build:api-client` — a suíte adm/ops/associados
+  consome o `dist/`. Não duplicar HTTP nos apps; cada chamada nova vai no api-client.
+- **Postman é doc viva**: toda story que adiciona/altera endpoint atualiza
+  `fonte-api.postman_collection.json` (92, 93 reconcile, 94 `/events/internal`, 95
+  `/events/:id/invite-staff`, 96/97 bodies de staff, 98 `/staff/:id/attachments`). Sem isso a story
+  não fecha.
+- **Bucket/StorageService**: 92, 93, 98 deletam objeto no bucket ao remover registro — best-effort
+  (falha de delete loga e segue, não aborta), como `activity-attachment`. Nos testes, **mockar**
+  `StorageService` (sem bucket real). 93 inclui o helper `extractImageUrls` (testável isolado) e o
+  endpoint de reconcile em **dry-run por padrão**.
+- **WhatsApp/Meta (95) — única dependência externa**: implementar atrás do `WhatsAppClient` já
+  existente, **mock via `WHATSAPP_CLIENT`** nos testes (sem credencial, sem chamar Meta). O que exige
+  ambiente externo (aprovar template `META_WA_TEMPLATE_NAME_EVENT_INVITE` na Meta, env
+  `META_WA_*`/`APP_ASSOCIADOS_URL`) vai como **PENDENTE-MANUAL** no PROGRESS — não bloqueia o código.
+- **Frontends tocados**: 92 (adm+ops), 94 (adm + **feature de eventos nova no ops**), 95 (adm +
+  página de detalhe em associados), 96/97/98 (adm). Rodar o runner do app tocado (`test:adm`,
+  `test:ops:unit`, `test:portal`/associados) além do backend.
+- **DoD por story**: suíte tocada (backend `test:api`+`test:api:e2e`; app `:unit`/e2e) **verde**
+  (casos novos + sem regressão) **e** cobertura ≥ 90 no pacote tocado antes do merge. Vermelho ou
+  cobertura abaixo = não mergeia, corrige.
 
 ## Bootstrap de serviços (uma vez, no início, em background)
 

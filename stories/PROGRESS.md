@@ -38,7 +38,52 @@ Ordem: <NN → ... → MM>. Fonte de verdade: esta seção + git log.
 <o que passou, o que ficou pendente/bloqueado e por quê, comandos para reproduzir>
 -->
 
-# PROGRESS — stories 85–91 (cobertura de testes — piso 90%)
+# PROGRESS — stories 92–98 (features: curso bíblico, bucket, eventos, perfil servo)
+
+Rodada autônoma (AUTORUN). Rodada de **FEATURES** — cada story muda código de produção (entidade,
+migration, DTO, endpoint, contrato, frontends). Decisões travadas em cada `stories/NN-*.md`.
+
+Ordem: `92 → 93 → 94 → 96 → 97 → 98 → 95`. Fonte de verdade: esta seção + git log.
+
+**Gate**: threshold global de 90% já travado (story 91) — código novo sem teste reprova a suíte de
+cobertura. DoD = suíte tocada verde + cobertura ≥ 90 no pacote tocado antes do merge.
+
+## Dependências
+- 92, 93 — independentes (podem pular sem travar a fila).
+- **94 antes de 95** (rígida): 95 usa audiência/página de detalhe da 94.
+- **96 → 97 → 98** (rígida): 96 monta as abas; 97 renomeia campo na aba; 98 add aba Anexos.
+- **97 antes de 95** (semi-rígida): 95 usa whatsapp do servo (fallback `staff.phone` se 97 não entrou).
+
+## Migrations da rodada
+Próximo timestamp livre **≥ 1784200000000** (última usada: `1784100000000-NormalizeTemplateImageUrls`).
+Stories com migration: 92 (`bible_course_class_photos`), 94 (coluna `audience` em events), 96 (DROP
+campos de tratamento em staff), 97 (RENAME `staff.phone`→`whatsapp`), 98 (`staff_attachments`).
+Registrar aqui o timestamp efetivamente usado por cada uma ao implementar (evitar colisão).
+
+## PENDENTE-MANUAL esperado
+- **95**: aprovar template `META_WA_TEMPLATE_NAME_EVENT_INVITE` na Meta + envs
+  `META_WA_PHONE_NUMBER_ID`/`META_WA_TOKEN`/`APP_ASSOCIADOS_URL`. Código atrás de `WhatsAppClient`
+  (mock nos testes); não bloqueia implementação.
+
+## Fila
+
+| Ordem | Story | Status | Testes | Commit | Merge |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 92 — fotos por turma (curso bíblico) | [ ] | | | |
+| 2 | 93 — limpeza de órfãos no bucket | [ ] | | | |
+| 3 | 94 — eventos internos | [ ] | | | |
+| 4 | 96 — perfil servo sem campos de tratamento + abas | [ ] | | | |
+| 5 | 97 — whatsapp como campo e login do servo | [ ] | | | |
+| 6 | 98 — aba de anexos do servo | [ ] | | | |
+| 7 | 95 — convite WhatsApp p/ servos nos eventos | [ ] | | | |
+
+## Log
+
+<!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio> -->
+
+---
+
+# PROGRESS — stories 85–91 (cobertura de testes — piso 90%) [RODADA ANTERIOR — ARQUIVADA]
 
 Rodada autônoma (AUTORUN). Epic **85** (guarda-chuva, NÃO se implementa) + filhas. Sequência do epic
 78 (que travou 80%, já arquivado). Trabalho = subir cada pacote a **90% statements** e a catraca.

@@ -69,7 +69,7 @@ Registrar aqui o timestamp efetivamente usado por cada uma ao implementar (evita
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 92 — fotos por turma (curso bíblico) | [ ] | | | |
+| 1 | 92 — fotos por turma (curso bíblico) | [OK] | api unit 975✓ + e2e 367✓; adm unit 949✓ + e2e 11✓; ops unit 530✓; api-client 251✓ | 3eeb98a | 1d25524 |
 | 2 | 93 — limpeza de órfãos no bucket | [ ] | | | |
 | 3 | 94 — eventos internos | [ ] | | | |
 | 4 | 96 — perfil servo sem campos de tratamento + abas | [ ] | | | |
@@ -80,6 +80,8 @@ Registrar aqui o timestamp efetivamente usado por cada uma ao implementar (evita
 ## Log
 
 <!-- [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio> -->
+
+[OK] 92 — testes: backend unit 975✓ (102 suites; service/controller/mimetypes da foto 29✓, service 100% stmt/fn/ln) + e2e 367✓ (bible-courses.e2e cobre upload→list→delete autenticado + 401/400-mime/404-turma/404-foto); api-client 251✓ (contratos listClassPhotos/uploadClassPhoto/deleteClassPhoto); adm unit 949✓ (hook+Gallery+Thumb+lib classPhotos, todos verdes na cov global) + e2e Playwright bible-courses 11✓ (inclui "sobe e remove uma foto da turma"); ops unit 530✓ (Gallery 100% stmt/fn/ln após +2 casos retry/delete-no-grid, hook 100%). Cobertura: gate global 90 verde em todos os pacotes tocados (api/adm/ops/api-client, exit 0). — commit: 3eeb98a — merge: 1d25524 — 2026-06-30 — migration 1784200000000 (bible_course_class_photos) aplicada no db de teste. Implementação já estava ~completa (sessão anterior); este turno validou a suíte ponta a ponta e fechou. Nota: corrigido à parte um date-bomb pré-existente e não relacionado em payables.e2e (dueDate fixo 2026-06-20 já vencido → flag overdue quebrava o CRUD); commit test(payables) c868ee8, fora do commit da story.
 
 ---
 

@@ -25,10 +25,19 @@ describe('PayableController (e2e)', () => {
     await app.close();
   });
 
+  // dueDate is kept in the future relative to "now" so the `overdue` flag is
+  // deterministically false regardless of the wall clock (avoids a date-bomb as
+  // time passes the hardcoded date).
+  const futureDueDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  };
+
   const validBody = () => ({
     description: 'Conta de luz',
     amount: 25000,
-    dueDate: '2026-06-20',
+    dueDate: futureDueDate(),
     category: 'UTILITIES',
     supplier: 'Enel',
   });

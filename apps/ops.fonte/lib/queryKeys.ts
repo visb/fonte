@@ -73,4 +73,7 @@ export const queryKeys = {
     all: ['notifications'] as const,
     unreadCount: ['notifications', 'unread-count'] as const,
   },
+  bibleCourses: {
+    photos: (classId: string) => ['bible-course-photos', classId] as const,
+  },
 } as const;

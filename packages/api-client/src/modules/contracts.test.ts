@@ -250,6 +250,21 @@ describe('bible-course module', () => {
     await m.upsertGrade('e1', 'm1', body);
     expect(http.put).toHaveBeenCalledWith('/bible-course/enrollments/e1/grades/m1', body);
   });
+  it('listClassPhotos busca a galeria da turma', async () => {
+    await m.listClassPhotos('c1');
+    expect(http.get).toHaveBeenCalledWith('/bible-course/classes/c1/photos');
+  });
+  it('uploadClassPhoto posta o FormData sem Content-Type', async () => {
+    const fd = new FormData();
+    await m.uploadClassPhoto('c1', fd);
+    expect(http.post).toHaveBeenCalledWith('/bible-course/classes/c1/photos', fd, {
+      headers: { 'Content-Type': undefined },
+    });
+  });
+  it('deleteClassPhoto chama DELETE na foto', async () => {
+    await m.deleteClassPhoto('c1', 'p1');
+    expect(http.delete).toHaveBeenCalledWith('/bible-course/classes/c1/photos/p1');
+  });
 });
 
 // ── census ───────────────────────────────────────────────────────────────────

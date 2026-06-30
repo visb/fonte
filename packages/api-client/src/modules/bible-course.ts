@@ -12,6 +12,7 @@ import type {
   UpdateBibleCourseModuleInput,
   BibleClassGrades,
   UpsertBibleGradeInput,
+  BibleCourseClassPhoto,
 } from '../types.js';
 
 export function createBibleCourseModule(http: AxiosInstance) {
@@ -48,5 +49,22 @@ export function createBibleCourseModule(http: AxiosInstance) {
       http
         .put<unknown>(`/bible-course/enrollments/${enrollmentId}/grades/${moduleId}`, data)
         .then((r) => r.data),
+
+    // ── fotos por turma (story 92) ───────────────────────────────────────────
+    listClassPhotos: (classId: string) =>
+      http
+        .get<BibleCourseClassPhoto[]>(`/bible-course/classes/${classId}/photos`)
+        .then((r) => r.data),
+
+    /** Sobe uma foto à turma. Recebe FormData com o campo `file`. */
+    uploadClassPhoto: (classId: string, formData: FormData) =>
+      http
+        .post<BibleCourseClassPhoto>(`/bible-course/classes/${classId}/photos`, formData, {
+          headers: { 'Content-Type': undefined },
+        })
+        .then((r) => r.data),
+
+    deleteClassPhoto: (classId: string, photoId: string) =>
+      http.delete(`/bible-course/classes/${classId}/photos/${photoId}`).then((r) => r.data),
   };
 }

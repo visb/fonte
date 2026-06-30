@@ -90,6 +90,37 @@ test.describe('Curso Bíblico', () => {
     await page.getByRole('button', { name: 'Excluir' }).last().click();
     await expect(page.getByText(name)).not.toBeVisible();
   });
+
+  test('sobe e remove uma foto da turma (story 92)', async ({ page }) => {
+    const name = `Turma Fotos ${ts()}`;
+    await createClass(page, name);
+
+    await page.getByText(name).click();
+    await expect(page).toHaveURL(/\/bible-courses\/.+/);
+
+    // Aba de fotos: estado vazio.
+    await page.getByRole('button', { name: 'Fotos' }).click();
+    await expect(page.getByText('Nenhuma foto nesta turma.')).toBeVisible();
+
+    // 1x1 PNG transparente.
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'foto-e2e.png',
+      mimeType: 'image/png',
+      buffer: png,
+    });
+
+    const thumb = page.getByAltText('foto-e2e.png');
+    await expect(thumb).toBeVisible();
+
+    // Remove a foto (confirm nativo aceito automaticamente).
+    page.once('dialog', (d) => d.accept());
+    await page.getByRole('button', { name: 'Remover foto foto-e2e.png' }).click({ force: true });
+    await expect(page.getByText('Nenhuma foto nesta turma.')).toBeVisible();
+  });
 });
 
 test.describe('Curso Bíblico — catálogo de módulos', () => {

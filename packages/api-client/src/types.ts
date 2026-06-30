@@ -1040,6 +1040,17 @@ export interface UpsertBibleGradeInput {
   workGrade?: number | null;
 }
 
+export interface BibleCourseClassPhoto {
+  id: string;
+  classId: string;
+  fileUrl: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdByUserId: string;
+  createdAt: string;
+}
+
 // ─── Document Template ───────────────────────────────────────────────────────
 
 export interface DocumentTemplate {

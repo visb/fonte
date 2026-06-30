@@ -275,4 +275,78 @@ describe('BibleCourseController (e2e)', () => {
       expect(row.average).toBe(9);
     });
   });
+
+  describe('class photos (galeria por turma, story 92)', () => {
+    let classId: string;
+
+    beforeAll(async () => {
+      const klass = await request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Turma Fotos ${Date.now()}`, houseId, startDate: '2026-06-01', endDate: '2026-09-01' })
+        .expect(201);
+      classId = klass.body.id;
+      createdClassIds.push(classId);
+    });
+
+    it('GET photos → 401 without token', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/bible-course/classes/${classId}/photos`)
+        .expect(401));
+
+    it('POST photo → 401 without token', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes/${classId}/photos`)
+        .attach('file', Buffer.from('fake-jpeg'), { filename: 'turma.jpg', contentType: 'image/jpeg' })
+        .expect(401));
+
+    it('POST photo → 400 rejects a non-image mimetype', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes/${classId}/photos`)
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', Buffer.from('%PDF-1.4'), { filename: 'doc.pdf', contentType: 'application/pdf' })
+        .expect(400));
+
+    it('POST photo → 404 for an unknown class', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes/00000000-0000-0000-0000-000000000000/photos`)
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', Buffer.from('fake-jpeg'), { filename: 'turma.jpg', contentType: 'image/jpeg' })
+        .expect(404));
+
+    it('uploads → lists → deletes a photo (authenticated)', async () => {
+      const upload = await request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes/${classId}/photos`)
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', Buffer.from('fake-jpeg'), { filename: 'turma.jpg', contentType: 'image/jpeg' })
+        .expect(201);
+      expect(upload.body.id).toBeDefined();
+      expect(upload.body.classId).toBe(classId);
+      expect(upload.body.mimeType).toBe('image/jpeg');
+      const photoId = upload.body.id;
+
+      const list = await request(app.getHttpServer())
+        .get(`${BASE}/bible-course/classes/${classId}/photos`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(list.body.some((p: { id: string }) => p.id === photoId)).toBe(true);
+
+      await request(app.getHttpServer())
+        .delete(`${BASE}/bible-course/classes/${classId}/photos/${photoId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(204);
+
+      const after = await request(app.getHttpServer())
+        .get(`${BASE}/bible-course/classes/${classId}/photos`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(after.body.some((p: { id: string }) => p.id === photoId)).toBe(false);
+    });
+
+    it('DELETE photo → 404 for an unknown photo', () =>
+      request(app.getHttpServer())
+        .delete(`${BASE}/bible-course/classes/${classId}/photos/00000000-0000-0000-0000-000000000000`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404));
+  });
 });

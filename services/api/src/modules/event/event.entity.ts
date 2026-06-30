@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { RegistrationField } from '@fonte/types';
+import { EventAudience, RegistrationField } from '@fonte/types';
 
 @Entity('events')
 export class Event {
@@ -29,6 +29,13 @@ export class Event {
 
   @Column({ type: 'varchar', nullable: true })
   location: string | null;
+
+  /**
+   * Audiência do evento (story 94). `INTERNAL` = só servos: nunca vai ao portal
+   * público nem aceita inscrição/cobrança. Default `PUBLIC`.
+   */
+  @Column({ type: 'varchar', default: EventAudience.PUBLIC })
+  audience: EventAudience;
 
   /** null = vagas ilimitadas. */
   @Column({ type: 'integer', nullable: true })

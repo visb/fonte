@@ -138,6 +138,86 @@ describe('EventController (e2e)', () => {
         .expect(201));
   });
 
+  // ── Eventos internos (story 94) ─────────────────────────────────────────────
+
+  describe('internal events (story 94)', () => {
+    let internalId: string;
+
+    it('creates an INTERNAL event with registration/payment forced off', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/events`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          ...validBody(),
+          title: 'Reunião de servos',
+          audience: 'INTERNAL',
+        })
+        .expect(201);
+      expect(res.body.audience).toBe('INTERNAL');
+      expect(res.body.registrationEnabled).toBe(false);
+      expect(res.body.paymentEnabled).toBe(false);
+      internalId = res.body.id;
+    });
+
+    it('defaults audience to PUBLIC when omitted', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/events`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ ...validBody(), title: 'Público padrão' })
+        .expect(201);
+      expect(res.body.audience).toBe('PUBLIC');
+    });
+
+    it('rejects INTERNAL combined with registration (400)', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/events`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ ...validBody(), audience: 'INTERNAL', registrationEnabled: true })
+        .expect(400));
+
+    it('rejects an invalid audience value (400)', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/events`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ ...validBody(), audience: 'SECRET' })
+        .expect(400));
+
+    it('GET /events/internal returns only INTERNAL events', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/events/internal`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.every((e: { audience: string }) => e.audience === 'INTERNAL')).toBe(true);
+      expect(res.body.some((e: { id: string }) => e.id === internalId)).toBe(true);
+    });
+
+    it('GET /events/internal is readable by ADMIN, COORDINATOR and SERVANT', async () => {
+      for (const token of [adminToken, coordToken, servantToken]) {
+        await request(app.getHttpServer())
+          .get(`${BASE}/events/internal`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+      }
+    });
+
+    it('GET /events/internal → 403 for a non-Staff (RELATIVE)', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/events/internal`)
+        .set('Authorization', `Bearer ${relativeToken}`)
+        .expect(403));
+
+    it('GET /events/internal → 401 without token', () =>
+      request(app.getHttpServer()).get(`${BASE}/events/internal`).expect(401));
+
+    it('internal event never surfaces on the public listing', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/public/events`)
+        .expect(200);
+      expect(res.body.some((e: { id: string }) => e.id === internalId)).toBe(false);
+    });
+  });
+
   // ── CRUD + banner ──────────────────────────────────────────────────────────────
 
   describe('CRUD flow', () => {

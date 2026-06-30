@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Event } from '@fonte/api-client';
+import { EventAudience } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +26,7 @@ const emptyForm: EventFormData = {
   startAt: '',
   endAt: '',
   location: '',
+  audience: EventAudience.PUBLIC,
   capacity: undefined,
   registrationEnabled: false,
   paymentEnabled: false,
@@ -42,6 +44,7 @@ function eventToForm(event?: Event | null): EventFormData {
     startAt: isoToLocalInput(event.startAt),
     endAt: event.endAt ? isoToLocalInput(event.endAt) : '',
     location: event.location ?? '',
+    audience: event.audience,
     capacity: event.capacity ?? undefined,
     registrationEnabled: event.registrationEnabled,
     paymentEnabled: event.paymentEnabled,
@@ -72,6 +75,8 @@ export function EventForm({ event, isPending, error, onSubmit, onCancel }: Props
 
   const registrationEnabled = watch('registrationEnabled');
   const paymentEnabled = watch('paymentEnabled');
+  const audience = watch('audience');
+  const isInternal = audience === EventAudience.INTERNAL;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
@@ -108,13 +113,32 @@ export function EventForm({ event, isPending, error, onSubmit, onCancel }: Props
           <Input id="event-location" {...register('location')} placeholder="Opcional" />
         </div>
 
-        <EventRegistrationSection
-          register={register}
-          errors={errors}
-          control={control}
-          enabled={registrationEnabled}
-          paymentEnabled={paymentEnabled}
-        />
+        <div className="space-y-1">
+          <Label htmlFor="event-audience">Tipo de evento</Label>
+          <select
+            id="event-audience"
+            data-testid="event-audience"
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+            {...register('audience')}
+          >
+            <option value={EventAudience.PUBLIC}>Público (famílias e comunidade)</option>
+            <option value={EventAudience.INTERNAL}>Interno (apenas servos)</option>
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Eventos internos são só divulgação para os servos: não aparecem no portal
+            público nem aceitam inscrição.
+          </p>
+        </div>
+
+        {!isInternal && (
+          <EventRegistrationSection
+            register={register}
+            errors={errors}
+            control={control}
+            enabled={registrationEnabled}
+            paymentEnabled={paymentEnabled}
+          />
+        )}
 
         {error != null && (
           <p className="text-xs text-destructive">{getErrorMessage(error, 'Erro ao salvar evento.')}</p>

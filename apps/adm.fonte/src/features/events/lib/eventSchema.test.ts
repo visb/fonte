@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { EventAudience } from '@fonte/api-client';
 import {
   eventSchema,
   registrationFieldSchema,
@@ -72,6 +73,18 @@ describe('eventSchema', () => {
     if (result.success) expect(result.data.registrationEnabled).toBe(false);
   });
 
+  it('audience default é PUBLIC (story 94)', () => {
+    const result = eventSchema.safeParse(base);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.audience).toBe(EventAudience.PUBLIC);
+  });
+
+  it('aceita audience INTERNAL (story 94)', () => {
+    const result = eventSchema.safeParse({ ...base, audience: EventAudience.INTERNAL });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.audience).toBe(EventAudience.INTERNAL);
+  });
+
   it('rejeita título vazio', () => {
     expect(eventSchema.safeParse({ ...base, title: '' }).success).toBe(false);
   });
@@ -89,13 +102,37 @@ describe('toEventInput', () => {
     startAt: '2026-08-01T18:00',
     endAt: '',
     location: '',
+    audience: EventAudience.PUBLIC,
     capacity: undefined,
     registrationEnabled: false,
     paymentEnabled: false,
     priceReais: undefined,
+    registrationFields: [],
     registrationOpensAt: '',
     registrationClosesAt: '',
   };
+
+  it('evento PUBLIC propaga a audiência (story 94)', () => {
+    const input = toEventInput({ ...baseForm, audience: EventAudience.PUBLIC });
+    expect(input.audience).toBe(EventAudience.PUBLIC);
+  });
+
+  it('evento INTERNAL força inscrição/cobrança off (story 94)', () => {
+    const input = toEventInput({
+      ...baseForm,
+      audience: EventAudience.INTERNAL,
+      registrationEnabled: true,
+      paymentEnabled: true,
+      priceReais: 50,
+      capacity: 30,
+    });
+    expect(input.audience).toBe(EventAudience.INTERNAL);
+    expect(input.registrationEnabled).toBe(false);
+    expect(input.paymentEnabled).toBe(false);
+    expect(input.priceCents).toBeNull();
+    expect(input.capacity).toBeNull();
+    expect(input.registrationFields).toEqual([]);
+  });
 
   it('com inscrição desligada, zera capacidade e janela', () => {
     const input = toEventInput({

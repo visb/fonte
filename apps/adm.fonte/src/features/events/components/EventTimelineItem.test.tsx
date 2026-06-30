@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import type { Event } from '@fonte/api-client';
+import { EventAudience } from '@fonte/api-client';
 import { EventTimelineItem } from './EventTimelineItem';
 
 function makeEvent(overrides: Partial<Event> = {}): Event {
@@ -52,6 +53,19 @@ describe('EventTimelineItem', () => {
     );
     expect(screen.getByTestId('registration-badge')).toHaveTextContent('Só divulgação');
     expect(screen.queryByTestId('view-registrations')).not.toBeInTheDocument();
+  });
+
+  it('evento interno mostra badge "Interno" e não o de inscrição (story 94)', () => {
+    render(
+      <EventTimelineItem
+        event={makeEvent({ audience: EventAudience.INTERNAL, registrationEnabled: false })}
+        highlighted={false}
+        past={false}
+        {...handlers()}
+      />,
+    );
+    expect(screen.getByTestId('audience-badge')).toHaveTextContent('Interno');
+    expect(screen.queryByTestId('registration-badge')).not.toBeInTheDocument();
   });
 
   it('capacidade nula mostra "Vagas ilimitadas"; banner renderiza imagem', () => {

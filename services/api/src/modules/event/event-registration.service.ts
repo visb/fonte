@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import {
+  EventAudience,
   EventPaymentStatus,
   EventPublic,
   EventRegistration as EventRegistrationDto,
@@ -116,6 +117,8 @@ export class EventRegistrationService {
       .createQueryBuilder('e')
       .where('e.start_at >= :now', { now })
       .andWhere('e.registration_enabled = true')
+      // Eventos internos (story 94) jamais vazam para o portal público.
+      .andWhere('e.audience = :audience', { audience: EventAudience.PUBLIC })
       .orderBy('e.start_at', 'ASC')
       .getMany();
     return Promise.all(events.map((e) => this.toPublicView(e, now)));
@@ -123,8 +126,12 @@ export class EventRegistrationService {
 
   async getPublicView(id: string): Promise<EventPublic> {
     const event = await this.eventsRepo.findOne({ where: { id } });
-    // Evento com inscrição desligada não tem detalhe público (não vaza interno).
-    if (!event || !event.registrationEnabled) {
+    // Sem inscrição ou interno (story 94) → sem detalhe público (não vaza interno).
+    if (
+      !event ||
+      !event.registrationEnabled ||
+      event.audience !== EventAudience.PUBLIC
+    ) {
       throw new NotFoundException('Event not found');
     }
     return this.toPublicView(event);

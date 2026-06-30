@@ -19,6 +19,13 @@ export function createEventsModule(http: AxiosInstance) {
     list: (params?: ListEventsParams) =>
       http.get<Event[]>('/events', { params }).then((r) => r.data),
 
+    /**
+     * Eventos internos (audience=INTERNAL), só-leitura, acessível a TODOS os
+     * papéis de Staff (story 94). Usado por adm.fonte e ops.fonte.
+     */
+    listInternal: () =>
+      http.get<Event[]>('/events/internal').then((r) => r.data),
+
     getById: (id: string) =>
       http.get<Event>(`/events/${id}`).then((r) => r.data),
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { REGISTRATION_FIELD_TYPES } from '@fonte/api-client';
+import { EventAudience, REGISTRATION_FIELD_TYPES } from '@fonte/api-client';
 
 /** Tipos que exigem ao menos uma opção. */
 const OPTION_TYPES = ['select', 'multi_select'] as const;
@@ -43,6 +43,8 @@ export const eventSchema = z
     startAt: z.string().min(1, 'A data de início é obrigatória'),
     endAt: z.string().optional().or(z.literal('')),
     location: z.string().optional().or(z.literal('')),
+    /** Audiência do evento (story 94). Default PUBLIC; INTERNAL = só servos. */
+    audience: z.nativeEnum(EventAudience).default(EventAudience.PUBLIC),
     /** '' = vagas ilimitadas. */
     capacity: z.preprocess(
       (v) => (v === '' || v == null ? undefined : v),
@@ -160,7 +162,9 @@ export function fieldsToForm(
  * Story 68: campos custom só são enviados quando a inscrição está ligada.
  */
 export function toEventInput(data: EventFormData): CreateEventInput {
-  const enabled = data.registrationEnabled;
+  // Evento interno (story 94) é só divulgação: nunca aceita inscrição/cobrança.
+  const internal = data.audience === EventAudience.INTERNAL;
+  const enabled = !internal && data.registrationEnabled;
   // Cobrança só vale com inscrição ligada (story 69); preço em reais → centavos.
   const paymentEnabled = enabled && data.paymentEnabled;
   const priceCents =
@@ -173,6 +177,7 @@ export function toEventInput(data: EventFormData): CreateEventInput {
     startAt: localInputToIso(data.startAt)!,
     endAt: localInputToIso(data.endAt),
     location: data.location ? data.location : null,
+    audience: data.audience,
     registrationEnabled: enabled,
     paymentEnabled,
     priceCents,

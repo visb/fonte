@@ -3,6 +3,7 @@ jest.mock('@fonte/types', () => ({
   SubscriptionStatus: { ACTIVE: 'ACTIVE', PAST_DUE: 'PAST_DUE', CANCELED: 'CANCELED' },
   ChargeStatus: { PENDING: 'PENDING', PAID: 'PAID', FAILED: 'FAILED' },
   EventPaymentStatus: { NONE: 'NONE', PENDING: 'PENDING', PAID: 'PAID', FAILED: 'FAILED' },
+  EventAudience: { PUBLIC: 'PUBLIC', INTERNAL: 'INTERNAL' },
 }));
 
 import { UnauthorizedException } from '@nestjs/common';

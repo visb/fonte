@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Event as EventDto } from '@fonte/types';
+import { Event as EventDto, EventAudience } from '@fonte/types';
 import { Event } from './event.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -59,19 +59,40 @@ export class EventService {
     }
   }
 
+  /**
+   * Coerência de audiência (story 94): evento INTERNAL é só divulgação para os
+   * servos — nunca aceita inscrição nem cobrança. Se o cliente tentar combinar
+   * INTERNAL com inscrição/pagamento ligados, é incoerente → 400. Caso contrário
+   * (defaults/omitidos), força tudo desligado.
+   */
+  private rejectIncoherentInternal(
+    audience: EventAudience,
+    registrationEnabled: boolean | undefined,
+    paymentEnabled: boolean | undefined,
+  ): void {
+    if (
+      audience === EventAudience.INTERNAL &&
+      (registrationEnabled === true || paymentEnabled === true)
+    ) {
+      throw new BadRequestException(
+        'Evento interno não aceita inscrição nem cobrança',
+      );
+    }
+  }
+
   async create(dto: CreateEventDto): Promise<EventDto> {
     const startAt = new Date(dto.startAt);
     const endAt = this.toDate(dto.endAt);
-    const opensAt = this.toDate(dto.registrationOpensAt);
-    const closesAt = this.toDate(dto.registrationClosesAt);
-    this.validateDates(
-      startAt,
-      endAt,
-      opensAt,
-      closesAt,
-      dto.registrationEnabled ?? false,
-    );
-    const paymentEnabled = dto.paymentEnabled ?? false;
+    const audience = dto.audience ?? EventAudience.PUBLIC;
+    // Evento interno (story 94): só divulgação. Combinação com inscrição/paga é
+    // incoerente → 400; senão tudo de inscrição/cobrança nasce desligado.
+    this.rejectIncoherentInternal(audience, dto.registrationEnabled, dto.paymentEnabled);
+    const internal = audience === EventAudience.INTERNAL;
+    const opensAt = internal ? null : this.toDate(dto.registrationOpensAt);
+    const closesAt = internal ? null : this.toDate(dto.registrationClosesAt);
+    const registrationEnabled = internal ? false : (dto.registrationEnabled ?? false);
+    this.validateDates(startAt, endAt, opensAt, closesAt, registrationEnabled);
+    const paymentEnabled = internal ? false : (dto.paymentEnabled ?? false);
     const priceCents = paymentEnabled ? (dto.priceCents ?? null) : null;
     this.validatePayment(paymentEnabled, priceCents);
 
@@ -81,17 +102,34 @@ export class EventService {
       startAt,
       endAt,
       location: dto.location ?? null,
-      capacity: dto.capacity ?? null,
-      registrationEnabled: dto.registrationEnabled ?? false,
+      audience,
+      capacity: internal ? null : (dto.capacity ?? null),
+      registrationEnabled,
       paymentEnabled,
       priceCents,
-      registrationFields: normalizeRegistrationFields(dto.registrationFields),
+      registrationFields: internal
+        ? []
+        : normalizeRegistrationFields(dto.registrationFields),
       registrationOpensAt: opensAt,
       registrationClosesAt: closesAt,
       bannerKey: null,
     });
     const saved = await this.repo.save(event);
     return this.toView(saved);
+  }
+
+  /**
+   * Eventos internos (story 94): só audience=INTERNAL, futuros, ordenados por
+   * data. Leitura para todos os papéis de Staff (adm.fonte e ops.fonte).
+   */
+  async listInternal(): Promise<EventDto[]> {
+    const items = await this.repo
+      .createQueryBuilder('e')
+      .where('e.audience = :audience', { audience: EventAudience.INTERNAL })
+      .andWhere('e.start_at >= :now', { now: new Date() })
+      .orderBy('e.start_at', 'ASC')
+      .getMany();
+    return items.map((e) => this.toView(e));
   }
 
   async findAll(filters: ListEventsDto): Promise<EventDto[]> {
@@ -125,19 +163,37 @@ export class EventService {
     if (dto.startAt !== undefined) event.startAt = new Date(dto.startAt);
     if (dto.endAt !== undefined) event.endAt = this.toDate(dto.endAt);
     if (dto.location !== undefined) event.location = dto.location ?? null;
+    if (dto.audience !== undefined) event.audience = dto.audience;
     if (dto.capacity !== undefined) event.capacity = dto.capacity ?? null;
     if (dto.registrationEnabled !== undefined)
       event.registrationEnabled = dto.registrationEnabled;
     if (dto.paymentEnabled !== undefined) event.paymentEnabled = dto.paymentEnabled;
     if (dto.priceCents !== undefined) event.priceCents = dto.priceCents ?? null;
-    // Inscrição grátis nunca carrega preço.
-    if (!event.paymentEnabled) event.priceCents = null;
     if (dto.registrationFields !== undefined)
       event.registrationFields = normalizeRegistrationFields(dto.registrationFields);
     if (dto.registrationOpensAt !== undefined)
       event.registrationOpensAt = this.toDate(dto.registrationOpensAt);
     if (dto.registrationClosesAt !== undefined)
       event.registrationClosesAt = this.toDate(dto.registrationClosesAt);
+
+    // Evento interno (story 94): se o cliente tentar, no mesmo request, ligar
+    // inscrição/cobrança junto de INTERNAL → 400 (combinação incoerente). Flags
+    // herdadas de quando era público são apenas forçadas off, sem erro.
+    this.rejectIncoherentInternal(
+      event.audience,
+      dto.registrationEnabled,
+      dto.paymentEnabled,
+    );
+    if (event.audience === EventAudience.INTERNAL) {
+      event.registrationEnabled = false;
+      event.paymentEnabled = false;
+      event.capacity = null;
+      event.registrationFields = [];
+      event.registrationOpensAt = null;
+      event.registrationClosesAt = null;
+    }
+    // Inscrição grátis nunca carrega preço.
+    if (!event.paymentEnabled) event.priceCents = null;
 
     this.validateDates(
       event.startAt,
@@ -187,6 +243,7 @@ export class EventService {
       startAt: e.startAt.toISOString(),
       endAt: e.endAt ? e.endAt.toISOString() : null,
       location: e.location ?? null,
+      audience: e.audience,
       capacity: e.capacity ?? null,
       registrationEnabled: e.registrationEnabled,
       paymentEnabled: e.paymentEnabled,

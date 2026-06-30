@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import type { Event } from '@fonte/api-client';
+import { EventAudience } from '@fonte/api-client';
 import { EventForm } from './EventForm';
 
 afterEach(() => cleanup());
@@ -13,6 +14,7 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
     startAt: '2026-09-01T13:00:00.000Z',
     endAt: null,
     location: 'Sede',
+    audience: EventAudience.PUBLIC,
     capacity: null,
     registrationEnabled: false,
     paymentEnabled: false,
@@ -74,5 +76,29 @@ describe('EventForm', () => {
   it('pending desabilita submit', () => {
     renderForm({ isPending: true });
     expect(screen.getByRole('button', { name: 'Salvando...' })).toBeDisabled();
+  });
+
+  // ── Audiência / eventos internos (story 94) ───────────────────────────────
+
+  it('mostra a seção de inscrição para evento público (default)', () => {
+    renderForm();
+    expect(screen.getByTestId('event-audience')).toBeInTheDocument();
+    expect(screen.getByTestId('registration-enabled')).toBeInTheDocument();
+  });
+
+  it('esconde inscrição/cobrança ao selecionar Interno', async () => {
+    renderForm();
+    fireEvent.change(screen.getByTestId('event-audience'), {
+      target: { value: EventAudience.INTERNAL },
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('registration-enabled')).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('payment-enabled')).not.toBeInTheDocument();
+  });
+
+  it('evento interno em edição não renderiza a seção de inscrição', () => {
+    renderForm({ event: makeEvent({ audience: EventAudience.INTERNAL }) });
+    expect(screen.queryByTestId('registration-enabled')).not.toBeInTheDocument();
   });
 });

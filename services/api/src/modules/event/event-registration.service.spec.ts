@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
+import { EventAudience } from '@fonte/types';
 import { EventRegistrationService } from './event-registration.service';
 import { Event } from './event.entity';
 import { EventRegistration } from './event-registration.entity';
@@ -18,6 +19,7 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
     startAt: new Date('2026-07-01T12:00:00.000Z'),
     endAt: null,
     location: 'Sede',
+    audience: EventAudience.PUBLIC,
     capacity: null,
     registrationEnabled: true,
     registrationFields: [],
@@ -511,6 +513,13 @@ describe('EventRegistrationService.getPublicView', () => {
     await expect(service.getPublicView('event-uuid')).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('lança NotFound para evento INTERNAL (story 94, não vaza ao portal)', async () => {
+    const event = makeEvent({ audience: EventAudience.INTERNAL });
+    const events = { findOne: jest.fn().mockResolvedValue(event) };
+    const service = makeService(events, { count: jest.fn() });
+    await expect(service.getPublicView('event-uuid')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
   it('expõe os registrationFields para o portal renderizar (story 68)', async () => {
     const fields = [
       { id: 'shirt', label: 'Tamanho', type: 'select' as const, required: true, order: 0, options: ['P', 'M'] },
@@ -543,6 +552,10 @@ describe('EventRegistrationService.listPublic', () => {
     expect(qb.where).toHaveBeenCalledWith('e.start_at >= :now', expect.any(Object));
     // Story 67: filtra por inscrição habilitada.
     expect(qb.andWhere).toHaveBeenCalledWith('e.registration_enabled = true');
+    // Story 94: filtra por audiência pública (eventos internos não vazam).
+    expect(qb.andWhere).toHaveBeenCalledWith('e.audience = :audience', {
+      audience: EventAudience.PUBLIC,
+    });
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe('f');
   });

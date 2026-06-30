@@ -885,6 +885,18 @@ export interface RegistrationField {
   placeholder?: string;
 }
 
+/**
+ * Audiência de um evento (story 94).
+ *  - `PUBLIC`   — voltado ao público externo (famílias/comunidade). Aparece no
+ *    portal público e pode aceitar inscrição/cobrança. Default.
+ *  - `INTERNAL` — voltado aos servos (Staff). Só divulgação: nunca aparece no
+ *    portal público, nunca aceita inscrição nem cobrança.
+ */
+export enum EventAudience {
+  PUBLIC = 'PUBLIC',
+  INTERNAL = 'INTERNAL',
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -894,6 +906,8 @@ export interface Event {
   /** ISO string ou null. Fim do evento (opcional). */
   endAt: string | null;
   location: string | null;
+  /** Audiência do evento (story 94). INTERNAL = só servos, fora do portal público. */
+  audience: EventAudience;
   /** null = vagas ilimitadas. */
   capacity: number | null;
   /** Inscrição habilitada (story 67). false = evento só-divulgação. */
@@ -920,6 +934,8 @@ export interface CreateEventInput {
   startAt: string;
   endAt?: string | null;
   location?: string | null;
+  /** Audiência do evento (story 94). Default PUBLIC. INTERNAL força inscrição/cobrança off. */
+  audience?: EventAudience;
   capacity?: number | null;
   /** Inscrição habilitada (story 67). Default false: evento só-divulgação. */
   registrationEnabled?: boolean;

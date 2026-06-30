@@ -2,6 +2,7 @@ import {
   IsArray,
   IsBoolean,
   IsDateString,
+  IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -11,6 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { EventAudience } from '@fonte/types';
 import { RegistrationFieldDto } from './registration-field.dto';
 
 export class CreateEventDto {
@@ -18,6 +20,14 @@ export class CreateEventDto {
   @IsNotEmpty()
   @MaxLength(255)
   title: string;
+
+  /**
+   * Audiência do evento (story 94). Default PUBLIC. INTERNAL = só servos: o
+   * service força inscrição/cobrança off e o evento fica fora do portal público.
+   */
+  @IsOptional()
+  @IsEnum(EventAudience)
+  audience?: EventAudience;
 
   /** Inscrição habilitada (story 67). Default false: evento só-divulgação. */
   @IsOptional()

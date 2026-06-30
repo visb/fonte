@@ -52,6 +52,13 @@ const ACTIONS = [
     bg: "#fffbeb",
     route: "/(app)/street-sales",
   },
+  {
+    label: "Eventos internos",
+    icon: "calendar-outline" as const,
+    color: "#7c3aed",
+    bg: "#f5f3ff",
+    route: "/(app)/events",
+  },
 ];
 
 const COORDINATOR_ACTIONS = [

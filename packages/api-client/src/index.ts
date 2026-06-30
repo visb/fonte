@@ -198,4 +198,4 @@ export type {
   PayEventResult,
   PixPaymentResult,
 } from './types.js';
-export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus, ActivityEventType, REGISTRATION_FIELD_TYPES, EventPaymentStatus } from './types.js';
+export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus, ActivityEventType, REGISTRATION_FIELD_TYPES, EventPaymentStatus, EventAudience } from './types.js';

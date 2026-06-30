@@ -114,6 +114,22 @@ export interface BibleClassGrades {
   rows: BibleClassGradeRow[];
 }
 
+/**
+ * Foto da galeria de uma turma do curso bíblico (story 92). Espelha o padrão de
+ * `ActivityAttachment` simplificado (só imagens, sem comment/duration). A
+ * `fileUrl` chega assinada pelo `StorageUrlInterceptor` em modo S3.
+ */
+export interface BibleCourseClassPhoto {
+  id: string;
+  classId: string;
+  fileUrl: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdByUserId: string;
+  createdAt: string;
+}
+
 export enum Gender {
   MALE = 'MALE',
   FEMALE = 'FEMALE',

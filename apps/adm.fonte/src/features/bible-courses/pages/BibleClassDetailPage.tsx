@@ -10,13 +10,14 @@ import { useBibleClassById, useUpdateBibleClass } from '../hooks/useBibleCourses
 import { EnrollmentRow } from '../components/EnrollmentRow';
 import { EnrollResidentDialog } from '../components/EnrollResidentDialog';
 import { BibleClassGradesSection } from '../components/BibleClassGradesSection';
+import { BibleCourseClassPhotoGallery } from '../components/BibleCourseClassPhotoGallery';
 import { CLASS_STATUS_OPTIONS, CLASS_STATUS_BADGE, CLASS_STATUS_LABELS } from '../constants';
 
 function formatDate(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR');
 }
 
-type DetailTab = 'enrollments' | 'grades';
+type DetailTab = 'enrollments' | 'grades' | 'photos';
 
 export function BibleClassDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -88,6 +89,17 @@ export function BibleClassDetailPage() {
         >
           Notas
         </button>
+        <button
+          type="button"
+          onClick={() => setTab('photos')}
+          className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
+            tab === 'photos'
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Fotos
+        </button>
       </div>
 
       {tab === 'enrollments' ? (
@@ -109,8 +121,10 @@ export function BibleClassDetailPage() {
             </div>
           )}
         </div>
-      ) : (
+      ) : tab === 'grades' ? (
         <BibleClassGradesSection classId={klass.id} />
+      ) : (
+        <BibleCourseClassPhotoGallery classId={klass.id} />
       )}
 
       <EnrollResidentDialog

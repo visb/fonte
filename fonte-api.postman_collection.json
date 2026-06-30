@@ -3515,6 +3515,71 @@
               ]
             }
           }
+        },
+        {
+          "name": "List Class Photos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}/photos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes",
+                "{{bibleClassId}}",
+                "photos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload Class Photo",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}/photos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes",
+                "{{bibleClassId}}",
+                "photos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Class Photo",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}/photos/{{bibleClassPhotoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes",
+                "{{bibleClassId}}",
+                "photos",
+                "{{bibleClassPhotoId}}"
+              ]
+            }
+          }
         }
       ]
     },

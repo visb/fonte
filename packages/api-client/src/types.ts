@@ -95,6 +95,7 @@ import {
   ActivityEventType,
   REGISTRATION_FIELD_TYPES,
   EventPaymentStatus,
+  EventAudience,
 } from '@fonte/types';
 
 export type { ContributionReportItem, ContributionsReportResponse, GetContributionsReportParams };
@@ -154,7 +155,7 @@ export type {
   ActivityAttachmentType,
 };
 
-export { EventPaymentStatus };
+export { EventPaymentStatus, EventAudience };
 export type {
   Event,
   EventFilter,

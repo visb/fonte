@@ -76,4 +76,7 @@ export const queryKeys = {
   bibleCourses: {
     photos: (classId: string) => ['bible-course-photos', classId] as const,
   },
+  events: {
+    internal: ['events', 'internal'] as const,
+  },
 } as const;

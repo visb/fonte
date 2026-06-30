@@ -5221,6 +5221,23 @@
           }
         },
         {
+          "name": "List Internal Events (ALL STAFF)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/events/internal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "internal"
+              ]
+            },
+            "description": "Story 94. Lista somente eventos internos (audience=INTERNAL) futuros, ordenados por start_at asc. Somente leitura, acessivel a TODOS os papeis de Staff (ADMIN, COORDINATOR, SERVANT). Eventos internos nunca aparecem no portal publico nem aceitam inscricao/cobranca. 401 sem token, 403 para nao-Staff (RELATIVE/RESIDENT)."
+          }
+        },
+        {
           "name": "Get Event (ADMIN/COORDINATOR)",
           "request": {
             "method": "GET",
@@ -5249,7 +5266,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Retiro de familias\",\n  \"description\": \"Encontro anual da comunidade\",\n  \"startAt\": \"2026-08-01T18:00:00.000Z\",\n  \"endAt\": \"2026-08-02T18:00:00.000Z\",\n  \"location\": \"Sede\",\n  \"registrationEnabled\": true,\n  \"paymentEnabled\": true,\n  \"priceCents\": 5000,\n  \"capacity\": 100,\n  \"registrationOpensAt\": \"2026-07-01T00:00:00.000Z\",\n  \"registrationClosesAt\": \"2026-07-25T00:00:00.000Z\",\n  \"registrationFields\": [\n    { \"label\": \"Tamanho da camiseta\", \"type\": \"select\", \"required\": true, \"order\": 0, \"options\": [\"P\", \"M\", \"G\"] },\n    { \"label\": \"Observacoes\", \"type\": \"long_text\", \"required\": false, \"order\": 1 }\n  ]\n}"
+              "raw": "{\n  \"title\": \"Retiro de familias\",\n  \"description\": \"Encontro anual da comunidade\",\n  \"startAt\": \"2026-08-01T18:00:00.000Z\",\n  \"endAt\": \"2026-08-02T18:00:00.000Z\",\n  \"location\": \"Sede\",\n  \"audience\": \"PUBLIC\",\n  \"registrationEnabled\": true,\n  \"paymentEnabled\": true,\n  \"priceCents\": 5000,\n  \"capacity\": 100,\n  \"registrationOpensAt\": \"2026-07-01T00:00:00.000Z\",\n  \"registrationClosesAt\": \"2026-07-25T00:00:00.000Z\",\n  \"registrationFields\": [\n    { \"label\": \"Tamanho da camiseta\", \"type\": \"select\", \"required\": true, \"order\": 0, \"options\": [\"P\", \"M\", \"G\"] },\n    { \"label\": \"Observacoes\", \"type\": \"long_text\", \"required\": false, \"order\": 1 }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/events",
@@ -5260,7 +5277,7 @@
                 "events"
               ]
             },
-            "description": "Cria evento. registrationEnabled (default false) liga a inscricao; com false o evento e so-divulgacao (nao aparece no portal publico) e a janela/capacity sao ignorados. capacity null/omitido = ilimitado. Valida endAt >= startAt e (quando inscricao ligada) registrationClosesAt >= registrationOpensAt (400 se violar). paymentEnabled (story 69, default false) liga a cobranca avulsa da inscricao; quando true exige priceCents > 0 (preco LIQUIDO em centavos, 400 se faltar/<=0). Com paymentEnabled=false o priceCents e forcado a null (inscricao gratis). registrationFields (story 68): campos custom do formulario de inscricao; cada item { id?, label, type, required, order, options?, placeholder? }. type ∈ short_text|long_text|number|boolean|select|multi_select|date|email|phone|file. options obrigatorio e nao-vazio para select/multi_select (400 se faltar). id e gerado no backend quando ausente (estavel). Roles: ADMIN, COORDINATOR."
+            "description": "Cria evento. audience (story 94, default PUBLIC) ∈ PUBLIC|INTERNAL. INTERNAL = evento so para servos (so-divulgacao): nunca aparece no portal publico e nunca aceita inscricao/cobranca — o service forca registrationEnabled/paymentEnabled = false, priceCents/capacity = null e rejeita (400) se o body tentar combinar INTERNAL com inscricao/pagamento ligados. registrationEnabled (default false) liga a inscricao; com false o evento e so-divulgacao (nao aparece no portal publico) e a janela/capacity sao ignorados. capacity null/omitido = ilimitado. Valida endAt >= startAt e (quando inscricao ligada) registrationClosesAt >= registrationOpensAt (400 se violar). paymentEnabled (story 69, default false) liga a cobranca avulsa da inscricao; quando true exige priceCents > 0 (preco LIQUIDO em centavos, 400 se faltar/<=0). Com paymentEnabled=false o priceCents e forcado a null (inscricao gratis). registrationFields (story 68): campos custom do formulario de inscricao; cada item { id?, label, type, required, order, options?, placeholder? }. type ∈ short_text|long_text|number|boolean|select|multi_select|date|email|phone|file. options obrigatorio e nao-vazio para select/multi_select (400 se faltar). id e gerado no backend quando ausente (estavel). Roles: ADMIN, COORDINATOR."
           }
         },
         {
@@ -5287,7 +5304,7 @@
                 "{{eventId}}"
               ]
             },
-            "description": "Edicao parcial. Revalida coerencia das datas. Roles: ADMIN, COORDINATOR."
+            "description": "Edicao parcial. Aceita audience (story 94); ao virar INTERNAL, o service forca inscricao/cobranca/janela/campos off (e 400 se o mesmo body tentar ligar inscricao/pagamento junto de INTERNAL). Revalida coerencia das datas. Roles: ADMIN, COORDINATOR."
           }
         },
         {

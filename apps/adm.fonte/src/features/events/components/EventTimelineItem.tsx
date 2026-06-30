@@ -1,5 +1,6 @@
 import { CalendarClock, MapPin, Pencil, Trash2, Users } from 'lucide-react';
 import type { Event } from '@fonte/api-client';
+import { EventAudience } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -52,7 +53,11 @@ export function EventTimelineItem({
                   Encerrado
                 </Badge>
               )}
-              {event.registrationEnabled ? (
+              {event.audience === EventAudience.INTERNAL ? (
+                <Badge variant="outline" className="font-normal border-amber-500 text-amber-700" data-testid="audience-badge">
+                  Interno
+                </Badge>
+              ) : event.registrationEnabled ? (
                 <Badge variant="outline" className="font-normal" data-testid="registration-badge">
                   Inscrição aberta
                 </Badge>

@@ -135,6 +135,17 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="events"
+        options={{
+          title: "Eventos internos",
+          href: null,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="messages"
         options={{
           title: "Mensagens",

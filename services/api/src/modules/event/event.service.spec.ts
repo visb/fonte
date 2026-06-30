@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
+import { EventAudience } from '@fonte/types';
 import { EventService } from './event.service';
 import { Event } from './event.entity';
 import { EventFilterDto } from './dto/list-events.dto';
@@ -16,6 +17,7 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
     startAt: new Date('2026-07-01T12:00:00Z'),
     endAt: null,
     location: 'Sede',
+    audience: EventAudience.PUBLIC,
     capacity: null,
     registrationEnabled: false,
     paymentEnabled: false,
@@ -220,6 +222,88 @@ describe('EventService.create', () => {
     expect(result.priceCents).toBeNull();
   });
 
+  // ── Audiência / eventos internos (story 94) ────────────────────────────────
+
+  it('defaults audience to PUBLIC when omitted', async () => {
+    const repo = {
+      create: jest.fn().mockImplementation((v) => makeEvent(v)),
+      save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
+    };
+    const service = makeService(repo as never);
+
+    const result = await service.create({
+      title: 'Culto',
+      description: 'd',
+      startAt: '2026-07-01T12:00:00Z',
+    });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ audience: EventAudience.PUBLIC }),
+    );
+    expect(result.audience).toBe(EventAudience.PUBLIC);
+  });
+
+  it('forces registration/payment off for an INTERNAL event', async () => {
+    const repo = {
+      create: jest.fn().mockImplementation((v) => makeEvent(v)),
+      save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
+    };
+    const service = makeService(repo as never);
+
+    const result = await service.create({
+      title: 'Reunião de servos',
+      description: 'Só divulgação',
+      startAt: '2026-07-01T12:00:00Z',
+      audience: EventAudience.INTERNAL,
+    });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audience: EventAudience.INTERNAL,
+        registrationEnabled: false,
+        paymentEnabled: false,
+        priceCents: null,
+        capacity: null,
+        registrationFields: [],
+      }),
+    );
+    expect(result.registrationEnabled).toBe(false);
+    expect(result.paymentEnabled).toBe(false);
+  });
+
+  it('rejects INTERNAL combined with registrationEnabled (400)', async () => {
+    const repo = { create: jest.fn(), save: jest.fn() };
+    const service = makeService(repo as never);
+
+    await expect(
+      service.create({
+        title: 'Incoerente',
+        description: 'd',
+        startAt: '2026-07-01T12:00:00Z',
+        audience: EventAudience.INTERNAL,
+        registrationEnabled: true,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects INTERNAL combined with paymentEnabled (400)', async () => {
+    const repo = { create: jest.fn(), save: jest.fn() };
+    const service = makeService(repo as never);
+
+    await expect(
+      service.create({
+        title: 'Incoerente',
+        description: 'd',
+        startAt: '2026-07-01T12:00:00Z',
+        audience: EventAudience.INTERNAL,
+        paymentEnabled: true,
+        priceCents: 5000,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
   it('skips the registration window coherence check when registration is off', async () => {
     const repo = {
       create: jest.fn().mockImplementation((v) => makeEvent(v)),
@@ -332,6 +416,29 @@ describe('EventService.findAll', () => {
   });
 });
 
+// ─── listInternal (story 94) ─────────────────────────────────────────────────────
+
+describe('EventService.listInternal', () => {
+  it('filters by audience INTERNAL and future start_at, ordered asc', async () => {
+    const qb = makeQb([makeEvent({ audience: EventAudience.INTERNAL })]);
+    const repo = { createQueryBuilder: jest.fn().mockReturnValue(qb) };
+    const service = makeService(repo as never);
+
+    const result = await service.listInternal();
+
+    expect(qb.where).toHaveBeenCalledWith('e.audience = :audience', {
+      audience: EventAudience.INTERNAL,
+    });
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      'e.start_at >= :now',
+      expect.objectContaining({ now: expect.any(Date) }),
+    );
+    expect(qb.orderBy).toHaveBeenCalledWith('e.start_at', 'ASC');
+    expect(result).toHaveLength(1);
+    expect(result[0].audience).toBe(EventAudience.INTERNAL);
+  });
+});
+
 // ─── findOne ────────────────────────────────────────────────────────────────────
 
 describe('EventService.findOne', () => {
@@ -382,6 +489,47 @@ describe('EventService.update', () => {
 
     await expect(
       service.update(EVENT_ID, { endAt: '2026-06-01T12:00:00Z' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('forces registration/payment off when switching an event to INTERNAL', async () => {
+    const event = makeEvent({
+      audience: EventAudience.PUBLIC,
+      registrationEnabled: true,
+      paymentEnabled: true,
+      priceCents: 5000,
+      capacity: 50,
+    });
+    const repo = {
+      findOne: jest.fn().mockResolvedValue(event),
+      save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
+    };
+    const service = makeService(repo as never);
+
+    // Apenas troca a audiência; flags herdadas são forçadas off (sem erro).
+    const result = await service.update(EVENT_ID, { audience: EventAudience.INTERNAL });
+
+    expect(result.audience).toBe(EventAudience.INTERNAL);
+    expect(result.registrationEnabled).toBe(false);
+    expect(result.paymentEnabled).toBe(false);
+    expect(result.priceCents).toBeNull();
+    expect(result.capacity).toBeNull();
+  });
+
+  it('rejects an update that sets INTERNAL together with registrationEnabled (400)', async () => {
+    const event = makeEvent({ audience: EventAudience.PUBLIC });
+    const repo = {
+      findOne: jest.fn().mockResolvedValue(event),
+      save: jest.fn(),
+    };
+    const service = makeService(repo as never);
+
+    await expect(
+      service.update(EVENT_ID, {
+        audience: EventAudience.INTERNAL,
+        registrationEnabled: true,
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(repo.save).not.toHaveBeenCalled();
   });

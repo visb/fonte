@@ -36,7 +36,7 @@ test.describe('Eventos (timeline)', () => {
 
   test('ADMIN vê o item Eventos no menu e navega', async ({ page }) => {
     await login(page);
-    await page.getByRole('link', { name: 'Eventos' }).click();
+    await page.getByRole('link', { name: 'Eventos', exact: true }).click();
     await expect(page).toHaveURL('/eventos');
     await expect(page.getByRole('heading', { name: 'Eventos' })).toBeVisible();
   });
@@ -152,5 +152,46 @@ test.describe('Eventos (timeline)', () => {
     await page.getByRole('alertdialog').getByRole('button', { name: 'Remover' }).click();
     await expect(page.getByRole('alertdialog')).not.toBeVisible();
     await expect(item(page, title)).toHaveCount(0);
+  });
+
+  // ── Eventos internos (story 94) ─────────────────────────────────────────────
+
+  async function createInternalEvent(page: Page, title: string, startLocal: string) {
+    await page.getByRole('button', { name: 'Novo evento' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByLabel('Título *').fill(title);
+    await page.getByLabel('Descrição *').fill('Evento para servos');
+    await page.getByLabel('Início *').fill(startLocal);
+    await page.getByTestId('event-audience').selectOption('INTERNAL');
+    // Ao marcar Interno, a seção de inscrição some.
+    await expect(page.getByTestId('registration-enabled')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Criar' }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+  }
+
+  test('cria evento interno: badge "Interno" na timeline e aparece na lista interna, não no portal', async ({
+    page,
+  }) => {
+    await login(page);
+    await goto(page);
+    const title = `Interno ${ts()}`;
+    await createInternalEvent(page, title, inDays(35));
+
+    // Na timeline de gestão, o item ganha o badge "Interno".
+    await expect(item(page, title).getByTestId('audience-badge')).toHaveText('Interno');
+
+    // Na lista de eventos internos (acessível a todos os Staff), ele aparece.
+    await page.goto('/eventos-internos');
+    await expect(
+      page.getByRole('heading', { name: 'Eventos internos' }),
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('internal-events-list').getByText(title),
+    ).toBeVisible();
+
+    // Evento interno não tem inscrição: a página pública de gestão não o lista
+    // como inscritível (badge "Interno", sem botão Inscritos na timeline).
+    await goto(page);
+    await expect(item(page, title).getByTestId('view-registrations')).toHaveCount(0);
   });
 });

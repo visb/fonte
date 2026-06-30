@@ -62,6 +62,17 @@ export class EventController {
     return this.service.findAll(filters);
   }
 
+  /**
+   * Eventos internos (story 94), só-leitura. Acessível a TODOS os papéis de
+   * Staff (override do @Roles da classe) — SERVANT lê, não cria. Declarado antes
+   * de `:id` para a rota literal vencer o ParseUUIDPipe do detalhe.
+   */
+  @Get('internal')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  listInternal() {
+    return this.service.listInternal();
+  }
+
   @Get(':id/registrations')
   listRegistrations(@Param('id', ParseUUIDPipe) id: string) {
     return this.registrationService.listRegistrations(id);

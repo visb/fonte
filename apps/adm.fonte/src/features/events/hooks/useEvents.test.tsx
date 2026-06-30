@@ -5,6 +5,7 @@ vi.mock('@/lib/api', () => ({
   api: {
     events: {
       list: vi.fn(),
+      listInternal: vi.fn(),
       getById: vi.fn(),
       listRegistrations: vi.fn(),
       create: vi.fn(),
@@ -20,6 +21,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { renderHookWithClient } from '@/test/utils';
 import {
   useEvents,
+  useInternalEvents,
   useEventById,
   useEventRegistrations,
   useCreateEvent,
@@ -38,6 +40,14 @@ describe('queries de eventos', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.events.list).toHaveBeenCalledWith({ filter: 'upcoming' });
     expect(queryClient.getQueryData(queryKeys.events.list({ filter: 'upcoming' }))).toEqual([]);
+  });
+
+  it('useInternalEvents lê os eventos internos pela queryKey dedicada (story 94)', async () => {
+    vi.mocked(api.events.listInternal).mockResolvedValue([{ id: 'i1' }] as never);
+    const { result, queryClient } = renderHookWithClient(() => useInternalEvents());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.events.listInternal).toHaveBeenCalled();
+    expect(queryClient.getQueryData(queryKeys.events.internal)).toEqual([{ id: 'i1' }]);
   });
 
   it('getById e registrations respeitam enabled', async () => {

@@ -4,6 +4,7 @@ function eventSvc() {
   return {
     create: jest.fn().mockResolvedValue({ id: 'e1' }),
     findAll: jest.fn().mockResolvedValue([]),
+    listInternal: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue({ id: 'e1' }),
     update: jest.fn().mockResolvedValue({ id: 'e1' }),
     remove: jest.fn().mockResolvedValue(undefined),
@@ -27,11 +28,13 @@ describe('EventController', () => {
     const c = new EventController(s as never, regSvc() as never);
     await c.create({ title: 'E' } as never);
     await c.findAll({} as never);
+    await c.listInternal();
     await c.findOne('e1');
     await c.update('e1', { title: 'X' } as never);
     await c.remove('e1');
     await c.uploadBanner('e1', file);
     expect(s.create).toHaveBeenCalledWith({ title: 'E' });
+    expect(s.listInternal).toHaveBeenCalled();
     expect(s.uploadBanner).toHaveBeenCalledWith('e1', file);
   });
 

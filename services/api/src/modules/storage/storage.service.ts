@@ -3,12 +3,14 @@ import { ConfigService } from "@nestjs/config";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { extname, join } from "path";
+import { IMG_SRC_RE, extractImageUrls } from "./storage.util";
 
 // Signed URLs are valid for 24h, but we serve a cached one for only 12h so a
 // URL handed to the client always has >=12h of validity left.
@@ -141,11 +143,6 @@ export class StorageService implements OnModuleInit {
     return signedUrl;
   }
 
-  // Matches the `src="..."`/`src='...'` of an <img> tag. The non-greedy
-  // `[^>]*?` keeps the match inside a single tag and the quote backref (\2)
-  // bounds the URL, so other attributes/tags are never touched.
-  private static readonly IMG_SRC_RE = /(<img\b[^>]*?\bsrc=)(["'])(.*?)\2/gi;
-
   // Strips the presign query (?X-Amz-...) from an S3 URL, recovering the stable
   // canonical object URL. Non-S3 URLs (local /uploads, external) pass through.
   canonicalizeS3Url(url: string): string {
@@ -160,7 +157,7 @@ export class StorageService implements OnModuleInit {
   stripContentSignatures(html: string): string {
     if (!this.publicBaseUrl || !html) return html;
     return html.replace(
-      StorageService.IMG_SRC_RE,
+      IMG_SRC_RE,
       (_m, pre: string, quote: string, src: string) =>
         `${pre}${quote}${this.canonicalizeS3Url(src)}${quote}`,
     );
@@ -171,7 +168,7 @@ export class StorageService implements OnModuleInit {
   // and the PDF always receive a valid, non-expired URL. No-op outside S3 mode.
   async signContentUrls(html: string): Promise<string> {
     if (!this.isS3Mode() || !this.publicBaseUrl || !html) return html;
-    const matches = [...html.matchAll(StorageService.IMG_SRC_RE)];
+    const matches = [...html.matchAll(IMG_SRC_RE)];
     if (!matches.length) return html;
     let result = "";
     let last = 0;
@@ -243,5 +240,44 @@ export class StorageService implements OnModuleInit {
     } catch {
       // ignore missing file
     }
+  }
+
+  // ── Orphan cleanup (story 93) ──────────────────────────────────────────────
+
+  // Canonical <img src> URLs of an HTML blob that live in our bucket (story 93).
+  // Delegates to the pure helper, supplying the bucket base. No-op outside S3.
+  extractBucketImageUrls(html: string): string[] {
+    return extractImageUrls(html, this.publicBaseUrl);
+  }
+
+  // Maps a stored media URL to its bucket object key, or null when the URL is
+  // not one of ours (local /uploads, external CDN, base64). Strips any presign
+  // query first so a signed URL resolves to the same key as its canonical form.
+  keyFromUrl(url: string | null | undefined): string | null {
+    if (!url || !this.publicBaseUrl) return null;
+    const base = this.canonicalizeS3Url(url);
+    if (!this.isS3Url(base)) return null;
+    return base.slice(this.publicBaseUrl.length + 1);
+  }
+
+  // Lists every object key in the bucket, paginating through all pages. Returns
+  // an empty list outside S3 mode (reconcile is a no-op without a bucket).
+  async listBucketKeys(): Promise<string[]> {
+    if (!this.s3 || !this.bucketName) return [];
+    const keys: string[] = [];
+    let token: string | undefined;
+    do {
+      const res = await this.s3.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucketName,
+          ContinuationToken: token,
+        }),
+      );
+      for (const obj of res.Contents ?? []) {
+        if (obj.Key) keys.push(obj.Key);
+      }
+      token = res.IsTruncated ? res.NextContinuationToken : undefined;
+    } while (token);
+    return keys;
   }
 }

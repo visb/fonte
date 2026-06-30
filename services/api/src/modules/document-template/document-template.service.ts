@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Browser } from 'puppeteer';
@@ -19,6 +19,7 @@ export class DocumentTemplateService implements OnModuleDestroy {
   ) {}
 
   private browserPromise: Promise<Browser> | null = null;
+  private readonly logger = new Logger(DocumentTemplateService.name);
 
   async onModuleDestroy() {
     if (this.browserPromise) {
@@ -108,23 +109,57 @@ export class DocumentTemplateService implements OnModuleDestroy {
   }
 
   async update(id: string, data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired' | 'signAtAdmission'>>): Promise<DocumentTemplate> {
-    await this.findOne(id);
+    // Conteúdo bruto (canônico) atual, para diff de imagens (story 93).
+    const existing = await this.repo.findOne({ where: { id } });
+    if (!existing) throw new NotFoundException(`Template ${id} not found`);
     if (data.name) {
       const conflict = await this.repo.findOne({ where: { name: data.name } });
       if (conflict && conflict.id !== id) throw new ConflictException(`Template com nome "${data.name}" já existe`);
     }
     // Persist the canonical (unsigned) S3 URLs — never an expiring signature.
-    const persisted =
+    const newContent =
       data.content !== undefined
-        ? { ...data, content: this.storageService.stripContentSignatures(data.content) }
-        : data;
+        ? this.storageService.stripContentSignatures(data.content)
+        : undefined;
+    const persisted = newContent !== undefined ? { ...data, content: newContent } : data;
     await this.repo.update(id, persisted);
+    // Limpa do bucket as imagens que sumiram do conteúdo (story 93). Best-effort.
+    if (newContent !== undefined) {
+      await this.cleanupRemovedImages(existing.content, newContent);
+    }
     return this.findOne(id);
   }
 
   async remove(id: string): Promise<void> {
-    await this.findOne(id);
+    // Conteúdo bruto antes de apagar, para limpar suas imagens do bucket (story 93).
+    const existing = await this.repo.findOne({ where: { id } });
+    if (!existing) throw new NotFoundException(`Template ${id} not found`);
     await this.repo.delete(id);
+    for (const url of this.storageService.extractBucketImageUrls(existing.content)) {
+      await this.safeDelete(url);
+    }
+  }
+
+  // Apaga do bucket as imagens presentes no conteúdo antigo e ausentes no novo.
+  // Só URLs do nosso bucket (externas/base64 são ignoradas por extractBucketImageUrls).
+  private async cleanupRemovedImages(oldContent: string, newContent: string): Promise<void> {
+    const oldUrls = this.storageService.extractBucketImageUrls(oldContent);
+    if (!oldUrls.length) return;
+    const kept = new Set(this.storageService.extractBucketImageUrls(newContent));
+    for (const url of oldUrls) {
+      if (!kept.has(url)) await this.safeDelete(url);
+    }
+  }
+
+  // Deleção best-effort: falha ao apagar o objeto não aborta o save/remove.
+  private async safeDelete(url: string): Promise<void> {
+    try {
+      await this.storageService.delete(url);
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao remover imagem órfã ${url}: ${error instanceof Error ? error.message : error}`,
+      );
+    }
   }
 
   async uploadImage(file: Express.Multer.File): Promise<{ url: string }> {

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -26,6 +27,8 @@ import { EventPaymentNotifierService } from './event-payment-notifier.service';
 
 @Injectable()
 export class EventRegistrationService {
+  private readonly logger = new Logger(EventRegistrationService.name);
+
   constructor(
     @InjectRepository(Event)
     private eventsRepo: Repository<Event>,
@@ -266,5 +269,46 @@ export class EventRegistrationService {
       amountCents: r.amountCents ?? null,
       createdAt: r.createdAt.toISOString(),
     }));
+  }
+
+  /**
+   * Remove uma inscrição (soft delete) e apaga do bucket os comprovantes que ela
+   * tinha anexado nos campos `file` (story 93). A limpeza do storage é
+   * best-effort: falha ao apagar não aborta a remoção do registro.
+   */
+  async deleteRegistration(eventId: string, registrationId: string): Promise<void> {
+    const registration = await this.registrationsRepo.findOne({
+      where: { id: registrationId, eventId, deletedAt: IsNull() },
+    });
+    if (!registration) throw new NotFoundException('Registration not found');
+
+    await this.registrationsRepo.softRemove(registration);
+
+    // Comprovantes anexados ficam órfãos após a remoção — apaga do bucket.
+    for (const fileKey of this.collectFileKeys(registration.answers)) {
+      await this.safeDelete(fileKey);
+    }
+  }
+
+  /** Coleta as storage keys guardadas nas respostas (campos `file`). */
+  private collectFileKeys(answers: Record<string, unknown> | null): string[] {
+    if (!answers) return [];
+    const keys: string[] = [];
+    for (const value of Object.values(answers)) {
+      const key = this.storageService.keyFromUrl(typeof value === 'string' ? value : null);
+      if (key) keys.push(key);
+    }
+    return keys;
+  }
+
+  // Deleção best-effort: falha ao apagar o objeto não aborta a remoção.
+  private async safeDelete(fileKey: string): Promise<void> {
+    try {
+      await this.storageService.delete(fileKey);
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao remover comprovante ${fileKey}: ${error instanceof Error ? error.message : error}`,
+      );
+    }
   }
 }

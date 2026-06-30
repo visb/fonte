@@ -35,6 +35,8 @@ type StorageMock = {
   decodeOriginalName: jest.Mock;
   uniqueFilename: jest.Mock;
   upload: jest.Mock;
+  delete: jest.Mock;
+  keyFromUrl: jest.Mock;
 };
 
 function makeStorage(overrides: Partial<StorageMock> = {}): StorageMock {
@@ -44,6 +46,13 @@ function makeStorage(overrides: Partial<StorageMock> = {}): StorageMock {
     upload: jest
       .fn()
       .mockResolvedValue('https://bucket/event-registrations/reg_file.pdf'),
+    delete: jest.fn().mockResolvedValue(undefined),
+    // Por padrão devolve a "key" de uma URL do bucket fictício, null p/ o resto.
+    keyFromUrl: jest.fn((url: string | null) =>
+      typeof url === 'string' && url.startsWith('https://bucket/')
+        ? url.slice('https://bucket/'.length)
+        : null,
+    ),
     ...overrides,
   };
 }
@@ -361,6 +370,83 @@ describe('EventRegistrationService.uploadRegistrationFile (story 68)', () => {
     await expect(service.uploadRegistrationFile('event-uuid', file)).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+});
+
+describe('EventRegistrationService.deleteRegistration (story 93)', () => {
+  function makeRegistration(answers: Record<string, unknown> = {}) {
+    return {
+      id: 'reg-uuid',
+      eventId: 'event-uuid',
+      answers,
+      deletedAt: null,
+    } as unknown as EventRegistration;
+  }
+
+  it('remove a inscrição e apaga do bucket os comprovantes anexados', async () => {
+    const registration = makeRegistration({
+      f1: 'https://bucket/event-registrations/reg_old.pdf',
+      f2: 'texto comum',
+    });
+    const registrations = {
+      findOne: jest.fn().mockResolvedValue(registration),
+      softRemove: jest.fn().mockResolvedValue(registration),
+    };
+    const storage = makeStorage();
+    const service = makeService({}, registrations, storage);
+
+    await service.deleteRegistration('event-uuid', 'reg-uuid');
+
+    expect(registrations.softRemove).toHaveBeenCalledWith(registration);
+    // Apaga só a key do comprovante (campo file), não o texto comum.
+    expect(storage.delete).toHaveBeenCalledTimes(1);
+    expect(storage.delete).toHaveBeenCalledWith('event-registrations/reg_old.pdf');
+  });
+
+  it('não apaga nada quando a inscrição não tem comprovante', async () => {
+    const registration = makeRegistration({ nome: 'Maria' });
+    const registrations = {
+      findOne: jest.fn().mockResolvedValue(registration),
+      softRemove: jest.fn().mockResolvedValue(registration),
+    };
+    const storage = makeStorage();
+    const service = makeService({}, registrations, storage);
+
+    await service.deleteRegistration('event-uuid', 'reg-uuid');
+
+    expect(storage.delete).not.toHaveBeenCalled();
+  });
+
+  it('falha do storage não aborta a remoção (best-effort)', async () => {
+    const registration = makeRegistration({
+      f1: 'https://bucket/event-registrations/reg_old.pdf',
+    });
+    const registrations = {
+      findOne: jest.fn().mockResolvedValue(registration),
+      softRemove: jest.fn().mockResolvedValue(registration),
+    };
+    const storage = makeStorage({
+      delete: jest.fn().mockRejectedValue(new Error('s3 down')),
+    });
+    const service = makeService({}, registrations, storage);
+
+    await expect(
+      service.deleteRegistration('event-uuid', 'reg-uuid'),
+    ).resolves.toBeUndefined();
+    expect(registrations.softRemove).toHaveBeenCalled();
+  });
+
+  it('lança NotFound quando a inscrição não existe', async () => {
+    const registrations = {
+      findOne: jest.fn().mockResolvedValue(null),
+      softRemove: jest.fn(),
+    };
+    const service = makeService({}, registrations, makeStorage());
+
+    await expect(
+      service.deleteRegistration('event-uuid', 'missing'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(registrations.softRemove).not.toHaveBeenCalled();
   });
 });
 

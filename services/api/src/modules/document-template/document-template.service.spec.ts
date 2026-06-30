@@ -6,6 +6,7 @@ import { DocumentTemplate } from './document-template.entity';
 import { Relative } from '../relative/relative.entity';
 import { Resident } from '../resident/resident.entity';
 import { StorageService } from '../storage/storage.service';
+import { extractImageUrls } from '../storage/storage.util';
 
 function makeRepo(overrides: Record<string, jest.Mock> = {}) {
   return {
@@ -25,6 +26,9 @@ function makeStorage(overrides: Partial<StorageService> = {}): StorageService {
   return {
     stripContentSignatures: (html: string) => html,
     signContentUrls: async (html: string) => html,
+    // Story 93 — diff de imagens: por padrão sem imagens no bucket (no-op).
+    extractBucketImageUrls: () => [],
+    delete: async () => undefined,
     ...overrides,
   } as unknown as StorageService;
 }
@@ -166,6 +170,76 @@ describe('DocumentTemplateService signed-url handling (story 76)', () => {
     expect(html).toContain('src="https://s3/logo.png?X-Amz-signed"');
     expect(html).not.toContain('src="https://s3/logo.png"><p>');
     expect(html).toContain('<p>João</p>');
+  });
+});
+
+// Story 93 — ao salvar/remover, as imagens que saíram do conteúdo viram órfãs
+// no bucket e devem ser apagadas (diff). Best-effort: falha não aborta o save.
+describe('DocumentTemplateService image diff cleanup (story 93)', () => {
+  const BASE = 'https://bucket';
+  function makeCleanupStorage(deleteMock: jest.Mock): StorageService {
+    return makeStorage({
+      extractBucketImageUrls: ((h: string) => extractImageUrls(h, BASE)) as never,
+      delete: deleteMock as never,
+    });
+  }
+
+  it('apaga só as imagens removidas no update, mantendo as conservadas', async () => {
+    const oldContent = `<img src="${BASE}/documents/a.png"><img src="${BASE}/documents/b.png">`;
+    const newContent = `<img src="${BASE}/documents/a.png">`; // b.png removida
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: oldContent }),
+    });
+    const del = jest.fn().mockResolvedValue(undefined);
+    const service = makeService(repo, makeRepo(), makeCleanupStorage(del));
+
+    await service.update('tpl-1', { content: newContent });
+
+    expect(del).toHaveBeenCalledTimes(1);
+    expect(del).toHaveBeenCalledWith(`${BASE}/documents/b.png`);
+  });
+
+  it('não apaga nada quando nenhuma imagem foi removida', async () => {
+    const content = `<img src="${BASE}/documents/a.png">`;
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content }),
+    });
+    const del = jest.fn().mockResolvedValue(undefined);
+    const service = makeService(repo, makeRepo(), makeCleanupStorage(del));
+
+    await service.update('tpl-1', { content });
+
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it('best-effort: falha do storage.delete não aborta o update', async () => {
+    const oldContent = `<img src="${BASE}/documents/a.png">`;
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: oldContent }),
+    });
+    const del = jest.fn().mockRejectedValue(new Error('s3 down'));
+    const service = makeService(repo, makeRepo(), makeCleanupStorage(del));
+
+    await expect(
+      service.update('tpl-1', { content: '<p>sem imagem</p>' }),
+    ).resolves.toBeDefined();
+    expect(del).toHaveBeenCalledWith(`${BASE}/documents/a.png`);
+  });
+
+  it('remove apaga todas as imagens do conteúdo do template', async () => {
+    const content = `<img src="${BASE}/documents/a.png"><img src="${BASE}/documents/b.png">`;
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', content }),
+    });
+    const del = jest.fn().mockResolvedValue(undefined);
+    const service = makeService(repo, makeRepo(), makeCleanupStorage(del));
+
+    await service.remove('tpl-1');
+
+    expect(repo.delete).toHaveBeenCalledWith('tpl-1');
+    expect(del).toHaveBeenCalledTimes(2);
+    expect(del).toHaveBeenCalledWith(`${BASE}/documents/a.png`);
+    expect(del).toHaveBeenCalledWith(`${BASE}/documents/b.png`);
   });
 });
 

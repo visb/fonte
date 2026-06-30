@@ -14,6 +14,7 @@ function regSvc() {
   return {
     listRegistrations: jest.fn().mockResolvedValue([]),
     resendPaymentLink: jest.fn().mockResolvedValue({ email: false, whatsapp: false }),
+    deleteRegistration: jest.fn().mockResolvedValue(undefined),
   };
 }
 const file = { mimetype: 'image/png', buffer: Buffer.from('x') } as Express.Multer.File;
@@ -39,7 +40,9 @@ describe('EventController', () => {
     const c = new EventController(eventSvc() as never, r as never);
     await c.listRegistrations('e1');
     await c.resendPaymentLink('e1', 'reg1');
+    await c.deleteRegistration('e1', 'reg1');
     expect(r.listRegistrations).toHaveBeenCalledWith('e1');
     expect(r.resendPaymentLink).toHaveBeenCalledWith('e1', 'reg1');
+    expect(r.deleteRegistration).toHaveBeenCalledWith('e1', 'reg1');
   });
 });

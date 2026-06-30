@@ -170,6 +170,75 @@ describe('StorageService.stripContentSignatures', () => {
   });
 });
 
+describe('StorageService.extractBucketImageUrls (story 93)', () => {
+  it('returns only canonical bucket image urls', () => {
+    const svc = makeService();
+    const html =
+      `<img src="${BASE}/documents/a.png?X-Amz-Signature=z">` +
+      `<img src="https://other/x.png">` +
+      `<img src="/uploads/local.png">`;
+    expect(svc.extractBucketImageUrls(html)).toEqual([`${BASE}/documents/a.png`]);
+  });
+
+  it('returns [] outside S3 mode', () => {
+    const svc = makeService({ AWS_S3_BUCKET_NAME: undefined, AWS_ENDPOINT_URL: undefined });
+    expect(svc.extractBucketImageUrls(`<img src="${BASE}/a.png">`)).toEqual([]);
+  });
+});
+
+describe('StorageService.keyFromUrl (story 93)', () => {
+  it('maps a canonical bucket url to its object key', () => {
+    const svc = makeService();
+    expect(svc.keyFromUrl(`${BASE}/documents/a.png`)).toBe('documents/a.png');
+  });
+
+  it('strips a presign query before mapping', () => {
+    const svc = makeService();
+    expect(svc.keyFromUrl(`${BASE}/documents/a.png?X-Amz-Signature=z`)).toBe('documents/a.png');
+  });
+
+  it('returns null for non-bucket urls and nullish input', () => {
+    const svc = makeService();
+    expect(svc.keyFromUrl('/uploads/x.png')).toBeNull();
+    expect(svc.keyFromUrl('https://other/x.png')).toBeNull();
+    expect(svc.keyFromUrl(null)).toBeNull();
+    expect(svc.keyFromUrl(undefined)).toBeNull();
+  });
+
+  it('returns null outside S3 mode', () => {
+    const svc = makeService({ AWS_S3_BUCKET_NAME: undefined, AWS_ENDPOINT_URL: undefined });
+    expect(svc.keyFromUrl(`${BASE}/a.png`)).toBeNull();
+  });
+});
+
+describe('StorageService.listBucketKeys (story 93)', () => {
+  it('paginates ListObjectsV2 and returns every key', async () => {
+    const svc = makeService();
+    const send = jest
+      .fn()
+      .mockResolvedValueOnce({
+        Contents: [{ Key: 'a.png' }, { Key: 'b.png' }, {}],
+        IsTruncated: true,
+        NextContinuationToken: 'tok',
+      })
+      .mockResolvedValueOnce({
+        Contents: [{ Key: 'c.png' }],
+        IsTruncated: false,
+      });
+    (svc as unknown as { s3: { send: jest.Mock } }).s3 = { send };
+
+    const keys = await svc.listBucketKeys();
+
+    expect(keys).toEqual(['a.png', 'b.png', 'c.png']);
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns [] outside S3 mode', async () => {
+    const svc = makeService({ AWS_S3_BUCKET_NAME: undefined, AWS_ENDPOINT_URL: undefined });
+    expect(await svc.listBucketKeys()).toEqual([]);
+  });
+});
+
 describe('StorageService.signContentUrls', () => {
   beforeEach(() => {
     let n = 0;

@@ -5372,6 +5372,25 @@
             },
             "description": "Story 70: reenvia o link da pagina de pagamento (/pagamento/:token) da inscricao por e-mail e WhatsApp (best-effort). So para inscricao paga ainda nao confirmada (400 se gratis/NONE; 404 se a inscricao nao existir no evento). Resposta: { email, whatsapp } indicando se cada canal foi enviado (false quando sem credencial/canal ausente). Sem RESEND_API_KEY / credencial Meta no ambiente, ambos vem false e nenhum servico externo e chamado. Roles: ADMIN, COORDINATOR."
           }
+        },
+        {
+          "name": "Delete Event Registration (ADMIN/COORDINATOR)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}/registrations/{{registrationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "{{eventId}}",
+                "registrations",
+                "{{registrationId}}"
+              ]
+            },
+            "description": "Story 93: remove a inscricao (soft delete) e apaga do bucket os comprovantes anexados nos campos file (best-effort: falha ao apagar o objeto nao aborta a remocao). 404 se a inscricao nao existir no evento. 204 No Content. Roles: ADMIN, COORDINATOR."
+          }
         }
       ]
     },
@@ -5552,6 +5571,35 @@
               ]
             },
             "description": "Webhook unico da Pagar.me (mesmo endpoint dos associados, story 41). Story 69: charges de order avulsa de EVENTO sao roteadas primeiro (por metadata.event_registration_id, order.code ou gateway_charge_id). charge.paid -> inscricao PAID; charge.payment_failed -> FAILED. Idempotente por gateway_charge_id. Se nao for charge de evento, cai no fluxo de assinatura dos associados. Auth: HTTP Basic (PAGARME_WEBHOOK_USER/PASSWORD)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Storage",
+      "item": [
+        {
+          "name": "Reconcile Bucket Orphans (ADMIN, dry-run por padrao)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/storage/reconcile?apply=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "storage",
+                "reconcile"
+              ],
+              "query": [
+                {
+                  "key": "apply",
+                  "value": "false",
+                  "description": "false (default) = dry-run, so relata os orfaos; true = apaga cada orfao (best-effort)."
+                }
+              ]
+            },
+            "description": "Story 93: reconciliacao one-shot de orfaos no bucket. Lista todas as URLs referenciadas (colunas de midia + imagens dos conteudos wysiwyg + comprovantes de inscricao), lista os objetos do bucket e calcula os orfaos (objetos nao referenciados). Dry-run por padrao (apply=false): so retorna o relatorio { apply, bucketObjects, referencedObjects, orphanCount, orphanKeys, deletedCount } sem apagar nada. apply=true apaga cada orfao (best-effort) e loga. Restrito a ADMIN."
           }
         }
       ]

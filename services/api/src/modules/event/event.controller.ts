@@ -4,6 +4,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   MaxFileSizeValidator,
   Param,
   ParseFilePipe,
@@ -72,6 +74,16 @@ export class EventController {
     @Param('regId', ParseUUIDPipe) regId: string,
   ) {
     return this.registrationService.resendPaymentLink(id, regId);
+  }
+
+  /** Remove uma inscrição e limpa seus comprovantes do bucket (story 93). */
+  @Delete(':id/registrations/:regId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteRegistration(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('regId', ParseUUIDPipe) regId: string,
+  ) {
+    return this.registrationService.deleteRegistration(id, regId);
   }
 
   @Get(':id')

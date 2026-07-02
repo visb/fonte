@@ -25,9 +25,11 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@fonte/types';
 import { EventService } from './event.service';
 import { EventRegistrationService } from './event-registration.service';
+import { EventInviteService } from './event-invite.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { ListEventsDto } from './dto/list-events.dto';
+import { InviteEventStaffDto } from './dto/invite-staff.dto';
 
 const bannerOptions = {
   storage: memoryStorage(),
@@ -50,6 +52,7 @@ export class EventController {
   constructor(
     private service: EventService,
     private registrationService: EventRegistrationService,
+    private inviteService: EventInviteService,
   ) {}
 
   @Post()
@@ -95,6 +98,19 @@ export class EventController {
     @Param('regId', ParseUUIDPipe) regId: string,
   ) {
     return this.registrationService.deleteRegistration(id, regId);
+  }
+
+  /**
+   * Convida servos via WhatsApp com o link público do evento (story 95).
+   * Devolve o resumo { sent, skipped } — envio best-effort por servo.
+   */
+  @Post(':id/invite-staff')
+  @HttpCode(HttpStatus.OK)
+  inviteStaff(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: InviteEventStaffDto,
+  ) {
+    return this.inviteService.inviteStaff(id, dto.staffIds);
   }
 
   @Get(':id')

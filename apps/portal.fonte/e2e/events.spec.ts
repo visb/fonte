@@ -19,6 +19,7 @@ const openEvent = {
   spotsLeft: 12,
   registrationOpensAt: null,
   registrationClosesAt: null,
+  registrationEnabled: true,
   registrationOpen: true,
 };
 
@@ -74,4 +75,23 @@ test('evento esgotado mostra "Vagas esgotadas"', async ({ page }) => {
 
   await page.goto(`/eventos/${EVENT_ID}`);
   await expect(page.getByRole('heading', { name: 'Vagas esgotadas' })).toBeVisible();
+});
+
+// Story 95: destino do convite via WhatsApp — evento sem inscrição (interno /
+// só-divulgação) resolve por link direto e mostra só a info, sem formulário.
+test('evento sem inscrição mostra a info sem o formulário', async ({ page }) => {
+  await mockDetail(page, EVENT_ID, {
+    ...openEvent,
+    title: 'Encontro dos Servos',
+    capacity: null,
+    spotsLeft: null,
+    registrationEnabled: false,
+    registrationOpen: false,
+  });
+
+  await page.goto(`/eventos/${EVENT_ID}`);
+  await expect(page.getByRole('heading', { name: 'Encontro dos Servos' })).toBeVisible();
+  await expect(page.getByText('Sede')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inscreva-se' })).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inscrições encerradas' })).not.toBeVisible();
 });

@@ -150,6 +150,7 @@ export type {
   BibleCourseModule,
   CreateBibleCourseModuleInput,
   UpdateBibleCourseModuleInput,
+  BibleCourseClassPhoto,
   BibleClassGradeModuleColumn,
   BibleClassGradeCell,
   BibleClassGradeRow,
@@ -198,5 +199,8 @@ export type {
   PayEventInput,
   PayEventResult,
   PixPaymentResult,
+  EventInviteResult,
+  EventInviteSkipped,
+  EventInviteSkipReason,
 } from './types.js';
 export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus, ActivityEventType, REGISTRATION_FIELD_TYPES, EventPaymentStatus, EventAudience } from './types.js';

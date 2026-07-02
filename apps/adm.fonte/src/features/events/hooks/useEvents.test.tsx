@@ -12,6 +12,7 @@ vi.mock('@/lib/api', () => ({
       update: vi.fn(),
       remove: vi.fn(),
       uploadBanner: vi.fn(),
+      inviteStaff: vi.fn(),
     },
   },
 }));
@@ -28,6 +29,7 @@ import {
   useUpdateEvent,
   useDeleteEvent,
   useUploadEventBanner,
+  useInviteEventStaff,
 } from './useEvents';
 
 beforeEach(() => vi.clearAllMocks());
@@ -82,6 +84,16 @@ describe('mutations de eventos', () => {
     d.current.mutate('e1');
     await waitFor(() => expect(d.current.isSuccess).toBe(true));
     expect(api.events.remove).toHaveBeenCalledWith('e1');
+  });
+
+  it('inviteStaff envia os staffIds e devolve o resumo (story 95)', async () => {
+    const summary = { sent: ['s1'], skipped: [{ staffId: 's2', reason: 'NO_WHATSAPP' }] };
+    vi.mocked(api.events.inviteStaff).mockResolvedValue(summary as never);
+    const { result } = renderHookWithClient(() => useInviteEventStaff('e1'));
+    result.current.mutate(['s1', 's2']);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.events.inviteStaff).toHaveBeenCalledWith('e1', ['s1', 's2']);
+    expect(result.current.data).toEqual(summary);
   });
 
   it('uploadBanner monta FormData e invalida detalhe', async () => {

@@ -93,15 +93,47 @@ describe('Public events (e2e)', () => {
     expect(titles).not.toContain(hiddenTitle);
   });
 
-  it('GET /public/events/:id → 404 when registration is disabled', async () => {
+  // Story 95: o detalhe público resolve QUALQUER evento por link direto (é o
+  // destino do convite via WhatsApp), mesmo fora da listagem pública.
+  it('GET /public/events/:id resolves a registration-disabled event by direct link', async () => {
     const id = await createEvent({
-      title: 'Interno',
+      title: 'Só divulgação',
       description: 'd',
       startAt: future(25),
       registrationEnabled: false,
     });
 
-    await request(app.getHttpServer()).get(`${BASE}/public/events/${id}`).expect(404);
+    const res = await request(app.getHttpServer())
+      .get(`${BASE}/public/events/${id}`)
+      .expect(200);
+    expect(res.body.id).toBe(id);
+    expect(res.body.registrationEnabled).toBe(false);
+    expect(res.body.registrationOpen).toBe(false);
+  });
+
+  it('GET /public/events/:id resolves an INTERNAL event by direct link (story 95)', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`${BASE}/events`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: 'Interno', description: 'd', startAt: future(25), audience: 'INTERNAL' })
+      .expect(201);
+
+    const view = await request(app.getHttpServer())
+      .get(`${BASE}/public/events/${res.body.id}`)
+      .expect(200);
+    expect(view.body.title).toBe('Interno');
+    expect(view.body.registrationEnabled).toBe(false);
+    expect(view.body.registrationOpen).toBe(false);
+
+    // A listagem pública continua sem o interno (story 94).
+    const list = await request(app.getHttpServer()).get(`${BASE}/public/events`).expect(200);
+    expect(list.body.map((e: { id: string }) => e.id)).not.toContain(res.body.id);
+  });
+
+  it('GET /public/events/:id → 404 for a missing event', async () => {
+    await request(app.getHttpServer())
+      .get(`${BASE}/public/events/00000000-0000-0000-0000-000000000000`)
+      .expect(404);
   });
 
   it('POST /public/events/:id/register → 404 when registration is disabled', async () => {

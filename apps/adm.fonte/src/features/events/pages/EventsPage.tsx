@@ -22,12 +22,14 @@ import { EventTimeline } from '../components/EventTimeline';
 import { CreateEventDialog } from '../components/CreateEventDialog';
 import { EditEventDialog } from '../components/EditEventDialog';
 import { EventRegistrationsDialog } from '../components/EventRegistrationsDialog';
+import { InviteStaffDialog } from '../components/InviteStaffDialog';
 
 export function EventsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Event | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Event | null>(null);
   const [registrationsTarget, setRegistrationsTarget] = useState<Event | null>(null);
+  const [inviteTarget, setInviteTarget] = useState<Event | null>(null);
 
   const { data: events, isLoading, error, refetch } = useEvents();
   const deleteMutation = useDeleteEvent();
@@ -57,6 +59,7 @@ export function EventsPage() {
           onEdit={setEditTarget}
           onDelete={setDeleteTarget}
           onViewRegistrations={setRegistrationsTarget}
+          onInviteStaff={setInviteTarget}
         />
       )}
 
@@ -70,6 +73,11 @@ export function EventsPage() {
         open={!!registrationsTarget}
         event={registrationsTarget}
         onClose={() => setRegistrationsTarget(null)}
+      />
+      <InviteStaffDialog
+        open={!!inviteTarget}
+        event={inviteTarget}
+        onClose={() => setInviteTarget(null)}
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

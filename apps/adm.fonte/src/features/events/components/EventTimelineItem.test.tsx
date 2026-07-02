@@ -19,7 +19,12 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
   } as Event;
 }
 
-const handlers = () => ({ onEdit: vi.fn(), onDelete: vi.fn(), onViewRegistrations: vi.fn() });
+const handlers = () => ({
+  onEdit: vi.fn(),
+  onDelete: vi.fn(),
+  onViewRegistrations: vi.fn(),
+  onInviteStaff: vi.fn(),
+});
 
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => cleanup());
@@ -90,5 +95,13 @@ describe('EventTimelineItem', () => {
     expect(h.onViewRegistrations).toHaveBeenCalled();
     expect(h.onEdit).toHaveBeenCalled();
     expect(h.onDelete).toHaveBeenCalled();
+  });
+
+  it('"Convidar servos" aparece para todo evento e dispara onInviteStaff (story 95)', () => {
+    const h = handlers();
+    const event = makeEvent({ audience: EventAudience.INTERNAL, registrationEnabled: false });
+    render(<EventTimelineItem event={event} highlighted={false} past={false} {...h} />);
+    fireEvent.click(screen.getByTestId('invite-staff'));
+    expect(h.onInviteStaff).toHaveBeenCalledWith(event);
   });
 });

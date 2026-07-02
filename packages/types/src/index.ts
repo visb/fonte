@@ -975,6 +975,29 @@ export interface ListEventsParams {
   offset?: number;
 }
 
+// ─── Convite de servos por WhatsApp (story 95) ───────────────────────────────
+
+/**
+ * Motivo pelo qual um servo foi pulado no lote de convites (story 95):
+ *  - `NOT_FOUND`   — staffId não corresponde a um servo ativo;
+ *  - `NO_WHATSAPP` — servo sem número de WhatsApp normalizável para E.164;
+ *  - `SEND_FAILED` — a Meta não aceitou o envio (best-effort, falha logada).
+ */
+export type EventInviteSkipReason = 'NOT_FOUND' | 'NO_WHATSAPP' | 'SEND_FAILED';
+
+export interface EventInviteSkipped {
+  staffId: string;
+  reason: EventInviteSkipReason;
+}
+
+/** Resumo do disparo de convites de um evento aos servos (story 95). */
+export interface EventInviteResult {
+  /** staffIds cujo convite a Meta aceitou. */
+  sent: string[];
+  /** Servos pulados, com o motivo. Falha individual não aborta o lote. */
+  skipped: EventInviteSkipped[];
+}
+
 // ─── Event registrations / public events (story 58) ─────────────────────────────
 
 export interface EventPublic {
@@ -993,6 +1016,12 @@ export interface EventPublic {
   registrationFields: RegistrationField[];
   registrationOpensAt: string | null;
   registrationClosesAt: string | null;
+  /**
+   * Inscrição habilitada no evento (story 95). false = evento só-divulgação
+   * (ou interno) acessado por link direto: o portal mostra a info sem o
+   * formulário de inscrição.
+   */
+  registrationEnabled: boolean;
   /** Inscrição aberta agora (janela respeitada, não passado, não esgotado). */
   registrationOpen: boolean;
   /** Cobrança da inscrição habilitada (story 69). */

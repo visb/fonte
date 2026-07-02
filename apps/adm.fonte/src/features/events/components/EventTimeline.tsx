@@ -7,9 +7,16 @@ interface Props {
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
   onViewRegistrations: (event: Event) => void;
+  onInviteStaff: (event: Event) => void;
 }
 
-export function EventTimeline({ events, onEdit, onDelete, onViewRegistrations }: Props) {
+export function EventTimeline({
+  events,
+  onEdit,
+  onDelete,
+  onViewRegistrations,
+  onInviteStaff,
+}: Props) {
   const { highlightedIds, pastIds } = classifyEvents(events, new Date());
 
   return (
@@ -23,6 +30,7 @@ export function EventTimeline({ events, onEdit, onDelete, onViewRegistrations }:
           onEdit={onEdit}
           onDelete={onDelete}
           onViewRegistrations={onViewRegistrations}
+          onInviteStaff={onInviteStaff}
         />
       ))}
     </div>

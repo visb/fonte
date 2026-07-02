@@ -5471,6 +5471,34 @@
             },
             "description": "Story 93: remove a inscricao (soft delete) e apaga do bucket os comprovantes anexados nos campos file (best-effort: falha ao apagar o objeto nao aborta a remocao). 404 se a inscricao nao existir no evento. 204 No Content. Roles: ADMIN, COORDINATOR."
           }
+        },
+        {
+          "name": "Invite Staff via WhatsApp (ADMIN/COORDINATOR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"staffIds\": [\"{{staffId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}/invite-staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "{{eventId}}",
+                "invite-staff"
+              ]
+            },
+            "description": "Story 95: convida os servos selecionados via WhatsApp (template Meta META_WA_TEMPLATE_NAME_EVENT_INVITE, corpo com titulo/data/local + botao de URL com o link publico de detalhe <APP_ASSOCIADOS_URL>/eventos/:id). Vale para todo evento (PUBLIC ou INTERNAL). Body { staffIds: uuid[] } nao-vazio (400 se invalido); 404 se o evento nao existir. Best-effort por servo: whatsapp do Staff normalizado para E.164 (DDI 55); resposta 200 { sent: staffId[], skipped: [{ staffId, reason }] } com reason NOT_FOUND | NO_WHATSAPP | SEND_FAILED — falha individual nao aborta o lote. Sem credencial Meta no ambiente nada e enviado (todos caem em SEND_FAILED). Roles: ADMIN, COORDINATOR."
+          }
         }
       ]
     },
@@ -5509,7 +5537,7 @@
                 "{{eventId}}"
               ]
             },
-            "description": "Detalhe publico do evento + vagas restantes + se a inscricao esta aberta + registrationFields (story 68, campos custom do formulario para o portal renderizar). 404 se o evento tiver a inscricao desligada (registrationEnabled=false). Throttle por IP."
+            "description": "Detalhe publico do evento + vagas restantes + se a inscricao esta aberta + registrationFields (story 68, campos custom do formulario para o portal renderizar). Story 95: resolve QUALQUER evento por link direto (inclusive INTERNAL ou com inscricao desligada — destino do convite via WhatsApp aos servos); a resposta traz registrationEnabled e o portal esconde o formulario quando false. A LISTAGEM publica continua so com PUBLIC + inscricao ligada. 404 apenas se o evento nao existir. Throttle por IP."
           }
         },
         {

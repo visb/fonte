@@ -412,6 +412,10 @@ describe('events module', () => {
     await m.getById('e1');
     expect(http.get).toHaveBeenCalledWith('/events/e1');
   });
+  it('listInternal busca eventos internos (story 94)', async () => {
+    await m.listInternal();
+    expect(http.get).toHaveBeenCalledWith('/events/internal');
+  });
   it('create posta body', async () => {
     const body = { title: 'Festa' } as never;
     await m.create(body);
@@ -436,6 +440,14 @@ describe('events module', () => {
   it('listRegistrations busca inscritos', async () => {
     await m.listRegistrations('e1');
     expect(http.get).toHaveBeenCalledWith('/events/e1/registrations');
+  });
+  it('inviteStaff posta staffIds no endpoint de convite (story 95)', async () => {
+    const sentinel = { sent: ['s1'], skipped: [] };
+    http.post.mockResolvedValueOnce({ data: sentinel });
+    expect(await m.inviteStaff('e1', ['s1', 's2'])).toBe(sentinel);
+    expect(http.post).toHaveBeenCalledWith('/events/e1/invite-staff', {
+      staffIds: ['s1', 's2'],
+    });
   });
   it('public.list busca eventos públicos', async () => {
     await m.public.list();

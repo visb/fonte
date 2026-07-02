@@ -114,6 +114,31 @@ describe('StaffService.create', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  // Story 96 — campos clínicos/de tratamento foram removidos do Staff. O service
+  // só persiste o que vem no DTO; como o DTO não os expõe mais, nunca chegam à
+  // entidade salva.
+  it('does not persist removed treatment fields', async () => {
+    const staffRepo = makeRepo();
+    const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });
+    const service = makeService(staffRepo, userRepo, makeRepo());
+
+    await service.create({
+      name: 'Servo Limpo',
+      password: 'secret123',
+      role: 'SERVANT' as never,
+      cpf: '12345678901',
+      occupation: 'Auxiliar',
+    } as never);
+
+    const savedStaff = staffRepo.save.mock.calls[0][0];
+    expect(savedStaff.cpf).toBe('12345678901');
+    expect(savedStaff).not.toHaveProperty('addiction');
+    expect(savedStaff).not.toHaveProperty('healthIssues');
+    expect(savedStaff).not.toHaveProperty('continuousMedication');
+    expect(savedStaff).not.toHaveProperty('weight');
+    expect(savedStaff).not.toHaveProperty('height');
+  });
+
   it('nulls rank for non-SERVANT roles', async () => {
     const staffRepo = makeRepo();
     const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });

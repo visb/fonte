@@ -342,11 +342,6 @@ export interface Staff {
   occupation: string | null;
   education: string | null;
   religion: string | null;
-  addiction: string | null;
-  healthIssues: string | null;
-  continuousMedication: string | null;
-  weight: number | null;
-  height: number | null;
   user: { email: string | null; role: Role };
 }
 
@@ -395,11 +390,6 @@ export interface CreateStaffInput {
   occupation?: string | null;
   education?: string | null;
   religion?: string | null;
-  addiction?: string | null;
-  healthIssues?: string | null;
-  continuousMedication?: string | null;
-  weight?: number | null;
-  height?: number | null;
 }
 
 export type UpdateStaffInput = Partial<CreateStaffInput>;

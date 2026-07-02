@@ -3,9 +3,12 @@ import { Gender, MaritalStatus, Role, ServantRank } from '@fonte/types';
 import type { CreateStaffInput, Staff } from '@fonte/api-client';
 import { maskCPF, maskRG, maskPhone } from '@/lib/masks';
 
-// Campos comuns a criação e edição de servo: conta + serviço + ficha pessoal
-// (espelha os dados do filho). Senha existe apenas na criação.
+// Campos comuns a criação e edição de servo, agrupados pelas abas do form
+// (story 96). SÓ a aba Sistema tem campos obrigatórios (name, role e — via
+// refine — house/group). As abas Pessoal e Endereço/Contato são 100% opcionais.
+// Senha existe apenas na criação.
 const baseShape = {
+  // Aba Sistema/Acesso (obrigatórios)
   name: z.string().min(1, 'Nome é obrigatório'),
   email: z.string().email('E-mail inválido').or(z.literal('')).optional(),
   role: z.enum([Role.ADMIN, Role.COORDINATOR, Role.SERVANT], {
@@ -15,27 +18,39 @@ const baseShape = {
   servesInGroup: z.boolean(),
   houseId: z.string().optional().or(z.literal('')),
   supportGroupId: z.string().optional().or(z.literal('')),
-  // Ficha pessoal
+  // Aba Pessoal (opcionais)
   cpf: z.string().optional(),
   rg: z.string().optional(),
   nationality: z.string().optional(),
   birthDate: z.string().optional(),
   gender: z.nativeEnum(Gender).or(z.literal('')).optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  contactPhone: z.string().optional(),
   maritalStatus: z.nativeEnum(MaritalStatus).or(z.literal('')).optional(),
   children: z.string().optional(),
   occupation: z.string().optional(),
   education: z.string().optional(),
   religion: z.string().optional(),
-  addiction: z.string().optional(),
-  healthIssues: z.string().optional(),
-  continuousMedication: z.string().optional(),
-  weight: z.string().optional(),
-  height: z.string().optional(),
+  // Aba Endereço e contato (opcionais)
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  contactPhone: z.string().optional(),
 };
+
+// Mapa aba → campos. Usado pelas páginas para sinalizar qual aba tem erro de
+// validação. A senha vive na aba Sistema apenas na criação.
+export const STAFF_TAB_FIELDS = {
+  system: ['name', 'email', 'password', 'role', 'rank', 'servesInGroup', 'houseId', 'supportGroupId'],
+  personal: ['cpf', 'rg', 'nationality', 'birthDate', 'gender', 'maritalStatus', 'children', 'occupation', 'education', 'religion'],
+  address: ['address', 'city', 'state', 'contactPhone'],
+} as const;
+
+export type StaffTabId = keyof typeof STAFF_TAB_FIELDS;
+
+// Dado o conjunto de chaves com erro, retorna quais abas devem ser sinalizadas.
+export function staffTabsWithError(errorKeys: string[]): Record<StaffTabId, boolean> {
+  const has = (id: StaffTabId) => STAFF_TAB_FIELDS[id].some((f) => errorKeys.includes(f));
+  return { system: has('system'), personal: has('personal'), address: has('address') };
+}
 
 // Refinamentos inline (não genéricos): manter a inferência concreta de cada
 // schema. Um helper genérico sobre z.ZodTypeAny faria z.infer colapsar para
@@ -89,11 +104,6 @@ export function buildStaffPayload(
     occupation: str(data.occupation),
     education: str(data.education),
     religion: str(data.religion),
-    addiction: str(data.addiction),
-    healthIssues: str(data.healthIssues),
-    continuousMedication: str(data.continuousMedication),
-    weight: num(data.weight),
-    height: num(data.height),
   };
 }
 
@@ -122,10 +132,5 @@ export function staffToFormValues(staff: Staff): EditStaffFormData {
     occupation: staff.occupation ?? '',
     education: staff.education ?? '',
     religion: staff.religion ?? '',
-    addiction: staff.addiction ?? '',
-    healthIssues: staff.healthIssues ?? '',
-    continuousMedication: staff.continuousMedication ?? '',
-    weight: numStr(staff.weight),
-    height: numStr(staff.height),
   };
 }

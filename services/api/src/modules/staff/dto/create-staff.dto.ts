@@ -106,26 +106,4 @@ export class CreateStaffDto {
   @IsOptional()
   @IsString()
   religion?: string | null;
-
-  @IsOptional()
-  @IsString()
-  addiction?: string | null;
-
-  @IsOptional()
-  @IsString()
-  healthIssues?: string | null;
-
-  @IsOptional()
-  @IsString()
-  continuousMedication?: string | null;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  weight?: number | null;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  height?: number | null;
 }

@@ -20,12 +20,19 @@ test.describe('Servos', () => {
     await expect(card.locator('.w-10.h-10.rounded-full')).toBeVisible();
   });
 
-  test('cria novo servo e aparece na lista', async ({ page }) => {
+  // Story 96 — o cadastro é em abas e só a 1ª (Sistema) tem obrigatórios:
+  // criar preenchendo apenas a aba Sistema deve funcionar.
+  test('cria novo servo preenchendo só a aba Sistema e aparece na lista', async ({ page }) => {
     const name = `Servo E2E ${Date.now()}`;
     const email = `servo_e2e_${Date.now()}@fonte.com`;
 
     await page.getByRole('link', { name: 'Novo Servo' }).click();
     await expect(page).toHaveURL('/staff/new');
+
+    // As três abas do form estão presentes; Sistema é a ativa.
+    await expect(page.getByRole('tab', { name: 'Sistema' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Pessoal' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Endereço e contato' })).toBeVisible();
 
     await page.getByPlaceholder('Nome completo').fill(name);
     await page.getByPlaceholder('exemplo@email.com').fill(email);
@@ -58,6 +65,37 @@ test.describe('Servos', () => {
 
     await expect(page).toHaveURL('/staff');
     await expect(page.getByText(`${name} (Editado)`)).toBeVisible();
+  });
+
+  // Story 96 — as abas Pessoal e Endereço/Contato são opcionais, mas os valores
+  // preenchidos nelas devem ser salvos e aparecer na ficha do servo.
+  test('edita servo preenchendo as abas opcionais Pessoal e Endereço', async ({ page }) => {
+    const stamp = Date.now();
+    const name = `Servo Abas ${stamp}`;
+    const occupation = `Ocupação E2E ${stamp}`;
+    const city = `Cidade E2E ${stamp}`;
+
+    await page.getByRole('link', { name: 'Novo Servo' }).click();
+    await page.getByPlaceholder('Nome completo').fill(name);
+    await page.getByLabel('Função *').selectOption('SERVANT');
+    await page.getByLabel('Casa *').selectOption({ label: 'Casa Teste' });
+    await page.getByRole('button', { name: 'Cadastrar' }).click();
+    await expect(page.getByText(name)).toBeVisible();
+
+    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: name }).getByTitle('Editar').click();
+    await expect(page).toHaveURL(/\/staff\/.+\/edit/);
+
+    await page.getByRole('tab', { name: 'Pessoal' }).click();
+    await page.getByPlaceholder('Profissão ou ocupação').fill(occupation);
+    await page.getByRole('tab', { name: 'Endereço e contato' }).click();
+    await page.getByPlaceholder('Ex: São Paulo').fill(city);
+    await page.getByRole('button', { name: 'Salvar' }).click();
+    await expect(page).toHaveURL('/staff');
+
+    // Ficha do servo mostra os valores das abas opcionais.
+    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: name }).getByText(name).click();
+    await expect(page.getByText(occupation)).toBeVisible();
+    await expect(page.getByText(city)).toBeVisible();
   });
 
   test('abre diálogo de resetar senha', async ({ page }) => {
@@ -175,5 +213,12 @@ test.describe('Servos', () => {
     await expect(page.getByRole('button', { name: 'Visão Geral' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Resetar senha' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Editar' })).toBeVisible();
+
+    // Story 96 — a ficha do servo não exibe mais campos clínicos/de tratamento.
+    await expect(page.getByText('Dependência química')).not.toBeVisible();
+    await expect(page.getByText('Problemas de saúde')).not.toBeVisible();
+    await expect(page.getByText('Medicação contínua')).not.toBeVisible();
+    await expect(page.getByText('Peso', { exact: true })).not.toBeVisible();
+    await expect(page.getByText('Altura', { exact: true })).not.toBeVisible();
   });
 });

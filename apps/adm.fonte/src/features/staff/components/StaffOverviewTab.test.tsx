@@ -25,11 +25,6 @@ function makeStaff(overrides: Partial<Staff> = {}): Staff {
     occupation: 'Pedreiro',
     education: 'Médio',
     religion: 'Cristão',
-    addiction: null,
-    healthIssues: null,
-    continuousMedication: null,
-    weight: 80,
-    height: 178,
     rank: ServantRank.ASPIRANTE,
     house: { id: 'h1', name: 'Casa Belém' },
     supportGroup: null,
@@ -62,10 +57,15 @@ describe('StaffOverviewTab', () => {
     expect(screen.getByText(/anos\)/)).toBeInTheDocument();
   });
 
-  it('mostra peso e altura formatados', () => {
+  // Story 96 — a ficha do servo não exibe mais campos clínicos/de tratamento.
+  it('não mostra campos clínicos/de tratamento', () => {
     renderTab(makeStaff());
-    expect(screen.getByText('80 kg')).toBeInTheDocument();
-    expect(screen.getByText('178 cm')).toBeInTheDocument();
+    expect(screen.queryByText('Saúde')).not.toBeInTheDocument();
+    expect(screen.queryByText('Dependência química')).not.toBeInTheDocument();
+    expect(screen.queryByText('Problemas de saúde')).not.toBeInTheDocument();
+    expect(screen.queryByText('Medicação contínua')).not.toBeInTheDocument();
+    expect(screen.queryByText('Peso')).not.toBeInTheDocument();
+    expect(screen.queryByText('Altura')).not.toBeInTheDocument();
   });
 
   it('seção Origem só aparece quando há formerResidentId, com link de acolhimento', () => {
@@ -82,7 +82,7 @@ describe('StaffOverviewTab', () => {
   });
 
   it('campos vazios viram travessão', () => {
-    renderTab(makeStaff({ city: null, address: null, weight: null }));
+    renderTab(makeStaff({ city: null, address: null }));
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
 });

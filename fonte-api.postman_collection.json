@@ -257,7 +257,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Nome do Staff\",\n  \"email\": \"staff@fonte.com\",\n  \"password\": \"senha123\",\n  \"role\": \"SERVANT\",\n  \"houseId\": \"{{houseId}}\",\n  \"supportGroupId\": null,\n  \"phone\": \"+5511999999999\",\n  \"rank\": \"ASPIRANTE\",\n  \"cpf\": \"123.456.789-00\",\n  \"rg\": \"12.345.678-9\",\n  \"nationality\": \"Brasileira\",\n  \"birthDate\": \"1990-01-15\",\n  \"gender\": \"MALE\",\n  \"address\": \"Rua das Flores, 123\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"maritalStatus\": \"SINGLE\",\n  \"children\": 0,\n  \"occupation\": \"Auxiliar\",\n  \"education\": \"Ensino médio completo\",\n  \"religion\": \"Evangélico\",\n  \"addiction\": null,\n  \"healthIssues\": null,\n  \"continuousMedication\": null,\n  \"weight\": 70,\n  \"height\": 175\n}"
+              "raw": "{\n  \"name\": \"Nome do Staff\",\n  \"email\": \"staff@fonte.com\",\n  \"password\": \"senha123\",\n  \"role\": \"SERVANT\",\n  \"houseId\": \"{{houseId}}\",\n  \"supportGroupId\": null,\n  \"phone\": \"+5511999999999\",\n  \"rank\": \"ASPIRANTE\",\n  \"cpf\": \"123.456.789-00\",\n  \"rg\": \"12.345.678-9\",\n  \"nationality\": \"Brasileira\",\n  \"birthDate\": \"1990-01-15\",\n  \"gender\": \"MALE\",\n  \"address\": \"Rua das Flores, 123\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"maritalStatus\": \"SINGLE\",\n  \"children\": 0,\n  \"occupation\": \"Auxiliar\",\n  \"education\": \"Ensino médio completo\",\n  \"religion\": \"Evangélico\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/staff",
@@ -282,7 +282,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Nome Atualizado\",\n  \"role\": \"COORDINATOR\",\n  \"houseId\": \"{{houseId}}\",\n  \"email\": null,\n  \"cpf\": \"123.456.789-00\",\n  \"occupation\": \"Coordenador\",\n  \"healthIssues\": \"Hipertensão\"\n}"
+              "raw": "{\n  \"name\": \"Nome Atualizado\",\n  \"role\": \"COORDINATOR\",\n  \"houseId\": \"{{houseId}}\",\n  \"email\": null,\n  \"cpf\": \"123.456.789-00\",\n  \"occupation\": \"Coordenador\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/staff/{{staffId}}",

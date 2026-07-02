@@ -64,6 +64,15 @@ describe('StaffController (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ name: 'X', password: '123', role: Role.SERVANT })
         .expect(400));
+
+    // Story 96 — campos clínicos/de tratamento foram removidos do DTO. Com
+    // forbidNonWhitelisted, enviá-los deve resultar em 400.
+    it('POST /staff → 400 when sending a removed treatment field', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/staff`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: 'Y', password: 'secret123', role: Role.SERVANT, addiction: 'Álcool' })
+        .expect(400));
   });
 
   describe('CRUD', () => {
@@ -75,6 +84,28 @@ describe('StaffController (e2e)', () => {
         .expect(201);
       expect(res.body.id).toBeDefined();
       createdIds.push(res.body.id);
+    });
+
+    it('creates a servant with personal fields but no clinical/treatment fields', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/staff`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          name: `Servo Ficha ${Date.now()}`,
+          password: 'secret123',
+          role: Role.SERVANT,
+          cpf: '123.456.789-00',
+          occupation: 'Auxiliar',
+        })
+        .expect(201);
+      createdIds.push(res.body.id);
+      expect(res.body.cpf).toBe('123.456.789-00');
+      expect(res.body.occupation).toBe('Auxiliar');
+      expect(res.body).not.toHaveProperty('addiction');
+      expect(res.body).not.toHaveProperty('healthIssues');
+      expect(res.body).not.toHaveProperty('continuousMedication');
+      expect(res.body).not.toHaveProperty('weight');
+      expect(res.body).not.toHaveProperty('height');
     });
 
     it('creates a servant WITH email, then rejects the duplicate', async () => {

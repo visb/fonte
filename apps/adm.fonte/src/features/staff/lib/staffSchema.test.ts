@@ -6,6 +6,8 @@ import {
   editStaffSchema,
   buildStaffPayload,
   staffToFormValues,
+  staffTabsWithError,
+  STAFF_TAB_FIELDS,
   type NewStaffFormData,
 } from './staffSchema';
 
@@ -56,6 +58,73 @@ describe('newStaffSchema', () => {
       }).success,
     ).toBe(true);
   });
+
+  // Story 96 — só a aba Sistema tem obrigatórios: salvar com as abas Pessoal e
+  // Endereço/Contato 100% vazias é válido.
+  it('aceita cadastro só com a aba Sistema preenchida (Pessoal e Endereço vazias)', () => {
+    const res = newStaffSchema.safeParse({
+      ...baseValid,
+      cpf: '',
+      rg: '',
+      nationality: '',
+      birthDate: '',
+      gender: '',
+      maritalStatus: '',
+      children: '',
+      occupation: '',
+      education: '',
+      religion: '',
+      address: '',
+      city: '',
+      state: '',
+      contactPhone: '',
+    });
+    expect(res.success).toBe(true);
+  });
+
+  // Story 96 — os campos clínicos/de tratamento não existem mais no schema:
+  // valores enviados nessas chaves são descartados no parse.
+  it('campos clínicos removidos não existem no schema', () => {
+    const parsed = newStaffSchema.parse({
+      ...baseValid,
+      addiction: 'Álcool',
+      healthIssues: 'Hipertensão',
+      continuousMedication: 'Losartana',
+      weight: '70',
+      height: '175',
+    } as never);
+    expect(parsed).not.toHaveProperty('addiction');
+    expect(parsed).not.toHaveProperty('healthIssues');
+    expect(parsed).not.toHaveProperty('continuousMedication');
+    expect(parsed).not.toHaveProperty('weight');
+    expect(parsed).not.toHaveProperty('height');
+    const allTabFields = Object.values(STAFF_TAB_FIELDS).flat() as string[];
+    for (const removed of ['addiction', 'healthIssues', 'continuousMedication', 'weight', 'height']) {
+      expect(allTabFields).not.toContain(removed);
+    }
+  });
+});
+
+describe('staffTabsWithError', () => {
+  it('sinaliza só a aba Sistema para erro em campo de sistema', () => {
+    expect(staffTabsWithError(['name', 'houseId'])).toEqual({
+      system: true,
+      personal: false,
+      address: false,
+    });
+  });
+
+  it('sinaliza abas Pessoal e Endereço para erros nos seus campos', () => {
+    expect(staffTabsWithError(['cpf', 'city'])).toEqual({
+      system: false,
+      personal: true,
+      address: true,
+    });
+  });
+
+  it('sem erros, nenhuma aba é sinalizada', () => {
+    expect(staffTabsWithError([])).toEqual({ system: false, personal: false, address: false });
+  });
 });
 
 describe('editStaffSchema', () => {
@@ -92,9 +161,19 @@ describe('buildStaffPayload', () => {
   });
 
   it('strings vazias viram null e numéricos são convertidos', () => {
-    const payload = buildStaffPayload({ ...baseValid, weight: '70', cpf: '   ' });
-    expect(payload.weight).toBe(70);
+    const payload = buildStaffPayload({ ...baseValid, children: '2', cpf: '   ' });
+    expect(payload.children).toBe(2);
     expect(payload.cpf).toBeNull();
+  });
+
+  // Story 96 — o payload enviado à API não carrega mais campos de tratamento.
+  it('payload não contém campos clínicos removidos', () => {
+    const payload = buildStaffPayload(baseValid);
+    expect(payload).not.toHaveProperty('addiction');
+    expect(payload).not.toHaveProperty('healthIssues');
+    expect(payload).not.toHaveProperty('continuousMedication');
+    expect(payload).not.toHaveProperty('weight');
+    expect(payload).not.toHaveProperty('height');
   });
 });
 
@@ -109,7 +188,6 @@ describe('staffToFormValues', () => {
       cpf: '12345678901',
       phone: '62999998888',
       children: 0,
-      weight: null,
       birthDate: '1990-01-01T00:00:00Z',
     } as unknown as Staff;
     const values = staffToFormValues(staff);
@@ -118,7 +196,6 @@ describe('staffToFormValues', () => {
     expect(values.cpf).toBe('123.456.789-01');
     expect(values.email).toBe('ana@x.com');
     expect(values.birthDate).toBe('1990-01-01');
-    expect(values.weight).toBe('');
   });
 
   it('servo com casa não serve em grupo', () => {

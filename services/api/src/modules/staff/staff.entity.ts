@@ -66,20 +66,9 @@ export class Staff {
   @Column({ nullable: true, type: 'varchar' })
   religion: string | null;
 
-  @Column({ nullable: true, type: 'varchar' })
-  addiction: string | null;
-
-  @Column({ name: 'health_issues', nullable: true, type: 'varchar' })
-  healthIssues: string | null;
-
-  @Column({ name: 'continuous_medication', nullable: true, type: 'varchar' })
-  continuousMedication: string | null;
-
-  @Column({ nullable: true, type: 'integer' })
-  weight: number | null;
-
-  @Column({ nullable: true, type: 'integer' })
-  height: number | null;
+  // Campos clínicos/de tratamento (addiction, health_issues, continuous_medication,
+  // weight, height) foram removidos de Staff na story 96 — não fazem sentido para
+  // um servo e davam a impressão de "ficha de acolhido". Permanecem só em Resident.
 
   @OneToOne(() => User, { eager: false })
   @JoinColumn({ name: 'user_id' })

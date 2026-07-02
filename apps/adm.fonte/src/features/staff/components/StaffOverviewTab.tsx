@@ -114,15 +114,6 @@ export function StaffOverviewTab({ staff }: Props) {
         <InfoRow label="Ocupação" value={val(staff.occupation)} />
         <InfoRow label="Escolaridade" value={val(staff.education)} />
         <InfoRow label="Religião" value={val(staff.religion)} />
-        <InfoRow label="Dependência química" value={val(staff.addiction)} />
-      </InfoGrid>
-
-      <SectionTitle>Saúde</SectionTitle>
-      <InfoGrid>
-        <InfoRow label="Problemas de saúde" value={val(staff.healthIssues)} full />
-        <InfoRow label="Medicação contínua" value={val(staff.continuousMedication)} full />
-        <InfoRow label="Peso" value={staff.weight != null ? `${staff.weight} kg` : '—'} />
-        <InfoRow label="Altura" value={staff.height != null ? `${staff.height} cm` : '—'} />
       </InfoGrid>
 
       <SectionTitle>Serviço</SectionTitle>

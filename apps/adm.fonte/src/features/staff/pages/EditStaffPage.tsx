@@ -9,19 +9,12 @@ import { ArrowLeft } from 'lucide-react';
 import { Role } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { SectionTitle } from '@/components/shared/FormField';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { PersonalDataFields } from '@/components/shared/PersonalDataFields';
 import { useUpdateStaff, useStaffById } from '../hooks/useStaff';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { useSupportGroups } from '@/features/support-groups/hooks/useSupportGroups';
-import { StaffServiceSelector } from '../components/StaffServiceSelector';
-import { SERVANT_RANK_LABELS, SERVANT_RANK_ORDER } from '../constants';
+import { StaffFormSection } from '../components/StaffFormSection';
 import { editStaffSchema, buildStaffPayload, staffToFormValues, type EditStaffFormData } from '../lib/staffSchema';
-
-const SELECT_CLASS =
-  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 
 export function EditStaffPage() {
   const { id } = useParams<{ id: string }>();
@@ -75,41 +68,15 @@ export function EditStaffPage() {
           />
         </div>
 
-        <PersonalDataFields register={register} errors={errors} namePlaceholder="Nome completo" />
-
-        <SectionTitle>Conta e serviço</SectionTitle>
-
-        <div className="space-y-2">
-          <Label htmlFor="role">Função *</Label>
-          <select id="role" {...register('role')} className={SELECT_CLASS}>
-            <option value={Role.ADMIN}>Administrador</option>
-            <option value={Role.COORDINATOR}>Coordenador</option>
-            <option value={Role.SERVANT}>Servo</option>
-          </select>
-          {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
-        </div>
-
-        {role === Role.SERVANT && (
-          <div className="space-y-2">
-            <Label htmlFor="rank">Nível</Label>
-            <select id="rank" {...register('rank')} className={SELECT_CLASS}>
-              {SERVANT_RANK_ORDER.map((r) => (
-                <option key={r} value={r}>{SERVANT_RANK_LABELS[r]}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <StaffServiceSelector
+        <StaffFormSection
+          register={register}
+          errors={errors}
+          role={role as Role | undefined}
           servesInGroup={servesInGroup}
-          onSelectHouse={() => { setValue('servesInGroup', false); setValue('supportGroupId', ''); }}
-          onSelectGroup={() => { setValue('servesInGroup', true); setValue('houseId', ''); }}
           houses={houses}
           supportGroups={supportGroups}
-          houseIdReg={register('houseId')}
-          supportGroupIdReg={register('supportGroupId')}
-          houseIdError={errors.houseId?.message}
-          supportGroupIdError={errors.supportGroupId?.message}
+          onSelectHouse={() => { setValue('servesInGroup', false); setValue('supportGroupId', ''); }}
+          onSelectGroup={() => { setValue('servesInGroup', true); setValue('houseId', ''); }}
         />
 
         <div className="flex gap-3 pt-2">

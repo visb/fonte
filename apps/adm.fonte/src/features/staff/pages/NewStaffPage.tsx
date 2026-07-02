@@ -9,17 +9,11 @@ import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { SectionTitle } from '@/components/shared/FormField';
-import { PersonalDataFields } from '@/components/shared/PersonalDataFields';
 import { useCreateStaff } from '../hooks/useStaff';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { useSupportGroups } from '@/features/support-groups/hooks/useSupportGroups';
-import { StaffServiceSelector } from '../components/StaffServiceSelector';
-import { SERVANT_RANK_LABELS, SERVANT_RANK_ORDER } from '../constants';
+import { StaffFormSection } from '../components/StaffFormSection';
 import { newStaffSchema, buildStaffPayload, type NewStaffFormData } from '../lib/staffSchema';
-
-const SELECT_CLASS =
-  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
 function generatePassword(len = 12) {
@@ -60,6 +54,25 @@ export function NewStaffPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const passwordSlot = (
+    <div className="space-y-2">
+      <Label htmlFor="password">Senha gerada *</Label>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Input id="password" type={showPassword ? 'text' : 'password'} {...register('password')} readOnly className="pr-9 font-mono" />
+          <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" tabIndex={-1}>
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={handleCopy} className="shrink-0">
+          <Copy size={14} className="mr-1" />
+          {copied ? 'Copiado!' : 'Copiar'}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">Só é usada se o servo tiver e-mail e acesso aos apps. Envie via WhatsApp; ele deverá alterá-la no primeiro acesso.</p>
+    </div>
+  );
+
   return (
     <div className="max-w-lg">
       <div className="flex items-center gap-3 mb-6">
@@ -76,59 +89,16 @@ export function NewStaffPage() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <PersonalDataFields register={register} errors={errors} namePlaceholder="Nome completo" />
-
-        <SectionTitle>Conta e serviço</SectionTitle>
-
-        <div className="space-y-2">
-          <Label htmlFor="password">Senha gerada *</Label>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Input id="password" type={showPassword ? 'text' : 'password'} {...register('password')} readOnly className="pr-9 font-mono" />
-              <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" tabIndex={-1}>
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            <Button type="button" variant="outline" size="sm" onClick={handleCopy} className="shrink-0">
-              <Copy size={14} className="mr-1" />
-              {copied ? 'Copiado!' : 'Copiar'}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">Só é usada se o servo tiver e-mail e acesso aos apps. Envie via WhatsApp; ele deverá alterá-la no primeiro acesso.</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="role">Função *</Label>
-          <select id="role" {...register('role')} className={SELECT_CLASS}>
-            <option value="">Selecione...</option>
-            <option value={Role.ADMIN}>Administrador</option>
-            <option value={Role.COORDINATOR}>Coordenador</option>
-            <option value={Role.SERVANT}>Servo</option>
-          </select>
-          {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
-        </div>
-
-        {role === Role.SERVANT && (
-          <div className="space-y-2">
-            <Label htmlFor="rank">Nível</Label>
-            <select id="rank" {...register('rank')} className={SELECT_CLASS}>
-              {SERVANT_RANK_ORDER.map((r) => (
-                <option key={r} value={r}>{SERVANT_RANK_LABELS[r]}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <StaffServiceSelector
+        <StaffFormSection
+          register={register}
+          errors={errors}
+          role={role as Role | undefined}
           servesInGroup={servesInGroup}
-          onSelectHouse={() => { setValue('servesInGroup', false); setValue('supportGroupId', ''); }}
-          onSelectGroup={() => { setValue('servesInGroup', true); setValue('houseId', ''); }}
           houses={houses}
           supportGroups={supportGroups}
-          houseIdReg={register('houseId')}
-          supportGroupIdReg={register('supportGroupId')}
-          houseIdError={errors.houseId?.message}
-          supportGroupIdError={errors.supportGroupId?.message}
+          onSelectHouse={() => { setValue('servesInGroup', false); setValue('supportGroupId', ''); }}
+          onSelectGroup={() => { setValue('servesInGroup', true); setValue('houseId', ''); }}
+          passwordSlot={passwordSlot}
         />
 
         <div className="flex gap-3 pt-2">

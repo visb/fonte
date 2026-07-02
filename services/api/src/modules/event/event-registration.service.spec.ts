@@ -506,18 +506,30 @@ describe('EventRegistrationService.getPublicView', () => {
     await expect(service.getPublicView('missing')).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('lança NotFound para evento com inscrição desligada (não vaza interno)', async () => {
+  it('resolve evento com inscrição desligada por link direto, sem formulário (story 95)', async () => {
     const event = makeEvent({ registrationEnabled: false });
     const events = { findOne: jest.fn().mockResolvedValue(event) };
-    const service = makeService(events, { count: jest.fn() });
-    await expect(service.getPublicView('event-uuid')).rejects.toBeInstanceOf(NotFoundException);
+    const registrations = { count: jest.fn().mockResolvedValue(0) };
+    const service = makeService(events, registrations);
+
+    const view = await service.getPublicView('event-uuid');
+    expect(view.registrationEnabled).toBe(false);
+    expect(view.registrationOpen).toBe(false);
   });
 
-  it('lança NotFound para evento INTERNAL (story 94, não vaza ao portal)', async () => {
-    const event = makeEvent({ audience: EventAudience.INTERNAL });
+  it('resolve evento INTERNAL por link direto (story 95, destino do convite)', async () => {
+    const event = makeEvent({
+      audience: EventAudience.INTERNAL,
+      registrationEnabled: false,
+    });
     const events = { findOne: jest.fn().mockResolvedValue(event) };
-    const service = makeService(events, { count: jest.fn() });
-    await expect(service.getPublicView('event-uuid')).rejects.toBeInstanceOf(NotFoundException);
+    const registrations = { count: jest.fn().mockResolvedValue(0) };
+    const service = makeService(events, registrations);
+
+    const view = await service.getPublicView('event-uuid');
+    expect(view.id).toBe('event-uuid');
+    expect(view.registrationEnabled).toBe(false);
+    expect(view.registrationOpen).toBe(false);
   });
 
   it('expõe os registrationFields para o portal renderizar (story 68)', async () => {

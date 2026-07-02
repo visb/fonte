@@ -86,6 +86,9 @@ import type {
   PayEventInput,
   PayEventResult,
   PixPaymentResult,
+  EventInviteResult,
+  EventInviteSkipped,
+  EventInviteSkipReason,
 } from '@fonte/types';
 import {
   NotificationType,
@@ -177,6 +180,9 @@ export type {
   PayEventInput,
   PayEventResult,
   PixPaymentResult,
+  EventInviteResult,
+  EventInviteSkipped,
+  EventInviteSkipReason,
 };
 
 export type { FamilyInvestment };

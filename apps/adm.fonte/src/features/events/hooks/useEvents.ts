@@ -71,6 +71,16 @@ export function useDeleteEvent() {
   });
 }
 
+/**
+ * Convida servos via WhatsApp com o link público do evento (story 95).
+ * Não invalida queries: o convite não altera dados do evento.
+ */
+export function useInviteEventStaff(eventId: string) {
+  return useMutation({
+    mutationFn: (staffIds: string[]) => api.events.inviteStaff(eventId, staffIds),
+  });
+}
+
 export function useUploadEventBanner() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -194,4 +194,31 @@ test.describe('Eventos (timeline)', () => {
     await goto(page);
     await expect(item(page, title).getByTestId('view-registrations')).toHaveCount(0);
   });
+
+  // Story 95: convite via WhatsApp aos servos. Sem credencial Meta no ambiente
+  // de teste, os envios caem em "pulado" (best-effort) — o fluxo e o resumo são
+  // exercitados sem chamar nenhum serviço externo.
+  test('convida servos por WhatsApp e vê o resumo enviados/pulados', async ({ page }) => {
+    await login(page);
+    await goto(page);
+    const title = `Convite ${ts()}`;
+    await createEvent(page, title, inDays(30));
+
+    await item(page, title).getByTestId('invite-staff').click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(`Convidar servos — ${title}`)).toBeVisible();
+
+    // Seleciona todos os servos e dispara.
+    await expect(dialog.getByTestId('invite-staff-row').first()).toBeVisible();
+    await dialog.getByRole('button', { name: 'Selecionar todos' }).click();
+    await dialog.getByRole('button', { name: /Enviar convites \(\d+\)/ }).click();
+
+    // Resumo do lote: sem credencial Meta, tudo cai em pulado (falha no envio).
+    await expect(dialog.getByTestId('invite-summary')).toBeVisible();
+    await expect(dialog.getByTestId('invite-summary')).toContainText('pulado(s).');
+
+    await dialog.getByTestId('invite-close').click();
+    await expect(dialog).not.toBeVisible();
+  });
 });

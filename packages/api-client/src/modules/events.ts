@@ -12,6 +12,7 @@ import type {
   EventPaymentInfo,
   PayEventInput,
   PayEventResult,
+  EventInviteResult,
 } from '../types.js';
 
 export function createEventsModule(http: AxiosInstance) {
@@ -49,6 +50,15 @@ export function createEventsModule(http: AxiosInstance) {
     /** Inscritos de um evento (ADMIN/COORDINATOR). */
     listRegistrations: (id: string) =>
       http.get<EventRegistration[]>(`/events/${id}/registrations`).then((r) => r.data),
+
+    /**
+     * Convida servos via WhatsApp com o link público do evento (story 95).
+     * ADMIN/COORDINATOR. Devolve o resumo { sent, skipped }.
+     */
+    inviteStaff: (id: string, staffIds: string[]) =>
+      http
+        .post<EventInviteResult>(`/events/${id}/invite-staff`, { staffIds })
+        .then((r) => r.data),
 
     /** Endpoints públicos (sem auth) — usados pelo portal. */
     public: {

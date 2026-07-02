@@ -101,7 +101,11 @@ export class EventRegistrationService {
       registrationClosesAt: event.registrationClosesAt
         ? event.registrationClosesAt.toISOString()
         : null,
-      registrationOpen: this.isRegistrationOpen(event, now, spotsLeft),
+      // Story 95: o detalhe público resolve evento sem inscrição (link direto);
+      // o portal usa esta flag para esconder o formulário.
+      registrationEnabled: event.registrationEnabled,
+      registrationOpen:
+        event.registrationEnabled && this.isRegistrationOpen(event, now, spotsLeft),
       paymentEnabled: event.paymentEnabled,
       priceCents: event.priceCents ?? null,
     };
@@ -124,16 +128,15 @@ export class EventRegistrationService {
     return Promise.all(events.map((e) => this.toPublicView(e, now)));
   }
 
+  /**
+   * Detalhe público por id (story 95): resolve QUALQUER evento por link direto —
+   * é o destino do convite via WhatsApp aos servos, inclusive de evento interno
+   * ou só-divulgação. A LISTAGEM pública continua filtrando PUBLIC + inscrição
+   * habilitada (story 94: interno não aparece na vitrine, só por link direto).
+   */
   async getPublicView(id: string): Promise<EventPublic> {
     const event = await this.eventsRepo.findOne({ where: { id } });
-    // Sem inscrição ou interno (story 94) → sem detalhe público (não vaza interno).
-    if (
-      !event ||
-      !event.registrationEnabled ||
-      event.audience !== EventAudience.PUBLIC
-    ) {
-      throw new NotFoundException('Event not found');
-    }
+    if (!event) throw new NotFoundException('Event not found');
     return this.toPublicView(event);
   }
 

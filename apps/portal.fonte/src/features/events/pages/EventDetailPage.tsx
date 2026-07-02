@@ -43,14 +43,18 @@ export function EventDetailPage() {
         <p className="event-description">{event.description}</p>
       </div>
 
-      <div className="card">
-        <EventRegistrationForm
-          event={event}
-          submitting={register.isPending}
-          error={register.error}
-          onSubmit={handleSubmit}
-        />
-      </div>
+      {/* Evento só-divulgação/interno acessado por link direto (story 95):
+          mostra a info sem o bloco de inscrição. */}
+      {event.registrationEnabled && (
+        <div className="card">
+          <EventRegistrationForm
+            event={event}
+            submitting={register.isPending}
+            error={register.error}
+            onSubmit={handleSubmit}
+          />
+        </div>
+      )}
     </div>
   );
 }

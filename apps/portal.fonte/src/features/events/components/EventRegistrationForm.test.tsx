@@ -18,6 +18,7 @@ function makeEvent(overrides: Partial<EventPublic> = {}): EventPublic {
     registrationFields: [],
     registrationOpensAt: null,
     registrationClosesAt: null,
+    registrationEnabled: true,
     registrationOpen: true,
     ...overrides,
   };

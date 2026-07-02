@@ -1,4 +1,4 @@
-import { CalendarClock, MapPin, Pencil, Trash2, Users } from 'lucide-react';
+import { CalendarClock, MapPin, Pencil, Send, Trash2, Users } from 'lucide-react';
 import type { Event } from '@fonte/api-client';
 import { EventAudience } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ interface Props {
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
   onViewRegistrations: (event: Event) => void;
+  onInviteStaff: (event: Event) => void;
 }
 
 export function EventTimelineItem({
@@ -22,6 +23,7 @@ export function EventTimelineItem({
   onEdit,
   onDelete,
   onViewRegistrations,
+  onInviteStaff,
 }: Props) {
   return (
     <div className="relative pl-8">
@@ -97,6 +99,16 @@ export function EventTimelineItem({
         )}
 
         <div className="mt-3 flex justify-end gap-2">
+          {/* Convite via WhatsApp aos servos — vale p/ todo evento (story 95). */}
+          <Button
+            size="sm"
+            variant="outline"
+            data-testid="invite-staff"
+            onClick={() => onInviteStaff(event)}
+          >
+            <Send size={14} className="mr-1.5" />
+            Convidar servos
+          </Button>
           {event.registrationEnabled && (
             <Button
               size="sm"

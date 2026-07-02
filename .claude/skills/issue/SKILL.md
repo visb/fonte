@@ -24,7 +24,7 @@ Pode receber um título/descrição como argumento (`/issue corrigir filtro de r
 - **A Validação é obrigatória e SEMPRE inclui instruções explícitas de teste** (ver
   "Validação e gate de cobertura" abaixo). Nenhuma story é escrita sem elas.
 - Commits seguem `CONTRIBUTING.md`: `type(scope): descrição curta em português no infinitivo`.
-- Co-author: `Claude Opus 4.8 <noreply@anthropic.com>` (ou o modelo corrente).
+- Co-author: o modelo corrente (`Claude <modelo> <noreply@anthropic.com>` — o harness já injeta o rodapé correto; não cravar nome de modelo).
 
 ## Fluxo
 

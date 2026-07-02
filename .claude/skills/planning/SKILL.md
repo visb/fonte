@@ -59,7 +59,7 @@ Sem essas flags, vale o fluxo interativo padrão (refina conversando + confirma 
   injustificado). Adaptar ao escopo (frontend-only vs backend). Nenhuma story sai da sessão sem
   isso — vale inclusive no modo auto.
 - Slug em kebab-case curto.
-- Commits seguem `CONTRIBUTING.md`. Co-author: `Claude Opus 4.8 <noreply@anthropic.com>`.
+- Commits seguem `CONTRIBUTING.md`. Co-author: o modelo corrente (o harness injeta o rodapé correto; não cravar nome de modelo).
 
 ## Fluxo da sessão
 

@@ -67,6 +67,7 @@ import type {
   ActivityEvent,
   ActivityAttachment,
   ActivityAttachmentType,
+  StaffAttachment,
   Event,
   EventFilter,
   CreateEventInput,
@@ -153,6 +154,7 @@ export type {
   ActivityEvent,
   ActivityAttachment,
   ActivityAttachmentType,
+  StaffAttachment,
 };
 
 export { EventPaymentStatus, EventAudience };

@@ -31,13 +31,23 @@ import { AddPermissionDto } from './dto/add-permission.dto';
 import { Staff } from './staff.entity';
 import { StaffPermission } from './staff-permission.entity';
 import { StaffService } from './staff.service';
+import { StaffAttachmentService } from './staff-attachment.service';
+import { STAFF_ATTACHMENT_MAX_BYTES } from './staff-attachment.mimetypes';
+import { StaffAttachment } from '@fonte/types';
 
 const photoOptions = { storage: memoryStorage() };
+const attachmentOptions = {
+  storage: memoryStorage(),
+  limits: { fileSize: STAFF_ATTACHMENT_MAX_BYTES },
+};
 
 @Controller('staff')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StaffController {
-  constructor(private staffService: StaffService) {}
+  constructor(
+    private staffService: StaffService,
+    private attachmentService: StaffAttachmentService,
+  ) {}
 
   @Get('me')
   @RevealSensitive()
@@ -111,6 +121,36 @@ export class StaffController {
   @Roles(Role.ADMIN)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.staffService.remove(id);
+  }
+
+  // ─── Attachments (story 98) ──────────────────────────────────────────────────
+
+  @Post(':id/attachments')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  @UseInterceptors(FileInterceptor('file', attachmentOptions))
+  uploadAttachment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<StaffAttachment> {
+    if (!file) throw new BadRequestException('Nenhum arquivo enviado');
+    return this.attachmentService.addAttachment(id, file, user.userId);
+  }
+
+  @Get(':id/attachments')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  listAttachments(@Param('id', ParseUUIDPipe) id: string): Promise<StaffAttachment[]> {
+    return this.attachmentService.listAttachments(id);
+  }
+
+  @Delete(':id/attachments/:attachmentId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  removeAttachment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('attachmentId', ParseUUIDPipe) attachmentId: string,
+  ): Promise<void> {
+    return this.attachmentService.removeAttachment(id, attachmentId);
   }
 
   // ─── Permissions ─────────────────────────────────────────────────────────────

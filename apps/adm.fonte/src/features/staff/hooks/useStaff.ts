@@ -92,6 +92,40 @@ export function useDeleteStaff() {
   });
 }
 
+// ─── Anexos (story 98) ─────────────────────────────────────────────────────────
+
+export function useStaffAttachments(staffId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.staff.attachments(staffId),
+    queryFn: () => api.staff.listAttachments(staffId),
+    enabled: (options?.enabled ?? true) && !!staffId,
+  });
+}
+
+export function useUploadStaffAttachment(staffId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const fd = new window.FormData();
+      fd.append('file', file);
+      return api.staff.uploadAttachment(staffId, fd);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.staff.attachments(staffId) });
+    },
+  });
+}
+
+export function useDeleteStaffAttachment(staffId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (attachmentId: string) => api.staff.deleteAttachment(staffId, attachmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.staff.attachments(staffId) });
+    },
+  });
+}
+
 export function useStaffPermissions(staffId: string) {
   return useQuery({
     queryKey: queryKeys.staff.permissions(staffId),

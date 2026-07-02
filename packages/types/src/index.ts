@@ -160,6 +160,24 @@ export enum StaffPermissionType {
   SEND_MESSAGES_TO_FAMILIES = 'SEND_MESSAGES_TO_FAMILIES',
 }
 
+// ─── Staff Attachments ─────────────────────────────────────────────────────────
+
+/**
+ * Anexo genérico do servo (story 98) — documentos e imagens (contratos,
+ * comprovantes etc). Espelha o `ActivityAttachment` simplificado (sem
+ * comment/duration/fileType).
+ */
+export interface StaffAttachment {
+  id: string;
+  staffId: string;
+  fileUrl: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdByUserId: string;
+  createdAt: string;
+}
+
 // ─── App Settings ─────────────────────────────────────────────────────────────
 
 export enum TimerResetFrequency {

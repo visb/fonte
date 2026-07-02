@@ -873,6 +873,22 @@ describe('staff module', () => {
     await m.delete('s1');
     expect(http.delete).toHaveBeenCalledWith('/staff/s1');
   });
+  it('listAttachments busca anexos do servo', async () => {
+    await m.listAttachments('s1');
+    expect(http.get).toHaveBeenCalledWith('/staff/s1/attachments');
+  });
+  it('uploadAttachment envia FormData com Content-Type undefined', async () => {
+    const form = new FormData();
+    await m.uploadAttachment('s1', form);
+    expect(http.post).toHaveBeenCalledWith('/staff/s1/attachments', form, {
+      headers: { 'Content-Type': undefined },
+    });
+  });
+  it('deleteAttachment chama DELETE e resolve undefined', async () => {
+    const result = await m.deleteAttachment('s1', 'att1');
+    expect(http.delete).toHaveBeenCalledWith('/staff/s1/attachments/att1');
+    expect(result).toBeUndefined();
+  });
   it('getPermissions busca permissões', async () => {
     await m.getPermissions('s1');
     expect(http.get).toHaveBeenCalledWith('/staff/s1/permissions');

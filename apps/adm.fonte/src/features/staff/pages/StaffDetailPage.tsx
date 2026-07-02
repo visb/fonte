@@ -17,6 +17,7 @@ import { AdmissionsTab } from '@/features/residents/components/tabs/AdmissionsTa
 import { useStaffById } from '../hooks/useStaff';
 import { ResetPasswordDialog } from '../components/ResetPasswordDialog';
 import { StaffOverviewTab } from '../components/StaffOverviewTab';
+import { StaffAttachmentsTab } from '../components/StaffAttachmentsTab';
 import { SERVANT_RANK_LABELS, SERVANT_RANK_VARIANT } from '../constants';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -31,14 +32,25 @@ const ROLE_VARIANT: Record<string, 'destructive' | 'info' | 'secondary'> = {
   [Role.SERVANT]: 'secondary',
 };
 
-const BASE_TABS = [{ id: 'overview', label: 'Visão Geral' }] as const;
+// Anexos do próprio servo (story 98) valem para todo servo; as abas herdadas
+// (dados do acolhimento) só existem para ex-filhos promovidos a servo.
+const BASE_TABS = [
+  { id: 'overview', label: 'Visão Geral' },
+  { id: 'attachments', label: 'Anexos' },
+] as const;
 const INHERITED_TABS = [
   { id: 'timeline', label: 'Acompanhamento' },
   { id: 'relatives', label: 'Familiares' },
-  { id: 'attachments', label: 'Anexos' },
+  { id: 'resident-attachments', label: 'Anexos do acolhimento' },
   { id: 'admissions', label: 'Histórico' },
 ] as const;
-type TabId = 'overview' | 'timeline' | 'relatives' | 'attachments' | 'admissions';
+type TabId =
+  | 'overview'
+  | 'attachments'
+  | 'timeline'
+  | 'relatives'
+  | 'resident-attachments'
+  | 'admissions';
 
 export function StaffDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -118,10 +130,11 @@ export function StaffDetailPage() {
       </div>
 
       {activeTab === 'overview' && <StaffOverviewTab staff={staff} />}
+      {activeTab === 'attachments' && <StaffAttachmentsTab staffId={staff.id} />}
 
       {formerResidentId && activeTab === 'timeline' && <TrackingTab residentId={formerResidentId} />}
       {formerResidentId && activeTab === 'relatives' && <RelativesTab residentId={formerResidentId} />}
-      {formerResidentId && activeTab === 'attachments' && (
+      {formerResidentId && activeTab === 'resident-attachments' && (
         <AttachmentsTab residentId={formerResidentId} residentName={staff.name} />
       )}
       {formerResidentId && activeTab === 'admissions' && <AdmissionsTab residentId={formerResidentId} />}

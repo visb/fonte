@@ -13,10 +13,13 @@ describe('StaffController (e2e)', () => {
   let coordToken: string;
   const createdIds: string[] = [];
 
+  let servantToken: string;
+
   beforeAll(async () => {
     app = await bootstrapApp();
     adminToken = await login(app, 'admin@fonte.com', 'admin123');
     coordToken = await login(app, 'coord@fonte.com', 'coord123');
+    servantToken = await login(app, 'operator@fonte.com', 'operator123');
   });
 
   afterAll(async () => {
@@ -173,5 +176,103 @@ describe('StaffController (e2e)', () => {
         .get(`${BASE}/staff/00000000-0000-0000-0000-000000000000`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(404));
+  });
+
+  // ─── Attachments (story 98) ─────────────────────────────────────────────────
+
+  describe('attachments', () => {
+    let staffId: string;
+    let attachmentId: string;
+
+    beforeAll(async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/staff`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `Servo Anexos ${Date.now()}`, password: 'secret123', role: Role.SERVANT })
+        .expect(201);
+      staffId = res.body.id;
+      createdIds.push(staffId);
+    });
+
+    it('GET /staff/:id/attachments → 401 without token', () =>
+      request(app.getHttpServer()).get(`${BASE}/staff/${staffId}/attachments`).expect(401));
+
+    it('attachment routes → 403 for a servant (ADMIN/COORDINATOR only)', async () => {
+      await request(app.getHttpServer())
+        .get(`${BASE}/staff/${staffId}/attachments`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(403);
+      await request(app.getHttpServer())
+        .post(`${BASE}/staff/${staffId}/attachments`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .attach('file', Buffer.from('%PDF-1.4'), { filename: 'doc.pdf', contentType: 'application/pdf' })
+        .expect(403);
+      await request(app.getHttpServer())
+        .delete(`${BASE}/staff/${staffId}/attachments/00000000-0000-0000-0000-000000000000`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(403);
+    });
+
+    it('rejects a file outside the mimetype allowlist → 400', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/staff/${staffId}/attachments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .attach('file', Buffer.from('MZ-fake-exe'), {
+          filename: 'malware.exe',
+          contentType: 'application/x-msdownload',
+        })
+        .expect(400));
+
+    it('POST attachment to an unknown staff → 404', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/staff/00000000-0000-0000-0000-000000000000/attachments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .attach('file', Buffer.from('%PDF-1.4'), { filename: 'doc.pdf', contentType: 'application/pdf' })
+        .expect(404));
+
+    it('coordinator uploads a pdf → 201 with the persisted metadata', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/staff/${staffId}/attachments`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .attach('file', Buffer.from('%PDF-1.4'), {
+          filename: 'contrato.pdf',
+          contentType: 'application/pdf',
+        })
+        .expect(201);
+      expect(res.body.id).toBeDefined();
+      expect(res.body.staffId).toBe(staffId);
+      expect(res.body.fileName).toBe('contrato.pdf');
+      expect(res.body.mimeType).toBe('application/pdf');
+      expect(res.body.sizeBytes).toBeGreaterThan(0);
+      expect(res.body.createdByUserId).toBeDefined();
+      attachmentId = res.body.id;
+    });
+
+    it('lists the staff attachments', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/staff/${staffId}/attachments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(res.body.map((a: { id: string }) => a.id)).toContain(attachmentId);
+    });
+
+    it('DELETE an unknown attachment → 404', () =>
+      request(app.getHttpServer())
+        .delete(`${BASE}/staff/${staffId}/attachments/00000000-0000-0000-0000-000000000000`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(404));
+
+    it('deletes the attachment (soft delete) and it leaves the listing', async () => {
+      await request(app.getHttpServer())
+        .delete(`${BASE}/staff/${staffId}/attachments/${attachmentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(204);
+
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/staff/${staffId}/attachments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(res.body.map((a: { id: string }) => a.id)).not.toContain(attachmentId);
+    });
   });
 });

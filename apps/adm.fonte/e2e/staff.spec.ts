@@ -225,4 +225,38 @@ test.describe('Servos', () => {
     await expect(page.getByText('Peso', { exact: true })).not.toBeVisible();
     await expect(page.getByText('Altura', { exact: true })).not.toBeVisible();
   });
+
+  // ─── Story 98 — aba Anexos do servo ─────────────────────────────────────────
+
+  test('sobe e remove anexo na aba Anexos da ficha do servo', async ({ page }) => {
+    // Cria servo próprio para o teste.
+    const name = `Servo Anexos ${Date.now()}`;
+    await page.getByRole('link', { name: 'Novo Servo' }).click();
+    await page.getByPlaceholder('Nome completo').fill(name);
+    await page.getByLabel('Função *').selectOption('SERVANT');
+    await page.getByLabel('Casa *').selectOption({ label: 'Casa Teste' });
+    await page.getByRole('button', { name: 'Cadastrar' }).click();
+    await expect(page.getByText(name)).toBeVisible();
+
+    // Abre a ficha e vai para a aba Anexos.
+    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: name }).getByText(name).click();
+    await expect(page).toHaveURL(/\/staff\/.+/);
+    await page.getByRole('button', { name: 'Anexos', exact: true }).click();
+    await expect(page.getByText('Nenhum anexo adicionado.')).toBeVisible();
+
+    // Sobe um PDF pelo input escondido do botão "Adicionar anexo".
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'contrato-e2e.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4 conteudo de teste'),
+    });
+    await expect(page.getByText('contrato-e2e.pdf')).toBeVisible();
+
+    // Remove com confirmação.
+    await page.getByTitle('Remover anexo').click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('button', { name: 'Remover', exact: true }).click();
+    await expect(page.getByText('contrato-e2e.pdf')).not.toBeVisible();
+    await expect(page.getByText('Nenhum anexo adicionado.')).toBeVisible();
+  });
 });

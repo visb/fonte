@@ -29,6 +29,7 @@ export const queryKeys = {
     all: ['staff'] as const,
     detail: (id: string) => ['staff', id] as const,
     permissions: (id: string) => ['staff', id, 'permissions'] as const,
+    attachments: (id: string) => ['staff', id, 'attachments'] as const,
   },
   appSettings: {
     current: ['app-settings'] as const,

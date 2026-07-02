@@ -93,6 +93,7 @@ export type {
   RelativeCheckinHistoryItem,
   StaffPermission,
   AddStaffPermissionInput,
+  StaffAttachment,
   AppSettings,
   UpdateAppSettingsInput,
   ListResidentsParams,

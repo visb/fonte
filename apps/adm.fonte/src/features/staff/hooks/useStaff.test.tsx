@@ -16,6 +16,9 @@ vi.mock('@/lib/api', () => ({
       addPermission: vi.fn(),
       removePermission: vi.fn(),
       uploadPhoto: vi.fn(),
+      listAttachments: vi.fn(),
+      uploadAttachment: vi.fn(),
+      deleteAttachment: vi.fn(),
     },
   },
 }));
@@ -35,6 +38,9 @@ import {
   useStaffPermissions,
   useAddStaffPermission,
   useRemoveStaffPermission,
+  useStaffAttachments,
+  useUploadStaffAttachment,
+  useDeleteStaffAttachment,
 } from './useStaff';
 
 beforeEach(() => vi.clearAllMocks());
@@ -156,5 +162,42 @@ describe('mutations de staff', () => {
     r2.current.mutate('MANAGE_BILLING' as never);
     await waitFor(() => expect(r2.current.isSuccess).toBe(true));
     expect(api.staff.removePermission).toHaveBeenCalledWith('s1', 'MANAGE_BILLING');
+  });
+});
+
+// ─── Anexos (story 98) ─────────────────────────────────────────────────────────
+
+describe('anexos de staff', () => {
+  it('useStaffAttachments busca com a queryKey e desliga sem staffId', async () => {
+    vi.mocked(api.staff.listAttachments).mockResolvedValue([{ id: 'a1' }] as never);
+    const { result, queryClient } = renderHookWithClient(() => useStaffAttachments('s1'));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.staff.listAttachments).toHaveBeenCalledWith('s1');
+    expect(queryClient.getQueryData(queryKeys.staff.attachments('s1'))).toEqual([{ id: 'a1' }]);
+
+    const { result: r2 } = renderHookWithClient(() => useStaffAttachments(''));
+    expect(r2.current.fetchStatus).toBe('idle');
+  });
+
+  it('upload envia FormData com o arquivo e invalida a key de anexos', async () => {
+    vi.mocked(api.staff.uploadAttachment).mockResolvedValue({ id: 'a1' } as never);
+    const { result, queryClient } = renderHookWithClient(() => useUploadStaffAttachment('s1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    result.current.mutate(new File(['%PDF'], 'contrato.pdf', { type: 'application/pdf' }));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const [id, fd] = vi.mocked(api.staff.uploadAttachment).mock.calls[0];
+    expect(id).toBe('s1');
+    expect((fd as FormData).get('file')).toBeInstanceOf(File);
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.staff.attachments('s1') });
+  });
+
+  it('delete chama a API e invalida a key de anexos', async () => {
+    vi.mocked(api.staff.deleteAttachment).mockResolvedValue(undefined as never);
+    const { result, queryClient } = renderHookWithClient(() => useDeleteStaffAttachment('s1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    result.current.mutate('a1');
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.staff.deleteAttachment).toHaveBeenCalledWith('s1', 'a1');
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.staff.attachments('s1') });
   });
 });

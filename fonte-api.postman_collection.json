@@ -341,6 +341,68 @@
           }
         },
         {
+          "name": "Upload Staff Attachment",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}",
+                "attachments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Staff Attachments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}",
+                "attachments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Staff Attachment",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/attachments/:attachmentId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}",
+                "attachments",
+                ":attachmentId"
+              ]
+            }
+          }
+        },
+        {
           "name": "Get Staff Permissions",
           "request": {
             "method": "GET",

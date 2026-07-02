@@ -12,7 +12,7 @@ const INPUT_CLASS = 'border border-gray-300 rounded-lg px-4 py-3 text-base text-
 
 const profileSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
-  phone: z.string().optional().or(z.literal('')),
+  whatsapp: z.string().optional().or(z.literal('')),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
 });
 type ProfileForm = z.infer<typeof profileSchema>;
@@ -32,14 +32,14 @@ export function ProfileDataSection({ staff, onRefresh }: Props) {
   });
 
   useEffect(() => {
-    reset({ name: staff.name, phone: staff.phone ?? '', email: staff.user.email });
+    reset({ name: staff.name, whatsapp: staff.whatsapp ?? '', email: staff.user.email });
   }, [staff, reset]);
 
   function onSave(data: ProfileForm) {
     setError('');
     setSuccess(false);
     updateProfile.mutate(
-      { name: data.name, phone: data.phone || null, email: data.email || undefined },
+      { name: data.name, whatsapp: data.whatsapp || null, email: data.email || undefined },
       {
         onSuccess: () => {
           setSuccess(true);
@@ -71,10 +71,10 @@ export function ProfileDataSection({ staff, onRefresh }: Props) {
         </View>
 
         <View>
-          <Text className="text-sm font-medium text-gray-700 mb-1.5">Telefone</Text>
+          <Text className="text-sm font-medium text-gray-700 mb-1.5">WhatsApp</Text>
           <Controller
             control={control}
-            name="phone"
+            name="whatsapp"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput className={INPUT_CLASS} value={value} onChangeText={onChange} onBlur={onBlur} keyboardType="phone-pad" placeholder="(11) 99999-9999" />
             )}

@@ -1,7 +1,7 @@
 appId: org.fonte.ops
 ---
-# Login por telefone — operador (tel armazenado "(11) 97777-1000",
-# informado só com dígitos para provar a normalização no backend).
+# Login por whatsapp — operador (whatsapp seed "11977771000"; o backend
+# normaliza dígitos tanto no persist quanto no lookup — story 97).
 - launchApp:
     clearState: true
 - tapOn:
@@ -14,7 +14,7 @@ appId: org.fonte.ops
 - assertVisible: "Bem-vindo,"
 - assertVisible: "Operador Teste"
 
-# Telefone correto + senha errada → recusa.
+# WhatsApp correto + senha errada → recusa.
 - launchApp:
     clearState: true
 - tapOn:
@@ -24,4 +24,4 @@ appId: org.fonte.ops
     text: "input-senha"
 - inputText: "senha_errada"
 - tapOn: "Entrar"
-- assertVisible: "E-mail/telefone ou senha incorretos."
+- assertVisible: "WhatsApp/e-mail ou senha incorretos."

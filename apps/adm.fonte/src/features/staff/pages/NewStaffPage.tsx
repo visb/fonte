@@ -69,7 +69,7 @@ export function NewStaffPage() {
           {copied ? 'Copiado!' : 'Copiar'}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Só é usada se o servo tiver e-mail e acesso aos apps. Envie via WhatsApp; ele deverá alterá-la no primeiro acesso.</p>
+      <p className="text-xs text-muted-foreground">O servo entra nos apps com o WhatsApp (ou e-mail) + esta senha. Envie a senha via WhatsApp; ele deverá alterá-la no primeiro acesso.</p>
     </div>
   );
 

@@ -541,7 +541,7 @@ export class ResidentService {
 
     const staff = await this.staffService.createFromResident({
       name: resident.name,
-      phone: resident.contactPhone,
+      whatsapp: resident.contactPhone,
       houseId: dto.houseId ?? resident.houseId,
       photoUrl: resident.photoUrl,
       userId,

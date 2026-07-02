@@ -12,7 +12,7 @@ function makeStaff(overrides: Partial<Staff> = {}): Staff {
     id: 's1',
     name: 'Pedro Servo',
     photoUrl: null,
-    phone: '62999998888',
+    whatsapp: '62999998888',
     rank: ServantRank.ASPIRANTE,
     house: { id: 'h1', name: 'Casa Belém' },
     user: { email: 'pedro@x.com', role: Role.SERVANT },
@@ -26,14 +26,15 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => cleanup());
 
 describe('StaffCard', () => {
-  it('mostra nome, casa, e-mail, telefone e badge de papel', () => {
+  it('mostra nome, casa, e-mail, whatsapp mascarado e badge de papel', () => {
     render(
       <StaffCard staff={makeStaff()} onView={noop} onEdit={noop} onResetPassword={noop} onDelete={noop} />,
     );
     expect(screen.getByText('Pedro Servo')).toBeInTheDocument();
     expect(screen.getByText('Casa Belém')).toBeInTheDocument();
     expect(screen.getByText('pedro@x.com')).toBeInTheDocument();
-    expect(screen.getByText('62999998888')).toBeInTheDocument();
+    // Story 97 — persistimos só dígitos; a exibição aplica a máscara.
+    expect(screen.getByText('(62) 99999-8888')).toBeInTheDocument();
     expect(screen.getByText('Servo')).toBeInTheDocument();
   });
 

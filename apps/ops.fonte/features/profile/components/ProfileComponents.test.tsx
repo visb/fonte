@@ -54,17 +54,19 @@ describe('ChangePasswordSection', () => {
 });
 
 describe('ProfileDataSection', () => {
-  const staff = { id: 's1', name: 'Servo X', phone: '11999', user: { email: 'x@fonte.com' } } as never;
+  // Story 97 — o telefone do servo virou whatsapp (campo e rótulo).
+  const staff = { id: 's1', name: 'Servo X', whatsapp: '11999', user: { email: 'x@fonte.com' } } as never;
 
-  it('preenche os dados atuais e salva (E-mail/telefone)', async () => {
+  it('preenche os dados atuais e salva (E-mail/WhatsApp)', async () => {
     m.staff.updateMe.mockResolvedValue({});
     const onRefresh = jest.fn();
     rc(<ProfileDataSection staff={staff} onRefresh={onRefresh} />);
     await waitFor(() => expect(screen.getByDisplayValue('Servo X')).toBeTruthy());
+    expect(screen.getByText('WhatsApp')).toBeTruthy();
     fireEvent.press(screen.getByText('Salvar dados'));
     await waitFor(() =>
       expect(m.staff.updateMe).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Servo X', phone: '11999', email: 'x@fonte.com' }),
+        expect.objectContaining({ name: 'Servo X', whatsapp: '11999', email: 'x@fonte.com' }),
       ),
     );
     expect(onRefresh).toHaveBeenCalled();

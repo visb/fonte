@@ -103,18 +103,18 @@ async function seed() {
     ['Casa Teste', 'Rua das Flores, 123', '(11) 99999-9999'],
   );
 
-  // Coordinator staff linked to house
+  // Coordinator staff linked to house (com whatsapp — login por whatsapp, story 97)
   await ds.query(
-    `INSERT INTO staff (id, name, user_id, house_id)
-     VALUES (gen_random_uuid(), $1, $2, $3)`,
-    ['Coordenador Teste', coordUser.id, house.id],
+    `INSERT INTO staff (id, name, user_id, house_id, whatsapp)
+     VALUES (gen_random_uuid(), $1, $2, $3, $4)`,
+    ['Coordenador Teste', coordUser.id, house.id, '11977773000'],
   );
 
-  // Operator staff linked to house (com telefone — login por telefone)
+  // Operator staff linked to house (com whatsapp — login por whatsapp)
   const [operatorStaff] = await ds.query<{ id: string }[]>(
-    `INSERT INTO staff (id, name, user_id, house_id, phone)
+    `INSERT INTO staff (id, name, user_id, house_id, whatsapp)
      VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING id`,
-    ['Operador Teste', operatorUser.id, house.id, '(11) 97777-1000'],
+    ['Operador Teste', operatorUser.id, house.id, '11977771000'],
   );
 
   // Operator permissions: send messages + moderate
@@ -199,7 +199,8 @@ async function seed() {
   console.log('  Operador:     operator@fonte.com / operator123');
   console.log('  Residente:    resident@teste.com / resident123');
   console.log('  Familiar:     familiar@fonte.com / familiar123 (tel (11) 97777-2000)');
-  console.log('  Operador tel: (11) 97777-1000');
+  console.log('  Coord. whatsapp: 11977773000');
+  console.log('  Operador whatsapp: 11977771000');
   console.log('  1º acesso:    familiar2@fonte.com / temp123 (must_change_password)');
   console.log('  Casa:         Casa Teste');
   console.log('  Acolhido:     João Testador (com acesso gerado)');

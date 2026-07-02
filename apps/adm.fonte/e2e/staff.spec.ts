@@ -89,6 +89,8 @@ test.describe('Servos', () => {
     await page.getByPlaceholder('Profissão ou ocupação').fill(occupation);
     await page.getByRole('tab', { name: 'Endereço e contato' }).click();
     await page.getByPlaceholder('Ex: São Paulo').fill(city);
+    // Story 97 — o campo de contato é WhatsApp (mascarado no form, dígitos na API).
+    await page.getByPlaceholder('(00) 00000-0000').fill('62988887777');
     await page.getByRole('button', { name: 'Salvar' }).click();
     await expect(page).toHaveURL('/staff');
 
@@ -96,6 +98,8 @@ test.describe('Servos', () => {
     await page.locator('.rounded-lg.border.bg-card').filter({ hasText: name }).getByText(name).click();
     await expect(page.getByText(occupation)).toBeVisible();
     await expect(page.getByText(city)).toBeVisible();
+    await expect(page.getByText('WhatsApp', { exact: true })).toBeVisible();
+    await expect(page.getByText('(62) 98888-7777').first()).toBeVisible();
   });
 
   test('abre diálogo de resetar senha', async ({ page }) => {

@@ -41,9 +41,10 @@ export class CreateStaffDto {
   @IsUUID()
   supportGroupId?: string | null;
 
+  // WhatsApp do servo — usado também como identificador de login (story 97).
   @IsOptional()
   @IsString()
-  phone?: string | null;
+  whatsapp?: string | null;
 
   // Nível do servo (SERVANT). Ignorado para ADMIN/COORDINATOR.
   @IsOptional()

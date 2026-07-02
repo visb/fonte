@@ -5,9 +5,10 @@ export const TEST_ADMIN = {
   password: 'admin123',
 };
 
-export async function login(page: Page, email = TEST_ADMIN.email, password = TEST_ADMIN.password) {
+// O identificador aceita WhatsApp (primário — story 97) ou e-mail.
+export async function login(page: Page, identifier = TEST_ADMIN.email, password = TEST_ADMIN.password) {
   await page.goto('/login');
-  await page.getByLabel('E-mail').fill(email);
+  await page.getByLabel('WhatsApp ou e-mail').fill(identifier);
   await page.getByLabel('Senha').fill(password);
   await page.getByRole('button', { name: 'Entrar' }).click();
   await page.waitForURL('/');

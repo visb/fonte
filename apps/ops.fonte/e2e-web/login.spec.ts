@@ -40,7 +40,7 @@ test.describe('ops.fonte — login web', () => {
     await fillLogin(page, OPERATOR_EMAIL, 'senha_errada');
 
     await expect(
-      page.getByText('E-mail/telefone ou senha incorretos.'),
+      page.getByText('WhatsApp/e-mail ou senha incorretos.'),
     ).toBeVisible({ timeout: 30_000 });
   });
 });

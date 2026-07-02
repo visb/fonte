@@ -139,6 +139,38 @@ describe('StaffService.create', () => {
     expect(savedStaff).not.toHaveProperty('height');
   });
 
+  // Story 97 — o whatsapp é o identificador de login: persistido só com dígitos,
+  // coerente com a normalização do lookup no login.
+  it('normalizes the whatsapp to digits on create', async () => {
+    const staffRepo = makeRepo();
+    const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });
+    const service = makeService(staffRepo, userRepo, makeRepo());
+
+    await service.create({
+      name: 'Servo Zap',
+      password: 'secret123',
+      role: 'SERVANT' as never,
+      whatsapp: '(11) 97777-0001',
+    } as never);
+
+    expect(staffRepo.save.mock.calls[0][0].whatsapp).toBe('11977770001');
+  });
+
+  it('stores null when the whatsapp has no digits', async () => {
+    const staffRepo = makeRepo();
+    const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });
+    const service = makeService(staffRepo, userRepo, makeRepo());
+
+    await service.create({
+      name: 'Servo Sem Zap',
+      password: 'secret123',
+      role: 'SERVANT' as never,
+      whatsapp: ' - ',
+    } as never);
+
+    expect(staffRepo.save.mock.calls[0][0].whatsapp).toBeNull();
+  });
+
   it('nulls rank for non-SERVANT roles', async () => {
     const staffRepo = makeRepo();
     const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });
@@ -163,7 +195,7 @@ describe('StaffService.createFromResident', () => {
 
     await service.createFromResident({
       name: 'Promovido',
-      phone: null,
+      whatsapp: null,
       houseId: 'house-1',
       photoUrl: null,
       userId: 'user-9',
@@ -176,6 +208,25 @@ describe('StaffService.createFromResident', () => {
     expect(saved.formerResidentId).toBe('res-9');
     expect(saved.promotedAt).toBe('2026-06-01');
     expect(saved.userId).toBe('user-9');
+  });
+
+  // Story 97 — o contato do filho promovido vira o whatsapp do servo, normalizado.
+  it('normalizes the promoted resident contact into the staff whatsapp', async () => {
+    const staffRepo = makeRepo();
+    const service = makeService(staffRepo, makeRepo(), makeRepo());
+
+    await service.createFromResident({
+      name: 'Promovido Zap',
+      whatsapp: '(62) 98888-0000',
+      houseId: null,
+      photoUrl: null,
+      userId: 'user-9',
+      formerResidentId: 'res-9',
+      rank: 'ASPIRANTE' as never,
+      promotedAt: '2026-06-01',
+    });
+
+    expect(staffRepo.save.mock.calls[0][0].whatsapp).toBe('62988880000');
   });
 });
 
@@ -219,6 +270,16 @@ describe('StaffService.update', () => {
 
     await service.update('staff-1', { email: '' } as never);
     expect(userRepo.update).toHaveBeenCalledWith('user-1', { email: null });
+  });
+
+  // Story 97 — whatsapp também é normalizado para dígitos no update.
+  it('normalizes the whatsapp to digits on update', async () => {
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }) });
+    const service = makeService(staffRepo, makeRepo(), makeRepo());
+
+    await service.update('staff-1', { whatsapp: '(11) 97777-0002' } as never);
+
+    expect(staffRepo.update).toHaveBeenCalledWith('staff-1', { whatsapp: '11977770002' });
   });
 
   it('hashes a new password and forces a change', async () => {
@@ -334,7 +395,7 @@ describe('StaffService house:list cache invalidation', () => {
     const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }) });
     const service = makeService(staffRepo, makeRepo(), makeRepo(), {}, emitter);
 
-    await service.updateMe('user-1', { phone: '11999' } as never);
+    await service.updateMe('user-1', { whatsapp: '11999' } as never);
 
     expect(emitter.emit).not.toHaveBeenCalled();
   });

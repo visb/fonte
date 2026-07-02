@@ -2,6 +2,7 @@ import { Building2, KeyRound, Mail, Pencil, Phone, Trash2, User } from 'lucide-r
 import { Role } from '@fonte/types';
 import type { Staff } from '@fonte/api-client';
 import { api } from '@/lib/api';
+import { maskPhone } from '@/lib/masks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SERVANT_RANK_LABELS, SERVANT_RANK_VARIANT } from '../constants';
@@ -56,10 +57,10 @@ export function StaffCard({ staff: s, onView, onEdit, onResetPassword, onDelete 
             <Mail size={13} />
             {s.user.email}
           </span>
-          {s.phone && (
+          {s.whatsapp && (
             <span className="flex items-center gap-1">
               <Phone size={13} />
-              {s.phone}
+              {maskPhone(s.whatsapp)}
             </span>
           )}
         </div>

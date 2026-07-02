@@ -17,7 +17,7 @@ import { ChangePasswordDialog } from '../components/ChangePasswordDialog';
 const schema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   email: z.string().email('E-mail inválido'),
-  phone: z.string().optional().or(z.literal('')),
+  whatsapp: z.string().optional().or(z.literal('')),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -40,7 +40,7 @@ export function ProfilePage() {
       reset({
         name: me.name,
         email: me.user.email,
-        phone: me.phone ?? '',
+        whatsapp: maskPhone(me.whatsapp ?? ''),
       });
     }
   }, [me, reset]);
@@ -51,7 +51,7 @@ export function ProfilePage() {
         data: {
           name: data.name,
           email: data.email,
-          phone: data.phone || null,
+          whatsapp: data.whatsapp || null,
         },
         photo: pendingPhotoRef.current,
       },
@@ -113,10 +113,10 @@ export function ProfilePage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phone">Telefone</Label>
+          <Label htmlFor="whatsapp">WhatsApp</Label>
           <Input
-            id="phone"
-            {...withMask(register('phone'), maskPhone)}
+            id="whatsapp"
+            {...withMask(register('whatsapp'), maskPhone)}
             placeholder="(11) 99999-9999"
           />
         </div>

@@ -77,7 +77,7 @@ describe('newStaffSchema', () => {
       address: '',
       city: '',
       state: '',
-      contactPhone: '',
+      whatsapp: '',
     });
     expect(res.success).toBe(true);
   });
@@ -166,6 +166,19 @@ describe('buildStaffPayload', () => {
     expect(payload.cpf).toBeNull();
   });
 
+  // Story 97 — o campo do form agora é whatsapp e o payload envia `whatsapp`
+  // (a API normaliza para dígitos; ele é o identificador de login do servo).
+  it('mapeia o whatsapp do form para o payload (sem campo phone)', () => {
+    const payload = buildStaffPayload({ ...baseValid, whatsapp: '(62) 99999-8888' });
+    expect(payload.whatsapp).toBe('(62) 99999-8888');
+    expect(payload).not.toHaveProperty('phone');
+  });
+
+  it('whatsapp vazio vira null no payload', () => {
+    const payload = buildStaffPayload({ ...baseValid, whatsapp: '  ' });
+    expect(payload.whatsapp).toBeNull();
+  });
+
   // Story 96 — o payload enviado à API não carrega mais campos de tratamento.
   it('payload não contém campos clínicos removidos', () => {
     const payload = buildStaffPayload(baseValid);
@@ -186,7 +199,7 @@ describe('staffToFormValues', () => {
       rank: ServantRank.ASPIRANTE,
       user: { email: 'ana@x.com', role: Role.SERVANT },
       cpf: '12345678901',
-      phone: '62999998888',
+      whatsapp: '62999998888',
       children: 0,
       birthDate: '1990-01-01T00:00:00Z',
     } as unknown as Staff;
@@ -194,6 +207,8 @@ describe('staffToFormValues', () => {
     expect(values.servesInGroup).toBe(true);
     expect(values.supportGroupId).toBe('g1');
     expect(values.cpf).toBe('123.456.789-01');
+    // Story 97 — whatsapp persistido em dígitos volta mascarado para o form.
+    expect(values.whatsapp).toBe('(62) 99999-8888');
     expect(values.email).toBe('ana@x.com');
     expect(values.birthDate).toBe('1990-01-01');
   });

@@ -124,6 +124,40 @@ describe('StaffController (e2e)', () => {
         .expect(409);
     });
 
+    // Story 97 — o campo é whatsapp (coluna renomeada) e é persistido em dígitos.
+    it('creates a servant with whatsapp normalized to digits, and phone is rejected', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/staff`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          name: `Servo Zap ${Date.now()}`,
+          password: 'secret123',
+          role: Role.SERVANT,
+          whatsapp: '(62) 98888-0001',
+        })
+        .expect(201);
+      createdIds.push(res.body.id);
+      expect(res.body.whatsapp).toBe('62988880001');
+      expect(res.body).not.toHaveProperty('phone');
+
+      // `phone` deixou de existir no DTO → 400 (forbidNonWhitelisted).
+      await request(app.getHttpServer())
+        .post(`${BASE}/staff`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: 'Servo Phone', password: 'secret123', role: Role.SERVANT, phone: '629' })
+        .expect(400);
+    });
+
+    it('updates the staff whatsapp normalizing to digits', async () => {
+      const id = createdIds[0];
+      const res = await request(app.getHttpServer())
+        .patch(`${BASE}/staff/${id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ whatsapp: '(62) 97777-0009' })
+        .expect(200);
+      expect(res.body.whatsapp).toBe('62977770009');
+    });
+
     it('updates a staff name', async () => {
       const id = createdIds[0];
       const res = await request(app.getHttpServer())

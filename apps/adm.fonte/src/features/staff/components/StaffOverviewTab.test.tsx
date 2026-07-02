@@ -16,7 +16,7 @@ function makeStaff(overrides: Partial<Staff> = {}): Staff {
     nationality: 'Brasileiro',
     birthDate: '1990-05-10',
     gender: Gender.MALE,
-    phone: '62999998888',
+    whatsapp: '62999998888',
     city: 'Goiânia',
     state: 'GO',
     address: 'Rua A',
@@ -50,6 +50,14 @@ describe('StaffOverviewTab', () => {
     expect(screen.getByText('Servo')).toBeInTheDocument();
     expect(screen.getByText('Aspirante')).toBeInTheDocument();
     expect(screen.getByText('123.456.789-01')).toBeInTheDocument();
+  });
+
+  // Story 97 — o telefone do servo virou WhatsApp (rótulo e campo).
+  it('mostra o WhatsApp mascarado no bloco de contato', () => {
+    renderTab(makeStaff());
+    expect(screen.getByText('WhatsApp')).toBeInTheDocument();
+    expect(screen.getByText('(62) 99999-8888')).toBeInTheDocument();
+    expect(screen.queryByText('Telefone')).not.toBeInTheDocument();
   });
 
   it('mostra idade calculada junto à data de nascimento', () => {

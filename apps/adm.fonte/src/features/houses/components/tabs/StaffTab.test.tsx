@@ -29,17 +29,17 @@ describe('StaffTab', () => {
     expect(screen.getByText('Nenhum servo cadastrado nesta casa.')).toBeInTheDocument();
   });
 
-  it('lista servos com telefone e navega para edição', () => {
+  it('lista servos com whatsapp mascarado e navega para edição', () => {
     staffState = {
       data: [
-        { id: 's1', name: 'João', phone: '62999990000' },
-        { id: 's2', name: 'Maria', phone: null },
+        { id: 's1', name: 'João', whatsapp: '62999990000' },
+        { id: 's2', name: 'Maria', whatsapp: null },
       ],
       isLoading: false,
     };
     render(<StaffTab houseId="h1" />);
     expect(screen.getByText('João')).toBeInTheDocument();
-    expect(screen.getByText('62999990000')).toBeInTheDocument();
+    expect(screen.getByText('(62) 99999-0000')).toBeInTheDocument();
     expect(screen.getByText('Maria')).toBeInTheDocument();
     fireEvent.click(screen.getAllByTitle('Editar servo')[0]);
     expect(navigate).toHaveBeenCalledWith('/staff/s1/edit');

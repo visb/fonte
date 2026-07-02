@@ -24,7 +24,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!identifier || !password) {
-      setError("Preencha e-mail ou telefone e senha.");
+      setError("Preencha WhatsApp ou e-mail e senha.");
       return;
     }
     setError("");
@@ -35,7 +35,7 @@ export default function LoginScreen() {
       if (err instanceof MustChangePasswordError) {
         router.replace("/(auth)/change-password");
       } else {
-        setError("E-mail/telefone ou senha incorretos.");
+        setError("WhatsApp/e-mail ou senha incorretos.");
       }
     } finally {
       setLoading(false);
@@ -56,12 +56,12 @@ export default function LoginScreen() {
         <View className="space-y-4">
           <View>
             <Text className="text-sm font-medium text-gray-700 mb-1.5">
-              E-mail ou telefone
+              WhatsApp ou e-mail
             </Text>
             <TextInput
               accessibilityLabel="input-email"
               className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
-              placeholder="seu@email.com ou telefone"
+              placeholder="WhatsApp ou seu@email.com"
               autoCapitalize="none"
               autoCorrect={false}
               value={identifier}

@@ -241,11 +241,11 @@ export class HouseService {
   // ─── Staff ──────────────────────────────────────────────────────────────────
 
   async findStaffForHouse(houseId: string): Promise<
-    Array<{ id: string; name: string; phone: string | null }>
+    Array<{ id: string; name: string; whatsapp: string | null }>
   > {
     await this.assertHouseExists(houseId);
     return this.houseRepository.manager.query(
-      `SELECT id, name, phone FROM staff WHERE house_id = $1 AND deleted_at IS NULL ORDER BY name`,
+      `SELECT id, name, whatsapp FROM staff WHERE house_id = $1 AND deleted_at IS NULL ORDER BY name`,
       [houseId],
     );
   }

@@ -41,7 +41,7 @@ async function seed() {
   const existingStaff = await ds.query('SELECT id FROM staff WHERE user_id = $1', [userId]);
   if (existingStaff.length === 0) {
     await ds.query(
-      `INSERT INTO staff (id, name, user_id, house_id, phone, photo_url, support_group_id)
+      `INSERT INTO staff (id, name, user_id, house_id, whatsapp, photo_url, support_group_id)
        VALUES (gen_random_uuid(), $1, $2, NULL, NULL, NULL, NULL)`,
       ['Administrador', userId],
     );

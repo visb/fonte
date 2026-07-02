@@ -29,11 +29,12 @@ const baseShape = {
   occupation: z.string().optional(),
   education: z.string().optional(),
   religion: z.string().optional(),
-  // Aba Endereço e contato (opcionais)
+  // Aba Endereço e contato (opcionais). O whatsapp é também o identificador
+  // de login do servo (story 97).
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
-  contactPhone: z.string().optional(),
+  whatsapp: z.string().optional(),
 };
 
 // Mapa aba → campos. Usado pelas páginas para sinalizar qual aba tem erro de
@@ -41,7 +42,7 @@ const baseShape = {
 export const STAFF_TAB_FIELDS = {
   system: ['name', 'email', 'password', 'role', 'rank', 'servesInGroup', 'houseId', 'supportGroupId'],
   personal: ['cpf', 'rg', 'nationality', 'birthDate', 'gender', 'maritalStatus', 'children', 'occupation', 'education', 'religion'],
-  address: ['address', 'city', 'state', 'contactPhone'],
+  address: ['address', 'city', 'state', 'whatsapp'],
 } as const;
 
 export type StaffTabId = keyof typeof STAFF_TAB_FIELDS;
@@ -89,7 +90,7 @@ export function buildStaffPayload(
     role: data.role,
     houseId: data.servesInGroup ? null : data.houseId || null,
     supportGroupId: data.servesInGroup ? data.supportGroupId || null : null,
-    phone: str(data.contactPhone),
+    whatsapp: str(data.whatsapp),
     rank: data.role === Role.SERVANT ? data.rank ?? ServantRank.ASPIRANTE : null,
     cpf: str(data.cpf),
     rg: str(data.rg),
@@ -126,7 +127,7 @@ export function staffToFormValues(staff: Staff): EditStaffFormData {
     address: staff.address ?? '',
     city: staff.city ?? '',
     state: staff.state ?? '',
-    contactPhone: maskPhone(staff.phone ?? ''),
+    whatsapp: maskPhone(staff.whatsapp ?? ''),
     maritalStatus: (staff.maritalStatus as MaritalStatus) ?? '',
     children: numStr(staff.children),
     occupation: staff.occupation ?? '',

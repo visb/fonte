@@ -22,8 +22,10 @@ export class Staff {
   @Column()
   name: string;
 
+  // WhatsApp do servo — também é o identificador de login (story 97).
+  // Persistido normalizado (apenas dígitos) pelo StaffService.
   @Column({ nullable: true, type: 'varchar' })
-  phone: string | null;
+  whatsapp: string | null;
 
   // --- Ficha pessoal (espelha os dados pessoais do filho/resident) ---
 

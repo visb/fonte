@@ -9,7 +9,7 @@ interface Props<T extends FieldValues> {
 }
 
 // Aba Endereço e contato do form de servo (story 96). Todos opcionais.
-// O campo de telefone vira whatsapp na story 97.
+// O whatsapp (story 97) é também o identificador de login do servo.
 export function StaffAddressContactTab<T extends FieldValues>({ register, errors }: Props<T>) {
   const f = (name: string) => register(name as Path<T>);
   const errMsg = (name: string): string | undefined =>
@@ -26,8 +26,8 @@ export function StaffAddressContactTab<T extends FieldValues>({ register, errors
       <FormField label="UF" error={errMsg('state')}>
         <Input {...f('state')} placeholder="Ex: SP" maxLength={2} className="uppercase" />
       </FormField>
-      <FormField label="Telefone" error={errMsg('contactPhone')}>
-        <Input {...withMask(f('contactPhone'), maskPhone)} placeholder="(00) 00000-0000" />
+      <FormField label="WhatsApp" error={errMsg('whatsapp')}>
+        <Input {...withMask(f('whatsapp'), maskPhone)} placeholder="(00) 00000-0000" />
       </FormField>
     </div>
   );

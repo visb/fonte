@@ -224,7 +224,7 @@ export interface House {
   city: string | null;
   state: string | null;
   coordinatorId: string | null;
-  coordinator: { id: string; name: string; phone?: string | null } | null;
+  coordinator: { id: string; name: string; whatsapp?: string | null } | null;
   phone: string | null;
   isMotherHouse: boolean;
   thumbnailUrl: string | null;
@@ -319,7 +319,8 @@ export interface CreateHouseRuleInput {
 export interface Staff {
   id: string;
   name: string;
-  phone: string | null;
+  // WhatsApp do servo — também é o identificador de login (story 97).
+  whatsapp: string | null;
   photoUrl: string | null;
   houseId: string | null;
   house: { id: string; name: string } | null;
@@ -357,7 +358,7 @@ export interface StaffMe {
   id: string;
   userId: string;
   name: string;
-  phone: string | null;
+  whatsapp: string | null;
   photoUrl: string | null;
   houseId: string | null;
   house: { id: string; name: string } | null;
@@ -374,7 +375,7 @@ export interface CreateStaffInput {
   role: Role;
   houseId?: string | null;
   supportGroupId?: string | null;
-  phone?: string | null;
+  whatsapp?: string | null;
   rank?: ServantRank | null;
   // Ficha pessoal (espelha os dados do filho)
   birthDate?: string | null;
@@ -396,7 +397,7 @@ export type UpdateStaffInput = Partial<CreateStaffInput>;
 
 export interface UpdateStaffMeInput {
   name?: string;
-  phone?: string | null;
+  whatsapp?: string | null;
   email?: string;
 }
 

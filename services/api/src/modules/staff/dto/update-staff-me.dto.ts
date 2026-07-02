@@ -8,7 +8,7 @@ export class UpdateStaffMeDto {
 
   @IsOptional()
   @IsString()
-  phone?: string | null;
+  whatsapp?: string | null;
 
   @IsOptional()
   @IsEmail()

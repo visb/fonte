@@ -153,7 +153,8 @@ const meRow = {
       address: 'Rua 1',
       city: 'Goiânia',
       phone: '111',
-      coordinator: { name: 'Coord', phone: '222' },
+      // Staff.phone virou whatsapp (story 97); a view mantém coordinatorPhone.
+      coordinator: { name: 'Coord', whatsapp: '222' },
     },
   },
 };

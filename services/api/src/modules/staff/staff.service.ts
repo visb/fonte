@@ -36,6 +36,14 @@ export class StaffService {
     this.eventEmitter.emit(HOUSE_STAFF_CHANGED_EVENT);
   }
 
+  // O whatsapp é o identificador de login do servo (story 97): persistir só os
+  // dígitos, coerente com a normalização do lookup em findActiveUserIdsByPhone.
+  private normalizeWhatsapp(value: string | null | undefined): string | null {
+    if (value == null) return null;
+    const digits = value.replace(/\D/g, '');
+    return digits || null;
+  }
+
   async findByUserId(userId: string): Promise<Staff & { permissions: StaffPermissionType[] }> {
     const staff = await this.staffRepository.findOne({
       where: { userId },
@@ -87,7 +95,7 @@ export class StaffService {
     const { email: _email, password: _password, role, ...fields } = dto;
     const staff = this.staffRepository.create({
       ...fields,
-      phone: dto.phone ?? null,
+      whatsapp: this.normalizeWhatsapp(dto.whatsapp),
       houseId: dto.houseId ?? null,
       supportGroupId: dto.supportGroupId ?? null,
       rank: dto.role === Role.SERVANT ? (dto.rank ?? null) : null,
@@ -106,7 +114,7 @@ export class StaffService {
   // resolvido (reaproveitado ou criado) pelo ResidentService.
   createFromResident(params: {
     name: string;
-    phone: string | null;
+    whatsapp: string | null;
     houseId: string | null;
     photoUrl: string | null;
     userId: string;
@@ -116,7 +124,7 @@ export class StaffService {
   }): Promise<Staff> {
     const staff = this.staffRepository.create({
       name: params.name,
-      phone: params.phone,
+      whatsapp: this.normalizeWhatsapp(params.whatsapp),
       houseId: params.houseId,
       photoUrl: params.photoUrl,
       userId: params.userId,
@@ -131,6 +139,9 @@ export class StaffService {
     const staff = await this.findOne(id);
 
     const { email, role, password, ...staffFields } = dto;
+    if (staffFields.whatsapp !== undefined) {
+      staffFields.whatsapp = this.normalizeWhatsapp(staffFields.whatsapp);
+    }
 
     if (Object.keys(staffFields).length) {
       await this.staffRepository.update(id, staffFields);
@@ -175,6 +186,9 @@ export class StaffService {
   async updateMe(userId: string, dto: UpdateStaffMeDto): Promise<Staff> {
     const staff = await this.findByUserId(userId);
     const { email, ...staffFields } = dto;
+    if (staffFields.whatsapp !== undefined) {
+      staffFields.whatsapp = this.normalizeWhatsapp(staffFields.whatsapp);
+    }
 
     if (Object.keys(staffFields).length) {
       await this.staffRepository.update(staff.id, staffFields);

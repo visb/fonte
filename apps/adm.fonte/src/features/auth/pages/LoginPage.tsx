@@ -11,8 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+// O servo entra com WhatsApp (identificador primário — story 97) ou e-mail.
 const loginSchema = z.object({
-  identifier: z.string().min(1, 'Informe e-mail ou telefone'),
+  identifier: z.string().min(1, 'Informe WhatsApp ou e-mail'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });
 
@@ -58,7 +59,7 @@ export function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="identifier">E-mail ou telefone</Label>
+              <Label htmlFor="identifier">WhatsApp ou e-mail</Label>
               <Input id="identifier" type="text" {...register('identifier')} />
               {errors.identifier && (
                 <p className="text-sm text-destructive">{errors.identifier.message}</p>

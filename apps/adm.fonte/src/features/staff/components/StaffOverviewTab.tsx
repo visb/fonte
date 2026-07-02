@@ -97,7 +97,7 @@ export function StaffOverviewTab({ staff }: Props) {
 
       <SectionTitle>Contato</SectionTitle>
       <InfoGrid>
-        <InfoRow label="Telefone" value={val(staff.phone, maskPhone)} />
+        <InfoRow label="WhatsApp" value={val(staff.whatsapp, maskPhone)} />
         <InfoRow label="E-mail" value={val(staff.user.email)} />
         <InfoRow label="Cidade" value={val(staff.city)} />
         <InfoRow label="UF" value={val(staff.state)} />

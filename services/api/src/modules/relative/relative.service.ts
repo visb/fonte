@@ -89,7 +89,8 @@ export class RelativeService {
       houseCity: house?.city ?? null,
       housePhone: house?.phone ?? null,
       coordinatorName: coordinator?.name ?? null,
-      coordinatorPhone: coordinator?.phone ?? null,
+      // Staff.phone virou whatsapp (story 97); o contrato do app.fonte mantém o nome.
+      coordinatorPhone: coordinator?.whatsapp ?? null,
     };
   }
 

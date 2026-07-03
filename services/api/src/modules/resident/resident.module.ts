@@ -19,6 +19,7 @@ import { CensusService } from './census.service';
 import { DocxParserService } from './docx-parser.service';
 import { SpreadsheetImportService } from './spreadsheet-parser.service';
 import { ImportMatchService } from './import-match.service';
+import { ImportService } from './import.service';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { ImportMatchService } from './import-match.service';
     DocxParserService,
     SpreadsheetImportService,
     ImportMatchService,
+    ImportService,
   ],
   exports: [ResidentService],
 })

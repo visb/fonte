@@ -89,6 +89,8 @@ import type {
   EventInviteResult,
   EventInviteSkipped,
   EventInviteSkipReason,
+  CommitImportRelative,
+  ImportContributionsSummary,
 } from '@fonte/types';
 import {
   NotificationType,
@@ -1274,6 +1276,20 @@ export interface BulkCreateContributionsInput {
   months: { date: string }[];
 }
 
+/** Payload do commit do import aprovado (story 103). */
+export interface CommitImportPayload {
+  resident: CreateResidentInput;
+  relatives: CommitImportRelative[];
+  contributionMonths: string[];
+  photoBase64?: string | null;
+}
+
+/** Resposta do commit do import: filho criado + resumo das contribuições. */
+export interface CommitImportResult {
+  resident: Resident;
+  contributionsCreated: ImportContributionsSummary;
+}
+
 export type {
   ParseDocxRelative,
   ParseDocxResult,
@@ -1281,6 +1297,10 @@ export type {
   ImportPreviewResult,
   SpreadsheetImportRow,
   ParseSpreadsheetResult,
+  ImportConflict,
+  CheckImportConflictResult,
+  CommitImportRelative,
+  ImportContributionsSummary,
 } from '@fonte/types';
 
 // ─── Street Sales ─────────────────────────────────────────────────────────────

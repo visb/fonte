@@ -334,6 +334,39 @@ export interface ImportPreviewResult extends ParseDocxResult {
   matchStatus: MatchStatus;
 }
 
+// ─── Import em lote — conflito e commit (story 103) ───────────────────────────
+
+/**
+ * Um filho já cadastrado que conflita com a ficha a importar — casado por nome
+ * normalizado (sem acento) ou por CPF (dígitos). Alimenta o alerta inline do
+ * front antes de aprovar o import.
+ */
+export interface ImportConflict {
+  id: string;
+  name: string;
+  cpf: string | null;
+  status: ResidentStatus;
+  houseName: string | null;
+}
+
+/** Resposta da checagem de conflito do import. */
+export interface CheckImportConflictResult {
+  conflicts: ImportConflict[];
+}
+
+/** Um familiar do payload de commit do import (mínimo para satisfazer ≥1 relative). */
+export interface CommitImportRelative {
+  name: string;
+  phone?: string | null;
+  relationship?: string | null;
+}
+
+/** Quantas contribuições retroativas foram criadas/ignoradas no commit. */
+export interface ImportContributionsSummary {
+  created: number;
+  skipped: number;
+}
+
 // ─── Receivables (carnê de contribuição) ──────────────────────────────────────
 
 export enum ReceivableStatus {

@@ -1679,6 +1679,63 @@
           }
         },
         {
+          "name": "Check import conflict",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/residents/import/check-conflict?name=João da Silva&cpf=111.222.333-44",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "import",
+                "check-conflict"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "João da Silva",
+                  "description": "Nome da ficha (match por nome normalizado, sem acento)"
+                },
+                {
+                  "key": "cpf",
+                  "value": "111.222.333-44",
+                  "description": "CPF da ficha (match por dígitos)"
+                }
+              ]
+            },
+            "description": "Checa conflito do import: filhos já cadastrados que batem por nome normalizado (sem acento) OU por CPF. Ignora soft-deleted. Retorna { conflicts: Array<{ id, name, cpf, status, houseName }> }. Não persiste nada; alimenta o alerta inline antes de aprovar (story 103). Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
+          "name": "Commit import (atomic)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"resident\": {\n    \"name\": \"João da Silva\",\n    \"houseId\": \"{{houseId}}\",\n    \"cpf\": \"111.222.333-44\",\n    \"entryDate\": \"2023-01-10\",\n    \"familyInvestment\": \"PAYMENT_700\"\n  },\n  \"relatives\": [\n    { \"name\": \"Maria da Silva\", \"phone\": \"11988887777\", \"relationship\": \"Mãe\" }\n  ],\n  \"contributionMonths\": [\"2023-01-01\", \"2023-02-01\"],\n  \"photoBase64\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/residents/import/commit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "import",
+                "commit"
+              ]
+            },
+            "description": "Persiste o import aprovado de forma atômica (uma transação): revalida conflito por CPF (409 se já existir), cria o resident + relatives (≥1 obrigatório), anexa a foto (photoBase64 opcional) e cria as contribuições retroativas (contributionMonths ISO YYYY-MM-01). Retorna { resident, contributionsCreated: { created, skipped } }. Rollback não deixa nada persistido. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
           "name": "Get admission documents",
           "request": {
             "method": "GET",

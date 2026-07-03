@@ -1,6 +1,6 @@
 ﻿import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { FollowUpAccessLevel, FollowUpType, Role, ResidentStatus } from '@fonte/types';
 import { ResidentFollowUp } from './resident-follow-up.entity';
 import { Staff } from '../staff/staff.entity';
@@ -103,14 +103,20 @@ export class ResidentFollowUpService {
     return new Map(rows.map((r) => [r.residentId, r.lastDate]));
   }
 
+  // `manager` opcional: roda dentro de uma transação externa (commit do import
+  // em lote, story 103), para as contribuições retroativas nascerem atômicas com
+  // o resident.
   async bulkCreateContributions(
     residentId: string,
     dto: BulkCreateContributionsDto,
     staffUserId: string,
+    manager?: EntityManager,
   ): Promise<{ created: number; skipped: number }> {
-    const staff = await this.staffRepo.findOne({ where: { userId: staffUserId } });
+    const repo = manager ? manager.getRepository(ResidentFollowUp) : this.repo;
+    const staffRepo = manager ? manager.getRepository(Staff) : this.staffRepo;
+    const staff = await staffRepo.findOne({ where: { userId: staffUserId } });
 
-    const existing = await this.repo.find({
+    const existing = await repo.find({
       where: { residentId, type: FollowUpType.MONTHLY_CONTRIBUTION },
       select: ['date'],
     });
@@ -122,7 +128,7 @@ export class ResidentFollowUpService {
 
     if (toCreate.length > 0) {
       const entries = toCreate.map((m) =>
-        this.repo.create({
+        repo.create({
           residentId,
           date: m.date as unknown as Date,
           type: FollowUpType.MONTHLY_CONTRIBUTION,
@@ -131,15 +137,21 @@ export class ResidentFollowUpService {
           createdById: staff?.id ?? null,
         }),
       );
-      await this.repo.save(entries);
+      await repo.save(entries);
     }
 
     return { created: toCreate.length, skipped: dto.months.length - toCreate.length };
   }
 
-  async createAuto(residentId: string, type: FollowUpType, date?: string): Promise<void> {
+  async createAuto(
+    residentId: string,
+    type: FollowUpType,
+    date?: string,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const repo = manager ? manager.getRepository(ResidentFollowUp) : this.repo;
     const today = date ?? new Date().toISOString().split('T')[0];
-    const entry = this.repo.create({
+    const entry = repo.create({
       residentId,
       date: today as unknown as Date,
       type,
@@ -147,7 +159,7 @@ export class ResidentFollowUpService {
       accessLevel: FollowUpAccessLevel.ALL,
       createdById: null,
     });
-    await this.repo.save(entry);
+    await repo.save(entry);
   }
 
   async uploadAttachment(followUpId: string, residentId: string, file: Express.Multer.File): Promise<ResidentFollowUpView> {

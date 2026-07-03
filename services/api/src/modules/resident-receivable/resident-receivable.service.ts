@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import {
   FamilyInvestment,
   NotificationType,
@@ -132,13 +132,17 @@ export class ResidentReceivableService {
     return new Map(rows.map((r) => [r.residentId, String(r.lastMonth).slice(0, 10)]));
   }
 
-  /** Generates the 6 mandatory installments from entry_date (idempotent). */
-  async generateSchedule(residentId: string): Promise<void> {
-    const resident = await this.residentRepo.findOne({ where: { id: residentId } });
+  /**
+   * Generates the 6 mandatory installments from entry_date (idempotent).
+   * `manager` opcional: roda dentro de uma transação externa (commit do import).
+   */
+  async generateSchedule(residentId: string, manager?: EntityManager): Promise<void> {
+    const residentRepo = manager ? manager.getRepository(Resident) : this.residentRepo;
+    const resident = await residentRepo.findOne({ where: { id: residentId } });
     if (!resident || !resident.entryDate) return;
     const startIdx = this.startIndex(resident);
     if (startIdx == null) return;
-    await this.materializeUpTo(resident, startIdx + TREATMENT_MONTHS - 1);
+    await this.materializeUpTo(resident, startIdx + TREATMENT_MONTHS - 1, manager);
   }
 
   /** Rolls the carnê so there is always at least one open month ahead while active. */
@@ -316,15 +320,20 @@ export class ResidentReceivableService {
   }
 
   /** Creates any missing installments from the entry month through untilIdx (inclusive). */
-  private async materializeUpTo(resident: Resident, untilIdx: number): Promise<void> {
+  private async materializeUpTo(
+    resident: Resident,
+    untilIdx: number,
+    manager?: EntityManager,
+  ): Promise<void> {
     const startIdx = this.startIndex(resident);
     if (startIdx == null || untilIdx < startIdx) return;
 
+    const repo = manager ? manager.getRepository(ResidentReceivable) : this.repo;
     const plan = resident.familyInvestment!;
     const amount = resolveAmount(plan, resident.familyInvestmentAmount);
     const dueDay = this.dueDay(resident);
 
-    const existing = await this.repo.find({
+    const existing = await repo.find({
       where: { residentId: resident.id },
       select: ['referenceMonth'],
     });
@@ -337,7 +346,7 @@ export class ResidentReceivableService {
       const key = `${year}-${pad(month0 + 1)}`;
       if (existingKeys.has(key)) continue;
       toCreate.push(
-        this.repo.create({
+        repo.create({
           residentId: resident.id,
           referenceMonth: refMonthStr(year, month0) as unknown as Date,
           dueDate: dueDateStr(year, month0, dueDay) as unknown as Date,
@@ -348,7 +357,7 @@ export class ResidentReceivableService {
         }),
       );
     }
-    if (toCreate.length > 0) await this.repo.save(toCreate);
+    if (toCreate.length > 0) await repo.save(toCreate);
   }
 
   private toView(item: ResidentReceivable): ResidentReceivableView {

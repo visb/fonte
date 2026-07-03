@@ -49,6 +49,10 @@ const spreadsheetParser = {
 const importMatch = {
   parseDocxWithSpreadsheet: jest.fn().mockResolvedValue({ matchStatus: 'unmatched' }),
 };
+const importSvc = {
+  checkConflict: jest.fn().mockResolvedValue({ conflicts: [] }),
+  commit: jest.fn().mockResolvedValue({ resident: { id: 'r1' }, contributionsCreated: { created: 0, skipped: 0 } }),
+};
 
 function make() {
   const rs = residentSvc();
@@ -60,6 +64,7 @@ function make() {
     docxParser as never,
     spreadsheetParser as never,
     importMatch as never,
+    importSvc as never,
   );
   return { c, rs };
 }
@@ -112,6 +117,14 @@ describe('ResidentController', () => {
     expect(() => c.parseDocxWithSpreadsheet(file, 'não-é-json')).toThrow();
     expect(() => c.parseDocxWithSpreadsheet(file, JSON.stringify({ nope: true }))).toThrow();
     expect(() => c.parseDocxWithSpreadsheet(file, '')).toThrow();
+  });
+
+  it('import conflito/commit delegam ao ImportService', async () => {
+    const { c } = make();
+    await c.checkImportConflict('Ana', '111');
+    await c.commitImport({ resident: { name: 'Ana' } } as never, user);
+    expect(importSvc.checkConflict).toHaveBeenCalledWith('Ana', '111');
+    expect(importSvc.commit).toHaveBeenCalledWith({ resident: { name: 'Ana' } }, 'u1');
   });
 
   it('follow-up endpoints delegate', async () => {

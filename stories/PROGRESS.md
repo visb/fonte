@@ -36,7 +36,7 @@ Cuidados:
 | --- | --- | --- | --- | --- | --- |
 | 1 | 99 — sugerir matrícula de elegíveis (curso) | [OK] | api 1053 · e2e 408 · cov≥90 | 289823b | bff28f9 |
 | — | 100 — EPIC import em lote (mapa) | [ ] | n/a | | |
-| 2 | 101 — parse da planilha `.xlsx` (backend) | [ ] | | | |
+| 2 | 101 — parse da planilha `.xlsx` (backend) | [OK] | api 1069 · e2e 413 · cov≥90 | 8e75ad3 | 1d9580b |
 | 3 | 102 — cross-match planilha × ficha (backend) | [ ] | | | |
 | 4 | 103 — conflito + commit atômico (backend) | [ ] | | | |
 | 5 | 104 — tela de import em lote, fila e cards (front) | [ ] | | | |
@@ -48,6 +48,7 @@ Cuidados:
 Entrada curta — máx. ~3 linhas. Detalhe rico vai no corpo do commit ou no `.md` arquivado.
 
 - [OK] 99 — testes: api 1053/1053, e2e 408/408 (bible-courses 35/35), cov escopo ≥90 (front 97.6% / back módulo 93.3%) — commit 289823b — merge bff28f9 — 2026-07-03
+- [OK] 101 — testes: api 1069/1069, e2e 413/413, cov escopo parser 97.4% (+normalize 100%) — commit 8e75ad3 — merge 1d9580b — 2026-07-03 — nota: exceljs add; fixture anonimizada test/fixtures/import-residents.xlsx; contributionMonths derivado de entryMonth+(N-1)
 
 ## Resumo final
 

@@ -3,8 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/errors';
+import { useHouses } from '@/features/houses/hooks/useHouses';
 import type { ImportQueueItem } from '../../hooks/useBulkImport';
-import { useCheckImportConflict } from '../../hooks/useBulkImport';
+import { useCheckImportConflict, useCommitImport } from '../../hooks/useBulkImport';
+import { buildCommitPayloadFromPreview } from '../../lib/importCommit';
 import {
   IMPORT_ITEM_STATUS_LABELS,
   IMPORT_ITEM_STATUS_VARIANT,
@@ -15,8 +18,11 @@ import {
 interface ImportItemCardProps {
   item: ImportQueueItem;
   onRemove: (id: string) => void;
-  onApprove?: (item: ImportQueueItem) => void;
   onViewFicha?: (item: ImportQueueItem) => void;
+  /** Chamado quando o commit direto pelo card conclui — a fila marca `imported`. */
+  onImported?: (id: string) => void;
+  /** Nome de um filho já aprovado nesta sessão que conflita com este item. */
+  sessionConflictName?: string | null;
 }
 
 function formatDate(value: unknown): string | null {
@@ -30,7 +36,13 @@ function countWarnings(warnings: Record<string, string>): number {
   return Object.values(warnings).filter(Boolean).length;
 }
 
-export function ImportItemCard({ item, onRemove, onApprove, onViewFicha }: ImportItemCardProps) {
+export function ImportItemCard({
+  item,
+  onRemove,
+  onViewFicha,
+  onImported,
+  sessionConflictName,
+}: ImportItemCardProps) {
   const { preview, status } = item;
   const resident = (preview?.resident ?? {}) as Record<string, unknown>;
   const name = typeof resident.name === 'string' ? resident.name : null;
@@ -39,12 +51,28 @@ export function ImportItemCard({ item, onRemove, onApprove, onViewFicha }: Impor
   const exitDate = formatDate(resident.exitDate);
   const houseName = preview?.matchedHouseName ?? preview?.houseName ?? null;
 
+  const { data: houses = [], isPending: housesLoading } = useHouses();
   const conflictQuery = useCheckImportConflict(name, cpf, { enabled: status === 'ready' });
   const conflicts = conflictQuery.data?.conflicts ?? [];
   const warningsCount = preview ? countWarnings(preview.warnings) : 0;
+  const commit = useCommitImport();
+
+  const isImported = status === 'imported';
+  const blockedReason = conflicts.length > 0
+    ? IMPORT_TEXTS.conflictReason
+    : sessionConflictName
+      ? IMPORT_TEXTS.sessionConflictReason
+      : null;
+
+  const handleApprove = () => {
+    if (!preview) return;
+    commit.mutate(buildCommitPayloadFromPreview(preview, houses), {
+      onSuccess: () => onImported?.(item.id),
+    });
+  };
 
   return (
-    <Card className="p-4">
+    <Card className="p-4" data-testid="import-item-card">
       <div className="flex items-start gap-4">
         {/* Foto */}
         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -71,7 +99,7 @@ export function ImportItemCard({ item, onRemove, onApprove, onViewFicha }: Impor
             <p className="text-sm text-destructive">{item.error}</p>
           )}
 
-          {status === 'ready' && preview && (
+          {(status === 'ready' || isImported) && preview && (
             <div className="space-y-1 text-sm text-muted-foreground">
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {entryDate && (
@@ -100,29 +128,50 @@ export function ImportItemCard({ item, onRemove, onApprove, onViewFicha }: Impor
                     {IMPORT_TEXTS.conflictBadge}: {conflicts[0].name}
                   </Badge>
                 )}
+                {sessionConflictName && (
+                  <Badge variant="destructive" className="gap-1">
+                    <AlertTriangle size={11} />
+                    {IMPORT_TEXTS.sessionConflictReason}
+                  </Badge>
+                )}
               </div>
+              {commit.isError && (
+                <p className="text-sm text-destructive">
+                  {getErrorMessage(commit.error, IMPORT_TEXTS.commitError)}
+                </p>
+              )}
             </div>
           )}
         </div>
 
         {/* Ações */}
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            title="Remover"
-            onClick={() => onRemove(item.id)}
-          >
-            <Trash2 size={15} />
-          </Button>
+          {!isImported && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              title="Remover"
+              onClick={() => onRemove(item.id)}
+            >
+              <Trash2 size={15} />
+            </Button>
+          )}
           {status === 'ready' && (
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => onViewFicha?.(item)}>
-                Ver ficha
+                {IMPORT_TEXTS.viewFicha}
               </Button>
-              <Button type="button" size="sm" onClick={() => onApprove?.(item)}>
-                Aprovar
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1"
+                disabled={!!blockedReason || commit.isPending || housesLoading}
+                title={blockedReason ?? undefined}
+                onClick={handleApprove}
+              >
+                {commit.isPending && <Loader2 size={12} className="animate-spin" />}
+                {IMPORT_TEXTS.approve}
               </Button>
             </div>
           )}

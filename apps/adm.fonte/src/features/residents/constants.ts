@@ -140,14 +140,19 @@ export const FOLLOW_UP_ACCESS_LABELS: Record<FollowUpAccessLevel, string> = {
  */
 export const IMPORT_BATCH_SIZE = 5;
 
-/** Estado de um item da fila de import em lote. */
-export type ImportItemStatus = 'queued' | 'processing' | 'ready' | 'error';
+/**
+ * Estado de um item da fila de import em lote. `imported` é o estado final após
+ * o commit aprovado (story 105): o card permanece na lista para dar feedback do
+ * que já entrou, mas sai da contagem de pendentes.
+ */
+export type ImportItemStatus = 'queued' | 'processing' | 'ready' | 'error' | 'imported';
 
 export const IMPORT_ITEM_STATUS_LABELS: Record<ImportItemStatus, string> = {
   queued: 'Na fila',
   processing: 'Processando...',
   ready: 'Pronto',
   error: 'Erro',
+  imported: 'Importado',
 };
 
 export const IMPORT_ITEM_STATUS_VARIANT: Record<ImportItemStatus, BadgeVariant> = {
@@ -155,6 +160,7 @@ export const IMPORT_ITEM_STATUS_VARIANT: Record<ImportItemStatus, BadgeVariant> 
   processing: 'info',
   ready: 'success',
   error: 'destructive',
+  imported: 'success',
 };
 
 /** Textos da tela de import em lote. */
@@ -165,7 +171,32 @@ export const IMPORT_TEXTS = {
   onlyXlsx: 'Apenas planilhas .xlsx são aceitas.',
   conflictBadge: 'Conflito',
   okSummary: 'Sem alertas',
+  // Aprovação / commit (story 105).
+  approve: 'Aprovar',
+  viewFicha: 'Ver ficha',
+  modalTitle: 'Ficha do filho',
+  modalDescription: 'Revise e edite os dados antes de aprovar a importação.',
+  approving: 'Aprovando...',
+  imported: 'Filho importado com sucesso.',
+  conflictReason: 'Resolva o conflito antes de aprovar.',
+  sessionConflictReason: 'Já importado nesta sessão.',
+  noRelativesReason: 'Cadastre ao menos um familiar para aprovar.',
+  commitError: 'Não foi possível aprovar a importação.',
+  relativesTitle: 'Familiares',
+  addRelative: 'Adicionar familiar',
 } as const;
+
+/** Prefixo do alerta de conflito com um filho já importado nesta sessão. */
+export function sessionConflictMessage(name: string): string {
+  return `Já importado nesta sessão: ${name}.`;
+}
+
+/** Alerta de conflito com filho(s) já cadastrado(s) (nome/CPF). */
+export function existingConflictMessage(names: string[]): string {
+  return names.length === 1
+    ? `Já existe um filho cadastrado que confere: ${names[0]}.`
+    : `Já existem filhos cadastrados que conferem: ${names.join(', ')}.`;
+}
 
 /** Rótulo de resumo a partir da contagem de alertas (warnings). */
 export function importWarningsSummary(count: number): string {

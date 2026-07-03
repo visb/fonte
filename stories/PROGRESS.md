@@ -34,7 +34,7 @@ Cuidados:
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 99 — sugerir matrícula de elegíveis (curso) | [ ] | | | |
+| 1 | 99 — sugerir matrícula de elegíveis (curso) | [OK] | api 1053 · e2e 408 · cov≥90 | 289823b | bff28f9 |
 | — | 100 — EPIC import em lote (mapa) | [ ] | n/a | | |
 | 2 | 101 — parse da planilha `.xlsx` (backend) | [ ] | | | |
 | 3 | 102 — cross-match planilha × ficha (backend) | [ ] | | | |
@@ -47,7 +47,7 @@ Cuidados:
 
 Entrada curta — máx. ~3 linhas. Detalhe rico vai no corpo do commit ou no `.md` arquivado.
 
-- (rodada aberta — sem stories fechadas ainda)
+- [OK] 99 — testes: api 1053/1053, e2e 408/408 (bible-courses 35/35), cov escopo ≥90 (front 97.6% / back módulo 93.3%) — commit 289823b — merge bff28f9 — 2026-07-03
 
 ## Resumo final
 

@@ -8,3 +8,7 @@ coverage/
 todo.md
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# PII real — planilha de referência do import de filhos (story 106). Fixtures anonimizadas
+# vivem em services/api/test/fixtures/ e não são bloqueadas por este padrão.
+/stories/*.xlsx

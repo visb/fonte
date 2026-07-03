@@ -46,6 +46,7 @@ Categorias: **P** = dado pessoal; **S** = dado pessoal sensível (art. 11).
 | Sem política de retenção / purga / anonimização | Médio | art. 15, 16 | `backup.service.ts` (só retém backup) | Retenção |
 | Arquivos órfãos no bucket após exclusão | Médio | art. 16 | `resident.service.ts` (attachments não removidos) | Retenção |
 | Backups com PII completa sem anonimização | Médio | art. 6 | `backup.service.ts`, `database/backup-export.ts` | Retenção |
+| Planilha de filhos com PII real versionada no git (story 106) | Alto | art. 6 | `stories/lista-filhos.xlsx` — removida do working tree; **purga do histórico + force-push pendente (manual)** | Retenção |
 
 > Nota: o módulo de mensagens (`message.service.ts`) é o **único** que já força escopo por casa no service — serve de referência para corrigir os demais.
 

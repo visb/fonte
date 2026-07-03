@@ -9,6 +9,7 @@ import type {
   ListResidentsParams,
   PaginatedResponse,
   ParseDocxResult,
+  ParseSpreadsheetResult,
   ReadmitResidentInput,
   Resident,
   ResidentFollowUp,
@@ -111,6 +112,13 @@ export function createResidentsModule(http: AxiosInstance) {
     parseDocx: (formData: FormData): Promise<ParseDocxResult> =>
       http
         .post<ParseDocxResult>('/residents/import/parse-docx', formData, { headers: { 'Content-Type': undefined } })
+        .then((r) => r.data),
+
+    parseSpreadsheet: (formData: FormData): Promise<ParseSpreadsheetResult> =>
+      http
+        .post<ParseSpreadsheetResult>('/residents/import/parse-spreadsheet', formData, {
+          headers: { 'Content-Type': undefined },
+        })
         .then((r) => r.data),
 
     bulkCreateContributions: (id: string, data: BulkCreateContributionsInput): Promise<{ created: number; skipped: number }> =>

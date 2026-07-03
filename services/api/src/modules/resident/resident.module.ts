@@ -17,6 +17,7 @@ import { CensusController } from './census.controller';
 import { ResidentService } from './resident.service';
 import { CensusService } from './census.service';
 import { DocxParserService } from './docx-parser.service';
+import { SpreadsheetImportService } from './spreadsheet-parser.service';
 
 @Module({
   imports: [
@@ -36,7 +37,7 @@ import { DocxParserService } from './docx-parser.service';
     StaffModule,
   ],
   controllers: [ResidentController, CensusController],
-  providers: [ResidentService, CensusService, DocxParserService],
+  providers: [ResidentService, CensusService, DocxParserService, SpreadsheetImportService],
   exports: [ResidentService],
 })
 export class ResidentModule {}

@@ -274,6 +274,28 @@ export interface GetContributionsReportParams {
   houseId?: string;
 }
 
+// ─── Import em lote — parse da planilha de referência (.xlsx) ──────────────────
+
+/** Uma linha da planilha de referência: um filho, já normalizado para o match. */
+export interface SpreadsheetImportRow {
+  houseName: string; // nome da aba
+  name: string | null;
+  nameNormalized: string | null; // lowercase, sem acento, trim, espaços colapsados
+  cpf: string | null; // só dígitos
+  familyContact: string | null;
+  entryDate: string | null; // ISO YYYY-MM-DD
+  exitDate: string | null; // ISO YYYY-MM-DD
+  contributionMonths: string[]; // competências pagas: ['2023-01-01', ...]
+}
+
+/** Resultado stateless do parse da planilha de referência. */
+export interface ParseSpreadsheetResult {
+  rows: SpreadsheetImportRow[];
+  houses: string[]; // abas consideradas (uma por casa)
+  skipped: number; // linhas descartadas (sem nome e sem cpf)
+  ignoredSheets: string[]; // abas ignoradas (ex.: curso bíblico)
+}
+
 // ─── Receivables (carnê de contribuição) ──────────────────────────────────────
 
 export enum ReceivableStatus {

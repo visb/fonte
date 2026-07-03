@@ -1289,6 +1289,8 @@ export interface ParseDocxResult {
   photoBase64: string | null;
 }
 
+export type { SpreadsheetImportRow, ParseSpreadsheetResult } from '@fonte/types';
+
 // ─── Street Sales ─────────────────────────────────────────────────────────────
 
 export interface CreateStreetSaleInput {

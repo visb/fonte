@@ -39,7 +39,7 @@ Cuidados:
 | 2 | 101 — parse da planilha `.xlsx` (backend) | [OK] | api 1069 · e2e 413 · cov≥90 | 8e75ad3 | 1d9580b |
 | 3 | 102 — cross-match planilha × ficha (backend) | [OK] | api 1085 · e2e 417 · cov 100% | ca4706a | 57cfbc4 |
 | 4 | 103 — conflito + commit atômico (backend) | [OK] | api 1098 · e2e 424 · cov 98% | 7cafb72 | c914401 |
-| 5 | 104 — tela de import em lote, fila e cards (front) | [ ] | | | |
+| 5 | 104 — tela de import em lote, fila e cards (front) | [OK] | adm unit 1043 · e2e ok · cov escopo≥90 | 2e2a61f | 7c06039 |
 | 6 | 105 — modal da ficha editável + aprovação (front) | [ ] | | | |
 | 7 | 106 — remover planilha + purgar história git | [PENDENTE-MANUAL] | n/a | | |
 
@@ -51,6 +51,7 @@ Entrada curta — máx. ~3 linhas. Detalhe rico vai no corpo do commit ou no `.m
 - [OK] 101 — testes: api 1069/1069, e2e 413/413, cov escopo parser 97.4% (+normalize 100%) — commit 8e75ad3 — merge 1d9580b — 2026-07-03 — nota: exceljs add; fixture anonimizada test/fixtures/import-residents.xlsx; contributionMonths derivado de entryMonth+(N-1)
 - [OK] 102 — testes: api 1085/1085, e2e 417/417, cov escopo import-match 100% — commit ca4706a — merge 57cfbc4 — 2026-07-03 — nota: e2e stuba DocxParserService (sem chave Anthropic); parse .docx real = mock
 - [OK] 103 — testes: api 1098/1098, e2e 424/424, cov escopo import.service 98% — commit 7cafb72 — merge c914401 — 2026-07-03 — nota: add manager?:EntityManager opcional a create/uploadPhoto/bulkContributions p/ transação única; checkConflict filtra em JS via normalizeName
+- [OK] 104 — testes: adm unit 1043/1043, e2e bulk-import 2/2 + residents 27/27, cov escopo ≥90 (files novos 100% stmts/func) — commit 2e2a61f — merge 7c06039 — 2026-07-03 — nota: E2E intercepta rotas parse/conflict (sem chave Anthropic); rota /residents/import-lote
 
 ## Resumo final
 

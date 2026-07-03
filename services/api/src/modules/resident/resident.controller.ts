@@ -53,6 +53,8 @@ import { SetContributionExemptDto } from '../resident-receivable/dto/set-contrib
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 import { ContributionsReportResponse } from '@fonte/types';
 import { DocxParserService, ParseDocxResult } from './docx-parser.service';
+import { SpreadsheetImportService } from './spreadsheet-parser.service';
+import { ParseSpreadsheetResult } from '@fonte/types';
 
 const photoOptions = {
   storage: memoryStorage(),
@@ -88,6 +90,16 @@ const docxOptions = {
   },
 };
 
+const spreadsheetOptions = {
+  storage: memoryStorage(),
+  fileFilter: (_req: unknown, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
+    if (file.mimetype !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      return cb(new BadRequestException('Apenas arquivos .xlsx sÃ£o permitidos'), false);
+    }
+    cb(null, true);
+  },
+};
+
 @Controller('residents')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ResidentController {
@@ -97,6 +109,7 @@ export class ResidentController {
     private followUpService: ResidentFollowUpService,
     private receivableService: ResidentReceivableService,
     private docxParserService: DocxParserService,
+    private spreadsheetImportService: SpreadsheetImportService,
   ) {}
 
   @Get()
@@ -149,6 +162,24 @@ export class ResidentController {
     file: Express.Multer.File,
   ): Promise<ParseDocxResult> {
     return this.docxParserService.parseDocx(file.buffer);
+  }
+
+  @Post('import/parse-spreadsheet')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  // O CPF é a chave de match do import (story 102); só ADMIN/COORDINATOR chegam
+  // aqui, então devolvemos o documento completo em vez de mascarado.
+  @RevealSensitive()
+  @UseInterceptors(FileInterceptor('file', spreadsheetOptions))
+  parseSpreadsheet(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 })],
+        exceptionFactory: () => new BadRequestException('Arquivo muito grande: mÃ¡ximo 10 MB'),
+      }),
+    )
+    file: Express.Multer.File,
+  ): Promise<ParseSpreadsheetResult> {
+    return this.spreadsheetImportService.parseSpreadsheet(file.buffer);
   }
 
   @Get(':id')

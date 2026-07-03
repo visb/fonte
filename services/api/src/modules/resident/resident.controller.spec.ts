@@ -43,10 +43,20 @@ const receivable = {
   reopenPayment: jest.fn().mockResolvedValue({ id: 'rcv1' }),
 };
 const docxParser = { parseDocx: jest.fn().mockResolvedValue({ resident: {} }) };
+const spreadsheetParser = {
+  parseSpreadsheet: jest.fn().mockResolvedValue({ rows: [], houses: [], skipped: 0, ignoredSheets: [] }),
+};
 
 function make() {
   const rs = residentSvc();
-  const c = new ResidentController(rs as never, docTpl as never, followUp as never, receivable as never, docxParser as never);
+  const c = new ResidentController(
+    rs as never,
+    docTpl as never,
+    followUp as never,
+    receivable as never,
+    docxParser as never,
+    spreadsheetParser as never,
+  );
   return { c, rs };
 }
 
@@ -78,6 +88,12 @@ describe('ResidentController', () => {
     const { c } = make();
     await c.parseDocx(file);
     expect(docxParser.parseDocx).toHaveBeenCalledWith(file.buffer);
+  });
+
+  it('parseSpreadsheet delegates to the parser', async () => {
+    const { c } = make();
+    await c.parseSpreadsheet(file);
+    expect(spreadsheetParser.parseSpreadsheet).toHaveBeenCalledWith(file.buffer);
   });
 
   it('follow-up endpoints delegate', async () => {

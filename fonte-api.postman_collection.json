@@ -1617,6 +1617,34 @@
           }
         },
         {
+          "name": "Parse Reference Spreadsheet",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Planilha de referência .xlsx (uma aba por casa; máx 10 MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/residents/import/parse-spreadsheet",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "import",
+                "parse-spreadsheet"
+              ]
+            },
+            "description": "Parse stateless da planilha de referência .xlsx do import em lote. Cada aba é uma casa (ignora a aba de curso bíblico). Retorna ParseSpreadsheetResult { rows, houses, skipped, ignoredSheets } com nome/cpf/datas normalizados e contribuições em meses ISO. Não persiste nada. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
           "name": "Get admission documents",
           "request": {
             "method": "GET",

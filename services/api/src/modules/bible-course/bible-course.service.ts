@@ -5,8 +5,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BibleCourseEnrollmentStatus } from '@fonte/types';
-import { BibleClassGrades } from '@fonte/types';
+import { BibleCourseEnrollmentStatus, ResidentStatus } from '@fonte/types';
+import { BibleClassGrades, EligibleResident } from '@fonte/types';
 import { BibleCourseClass } from './bible-course-class.entity';
 import { BibleCourseEnrollment } from './bible-course-enrollment.entity';
 import { BibleCourseModule } from './bible-course-module.entity';
@@ -18,6 +18,12 @@ import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
 import { UpsertGradeDto } from './dto/upsert-grade.dto';
+
+/**
+ * Tempo mínimo de casa (em meses) para um filho ser sugerido para matrícula no
+ * curso bíblico. Configurável via query param `months`; a constante é o default.
+ */
+export const ELIGIBLE_TREATMENT_MONTHS = 3;
 
 @Injectable()
 export class BibleCourseService {
@@ -215,6 +221,113 @@ export class BibleCourseService {
         notes: dto.notes ?? null,
       }),
     );
+  }
+
+  /**
+   * Meses completos entre duas datas (mesmo cálculo de "tempo de casa"): conta a
+   * diferença de meses do calendário e desconta 1 se o dia do mês ainda não
+   * chegou no mês corrente.
+   */
+  static monthsBetween(from: Date, to: Date): number {
+    let months =
+      (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+    if (to.getDate() < from.getDate()) months -= 1;
+    return months;
+  }
+
+  /**
+   * Filhos elegíveis para sugestão de matrícula no curso, de TODAS as casas:
+   * ativos (`status ∈ {ACTIVE, DISCIPLINE}` e `exitDate` nulo), com pelo menos
+   * `months` meses de casa (`entryDate <= hoje − months`) e sem matrícula ativa
+   * (qualquer enrollment não-desistente em turma não deletada). Ordena por
+   * `entryDate` (mais antigo primeiro).
+   */
+  async findEligibleResidents(
+    months: number = ELIGIBLE_TREATMENT_MONTHS,
+  ): Promise<EligibleResident[]> {
+    const rows: Array<{
+      id: string;
+      name: string;
+      photoThumbUrl: string | null;
+      entryDate: string;
+      houseId: string;
+      houseName: string | null;
+    }> = await this.classRepo.manager.query(
+      `SELECT r.id,
+              r.name,
+              r.photo_thumb_url   AS "photoThumbUrl",
+              r.entry_date::text  AS "entryDate",
+              r.house_id          AS "houseId",
+              h.name              AS "houseName"
+       FROM residents r
+       LEFT JOIN houses h ON h.id = r.house_id
+       WHERE r.deleted_at IS NULL
+         AND r.status IN ('${ResidentStatus.ACTIVE}', '${ResidentStatus.DISCIPLINE}')
+         AND r.exit_date IS NULL
+         AND r.entry_date IS NOT NULL
+         AND r.entry_date <= (CURRENT_DATE - ($1::int * INTERVAL '1 month'))
+         AND NOT EXISTS (
+           SELECT 1
+           FROM bible_course_enrollments e
+           JOIN bible_course_classes c ON c.id = e.class_id AND c.deleted_at IS NULL
+           WHERE e.resident_id = r.id
+             AND e.deleted_at IS NULL
+             AND e.status <> '${BibleCourseEnrollmentStatus.DROPPED}'
+         )
+       ORDER BY r.entry_date ASC`,
+      [months],
+    );
+
+    const today = new Date();
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      photoThumbUrl: row.photoThumbUrl,
+      entryDate: row.entryDate,
+      monthsInTreatment: BibleCourseService.monthsBetween(
+        new Date(row.entryDate + 'T00:00:00'),
+        today,
+      ),
+      houseId: row.houseId,
+      houseName: row.houseName ?? '',
+    }));
+  }
+
+  /**
+   * Matrícula em lote atômica: matricula todos os `residentIds` na turma numa
+   * única transação. Deduplica ids repetidos, ignora quem já está matriculado
+   * nessa turma e faz rollback se algum residente não existir.
+   */
+  async enrollBulk(
+    classId: string,
+    residentIds: string[],
+  ): Promise<{ enrolled: number }> {
+    const klass = await this.classRepo.findOne({ where: { id: classId } });
+    if (!klass) throw new NotFoundException(`BibleCourseClass ${classId} not found`);
+
+    const uniqueIds = [...new Set(residentIds)];
+
+    return this.enrollmentRepo.manager.transaction(async (manager) => {
+      let enrolled = 0;
+      for (const residentId of uniqueIds) {
+        const [resident] = await manager.query<Array<{ id: string }>>(
+          `SELECT id FROM residents WHERE id = $1 AND deleted_at IS NULL`,
+          [residentId],
+        );
+        if (!resident) throw new NotFoundException(`Resident ${residentId} not found`);
+
+        const existing = await manager.findOne(BibleCourseEnrollment, {
+          where: { classId, residentId },
+        });
+        if (existing) continue;
+
+        await manager.save(
+          manager.create(BibleCourseEnrollment, { classId, residentId }),
+        );
+        enrolled += 1;
+      }
+      return { enrolled };
+    });
   }
 
   async updateEnrollment(id: string, dto: UpdateEnrollmentDto): Promise<BibleCourseEnrollment> {

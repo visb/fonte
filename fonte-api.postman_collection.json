@@ -3417,6 +3417,30 @@
           }
         },
         {
+          "name": "List Eligible Residents",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes/eligible-residents?months=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes",
+                "eligible-residents"
+              ],
+              "query": [
+                {
+                  "key": "months",
+                  "value": "3",
+                  "description": "Tempo mínimo de casa em meses (default 3). Filhos ativos (ACTIVE/DISCIPLINE, exitDate nulo) com entryDate <= hoje − months e sem matrícula ativa, de todas as casas."
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "Update Class",
           "request": {
             "method": "PATCH",
@@ -3484,6 +3508,35 @@
                 "classes",
                 "{{bibleClassId}}",
                 "enrollments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Enroll Residents (bulk)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"residentIds\": [\"{{residentId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}/enrollments/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "classes",
+                "{{bibleClassId}}",
+                "enrollments",
+                "bulk"
               ]
             }
           }

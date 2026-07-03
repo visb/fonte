@@ -51,6 +51,25 @@ export function useDeleteBibleClass() {
   });
 }
 
+export function useEligibleResidents(options?: { enabled?: boolean; months?: number }) {
+  return useQuery({
+    queryKey: queryKeys.bibleCourses.eligibleResidents(options?.months),
+    queryFn: () => api.bibleCourse.listEligibleResidents(options?.months),
+    enabled: options?.enabled ?? true,
+  });
+}
+
+export function useEnrollBulk(classId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (residentIds: string[]) => api.bibleCourse.enrollBulk(classId, residentIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.detail(classId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.all });
+    },
+  });
+}
+
 export function useEnrollResident(classId: string) {
   const queryClient = useQueryClient();
   return useMutation({

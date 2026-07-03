@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -17,7 +19,8 @@ import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { BibleCourseService } from './bible-course.service';
+import { BibleCourseService, ELIGIBLE_TREATMENT_MONTHS } from './bible-course.service';
+import { BulkEnrollDto } from './dto/bulk-enroll.dto';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
@@ -75,6 +78,16 @@ export class BibleCourseController {
     return this.service.createClass(dto);
   }
 
+  // Precede `classes/:id` para não ser capturado pelo ParseUUIDPipe da rota dinâmica.
+  @Get('classes/eligible-residents')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  findEligibleResidents(
+    @Query('months', new DefaultValuePipe(ELIGIBLE_TREATMENT_MONTHS), ParseIntPipe)
+    months: number,
+  ) {
+    return this.service.findEligibleResidents(months);
+  }
+
   @Get('classes/:id')
   @Roles(Role.ADMIN, Role.COORDINATOR)
   findOneClass(@Param('id', ParseUUIDPipe) id: string) {
@@ -106,6 +119,15 @@ export class BibleCourseController {
     @Body() dto: CreateEnrollmentDto,
   ) {
     return this.service.enroll(id, dto);
+  }
+
+  @Post('classes/:id/enrollments/bulk')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  enrollBulk(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: BulkEnrollDto,
+  ) {
+    return this.service.enrollBulk(id, dto.residentIds);
   }
 
   @Patch('enrollments/:id')

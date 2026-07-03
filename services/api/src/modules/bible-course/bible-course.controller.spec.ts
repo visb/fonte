@@ -11,7 +11,9 @@ function svc() {
     findOneClass: jest.fn().mockResolvedValue({ id: 'cl1' }),
     updateClass: jest.fn().mockResolvedValue({ id: 'cl1' }),
     removeClass: jest.fn().mockResolvedValue(undefined),
+    findEligibleResidents: jest.fn().mockResolvedValue([]),
     enroll: jest.fn().mockResolvedValue({ id: 'en1' }),
+    enrollBulk: jest.fn().mockResolvedValue({ enrolled: 2 }),
     updateEnrollment: jest.fn().mockResolvedValue({ id: 'en1' }),
     removeEnrollment: jest.fn().mockResolvedValue(undefined),
     getClassGrades: jest.fn().mockResolvedValue([]),
@@ -34,13 +36,17 @@ describe('BibleCourseController', () => {
     await c.findOneClass('cl1');
     await c.updateClass('cl1', { name: 'Y' } as never);
     await c.removeClass('cl1');
+    await c.findEligibleResidents(3);
     await c.enroll('cl1', { residentId: 'res1' } as never);
+    await c.enrollBulk('cl1', { residentIds: ['res1', 'res2'] } as never);
     await c.updateEnrollment('en1', { status: 'DONE' } as never);
     await c.removeEnrollment('en1');
     await c.getClassGrades('cl1');
     await c.upsertGrade('en1', 'mod1', { grade: 9 } as never);
     expect(s.findAllClasses).toHaveBeenCalledWith('OPEN');
+    expect(s.findEligibleResidents).toHaveBeenCalledWith(3);
     expect(s.enroll).toHaveBeenCalledWith('cl1', { residentId: 'res1' });
+    expect(s.enrollBulk).toHaveBeenCalledWith('cl1', ['res1', 'res2']);
     expect(s.upsertGrade).toHaveBeenCalledWith('en1', 'mod1', { grade: 9 });
   });
 });

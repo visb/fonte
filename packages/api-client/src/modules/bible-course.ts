@@ -6,6 +6,8 @@ import type {
   CreateBibleCourseClassInput,
   UpdateBibleCourseClassInput,
   EnrollResidentInput,
+  EligibleResident,
+  BulkEnrollResult,
   UpdateBibleCourseEnrollmentInput,
   BibleCourseModule,
   CreateBibleCourseModuleInput,
@@ -37,8 +39,19 @@ export function createBibleCourseModule(http: AxiosInstance) {
       http.patch<BibleCourseClass>(`/bible-course/classes/${id}`, data).then((r) => r.data),
     deleteClass: (id: string) => http.delete(`/bible-course/classes/${id}`),
 
+    listEligibleResidents: (months?: number) =>
+      http
+        .get<EligibleResident[]>('/bible-course/classes/eligible-residents', {
+          params: months != null ? { months } : undefined,
+        })
+        .then((r) => r.data),
+
     enroll: (classId: string, data: EnrollResidentInput) =>
       http.post<BibleCourseEnrollment>(`/bible-course/classes/${classId}/enrollments`, data).then((r) => r.data),
+    enrollBulk: (classId: string, residentIds: string[]) =>
+      http
+        .post<BulkEnrollResult>(`/bible-course/classes/${classId}/enrollments/bulk`, { residentIds })
+        .then((r) => r.data),
     updateEnrollment: (id: string, data: UpdateBibleCourseEnrollmentInput) =>
       http.patch<BibleCourseEnrollment>(`/bible-course/enrollments/${id}`, data).then((r) => r.data),
     removeEnrollment: (id: string) => http.delete(`/bible-course/enrollments/${id}`),

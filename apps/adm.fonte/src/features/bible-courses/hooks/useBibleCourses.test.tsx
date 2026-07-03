@@ -10,6 +10,8 @@ vi.mock('@/lib/api', () => ({
       updateClass: vi.fn(),
       deleteClass: vi.fn(),
       enroll: vi.fn(),
+      enrollBulk: vi.fn(),
+      listEligibleResidents: vi.fn(),
       updateEnrollment: vi.fn(),
       removeEnrollment: vi.fn(),
       getClassGrades: vi.fn(),
@@ -34,6 +36,8 @@ import {
   useEnrollResident,
   useUpdateEnrollment,
   useRemoveEnrollment,
+  useEligibleResidents,
+  useEnrollBulk,
 } from './useBibleCourses';
 import { useBibleClassGrades, useUpsertBibleGrade, useUpsertBibleGradesBulk } from './useBibleGrades';
 import {
@@ -100,6 +104,31 @@ describe('turmas', () => {
     rm.current.mutate('en1');
     await waitFor(() => expect(rm.current.isSuccess).toBe(true));
     expect(api.bibleCourse.removeEnrollment).toHaveBeenCalledWith('en1');
+  });
+
+  it('elegíveis: busca lista e desliga quando enabled=false', async () => {
+    vi.mocked(api.bibleCourse.listEligibleResidents).mockResolvedValue([] as never);
+
+    const { result } = renderHookWithClient(() => useEligibleResidents());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.bibleCourse.listEligibleResidents).toHaveBeenCalledWith(undefined);
+
+    const { result: off } = renderHookWithClient(() =>
+      useEligibleResidents({ enabled: false }),
+    );
+    expect(off.current.fetchStatus).toBe('idle');
+  });
+
+  it('matrícula em lote invalida detalhe e lista da turma', async () => {
+    vi.mocked(api.bibleCourse.enrollBulk).mockResolvedValue({ enrolled: 2 } as never);
+
+    const { result, queryClient } = renderHookWithClient(() => useEnrollBulk('c1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    result.current.mutate(['r1', 'r2']);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.bibleCourse.enrollBulk).toHaveBeenCalledWith('c1', ['r1', 'r2']);
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.bibleCourses.detail('c1') });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.bibleCourses.all });
   });
 });
 

@@ -4,11 +4,11 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import type { BibleCourseClassStatus } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { useBibleClassById, useUpdateBibleClass } from '../hooks/useBibleCourses';
 import { EnrollmentRow } from '../components/EnrollmentRow';
 import { EnrollResidentDialog } from '../components/EnrollResidentDialog';
+import { EligibleResidentsPanel } from '../components/EligibleResidentsPanel';
 import { BibleClassGradesSection } from '../components/BibleClassGradesSection';
 import { BibleCourseClassPhotoGallery } from '../components/BibleCourseClassPhotoGallery';
 import { CLASS_STATUS_OPTIONS, CLASS_STATUS_BADGE, CLASS_STATUS_LABELS } from '../constants';
@@ -112,7 +112,11 @@ export function BibleClassDetailPage() {
           </div>
 
           {klass.enrollments.length === 0 ? (
-            <EmptyState title="Nenhum filho matriculado." />
+            <EligibleResidentsPanel
+              classId={klass.id}
+              enrolledIds={enrolledIds}
+              enabled={klass.enrollments.length === 0}
+            />
           ) : (
             <div className="space-y-1">
               {klass.enrollments.map((e) => (

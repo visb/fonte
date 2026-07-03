@@ -115,6 +115,21 @@ export interface BibleClassGrades {
 }
 
 /**
+ * Filho elegível para sugestão de matrícula no curso bíblico (story 99): interno
+ * ativo com tempo mínimo de casa e sem matrícula ativa, de qualquer casa. A
+ * `houseName` é a casa atual (útil porque o interno é realocado ao matricular).
+ */
+export interface EligibleResident {
+  id: string;
+  name: string;
+  photoThumbUrl: string | null;
+  entryDate: string;
+  monthsInTreatment: number;
+  houseId: string;
+  houseName: string;
+}
+
+/**
  * Foto da galeria de uma turma do curso bíblico (story 92). Espelha o padrão de
  * `ActivityAttachment` simplificado (só imagens, sem comment/duration). A
  * `fileUrl` chega assinada pelo `StorageUrlInterceptor` em modo S3.

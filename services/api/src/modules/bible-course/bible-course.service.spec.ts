@@ -1,7 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { BibleCourseEnrollmentStatus } from '@fonte/types';
-import { BibleCourseService } from './bible-course.service';
+import { BibleCourseService, ELIGIBLE_TREATMENT_MONTHS } from './bible-course.service';
 import { BibleCourseClass } from './bible-course-class.entity';
 import { BibleCourseEnrollment } from './bible-course-enrollment.entity';
 import { BibleCourseModule } from './bible-course-module.entity';
@@ -105,6 +105,188 @@ describe('BibleCourseService.enroll', () => {
 
     await service.enroll('class-1', { residentId: 'res-1' } as never);
     expect(enrollmentRepo.save).toHaveBeenCalled();
+  });
+});
+
+describe('BibleCourseService.monthsBetween', () => {
+  it('counts full calendar months', () => {
+    expect(
+      BibleCourseService.monthsBetween(
+        new Date('2026-01-10T00:00:00'),
+        new Date('2026-04-10T00:00:00'),
+      ),
+    ).toBe(3);
+  });
+
+  it('does not count the current month until the day-of-month is reached', () => {
+    expect(
+      BibleCourseService.monthsBetween(
+        new Date('2026-01-20T00:00:00'),
+        new Date('2026-04-10T00:00:00'),
+      ),
+    ).toBe(2);
+  });
+
+  it('spans years', () => {
+    expect(
+      BibleCourseService.monthsBetween(
+        new Date('2025-11-01T00:00:00'),
+        new Date('2026-05-01T00:00:00'),
+      ),
+    ).toBe(6);
+  });
+});
+
+describe('BibleCourseService.findEligibleResidents', () => {
+  function eligibleQuery() {
+    return jest.fn().mockResolvedValue([
+      {
+        id: 'r-old',
+        name: 'Filho Antigo',
+        photoThumbUrl: 'thumb.jpg',
+        entryDate: '2026-01-01',
+        houseId: 'h1',
+        houseName: 'Casa 1',
+      },
+      {
+        id: 'r-new',
+        name: 'Filho Recente',
+        photoThumbUrl: null,
+        entryDate: '2026-03-01',
+        houseId: 'h2',
+        houseName: null,
+      },
+    ]);
+  }
+
+  it('defaults to ELIGIBLE_TREATMENT_MONTHS when no months given', async () => {
+    const query = eligibleQuery();
+    const service = makeService(makeRepo({}, query));
+    await service.findEligibleResidents();
+    expect(query.mock.calls[0][1]).toEqual([ELIGIBLE_TREATMENT_MONTHS]);
+  });
+
+  it('forwards a custom months param', async () => {
+    const query = eligibleQuery();
+    const service = makeService(makeRepo({}, query));
+    await service.findEligibleResidents(7);
+    expect(query.mock.calls[0][1]).toEqual([7]);
+  });
+
+  it('filters by active/discipline status, null exit_date, treatment time and no active enrollment', async () => {
+    const query = eligibleQuery();
+    const service = makeService(makeRepo({}, query));
+    await service.findEligibleResidents(3);
+    const sql = query.mock.calls[0][0] as string;
+    // status ∈ {ACTIVE, DISCIPLINE} → any casa (no house filter), exit_date null.
+    expect(sql).toContain("r.status IN ('ACTIVE', 'DISCIPLINE')");
+    expect(sql).toContain('r.exit_date IS NULL');
+    expect(sql).not.toContain('r.house_id = $');
+    // entryDate <= hoje − months.
+    expect(sql).toContain("r.entry_date <= (CURRENT_DATE - ($1::int * INTERVAL '1 month'))");
+    // exclui quem já tem matrícula ativa (não desistente) em turma não deletada.
+    expect(sql).toContain('NOT EXISTS');
+    expect(sql).toContain("e.status <> 'DROPPED'");
+    // ordena por entryDate asc.
+    expect(sql).toContain('ORDER BY r.entry_date ASC');
+  });
+
+  it('maps rows preserving order and computing monthsInTreatment', async () => {
+    const query = eligibleQuery();
+    const service = makeService(makeRepo({}, query));
+    const result = await service.findEligibleResidents(3);
+
+    expect(result.map((r) => r.id)).toEqual(['r-old', 'r-new']);
+    expect(result[0]).toMatchObject({
+      id: 'r-old',
+      name: 'Filho Antigo',
+      photoThumbUrl: 'thumb.jpg',
+      entryDate: '2026-01-01',
+      houseId: 'h1',
+      houseName: 'Casa 1',
+    });
+    expect(result[0].monthsInTreatment).toBeGreaterThanOrEqual(3);
+    // houseName cai para string vazia quando a casa é nula.
+    expect(result[1].houseName).toBe('');
+  });
+});
+
+describe('BibleCourseService.enrollBulk', () => {
+  function makeTxManager(overrides: Record<string, jest.Mock> = {}) {
+    return {
+      query: jest.fn().mockResolvedValue([{ id: 'ok' }]),
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockImplementation((_entity, v) => v),
+      save: jest.fn().mockImplementation((v) => Promise.resolve({ id: 'e-new', ...v })),
+      ...overrides,
+    };
+  }
+
+  function enrollmentRepoWithTx(manager: ReturnType<typeof makeTxManager>) {
+    const repo = makeRepo();
+    repo.manager = {
+      query: jest.fn().mockResolvedValue([]),
+      transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+    } as never;
+    return repo;
+  }
+
+  it('throws NotFound when the class is missing', async () => {
+    const service = makeService(makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+    await expect(service.enrollBulk('nope', ['r1'])).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('enrolls N residents in a single transaction', async () => {
+    const classRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'c1' }) });
+    const manager = makeTxManager();
+    const enrollmentRepo = enrollmentRepoWithTx(manager);
+    const service = makeService(classRepo, enrollmentRepo);
+
+    const result = await service.enrollBulk('c1', ['r1', 'r2']);
+    expect(
+      (enrollmentRepo.manager as unknown as { transaction: jest.Mock }).transaction,
+    ).toHaveBeenCalledTimes(1);
+    expect(manager.save).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({ enrolled: 2 });
+  });
+
+  it('deduplicates repeated ids', async () => {
+    const classRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'c1' }) });
+    const manager = makeTxManager();
+    const enrollmentRepo = enrollmentRepoWithTx(manager);
+    const service = makeService(classRepo, enrollmentRepo);
+
+    const result = await service.enrollBulk('c1', ['r1', 'r1', 'r1']);
+    expect(manager.save).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ enrolled: 1 });
+  });
+
+  it('skips a resident already enrolled in the class', async () => {
+    const classRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'c1' }) });
+    const manager = makeTxManager({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'existing' }) // r1 already enrolled
+        .mockResolvedValueOnce(null), // r2 new
+    });
+    const enrollmentRepo = enrollmentRepoWithTx(manager);
+    const service = makeService(classRepo, enrollmentRepo);
+
+    const result = await service.enrollBulk('c1', ['r1', 'r2']);
+    expect(manager.save).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ enrolled: 1 });
+  });
+
+  it('rolls back (throws) when a resident does not exist', async () => {
+    const classRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'c1' }) });
+    const manager = makeTxManager({
+      query: jest.fn().mockResolvedValue([]), // resident lookup returns nothing
+    });
+    const enrollmentRepo = enrollmentRepoWithTx(manager);
+    const service = makeService(classRepo, enrollmentRepo);
+
+    await expect(service.enrollBulk('c1', ['ghost'])).rejects.toBeInstanceOf(NotFoundException);
+    expect(manager.save).not.toHaveBeenCalled();
   });
 });
 

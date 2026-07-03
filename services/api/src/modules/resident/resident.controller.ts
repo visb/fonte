@@ -55,7 +55,9 @@ import { ContributionsReportResponse } from '@fonte/types';
 import { DocxParserService, ParseDocxResult } from './docx-parser.service';
 import { SpreadsheetImportService } from './spreadsheet-parser.service';
 import { ImportMatchService, ImportPreviewResult } from './import-match.service';
-import { ParseSpreadsheetResult, SpreadsheetImportRow } from '@fonte/types';
+import { ImportService } from './import.service';
+import { CommitImportDto } from './dto/commit-import.dto';
+import { CheckImportConflictResult, ParseSpreadsheetResult, SpreadsheetImportRow } from '@fonte/types';
 
 const photoOptions = {
   storage: memoryStorage(),
@@ -133,6 +135,7 @@ export class ResidentController {
     private docxParserService: DocxParserService,
     private spreadsheetImportService: SpreadsheetImportService,
     private importMatchService: ImportMatchService,
+    private importService: ImportService,
   ) {}
 
   @Get()
@@ -222,6 +225,28 @@ export class ResidentController {
     @Body('rows') rowsRaw: string,
   ): Promise<ImportPreviewResult> {
     return this.importMatchService.parseDocxWithSpreadsheet(file.buffer, parseRows(rowsRaw));
+  }
+
+  @Get('import/check-conflict')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  // Devolve o CPF dos filhos conflitantes (chave do match), então revela o
+  // documento completo em vez de mascarado — só ADMIN/COORDINATOR chegam aqui.
+  @RevealSensitive()
+  checkImportConflict(
+    @Query('name') name?: string,
+    @Query('cpf') cpf?: string,
+  ): Promise<CheckImportConflictResult> {
+    return this.importService.checkConflict(name, cpf);
+  }
+
+  @Post('import/commit')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  @RevealSensitive()
+  commitImport(
+    @Body() dto: CommitImportDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ resident: Resident; contributionsCreated: { created: number; skipped: number } }> {
+    return this.importService.commit(dto, user.userId);
   }
 
   @Get(':id')

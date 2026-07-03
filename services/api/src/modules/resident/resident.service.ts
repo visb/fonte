@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { RESIDENT_COUNTS_CHANGED_EVENT } from '../../common/events/resident-counts.event';
 import * as bcrypt from 'bcrypt';
 // require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
@@ -198,12 +198,19 @@ export class ResidentService {
     return dto;
   }
 
-  async create(dto: CreateResidentDto): Promise<Resident> {
+  // `manager` opcional permite rodar a criação inteira (resident + admissão +
+  // evento de acolhimento + carnê) dentro de uma transação externa (ex.: commit
+  // do import em lote, story 103). Sem ele, cada repositório injetado auto-commita
+  // como antes.
+  async create(dto: CreateResidentDto, manager?: EntityManager): Promise<Resident> {
     this.resolveInvestmentAmount(dto);
-    const resident = this.residentRepository.create(dto);
-    const saved = await this.residentRepository.save(resident);
+    const residentRepo = manager ? manager.getRepository(Resident) : this.residentRepository;
+    const admissionRepo = manager ? manager.getRepository(Admission) : this.admissionRepository;
 
-    const admission = this.admissionRepository.create({
+    const resident = residentRepo.create(dto);
+    const saved = await residentRepo.save(resident);
+
+    const admission = admissionRepo.create({
       residentId: saved.id,
       houseId: saved.houseId,
       ministryId: saved.ministryId ?? null,
@@ -217,14 +224,14 @@ export class ResidentService {
       familyInvestment: saved.familyInvestment ?? null,
       familyInvestmentAmount: saved.familyInvestmentAmount ?? null,
     });
-    await this.admissionRepository.save(admission);
+    await admissionRepo.save(admission);
 
     const admissionDate = saved.entryDate
       ? new Date(saved.entryDate).toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0];
-    await this.followUpService.createAuto(saved.id, FollowUpType.ADMISSION, admissionDate);
+    await this.followUpService.createAuto(saved.id, FollowUpType.ADMISSION, admissionDate, manager);
 
-    await this.receivableService.generateSchedule(saved.id);
+    await this.receivableService.generateSchedule(saved.id, manager);
 
     this.emitCountsChanged();
     return saved;
@@ -597,8 +604,19 @@ export class ResidentService {
       .toBuffer();
   }
 
-  async uploadPhoto(residentId: string, file: Express.Multer.File): Promise<Resident> {
-    const resident = await this.findOne(residentId);
+  // `manager` opcional: quando o resident foi criado dentro de uma transação
+  // ainda não commitada (import em lote), o findOne/update precisam enxergá-lo
+  // pela mesma transação. O upload ao bucket é I/O externo e não é transacional.
+  async uploadPhoto(
+    residentId: string,
+    file: Express.Multer.File,
+    manager?: EntityManager,
+  ): Promise<Resident> {
+    const repo = manager ? manager.getRepository(Resident) : this.residentRepository;
+    const resident = manager
+      ? await repo.findOne({ where: { id: residentId } })
+      : await this.findOne(residentId);
+    if (!resident) throw new NotFoundException(`Resident ${residentId} not found`);
     if (resident.photoUrl) {
       await this.storageService.delete(resident.photoUrl);
     }
@@ -613,8 +631,8 @@ export class ResidentService {
     const thumbFilename = this.storageService.uniqueFilename('thumb.jpg', 'thumb_');
     const thumbUrl = await this.storageService.upload('residents', thumbFilename, thumbBuffer, 'image/jpeg');
 
-    await this.residentRepository.update(residentId, { photoUrl: url, photoThumbUrl: thumbUrl });
-    return this.findOne(residentId);
+    await repo.update(residentId, { photoUrl: url, photoThumbUrl: thumbUrl });
+    return manager ? ((await repo.findOne({ where: { id: residentId } }))!) : this.findOne(residentId);
   }
 
   private static readonly SIGNED_EXPIRY_MS = 30 * 60 * 1000;

@@ -11,6 +11,9 @@ import type {
   ParseDocxResult,
   ImportPreviewResult,
   ParseSpreadsheetResult,
+  CheckImportConflictResult,
+  CommitImportPayload,
+  CommitImportResult,
   ReadmitResidentInput,
   Resident,
   ResidentFollowUp,
@@ -133,6 +136,16 @@ export function createResidentsModule(http: AxiosInstance) {
 
     bulkCreateContributions: (id: string, data: BulkCreateContributionsInput): Promise<{ created: number; skipped: number }> =>
       http.post(`/residents/${id}/follow-ups/bulk-contributions`, data).then((r) => r.data),
+
+    // Import em lote (story 103): checa conflito por nome/CPF antes de aprovar.
+    checkImportConflict: (name?: string, cpf?: string): Promise<CheckImportConflictResult> =>
+      http
+        .get<CheckImportConflictResult>('/residents/import/check-conflict', { params: { name, cpf } })
+        .then((r) => r.data),
+
+    // Import em lote (story 103): persiste o filho aprovado de forma atômica.
+    commitImport: (payload: CommitImportPayload): Promise<CommitImportResult> =>
+      http.post<CommitImportResult>('/residents/import/commit', payload).then((r) => r.data),
 
     me: (): Promise<ResidentMe> => http.get<ResidentMe>('/residents/me').then((r) => r.data),
     uploadPhotoMe: (formData: FormData): Promise<ResidentMe> =>

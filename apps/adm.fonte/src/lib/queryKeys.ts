@@ -24,6 +24,8 @@ export const queryKeys = {
     receivables: (id: string) => ['residents', id, 'receivables'] as const,
     consents: (id: string) => ['residents', id, 'consents'] as const,
     audit: (id: string) => ['residents', id, 'audit'] as const,
+    importConflict: (name: string | null, cpf: string | null) =>
+      ['residents', 'import-conflict', name, cpf] as const,
   },
   staff: {
     all: ['staff'] as const,

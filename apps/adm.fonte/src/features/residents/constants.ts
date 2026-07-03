@@ -131,3 +131,44 @@ export const FOLLOW_UP_ACCESS_LABELS: Record<FollowUpAccessLevel, string> = {
   [FollowUpAccessLevel.ALL]: 'Todos',
   [FollowUpAccessLevel.ADMINISTRATION]: 'Administração',
 };
+
+// ─── Import em lote (story 104) ─────────────────────────────────────────────
+
+/**
+ * Número máximo de fichas `.docx` extraídas ao mesmo tempo. Constante única e
+ * fácil de ajustar — a fila nunca coloca mais que N itens em `processing`.
+ */
+export const IMPORT_BATCH_SIZE = 5;
+
+/** Estado de um item da fila de import em lote. */
+export type ImportItemStatus = 'queued' | 'processing' | 'ready' | 'error';
+
+export const IMPORT_ITEM_STATUS_LABELS: Record<ImportItemStatus, string> = {
+  queued: 'Na fila',
+  processing: 'Processando...',
+  ready: 'Pronto',
+  error: 'Erro',
+};
+
+export const IMPORT_ITEM_STATUS_VARIANT: Record<ImportItemStatus, BadgeVariant> = {
+  queued: 'secondary',
+  processing: 'info',
+  ready: 'success',
+  error: 'destructive',
+};
+
+/** Textos da tela de import em lote. */
+export const IMPORT_TEXTS = {
+  emptyQueue: 'Arraste as fichas .docx para começar',
+  fichaDisabled: 'Carregue a planilha de referência antes de adicionar as fichas.',
+  onlyDocx: 'Apenas arquivos .docx são aceitos.',
+  onlyXlsx: 'Apenas planilhas .xlsx são aceitas.',
+  conflictBadge: 'Conflito',
+  okSummary: 'Sem alertas',
+} as const;
+
+/** Rótulo de resumo a partir da contagem de alertas (warnings). */
+export function importWarningsSummary(count: number): string {
+  if (count <= 0) return IMPORT_TEXTS.okSummary;
+  return count === 1 ? '1 alerta' : `${count} alertas`;
+}

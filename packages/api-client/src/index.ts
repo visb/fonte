@@ -114,6 +114,8 @@ export type {
   BulkCreateContributionsInput,
   ParseDocxResult,
   ParseDocxRelative,
+  MatchStatus,
+  ImportPreviewResult,
   SpreadsheetImportRow,
   ParseSpreadsheetResult,
   StreetSaleType,

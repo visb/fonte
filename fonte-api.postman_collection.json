@@ -1645,6 +1645,40 @@
           }
         },
         {
+          "name": "Parse DOCX with Spreadsheet (cross-match)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Arquivo .docx da ficha de acolhimento (máx 5 MB)"
+                },
+                {
+                  "key": "rows",
+                  "type": "text",
+                  "value": "[]",
+                  "description": "JSON de SpreadsheetImportRow[] obtido no parse da planilha (story 101)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/residents/import/parse-docx-with-spreadsheet",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "import",
+                "parse-docx-with-spreadsheet"
+              ]
+            },
+            "description": "Extrai a ficha .docx (Claude AI) e a cruza com as linhas da planilha de referência (campo rows). Match por CPF primeiro, fallback por nome normalizado. Retorna ImportPreviewResult (ParseDocxResult + matchedHouseName, contributionMonths, matchStatus 'matched'|'ambiguous'|'unmatched'), enriquecido com entryDate/exitDate/familyContact/contributionMonths da planilha e warnings de divergência. Não persiste nada. Roles: ADMIN, COORDINATOR."
+          }
+        },
+        {
           "name": "Get admission documents",
           "request": {
             "method": "GET",

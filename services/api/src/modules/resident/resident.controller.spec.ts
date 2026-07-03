@@ -46,6 +46,9 @@ const docxParser = { parseDocx: jest.fn().mockResolvedValue({ resident: {} }) };
 const spreadsheetParser = {
   parseSpreadsheet: jest.fn().mockResolvedValue({ rows: [], houses: [], skipped: 0, ignoredSheets: [] }),
 };
+const importMatch = {
+  parseDocxWithSpreadsheet: jest.fn().mockResolvedValue({ matchStatus: 'unmatched' }),
+};
 
 function make() {
   const rs = residentSvc();
@@ -56,6 +59,7 @@ function make() {
     receivable as never,
     docxParser as never,
     spreadsheetParser as never,
+    importMatch as never,
   );
   return { c, rs };
 }
@@ -94,6 +98,20 @@ describe('ResidentController', () => {
     const { c } = make();
     await c.parseSpreadsheet(file);
     expect(spreadsheetParser.parseSpreadsheet).toHaveBeenCalledWith(file.buffer);
+  });
+
+  it('parseDocxWithSpreadsheet parseia as rows e delega', async () => {
+    const { c } = make();
+    const rows = [{ houseName: 'Casa Um', name: 'Ana', cpf: '1', nameNormalized: 'ana' }];
+    await c.parseDocxWithSpreadsheet(file, JSON.stringify(rows));
+    expect(importMatch.parseDocxWithSpreadsheet).toHaveBeenCalledWith(file.buffer, rows);
+  });
+
+  it('parseDocxWithSpreadsheet rejeita rows malformado', () => {
+    const { c } = make();
+    expect(() => c.parseDocxWithSpreadsheet(file, 'não-é-json')).toThrow();
+    expect(() => c.parseDocxWithSpreadsheet(file, JSON.stringify({ nope: true }))).toThrow();
+    expect(() => c.parseDocxWithSpreadsheet(file, '')).toThrow();
   });
 
   it('follow-up endpoints delegate', async () => {

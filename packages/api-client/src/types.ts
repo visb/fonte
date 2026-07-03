@@ -1274,22 +1274,14 @@ export interface BulkCreateContributionsInput {
   months: { date: string }[];
 }
 
-export interface ParseDocxRelative {
-  name: string;
-  phone: string;
-  relationship: string;
-}
-
-export interface ParseDocxResult {
-  resident: Record<string, unknown>;
-  relatives: ParseDocxRelative[];
-  warnings: Record<string, string>;
-  houseName: string;
-  rawText: string;
-  photoBase64: string | null;
-}
-
-export type { SpreadsheetImportRow, ParseSpreadsheetResult } from '@fonte/types';
+export type {
+  ParseDocxRelative,
+  ParseDocxResult,
+  MatchStatus,
+  ImportPreviewResult,
+  SpreadsheetImportRow,
+  ParseSpreadsheetResult,
+} from '@fonte/types';
 
 // ─── Street Sales ─────────────────────────────────────────────────────────────
 

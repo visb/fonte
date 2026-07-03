@@ -18,6 +18,7 @@ import { ResidentService } from './resident.service';
 import { CensusService } from './census.service';
 import { DocxParserService } from './docx-parser.service';
 import { SpreadsheetImportService } from './spreadsheet-parser.service';
+import { ImportMatchService } from './import-match.service';
 
 @Module({
   imports: [
@@ -37,7 +38,13 @@ import { SpreadsheetImportService } from './spreadsheet-parser.service';
     StaffModule,
   ],
   controllers: [ResidentController, CensusController],
-  providers: [ResidentService, CensusService, DocxParserService, SpreadsheetImportService],
+  providers: [
+    ResidentService,
+    CensusService,
+    DocxParserService,
+    SpreadsheetImportService,
+    ImportMatchService,
+  ],
   exports: [ResidentService],
 })
 export class ResidentModule {}

@@ -54,7 +54,8 @@ import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 import { ContributionsReportResponse } from '@fonte/types';
 import { DocxParserService, ParseDocxResult } from './docx-parser.service';
 import { SpreadsheetImportService } from './spreadsheet-parser.service';
-import { ParseSpreadsheetResult } from '@fonte/types';
+import { ImportMatchService, ImportPreviewResult } from './import-match.service';
+import { ParseSpreadsheetResult, SpreadsheetImportRow } from '@fonte/types';
 
 const photoOptions = {
   storage: memoryStorage(),
@@ -100,6 +101,27 @@ const spreadsheetOptions = {
   },
 };
 
+/**
+ * Faz o parse do campo `rows` (JSON string de `SpreadsheetImportRow[]`) que vem
+ * no mesmo `multipart/form-data` da ficha. Validação de entrada — malformado ou
+ * fora do formato de lista resulta em 400.
+ */
+function parseRows(rowsRaw: string): SpreadsheetImportRow[] {
+  if (rowsRaw === undefined || rowsRaw === null || rowsRaw === '') {
+    throw new BadRequestException('O campo "rows" com as linhas da planilha é obrigatório.');
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rowsRaw);
+  } catch {
+    throw new BadRequestException('O campo "rows" não é um JSON válido.');
+  }
+  if (!Array.isArray(parsed)) {
+    throw new BadRequestException('O campo "rows" deve ser uma lista de linhas da planilha.');
+  }
+  return parsed as SpreadsheetImportRow[];
+}
+
 @Controller('residents')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ResidentController {
@@ -110,6 +132,7 @@ export class ResidentController {
     private receivableService: ResidentReceivableService,
     private docxParserService: DocxParserService,
     private spreadsheetImportService: SpreadsheetImportService,
+    private importMatchService: ImportMatchService,
   ) {}
 
   @Get()
@@ -180,6 +203,25 @@ export class ResidentController {
     file: Express.Multer.File,
   ): Promise<ParseSpreadsheetResult> {
     return this.spreadsheetImportService.parseSpreadsheet(file.buffer);
+  }
+
+  @Post('import/parse-docx-with-spreadsheet')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  // Extrai a ficha .docx e a cruza com as linhas da planilha (story 102). O CPF
+  // viaja no match, então devolvemos o documento completo em vez de mascarado.
+  @RevealSensitive()
+  @UseInterceptors(FileInterceptor('file', docxOptions))
+  parseDocxWithSpreadsheet(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
+        exceptionFactory: () => new BadRequestException('Arquivo muito grande: mÃ¡ximo 5 MB'),
+      }),
+    )
+    file: Express.Multer.File,
+    @Body('rows') rowsRaw: string,
+  ): Promise<ImportPreviewResult> {
+    return this.importMatchService.parseDocxWithSpreadsheet(file.buffer, parseRows(rowsRaw));
   }
 
   @Get(':id')

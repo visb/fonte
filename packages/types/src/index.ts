@@ -296,6 +296,44 @@ export interface ParseSpreadsheetResult {
   ignoredSheets: string[]; // abas ignoradas (ex.: curso bíblico)
 }
 
+// ─── Import em lote — cross-match ficha × planilha (story 102) ─────────────────
+
+/** Um familiar extraído da ficha `.docx`. */
+export interface ParseDocxRelative {
+  name: string;
+  phone: string;
+  relationship: string;
+}
+
+/** Resultado da extração de uma ficha `.docx` pela IA. */
+export interface ParseDocxResult {
+  resident: Record<string, unknown>;
+  relatives: ParseDocxRelative[];
+  warnings: Record<string, string>;
+  houseName: string;
+  rawText: string;
+  photoBase64: string | null;
+}
+
+/**
+ * Status do cross-match entre a ficha `.docx` e a planilha de referência:
+ * `matched` (uma linha correspondente, ficha enriquecida), `ambiguous` (mais de
+ * uma linha candidata, não enriquece) ou `unmatched` (nenhuma linha, só a ficha).
+ */
+export type MatchStatus = 'matched' | 'ambiguous' | 'unmatched';
+
+/**
+ * Ficha extraída já cruzada com a planilha de referência e enriquecida com os
+ * campos priorizados da planilha (entryDate, exitDate, familyContact,
+ * contributionMonths). O histórico de contribuição viaja no payload de preview
+ * para ser persistido no commit (story 103); não é persistido aqui.
+ */
+export interface ImportPreviewResult extends ParseDocxResult {
+  matchedHouseName: string | null; // nome da casa (aba) da linha casada
+  contributionMonths: string[]; // competências pagas vindas da planilha
+  matchStatus: MatchStatus;
+}
+
 // ─── Receivables (carnê de contribuição) ──────────────────────────────────────
 
 export enum ReceivableStatus {

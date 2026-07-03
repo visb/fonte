@@ -25,6 +25,9 @@ export interface ParseDocxResident {
   name: string | null;
   birthDate: string | null;
   entryDate: string | null;
+  // A ficha não traz data de saída; o campo existe para receber o valor da
+  // planilha no cross-match (story 102).
+  exitDate: string | null;
   gender: 'MALE' | 'FEMALE' | null;
   cpf: string | null;
   rg: string | null;

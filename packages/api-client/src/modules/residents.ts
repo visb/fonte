@@ -9,6 +9,7 @@ import type {
   ListResidentsParams,
   PaginatedResponse,
   ParseDocxResult,
+  ImportPreviewResult,
   ParseSpreadsheetResult,
   ReadmitResidentInput,
   Resident,
@@ -117,6 +118,15 @@ export function createResidentsModule(http: AxiosInstance) {
     parseSpreadsheet: (formData: FormData): Promise<ParseSpreadsheetResult> =>
       http
         .post<ParseSpreadsheetResult>('/residents/import/parse-spreadsheet', formData, {
+          headers: { 'Content-Type': undefined },
+        })
+        .then((r) => r.data),
+
+    // Cross-match: o `formData` traz o `.docx` (campo `file`) e o campo `rows`
+    // com o JSON de `SpreadsheetImportRow[]` obtido no parse da planilha.
+    parseDocxWithSpreadsheet: (formData: FormData): Promise<ImportPreviewResult> =>
+      http
+        .post<ImportPreviewResult>('/residents/import/parse-docx-with-spreadsheet', formData, {
           headers: { 'Content-Type': undefined },
         })
         .then((r) => r.data),

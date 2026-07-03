@@ -37,7 +37,7 @@ Cuidados:
 | 1 | 99 — sugerir matrícula de elegíveis (curso) | [OK] | api 1053 · e2e 408 · cov≥90 | 289823b | bff28f9 |
 | — | 100 — EPIC import em lote (mapa) | [ ] | n/a | | |
 | 2 | 101 — parse da planilha `.xlsx` (backend) | [OK] | api 1069 · e2e 413 · cov≥90 | 8e75ad3 | 1d9580b |
-| 3 | 102 — cross-match planilha × ficha (backend) | [ ] | | | |
+| 3 | 102 — cross-match planilha × ficha (backend) | [OK] | api 1085 · e2e 417 · cov 100% | ca4706a | 57cfbc4 |
 | 4 | 103 — conflito + commit atômico (backend) | [ ] | | | |
 | 5 | 104 — tela de import em lote, fila e cards (front) | [ ] | | | |
 | 6 | 105 — modal da ficha editável + aprovação (front) | [ ] | | | |
@@ -49,6 +49,7 @@ Entrada curta — máx. ~3 linhas. Detalhe rico vai no corpo do commit ou no `.m
 
 - [OK] 99 — testes: api 1053/1053, e2e 408/408 (bible-courses 35/35), cov escopo ≥90 (front 97.6% / back módulo 93.3%) — commit 289823b — merge bff28f9 — 2026-07-03
 - [OK] 101 — testes: api 1069/1069, e2e 413/413, cov escopo parser 97.4% (+normalize 100%) — commit 8e75ad3 — merge 1d9580b — 2026-07-03 — nota: exceljs add; fixture anonimizada test/fixtures/import-residents.xlsx; contributionMonths derivado de entryMonth+(N-1)
+- [OK] 102 — testes: api 1085/1085, e2e 417/417, cov escopo import-match 100% — commit ca4706a — merge 57cfbc4 — 2026-07-03 — nota: e2e stuba DocxParserService (sem chave Anthropic); parse .docx real = mock
 
 ## Resumo final
 

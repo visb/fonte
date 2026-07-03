@@ -28,17 +28,21 @@ const SPREADSHEET_ROWS = {
 
 function previewFor(name: string, cpf: string) {
   return {
-    resident: { name, cpf, entryDate: '2023-02-10', exitDate: null },
-    relatives: [],
+    resident: { name, cpf, entryDate: '2023-02-10', exitDate: null, familyInvestment: 'SOCIAL' },
+    relatives: [{ name: 'Mãe do Filho', phone: '(11) 90000-0000', relationship: 'Mãe' }],
     warnings: name.includes('Duplicado') ? { rg: 'RG ilegível' } : {},
     houseName: 'Casa Teste',
     rawText: 'ficha',
     photoBase64: null,
     matchedHouseName: 'Casa Teste',
-    contributionMonths: [],
+    contributionMonths: ['2023-02-01', '2023-03-01'],
     matchStatus: 'matched',
   };
 }
+
+// Guarda o último payload enviado ao commit — o teste de persistência assevera
+// o corpo (parse é mockado, sem Anthropic; ver comentário no describe da 105).
+const commits: Array<Record<string, unknown>> = [];
 
 async function mockImportRoutes(page: Page) {
   await page.route('**/api/v1/residents/import/parse-spreadsheet', (route) =>
@@ -61,12 +65,41 @@ async function mockImportRoutes(page: Page) {
       : [];
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ conflicts }) });
   });
+
+  // A casa da planilha ("Casa Teste") não é garantida no seed do banco de teste;
+  // para o auto-match resolver o `houseId` de forma determinística, servimos a
+  // lista de casas com ela. (story 105)
+  await page.route('**/api/v1/houses', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{ id: 'house-teste', name: 'Casa Teste' }]),
+    }),
+  );
+
+  // O commit é interceptado (não real): o parse é mockado, então a ficha não
+  // corresponde a dados reais do seed. O teste assevera o payload persistido.
+  await page.route('**/api/v1/residents/import/commit', async (route) => {
+    commits.push(route.request().postDataJSON());
+    return route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        resident: { id: 'new-resident' },
+        contributionsCreated: { created: 2, skipped: 0 },
+      }),
+    });
+  });
 }
 
 test.describe('Import em lote de filhos', () => {
   test.beforeEach(async ({ page }) => {
-    await login(page);
+    commits.length = 0;
+    // Registra as rotas ANTES do login: a lista de casas é buscada já no
+    // dashboard e o React Query a cacheia — sem o mock prévio o auto-match do
+    // modal usaria as casas reais do seed. (story 105)
     await mockImportRoutes(page);
+    await login(page);
     await page.getByRole('link', { name: 'Filhos' }).click();
     await expect(page).toHaveURL('/residents');
   });
@@ -123,5 +156,72 @@ test.describe('Import em lote de filhos', () => {
     // 5. Os botões Aprovar/Ver ficha estão presentes (ação completa é da 105).
     await expect(page.getByRole('button', { name: 'Aprovar' }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Ver ficha' }).first()).toBeVisible();
+  });
+
+  // Fecha o E2E ponta-a-ponta do epic (story 100). O parse (planilha + fichas)
+  // é mockado por falta de Anthropic no ambiente de teste; o commit também é
+  // interceptado porque a ficha mockada não bate com dados reais do seed — o
+  // teste assevera o payload persistido e a transição do card para "Importado".
+  test('modal da ficha: editar campo, aprovar → payload persistido e card importado; conflito bloqueia', async ({ page }) => {
+    await page.getByRole('link', { name: 'Importar em lote' }).click();
+    await expect(page).toHaveURL('/residents/import-lote');
+
+    await page.locator('input[accept*="spreadsheetml"]').setInputFiles({
+      name: 'lista-filhos.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from('planilha de referencia'),
+    });
+    await expect(page.getByText('Planilha carregada')).toBeVisible();
+
+    await page.locator('input[multiple]').setInputFiles([
+      {
+        name: 'ficha-1.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        buffer: Buffer.from('ficha 1'),
+      },
+      {
+        name: 'ficha-2.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        buffer: Buffer.from('ficha 2'),
+      },
+    ]);
+    await expect(page.getByText('Pronto')).toHaveCount(2);
+
+    // Card em conflito: alerta visível e Aprovar desabilitado.
+    const duplicadoCard = page.getByTestId('import-item-card').filter({ hasText: 'Filho Duplicado' });
+    await expect(page.getByText(/Conflito: Filho Já Cadastrado/)).toBeVisible();
+    await expect(duplicadoCard.getByRole('button', { name: 'Aprovar' })).toBeDisabled();
+
+    // Abre o modal do item limpo, edita o nome e aprova.
+    const tranquiloCard = page.getByTestId('import-item-card').filter({ hasText: 'Filho Tranquilo' });
+    await tranquiloCard.getByRole('button', { name: 'Ver ficha' }).click();
+
+    const modal = page.getByRole('dialog');
+    await expect(modal.getByText('Ficha do filho')).toBeVisible();
+    const nameInput = modal.getByPlaceholder('Nome do acolhido');
+    await expect(nameInput).toHaveValue('Filho Tranquilo');
+    await nameInput.fill('Filho Tranquilo Editado');
+
+    await modal.getByRole('button', { name: 'Aprovar' }).click();
+
+    // Modal fecha e o card vira "Importado".
+    await expect(page.getByRole('dialog')).toBeHidden();
+    await expect(page.getByText('Importado')).toBeVisible();
+
+    // Persistência: o payload do commit leva o nome editado, a casa resolvida,
+    // o familiar e as contribuições retroativas da planilha.
+    expect(commits).toHaveLength(1);
+    const payload = commits[0] as {
+      resident: { name: string; houseId: string };
+      relatives: unknown[];
+      contributionMonths: string[];
+    };
+    expect(payload.resident.name).toBe('Filho Tranquilo Editado');
+    expect(payload.resident.houseId).toBe('house-teste');
+    expect(payload.relatives).toHaveLength(1);
+    expect(payload.contributionMonths).toEqual(['2023-02-01', '2023-03-01']);
+
+    // O item com conflito segue bloqueado para aprovação direta.
+    await expect(duplicadoCard.getByRole('button', { name: 'Aprovar' })).toBeDisabled();
   });
 });

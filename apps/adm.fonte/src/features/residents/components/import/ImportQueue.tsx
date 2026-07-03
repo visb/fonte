@@ -6,11 +6,18 @@ import { IMPORT_TEXTS } from '../../constants';
 interface ImportQueueProps {
   items: ImportQueueItem[];
   onRemove: (id: string) => void;
-  onApprove?: (item: ImportQueueItem) => void;
   onViewFicha?: (item: ImportQueueItem) => void;
+  onImported?: (id: string) => void;
+  sessionConflictName?: (item: ImportQueueItem) => string | null;
 }
 
-export function ImportQueue({ items, onRemove, onApprove, onViewFicha }: ImportQueueProps) {
+export function ImportQueue({
+  items,
+  onRemove,
+  onViewFicha,
+  onImported,
+  sessionConflictName,
+}: ImportQueueProps) {
   if (items.length === 0) {
     return <EmptyState title={IMPORT_TEXTS.emptyQueue} />;
   }
@@ -22,8 +29,9 @@ export function ImportQueue({ items, onRemove, onApprove, onViewFicha }: ImportQ
           key={item.id}
           item={item}
           onRemove={onRemove}
-          onApprove={onApprove}
           onViewFicha={onViewFicha}
+          onImported={onImported}
+          sessionConflictName={sessionConflictName?.(item) ?? null}
         />
       ))}
     </div>

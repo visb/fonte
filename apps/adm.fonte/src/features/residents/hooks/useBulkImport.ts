@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  CommitImportPayload,
   ImportPreviewResult,
   ParseSpreadsheetResult,
   SpreadsheetImportRow,
@@ -8,6 +9,7 @@ import type {
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { getErrorMessage } from '@/lib/errors';
+import { normalizeForSearch } from '@/lib/utils';
 import { IMPORT_BATCH_SIZE, type ImportItemStatus } from '../constants';
 
 // ─── Parse da planilha de referência ────────────────────────────────────────
@@ -42,6 +44,26 @@ export function useCheckImportConflict(
   });
 }
 
+// ─── Commit do import aprovado (story 105) ──────────────────────────────────
+
+/**
+ * Mutation que persiste o filho aprovado (resident + relatives + contribuições
+ * retroativas) de forma atômica (story 103). Ao concluir, invalida a lista de
+ * `residents` (e casas, cujo headcount muda) para refletir o novo filho; quem
+ * dispara marca o item da fila como `imported` no `onSuccess`. Erros sobem para
+ * o chamador, que os exibe com `getErrorMessage`.
+ */
+export function useCommitImport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CommitImportPayload) => api.residents.commitImport(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.houses.all });
+    },
+  });
+}
+
 // ─── Fila de extração das fichas ────────────────────────────────────────────
 
 export interface ImportQueueItem {
@@ -56,7 +78,24 @@ export interface UseImportQueue {
   items: ImportQueueItem[];
   addFiles: (files: File[]) => void;
   removeItem: (id: string) => void;
+  /** Marca o item como `imported` após o commit aprovar (não remove da lista). */
+  markImported: (id: string) => void;
+  /**
+   * Nome de um filho já aprovado nesta sessão que conflita com o item (mesmo CPF
+   * ou mesmo nome normalizado), ou `null` se não há conflito de sessão.
+   */
+  sessionConflictName: (item: ImportQueueItem) => string | null;
   processingCount: number;
+  /** Itens `ready` ainda não importados — a fila de aprovação pendente. */
+  pendingCount: number;
+}
+
+/** Identidade normalizada de um item (nome sem acento + CPF só dígitos). */
+function itemIdentity(item: ImportQueueItem): { name: string | null; cpf: string | null } {
+  const resident = (item.preview?.resident ?? {}) as Record<string, unknown>;
+  const rawName = typeof resident.name === 'string' ? resident.name.trim() : '';
+  const rawCpf = typeof resident.cpf === 'string' ? resident.cpf.replace(/\D/g, '') : '';
+  return { name: rawName ? normalizeForSearch(rawName) : null, cpf: rawCpf || null };
 }
 
 /**
@@ -121,7 +160,38 @@ export function useImportQueue(rows: SpreadsheetImportRow[]): UseImportQueue {
     setItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
-  const processingCount = items.filter((item) => item.status === 'processing').length;
+  const markImported = useCallback((id: string) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status: 'imported' } : item)),
+    );
+  }, []);
 
-  return { items, addFiles, removeItem, processingCount };
+  const sessionConflictName = useCallback(
+    (item: ImportQueueItem): string | null => {
+      const { name, cpf } = itemIdentity(item);
+      if (!name && !cpf) return null;
+      const clash = items.find((other) => {
+        if (other.id === item.id || other.status !== 'imported') return false;
+        const o = itemIdentity(other);
+        return (!!cpf && o.cpf === cpf) || (!!name && o.name === name);
+      });
+      if (!clash) return null;
+      const resident = (clash.preview?.resident ?? {}) as Record<string, unknown>;
+      return typeof resident.name === 'string' ? resident.name : clash.fileName;
+    },
+    [items],
+  );
+
+  const processingCount = items.filter((item) => item.status === 'processing').length;
+  const pendingCount = items.filter((item) => item.status === 'ready').length;
+
+  return {
+    items,
+    addFiles,
+    removeItem,
+    markImported,
+    sessionConflictName,
+    processingCount,
+    pendingCount,
+  };
 }

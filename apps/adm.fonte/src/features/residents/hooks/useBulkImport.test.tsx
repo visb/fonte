@@ -7,6 +7,7 @@ vi.mock('@/lib/api', () => ({
       parseSpreadsheet: vi.fn(),
       parseDocxWithSpreadsheet: vi.fn(),
       checkImportConflict: vi.fn(),
+      commitImport: vi.fn(),
     },
   },
 }));
@@ -15,7 +16,13 @@ import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { renderHookWithClient } from '@/test/utils';
 import { IMPORT_BATCH_SIZE } from '../constants';
-import { useParseSpreadsheet, useCheckImportConflict, useImportQueue } from './useBulkImport';
+import {
+  useParseSpreadsheet,
+  useCheckImportConflict,
+  useCommitImport,
+  useImportQueue,
+  type ImportQueueItem,
+} from './useBulkImport';
 
 function docx(name: string): File {
   return new File(['x'], name, {
@@ -155,5 +162,79 @@ describe('useImportQueue', () => {
     const id = result.current.items[0].id;
     act(() => result.current.removeItem(id));
     expect(result.current.items).toHaveLength(0);
+  });
+});
+
+describe('useCommitImport', () => {
+  it('on success invalida a query de residents e chama o onSuccess do chamador', async () => {
+    vi.mocked(api.residents.commitImport).mockResolvedValue({
+      resident: { id: 'r1' },
+      contributionsCreated: { created: 2, skipped: 0 },
+    } as never);
+    const { result, queryClient } = renderHookWithClient(() => useCommitImport());
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    const onSuccess = vi.fn();
+
+    act(() => result.current.mutate({ resident: {}, relatives: [], contributionMonths: [] } as never, { onSuccess }));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(api.residents.commitImport).toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.residents.all });
+    expect(onSuccess).toHaveBeenCalled();
+  });
+
+  it('on error expõe o erro para o chamador exibir a mensagem', async () => {
+    vi.mocked(api.residents.commitImport).mockRejectedValue(new Error('boom'));
+    const { result } = renderHookWithClient(() => useCommitImport());
+    act(() => result.current.mutate({ resident: {}, relatives: [], contributionMonths: [] } as never));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(Error);
+  });
+});
+
+describe('useImportQueue — aprovação e conflito de sessão', () => {
+  function ready(name: string, cpf: string) {
+    return { resident: { name, cpf }, relatives: [], warnings: {}, houseName: '' };
+  }
+
+  async function seedReady(specs: { name: string; cpf: string }[]) {
+    vi.mocked(api.residents.parseDocxWithSpreadsheet).mockImplementation((fd) => {
+      const file = (fd as FormData).get('file') as File;
+      const idx = Number(file.name.replace(/\D/g, ''));
+      return Promise.resolve(ready(specs[idx].name, specs[idx].cpf) as never);
+    });
+    const { result } = renderHookWithClient(() => useImportQueue([]));
+    act(() => result.current.addFiles(specs.map((_, i) => docx(`${i}.docx`))));
+    await waitFor(() => expect(result.current.items.every((it) => it.status === 'ready')).toBe(true));
+    return result;
+  }
+
+  it('markImported vira o item para imported e o tira da contagem de pendentes', async () => {
+    const result = await seedReady([{ name: 'João', cpf: '111' }, { name: 'Ana', cpf: '222' }]);
+    expect(result.current.pendingCount).toBe(2);
+    const id = result.current.items[0].id;
+    act(() => result.current.markImported(id));
+    expect(result.current.items[0].status).toBe('imported');
+    expect(result.current.pendingCount).toBe(1);
+  });
+
+  it('sessionConflictName acusa filho já importado nesta sessão (mesmo cpf)', async () => {
+    const result = await seedReady([{ name: 'João', cpf: '111' }, { name: 'João Neto', cpf: '111' }]);
+    // sem nada importado: sem conflito de sessão
+    expect(result.current.sessionConflictName(result.current.items[1])).toBeNull();
+    act(() => result.current.markImported(result.current.items[0].id));
+    expect(result.current.sessionConflictName(result.current.items[1])).toBe('João');
+  });
+
+  it('sessionConflictName acusa por nome normalizado (sem acento) mesmo com cpf diferente', async () => {
+    const result = await seedReady([{ name: 'José', cpf: '111' }, { name: 'JOSÉ', cpf: '999' }]);
+    act(() => result.current.markImported(result.current.items[0].id));
+    expect(result.current.sessionConflictName(result.current.items[1])).toBe('José');
+  });
+
+  it('sem identidade (preview vazio) não acusa conflito de sessão', () => {
+    const { result } = renderHookWithClient(() => useImportQueue([]));
+    const empty = { id: 'x', fileName: 'x.docx', status: 'ready', preview: null, error: null } as ImportQueueItem;
+    expect(result.current.sessionConflictName(empty)).toBeNull();
   });
 });

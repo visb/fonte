@@ -6,16 +6,24 @@ import { Button } from '@/components/ui/button';
 import { SpreadsheetUploadStep } from '../components/import/SpreadsheetUploadStep';
 import { FichaDropzone } from '../components/import/FichaDropzone';
 import { ImportQueue } from '../components/import/ImportQueue';
-import { useImportQueue } from '../hooks/useBulkImport';
+import { ImportFichaModal } from '../components/import/ImportFichaModal';
+import { useImportQueue, type ImportQueueItem } from '../hooks/useBulkImport';
 
 export function BulkImportPage() {
   const [rows, setRows] = useState<SpreadsheetImportRow[]>([]);
   const [meta, setMeta] = useState<ParseSpreadsheetResult | null>(null);
-  const { items, addFiles, removeItem } = useImportQueue(rows);
+  const [modalItem, setModalItem] = useState<ImportQueueItem | null>(null);
+  const { items, addFiles, removeItem, markImported, sessionConflictName, pendingCount } =
+    useImportQueue(rows);
 
   const handleParsed = (parsedRows: SpreadsheetImportRow[], result: ParseSpreadsheetResult) => {
     setRows(parsedRows);
     setMeta(result);
+  };
+
+  const handleApproved = (id: string) => {
+    markImported(id);
+    setModalItem(null);
   };
 
   return (
@@ -42,11 +50,27 @@ export function BulkImportPage() {
 
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground">
-            3. Fila de importação
+            3. Fila de importação{pendingCount > 0 ? ` (${pendingCount} pendente${pendingCount > 1 ? 's' : ''})` : ''}
           </h2>
-          <ImportQueue items={items} onRemove={removeItem} />
+          <ImportQueue
+            items={items}
+            onRemove={removeItem}
+            onViewFicha={setModalItem}
+            onImported={markImported}
+            sessionConflictName={sessionConflictName}
+          />
         </section>
       </div>
+
+      {modalItem && (
+        <ImportFichaModal
+          item={modalItem}
+          open
+          onClose={() => setModalItem(null)}
+          onApproved={handleApproved}
+          sessionConflictName={sessionConflictName(modalItem)}
+        />
+      )}
     </div>
   );
 }

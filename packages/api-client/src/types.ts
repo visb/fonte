@@ -983,6 +983,24 @@ export interface EnrollResidentInput {
   notes?: string | null;
 }
 
+export interface EligibleResident {
+  id: string;
+  name: string;
+  photoThumbUrl: string | null;
+  entryDate: string;
+  monthsInTreatment: number;
+  houseId: string;
+  houseName: string;
+}
+
+export interface BulkEnrollInput {
+  residentIds: string[];
+}
+
+export interface BulkEnrollResult {
+  enrolled: number;
+}
+
 export interface UpdateBibleCourseEnrollmentInput {
   status?: BibleCourseEnrollmentStatus;
   notes?: string | null;

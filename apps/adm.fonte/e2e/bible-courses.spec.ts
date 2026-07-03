@@ -81,6 +81,36 @@ test.describe('Curso Bíblico', () => {
     await expect(page.getByText('Matriculado').first()).toBeVisible();
   });
 
+  test('sugere matrícula de elegíveis ao abrir turma sem matrículas (story 99)', async ({ page }) => {
+    const name = `Turma Sugestão ${ts()}`;
+    await createClass(page, name);
+
+    await page.getByText(name).click();
+    await expect(page).toHaveURL(/\/bible-courses\/.+/);
+
+    // Painel de sugestões pós-criação: lista elegíveis marcados ou empty state.
+    const heading = page.getByRole('heading', { name: 'Sugestões de matrícula' });
+    await expect(heading.or(page.getByText('Nenhum filho elegível.'))).toBeVisible();
+    const hasEligible = await heading.isVisible();
+    test.skip(!hasEligible, 'Sem filhos elegíveis (3+ meses) no seed de teste');
+
+    const rows = page.getByRole('checkbox');
+    const count = await rows.count();
+
+    // Elegíveis vêm marcados por padrão.
+    await expect(rows.first()).toBeChecked();
+
+    // Se há mais de um elegível, desmarca o primeiro (ainda sobra selecionado).
+    if (count > 1) {
+      await rows.first().click();
+      await expect(rows.first()).not.toBeChecked();
+    }
+
+    // Matricula os selecionados restantes → refletido como matrícula na turma.
+    await page.getByRole('button', { name: /Matricular selecionados \([1-9]/ }).click();
+    await expect(page.getByText('Matriculado').first()).toBeVisible();
+  });
+
   test('exclui turma e some da lista', async ({ page }) => {
     const name = `Turma Excluir ${ts()}`;
     await createClass(page, name);

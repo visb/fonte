@@ -11,6 +11,7 @@ describe('BibleCourseController (e2e)', () => {
   let app: INestApplication;
   let token: string;
   let adminToken: string;
+  let servantToken: string;
   let houseId: string;
   const createdClassIds: string[] = [];
 
@@ -18,6 +19,7 @@ describe('BibleCourseController (e2e)', () => {
     app = await bootstrapApp();
     ({ token, houseId } = await loginCoordinator(app));
     adminToken = await login(app, 'admin@fonte.com', 'admin123');
+    servantToken = await login(app, 'operator@fonte.com', 'operator123');
   });
 
   afterAll(async () => {
@@ -105,6 +107,106 @@ describe('BibleCourseController (e2e)', () => {
       request(app.getHttpServer())
         .get(`${BASE}/bible-course/classes/00000000-0000-0000-0000-000000000000`)
         .set('Authorization', `Bearer ${token}`)
+        .expect(404));
+  });
+
+  describe('eligible residents + bulk enrollment (story 99)', () => {
+    let eligibleId: string;
+    let freshId: string;
+    let classId: string;
+
+    beforeAll(async () => {
+      // Interno elegível: casa suficiente (bem antigo) e ativo.
+      const eligible = await request(app.getHttpServer())
+        .post(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Elegível ${Date.now()}`, houseId, status: 'ACTIVE', entryDate: '2020-01-01' })
+        .expect(201);
+      eligibleId = eligible.body.id;
+
+      // Interno recém-entrado: não deve aparecer (menos de 3 meses).
+      const today = new Date().toISOString().split('T')[0];
+      const fresh = await request(app.getHttpServer())
+        .post(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Recente ${Date.now()}`, houseId, status: 'ACTIVE', entryDate: today })
+        .expect(201);
+      freshId = fresh.body.id;
+    });
+
+    it('GET /classes/eligible-residents → 403 for a role without permission (servant)', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/bible-course/classes/eligible-residents`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(403));
+
+    it('lists the eligible resident and excludes the freshly-entered one', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/bible-course/classes/eligible-residents`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(Array.isArray(res.body)).toBe(true);
+      const eligible = res.body.find((r: { id: string }) => r.id === eligibleId);
+      expect(eligible).toBeDefined();
+      expect(eligible.monthsInTreatment).toBeGreaterThanOrEqual(3);
+      expect(eligible.houseId).toBe(houseId);
+      expect(res.body.some((r: { id: string }) => r.id === freshId)).toBe(false);
+    });
+
+    it('POST /classes/:id/enrollments/bulk creates the enrollments atomically', async () => {
+      const klass = await request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Turma Bulk ${Date.now()}`, houseId, startDate: '2026-06-01', endDate: '2026-09-01' })
+        .expect(201);
+      classId = klass.body.id;
+      createdClassIds.push(classId);
+
+      // Ids duplicados são deduplicados → 1 matrícula.
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes/${classId}/enrollments/bulk`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ residentIds: [eligibleId, eligibleId] })
+        .expect(201);
+      expect(res.body.enrolled).toBe(1);
+
+      const detail = await request(app.getHttpServer())
+        .get(`${BASE}/bible-course/classes/${classId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(detail.body.enrollments.some((e: { residentId: string }) => e.residentId === eligibleId)).toBe(true);
+    });
+
+    it('once enrolled, the resident drops off the eligible list', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/bible-course/classes/eligible-residents`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(res.body.some((r: { id: string }) => r.id === eligibleId)).toBe(false);
+    });
+
+    it('re-running the bulk on already-enrolled residents enrolls none', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes/${classId}/enrollments/bulk`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ residentIds: [eligibleId] })
+        .expect(201);
+      expect(res.body.enrolled).toBe(0);
+    });
+
+    it('POST bulk → 400 with an empty residentIds array', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes/${classId}/enrollments/bulk`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ residentIds: [] })
+        .expect(400));
+
+    it('POST bulk → 404 for an unknown resident (rolls back)', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes/${classId}/enrollments/bulk`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ residentIds: ['11111111-1111-4111-8111-111111111111'] })
         .expect(404));
   });
 

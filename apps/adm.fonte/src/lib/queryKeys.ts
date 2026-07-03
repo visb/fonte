@@ -56,6 +56,8 @@ export const queryKeys = {
     modules: ['bible-courses', 'modules'] as const,
     grades: (classId: string) => ['bible-courses', classId, 'grades'] as const,
     photos: (classId: string) => ['bible-courses', classId, 'photos'] as const,
+    eligibleResidents: (months?: number) =>
+      ['bible-courses', 'eligible-residents', months ?? null] as const,
   },
   storeroom: {
     byHouse: (houseId: string) => ['storeroom', houseId] as const,

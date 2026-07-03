@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, FileUp } from 'lucide-react';
 import type { ResidentStatus } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
@@ -64,12 +64,20 @@ export function ResidentsPage() {
       <PageHeader
         title={total !== undefined ? `Filhos (${total})` : 'Filhos'}
         actions={
-          <Button asChild>
-            <Link to="/residents/admission">
-              <Plus size={16} className="mr-2" />
-              Novo acolhimento
-            </Link>
-          </Button>
+          <>
+            <Button variant="outline" asChild>
+              <Link to="/residents/import-lote">
+                <FileUp size={16} className="mr-2" />
+                Importar em lote
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link to="/residents/admission">
+                <Plus size={16} className="mr-2" />
+                Novo acolhimento
+              </Link>
+            </Button>
+          </>
         }
       />
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, screen, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -171,5 +171,21 @@ describe('ImportFichaModal', () => {
   it('não renderiza a seção de alertas sem warnings', async () => {
     await renderModal();
     expect(screen.queryByText(/precisam de revisão manual/)).not.toBeInTheDocument();
+  });
+
+  it('lista o histórico de contribuição vindo do preview', async () => {
+    await renderModal({ contributionMonths: ['2023-01-01', '2023-02-01'] });
+    const list = screen.getByRole('list', { name: 'Histórico de contribuição' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+    expect(list).toHaveTextContent('Janeiro/2023');
+    expect(list).toHaveTextContent('Fevereiro/2023');
+  });
+
+  it('mostra estado vazio de contribuição quando o preview não traz competências', async () => {
+    await renderModal({ contributionMonths: [] });
+    expect(
+      screen.queryByRole('list', { name: 'Histórico de contribuição' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Nenhuma contribuição registrada na planilha.')).toBeInTheDocument();
   });
 });

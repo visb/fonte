@@ -25,6 +25,7 @@ import { ResidentFormSections } from '../ResidentFormSections';
 import { ImportConflictAlert } from './ImportConflictAlert';
 import { ImportWarnings } from './ImportWarnings';
 import { ImportFichaRelatives } from './ImportFichaRelatives';
+import { ImportContributionHistory } from './ImportContributionHistory';
 import { useCheckImportConflict, useCommitImport, type ImportQueueItem } from '../../hooks/useBulkImport';
 
 interface ImportFichaModalProps {
@@ -143,6 +144,8 @@ export function ImportFichaModal({
           />
 
           <ImportFichaRelatives value={relatives} onChange={setRelatives} />
+
+          <ImportContributionHistory months={preview?.contributionMonths ?? []} />
 
           {commit.isError && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">

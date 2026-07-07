@@ -209,6 +209,13 @@ test.describe('Import em lote de filhos', () => {
     await expect(modal.getByText('Ficha do filho')).toBeVisible();
     const nameInput = modal.getByPlaceholder('Nome do acolhido');
     await expect(nameInput).toHaveValue('Filho Tranquilo');
+
+    // story 108: histórico de contribuição read-only vindo da planilha.
+    const history = modal.getByRole('list', { name: 'Histórico de contribuição' });
+    await expect(history.getByRole('listitem')).toHaveCount(2);
+    await expect(history).toContainText('Fevereiro/2023');
+    await expect(history).toContainText('Março/2023');
+
     await nameInput.fill('Filho Tranquilo Editado');
 
     await modal.getByRole('button', { name: 'Aprovar' }).click();

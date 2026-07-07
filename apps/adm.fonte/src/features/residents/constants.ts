@@ -184,6 +184,9 @@ export const IMPORT_TEXTS = {
   commitError: 'Não foi possível aprovar a importação.',
   relativesTitle: 'Familiares',
   addRelative: 'Adicionar familiar',
+  // Histórico de contribuição (story 108) — read-only, vindo da planilha.
+  contributionHistoryTitle: 'Histórico de contribuição',
+  contributionHistoryEmpty: 'Nenhuma contribuição registrada na planilha.',
 } as const;
 
 /** Prefixo do alerta de conflito com um filho já importado nesta sessão. */

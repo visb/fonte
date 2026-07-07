@@ -41,7 +41,7 @@ Ordem: 107 → 108 → 109 → 110(epic/meta) → 111 → 112 → 113 → 114 �
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 107 — import: visualizar detalhe dos alertas (popover+modal) | [ ] | | | |
+| 1 | 107 — import: visualizar detalhe dos alertas (popover+modal) | [OK] | 1093 unit + e2e 3/3 | bbf0d53 | 2bdf1ef |
 | 2 | 108 — import: histórico de contribuição no modal ver-ficha | [ ] | | | |
 | 3 | 109 — import: dividir fila em abas + status cancelled | [ ] | | | |
 | 4 | 110 — EPIC contribuição valor+produtos (meta, sem código) | [ ] | | | |
@@ -54,6 +54,7 @@ Ordem: 107 → 108 → 109 → 110(epic/meta) → 111 → 112 → 113 → 114 �
 ## Log
 
 Entrada curta — máx. ~3 linhas.
+[OK] 107 — testes: 1093/1093 unit adm + e2e bulk-import 3/3, cobertura escopo ≥90 — commit: bbf0d53 — merge: 2bdf1ef — 2026-07-07 — (bônus: reexport de tipos faltantes no barrel do api-client, necessário p/ tsc do adm)
 
 ## Resumo final
 

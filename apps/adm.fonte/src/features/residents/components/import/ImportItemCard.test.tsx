@@ -178,4 +178,30 @@ describe('ImportItemCard', () => {
     expect(screen.getByText('Processando...')).toBeInTheDocument();
     expect(screen.getByText('ficha.docx')).toBeInTheDocument();
   });
+
+  it('estado cancelled troca Remover por Restaurar e esconde a aprovação (story 109)', () => {
+    const onRestore = vi.fn();
+    renderWithClient(
+      <ImportItemCard
+        item={readyItem({ status: 'cancelled' })}
+        onRemove={vi.fn()}
+        onRestore={onRestore}
+      />,
+    );
+    expect(screen.getByText('Cancelado')).toBeInTheDocument();
+    // aprovação e ver ficha somem; remover vira restaurar
+    expect(screen.queryByRole('button', { name: 'Aprovar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ver ficha' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remover' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restaurar' }));
+    expect(onRestore).toHaveBeenCalledWith('i1');
+  });
+
+  it('estado cancelled não dispara checagem de conflito', () => {
+    renderWithClient(
+      <ImportItemCard item={readyItem({ status: 'cancelled' })} onRemove={vi.fn()} onRestore={vi.fn()} />,
+    );
+    expect(api.residents.checkImportConflict).not.toHaveBeenCalled();
+  });
 });

@@ -13,8 +13,16 @@ export function BulkImportPage() {
   const [rows, setRows] = useState<SpreadsheetImportRow[]>([]);
   const [meta, setMeta] = useState<ParseSpreadsheetResult | null>(null);
   const [modalItem, setModalItem] = useState<ImportQueueItem | null>(null);
-  const { items, addFiles, removeItem, markImported, sessionConflictName, pendingCount } =
-    useImportQueue(rows);
+  const {
+    items,
+    addFiles,
+    removeItem,
+    restoreItem,
+    markImported,
+    sessionConflictName,
+    pendingCount,
+    tabCounts,
+  } = useImportQueue(rows);
 
   const handleParsed = (parsedRows: SpreadsheetImportRow[], result: ParseSpreadsheetResult) => {
     setRows(parsedRows);
@@ -55,9 +63,11 @@ export function BulkImportPage() {
           <ImportQueue
             items={items}
             onRemove={removeItem}
+            onRestore={restoreItem}
             onViewFicha={setModalItem}
             onImported={markImported}
             sessionConflictName={sessionConflictName}
+            tabCounts={tabCounts}
           />
         </section>
       </div>

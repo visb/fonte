@@ -1,7 +1,6 @@
 # Backlog
 
 ao importar em lote,
-no modal "ver ficha" deveria mostrar o historico de contribuição
 dividir a lista de fichas selecionadas em abas: fila | processadas | aprovadas | canceladas
 
 ---

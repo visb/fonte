@@ -203,3 +203,59 @@ export function importWarningsSummary(count: number): string {
   if (count <= 0) return IMPORT_TEXTS.okSummary;
   return count === 1 ? '1 alerta' : `${count} alertas`;
 }
+
+/**
+ * Rótulos legíveis para as chaves de `preview.warnings` (Record<campo, mensagem>)
+ * emitidas pelo parse/cross-match do import (stories 101/102). Chaves sem rótulo
+ * caem no fallback humanizado de `importWarningFieldLabel`.
+ */
+export const IMPORT_WARNING_FIELD_LABELS: Record<string, string> = {
+  spreadsheet: 'Planilha',
+  entryDate: 'Data de entrada',
+  exitDate: 'Data de saída',
+  familyContact: 'Contato do familiar',
+  weight: 'Peso',
+  height: 'Altura',
+  name: 'Nome',
+  cpf: 'CPF',
+  rg: 'RG',
+  birthDate: 'Data de nascimento',
+  phone: 'Telefone',
+  gender: 'Sexo',
+  maritalStatus: 'Estado civil',
+  house: 'Casa',
+};
+
+/** Rótulo legível para uma chave de warning; humaniza a chave se não houver mapeamento. */
+export function importWarningFieldLabel(key: string): string {
+  const mapped = IMPORT_WARNING_FIELD_LABELS[key];
+  if (mapped) return mapped;
+  // Humaniza camelCase/underscore como fallback ("familyContact" → "Family contact").
+  const spaced = key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/** Item de warning normalizado para exibição (campo → mensagem). */
+export interface ImportWarningItem {
+  key: string;
+  label: string;
+  message: string;
+}
+
+/**
+ * Normaliza `preview.warnings` (Record<campo, mensagem>) em lista ordenada,
+ * descartando mensagens vazias e adicionando o rótulo legível do campo.
+ */
+export function warningsToList(warnings: Record<string, string>): ImportWarningItem[] {
+  return Object.entries(warnings)
+    .filter(([, message]) => Boolean(message))
+    .map(([key, message]) => ({ key, label: importWarningFieldLabel(key), message }));
+}
+
+/** Textos dos alertas de import (popover no card + seção no modal). */
+export const IMPORT_WARNINGS_TEXTS = {
+  reviewHeader: 'Atenção — campos que precisam de revisão manual',
+} as const;

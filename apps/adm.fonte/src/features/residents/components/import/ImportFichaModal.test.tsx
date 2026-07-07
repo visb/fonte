@@ -151,4 +151,25 @@ describe('ImportFichaModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('renderiza a seção de alertas com os warnings do preview', async () => {
+    await renderModal({
+      warnings: {
+        entryDate: 'ficha=2023-02-10, planilha=2023-03-01',
+        spreadsheet: 'Nenhum filho da planilha corresponde a esta ficha.',
+        empty: '',
+      },
+    });
+    expect(screen.getByText(/precisam de revisão manual/)).toBeInTheDocument();
+    expect(screen.getByText('Data de entrada:')).toBeInTheDocument();
+    expect(screen.getByText(/ficha=2023-02-10, planilha=2023-03-01/)).toBeInTheDocument();
+    expect(screen.getByText('Planilha:')).toBeInTheDocument();
+    // Sem botão de dispensa: no lote a seção é só visualização.
+    expect(screen.queryByLabelText('Dispensar alerta')).not.toBeInTheDocument();
+  });
+
+  it('não renderiza a seção de alertas sem warnings', async () => {
+    await renderModal();
+    expect(screen.queryByText(/precisam de revisão manual/)).not.toBeInTheDocument();
+  });
 });

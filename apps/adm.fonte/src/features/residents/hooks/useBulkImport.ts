@@ -10,7 +10,13 @@ import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { getErrorMessage } from '@/lib/errors';
 import { normalizeForSearch } from '@/lib/utils';
-import { IMPORT_BATCH_SIZE, type ImportItemStatus } from '../constants';
+import {
+  IMPORT_BATCH_SIZE,
+  IMPORT_TABS,
+  IMPORT_TAB_STATUSES,
+  type ImportItemStatus,
+  type ImportTab,
+} from '../constants';
 
 // ─── Parse da planilha de referência ────────────────────────────────────────
 
@@ -77,7 +83,17 @@ export interface ImportQueueItem {
 export interface UseImportQueue {
   items: ImportQueueItem[];
   addFiles: (files: File[]) => void;
+  /**
+   * Cancela o item (story 109): marca `cancelled` em vez de apagá-lo, para que
+   * migre para a aba Canceladas e possa ser restaurado. O arquivo/preview é
+   * preservado.
+   */
   removeItem: (id: string) => void;
+  /**
+   * Restaura um item cancelado: volta para `ready` (se já tem preview) ou
+   * `queued` (sem preview — o escalonador re-agenda a extração).
+   */
+  restoreItem: (id: string) => void;
   /** Marca o item como `imported` após o commit aprovar (não remove da lista). */
   markImported: (id: string) => void;
   /**
@@ -88,6 +104,8 @@ export interface UseImportQueue {
   processingCount: number;
   /** Itens `ready` ainda não importados — a fila de aprovação pendente. */
   pendingCount: number;
+  /** Contagem de itens por aba, para os badges (story 109). */
+  tabCounts: Record<ImportTab, number>;
 }
 
 /** Identidade normalizada de um item (nome sem acento + CPF só dígitos). */
@@ -156,8 +174,21 @@ export function useImportQueue(rows: SpreadsheetImportRow[]): UseImportQueue {
   }, []);
 
   const removeItem = useCallback((id: string) => {
-    filesRef.current.delete(id);
-    setItems((prev) => prev.filter((item) => item.id !== id));
+    // Cancela sem apagar (story 109): o arquivo em `filesRef` é preservado para
+    // permitir restaurar depois; o item só migra para a aba Canceladas.
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status: 'cancelled' } : item)),
+    );
+  }, []);
+
+  const restoreItem = useCallback((id: string) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id || item.status !== 'cancelled') return item;
+        // Tem preview → volta pronto; senão re-agenda a extração via `queued`.
+        return { ...item, status: item.preview ? 'ready' : 'queued', error: null };
+      }),
+    );
   }, []);
 
   const markImported = useCallback((id: string) => {
@@ -185,13 +216,23 @@ export function useImportQueue(rows: SpreadsheetImportRow[]): UseImportQueue {
   const processingCount = items.filter((item) => item.status === 'processing').length;
   const pendingCount = items.filter((item) => item.status === 'ready').length;
 
+  const tabCounts = IMPORT_TABS.reduce(
+    (acc, tab) => {
+      acc[tab] = items.filter((item) => IMPORT_TAB_STATUSES[tab].includes(item.status)).length;
+      return acc;
+    },
+    {} as Record<ImportTab, number>,
+  );
+
   return {
     items,
     addFiles,
     removeItem,
+    restoreItem,
     markImported,
     sessionConflictName,
     processingCount,
     pendingCount,
+    tabCounts,
   };
 }

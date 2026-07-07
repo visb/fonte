@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarArrowDown, CalendarArrowUp, Home, Loader2, Trash2, User } from 'lucide-react';
+import { AlertTriangle, CalendarArrowDown, CalendarArrowUp, Home, Loader2, RotateCcw, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -20,6 +20,8 @@ import { ImportWarnings } from './ImportWarnings';
 interface ImportItemCardProps {
   item: ImportQueueItem;
   onRemove: (id: string) => void;
+  /** Restaura um item cancelado (story 109) — só usado na aba Canceladas. */
+  onRestore?: (id: string) => void;
   onViewFicha?: (item: ImportQueueItem) => void;
   /** Chamado quando o commit direto pelo card conclui — a fila marca `imported`. */
   onImported?: (id: string) => void;
@@ -37,6 +39,7 @@ function formatDate(value: unknown): string | null {
 export function ImportItemCard({
   item,
   onRemove,
+  onRestore,
   onViewFicha,
   onImported,
   sessionConflictName,
@@ -57,6 +60,7 @@ export function ImportItemCard({
   const commit = useCommitImport();
 
   const isImported = status === 'imported';
+  const isCancelled = status === 'cancelled';
   const blockedReason = conflicts.length > 0
     ? IMPORT_TEXTS.conflictReason
     : sessionConflictName
@@ -160,16 +164,28 @@ export function ImportItemCard({
 
         {/* Ações */}
         <div className="flex shrink-0 flex-col items-end gap-2">
-          {!isImported && (
+          {isCancelled ? (
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              title="Remover"
-              onClick={() => onRemove(item.id)}
+              title={IMPORT_TEXTS.restore}
+              onClick={() => onRestore?.(item.id)}
             >
-              <Trash2 size={15} />
+              <RotateCcw size={15} />
             </Button>
+          ) : (
+            !isImported && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title={IMPORT_TEXTS.remove}
+                onClick={() => onRemove(item.id)}
+              >
+                <Trash2 size={15} />
+              </Button>
+            )
           )}
           {status === 'ready' && (
             <div className="flex gap-2">

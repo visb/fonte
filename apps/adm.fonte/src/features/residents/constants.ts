@@ -143,9 +143,17 @@ export const IMPORT_BATCH_SIZE = 5;
 /**
  * Estado de um item da fila de import em lote. `imported` é o estado final após
  * o commit aprovado (story 105): o card permanece na lista para dar feedback do
- * que já entrou, mas sai da contagem de pendentes.
+ * que já entrou, mas sai da contagem de pendentes. `cancelled` (story 109) é o
+ * estado de um item removido pelo usuário — não some da fila, só migra para a
+ * aba Canceladas e pode ser restaurado (o arquivo/preview é preservado).
  */
-export type ImportItemStatus = 'queued' | 'processing' | 'ready' | 'error' | 'imported';
+export type ImportItemStatus =
+  | 'queued'
+  | 'processing'
+  | 'ready'
+  | 'error'
+  | 'imported'
+  | 'cancelled';
 
 export const IMPORT_ITEM_STATUS_LABELS: Record<ImportItemStatus, string> = {
   queued: 'Na fila',
@@ -153,6 +161,7 @@ export const IMPORT_ITEM_STATUS_LABELS: Record<ImportItemStatus, string> = {
   ready: 'Pronto',
   error: 'Erro',
   imported: 'Importado',
+  cancelled: 'Cancelado',
 };
 
 export const IMPORT_ITEM_STATUS_VARIANT: Record<ImportItemStatus, BadgeVariant> = {
@@ -161,6 +170,42 @@ export const IMPORT_ITEM_STATUS_VARIANT: Record<ImportItemStatus, BadgeVariant> 
   ready: 'success',
   error: 'destructive',
   imported: 'success',
+  cancelled: 'secondary',
+};
+
+// ─── Abas da fila de import (story 109) ─────────────────────────────────────
+
+/** Abas que organizam a fila de import por estágio do item. */
+export type ImportTab = 'queue' | 'processed' | 'approved' | 'cancelled';
+
+/** Ordem de exibição das abas; a primeira (`queue`) é a ativa por padrão. */
+export const IMPORT_TABS: ImportTab[] = ['queue', 'processed', 'approved', 'cancelled'];
+
+export const IMPORT_TAB_LABELS: Record<ImportTab, string> = {
+  queue: 'Fila',
+  processed: 'Processadas',
+  approved: 'Aprovadas',
+  cancelled: 'Canceladas',
+};
+
+/**
+ * Agrupamento status → aba. Fila = ainda extraindo; Processadas = extração
+ * concluída (prontas ou com erro); Aprovadas = commit feito; Canceladas =
+ * removidas pelo usuário.
+ */
+export const IMPORT_TAB_STATUSES: Record<ImportTab, ImportItemStatus[]> = {
+  queue: ['queued', 'processing'],
+  processed: ['ready', 'error'],
+  approved: ['imported'],
+  cancelled: ['cancelled'],
+};
+
+/** Mensagem de aba vazia (`EmptyState`) por aba. */
+export const IMPORT_TAB_EMPTY: Record<ImportTab, string> = {
+  queue: 'Nenhuma ficha na fila.',
+  processed: 'Nenhuma ficha processada.',
+  approved: 'Nenhuma ficha aprovada.',
+  cancelled: 'Nenhuma ficha cancelada.',
 };
 
 /** Textos da tela de import em lote. */
@@ -174,6 +219,9 @@ export const IMPORT_TEXTS = {
   // Aprovação / commit (story 105).
   approve: 'Aprovar',
   viewFicha: 'Ver ficha',
+  remove: 'Remover',
+  // Restaurar item cancelado (story 109).
+  restore: 'Restaurar',
   modalTitle: 'Ficha do filho',
   modalDescription: 'Revise e edite os dados antes de aprovar a importação.',
   approving: 'Aprovando...',

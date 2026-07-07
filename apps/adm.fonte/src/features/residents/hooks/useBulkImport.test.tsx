@@ -154,14 +154,111 @@ describe('useImportQueue', () => {
     await waitFor(() => expect(result.current.items[1].status).toBe('ready'));
   });
 
-  it('removeItem tira o item da fila', async () => {
-    vi.mocked(api.residents.parseDocxWithSpreadsheet).mockReturnValue(deferred().promise as never);
+  it('removeItem marca cancelled sem apagar o item (story 109)', async () => {
+    const d = deferred<unknown>();
+    vi.mocked(api.residents.parseDocxWithSpreadsheet).mockReturnValue(d.promise as never);
     const { result } = renderHookWithClient(() => useImportQueue([]));
     act(() => result.current.addFiles([docx('a.docx')]));
-    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    await waitFor(() => expect(result.current.items[0].status).toBe('processing'));
+    act(() => d.resolve({ resident: { name: 'A' }, warnings: {}, houseName: 'Casa' }));
+    await waitFor(() => expect(result.current.items[0].status).toBe('ready'));
+
     const id = result.current.items[0].id;
     act(() => result.current.removeItem(id));
-    expect(result.current.items).toHaveLength(0);
+    // não some da lista: só migra para cancelled, preview preservado
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.items[0].status).toBe('cancelled');
+    expect(result.current.items[0].preview).toMatchObject({ houseName: 'Casa' });
+  });
+
+  it('restoreItem volta para ready quando já tem preview', async () => {
+    const d = deferred<unknown>();
+    vi.mocked(api.residents.parseDocxWithSpreadsheet).mockReturnValue(d.promise as never);
+    const { result } = renderHookWithClient(() => useImportQueue([]));
+    act(() => result.current.addFiles([docx('a.docx')]));
+    await waitFor(() => expect(result.current.items[0].status).toBe('processing'));
+    act(() => d.resolve({ resident: { name: 'A' }, warnings: {}, houseName: 'Casa' }));
+    await waitFor(() => expect(result.current.items[0].status).toBe('ready'));
+
+    const id = result.current.items[0].id;
+    act(() => result.current.removeItem(id));
+    expect(result.current.items[0].status).toBe('cancelled');
+    act(() => result.current.restoreItem(id));
+    expect(result.current.items[0].status).toBe('ready');
+  });
+
+  it('restoreItem re-agenda extração (queued) quando não tem preview', async () => {
+    const first = deferred<unknown>();
+    const second = deferred<unknown>();
+    let call = 0;
+    vi.mocked(api.residents.parseDocxWithSpreadsheet).mockImplementation(
+      () => (call++ === 0 ? first.promise : second.promise) as never,
+    );
+    const { result } = renderHookWithClient(() => useImportQueue([]));
+    act(() => result.current.addFiles([docx('a.docx')]));
+    await waitFor(() => expect(result.current.items[0].status).toBe('processing'));
+
+    // cancela ainda sem preview
+    const id = result.current.items[0].id;
+    act(() => result.current.removeItem(id));
+    expect(result.current.items[0].status).toBe('cancelled');
+    expect(result.current.items[0].preview).toBeNull();
+
+    // restaura → volta para queued e o escalonador re-processa
+    act(() => result.current.restoreItem(id));
+    await waitFor(() => expect(result.current.items[0].status).toBe('processing'));
+    act(() => second.resolve({ resident: { name: 'A' }, warnings: {}, houseName: 'Casa' }));
+    await waitFor(() => expect(result.current.items[0].status).toBe('ready'));
+  });
+
+  it('restoreItem ignora item que não está cancelado', async () => {
+    const d = deferred<unknown>();
+    vi.mocked(api.residents.parseDocxWithSpreadsheet).mockReturnValue(d.promise as never);
+    const { result } = renderHookWithClient(() => useImportQueue([]));
+    act(() => result.current.addFiles([docx('a.docx')]));
+    await waitFor(() => expect(result.current.items[0].status).toBe('processing'));
+    act(() => d.resolve({ resident: { name: 'A' }, warnings: {}, houseName: 'Casa' }));
+    await waitFor(() => expect(result.current.items[0].status).toBe('ready'));
+
+    const id = result.current.items[0].id;
+    act(() => result.current.restoreItem(id));
+    expect(result.current.items[0].status).toBe('ready');
+  });
+
+  it('tabCounts agrupa os itens por aba (story 109)', async () => {
+    const specs = [
+      { name: 'A', cpf: '1' },
+      { name: 'B', cpf: '2' },
+      { name: 'C', cpf: '3' },
+    ];
+    vi.mocked(api.residents.parseDocxWithSpreadsheet).mockImplementation((fd) => {
+      const file = (fd as FormData).get('file') as File;
+      const idx = Number(file.name.replace(/\D/g, ''));
+      // ficha 2 falha (vira error → aba processadas junto com ready)
+      if (idx === 2) return Promise.reject(new Error('boom'));
+      return Promise.resolve({ resident: specs[idx], warnings: {}, houseName: '' } as never);
+    });
+    const { result } = renderHookWithClient(() => useImportQueue([]));
+    act(() => result.current.addFiles(specs.map((_, i) => docx(`${i}.docx`))));
+    await waitFor(() =>
+      expect(result.current.items.filter((i) => i.status === 'ready')).toHaveLength(2),
+    );
+    await waitFor(() =>
+      expect(result.current.items.filter((i) => i.status === 'error')).toHaveLength(1),
+    );
+
+    // ready(2) + error(1) → aba processadas = 3
+    expect(result.current.tabCounts.processed).toBe(3);
+    expect(result.current.tabCounts.queue).toBe(0);
+    expect(result.current.tabCounts.approved).toBe(0);
+    expect(result.current.tabCounts.cancelled).toBe(0);
+
+    // aprova um e cancela outro → contadores migram entre abas
+    act(() => result.current.markImported(result.current.items[0].id));
+    act(() => result.current.removeItem(result.current.items[1].id));
+    expect(result.current.tabCounts.approved).toBe(1);
+    expect(result.current.tabCounts.cancelled).toBe(1);
+    expect(result.current.tabCounts.processed).toBe(1);
   });
 });
 

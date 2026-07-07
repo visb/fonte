@@ -34,4 +34,25 @@ describe('ImportWarnings', () => {
     fireEvent.click(screen.getByLabelText('Dispensar alerta'));
     expect(onDismiss).toHaveBeenCalledWith('a');
   });
+
+  it('exibe o rótulo do campo como prefixo quando presente', () => {
+    render(
+      <ImportWarnings
+        warnings={[{ key: 'entryDate', label: 'Data de entrada', message: 'ficha=X, planilha=Y' }]}
+        onDismiss={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Data de entrada:')).toBeInTheDocument();
+    expect(screen.getByText(/ficha=X, planilha=Y/)).toBeInTheDocument();
+  });
+
+  it('sem onDismiss não renderiza botão de dispensa (uso do import em lote)', () => {
+    render(
+      <ImportWarnings
+        warnings={[{ key: 'entryDate', label: 'Data de entrada', message: 'ficha=X' }]}
+      />,
+    );
+    expect(screen.queryByLabelText('Dispensar alerta')).not.toBeInTheDocument();
+    expect(screen.getByText('Data de entrada:')).toBeInTheDocument();
+  });
 });

@@ -153,6 +153,15 @@ test.describe('Import em lote de filhos', () => {
     await expect(page.getByText(/Conflito: Filho Já Cadastrado/)).toBeVisible();
     await expect(page.getByText('Sem alertas')).toBeVisible();
 
+    // 4b. A contagem de alertas do card em conflito abre um popover com o
+    //     detalhe campo → mensagem (story 107).
+    const duplicadoCard = page.getByTestId('import-item-card').filter({ hasText: 'Filho Duplicado' });
+    await expect(page.getByText(/precisam de revisão manual/)).toBeHidden();
+    await duplicadoCard.getByRole('button', { name: /1 alerta/ }).click();
+    await expect(page.getByText(/precisam de revisão manual/)).toBeVisible();
+    await expect(page.getByText('RG:')).toBeVisible();
+    await expect(page.getByText('RG ilegível')).toBeVisible();
+
     // 5. Os botões Aprovar/Ver ficha estão presentes (ação completa é da 105).
     await expect(page.getByRole('button', { name: 'Aprovar' }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Ver ficha' }).first()).toBeVisible();

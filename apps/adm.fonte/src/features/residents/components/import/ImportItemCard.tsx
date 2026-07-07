@@ -2,7 +2,7 @@ import { AlertTriangle, CalendarArrowDown, CalendarArrowUp, Home, Loader2, Trash
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getErrorMessage } from '@/lib/errors';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import type { ImportQueueItem } from '../../hooks/useBulkImport';
@@ -13,7 +13,9 @@ import {
   IMPORT_ITEM_STATUS_VARIANT,
   IMPORT_TEXTS,
   importWarningsSummary,
+  warningsToList,
 } from '../../constants';
+import { ImportWarnings } from './ImportWarnings';
 
 interface ImportItemCardProps {
   item: ImportQueueItem;
@@ -30,10 +32,6 @@ function formatDate(value: unknown): string | null {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-}
-
-function countWarnings(warnings: Record<string, string>): number {
-  return Object.values(warnings).filter(Boolean).length;
 }
 
 export function ImportItemCard({
@@ -54,7 +52,8 @@ export function ImportItemCard({
   const { data: houses = [], isPending: housesLoading } = useHouses();
   const conflictQuery = useCheckImportConflict(name, cpf, { enabled: status === 'ready' });
   const conflicts = conflictQuery.data?.conflicts ?? [];
-  const warningsCount = preview ? countWarnings(preview.warnings) : 0;
+  const warningsList = preview ? warningsToList(preview.warnings) : [];
+  const warningsCount = warningsList.length;
   const commit = useCommitImport();
 
   const isImported = status === 'imported';
@@ -119,9 +118,24 @@ export function ImportItemCard({
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className={cn(warningsCount > 0 && 'text-yellow-700 dark:text-yellow-400')}>
-                  {importWarningsSummary(warningsCount)}
-                </span>
+                {warningsCount > 0 ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded text-yellow-700 underline decoration-dotted underline-offset-2 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300"
+                      >
+                        <AlertTriangle size={13} />
+                        {importWarningsSummary(warningsCount)}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-80 p-2">
+                      <ImportWarnings warnings={warningsList} />
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <span>{importWarningsSummary(warningsCount)}</span>
+                )}
                 {conflicts.length > 0 && (
                   <Badge variant="destructive" className="gap-1">
                     <AlertTriangle size={11} />

@@ -66,6 +66,35 @@ describe('ImportItemCard', () => {
     expect(screen.getByText('2 alertas')).toBeInTheDocument();
   });
 
+  it('sem alertas não vira gatilho de popover', () => {
+    renderWithClient(<ImportItemCard item={readyItem()} onRemove={vi.fn()} />);
+    const summary = screen.getByText('Sem alertas');
+    expect(summary.closest('button')).toBeNull();
+    expect(screen.queryByText(/precisam de revisão manual/)).not.toBeInTheDocument();
+  });
+
+  it('com alertas, o resumo abre popover listando campo → mensagem', async () => {
+    const item = readyItem();
+    item.preview!.warnings = {
+      entryDate: 'ficha=2023-02-10, planilha=2023-03-01',
+      cpf: 'CPF ilegível',
+    };
+    renderWithClient(<ImportItemCard item={item} onRemove={vi.fn()} />);
+
+    const trigger = screen.getByRole('button', { name: /2 alertas/ });
+    expect(screen.queryByText(/precisam de revisão manual/)).not.toBeInTheDocument();
+
+    fireEvent.click(trigger);
+
+    await waitFor(() =>
+      expect(screen.getByText(/precisam de revisão manual/)).toBeInTheDocument(),
+    );
+    expect(screen.getByText('Data de entrada:')).toBeInTheDocument();
+    expect(screen.getByText(/ficha=2023-02-10, planilha=2023-03-01/)).toBeInTheDocument();
+    expect(screen.getByText('CPF:')).toBeInTheDocument();
+    expect(screen.getByText('CPF ilegível')).toBeInTheDocument();
+  });
+
   it('mostra badge de conflito e desabilita Aprovar quando há conflito', async () => {
     vi.mocked(api.residents.checkImportConflict).mockResolvedValue({
       conflicts: [{ id: 'r9', name: 'João Duplicado', cpf: '12345678900', status: 'ACTIVE', houseName: 'Casa A' }],

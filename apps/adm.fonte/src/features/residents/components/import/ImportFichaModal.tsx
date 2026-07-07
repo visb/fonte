@@ -20,9 +20,10 @@ import {
   relativesFromPreview,
   resolveHouseId,
 } from '../../lib/importCommit';
-import { IMPORT_TEXTS } from '../../constants';
+import { IMPORT_TEXTS, warningsToList } from '../../constants';
 import { ResidentFormSections } from '../ResidentFormSections';
 import { ImportConflictAlert } from './ImportConflictAlert';
+import { ImportWarnings } from './ImportWarnings';
 import { ImportFichaRelatives } from './ImportFichaRelatives';
 import { useCheckImportConflict, useCommitImport, type ImportQueueItem } from '../../hooks/useBulkImport';
 
@@ -89,6 +90,7 @@ export function ImportFichaModal({
   const conflictQuery = useCheckImportConflict(name, cpf, { enabled: open });
   const conflicts = conflictQuery.data?.conflicts ?? [];
 
+  const warningsList = preview ? warningsToList(preview.warnings) : [];
   const namedRelatives = relatives.filter((r) => r.name.trim());
   const blockedReason = conflicts.length > 0
     ? IMPORT_TEXTS.conflictReason
@@ -120,6 +122,8 @@ export function ImportFichaModal({
         </DialogHeader>
 
         <ImportConflictAlert conflicts={conflicts} sessionConflictName={sessionConflictName} />
+
+        {warningsList.length > 0 && <ImportWarnings warnings={warningsList} />}
 
         {preview?.photoBase64 && (
           <img

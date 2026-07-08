@@ -1,13 +1,15 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { CheckImportConflictResult, ImportConflict } from '@fonte/types';
+import { CheckImportConflictResult, ImportConflict, ResidentStatus } from '@fonte/types';
 import { normalizeName } from '../../common/lib/normalize';
 import { Resident } from './resident.entity';
 import { Relative } from '../relative/relative.entity';
 import { ResidentService } from './resident.service';
 import { ResidentFollowUpService } from '../resident-follow-up/resident-follow-up.service';
 import { CommitImportDto } from './dto/commit-import.dto';
+import { CreateResidentDto } from './dto/create-resident.dto';
+import { monthsBetween } from './import.util';
 
 /** Só os dígitos de um texto (para comparar CPFs de formatos diferentes). */
 function digitsOnly(text: string | null | undefined): string {
@@ -100,6 +102,10 @@ export class ImportService {
     return this.dataSource.transaction(async (manager) => {
       await this.assertNoCpfConflict(manager, dto.resident.cpf);
 
+      // Filho que já saiu não pode entrar ATIVO: deriva ALTA/EVASÃO pela
+      // permanência (story 120) antes de reusar a regra de criação.
+      this.applyExitStatus(dto.resident);
+
       // Reusa a regra de criação (resident + admissão + carnê), na transação.
       const created = await this.residentService.create(dto.resident, manager);
 
@@ -135,6 +141,28 @@ export class ImportService {
 
       return { resident, contributionsCreated };
     });
+  }
+
+  /**
+   * Deriva o status terminal de um filho que já saiu, a partir da permanência
+   * entrada→saída (story 120). Só age quando há `exitDate` **e** `entryDate` e o
+   * status recebido é o default não-terminal (`ACTIVE`/`PRE_ADMISSION`/ausente):
+   * permanência ≥ 6 meses → `DISCHARGED` (alta); < 6 meses → `EVADED` (evasão).
+   * Status terminal escolhido explicitamente no modal é respeitado, e sem
+   * `entryDate` não há como derivar → o status recebido é mantido (sem crash).
+   */
+  private applyExitStatus(resident: CreateResidentDto): void {
+    const { entryDate, exitDate, status } = resident;
+    if (!exitDate || !entryDate) return;
+    const isDefaultStatus =
+      status == null ||
+      status === ResidentStatus.ACTIVE ||
+      status === ResidentStatus.PRE_ADMISSION;
+    if (!isDefaultStatus) return;
+    resident.status =
+      monthsBetween(entryDate, exitDate) >= 6
+        ? ResidentStatus.DISCHARGED
+        : ResidentStatus.EVADED;
   }
 
   /** Idempotência: recusa (409) se já houver filho ativo com o mesmo CPF. */

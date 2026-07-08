@@ -128,6 +128,7 @@ export function ImportReviewStep({
         register={register}
         errors={errors}
         houses={houses}
+        showExitDate
         watchFamilyInvestment={watch('familyInvestment')}
       />
 

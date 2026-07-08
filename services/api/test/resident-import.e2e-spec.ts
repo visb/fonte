@@ -203,6 +203,52 @@ describe('Resident import — conflito e commit (e2e)', () => {
       expect(contributions).toHaveLength(3);
     });
 
+    // Story 120: filho que já saiu não pode entrar ATIVO — o commit deriva
+    // ALTA/EVASÃO pela permanência entrada→saída e grava a exitDate.
+    it('permanência ≥ 6 meses com exitDate → status DISCHARGED (alta)', async () => {
+      const cpf = uniqueCpf();
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/residents/import/commit`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          resident: { name: `Alta ${Date.now()}`, houseId, cpf, entryDate: '2023-01-10', exitDate: '2023-08-10' },
+          relatives: [{ name: 'Responsável', phone: '11955554444' }],
+          contributionMonths: [],
+          photoBase64: null,
+        })
+        .expect(201);
+      createdIds.push(res.body.resident.id);
+
+      const got = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${res.body.resident.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(got.body.status).toBe('DISCHARGED');
+      expect(got.body.exitDate).toContain('2023-08-10');
+    });
+
+    it('permanência < 6 meses com exitDate → status EVADED (evasão)', async () => {
+      const cpf = uniqueCpf();
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/residents/import/commit`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          resident: { name: `Evasao ${Date.now()}`, houseId, cpf, entryDate: '2023-01-10', exitDate: '2023-04-01' },
+          relatives: [{ name: 'Responsável', phone: '11955554444' }],
+          contributionMonths: [],
+          photoBase64: null,
+        })
+        .expect(201);
+      createdIds.push(res.body.resident.id);
+
+      const got = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${res.body.resident.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(got.body.status).toBe('EVADED');
+      expect(got.body.exitDate).toContain('2023-04-01');
+    });
+
     it('segundo commit do mesmo CPF → 409', async () => {
       const cpf = uniqueCpf();
       const payload = {

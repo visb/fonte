@@ -199,5 +199,75 @@ describe('ImportService', () => {
 
       expect(create).toHaveBeenCalledTimes(1);
     });
+
+    // Story 120: filho que já saiu deriva ALTA/EVASÃO pela permanência.
+    describe('derivação de status por data de saída (story 120)', () => {
+      /** Ficha com entrada/saída (e status opcional) para o commit. */
+      const withDates = (over: Record<string, unknown>) =>
+        commitDto({
+          resident: { name: 'Maria', houseId: 'house-1', cpf: '555.666.777-88', ...over } as never,
+        });
+
+      it('permanência ≥ 6 meses + status ausente → DISCHARGED com exitDate', async () => {
+        await service.commit(
+          withDates({ entryDate: '2023-01-10', exitDate: '2023-08-10' }),
+          'user-1',
+        );
+        const dto = create.mock.calls[0][0];
+        expect(dto.status).toBe(ResidentStatus.DISCHARGED);
+        expect(dto.exitDate).toBe('2023-08-10');
+      });
+
+      it('permanência ≥ 6 meses + status ACTIVE → DISCHARGED (não fica ativo)', async () => {
+        await service.commit(
+          withDates({ entryDate: '2023-01-10', exitDate: '2023-08-10', status: ResidentStatus.ACTIVE }),
+          'user-1',
+        );
+        expect(create.mock.calls[0][0].status).toBe(ResidentStatus.DISCHARGED);
+      });
+
+      it('permanência < 6 meses → EVADED com exitDate', async () => {
+        await service.commit(
+          withDates({ entryDate: '2023-01-10', exitDate: '2023-04-01' }),
+          'user-1',
+        );
+        const dto = create.mock.calls[0][0];
+        expect(dto.status).toBe(ResidentStatus.EVADED);
+        expect(dto.exitDate).toBe('2023-04-01');
+      });
+
+      it('status terminal explícito (DISCHARGED) é preservado, não re-derivado', async () => {
+        // Permanência < 6 meses, mas o operador escolheu ALTA: respeita a escolha.
+        await service.commit(
+          withDates({ entryDate: '2023-01-10', exitDate: '2023-04-01', status: ResidentStatus.DISCHARGED }),
+          'user-1',
+        );
+        expect(create.mock.calls[0][0].status).toBe(ResidentStatus.DISCHARGED);
+      });
+
+      it('status terminal explícito (EVADED) é preservado mesmo com ≥ 6 meses', async () => {
+        await service.commit(
+          withDates({ entryDate: '2023-01-10', exitDate: '2023-08-10', status: ResidentStatus.EVADED }),
+          'user-1',
+        );
+        expect(create.mock.calls[0][0].status).toBe(ResidentStatus.EVADED);
+      });
+
+      it('exitDate sem entryDate → mantém o status recebido, sem crash', async () => {
+        await service.commit(
+          withDates({ exitDate: '2023-08-10', status: ResidentStatus.ACTIVE }),
+          'user-1',
+        );
+        expect(create.mock.calls[0][0].status).toBe(ResidentStatus.ACTIVE);
+      });
+
+      it('sem exitDate → comportamento atual (status como veio)', async () => {
+        await service.commit(
+          withDates({ entryDate: '2023-01-10', status: ResidentStatus.ACTIVE }),
+          'user-1',
+        );
+        expect(create.mock.calls[0][0].status).toBe(ResidentStatus.ACTIVE);
+      });
+    });
   });
 });

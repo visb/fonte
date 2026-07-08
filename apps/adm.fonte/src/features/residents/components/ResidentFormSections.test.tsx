@@ -62,6 +62,17 @@ describe('ResidentAdmissionSections', () => {
     expect(screen.getByText('Status')).toBeInTheDocument();
   });
 
+  it('não mostra a data de saída por padrão', () => {
+    render(<AdmissionHarness />);
+    expect(screen.queryByText('Data de saída')).not.toBeInTheDocument();
+  });
+
+  it('showExitDate exibe o campo de data de saída (import, story 120)', () => {
+    render(<AdmissionHarness showExitDate />);
+    expect(screen.getByText('Data de saída')).toBeInTheDocument();
+    expect(screen.getByText(/o status Alta\/Evasão/)).toBeInTheDocument();
+  });
+
   it('first payment: mostra checkbox e dispara onFirstPaymentChange', () => {
     const onChange = vi.fn();
     render(

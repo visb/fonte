@@ -140,6 +140,7 @@ export function ImportFichaModal({
             errors={errors}
             houses={houses}
             showStatus
+            showExitDate
             watchFamilyInvestment={watch('familyInvestment')}
           />
 

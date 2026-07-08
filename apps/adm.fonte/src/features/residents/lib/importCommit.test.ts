@@ -72,6 +72,12 @@ describe('previewToFormValues', () => {
     const values = previewToFormValues({ name: 'Ana', contactPhone: '11999998888' });
     expect(values.contactPhone).toBe('(11) 99999-8888');
   });
+
+  it('carrega a exitDate do preview no form (não a descarta, story 120)', () => {
+    const values = previewToFormValues({ name: 'Ana', entryDate: '2023-01-10', exitDate: '2023-08-10' });
+    expect(values.exitDate).toBe('2023-08-10');
+    expect(values.entryDate).toBe('2023-01-10');
+  });
 });
 
 describe('resolveHouseId', () => {
@@ -129,6 +135,15 @@ describe('buildCommitPayloadFromPreview', () => {
     expect(payload.contributionMonths).toEqual(['2023-02-01', '2023-03-01']);
     expect(payload.photoBase64).toBe('data:image/png;base64,abc');
     expect(payload.resident.status).toBe(ResidentStatus.ACTIVE);
+  });
+
+  it('leva a exitDate do preview até o payload do commit (story 120)', () => {
+    const payload = buildCommitPayloadFromPreview(
+      preview({ resident: { name: 'João Silva', entryDate: '2023-01-10', exitDate: '2023-08-10' } }),
+      houses,
+    );
+    expect((payload.resident as { exitDate?: unknown }).exitDate).toBe('2023-08-10');
+    expect(payload.resident.entryDate).toBe('2023-01-10');
   });
 
   it('normaliza familiar sem telefone/parentesco (null) e trata campos ausentes', () => {

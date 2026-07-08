@@ -44,11 +44,11 @@ Ordem: 107 → 108 → 109 → 110(epic/meta) → 111 → 112 → 113 → 114 �
 | 1 | 107 — import: visualizar detalhe dos alertas (popover+modal) | [OK] | 1093 unit + e2e 3/3 | bbf0d53 | 2bdf1ef |
 | 2 | 108 — import: histórico de contribuição no modal ver-ficha | [OK] | 1098 unit + e2e 3/3 | b8d3281 | (main) |
 | 3 | 109 — import: dividir fila em abas + status cancelled | [OK] | 1108 unit + e2e 4/4 | 27575e0 | (main) |
-| 4 | 110 — EPIC contribuição valor+produtos (meta, sem código) | [ ] | | | |
+| 4 | 110 — EPIC contribuição valor+produtos (meta, sem código) | [OK] | n/a (meta) | — | (arquivado) |
 | 5 | 111 — unificar almoxarifado+dispensa (catálogo inventário) | [OK] | 1098 unit + 440 e2e | 4f40af3 | (main) |
 | 6 | 112 — backend contribuição-produtos (entity+mov IN+endpoints) | [OK] | 1116 unit + 451 e2e | 6cbe722 | (main) |
 | 7 | 113 — adm: declarar valor + produtos | [OK] | 1138 unit + e2e 3/3 | 7f96fd0 | (main) |
-| 8 | 114 — ops: declarar contribuição de produtos | [ ] | | | |
+| 8 | 114 — ops: declarar contribuição de produtos | [OK] | 579 unit (Maestro PEND-MANUAL) | 51dbe56 | (main) |
 | 9 | 115 — squash migrations numa InitialSchema v1 | [ ] | | | |
 
 ## Log
@@ -60,6 +60,8 @@ Entrada curta — máx. ~3 linhas.
 [OK] 111 — testes: api 1098/1098 unit + 440/440 e2e, escopo 100% stmt/fn/ln br 90.5, migration+backfill ids preservados (md5 idêntico) — commit: 4f40af3 — 2026-07-08 — (STI TypeORM: inventory_items/inventory_movements + kind; tabelas antigas ficam. Test API :3001 precisa rebuild+restart pós-schema)
 [OK] 112 — testes: api 1116/1116 unit + 451/451 e2e, service 98.76% stmt/100% ln, migration ReceivableProductContributions aplicada, Postman +3 rotas — commit: 6cbe722 — 2026-07-08 — (item XOR descrição via CHECK; catálogo gera mov IN atômico; SERVANT+ p/ produtos, valor segue ADMIN/COORD)
 [OK] 113 — testes: adm 1138/1138 unit + e2e 3/3, novos 100%/tocados ≥98% — commit: 7f96fd0 — 2026-07-08 — (seção Produtos no RegisterPaymentDialog, useFieldArray, catálogo=storeroom+supply; checkbox "pagamento em dinheiro" p/ só-produtos)
+[OK] 114 — testes: ops 579/579 unit, escopo 95-100%; Maestro PENDENTE-MANUAL (sem emulador, yaml e2e/product-contributions.yaml p/ rodar manual) — commit: 51dbe56 — 2026-07-08 — (RN Controller+useFieldArray; tela declare-products no detalhe do filho, só produtos)
+[OK] 110 — EPIC meta (sem código), arquivado em done/ após 111-114 fecharem — 2026-07-08
 
 ## Resumo final
 

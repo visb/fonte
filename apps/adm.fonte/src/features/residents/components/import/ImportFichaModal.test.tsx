@@ -71,6 +71,16 @@ describe('ImportFichaModal', () => {
     expect(screen.getByLabelText('Nome do familiar 1')).toHaveValue('Maria');
   });
 
+  it('assume UF "PR" no lote quando o preview não traz UF', async () => {
+    await renderModal();
+    expect(screen.getByPlaceholderText('Ex: SP')).toHaveValue('PR');
+  });
+
+  it('preserva a UF extraída do preview no lote', async () => {
+    await renderModal({ resident: { name: 'João Silva', cpf: '12345678900', state: 'SC' } });
+    expect(screen.getByPlaceholderText('Ex: SP')).toHaveValue('SC');
+  });
+
   it('edição de um campo altera o payload enviado no commit', async () => {
     const { onApproved } = await renderModal();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());

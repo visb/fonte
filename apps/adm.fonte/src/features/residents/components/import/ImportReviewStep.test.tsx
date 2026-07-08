@@ -54,6 +54,16 @@ describe('ImportReviewStep', () => {
     expect((screen.getByPlaceholderText('Nome do acolhido') as HTMLInputElement).value).toBe('Filho A');
   });
 
+  it('assume UF "PR" quando a extração não trouxe estado', () => {
+    renderStep({ initialValues: { name: 'Filho A' } });
+    expect((screen.getByPlaceholderText('Ex: SP') as HTMLInputElement).value).toBe('PR');
+  });
+
+  it('preserva a UF extraída sem sobrescrever pelo default', () => {
+    renderStep({ initialValues: { name: 'Filho A', state: 'SC' } });
+    expect((screen.getByPlaceholderText('Ex: SP') as HTMLInputElement).value).toBe('SC');
+  });
+
   it('mostra aviso de casa detectada quando houseName e nenhuma casa correspondente', () => {
     housesResult = { data: [{ id: 'h9', name: 'Outra Casa' }], isLoading: false };
     renderStep({ parseResult: parseResult({ houseName: 'Casa Inexistente' }) });

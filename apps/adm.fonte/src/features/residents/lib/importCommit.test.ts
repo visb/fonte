@@ -5,6 +5,7 @@ import type { ResidentFormData } from './residentSchema';
 import {
   buildCommitPayload,
   buildCommitPayloadFromPreview,
+  defaultImportState,
   previewToFormValues,
   relativesFromPreview,
   resolveHouseId,
@@ -30,12 +31,36 @@ function preview(over: Partial<ImportPreviewResult> = {}): ImportPreviewResult {
   };
 }
 
+describe('defaultImportState', () => {
+  it('mantém a UF extraída quando preenchida', () => {
+    expect(defaultImportState('SC')).toBe('SC');
+    expect(defaultImportState('  MG  ')).toBe('MG');
+  });
+
+  it('cai no default "PR" para valor vazio/ausente', () => {
+    expect(defaultImportState(null)).toBe('PR');
+    expect(defaultImportState(undefined)).toBe('PR');
+    expect(defaultImportState('')).toBe('PR');
+    expect(defaultImportState('   ')).toBe('PR');
+  });
+});
+
 describe('previewToFormValues', () => {
   it('filtra só os campos do form e converte números para string', () => {
     const values = previewToFormValues({ name: 'Ana', children: 2, unknown: 'x', empty: '' });
-    expect(values).toEqual({ name: 'Ana', children: '2' });
+    expect(values).toEqual({ name: 'Ana', children: '2', state: 'PR' });
     expect(values).not.toHaveProperty('unknown');
     expect(values).not.toHaveProperty('empty');
+  });
+
+  it('aplica UF padrão "PR" quando o preview não traz state', () => {
+    const values = previewToFormValues({ name: 'Ana' });
+    expect(values.state).toBe('PR');
+  });
+
+  it('preserva a UF extraída quando o preview traz state', () => {
+    const values = previewToFormValues({ name: 'Ana', state: 'SC' });
+    expect(values.state).toBe('SC');
   });
 
   it('mascara o contactPhone cru e assume DDD 41 quando sem DDD', () => {

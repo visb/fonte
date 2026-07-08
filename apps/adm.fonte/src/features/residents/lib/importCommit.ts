@@ -17,6 +17,18 @@ import { buildResidentPayload, type ResidentFormData } from './residentSchema';
  * pela aprovação dentro do modal — as duas persistem o mesmo formato.
  */
 
+/**
+ * UF padrão do import (story 119): a comunidade é do Paraná e a maioria dos
+ * filhos também, então quando a extração não traz a UF assumimos "PR" como
+ * conveniência. Continua editável na revisão e não sobrescreve UF já extraída.
+ */
+export const DEFAULT_IMPORT_STATE = 'PR';
+
+/** UF do import: mantém a extraída; cai no default só quando vazia. */
+export function defaultImportState(state: unknown): string {
+  return (typeof state === 'string' ? state.trim() : '') || DEFAULT_IMPORT_STATE;
+}
+
 // Campos que o formulário do resident conhece; usados para filtrar o preview
 // (Record<string, unknown>) ao pré-carregar o rhf, sem carregar lixo extra.
 const FORM_KEYS = [
@@ -41,6 +53,9 @@ export function previewToFormValues(
     }
     values[key] = typeof v === 'number' ? String(v) : v;
   }
+  // UF padrão "PR" quando a extração não trouxe a UF (story 119). Não sobrescreve
+  // a extraída — só preenche o vazio, e o campo segue editável na revisão.
+  values.state = defaultImportState(values.state);
   return values as Partial<ResidentFormData>;
 }
 

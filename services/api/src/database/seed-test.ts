@@ -21,8 +21,12 @@ async function truncateTables(ds: DataSource) {
       support_groups,
       wishlist_items,
       messages,
+      inventory_movements,
+      inventory_items,
       storeroom_movements,
       storeroom_items,
+      supply_room_movements,
+      supply_room_items,
       incidents,
       ministry_tasks,
       ministry_staff,
@@ -186,10 +190,10 @@ async function seed() {
     ['Cozinha', house.id],
   );
 
-  // Storeroom item linked to house
+  // Storeroom item linked to house (catálogo unificado, kind = STOREROOM)
   await ds.query(
-    `INSERT INTO storeroom_items (id, name, unit, current_quantity, house_id)
-     VALUES (gen_random_uuid(), $1, $2, $3, $4)`,
+    `INSERT INTO inventory_items (id, kind, name, unit, current_quantity, house_id)
+     VALUES (gen_random_uuid(), 'STOREROOM', $1, $2, $3, $4)`,
     ['Arroz', 'kg', 10, house.id],
   );
 

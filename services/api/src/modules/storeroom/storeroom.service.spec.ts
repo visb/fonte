@@ -43,11 +43,14 @@ describe('StoreroomService', () => {
       expect.stringContaining('weekly_average_usage = ROUND((usage.total_quantity / $4)::numeric, 3)'),
       [MovementType.OUT, '2026-04-11', '2026-05-09', 4],
     );
-    expect(dataSource.query.mock.calls[1][0]).toContain('LEFT JOIN storeroom_movements m');
+    expect(dataSource.query.mock.calls[1][0]).toContain('FROM inventory_items i');
+    expect(dataSource.query.mock.calls[1][0]).toContain('LEFT JOIN inventory_movements m');
     expect(dataSource.query.mock.calls[1][0]).toContain('AND m.type = $1');
     expect(dataSource.query.mock.calls[1][0]).toContain('AND m.date >= $2');
     expect(dataSource.query.mock.calls[1][0]).toContain('AND m.date < $3');
     expect(dataSource.query.mock.calls[1][0]).toContain('WHERE i.deleted_at IS NULL');
+    // scheduler consolida somente itens de almoxarifado (kind = STOREROOM)
+    expect(dataSource.query.mock.calls[1][0]).toContain("i.kind = 'STOREROOM'");
   });
 
   it('skips consolidation when advisory lock is not acquired', async () => {

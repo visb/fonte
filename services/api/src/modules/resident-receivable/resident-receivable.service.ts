@@ -15,6 +15,10 @@ import { Staff } from '../staff/staff.entity';
 import { RegisterPaymentDto } from './dto/register-payment.dto';
 import { StorageService } from '../storage/storage.service';
 import { NotificationService } from '../notification/notification.service';
+import {
+  ProductContributionView,
+  ReceivableProductContributionService,
+} from './receivable-product-contribution.service';
 
 const TREATMENT_MONTHS = 6;
 
@@ -49,6 +53,7 @@ export interface ResidentReceivableView {
   notes: string | null;
   createdByName: string | null;
   createdAt: Date;
+  productContributions: ProductContributionView[];
 }
 
 function pad(n: number): string {
@@ -96,6 +101,7 @@ export class ResidentReceivableService {
     private staffRepo: Repository<Staff>,
     private storageService: StorageService,
     private notifications: NotificationService,
+    private productContributions: ReceivableProductContributionService,
   ) {}
 
   async findByResident(residentId: string): Promise<ResidentReceivableView[]> {
@@ -114,7 +120,13 @@ export class ResidentReceivableService {
       .orderBy('rcv.reference_month', 'ASC')
       .getMany();
 
-    return items.map((item) => this.toView(item));
+    const contributionsByReceivable = await this.productContributions.mapByReceivables(
+      items.map((item) => item.id),
+    );
+
+    return items.map((item) =>
+      this.toView(item, contributionsByReceivable.get(item.id) ?? []),
+    );
   }
 
   /** Latest paid reference month per resident — feeds the list "next due" badge. */
@@ -360,7 +372,10 @@ export class ResidentReceivableService {
     if (toCreate.length > 0) await repo.save(toCreate);
   }
 
-  private toView(item: ResidentReceivable): ResidentReceivableView {
+  private toView(
+    item: ResidentReceivable,
+    productContributions: ProductContributionView[] = [],
+  ): ResidentReceivableView {
     return {
       id: item.id,
       residentId: item.residentId,
@@ -378,6 +393,7 @@ export class ResidentReceivableService {
       notes: item.notes,
       createdByName: (item.createdBy as Staff | null)?.name ?? null,
       createdAt: item.createdAt,
+      productContributions,
     };
   }
 }

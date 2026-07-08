@@ -1589,6 +1589,77 @@
           }
         },
         {
+          "name": "List Receivable Product Contributions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/product-contributions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "receivables",
+                "{{receivableId}}",
+                "product-contributions"
+              ]
+            },
+            "description": "Lista as contribuições em produtos declaradas numa parcela (story 112). Cada linha é modo catálogo (inventoryItemId + movimento IN vinculado em inventoryMovementId; quantity/unit são snapshot) OU modo avulso (description livre, pendingDetailing=true, sem estoque). Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
+          "name": "Declare Receivable Product Contributions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    { \"inventoryItemId\": \"{{inventoryItemId}}\", \"quantity\": 12, \"unit\": \"kg\" },\n    { \"description\": \"cesta básica\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/product-contributions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "receivables",
+                "{{receivableId}}",
+                "product-contributions"
+              ]
+            },
+            "description": "Declara uma ou mais linhas de contribuição em produtos na parcela (story 112). Cada linha usa exatamente um modo (item XOR descrição): CATÁLOGO com inventoryItemId (do catálogo unificado, story 111) + quantity > 0 + unit → lança um movimento IN atômico no inventário (estoque sobe) e grava inventoryMovementId; AVULSO com description livre (+ quantity/unit opcionais) → grava a linha com pendingDetailing=true, sem mexer no estoque. Independe do pagamento em dinheiro. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
+          "name": "Remove Receivable Product Contribution",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/product-contributions/{{contributionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "receivables",
+                "{{receivableId}}",
+                "product-contributions",
+                "{{contributionId}}"
+              ]
+            },
+            "description": "Remove uma linha de contribuição em produtos (soft delete). SEM ESTORNO (BUSINESS_RULES.md): no modo catálogo gera um movimento de correção OUT — o IN original é preservado. Modo avulso apenas some da listagem. Retorna 204. Roles: ADMIN, COORDINATOR, SERVANT."
+          }
+        },
+        {
           "name": "Parse DOCX Intake Form",
           "request": {
             "method": "POST",

@@ -28,6 +28,8 @@ import type {
   GetContributionsReportParams,
   ResidentReceivable,
   UpdateContributionPlanInput,
+  ReceivableProductContribution,
+  DeclareProductContributionInput,
 } from '../types.js';
 
 export function createResidentsModule(http: AxiosInstance) {
@@ -106,6 +108,28 @@ export function createResidentsModule(http: AxiosInstance) {
 
     reopenReceivable: (id: string, receivableId: string): Promise<ResidentReceivable> =>
       http.post<ResidentReceivable>(`/residents/${id}/receivables/${receivableId}/reopen`, {}).then((r) => r.data),
+
+    getProductContributions: (id: string, receivableId: string): Promise<ReceivableProductContribution[]> =>
+      http
+        .get<ReceivableProductContribution[]>(`/residents/${id}/receivables/${receivableId}/product-contributions`)
+        .then((r) => r.data),
+
+    declareProductContributions: (
+      id: string,
+      receivableId: string,
+      data: DeclareProductContributionInput,
+    ): Promise<ReceivableProductContribution[]> =>
+      http
+        .post<ReceivableProductContribution[]>(
+          `/residents/${id}/receivables/${receivableId}/product-contributions`,
+          data,
+        )
+        .then((r) => r.data),
+
+    removeProductContribution: (id: string, receivableId: string, contributionId: string): Promise<void> =>
+      http
+        .delete(`/residents/${id}/receivables/${receivableId}/product-contributions/${contributionId}`)
+        .then(() => undefined),
 
     updateContributionPlan: (id: string, data: UpdateContributionPlanInput): Promise<Resident> =>
       http.patch<Resident>(`/residents/${id}/contribution-plan`, data).then((r) => r.data),

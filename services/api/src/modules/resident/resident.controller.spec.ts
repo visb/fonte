@@ -42,6 +42,11 @@ const receivable = {
   registerPayment: jest.fn().mockResolvedValue({ id: 'rcv1' }),
   reopenPayment: jest.fn().mockResolvedValue({ id: 'rcv1' }),
 };
+const productContribution = {
+  listByReceivable: jest.fn().mockResolvedValue([]),
+  declare: jest.fn().mockResolvedValue([]),
+  remove: jest.fn().mockResolvedValue(undefined),
+};
 const docxParser = { parseDocx: jest.fn().mockResolvedValue({ resident: {} }) };
 const spreadsheetParser = {
   parseSpreadsheet: jest.fn().mockResolvedValue({ rows: [], houses: [], skipped: 0, ignoredSheets: [] }),
@@ -61,6 +66,7 @@ function make() {
     docTpl as never,
     followUp as never,
     receivable as never,
+    productContribution as never,
     docxParser as never,
     spreadsheetParser as never,
     importMatch as never,

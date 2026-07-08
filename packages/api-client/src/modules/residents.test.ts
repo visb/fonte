@@ -176,6 +176,22 @@ describe('residents module', () => {
     expect(http.post).toHaveBeenCalledWith('/residents/res-1/receivables/rc-1/reopen', {});
   });
 
+  it('getProductContributions busca as contribuições em produtos da parcela', async () => {
+    await residents.getProductContributions('res-1', 'rc-1');
+    expect(http.get).toHaveBeenCalledWith('/residents/res-1/receivables/rc-1/product-contributions');
+  });
+
+  it('declareProductContributions posta as linhas na rota da parcela', async () => {
+    const body = { lines: [{ description: 'cesta' }] };
+    await residents.declareProductContributions('res-1', 'rc-1', body);
+    expect(http.post).toHaveBeenCalledWith('/residents/res-1/receivables/rc-1/product-contributions', body);
+  });
+
+  it('removeProductContribution deleta a linha por id', async () => {
+    await residents.removeProductContribution('res-1', 'rc-1', 'pc-1');
+    expect(http.delete).toHaveBeenCalledWith('/residents/res-1/receivables/rc-1/product-contributions/pc-1');
+  });
+
   it('updateContributionPlan patcheia plano', async () => {
     const body = { contributionDueDay: 5 } as never;
     await residents.updateContributionPlan('res-1', body);

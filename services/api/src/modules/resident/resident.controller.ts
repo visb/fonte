@@ -47,6 +47,11 @@ import { ResidentFollowUpService, ResidentFollowUpView } from '../resident-follo
 import { CreateFollowUpDto } from '../resident-follow-up/dto/create-follow-up.dto';
 import { BulkCreateContributionsDto } from '../resident-follow-up/dto/bulk-create-contributions.dto';
 import { ResidentReceivableService, ResidentReceivableView } from '../resident-receivable/resident-receivable.service';
+import {
+  ProductContributionView,
+  ReceivableProductContributionService,
+} from '../resident-receivable/receivable-product-contribution.service';
+import { DeclareProductContributionDto } from '../resident-receivable/dto/declare-product-contribution.dto';
 import { RegisterPaymentDto } from '../resident-receivable/dto/register-payment.dto';
 import { UpdateContributionPlanDto } from '../resident-receivable/dto/update-contribution-plan.dto';
 import { SetContributionExemptDto } from '../resident-receivable/dto/set-contribution-exempt.dto';
@@ -132,6 +137,7 @@ export class ResidentController {
     private documentTemplateService: DocumentTemplateService,
     private followUpService: ResidentFollowUpService,
     private receivableService: ResidentReceivableService,
+    private productContributionService: ReceivableProductContributionService,
     private docxParserService: DocxParserService,
     private spreadsheetImportService: SpreadsheetImportService,
     private importMatchService: ImportMatchService,
@@ -396,6 +402,40 @@ export class ResidentController {
     @Param('receivableId', ParseUUIDPipe) receivableId: string,
   ): Promise<ResidentReceivableView> {
     return this.receivableService.reopenPayment(id, receivableId);
+  }
+
+  // Contribuição em produtos (story 112): liberada para SERVANT+ (ops usa) —
+  // diferente do pagamento em VALOR, que segue restrito a ADMIN/COORDINATOR.
+  @Get(':id/receivables/:receivableId/product-contributions')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  getProductContributions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('receivableId', ParseUUIDPipe) receivableId: string,
+  ): Promise<ProductContributionView[]> {
+    return this.productContributionService.listByReceivable(id, receivableId);
+  }
+
+  @Post(':id/receivables/:receivableId/product-contributions')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  declareProductContributions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('receivableId', ParseUUIDPipe) receivableId: string,
+    @Body() dto: DeclareProductContributionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ProductContributionView[]> {
+    return this.productContributionService.declare(id, receivableId, dto, user.userId);
+  }
+
+  @Delete(':id/receivables/:receivableId/product-contributions/:contributionId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  removeProductContribution(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('receivableId', ParseUUIDPipe) receivableId: string,
+    @Param('contributionId', ParseUUIDPipe) contributionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    return this.productContributionService.remove(id, receivableId, contributionId, user.userId);
   }
 
   @Post(':id/access')

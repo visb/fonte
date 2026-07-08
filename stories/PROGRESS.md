@@ -45,7 +45,7 @@ Ordem: 107 → 108 → 109 → 110(epic/meta) → 111 → 112 → 113 → 114 �
 | 2 | 108 — import: histórico de contribuição no modal ver-ficha | [OK] | 1098 unit + e2e 3/3 | b8d3281 | (main) |
 | 3 | 109 — import: dividir fila em abas + status cancelled | [OK] | 1108 unit + e2e 4/4 | 27575e0 | (main) |
 | 4 | 110 — EPIC contribuição valor+produtos (meta, sem código) | [ ] | | | |
-| 5 | 111 — unificar almoxarifado+dispensa (catálogo inventário) | [ ] | | | |
+| 5 | 111 — unificar almoxarifado+dispensa (catálogo inventário) | [OK] | 1098 unit + 440 e2e | 4f40af3 | (main) |
 | 6 | 112 — backend contribuição-produtos (entity+mov IN+endpoints) | [ ] | | | |
 | 7 | 113 — adm: declarar valor + produtos | [ ] | | | |
 | 8 | 114 — ops: declarar contribuição de produtos | [ ] | | | |
@@ -57,6 +57,7 @@ Entrada curta — máx. ~3 linhas.
 [OK] 107 — testes: 1093/1093 unit adm + e2e bulk-import 3/3, cobertura escopo ≥90 — commit: bbf0d53 — merge: 2bdf1ef — 2026-07-07 — (bônus: reexport de tipos faltantes no barrel do api-client, necessário p/ tsc do adm)
 [OK] 108 — testes: 1098/1098 unit adm + e2e bulk-import 3/3, novo ImportContributionHistory 100% — commit: b8d3281 — 2026-07-07 — (nota: contributionMonths é string[] ISO, sem valor R$; exibe só competência. Agent 1 morreu por session limit; agent 2 finalizou o WIP)
 [OK] 109 — testes: 1108/1108 unit adm + e2e bulk-import 4/4, escopo import ≥90 (tabs/queue 100%) — commit: 27575e0 — 2026-07-07 — (novo status cancelled + restaurar; abas fila/processadas/aprovadas/canceladas)
+[OK] 111 — testes: api 1098/1098 unit + 440/440 e2e, escopo 100% stmt/fn/ln br 90.5, migration+backfill ids preservados (md5 idêntico) — commit: 4f40af3 — 2026-07-08 — (STI TypeORM: inventory_items/inventory_movements + kind; tabelas antigas ficam. Test API :3001 precisa rebuild+restart pós-schema)
 
 ## Resumo final
 

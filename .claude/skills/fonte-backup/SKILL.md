@@ -69,6 +69,26 @@ pnpm backup:import <arquivo.zip> --yes   # DESTRUTIVO: pg_restore + reenvia arqu
 O `.env` local deve apontar `DATABASE_URL` + credenciais do bucket para o ambiente desejado
 (produção, para tirar a cópia). Requer `pg_dump`/`pg_restore` v16 locais.
 
+## Esvaziar o bucket principal (wipe — story 123)
+
+Operação **destrutiva** e separada de backup: esvazia o bucket **principal**
+(`AWS_S3_BUCKET_NAME`) apontado pelo `.env` corrente — apaga todos os objetos,
+preserva o bucket. Não consulta o banco (não é limpeza de órfãos da story 93): é
+wipe total, incondicional. O alvo é sempre o bucket principal do ambiente
+carregado; o script **não** recebe nome de bucket por argumento (evita apontar
+para o alvo errado). Uso típico: reset de um ambiente antes de recarregar dados.
+
+Rode de `services/api`, com o `.env` apontando para o ambiente desejado:
+
+```
+pnpm bucket:clear            # dry-run: lista contagem + amostra, NÃO apaga
+pnpm bucket:clear --yes      # DESTRUTIVO: apaga todos os objetos do bucket principal
+```
+
+Sem `AWS_S3_BUCKET_NAME`/`AWS_ENDPOINT_URL` no `.env` o script sai com erro antes
+de listar (não roda em modo local/uploads). A deleção é best-effort e em lotes de
+até 1000 objetos.
+
 ## Notas de design
 
 - Os dumps são datados e podados por contagem; os arquivos são espelho vivo (não datados, não

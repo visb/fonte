@@ -239,6 +239,111 @@ describe('StorageService.listBucketKeys (story 93)', () => {
   });
 });
 
+describe('StorageService.clearBucket (story 123)', () => {
+  it('deletes every object in batches of 1000 and returns the total (N > 1000)', async () => {
+    const svc = makeService();
+    const N = 2300;
+    const allKeys = Array.from({ length: N }, (_, i) => `obj-${i}.png`);
+    // listBucketKeys paginates: two ListObjectsV2 pages, then delete batches.
+    const send = jest
+      .fn()
+      // ListObjectsV2 — page 1 (first 1500 keys)
+      .mockResolvedValueOnce({
+        Contents: allKeys.slice(0, 1500).map((Key) => ({ Key })),
+        IsTruncated: true,
+        NextContinuationToken: 'tok',
+      })
+      // ListObjectsV2 — page 2 (remaining keys)
+      .mockResolvedValueOnce({
+        Contents: allKeys.slice(1500).map((Key) => ({ Key })),
+        IsTruncated: false,
+      })
+      // DeleteObjects — three batches (1000, 1000, 300)
+      .mockResolvedValue({});
+    (svc as unknown as { s3: { send: jest.Mock } }).s3 = { send };
+
+    const { deleted } = await svc.clearBucket();
+
+    expect(deleted).toBe(N);
+    // 2 list calls + 3 delete calls.
+    expect(send).toHaveBeenCalledTimes(5);
+    const deleteCalls = send.mock.calls
+      .map(([cmd]) => cmd)
+      .filter((cmd) => cmd.constructor.name === 'DeleteObjectsCommand');
+    expect(deleteCalls).toHaveLength(3);
+    expect(deleteCalls[0].input.Delete.Objects).toHaveLength(1000);
+    expect(deleteCalls[1].input.Delete.Objects).toHaveLength(1000);
+    expect(deleteCalls[2].input.Delete.Objects).toHaveLength(300);
+    // Every key is covered exactly once, in order.
+    const sentKeys = deleteCalls.flatMap((cmd) =>
+      cmd.input.Delete.Objects.map((o: { Key: string }) => o.Key),
+    );
+    expect(sentKeys).toEqual(allKeys);
+  });
+
+  it('is a no-op on an empty bucket (deleted === 0, no DeleteObjects sent)', async () => {
+    const svc = makeService();
+    const send = jest.fn().mockResolvedValueOnce({ Contents: [], IsTruncated: false });
+    (svc as unknown as { s3: { send: jest.Mock } }).s3 = { send };
+
+    const { deleted } = await svc.clearBucket();
+
+    expect(deleted).toBe(0);
+    // Only the single ListObjectsV2 call; no delete attempted.
+    expect(send).toHaveBeenCalledTimes(1);
+    const deleteCalls = send.mock.calls
+      .map(([cmd]) => cmd)
+      .filter((cmd) => cmd.constructor.name === 'DeleteObjectsCommand');
+    expect(deleteCalls).toHaveLength(0);
+  });
+
+  it('is a no-op outside S3 mode (deleted === 0)', async () => {
+    const svc = makeService({ AWS_S3_BUCKET_NAME: undefined, AWS_ENDPOINT_URL: undefined });
+    expect(await svc.clearBucket()).toEqual({ deleted: 0 });
+  });
+
+  it('logs and continues when a batch fails (best-effort, does not throw)', async () => {
+    const svc = makeService();
+    const allKeys = Array.from({ length: 1500 }, (_, i) => `obj-${i}.png`);
+    const send = jest
+      .fn()
+      // single ListObjectsV2 page
+      .mockResolvedValueOnce({
+        Contents: allKeys.map((Key) => ({ Key })),
+        IsTruncated: false,
+      })
+      // first delete batch throws, second succeeds
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({});
+    (svc as unknown as { s3: { send: jest.Mock } }).s3 = { send };
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { deleted } = await svc.clearBucket();
+
+    // First batch (1000) failed → not counted; second batch (500) succeeded.
+    expect(deleted).toBe(500);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    errorSpy.mockRestore();
+  });
+
+  it('subtracts per-object Errors reported by DeleteObjects from the count', async () => {
+    const svc = makeService();
+    const allKeys = Array.from({ length: 3 }, (_, i) => `obj-${i}.png`);
+    const send = jest
+      .fn()
+      .mockResolvedValueOnce({
+        Contents: allKeys.map((Key) => ({ Key })),
+        IsTruncated: false,
+      })
+      .mockResolvedValueOnce({ Errors: [{ Key: 'obj-1.png' }] });
+    (svc as unknown as { s3: { send: jest.Mock } }).s3 = { send };
+
+    const { deleted } = await svc.clearBucket();
+
+    expect(deleted).toBe(2);
+  });
+});
+
 describe('StorageService.signContentUrls', () => {
   beforeEach(() => {
     let n = 0;

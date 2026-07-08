@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
@@ -279,5 +280,38 @@ export class StorageService implements OnModuleInit {
       token = res.IsTruncated ? res.NextContinuationToken : undefined;
     } while (token);
     return keys;
+  }
+
+  // ── Bucket wipe (story 123) ────────────────────────────────────────────────
+
+  // Empties the bucket unconditionally: deletes every object, keeps the bucket.
+  // Unlike orphan cleanup (story 93) this never consults the database — it is a
+  // total wipe of whatever is stored. No-op outside S3 mode (`{ deleted: 0 }`).
+  // Best-effort: a failing batch is logged and skipped, never thrown, so a
+  // single bad object cannot abort the whole wipe.
+  async clearBucket(): Promise<{ deleted: number }> {
+    if (!this.s3 || !this.bucketName) return { deleted: 0 };
+    const keys = await this.listBucketKeys();
+    if (keys.length === 0) return { deleted: 0 };
+
+    let deleted = 0;
+    for (let i = 0; i < keys.length; i += 1000) {
+      const batch = keys.slice(i, i + 1000);
+      try {
+        const res = await this.s3.send(
+          new DeleteObjectsCommand({
+            Bucket: this.bucketName,
+            Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true },
+          }),
+        );
+        deleted += batch.length - (res.Errors?.length ?? 0);
+      } catch (err) {
+        console.error(
+          `clearBucket: failed to delete a batch of ${batch.length} object(s); continuing`,
+          err,
+        );
+      }
+    }
+    return { deleted };
   }
 }

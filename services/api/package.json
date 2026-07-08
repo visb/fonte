@@ -28,6 +28,7 @@
     "backup:restore": "npx ts-node src/database/restore-backup.ts",
     "backup:export": "npx ts-node src/database/backup-export.ts",
     "backup:import": "npx ts-node src/database/backup-import.ts",
+    "bucket:clear": "npx ts-node src/database/clear-bucket.ts",
     "start:test": "cross-env NODE_ENV=test nest start --watch"
   },
   "dependencies": {

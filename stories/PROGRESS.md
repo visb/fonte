@@ -36,7 +36,7 @@ Ordem: 116 → 117 → 118 → 119 → 120 → 121 → 122 → 123. Fonte de ver
 | 1 | 116 — dashboard: cards de casas em grid responsivo | [OK] | 1141 vitest + e2e 3/3 | 8bccab5 | 54db2a5 |
 | 2 | 117 — adm: remover superfície "eventos internos" (navbar+página) | [OK] | 1136 vitest + e2e 10/10 | ea162e2 | 33c71c0 |
 | 3 | 118 — adm: máscara telefone familiares no import + DDD 41 | [OK] | 1147 vitest + e2e 4/4 | 02c9659 | e704fde |
-| 4 | 119 — import: UF padrão "PR" quando vazia | [ ] | | | |
+| 4 | 119 — import: UF padrão "PR" quando vazia | [OK] | 1155 vitest (38 scoped) | 3fa544c | f941a40 |
 | 5 | 120 — import: aprovar filho que já saiu → ALTA/EVASÃO + exitDate | [ ] | | | |
 | 6 | 121 — import: múltiplos acolhimentos (histórico) [dep 120] | [ ] | | | |
 | 7 | 122 — import: não exibir conflito falso pós-aprovação | [ ] | | | |
@@ -49,6 +49,7 @@ Entrada curta — máx. ~3 linhas. Detalhe rico vai no corpo do commit ou no `.m
 [OK] 116 — testes: 1141/1141 vitest adm + dashboard scoped 6/6 (100% cov) + playwright dashboard 3/3 — commit: 8bccab5 — merge: 54db2a5 — 2026-07-08 — layout puro grid auto-fill, backend intocado
 [OK] 117 — testes: 1136/1136 vitest adm + playwright events 10/10, cov adm 91.81% — commit: ea162e2 — merge: 33c71c0 — 2026-07-08 — remoção (backend/api-client/ops intactos; audience=INTERNAL preservado)
 [OK] 118 — testes: 1147/1147 vitest adm + e2e bulk-import 4/4, arquivos alterados 100% stmts — commit: 02c9659 — merge: e704fde — 2026-07-08 — helper normalizePhoneWithDefaultDDD no boundary do import; manual intocado
+[OK] 119 — testes: 1155/1155 vitest adm (importCommit/ReviewStep/FichaModal), cov touched 95.3% — commit: 3fa544c — merge: f941a40 — 2026-07-08 — DEFAULT_IMPORT_STATE='PR' nos 2 caminhos; backend intocado
 
 ## Resumo final
 

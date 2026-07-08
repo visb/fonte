@@ -140,13 +140,13 @@ export function ImportItemCard({
                 ) : (
                   <span>{importWarningsSummary(warningsCount)}</span>
                 )}
-                {conflicts.length > 0 && (
+                {status === 'ready' && conflicts.length > 0 && (
                   <Badge variant="destructive" className="gap-1">
                     <AlertTriangle size={11} />
                     {IMPORT_TEXTS.conflictBadge}: {conflicts[0].name}
                   </Badge>
                 )}
-                {sessionConflictName && (
+                {status === 'ready' && sessionConflictName && (
                   <Badge variant="destructive" className="gap-1">
                     <AlertTriangle size={11} />
                     {IMPORT_TEXTS.sessionConflictReason}

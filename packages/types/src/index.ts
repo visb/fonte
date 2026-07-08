@@ -276,6 +276,18 @@ export interface GetContributionsReportParams {
 
 // ─── Import em lote — parse da planilha de referência (.xlsx) ──────────────────
 
+/**
+ * Um acolhimento (par entrada→saída) detectado na planilha de referência
+ * (story 121). A planilha pode trazer vários pares numa única linha (colunas
+ * repetidas Entrada 1/Saída 1, Entrada 2/Saída 2, ...) — cada par vira um
+ * `Admission`. `exitDate` fica `null` quando o acolhimento está em aberto
+ * (tipicamente o mais recente).
+ */
+export interface ImportAdmission {
+  entryDate: string; // ISO YYYY-MM-DD (um acolhimento sempre tem entrada)
+  exitDate: string | null; // ISO YYYY-MM-DD ou null (acolhimento em aberto)
+}
+
 /** Uma linha da planilha de referência: um filho, já normalizado para o match. */
 export interface SpreadsheetImportRow {
   houseName: string; // nome da aba
@@ -283,8 +295,11 @@ export interface SpreadsheetImportRow {
   nameNormalized: string | null; // lowercase, sem acento, trim, espaços colapsados
   cpf: string | null; // só dígitos
   familyContact: string | null;
-  entryDate: string | null; // ISO YYYY-MM-DD
-  exitDate: string | null; // ISO YYYY-MM-DD
+  entryDate: string | null; // ISO YYYY-MM-DD — acolhimento mais recente (topo)
+  exitDate: string | null; // ISO YYYY-MM-DD — acolhimento mais recente (topo)
+  // Histórico de acolhimentos ordenado por entryDate ascendente (story 121). O
+  // topo do resident (entryDate/exitDate acima) é sempre o mais recente (último).
+  admissions: ImportAdmission[];
   contributionMonths: string[]; // competências pagas: ['2023-01-01', ...]
 }
 

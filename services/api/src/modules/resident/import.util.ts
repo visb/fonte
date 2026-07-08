@@ -1,3 +1,5 @@
+import { ResidentStatus } from '@fonte/types';
+
 /**
  * Meses completos entre duas datas ISO (`YYYY-MM-DD`; datetime também aceito,
  * só a parte da data conta). Um mês só conta quando o dia final alcança o dia
@@ -9,4 +11,19 @@ export function monthsBetween(startIso: string, endIso: string): number {
   let months = (e.getUTCFullYear() - s.getUTCFullYear()) * 12 + (e.getUTCMonth() - s.getUTCMonth());
   if (e.getUTCDate() < s.getUTCDate()) months -= 1; // mês incompleto no fim não conta
   return Math.max(0, months);
+}
+
+/**
+ * Status terminal de um acolhimento fechado, derivado pela permanência
+ * entrada→saída (story 120): ≥ 6 meses → alta (`DISCHARGED`); < 6 meses → evasão
+ * (`EVADED`). Fonte única usada tanto pelo topo do resident quanto pelos
+ * acolhimentos anteriores do histórico (story 121).
+ */
+export function deriveExitStatus(
+  entryIso: string,
+  exitIso: string,
+): ResidentStatus.DISCHARGED | ResidentStatus.EVADED {
+  return monthsBetween(entryIso, exitIso) >= 6
+    ? ResidentStatus.DISCHARGED
+    : ResidentStatus.EVADED;
 }

@@ -25,6 +25,7 @@ function row(overrides: Partial<SpreadsheetImportRow> = {}): SpreadsheetImportRo
     familyContact: null,
     entryDate: null,
     exitDate: null,
+    admissions: [],
     contributionMonths: [],
     ...overrides,
   };
@@ -153,6 +154,31 @@ describe('ImportMatchService', () => {
 
       expect(result.resident.exitDate).toBe('2024-12-31');
       expect(result.warnings.exitDate).toBe('ficha=2024-01-01, planilha=2024-12-31');
+    });
+
+    it('propaga o histórico de acolhimentos da planilha para preview.resident (story 121)', () => {
+      const parse = docxResult({ resident: { name: 'João', cpf: '11122233344' } });
+      const admissions = [
+        { entryDate: '2022-01-10', exitDate: '2022-09-10' },
+        { entryDate: '2023-03-01', exitDate: '2024-01-15' },
+      ];
+      const rows = [row({ admissions, entryDate: '2023-03-01', exitDate: '2024-01-15' })];
+
+      const result = service.matchAndEnrich(parse, rows);
+
+      expect(result.resident.admissions).toEqual(admissions);
+      // topo do resident acompanha o mais recente vindo da planilha
+      expect(result.resident.entryDate).toBe('2023-03-01');
+      expect(result.resident.exitDate).toBe('2024-01-15');
+    });
+
+    it('sem histórico (admissions vazio) não define resident.admissions', () => {
+      const parse = docxResult({ resident: { name: 'João', cpf: '11122233344' } });
+      const rows = [row({ admissions: [], entryDate: '2024-01-10' })];
+
+      const result = service.matchAndEnrich(parse, rows);
+
+      expect(result.resident.admissions).toBeUndefined();
     });
 
     it('casa por nome quando a linha não tem nameNormalized pré-computado', () => {

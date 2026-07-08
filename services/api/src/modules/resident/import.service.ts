@@ -4,12 +4,14 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { CheckImportConflictResult, ImportConflict, ResidentStatus } from '@fonte/types';
 import { normalizeName } from '../../common/lib/normalize';
 import { Resident } from './resident.entity';
+import { Admission } from './admission.entity';
 import { Relative } from '../relative/relative.entity';
 import { ResidentService } from './resident.service';
 import { ResidentFollowUpService } from '../resident-follow-up/resident-follow-up.service';
 import { CommitImportDto } from './dto/commit-import.dto';
 import { CreateResidentDto } from './dto/create-resident.dto';
-import { monthsBetween } from './import.util';
+import { ImportAdmissionDto } from './dto/import-admission.dto';
+import { deriveExitStatus } from './import.util';
 
 /** Só os dígitos de um texto (para comparar CPFs de formatos diferentes). */
 function digitsOnly(text: string | null | undefined): string {
@@ -106,8 +108,15 @@ export class ImportService {
       // permanência (story 120) antes de reusar a regra de criação.
       this.applyExitStatus(dto.resident);
 
-      // Reusa a regra de criação (resident + admissão + carnê), na transação.
+      // Reusa a regra de criação (resident + admissão do topo + carnê), na
+      // transação. O topo é o acolhimento mais recente (status já derivado acima).
       const created = await this.residentService.create(dto.resident, manager);
+
+      // Histórico de acolhimentos (story 121): quando a planilha trouxe vários
+      // pares entrada→saída, os anteriores ao mais recente viram `Admission`
+      // extras, cada um com status derivado pela permanência (story 120). Tudo na
+      // mesma transação → rollback não deixa acolhimento órfão.
+      await this.createPreviousAdmissions(manager, created, dto.resident.admissions);
 
       // Relatives (regra crítica: ≥1, garantida no DTO por @ArrayMinSize).
       const relativeRepo = manager.getRepository(Relative);
@@ -159,10 +168,42 @@ export class ImportService {
       status === ResidentStatus.ACTIVE ||
       status === ResidentStatus.PRE_ADMISSION;
     if (!isDefaultStatus) return;
-    resident.status =
-      monthsBetween(entryDate, exitDate) >= 6
-        ? ResidentStatus.DISCHARGED
-        : ResidentStatus.EVADED;
+    resident.status = deriveExitStatus(entryDate, exitDate);
+  }
+
+  /**
+   * Cria os acolhimentos anteriores do histórico (story 121). O topo (mais
+   * recente) já foi criado por `ResidentService.create`; aqui inserimos os
+   * demais pares entrada→saída como `Admission` extras, cada um com status
+   * derivado pela permanência (regra dos 6 meses, story 120). Um acolhimento sem
+   * saída (em aberto) fica `ACTIVE`. No mesmo manager → mesma transação do commit.
+   */
+  private async createPreviousAdmissions(
+    manager: EntityManager,
+    resident: Resident,
+    admissions?: ImportAdmissionDto[] | null,
+  ): Promise<void> {
+    if (!admissions || admissions.length <= 1) return;
+
+    const sorted = [...admissions].sort((a, b) => a.entryDate.localeCompare(b.entryDate));
+    const previous = sorted.slice(0, -1); // todos menos o mais recente (topo já criado)
+    const admissionRepo = manager.getRepository(Admission);
+
+    for (const adm of previous) {
+      const status = adm.exitDate
+        ? deriveExitStatus(adm.entryDate, adm.exitDate)
+        : ResidentStatus.ACTIVE;
+      await admissionRepo.save(
+        admissionRepo.create({
+          residentId: resident.id,
+          houseId: resident.houseId,
+          ministryId: null,
+          entryDate: adm.entryDate as unknown as Date,
+          exitDate: (adm.exitDate ?? null) as unknown as Date | null,
+          status,
+        }),
+      );
+    }
   }
 
   /** Idempotência: recusa (409) se já houver filho ativo com o mesmo CPF. */

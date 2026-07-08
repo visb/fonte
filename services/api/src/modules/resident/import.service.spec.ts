@@ -100,11 +100,17 @@ describe('ImportService', () => {
     // Repositório do Relative dentro da transação.
     const relativeCreate = jest.fn((x) => x);
     const relativeSave = jest.fn((x) => Promise.resolve(x));
+    // Repositório do Admission dentro da transação (histórico — story 121).
+    const admissionCreate = jest.fn((x) => x);
+    const admissionSave = jest.fn((x) => Promise.resolve(x));
 
     const managerMock = {
       getRepository: jest.fn((entity: { name: string }) => {
         if (entity.name === 'Relative') {
           return { create: relativeCreate, save: relativeSave };
+        }
+        if (entity.name === 'Admission') {
+          return { create: admissionCreate, save: admissionSave };
         }
         return { find: residentTxFind, findOne: residentTxFindOne };
       }),
@@ -267,6 +273,140 @@ describe('ImportService', () => {
           'user-1',
         );
         expect(create.mock.calls[0][0].status).toBe(ResidentStatus.ACTIVE);
+      });
+    });
+
+    // Story 121: import de múltiplos acolhimentos (histórico na ficha).
+    describe('histórico de acolhimentos (story 121)', () => {
+      /** Commit com N acolhimentos + o topo (mais recente) já refletido no resident. */
+      const withAdmissions = (
+        admissions: { entryDate: string; exitDate: string | null }[],
+        top: Record<string, unknown> = {},
+      ) =>
+        commitDto({
+          resident: {
+            name: 'Maria',
+            houseId: 'house-1',
+            cpf: '555.666.777-88',
+            ...top,
+            admissions,
+          } as never,
+        });
+
+      beforeEach(() => {
+        create.mockResolvedValue({ id: 'new-1', houseId: 'house-1', name: 'Maria' });
+      });
+
+      it('2 acolhimentos → topo via create + 1 Admission anterior, cada um com status derivado', async () => {
+        // anterior 2022-01-10→2022-09-10 = 8 meses (≥6) → DISCHARGED
+        // topo 2023-03-01→2023-05-01 = 2 meses (<6) → EVADED (derivado no create)
+        await service.commit(
+          withAdmissions(
+            [
+              { entryDate: '2022-01-10', exitDate: '2022-09-10' },
+              { entryDate: '2023-03-01', exitDate: '2023-05-01' },
+            ],
+            { entryDate: '2023-03-01', exitDate: '2023-05-01' },
+          ),
+          'user-1',
+        );
+
+        expect(create).toHaveBeenCalledTimes(1);
+        expect(create.mock.calls[0][0].status).toBe(ResidentStatus.EVADED);
+
+        expect(admissionSave).toHaveBeenCalledTimes(1);
+        expect(admissionCreate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            residentId: 'new-1',
+            houseId: 'house-1',
+            entryDate: '2022-01-10',
+            exitDate: '2022-09-10',
+            status: ResidentStatus.DISCHARGED,
+          }),
+        );
+      });
+
+      it('acolhimento anterior com permanência < 6 meses → EVADED', async () => {
+        await service.commit(
+          withAdmissions(
+            [
+              { entryDate: '2022-01-10', exitDate: '2022-03-10' },
+              { entryDate: '2023-03-01', exitDate: '2023-11-01' },
+            ],
+            { entryDate: '2023-03-01', exitDate: '2023-11-01' },
+          ),
+          'user-1',
+        );
+        expect(admissionCreate).toHaveBeenCalledWith(
+          expect.objectContaining({ entryDate: '2022-01-10', status: ResidentStatus.EVADED }),
+        );
+      });
+
+      it('payload fora de ordem → ordena por entrada e insere só o(s) anterior(es)', async () => {
+        await service.commit(
+          withAdmissions(
+            [
+              { entryDate: '2023-03-01', exitDate: '2023-11-01' }, // mais recente primeiro
+              { entryDate: '2022-01-10', exitDate: '2022-09-10' },
+            ],
+            { entryDate: '2023-03-01', exitDate: '2023-11-01' },
+          ),
+          'user-1',
+        );
+        expect(admissionSave).toHaveBeenCalledTimes(1);
+        expect(admissionCreate).toHaveBeenCalledWith(
+          expect.objectContaining({ entryDate: '2022-01-10', exitDate: '2022-09-10' }),
+        );
+      });
+
+      it('acolhimento anterior em aberto (sem saída) → status ACTIVE', async () => {
+        await service.commit(
+          withAdmissions(
+            [
+              { entryDate: '2022-01-10', exitDate: null },
+              { entryDate: '2023-03-01', exitDate: '2023-11-01' },
+            ],
+            { entryDate: '2023-03-01', exitDate: '2023-11-01' },
+          ),
+          'user-1',
+        );
+        expect(admissionCreate).toHaveBeenCalledWith(
+          expect.objectContaining({ entryDate: '2022-01-10', status: ResidentStatus.ACTIVE }),
+        );
+      });
+
+      it('1 acolhimento só → nenhum Admission extra (regressão: só o topo)', async () => {
+        await service.commit(
+          withAdmissions([{ entryDate: '2023-03-01', exitDate: '2023-11-01' }], {
+            entryDate: '2023-03-01',
+            exitDate: '2023-11-01',
+          }),
+          'user-1',
+        );
+        expect(admissionSave).not.toHaveBeenCalled();
+      });
+
+      it('sem campo admissions → nenhum Admission extra (regressão)', async () => {
+        await service.commit(commitDto(), 'user-1');
+        expect(admissionSave).not.toHaveBeenCalled();
+      });
+
+      it('falha ao salvar o Admission extra → propaga o erro (transação atômica, sem órfã)', async () => {
+        admissionSave.mockRejectedValueOnce(new Error('db down'));
+        await expect(
+          service.commit(
+            withAdmissions(
+              [
+                { entryDate: '2022-01-10', exitDate: '2022-09-10' },
+                { entryDate: '2023-03-01', exitDate: '2023-11-01' },
+              ],
+              { entryDate: '2023-03-01', exitDate: '2023-11-01' },
+            ),
+            'user-1',
+          ),
+        ).rejects.toThrow('db down');
+        // o commit não avança para as contribuições após a falha no histórico
+        expect(bulkCreateContributions).not.toHaveBeenCalled();
       });
     });
   });

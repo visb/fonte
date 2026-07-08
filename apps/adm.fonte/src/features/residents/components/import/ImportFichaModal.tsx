@@ -15,6 +15,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { residentSchema, type ResidentFormData } from '../../lib/residentSchema';
 import {
+  admissionsFromPreview,
   buildCommitPayload,
   previewToFormValues,
   relativesFromPreview,
@@ -26,6 +27,7 @@ import { ImportConflictAlert } from './ImportConflictAlert';
 import { ImportWarnings } from './ImportWarnings';
 import { ImportFichaRelatives } from './ImportFichaRelatives';
 import { ImportContributionHistory } from './ImportContributionHistory';
+import { ImportAdmissionsHistory } from './ImportAdmissionsHistory';
 import { useCheckImportConflict, useCommitImport, type ImportQueueItem } from '../../hooks/useBulkImport';
 
 interface ImportFichaModalProps {
@@ -92,6 +94,7 @@ export function ImportFichaModal({
   const conflicts = conflictQuery.data?.conflicts ?? [];
 
   const warningsList = preview ? warningsToList(preview.warnings) : [];
+  const admissions = preview ? admissionsFromPreview(preview) : [];
   const namedRelatives = relatives.filter((r) => r.name.trim());
   const blockedReason = conflicts.length > 0
     ? IMPORT_TEXTS.conflictReason
@@ -110,6 +113,7 @@ export function ImportFichaModal({
       })),
       contributionMonths: preview?.contributionMonths ?? [],
       photoBase64: preview?.photoBase64,
+      admissions,
     });
     commit.mutate(payload, { onSuccess: () => onApproved(item.id) });
   };
@@ -145,6 +149,8 @@ export function ImportFichaModal({
           />
 
           <ImportFichaRelatives value={relatives} onChange={setRelatives} />
+
+          <ImportAdmissionsHistory admissions={admissions} />
 
           <ImportContributionHistory months={preview?.contributionMonths ?? []} />
 

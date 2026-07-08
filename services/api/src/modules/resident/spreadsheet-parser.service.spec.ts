@@ -175,4 +175,90 @@ describe('SpreadsheetImportService', () => {
       BadRequestException,
     );
   });
+
+  // ─── Story 121: múltiplos acolhimentos (pares repetidos de entrada/saída) ────
+  describe('histórico de acolhimentos (colunas Entrada/Saída repetidas)', () => {
+    it('pares repetidos → admissions ordenado por entrada; topo = mais recente', async () => {
+      const buffer = await buildWorkbook({
+        Casa: [
+          ['Nome', 'CPF', 'Entrada 1', 'Saída 1', 'Entrada 2', 'Saída 2'],
+          ['Reincidente', '111.222.333-44', '2022-01-10', '2022-09-10', '2023-03-01', '2024-01-15'],
+        ],
+      });
+      const result = await service.parseSpreadsheet(buffer);
+      const row = result.rows[0];
+
+      expect(row.admissions).toEqual([
+        { entryDate: '2022-01-10', exitDate: '2022-09-10' },
+        { entryDate: '2023-03-01', exitDate: '2024-01-15' },
+      ]);
+      // topo do resident = acolhimento mais recente (maior entryDate)
+      expect(row.entryDate).toBe('2023-03-01');
+      expect(row.exitDate).toBe('2024-01-15');
+    });
+
+    it('reordena por entrada quando as colunas vêm fora de ordem cronológica', async () => {
+      const buffer = await buildWorkbook({
+        Casa: [
+          ['Nome', 'Entrada 1', 'Saída 1', 'Entrada 2', 'Saída 2'],
+          ['Fora de Ordem', '2024-05-01', '2024-08-01', '2020-01-01', '2020-06-01'],
+        ],
+      });
+      const result = await service.parseSpreadsheet(buffer);
+      const row = result.rows[0];
+
+      expect(row.admissions.map((a) => a.entryDate)).toEqual(['2020-01-01', '2024-05-01']);
+      expect(row.entryDate).toBe('2024-05-01');
+      expect(row.exitDate).toBe('2024-08-01');
+    });
+
+    it('um único par → admissions com 1 item (comportamento atual preservado)', async () => {
+      const buffer = await buildWorkbook({
+        Casa: [
+          ['Nome', 'Entrada', 'Saída'],
+          ['Único', '2023-02-01', '2023-11-01'],
+        ],
+      });
+      const result = await service.parseSpreadsheet(buffer);
+      const row = result.rows[0];
+
+      expect(row.admissions).toEqual([{ entryDate: '2023-02-01', exitDate: '2023-11-01' }]);
+      expect(row.entryDate).toBe('2023-02-01');
+      expect(row.exitDate).toBe('2023-11-01');
+    });
+
+    it('acolhimento em aberto no último par (sem saída) → exitDate null', async () => {
+      const buffer = await buildWorkbook({
+        Casa: [
+          ['Nome', 'Entrada 1', 'Saída 1', 'Entrada 2', 'Saída 2'],
+          ['Em Aberto', '2021-01-01', '2021-07-01', '2023-01-01', null],
+        ],
+      });
+      const result = await service.parseSpreadsheet(buffer);
+      const row = result.rows[0];
+
+      expect(row.admissions).toEqual([
+        { entryDate: '2021-01-01', exitDate: '2021-07-01' },
+        { entryDate: '2023-01-01', exitDate: null },
+      ]);
+      // topo = mais recente, ainda em aberto
+      expect(row.entryDate).toBe('2023-01-01');
+      expect(row.exitDate).toBeNull();
+    });
+
+    it('sem nenhuma data de entrada → admissions vazio e topo null', async () => {
+      const buffer = await buildWorkbook({
+        Casa: [
+          ['Nome', 'C.P.F.', 'Entrada', 'Saída'],
+          ['Sem Datas', '333.444.555-66', null, null],
+        ],
+      });
+      const result = await service.parseSpreadsheet(buffer);
+      const row = result.rows[0];
+
+      expect(row.admissions).toEqual([]);
+      expect(row.entryDate).toBeNull();
+      expect(row.exitDate).toBeNull();
+    });
+  });
 });

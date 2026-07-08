@@ -6,15 +6,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FAMILY_INVESTMENT_LABELS, FAMILY_INVESTMENT_VARIANT, PAYMENT_METHOD_LABELS } from '../constants';
 import { formatDate, formatReferenceMonth, receivableBadge } from '../lib/receivables';
+import type { InventoryCatalogItem } from '../hooks/useProductContributions';
+import { ProductContributionList } from './ProductContributionList';
 
 interface Props {
   receivable: ResidentReceivable;
   canManage: boolean;
+  catalog?: InventoryCatalogItem[];
   onPayClick: (r: ResidentReceivable) => void;
   onReopenClick: (r: ResidentReceivable) => void;
 }
 
-export function ReceivableRow({ receivable, canManage, onPayClick, onReopenClick }: Props) {
+export function ReceivableRow({ receivable, canManage, catalog = [], onPayClick, onReopenClick }: Props) {
   const badge = receivableBadge(receivable);
   const isPaid = receivable.status === ReceivableStatus.PAID;
   const attachment = receivable.attachmentUrl ? api.photoUrl(receivable.attachmentUrl) : null;
@@ -25,8 +28,11 @@ export function ReceivableRow({ receivable, canManage, onPayClick, onReopenClick
     isPaid && receivable.paidFamilyInvestment != null ? receivable.paidFamilyInvestment : null;
   const modalityDiverges = paidModality != null && paidModality !== receivable.familyInvestment;
 
+  const productContributions = receivable.productContributions ?? [];
+
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
+    <div className="rounded-lg border bg-card px-4 py-3">
+      <div className="flex items-center gap-3">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium">{formatReferenceMonth(receivable.referenceMonth)}</span>
@@ -76,6 +82,9 @@ export function ReceivableRow({ receivable, canManage, onPayClick, onReopenClick
           </Button>
         )}
       </div>
+      </div>
+
+      <ProductContributionList contributions={productContributions} catalog={catalog} />
     </div>
   );
 }

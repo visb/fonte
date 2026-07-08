@@ -13,6 +13,9 @@ vi.mock('../../hooks/useResidentReceivables', () => ({
   useReopenReceivable: () => reopenMutation,
   useSetContributionExempt: () => ({ mutate: vi.fn(), isPending: false }),
 }));
+vi.mock('../../hooks/useProductContributions', () => ({
+  useInventoryCatalog: () => ({ data: [] }),
+}));
 vi.mock('../ChangeContributionPlanDialog', () => ({ ChangeContributionPlanDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="plan-dialog" /> : null) }));
 vi.mock('../RegisterPaymentDialog', () => ({ RegisterPaymentDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="pay-dialog" /> : null) }));
 vi.mock('../ReceivableRow', () => ({ ReceivableRow: ({ receivable, onReopenClick }: { receivable: { id: string }; onReopenClick: (r: unknown) => void }) => (

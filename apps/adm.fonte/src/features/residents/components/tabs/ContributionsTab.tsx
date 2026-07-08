@@ -20,6 +20,7 @@ import { ReceivableRow } from '../ReceivableRow';
 import { RegisterPaymentDialog } from '../RegisterPaymentDialog';
 import { ChangeContributionPlanDialog } from '../ChangeContributionPlanDialog';
 import { useResidentReceivables, useReopenReceivable } from '../../hooks/useResidentReceivables';
+import { useInventoryCatalog } from '../../hooks/useProductContributions';
 
 interface Props {
   resident: Resident;
@@ -30,6 +31,7 @@ export function ContributionsTab({ resident }: Props) {
   const canManage = role === Role.ADMIN || role === Role.COORDINATOR;
 
   const { data: receivables, isLoading, isError } = useResidentReceivables(resident.id, { enabled: canManage });
+  const { data: catalog = [] } = useInventoryCatalog(resident.houseId, { enabled: canManage });
   const reopenMutation = useReopenReceivable(resident.id);
 
   const [planOpen, setPlanOpen] = useState(false);
@@ -57,6 +59,7 @@ export function ContributionsTab({ resident }: Props) {
               key={r.id}
               receivable={r}
               canManage={canManage}
+              catalog={catalog}
               onPayClick={setPayTarget}
               onReopenClick={setReopenTarget}
             />
@@ -71,6 +74,7 @@ export function ContributionsTab({ resident }: Props) {
         onClose={() => setPayTarget(null)}
         residentId={resident.id}
         residentName={resident.name}
+        houseId={resident.houseId}
         receivable={payTarget}
       />
 

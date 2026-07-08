@@ -484,4 +484,44 @@ test.describe('Filhos (Residentes)', () => {
     await expect(page.getByText(/Pago em/).first()).toBeVisible();
     await expect(page.getByText('R$ 250').first()).toBeVisible();
   });
+
+  test('aba Contribuição: declara produtos (catálogo + avulso) sem pagamento em dinheiro', async ({ page }) => {
+    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'João Testador' }).first().click();
+    await expect(page).toHaveURL(/\/residents\/.+/);
+    await page.getByRole('button', { name: 'Contribuição' }).click();
+
+    // Garante o carnê gerado (idempotente — o plano default gera parcelas).
+    await page.getByRole('button', { name: 'Alterar plano' }).click();
+    await expect(page.getByText('Alterar plano de contribuição')).toBeVisible();
+    await page.getByRole('button', { name: 'Salvar' }).click();
+
+    // Abre a declaração numa parcela pendente.
+    const payButton = page.getByRole('button', { name: 'Registrar pagamento' }).first();
+    await expect(payButton).toBeVisible();
+    await payButton.click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('Registrar contribuição')).toBeVisible();
+
+    // Desmarca o pagamento em dinheiro → declara SÓ produtos.
+    await dialog.getByRole('checkbox', { name: /Registrar pagamento em dinheiro/ }).uncheck();
+    await expect(dialog.getByText('Data do pagamento')).toHaveCount(0);
+
+    // Linha do catálogo: item "Arroz (kg)" do seed, quantidade 2.
+    await dialog.getByRole('button', { name: /Adicionar produto/ }).click();
+    await dialog.getByLabel('Produto do catálogo').selectOption({ label: 'Arroz (kg)' });
+    await dialog.getByLabel('Quantidade').fill('2');
+
+    // Linha avulsa: descrição livre "cesta básica".
+    await dialog.getByRole('button', { name: /Adicionar produto/ }).click();
+    await dialog.getByRole('button', { name: 'Avulso' }).nth(1).click();
+    await dialog.getByLabel('Descrição').fill('cesta básica');
+
+    await dialog.getByRole('button', { name: 'Confirmar' }).click();
+
+    // A parcela passa a listar os produtos declarados (seção "Produtos").
+    await expect(page.getByText('Produtos', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Arroz').first()).toBeVisible();
+    await expect(page.getByText('cesta básica').first()).toBeVisible();
+  });
 });

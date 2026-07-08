@@ -7,6 +7,7 @@ import { AvatarUpload } from '@/components/AvatarUpload';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { residentSchema, type ResidentFormData } from '../../lib/residentSchema';
+import { defaultImportState } from '../../lib/importCommit';
 import { ResidentFormSections } from '../ResidentFormSections';
 import { WizardActions } from './WizardActions';
 import type { ParseResult } from '../../lib/types';
@@ -60,6 +61,8 @@ export function ImportReviewStep({
       maritalStatus: '',
       familyInvestment: '',
       ...initialValues,
+      // UF padrão "PR" quando a extração não trouxe a UF (story 119).
+      state: defaultImportState(initialValues.state),
     },
   });
 
@@ -83,6 +86,8 @@ export function ImportReviewStep({
       maritalStatus: '',
       familyInvestment: '',
       ...initialValues,
+      // UF padrão "PR" também no re-upload/StrictMode (story 119).
+      state: defaultImportState(initialValues.state),
     });
   }, [initialValues, reset]);
 

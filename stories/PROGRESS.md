@@ -47,7 +47,7 @@ Ordem: 107 → 108 → 109 → 110(epic/meta) → 111 → 112 → 113 → 114 �
 | 4 | 110 — EPIC contribuição valor+produtos (meta, sem código) | [ ] | | | |
 | 5 | 111 — unificar almoxarifado+dispensa (catálogo inventário) | [OK] | 1098 unit + 440 e2e | 4f40af3 | (main) |
 | 6 | 112 — backend contribuição-produtos (entity+mov IN+endpoints) | [OK] | 1116 unit + 451 e2e | 6cbe722 | (main) |
-| 7 | 113 — adm: declarar valor + produtos | [ ] | | | |
+| 7 | 113 — adm: declarar valor + produtos | [OK] | 1138 unit + e2e 3/3 | 7f96fd0 | (main) |
 | 8 | 114 — ops: declarar contribuição de produtos | [ ] | | | |
 | 9 | 115 — squash migrations numa InitialSchema v1 | [ ] | | | |
 
@@ -59,6 +59,7 @@ Entrada curta — máx. ~3 linhas.
 [OK] 109 — testes: 1108/1108 unit adm + e2e bulk-import 4/4, escopo import ≥90 (tabs/queue 100%) — commit: 27575e0 — 2026-07-07 — (novo status cancelled + restaurar; abas fila/processadas/aprovadas/canceladas)
 [OK] 111 — testes: api 1098/1098 unit + 440/440 e2e, escopo 100% stmt/fn/ln br 90.5, migration+backfill ids preservados (md5 idêntico) — commit: 4f40af3 — 2026-07-08 — (STI TypeORM: inventory_items/inventory_movements + kind; tabelas antigas ficam. Test API :3001 precisa rebuild+restart pós-schema)
 [OK] 112 — testes: api 1116/1116 unit + 451/451 e2e, service 98.76% stmt/100% ln, migration ReceivableProductContributions aplicada, Postman +3 rotas — commit: 6cbe722 — 2026-07-08 — (item XOR descrição via CHECK; catálogo gera mov IN atômico; SERVANT+ p/ produtos, valor segue ADMIN/COORD)
+[OK] 113 — testes: adm 1138/1138 unit + e2e 3/3, novos 100%/tocados ≥98% — commit: 7f96fd0 — 2026-07-08 — (seção Produtos no RegisterPaymentDialog, useFieldArray, catálogo=storeroom+supply; checkbox "pagamento em dinheiro" p/ só-produtos)
 
 ## Resumo final
 

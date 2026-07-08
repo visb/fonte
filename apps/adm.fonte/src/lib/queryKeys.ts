@@ -69,6 +69,10 @@ export const queryKeys = {
     byHouse: (houseId: string) => ['supply-room', houseId] as const,
     movementsByHouse: (houseId: string) => ['supply-room-movements', houseId] as const,
   },
+  inventory: {
+    // Catálogo unificado (almoxarifado + dispensa) de uma casa — story 111/113.
+    catalog: (houseId: string) => ['inventory', 'catalog', houseId] as const,
+  },
   billing: {
     filhos: {
       all: ['billing', 'filhos'] as const,

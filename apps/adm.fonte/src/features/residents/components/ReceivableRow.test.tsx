@@ -64,4 +64,32 @@ describe('ReceivableRow', () => {
     renderRow(rec({ attachmentUrl: 'comp.pdf' }));
     expect(screen.getByTitle('Ver comprovante')).toBeInTheDocument();
   });
+
+  it('lista as contribuições em produto (catálogo + avulso com badge pendente)', () => {
+    render(
+      <ReceivableRow
+        receivable={rec({
+          productContributions: [
+            {
+              id: 'p1', receivableId: 'rc1', inventoryItemId: 's1', inventoryMovementId: 'm1',
+              description: null, quantity: 3, unit: 'kg', pendingDetailing: false,
+              createdByName: null, createdAt: '2026-02-01',
+            },
+            {
+              id: 'p2', receivableId: 'rc1', inventoryItemId: null, inventoryMovementId: null,
+              description: 'cesta básica', quantity: null, unit: null, pendingDetailing: true,
+              createdByName: null, createdAt: '2026-02-01',
+            },
+          ],
+        })}
+        canManage
+        catalog={[{ id: 's1', name: 'Arroz', unit: 'kg' }]}
+        onPayClick={vi.fn()}
+        onReopenClick={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Arroz')).toBeInTheDocument();
+    expect(screen.getByText('cesta básica')).toBeInTheDocument();
+    expect(screen.getByText('Pendente')).toBeInTheDocument();
+  });
 });

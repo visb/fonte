@@ -14,14 +14,6 @@ export function useEvents(filters: ListEventsParams = {}) {
   });
 }
 
-/** Eventos internos (story 94), só-leitura. Acessível a todos os papéis de Staff. */
-export function useInternalEvents() {
-  return useQuery({
-    queryKey: queryKeys.events.internal,
-    queryFn: () => api.events.listInternal(),
-  });
-}
-
 export function useEventById(id: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.events.detail(id),

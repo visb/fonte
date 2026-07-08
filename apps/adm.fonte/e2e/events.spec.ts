@@ -169,7 +169,7 @@ test.describe('Eventos (timeline)', () => {
     await expect(page.getByRole('dialog')).not.toBeVisible();
   }
 
-  test('cria evento interno: badge "Interno" na timeline e aparece na lista interna, não no portal', async ({
+  test('cria evento interno: badge "Interno" na timeline, não no portal', async ({
     page,
   }) => {
     await login(page);
@@ -179,15 +179,6 @@ test.describe('Eventos (timeline)', () => {
 
     // Na timeline de gestão, o item ganha o badge "Interno".
     await expect(item(page, title).getByTestId('audience-badge')).toHaveText('Interno');
-
-    // Na lista de eventos internos (acessível a todos os Staff), ele aparece.
-    await page.goto('/eventos-internos');
-    await expect(
-      page.getByRole('heading', { name: 'Eventos internos' }),
-    ).toBeVisible();
-    await expect(
-      page.getByTestId('internal-events-list').getByText(title),
-    ).toBeVisible();
 
     // Evento interno não tem inscrição: a página pública de gestão não o lista
     // como inscritível (badge "Interno", sem botão Inscritos na timeline).

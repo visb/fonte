@@ -17,6 +17,7 @@ interface ResidentFormSectionsProps {
   errors: FieldErrors<ResidentFormData>;
   houses: House[];
   showStatus?: boolean;
+  showExitDate?: boolean;
   watchFamilyInvestment?: string | null;
   showFirstPayment?: boolean;
   firstPaymentPaid?: boolean;
@@ -44,6 +45,7 @@ export function ResidentAdmissionSections({
   errors,
   houses,
   showStatus = false,
+  showExitDate = false,
   watchFamilyInvestment,
   showFirstPayment = false,
   firstPaymentPaid = false,
@@ -127,6 +129,15 @@ export function ResidentAdmissionSections({
         <FormField label="Data de entrada">
           <Input type="date" {...register("entryDate")} />
         </FormField>
+        {showExitDate && (
+          <FormField label="Data de saída">
+            <Input type="date" {...register("exitDate")} />
+            <p className="text-xs text-muted-foreground mt-1">
+              Preencha para importar um filho que já saiu — o status Alta/Evasão
+              é definido pela permanência.
+            </p>
+          </FormField>
+        )}
         {showStatus && (
           <FormField label="Status">
             <Select {...register("status")}>

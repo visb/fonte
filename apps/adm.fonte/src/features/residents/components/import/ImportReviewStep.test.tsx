@@ -54,6 +54,13 @@ describe('ImportReviewStep', () => {
     expect((screen.getByPlaceholderText('Nome do acolhido') as HTMLInputElement).value).toBe('Filho A');
   });
 
+  it('exibe o campo de data de saída e carrega a exitDate extraída (story 120)', () => {
+    renderStep({ initialValues: { name: 'Filho A', exitDate: '2023-08-10' } });
+    expect(screen.getByText('Data de saída')).toBeInTheDocument();
+    const exitInput = document.querySelector('input[name="exitDate"]') as HTMLInputElement;
+    expect(exitInput.value).toBe('2023-08-10');
+  });
+
   it('assume UF "PR" quando a extração não trouxe estado', () => {
     renderStep({ initialValues: { name: 'Filho A' } });
     expect((screen.getByPlaceholderText('Ex: SP') as HTMLInputElement).value).toBe('PR');

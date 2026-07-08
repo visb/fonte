@@ -76,6 +76,26 @@ describe('ImportFichaModal', () => {
     expect(screen.getByPlaceholderText('Ex: SP')).toHaveValue('PR');
   });
 
+  it('mostra a data de saída e carrega a exitDate do preview (story 120)', async () => {
+    await renderModal({
+      resident: { name: 'João Silva', cpf: '12345678900', entryDate: '2023-01-10', exitDate: '2023-08-10' },
+    });
+    expect(screen.getByText('Data de saída')).toBeInTheDocument();
+    const exitInput = document.querySelector('input[name="exitDate"]') as HTMLInputElement;
+    expect(exitInput.value).toBe('2023-08-10');
+  });
+
+  it('envia a exitDate no payload do commit (backend deriva ALTA/EVASÃO)', async () => {
+    const { onApproved } = await renderModal({
+      resident: { name: 'João Silva', cpf: '12345678900', entryDate: '2023-01-10', exitDate: '2023-08-10' },
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));
+    await waitFor(() => expect(onApproved).toHaveBeenCalledWith('i1'));
+    const payload = vi.mocked(api.residents.commitImport).mock.calls[0][0];
+    expect((payload.resident as { exitDate?: unknown }).exitDate).toBe('2023-08-10');
+  });
+
   it('preserva a UF extraída do preview no lote', async () => {
     await renderModal({ resident: { name: 'João Silva', cpf: '12345678900', state: 'SC' } });
     expect(screen.getByPlaceholderText('Ex: SP')).toHaveValue('SC');

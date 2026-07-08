@@ -47,6 +47,11 @@ describe('residentSchema', () => {
     expect(residentSchema.parse({ name: 'J', houseId: 'h', contributionDueDay: 10 }).contributionDueDay).toBe('10');
     expect(residentSchema.parse({ name: 'J', houseId: 'h', contributionDueDay: '' }).contributionDueDay).toBeUndefined();
   });
+
+  it('aceita exitDate opcional (import de filho que já saiu, story 120)', () => {
+    expect(residentSchema.parse({ name: 'J', houseId: 'h' }).exitDate).toBeUndefined();
+    expect(residentSchema.parse({ name: 'J', houseId: 'h', exitDate: '2023-08-10' }).exitDate).toBe('2023-08-10');
+  });
 });
 
 describe('FICHA_FIELDS / ADMISSAO_FIELDS', () => {
@@ -101,6 +106,7 @@ describe('residentToFormValues', () => {
       familyInvestmentAmount: null,
       contributionDueDay: 5,
       entryDate: null,
+      exitDate: '2023-08-10T00:00:00Z',
       contactPhone: '62999998888',
     } as unknown as Resident;
     const values = residentToFormValues(resident);
@@ -112,6 +118,12 @@ describe('residentToFormValues', () => {
     expect(values.weight).toBe('');
     expect(values.contributionDueDay).toBe('5');
     expect(values.entryDate).toBe('');
+    expect(values.exitDate).toBe('2023-08-10');
     expect(values.gender).toBe(Gender.FEMALE);
+  });
+
+  it('mapeia exitDate ausente para string vazia', () => {
+    const resident = { name: 'Ana', houseId: 'h1', status: 'ACTIVE', exitDate: null } as unknown as Resident;
+    expect(residentToFormValues(resident).exitDate).toBe('');
   });
 });

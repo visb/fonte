@@ -33,7 +33,7 @@ export function defaultImportState(state: unknown): string {
 // (Record<string, unknown>) ao pré-carregar o rhf, sem carregar lixo extra.
 const FORM_KEYS = [
   'name', 'houseId', 'status', 'birthDate', 'cpf', 'rg', 'nationality', 'city', 'state',
-  'gender', 'address', 'entryDate', 'contactPhone', 'email', 'maritalStatus', 'children',
+  'gender', 'address', 'entryDate', 'exitDate', 'contactPhone', 'email', 'maritalStatus', 'children',
   'occupation', 'education', 'religion', 'addiction', 'healthIssues', 'continuousMedication',
   'weight', 'height', 'familyInvestment', 'familyInvestmentAmount', 'contributionDueDay',
 ] as const satisfies readonly (keyof ResidentFormData)[];

@@ -16,6 +16,9 @@ export const residentSchema = z.object({
   gender: z.nativeEnum(Gender).or(z.literal('')).optional(),
   address: z.string().optional(),
   entryDate: z.string().optional(),
+  // Data de saída (import de filho que já saiu, story 120): o backend deriva
+  // ALTA/EVASÃO pela permanência entrada→saída quando ela vem preenchida.
+  exitDate: z.string().optional(),
   contactPhone: z.string().optional(),
   email: z.string().email('E-mail inválido').or(z.literal('')).optional(),
   maritalStatus: z.nativeEnum(MaritalStatus).or(z.literal('')).optional(),
@@ -96,6 +99,7 @@ export function residentToFormValues(r: Resident): ResidentFormData {
     gender: (r.gender as Gender) ?? '',
     address: r.address ?? '',
     entryDate: dateStr(r.entryDate),
+    exitDate: dateStr(r.exitDate),
     contactPhone: maskPhone(r.contactPhone ?? ''),
     email: r.email ?? '',
     maritalStatus: (r.maritalStatus as MaritalStatus) ?? '',

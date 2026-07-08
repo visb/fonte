@@ -5,10 +5,10 @@ process.env.NODE_ENV = 'test';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
-import { MovementType } from '@fonte/types';
+import { MovementType, SupplyRoomCategory } from '@fonte/types';
 import { bootstrapApp, login, BASE } from './helpers/e2e-app';
 
-describe('StoreroomController (e2e)', () => {
+describe('SupplyRoomController (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let coordToken: string;
@@ -30,65 +30,57 @@ describe('StoreroomController (e2e)', () => {
   });
 
   afterAll(async () => {
-    // catálogo unificado — limpa apenas os itens de almoxarifado
-    await dataSource.query(`DELETE FROM inventory_movements WHERE kind = 'STOREROOM'`);
-    await dataSource.query(`DELETE FROM inventory_items WHERE kind = 'STOREROOM'`);
+    // catálogo unificado — limpa apenas os itens de dispensa
+    await dataSource.query(`DELETE FROM inventory_movements WHERE kind = 'SUPPLY_ROOM'`);
+    await dataSource.query(`DELETE FROM inventory_items WHERE kind = 'SUPPLY_ROOM'`);
     await app.close();
   });
 
-  const itemBody = () => ({ name: 'Arroz', unit: 'kg', houseId });
+  const itemBody = () => ({
+    name: 'Sabão em pó',
+    unit: 'kg',
+    category: SupplyRoomCategory.CLEANING,
+    houseId,
+  });
 
   // ── Auth / authorization ────────────────────────────────────────────────────
 
   describe('authentication', () => {
-    it('GET /storerooms/items → 401 without token', () =>
-      request(app.getHttpServer()).get(`${BASE}/storerooms/items`).expect(401));
+    it('GET /supply-room/items → 401 without token', () =>
+      request(app.getHttpServer()).get(`${BASE}/supply-room/items`).expect(401));
 
-    it('POST /storerooms/items → 401 without token', () =>
-      request(app.getHttpServer()).post(`${BASE}/storerooms/items`).send(itemBody()).expect(401));
+    it('POST /supply-room/items → 401 without token', () =>
+      request(app.getHttpServer()).post(`${BASE}/supply-room/items`).send(itemBody()).expect(401));
 
-    it('GET /storerooms/movements → 401 without token', () =>
-      request(app.getHttpServer()).get(`${BASE}/storerooms/movements`).expect(401));
+    it('GET /supply-room/movements → 401 without token', () =>
+      request(app.getHttpServer()).get(`${BASE}/supply-room/movements`).expect(401));
   });
 
   // ── Validation ──────────────────────────────────────────────────────────────
 
   describe('validation', () => {
-    it('POST /storerooms/items → 400 with empty body', () =>
+    it('POST /supply-room/items → 400 with empty body', () =>
       request(app.getHttpServer())
-        .post(`${BASE}/storerooms/items`)
+        .post(`${BASE}/supply-room/items`)
         .set('Authorization', `Bearer ${coordToken}`)
         .send({})
         .expect(400));
 
-    it('POST /storerooms/items → 400 when houseId is not a UUID', () =>
+    it('POST /supply-room/items → 400 when category is invalid', () =>
       request(app.getHttpServer())
-        .post(`${BASE}/storerooms/items`)
+        .post(`${BASE}/supply-room/items`)
         .set('Authorization', `Bearer ${coordToken}`)
-        .send({ ...itemBody(), houseId: 'not-a-uuid' })
+        .send({ ...itemBody(), category: 'NOT_A_CATEGORY' })
         .expect(400));
 
-    it('POST /storerooms/movements → 400 when quantity is not positive', () =>
+    it('POST /supply-room/movements → 400 when quantity is not positive', () =>
       request(app.getHttpServer())
-        .post(`${BASE}/storerooms/movements`)
+        .post(`${BASE}/supply-room/movements`)
         .set('Authorization', `Bearer ${coordToken}`)
         .send({
           itemId: '00000000-0000-0000-0000-000000000000',
           type: MovementType.IN,
           quantity: 0,
-          responsibleId: staffId,
-          date: '2026-05-15',
-        })
-        .expect(400));
-
-    it('POST /storerooms/movements → 400 when type is invalid', () =>
-      request(app.getHttpServer())
-        .post(`${BASE}/storerooms/movements`)
-        .set('Authorization', `Bearer ${coordToken}`)
-        .send({
-          itemId: '00000000-0000-0000-0000-000000000000',
-          type: 'INVALID',
-          quantity: 5,
           responsibleId: staffId,
           date: '2026-05-15',
         })
@@ -100,24 +92,29 @@ describe('StoreroomController (e2e)', () => {
   describe('items CRUD and movements', () => {
     let itemId: string;
 
-    it('creates an item with zero starting quantity', async () => {
+    it('creates an item preserving the supply-room shape (category, no storeroom/kind fields)', async () => {
       const res = await request(app.getHttpServer())
-        .post(`${BASE}/storerooms/items`)
+        .post(`${BASE}/supply-room/items`)
         .set('Authorization', `Bearer ${coordToken}`)
         .send(itemBody())
         .expect(201);
 
       expect(res.body.id).toBeDefined();
-      expect(res.body.name).toBe('Arroz');
+      expect(res.body.name).toBe('Sabão em pó');
       expect(res.body.unit).toBe('kg');
+      expect(res.body.category).toBe(SupplyRoomCategory.CLEANING);
       expect(res.body.houseId).toBe(houseId);
       expect(Number(res.body.currentQuantity)).toBe(0);
+      // contrato de saída inalterado: o discriminador interno não vaza,
+      // nem os campos exclusivos do almoxarifado.
+      expect(res.body.kind).toBeUndefined();
+      expect(res.body.weeklyAverageUsage).toBeUndefined();
       itemId = res.body.id;
     });
 
     it('lists items scoped by houseId', async () => {
       const res = await request(app.getHttpServer())
-        .get(`${BASE}/storerooms/items`)
+        .get(`${BASE}/supply-room/items`)
         .set('Authorization', `Bearer ${coordToken}`)
         .query({ houseId })
         .expect(200);
@@ -125,74 +122,76 @@ describe('StoreroomController (e2e)', () => {
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body.some((i: { id: string }) => i.id === itemId)).toBe(true);
       expect(res.body.every((i: { houseId: string }) => i.houseId === houseId)).toBe(true);
+      // não há vazamento de itens de almoxarifado nesta rota
+      expect(res.body.every((i: { kind?: string }) => i.kind === undefined)).toBe(true);
     });
 
-    it('updates the item name', async () => {
+    it('updates the item category', async () => {
       const res = await request(app.getHttpServer())
-        .patch(`${BASE}/storerooms/items/${itemId}`)
+        .patch(`${BASE}/supply-room/items/${itemId}`)
         .set('Authorization', `Bearer ${coordToken}`)
-        .send({ name: 'Arroz Integral' })
+        .send({ category: SupplyRoomCategory.HYGIENE })
         .expect(200);
 
-      expect(res.body.name).toBe('Arroz Integral');
+      expect(res.body.category).toBe(SupplyRoomCategory.HYGIENE);
     });
 
     it('404 when updating an unknown item', () =>
       request(app.getHttpServer())
-        .patch(`${BASE}/storerooms/items/00000000-0000-0000-0000-000000000000`)
+        .patch(`${BASE}/supply-room/items/00000000-0000-0000-0000-000000000000`)
         .set('Authorization', `Bearer ${coordToken}`)
         .send({ name: 'X' })
         .expect(404));
 
     it('registers an IN movement and increases the stock', async () => {
       await request(app.getHttpServer())
-        .post(`${BASE}/storerooms/movements`)
+        .post(`${BASE}/supply-room/movements`)
         .set('Authorization', `Bearer ${coordToken}`)
         .send({
           itemId,
           type: MovementType.IN,
-          quantity: 10,
+          quantity: 12,
           responsibleId: staffId,
           date: '2026-05-15',
         })
         .expect(201);
 
       const res = await request(app.getHttpServer())
-        .get(`${BASE}/storerooms/items`)
+        .get(`${BASE}/supply-room/items`)
         .set('Authorization', `Bearer ${coordToken}`)
         .query({ houseId })
         .expect(200);
 
       const item = res.body.find((i: { id: string }) => i.id === itemId);
-      expect(Number(item.currentQuantity)).toBe(10);
+      expect(Number(item.currentQuantity)).toBe(12);
     });
 
     it('registers an OUT movement and decreases the stock', async () => {
       await request(app.getHttpServer())
-        .post(`${BASE}/storerooms/movements`)
+        .post(`${BASE}/supply-room/movements`)
         .set('Authorization', `Bearer ${coordToken}`)
         .send({
           itemId,
           type: MovementType.OUT,
-          quantity: 4,
+          quantity: 5,
           responsibleId: staffId,
           date: '2026-05-16',
         })
         .expect(201);
 
       const res = await request(app.getHttpServer())
-        .get(`${BASE}/storerooms/items`)
+        .get(`${BASE}/supply-room/items`)
         .set('Authorization', `Bearer ${coordToken}`)
         .query({ houseId })
         .expect(200);
 
       const item = res.body.find((i: { id: string }) => i.id === itemId);
-      expect(Number(item.currentQuantity)).toBe(6);
+      expect(Number(item.currentQuantity)).toBe(7);
     });
 
     it('rejects an OUT movement exceeding the current stock (400)', () =>
       request(app.getHttpServer())
-        .post(`${BASE}/storerooms/movements`)
+        .post(`${BASE}/supply-room/movements`)
         .set('Authorization', `Bearer ${coordToken}`)
         .send({
           itemId,
@@ -205,7 +204,7 @@ describe('StoreroomController (e2e)', () => {
 
     it('404 when moving an unknown item', () =>
       request(app.getHttpServer())
-        .post(`${BASE}/storerooms/movements`)
+        .post(`${BASE}/supply-room/movements`)
         .set('Authorization', `Bearer ${coordToken}`)
         .send({
           itemId: '00000000-0000-0000-0000-000000000000',
@@ -216,9 +215,9 @@ describe('StoreroomController (e2e)', () => {
         })
         .expect(404));
 
-    it('lists movements filtered by itemId', async () => {
+    it('lists movements filtered by itemId (no storeroom leakage)', async () => {
       const res = await request(app.getHttpServer())
-        .get(`${BASE}/storerooms/movements`)
+        .get(`${BASE}/supply-room/movements`)
         .set('Authorization', `Bearer ${coordToken}`)
         .query({ itemId })
         .expect(200);
@@ -230,12 +229,12 @@ describe('StoreroomController (e2e)', () => {
 
     it('soft-deletes the item (then absent from the list)', async () => {
       await request(app.getHttpServer())
-        .delete(`${BASE}/storerooms/items/${itemId}`)
+        .delete(`${BASE}/supply-room/items/${itemId}`)
         .set('Authorization', `Bearer ${coordToken}`)
         .expect(204);
 
       const res = await request(app.getHttpServer())
-        .get(`${BASE}/storerooms/items`)
+        .get(`${BASE}/supply-room/items`)
         .set('Authorization', `Bearer ${coordToken}`)
         .query({ houseId })
         .expect(200);

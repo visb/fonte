@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { MovementType } from '@fonte/types';
+import { InventoryKind } from '../inventory/inventory-item.entity';
 import { StoreroomItem } from './storeroom.entity';
 import { StoreroomMovement } from './storeroom-movement.entity';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -140,16 +141,17 @@ export class StoreroomService {
           SELECT
             i.id AS item_id,
             COALESCE(SUM(m.quantity), 0) AS total_quantity
-          FROM storeroom_items i
-          LEFT JOIN storeroom_movements m
+          FROM inventory_items i
+          LEFT JOIN inventory_movements m
             ON m.item_id = i.id
            AND m.type = $1
            AND m.date >= $2
            AND m.date < $3
           WHERE i.deleted_at IS NULL
+            AND i.kind = '${InventoryKind.STOREROOM}'
           GROUP BY i.id
         )
-        UPDATE storeroom_items i
+        UPDATE inventory_items i
         SET
           weekly_average_usage = ROUND((usage.total_quantity / $4)::numeric, 3),
           weekly_average_calculated_at = now(),
@@ -159,6 +161,7 @@ export class StoreroomService {
         FROM usage
         WHERE i.id = usage.item_id
           AND i.deleted_at IS NULL
+          AND i.kind = '${InventoryKind.STOREROOM}'
         RETURNING i.id
       `,
       [MovementType.OUT, windowStart, windowEnd, WEEKLY_AVERAGE_WINDOW_WEEKS],

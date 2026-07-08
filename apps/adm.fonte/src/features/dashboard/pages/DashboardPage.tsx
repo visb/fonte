@@ -25,7 +25,10 @@ export function DashboardPage() {
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
             Ocupação das Casas
           </h2>
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <div
+            className="grid gap-3"
+            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(10rem, 1fr))' }}
+          >
             {houses.map((house) => (
               <HouseOccupancyCard key={house.id} house={house} />
             ))}

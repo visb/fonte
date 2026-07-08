@@ -13,7 +13,7 @@ export function HouseOccupancyCard({ house }: Props) {
   return (
     <button
       onClick={() => navigate(`/houses/${house.id}`)}
-      className="shrink-0 w-40 rounded-lg border bg-card hover:bg-accent/50 transition-colors text-left p-3 space-y-2"
+      className="rounded-lg border bg-card hover:bg-accent/50 transition-colors text-left p-3 space-y-2"
     >
       <p className="font-semibold text-sm truncate text-center">{house.name}</p>
       <div className="text-center">

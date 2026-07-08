@@ -39,7 +39,7 @@ Ordem: 116 → 117 → 118 → 119 → 120 → 121 → 122 → 123. Fonte de ver
 | 4 | 119 — import: UF padrão "PR" quando vazia | [OK] | 1155 vitest (38 scoped) | 3fa544c | f941a40 |
 | 5 | 120 — import: aprovar filho que já saiu → ALTA/EVASÃO + exitDate | [OK] | api 1129 + e2e 14 + adm 1164 | d5d138d | a570dba |
 | 6 | 121 — import: múltiplos acolhimentos (histórico) [dep 120] | [OK] | api 1143 + e2e 454 + adm 1170 | 0320155 | a4f9b3a |
-| 7 | 122 — import: não exibir conflito falso pós-aprovação | [ ] | | | |
+| 7 | 122 — import: não exibir conflito falso pós-aprovação | [OK] | adm 1173 (ItemCard 19) | 6d6fd08 | 77c51bd |
 | 8 | 123 — script para esvaziar o bucket principal (Railway) | [ ] | | | |
 
 ## Log
@@ -52,6 +52,7 @@ Entrada curta — máx. ~3 linhas. Detalhe rico vai no corpo do commit ou no `.m
 [OK] 119 — testes: 1155/1155 vitest adm (importCommit/ReviewStep/FichaModal), cov touched 95.3% — commit: 3fa544c — merge: f941a40 — 2026-07-08 — DEFAULT_IMPORT_STATE='PR' nos 2 caminhos; backend intocado
 [OK] 120 — testes: api 1129/1129 unit + resident-import e2e 14/14 + adm 1164/1164, escopo import.util/service 100% — commit: d5d138d — merge: a570dba — 2026-07-08 — applyExitStatus + monthsBetween no commit; sem migration/postman
 [OK] 121 — testes: api 1143/1143 + e2e 454/454 + adm 1170/1170, escopo import.service/match 100% — commit: 0320155 — merge: a4f9b3a — 2026-07-08 — N acolhimentos via colunas repetidas; types+api-client rebuild; Postman atualizado
+[OK] 122 — testes: adm 1173/1173 (ImportItemCard 19/19, 100% stmts) — commit: 6d6fd08 — merge: 77c51bd — 2026-07-08 — badge de conflito só em status ready; backend intocado
 
 ## Resumo final
 

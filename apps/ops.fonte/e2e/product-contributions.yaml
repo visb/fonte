@@ -1,0 +1,42 @@
+appId: org.fonte.ops
+# Story 114 — operador (SERVANT) declara contribuição em PRODUTOS de um filho.
+# Fluxo: detalhe do filho → "Declarar contribuição de produtos" → uma linha do
+# catálogo + uma avulsa → declarar → aparece listada na parcela como já declarada.
+# Requer emulador/dispositivo + Metro + API de teste (schema 111+112) com catálogo
+# semeado na casa do operador. Executar manualmente (ambiente autônomo sem device).
+---
+- runFlow: helpers/login-operator.yaml
+- tapOn: "Filhos"
+- assertVisible: "João Testador"
+- tapOn: "João Testador"
+- waitForAnimationToEnd
+- assertVisible: "Visão Geral"
+- tapOn: "Declarar contribuição de produtos"
+- waitForAnimationToEnd
+- assertVisible: "Parcela"
+
+# Linha 1 — do catálogo
+- tapOn: "Buscar produto..."
+- inputText: "Arroz"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Arroz.*"
+- tapOn: "Quantidade"
+- inputText: "3"
+- hideKeyboard
+
+# Linha 2 — avulsa (cesta básica), pendente de detalhamento
+- tapOn: "+ Adicionar produto"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Avulso"
+    index: 1
+- assertVisible: "Ficará pendente de detalhamento."
+- tapOn: "Descrição (ex: cesta básica)"
+- inputText: "Cesta básica"
+- hideKeyboard
+
+- tapOn: "Declarar contribuição"
+- waitForAnimationToEnd
+- assertVisible: "Contribuição em produtos declarada."
+- tapOn: "OK"

@@ -232,6 +232,7 @@ describe('ResidentOverviewTab', () => {
         resident={makeResident()}
         onChangeMinistry={onChangeMinistry}
         onResetPassword={onResetPassword}
+        onDeclareProducts={jest.fn()}
       />,
     );
     expect(screen.getByText('Cozinha')).toBeTruthy();
@@ -248,6 +249,7 @@ describe('ResidentOverviewTab', () => {
         resident={makeResident({ userId: null })}
         onChangeMinistry={jest.fn()}
         onResetPassword={jest.fn()}
+        onDeclareProducts={jest.fn()}
       />,
     );
     expect(screen.getByText('Sem acesso gerado (use o adm)')).toBeTruthy();
@@ -259,6 +261,7 @@ describe('ResidentOverviewTab', () => {
         resident={makeResident({ ministry: null, gender: 'FEMALE' })}
         onChangeMinistry={jest.fn()}
         onResetPassword={jest.fn()}
+        onDeclareProducts={jest.fn()}
       />,
     );
     expect(screen.getByText('Feminino')).toBeTruthy();

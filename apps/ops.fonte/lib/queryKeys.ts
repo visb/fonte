@@ -7,6 +7,12 @@ export const queryKeys = {
     attachments: (id: string) => ['resident-attachments', id] as const,
     followUps: (id: string) => ['resident-follow-ups', id] as const,
     consents: (id: string) => ['resident-consents', id] as const,
+    receivables: (id: string) => ['resident-receivables', id] as const,
+    productContributions: (id: string, receivableId: string) =>
+      ['resident-product-contributions', id, receivableId] as const,
+  },
+  inventory: {
+    catalog: (houseId: string) => ['inventory-catalog', houseId] as const,
   },
   relatives: {
     byResident: (residentId: string) => ['relatives', residentId] as const,

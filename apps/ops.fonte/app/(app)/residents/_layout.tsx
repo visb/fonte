@@ -20,6 +20,12 @@ export default function ResidentsLayout() {
           title: "Detalhe",
         }}
       />
+      <Stack.Screen
+        name="declare-products"
+        options={{
+          title: "Declarar produtos",
+        }}
+      />
     </Stack>
   );
 }

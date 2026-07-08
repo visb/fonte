@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { useResidentById } from '../hooks/useResidents';
 import { ChangeMinistryModal } from '../components/ChangeMinistryModal';
 import { ResetResidentPasswordModal } from '../components/ResetResidentPasswordModal';
@@ -99,6 +99,12 @@ export function ResidentDetailPage() {
               resident={resident}
               onChangeMinistry={() => setMinistryModalOpen(true)}
               onResetPassword={() => setResetPasswordOpen(true)}
+              onDeclareProducts={() =>
+                router.push({
+                  pathname: '/(app)/residents/declare-products',
+                  params: { residentId: id!, houseId: resident.houseId ?? '' },
+                } as never)
+              }
             />
           )}
 

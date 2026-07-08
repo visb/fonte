@@ -28,11 +28,29 @@ interface Props {
   resident: Resident;
   onChangeMinistry: () => void;
   onResetPassword: () => void;
+  onDeclareProducts: () => void;
 }
 
-export function ResidentOverviewTab({ resident, onChangeMinistry, onResetPassword }: Props) {
+export function ResidentOverviewTab({
+  resident,
+  onChangeMinistry,
+  onResetPassword,
+  onDeclareProducts,
+}: Props) {
   return (
     <View className="px-4 py-4">
+      <SectionLabel>Contribuição</SectionLabel>
+      <TouchableOpacity
+        accessibilityLabel="Declarar contribuição de produtos"
+        onPress={onDeclareProducts}
+        className="py-2.5 border-b border-gray-100 flex-row items-center"
+      >
+        <Text className="text-sm text-blue-600 font-medium flex-1">
+          Declarar contribuição de produtos
+        </Text>
+        <Text className="text-sm text-blue-600">›</Text>
+      </TouchableOpacity>
+
       <SectionLabel>Ministério</SectionLabel>
       <View className="py-2.5 border-b border-gray-100 flex-row items-center">
         <Text className="text-sm text-gray-500 w-36">Atual</Text>

@@ -38,7 +38,6 @@ import { AssociatesListPage } from '@/features/associates/pages/AssociatesListPa
 import { PayablesPage } from '@/features/payables/pages/PayablesPage';
 import { ActivitiesPage } from '@/features/activities/pages/ActivitiesPage';
 import { EventsPage } from '@/features/events/pages/EventsPage';
-import { InternalEventsPage } from '@/features/events/pages/InternalEventsPage';
 import { MessagesPage } from '@/features/messages/pages/MessagesPage';
 import { ProfilePage } from '@/features/auth/pages/ProfilePage';
 import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage';
@@ -107,7 +106,6 @@ export default function App() {
               <Route path="financeiro/contas-a-pagar" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><PayablesPage /></ProtectedRoute>} />
               <Route path="activities" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR, Role.SERVANT]}><ActivitiesPage /></ProtectedRoute>} />
               <Route path="eventos" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><EventsPage /></ProtectedRoute>} />
-              <Route path="eventos-internos" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR, Role.SERVANT]}><InternalEventsPage /></ProtectedRoute>} />
               <Route
                 path="billing"
                 element={

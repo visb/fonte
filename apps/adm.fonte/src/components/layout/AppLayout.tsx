@@ -310,12 +310,6 @@ export function AppLayout() {
               Eventos
             </Link>
           )}
-          {isStaff && (
-            <Link to="/eventos-internos" onClick={closeSidebar} className={navLinkClass}>
-              <CalendarDays size={16} />
-              Eventos internos
-            </Link>
-          )}
           {isAdminOrCoordinator && (
             <FaturamentoSubmenu closeSidebar={closeSidebar} isAdmin={isAdmin} />
           )}

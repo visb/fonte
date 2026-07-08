@@ -29,6 +29,21 @@ export const maskPhone = (v: string) => {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 };
 
+/**
+ * Normaliza um telefone para exibição mascarada assumindo um DDD padrão quando
+ * ele não veio na origem. Usado só no boundary do import (preview → form/commit):
+ * a IA extrai o telefone cru, e aqui garantimos que sai sempre como
+ * `(DD) NNNNN-NNNN`. Quando o número tem 8 (fixo) ou 9 (celular) dígitos — ou
+ * seja, sem DDD — prefixa o `ddd` padrão. Com 10/11 dígitos o DDD já veio e é
+ * respeitado. Mantém `maskPhone`/`withMask` puros (só formatação).
+ */
+export function normalizePhoneWithDefaultDDD(v: string, ddd = '41') {
+  const d = (v ?? '').replace(/\D/g, '');
+  if (!d) return '';
+  const withDDD = d.length === 8 || d.length === 9 ? `${ddd}${d}` : d;
+  return maskPhone(withDDD);
+}
+
 export function withMask(field: FieldReturn, maskFn: (v: string) => string) {
   return {
     ...field,

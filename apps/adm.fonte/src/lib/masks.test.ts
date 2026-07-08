@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { maskCPF, maskPhone, maskRG, withMask } from './masks';
+import { maskCPF, maskPhone, maskRG, normalizePhoneWithDefaultDDD, withMask } from './masks';
 
 describe('maskCPF', () => {
   it('formata progressivamente conforme os dígitos', () => {
@@ -36,6 +36,38 @@ describe('maskPhone', () => {
     expect(maskPhone('')).toBe('');
     expect(maskPhone('1')).toBe('(1');
     expect(maskPhone('1199')).toBe('(11) 99');
+  });
+});
+
+describe('normalizePhoneWithDefaultDDD', () => {
+  it('prefixa DDD 41 padrão em celular sem DDD (9 dígitos)', () => {
+    expect(normalizePhoneWithDefaultDDD('999998888')).toBe('(41) 99999-8888');
+  });
+
+  it('prefixa DDD 41 padrão em fixo sem DDD (8 dígitos)', () => {
+    expect(normalizePhoneWithDefaultDDD('33334444')).toBe('(41) 3333-4444');
+  });
+
+  it('respeita o DDD já presente em fixo (10 dígitos)', () => {
+    expect(normalizePhoneWithDefaultDDD('1133334444')).toBe('(11) 3333-4444');
+  });
+
+  it('respeita o DDD já presente em celular (11 dígitos)', () => {
+    expect(normalizePhoneWithDefaultDDD('11999998888')).toBe('(11) 99999-8888');
+  });
+
+  it('aceita um DDD padrão customizado', () => {
+    expect(normalizePhoneWithDefaultDDD('999998888', '21')).toBe('(21) 99999-8888');
+  });
+
+  it('devolve vazio para string vazia ou só símbolos', () => {
+    expect(normalizePhoneWithDefaultDDD('')).toBe('');
+    expect(normalizePhoneWithDefaultDDD('() -')).toBe('');
+  });
+
+  it('é idempotente sobre um valor já mascarado', () => {
+    const once = normalizePhoneWithDefaultDDD('999998888');
+    expect(normalizePhoneWithDefaultDDD(once)).toBe('(41) 99999-8888');
   });
 });
 

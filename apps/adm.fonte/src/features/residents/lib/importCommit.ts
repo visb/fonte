@@ -7,6 +7,7 @@ import type {
   ImportPreviewResult,
 } from '@fonte/api-client';
 import { normalizeForSearch } from '@/lib/utils';
+import { normalizePhoneWithDefaultDDD } from '@/lib/masks';
 import { buildResidentPayload, type ResidentFormData } from './residentSchema';
 
 /**
@@ -33,6 +34,11 @@ export function previewToFormValues(
   for (const key of FORM_KEYS) {
     const v = resident[key];
     if (v === null || v === undefined || v === '') continue;
+    if (key === 'contactPhone') {
+      // Telefone do filho vem cru da extração; mascara e assume DDD 41 se faltar.
+      values[key] = normalizePhoneWithDefaultDDD(String(v));
+      continue;
+    }
     values[key] = typeof v === 'number' ? String(v) : v;
   }
   return values as Partial<ResidentFormData>;
@@ -55,7 +61,8 @@ export function relativesFromPreview(preview: ImportPreviewResult): CommitImport
     .filter((r) => r.name.trim())
     .map((r) => ({
       name: r.name.trim(),
-      phone: r.phone?.trim() || null,
+      // Telefone do familiar vem cru da extração; mascara e assume DDD 41 se faltar.
+      phone: r.phone?.trim() ? normalizePhoneWithDefaultDDD(r.phone) : null,
       relationship: r.relationship?.trim() || null,
     }));
 }

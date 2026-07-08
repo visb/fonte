@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { SectionTitle } from '@/components/shared/FormField';
+import { maskPhone } from '@/lib/masks';
 import { IMPORT_TEXTS, RELATIONSHIP_OPTIONS } from '../../constants';
 
 interface ImportFichaRelativesProps {
@@ -38,7 +39,7 @@ export function ImportFichaRelatives({ value, onChange }: ImportFichaRelativesPr
           <Input
             aria-label={`Telefone do familiar ${index + 1}`}
             value={rel.phone ?? ''}
-            onChange={(e) => update(index, { phone: e.target.value })}
+            onChange={(e) => update(index, { phone: maskPhone(e.target.value) })}
             placeholder="Telefone"
           />
           <Select

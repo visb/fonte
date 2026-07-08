@@ -18,7 +18,7 @@ const houses = [
 function preview(over: Partial<ImportPreviewResult> = {}): ImportPreviewResult {
   return {
     resident: { name: 'João Silva', cpf: '123.456.789-00', entryDate: '2023-02-10' },
-    relatives: [{ name: 'Maria', phone: '119', relationship: 'Mãe' }],
+    relatives: [{ name: 'Maria', phone: '999998888', relationship: 'Mãe' }],
     warnings: {},
     houseName: 'Betania',
     rawText: '',
@@ -37,6 +37,16 @@ describe('previewToFormValues', () => {
     expect(values).not.toHaveProperty('unknown');
     expect(values).not.toHaveProperty('empty');
   });
+
+  it('mascara o contactPhone cru e assume DDD 41 quando sem DDD', () => {
+    const values = previewToFormValues({ name: 'Ana', contactPhone: '999998888' });
+    expect(values.contactPhone).toBe('(41) 99999-8888');
+  });
+
+  it('preserva o DDD presente ao mascarar o contactPhone', () => {
+    const values = previewToFormValues({ name: 'Ana', contactPhone: '11999998888' });
+    expect(values.contactPhone).toBe('(11) 99999-8888');
+  });
 });
 
 describe('resolveHouseId', () => {
@@ -53,11 +63,18 @@ describe('resolveHouseId', () => {
 });
 
 describe('relativesFromPreview', () => {
-  it('mapeia nome/telefone/parentesco e descarta sem nome', () => {
+  it('mapeia nome/parentesco, descarta sem nome e mascara+prefixa DDD 41 no telefone cru', () => {
     const result = relativesFromPreview(
-      preview({ relatives: [{ name: 'Maria', phone: '119', relationship: 'Mãe' }, { name: '  ', phone: '', relationship: '' }] }),
+      preview({ relatives: [{ name: 'Maria', phone: '999998888', relationship: 'Mãe' }, { name: '  ', phone: '', relationship: '' }] }),
     );
-    expect(result).toEqual([{ name: 'Maria', phone: '119', relationship: 'Mãe' }]);
+    expect(result).toEqual([{ name: 'Maria', phone: '(41) 99999-8888', relationship: 'Mãe' }]);
+  });
+
+  it('preserva o DDD já presente no telefone do familiar', () => {
+    const result = relativesFromPreview(
+      preview({ relatives: [{ name: 'Maria', phone: '11999998888', relationship: 'Mãe' }] }),
+    );
+    expect(result[0].phone).toBe('(11) 99999-8888');
   });
 });
 
@@ -83,7 +100,7 @@ describe('buildCommitPayloadFromPreview', () => {
     const payload = buildCommitPayloadFromPreview(preview(), houses);
     expect(payload.resident.houseId).toBe('h1');
     expect(payload.resident.name).toBe('João Silva');
-    expect(payload.relatives).toEqual([{ name: 'Maria', phone: '119', relationship: 'Mãe' }]);
+    expect(payload.relatives).toEqual([{ name: 'Maria', phone: '(41) 99999-8888', relationship: 'Mãe' }]);
     expect(payload.contributionMonths).toEqual(['2023-02-01', '2023-03-01']);
     expect(payload.photoBase64).toBe('data:image/png;base64,abc');
     expect(payload.resident.status).toBe(ResidentStatus.ACTIVE);

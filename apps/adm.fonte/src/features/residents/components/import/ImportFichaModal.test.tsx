@@ -21,7 +21,7 @@ function item(over: Partial<ImportQueueItem['preview']> = {}): ImportQueueItem {
     error: null,
     preview: {
       resident: { name: 'João Silva', cpf: '12345678900', entryDate: '2023-02-10' },
-      relatives: [{ name: 'Maria', phone: '119', relationship: 'Mãe' }],
+      relatives: [{ name: 'Maria', phone: '999998888', relationship: 'Mãe' }],
       warnings: {},
       houseName: 'Casa A',
       rawText: '',
@@ -82,7 +82,7 @@ describe('ImportFichaModal', () => {
     const payload = vi.mocked(api.residents.commitImport).mock.calls[0][0];
     expect(payload.resident.name).toBe('João Editado');
     expect(payload.resident.houseId).toBe('h1');
-    expect(payload.relatives).toEqual([{ name: 'Maria', phone: '119', relationship: 'Mãe' }]);
+    expect(payload.relatives).toEqual([{ name: 'Maria', phone: '(41) 99999-8888', relationship: 'Mãe' }]);
     expect(payload.contributionMonths).toEqual(['2023-02-01']);
   });
 

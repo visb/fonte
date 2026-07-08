@@ -21,7 +21,7 @@ function readyItem(over: Partial<ImportQueueItem> = {}): ImportQueueItem {
     error: null,
     preview: {
       resident: { name: 'João Silva', cpf: '12345678900', entryDate: '2023-02-10', exitDate: null },
-      relatives: [{ name: 'Maria', phone: '119', relationship: 'Mãe' }],
+      relatives: [{ name: 'Maria', phone: '999998888', relationship: 'Mãe' }],
       warnings: {},
       houseName: 'Casa A',
       rawText: '',

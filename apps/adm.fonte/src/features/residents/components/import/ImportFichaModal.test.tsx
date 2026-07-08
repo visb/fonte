@@ -96,6 +96,56 @@ describe('ImportFichaModal', () => {
     expect((payload.resident as { exitDate?: unknown }).exitDate).toBe('2023-08-10');
   });
 
+  it('mostra os acolhimentos detectados e os envia no payload do commit (story 121)', async () => {
+    const admissions = [
+      { entryDate: '2022-01-10', exitDate: '2022-09-10' },
+      { entryDate: '2023-03-01', exitDate: '2023-05-01' },
+    ];
+    const { onApproved } = await renderModal({
+      resident: {
+        name: 'João Silva',
+        cpf: '12345678900',
+        entryDate: '2023-03-01',
+        exitDate: '2023-05-01',
+        admissions,
+      },
+    });
+
+    // bloco read-only visível com os pares + status previsto
+    const list = screen.getByRole('list', { name: 'Acolhimentos detectados' });
+    const items = within(list).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent('10/01/2022');
+    expect(items[0]).toHaveTextContent('Alta');
+    expect(items[1]).toHaveTextContent('Evasão');
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));
+    await waitFor(() => expect(onApproved).toHaveBeenCalledWith('i1'));
+
+    const payload = vi.mocked(api.residents.commitImport).mock.calls[0][0];
+    expect((payload.resident as { admissions?: unknown }).admissions).toEqual(admissions);
+  });
+
+  it('não exibe o bloco de acolhimentos quando há só um (o topo do resident)', async () => {
+    await renderModal({
+      resident: {
+        name: 'João Silva',
+        cpf: '12345678900',
+        entryDate: '2023-03-01',
+        exitDate: '2023-11-01',
+        admissions: [{ entryDate: '2023-03-01', exitDate: '2023-11-01' }],
+      },
+    });
+    expect(screen.queryByText('Acolhimentos detectados')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));
+    await waitFor(() => expect(api.residents.commitImport).toHaveBeenCalled());
+    const payload = vi.mocked(api.residents.commitImport).mock.calls[0][0];
+    // um único acolhimento não vira Admission extra → sem campo admissions
+    expect((payload.resident as { admissions?: unknown }).admissions).toBeUndefined();
+  });
+
   it('preserva a UF extraída do preview no lote', async () => {
     await renderModal({ resident: { name: 'João Silva', cpf: '12345678900', state: 'SC' } });
     expect(screen.getByPlaceholderText('Ex: SP')).toHaveValue('SC');

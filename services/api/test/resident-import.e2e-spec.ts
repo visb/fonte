@@ -249,6 +249,55 @@ describe('Resident import — conflito e commit (e2e)', () => {
       expect(got.body.exitDate).toContain('2023-04-01');
     });
 
+    // Story 121: import de múltiplos acolhimentos (histórico na ficha).
+    it('múltiplos acolhimentos → cria um Admission por par, topo = mais recente', async () => {
+      const cpf = uniqueCpf();
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/residents/import/commit`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          resident: {
+            name: `Reincidente ${Date.now()}`,
+            houseId,
+            cpf,
+            // topo = acolhimento mais recente
+            entryDate: '2023-03-01',
+            exitDate: '2023-05-01',
+            admissions: [
+              { entryDate: '2022-01-10', exitDate: '2022-09-10' }, // 8 meses → DISCHARGED
+              { entryDate: '2023-03-01', exitDate: '2023-05-01' }, // 2 meses → EVADED (topo)
+            ],
+          },
+          relatives: [{ name: 'Responsável', phone: '11955554444' }],
+          contributionMonths: [],
+          photoBase64: null,
+        })
+        .expect(201);
+      createdIds.push(res.body.resident.id);
+      const residentId = res.body.resident.id;
+
+      // topo do resident reflete o acolhimento mais recente (EVADED)
+      const got = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(got.body.status).toBe('EVADED');
+      expect(got.body.exitDate).toContain('2023-05-01');
+
+      // dois Admission persistidos: o topo (via create) + o anterior (via insert)
+      const admissions = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/admissions`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(admissions.body).toHaveLength(2);
+      const previous = admissions.body.find((a: { entryDate: string }) =>
+        a.entryDate?.includes('2022-01-10'),
+      );
+      expect(previous).toBeDefined();
+      expect(previous.status).toBe('DISCHARGED');
+      expect(previous.exitDate).toContain('2022-09-10');
+    });
+
     it('segundo commit do mesmo CPF → 409', async () => {
       const cpf = uniqueCpf();
       const payload = {

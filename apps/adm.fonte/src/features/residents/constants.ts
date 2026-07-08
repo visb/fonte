@@ -235,6 +235,8 @@ export const IMPORT_TEXTS = {
   // Histórico de contribuição (story 108) — read-only, vindo da planilha.
   contributionHistoryTitle: 'Histórico de contribuição',
   contributionHistoryEmpty: 'Nenhuma contribuição registrada na planilha.',
+  // Acolhimentos detectados (story 121) — read-only, pares entrada→saída da planilha.
+  admissionsTitle: 'Acolhimentos detectados',
 } as const;
 
 /** Prefixo do alerta de conflito com um filho já importado nesta sessão. */

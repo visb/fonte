@@ -4,6 +4,7 @@ import type {
   CommitImportRelative,
   CreateResidentInput,
   House,
+  ImportAdmission,
   ImportPreviewResult,
 } from '@fonte/api-client';
 import { normalizeForSearch } from '@/lib/utils';
@@ -59,6 +60,31 @@ export function previewToFormValues(
   return values as Partial<ResidentFormData>;
 }
 
+/**
+ * Meses completos entre duas datas ISO (`YYYY-MM-DD`) — espelha `monthsBetween`
+ * do backend (story 120): um mês só conta quando o dia final alcança o inicial.
+ */
+export function monthsBetweenIso(startIso: string, endIso: string): number {
+  const [sy, sm, sd] = startIso.slice(0, 10).split('-').map(Number);
+  const [ey, em, ed] = endIso.slice(0, 10).split('-').map(Number);
+  let months = (ey - sy) * 12 + (em - sm);
+  if (ed < sd) months -= 1;
+  return Math.max(0, months);
+}
+
+/**
+ * Status terminal previsto para um acolhimento a partir da permanência
+ * entrada→saída (story 120/121): ≥ 6 meses → alta (`DISCHARGED`); < 6 meses →
+ * evasão (`EVADED`). Acolhimento sem saída (em aberto) → `ACTIVE`. Usado só para
+ * exibição read-only no review — o backend deriva o valor final no commit.
+ */
+export function predictAdmissionStatus(admission: ImportAdmission): ResidentStatus {
+  if (!admission.exitDate) return ResidentStatus.ACTIVE;
+  return monthsBetweenIso(admission.entryDate, admission.exitDate) >= 6
+    ? ResidentStatus.DISCHARGED
+    : ResidentStatus.EVADED;
+}
+
 /** Casa o nome da casa (aba/ficha) com o `id` da casa cadastrada. */
 export function resolveHouseId(houseName: string | null, houses: House[]): string {
   const target = normalizeForSearch(houseName ?? '').trim();
@@ -68,6 +94,21 @@ export function resolveHouseId(houseName: string | null, houses: House[]): strin
     return name.includes(target) || target.includes(name);
   });
   return found?.id ?? '';
+}
+
+/**
+ * Histórico de acolhimentos detectado na planilha (story 121), que viaja em
+ * `preview.resident.admissions`. Read-only: alimenta a exibição no review e o
+ * payload de commit (o backend cria um `Admission` por par). Retorna [] quando
+ * ausente ou mal-formado.
+ */
+export function admissionsFromPreview(preview: ImportPreviewResult): ImportAdmission[] {
+  const raw = (preview.resident as { admissions?: unknown }).admissions;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (a): a is ImportAdmission =>
+      typeof a === 'object' && a !== null && typeof (a as ImportAdmission).entryDate === 'string',
+  );
 }
 
 /** Familiares do preview no formato mínimo do commit (nome + telefone + parentesco). */
@@ -89,11 +130,19 @@ export function buildCommitPayload(
     relatives: CommitImportRelative[];
     contributionMonths: string[];
     photoBase64?: string | null;
+    admissions?: ImportAdmission[];
   },
 ): CommitImportPayload {
   const resident = buildResidentPayload(formValues) as unknown as CreateResidentInput;
+  // Só envia o histórico quando há mais de um acolhimento — um único acolhimento
+  // já é criado pelo topo do resident (não precisa de `Admission` extra).
+  const admissions = extras.admissions && extras.admissions.length > 1 ? extras.admissions : undefined;
   return {
-    resident: { ...resident, status: (formValues.status as ResidentStatus) || ResidentStatus.ACTIVE },
+    resident: {
+      ...resident,
+      status: (formValues.status as ResidentStatus) || ResidentStatus.ACTIVE,
+      ...(admissions ? { admissions } : {}),
+    },
     relatives: extras.relatives,
     contributionMonths: extras.contributionMonths ?? [],
     photoBase64: extras.photoBase64 ?? null,
@@ -117,5 +166,6 @@ export function buildCommitPayloadFromPreview(
     relatives: relativesFromPreview(preview),
     contributionMonths: preview.contributionMonths ?? [],
     photoBase64: preview.photoBase64,
+    admissions: admissionsFromPreview(preview),
   });
 }

@@ -1,5 +1,6 @@
 import type {
   ResidentStatus,
+  ImportAdmission,
   Gender,
   MaritalStatus,
   MessageStatus,
@@ -491,6 +492,10 @@ export interface CreateResidentInput {
   familyInvestmentAmount?: number | null;
   contributionDueDay?: number | null;
   ministryId?: string | null;
+  // Histórico de acolhimentos do import em lote (story 121). Quando presente com
+  // mais de um item, o backend cria um `Admission` por par entrada→saída; o topo
+  // do resident reflete o mais recente. Opcional — ignorado no create normal.
+  admissions?: ImportAdmission[];
 }
 
 export type UpdateResidentInput = Partial<CreateResidentInput>;
@@ -1302,6 +1307,7 @@ export type {
   MatchStatus,
   ImportPreviewResult,
   SpreadsheetImportRow,
+  ImportAdmission,
   ParseSpreadsheetResult,
   ImportConflict,
   CheckImportConflictResult,

@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import { ParseSpreadsheetResult, SpreadsheetImportRow } from '@fonte/types';
+import { ImportAdmission, ParseSpreadsheetResult, SpreadsheetImportRow } from '@fonte/types';
 import { normalizeName } from '../../common/lib/normalize';
 
 /**
@@ -13,6 +13,9 @@ const IGNORED_SHEET_MARKER = 'curso biblico';
 
 /** Colunas esperadas por linha, mapeadas por variação de cabeçalho (normalizado). */
 type ColumnKey = 'name' | 'cpf' | 'familyContact' | 'entryDate' | 'exitDate';
+
+/** Colunas de valor único por linha (não repetem: nome, cpf, contato). */
+type SingleColumnKey = 'name' | 'cpf' | 'familyContact';
 
 /**
  * Sinônimos de cabeçalho aceitos por coluna. Comparados contra o cabeçalho
@@ -31,7 +34,14 @@ const HEADER_ALIASES: Record<ColumnKey, string[]> = {
 const CONTRIBUTION_HEADER = /(?:mensalidade\s*)?mes\s*\d+/;
 
 interface SheetColumns {
-  columns: Partial<Record<ColumnKey, number>>;
+  columns: Partial<Record<SingleColumnKey, number>>;
+  /**
+   * Colunas de entrada/saída em ordem de coluna. A planilha pode repetir os
+   * pares (Entrada 1/Saída 1, Entrada 2/Saída 2, ...); pareamos por índice para
+   * montar o histórico de acolhimentos (story 121).
+   */
+  entryDateColumns: number[];
+  exitDateColumns: number[];
   /** Colunas de contribuição em ordem cronológica (mês 1, mês 2, ...). */
   contributionColumns: number[];
 }
@@ -91,15 +101,28 @@ export class SpreadsheetImportService {
    */
   private resolveColumns(sheet: ExcelJS.Worksheet): (SheetColumns & { headerRow: number }) | null {
     let result: (SheetColumns & { headerRow: number }) | null = null;
+    const singleKeys: SingleColumnKey[] = ['name', 'cpf', 'familyContact'];
     sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       if (result) return;
-      const columns: Partial<Record<ColumnKey, number>> = {};
+      const columns: Partial<Record<SingleColumnKey, number>> = {};
+      const entryDateColumns: number[] = [];
+      const exitDateColumns: number[] = [];
       const contributionColumns: number[] = [];
       row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
         const header = normalizeHeader(cellToString(cell.value));
         if (!header) return;
-        for (const [key, aliases] of Object.entries(HEADER_ALIASES) as [ColumnKey, string[]][]) {
-          if (columns[key] === undefined && aliases.some((a) => header.includes(a))) {
+        // Entrada/saída podem repetir (pares de acolhimento): coleta TODAS as
+        // colunas que casam, em ordem de coluna, para parear por índice depois.
+        if (HEADER_ALIASES.entryDate.some((a) => header.includes(a))) {
+          entryDateColumns.push(colNumber);
+          return;
+        }
+        if (HEADER_ALIASES.exitDate.some((a) => header.includes(a))) {
+          exitDateColumns.push(colNumber);
+          return;
+        }
+        for (const key of singleKeys) {
+          if (columns[key] === undefined && HEADER_ALIASES[key].some((a) => header.includes(a))) {
             columns[key] = colNumber;
             return;
           }
@@ -107,7 +130,7 @@ export class SpreadsheetImportService {
         if (CONTRIBUTION_HEADER.test(header)) contributionColumns.push(colNumber);
       });
       if (columns.name !== undefined) {
-        result = { columns, contributionColumns, headerRow: rowNumber };
+        result = { columns, entryDateColumns, exitDateColumns, contributionColumns, headerRow: rowNumber };
       }
     });
     return result;
@@ -133,20 +156,48 @@ export class SpreadsheetImportService {
         return;
       }
 
-      const entryDate = toIsoDate(this.readCell(row, layout.columns.entryDate));
+      // Pares entrada→saída da linha, ordenados por entrada (asc). O topo do
+      // resident é o acolhimento mais recente (último); as contribuições contam
+      // a partir do primeiro acolhimento (mais antigo).
+      const admissions = this.readAdmissions(row, layout.entryDateColumns, layout.exitDateColumns);
+      const mostRecent = admissions.length ? admissions[admissions.length - 1] : null;
+      const earliestEntry = admissions.length ? admissions[0].entryDate : null;
       rows.push({
         houseName,
         name: name || null,
         nameNormalized: name ? normalizeName(name) : null,
         cpf: cpf || null,
         familyContact: this.readText(row, layout.columns.familyContact) || null,
-        entryDate,
-        exitDate: toIsoDate(this.readCell(row, layout.columns.exitDate)),
-        contributionMonths: this.readContributions(row, layout.contributionColumns, entryDate),
+        entryDate: mostRecent?.entryDate ?? null,
+        exitDate: mostRecent?.exitDate ?? null,
+        admissions,
+        contributionMonths: this.readContributions(row, layout.contributionColumns, earliestEntry),
       });
     });
 
     return { rows, skipped };
+  }
+
+  /**
+   * Pareia as colunas de entrada com as de saída por índice, montando o
+   * histórico de acolhimentos (story 121). Uma coluna de entrada sem valor não
+   * gera acolhimento; a saída correspondente pode faltar (acolhimento em aberto,
+   * tipicamente o mais recente) → `exitDate: null`. Ordena por `entryDate` asc.
+   */
+  private readAdmissions(
+    row: ExcelJS.Row,
+    entryColumns: number[],
+    exitColumns: number[],
+  ): ImportAdmission[] {
+    const admissions: ImportAdmission[] = [];
+    entryColumns.forEach((entryCol, index) => {
+      const entryDate = toIsoDate(this.readCell(row, entryCol));
+      if (!entryDate) return;
+      const exitDate = toIsoDate(this.readCell(row, exitColumns[index]));
+      admissions.push({ entryDate, exitDate });
+    });
+    admissions.sort((a, b) => a.entryDate.localeCompare(b.entryDate));
+    return admissions;
   }
 
   /**

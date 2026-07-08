@@ -103,6 +103,12 @@ export class ImportMatchService {
       resident.exitDate = row.exitDate;
     }
 
+    // Histórico de acolhimentos da planilha (story 121): a planilha é a fonte de
+    // verdade. Propaga os pares entrada→saída para o commit criar os `Admission`.
+    if (row.admissions?.length) {
+      resident.admissions = row.admissions;
+    }
+
     relatives = this.applyFamilyContact(relatives, row.familyContact, warnings);
 
     return {

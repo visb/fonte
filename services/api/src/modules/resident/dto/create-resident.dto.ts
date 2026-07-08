@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -9,9 +10,11 @@ import {
   IsUUID,
   Max,
   Min,
+  ValidateNested,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
+import { ImportAdmissionDto } from './import-admission.dto';
 
 export class CreateResidentDto {
   @IsString()
@@ -141,4 +144,14 @@ export class CreateResidentDto {
   @IsOptional()
   @IsUUID()
   ministryId?: string | null;
+
+  // Histórico de acolhimentos do import em lote (story 121). Quando presente com
+  // mais de um item, o `ImportService.commit` cria um `Admission` por par
+  // entrada→saída; o topo do resident reflete o mais recente. Opcional — ignorado
+  // no create normal de resident.
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ImportAdmissionDto)
+  admissions?: ImportAdmissionDto[];
 }

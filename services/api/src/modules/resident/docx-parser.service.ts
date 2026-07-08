@@ -5,6 +5,7 @@ import * as mammoth from 'mammoth';
 // jszip is CommonJS and the project does not enable esModuleInterop, so a default
 // import resolves to `undefined` at runtime — use a namespace import instead.
 import * as JSZip from 'jszip';
+import { ImportAdmission } from '@fonte/types';
 
 // Image media types the vision model accepts. EMF/WMF and other vector formats
 // embedded by Word are skipped.
@@ -49,6 +50,9 @@ export interface ParseDocxResident {
   familyInvestmentAmount: number | null;
   contributionDueDay: string | null;
   contactPhone: string | null;
+  // Histórico de acolhimentos vindo da planilha no cross-match (story 121). A
+  // ficha .docx não traz múltiplos pares; o campo é preenchido pela linha casada.
+  admissions?: ImportAdmission[];
 }
 
 export interface ParseDocxRelative {

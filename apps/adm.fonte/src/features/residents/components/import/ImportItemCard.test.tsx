@@ -113,6 +113,39 @@ describe('ImportItemCard', () => {
     expect(screen.getByRole('button', { name: 'Aprovar' })).toBeDisabled();
   });
 
+  it('não renderiza badge de conflito quando já importado (regressão story 122)', async () => {
+    vi.mocked(api.residents.checkImportConflict).mockResolvedValue({
+      conflicts: [{ id: 'r9', name: 'João Duplicado', cpf: '12345678900', status: 'ACTIVE', houseName: 'Casa A' }],
+    } as never);
+    renderWithClient(
+      <ImportItemCard item={readyItem({ status: 'imported' })} onRemove={vi.fn()} />,
+    );
+    expect(screen.getByText('Importado')).toBeInTheDocument();
+    // dado stale no cache poderia pintar o badge; gate por status impede
+    await waitFor(() =>
+      expect(screen.queryByText(/Conflito: João Duplicado/)).not.toBeInTheDocument(),
+    );
+  });
+
+  it('não renderiza badge de conflito de sessão quando já importado (regressão story 122)', () => {
+    renderWithClient(
+      <ImportItemCard
+        item={readyItem({ status: 'imported' })}
+        onRemove={vi.fn()}
+        sessionConflictName="João Silva"
+      />,
+    );
+    expect(screen.getByText('Importado')).toBeInTheDocument();
+    expect(screen.queryByText('Já importado nesta sessão.')).not.toBeInTheDocument();
+  });
+
+  it('item ready sem conflito não mostra badge e habilita Aprovar', async () => {
+    renderWithClient(<ImportItemCard item={readyItem()} onRemove={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
+    expect(screen.queryByText(/Conflito:/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Já importado nesta sessão.')).not.toBeInTheDocument();
+  });
+
   it('exibe erro e não dispara checagem de conflito', () => {
     renderWithClient(
       <ImportItemCard item={readyItem({ status: 'error', error: 'Falhou', preview: null })} onRemove={vi.fn()} />,

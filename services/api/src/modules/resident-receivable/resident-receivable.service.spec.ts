@@ -67,6 +67,7 @@ function makeService(repo: MockRepo, residentRepo: Partial<Repository<Resident>>
     {} as Repository<Staff>,
     {} as never, // StorageService
     { create: jest.fn().mockResolvedValue(undefined) } as never, // NotificationService
+    { mapByReceivables: jest.fn().mockResolvedValue(new Map()) } as never, // ReceivableProductContributionService
   );
 }
 
@@ -88,6 +89,7 @@ function makeFullService(
     staffRepo as Repository<Staff>,
     storage as never,
     { create: jest.fn().mockResolvedValue(undefined) } as never, // NotificationService
+    { mapByReceivables: jest.fn().mockResolvedValue(new Map()) } as never, // ReceivableProductContributionService
   );
 }
 

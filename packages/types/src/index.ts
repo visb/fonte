@@ -401,6 +401,44 @@ export interface ResidentReceivable {
   notes: string | null;
   createdByName: string | null;
   createdAt: string;
+  // Contribuições em produtos declaradas nesta parcela (story 112). Independem
+  // do pagamento em dinheiro — uma parcela pode ter valor, produtos, ou ambos.
+  productContributions?: ReceivableProductContribution[];
+}
+
+// ─── Receivable Product Contributions (story 112) ──────────────────────────────
+
+/**
+ * Uma linha de contribuição em produtos numa parcela (`ResidentReceivable`).
+ * Dois modos mutuamente exclusivos:
+ *  - Catálogo: `inventoryItemId` preenchido → gera movimento IN no inventário
+ *    (`inventoryMovementId` guarda o vínculo); `quantity`/`unit` obrigatórios.
+ *  - Avulso: `description` preenchida (texto livre), sem item/movimento;
+ *    `pendingDetailing = true` (logística distrincha depois). Não mexe no estoque.
+ */
+export interface ReceivableProductContribution {
+  id: string;
+  receivableId: string;
+  inventoryItemId: string | null;
+  inventoryMovementId: string | null;
+  description: string | null;
+  quantity: number | null;
+  unit: string | null;
+  pendingDetailing: boolean;
+  createdByName: string | null;
+  createdAt: string;
+}
+
+/** Uma linha declarada: item (catálogo) XOR descrição (avulso). */
+export interface ProductContributionLineInput {
+  inventoryItemId?: string;
+  description?: string;
+  quantity?: number;
+  unit?: string;
+}
+
+export interface DeclareProductContributionInput {
+  lines: ProductContributionLineInput[];
 }
 
 export interface RegisterReceivablePaymentInput {

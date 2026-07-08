@@ -24,6 +24,9 @@ import type {
   RegisterReceivablePaymentInput,
   UpdateContributionPlanInput,
   SetContributionExemptInput,
+  ReceivableProductContribution,
+  ProductContributionLineInput,
+  DeclareProductContributionInput,
   StreetSaleType,
   StreetSale,
   StreetSalesReportResponse,
@@ -112,6 +115,9 @@ export type {
   RegisterReceivablePaymentInput,
   UpdateContributionPlanInput,
   SetContributionExemptInput,
+  ReceivableProductContribution,
+  ProductContributionLineInput,
+  DeclareProductContributionInput,
 };
 export type { StreetSaleType, StreetSale, StreetSalesReportResponse, StreetSalesReportByHouse };
 export type {

@@ -34,7 +34,7 @@ Ordem: 116 → 117 → 118 → 119 → 120 → 121 → 122 → 123. Fonte de ver
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 116 — dashboard: cards de casas em grid responsivo | [OK] | 1141 vitest + e2e 3/3 | 8bccab5 | 54db2a5 |
-| 2 | 117 — adm: remover superfície "eventos internos" (navbar+página) | [ ] | | | |
+| 2 | 117 — adm: remover superfície "eventos internos" (navbar+página) | [OK] | 1136 vitest + e2e 10/10 | ea162e2 | 33c71c0 |
 | 3 | 118 — adm: máscara telefone familiares no import + DDD 41 | [ ] | | | |
 | 4 | 119 — import: UF padrão "PR" quando vazia | [ ] | | | |
 | 5 | 120 — import: aprovar filho que já saiu → ALTA/EVASÃO + exitDate | [ ] | | | |
@@ -47,6 +47,7 @@ Ordem: 116 → 117 → 118 → 119 → 120 → 121 → 122 → 123. Fonte de ver
 Entrada curta — máx. ~3 linhas. Detalhe rico vai no corpo do commit ou no `.md` arquivado.
 [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver>
 [OK] 116 — testes: 1141/1141 vitest adm + dashboard scoped 6/6 (100% cov) + playwright dashboard 3/3 — commit: 8bccab5 — merge: 54db2a5 — 2026-07-08 — layout puro grid auto-fill, backend intocado
+[OK] 117 — testes: 1136/1136 vitest adm + playwright events 10/10, cov adm 91.81% — commit: ea162e2 — merge: 33c71c0 — 2026-07-08 — remoção (backend/api-client/ops intactos; audience=INTERNAL preservado)
 
 ## Resumo final
 

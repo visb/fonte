@@ -6,6 +6,7 @@ import {
   buildCommitPayload,
   buildCommitPayloadFromPreview,
   defaultImportState,
+  defaultImportStatus,
   previewToFormValues,
   relativesFromPreview,
   resolveHouseId,
@@ -135,6 +136,31 @@ describe('relativesFromPreview', () => {
   });
 });
 
+describe('defaultImportStatus', () => {
+  it('ficha sem correspondência na planilha (unmatched) → ARCHIVED', () => {
+    expect(defaultImportStatus(preview({ matchStatus: 'unmatched' }))).toBe(
+      ResidentStatus.ARCHIVED,
+    );
+  });
+
+  it('ficha casada ou ambígua não força status (fluxo normal decide)', () => {
+    expect(defaultImportStatus(preview({ matchStatus: 'matched' }))).toBe('');
+    expect(defaultImportStatus(preview({ matchStatus: 'ambiguous' }))).toBe('');
+  });
+
+  it('status já extraído da ficha tem precedência sobre a regra', () => {
+    const p = preview({
+      matchStatus: 'unmatched',
+      resident: { name: 'João', status: ResidentStatus.DISCHARGED },
+    });
+    expect(defaultImportStatus(p)).toBe(ResidentStatus.DISCHARGED);
+  });
+
+  it('sem preview devolve vazio', () => {
+    expect(defaultImportStatus(null)).toBe('');
+  });
+});
+
 describe('buildCommitPayload', () => {
   it('usa ACTIVE quando o status não vem preenchido', () => {
     const form = { name: 'João', houseId: 'h1', familyInvestment: FamilyInvestment.SOCIAL } as ResidentFormData;
@@ -170,6 +196,11 @@ describe('buildCommitPayloadFromPreview', () => {
     );
     expect((payload.resident as { exitDate?: unknown }).exitDate).toBe('2023-08-10');
     expect(payload.resident.entryDate).toBe('2023-01-10');
+  });
+
+  it('ficha unmatched entra como ARCHIVED no payload do commit', () => {
+    const payload = buildCommitPayloadFromPreview(preview({ matchStatus: 'unmatched' }), houses);
+    expect(payload.resident.status).toBe(ResidentStatus.ARCHIVED);
   });
 
   it('normaliza familiar sem telefone/parentesco (null) e trata campos ausentes', () => {

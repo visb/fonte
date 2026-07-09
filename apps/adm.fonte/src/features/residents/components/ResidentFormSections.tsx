@@ -149,6 +149,7 @@ export function ResidentAdmissionSections({
               </option>
               <option value={ResidentStatus.DISCHARGED}>Alta</option>
               <option value={ResidentStatus.EVADED}>Evasão</option>
+              <option value={ResidentStatus.ARCHIVED}>Arquivado</option>
             </Select>
           </FormField>
         )}

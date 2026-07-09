@@ -76,6 +76,24 @@ describe('ImportFichaModal', () => {
     expect(screen.getByPlaceholderText('Ex: SP')).toHaveValue('PR');
   });
 
+  it('ficha fora da planilha (unmatched) pré-seleciona o status Arquivado', async () => {
+    const { onApproved } = await renderModal({ matchStatus: 'unmatched' });
+    const statusSelect = document.querySelector('select[name="status"]') as HTMLSelectElement;
+    expect(statusSelect.value).toBe('ARCHIVED');
+    // e o payload do commit leva ARCHIVED
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));
+    await waitFor(() => expect(onApproved).toHaveBeenCalledWith('i1'));
+    const payload = vi.mocked(api.residents.commitImport).mock.calls[0][0];
+    expect(payload.resident.status).toBe('ARCHIVED');
+  });
+
+  it('ficha casada com a planilha não força status (segue o fluxo normal)', async () => {
+    await renderModal({ matchStatus: 'matched' });
+    const statusSelect = document.querySelector('select[name="status"]') as HTMLSelectElement;
+    expect(statusSelect.value).not.toBe('ARCHIVED');
+  });
+
   it('mostra a data de saída e carrega a exitDate do preview (story 120)', async () => {
     await renderModal({
       resident: { name: 'João Silva', cpf: '12345678900', entryDate: '2023-01-10', exitDate: '2023-08-10' },

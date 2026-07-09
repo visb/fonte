@@ -21,6 +21,7 @@ export const RESIDENT_STATUS_LABELS: Record<ResidentStatus, string> = {
   [ResidentStatus.EVADED]: 'Evasão',
   [ResidentStatus.CENSUS_ADDED]: 'Adicionado na contagem',
   [ResidentStatus.REJECTED_CENSUS]: 'Recusado na contagem',
+  [ResidentStatus.ARCHIVED]: 'Arquivado',
 };
 
 type BadgeVariant = NonNullable<BadgeProps['variant']>;
@@ -34,6 +35,7 @@ export const RESIDENT_STATUS_VARIANT: Record<ResidentStatus, BadgeVariant> = {
   [ResidentStatus.EVADED]: 'destructive',
   [ResidentStatus.CENSUS_ADDED]: 'warning',
   [ResidentStatus.REJECTED_CENSUS]: 'secondary',
+  [ResidentStatus.ARCHIVED]: 'secondary',
 };
 
 export const FAMILY_INVESTMENT_LABELS: Record<FamilyInvestment, string> = {

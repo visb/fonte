@@ -61,6 +61,9 @@ export enum ResidentStatus {
   CENSUS_ADDED = 'CENSUS_ADDED',
   // Recusado pelo ADM na revisão da contagem (mantido para auditoria).
   REJECTED_CENSUS = 'REJECTED_CENSUS',
+  // Registro histórico do import em lote sem correspondência na planilha de
+  // referência: entra como arquivo morto, fora das contagens/listagens ativas.
+  ARCHIVED = 'ARCHIVED',
 }
 
 // Filhos fisicamente presentes na casa (contagem de ocupação).

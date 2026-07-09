@@ -274,6 +274,16 @@ describe('ImportService', () => {
         );
         expect(create.mock.calls[0][0].status).toBe(ResidentStatus.ACTIVE);
       });
+
+      it('ARCHIVED (ficha fora da planilha) é preservado mesmo com entrada/saída', async () => {
+        // Regra do import em lote: sem correspondência na planilha → arquivo
+        // morto; a derivação ALTA/EVASÃO não pode sobrescrever.
+        await service.commit(
+          withDates({ entryDate: '2023-01-10', exitDate: '2023-08-10', status: ResidentStatus.ARCHIVED }),
+          'user-1',
+        );
+        expect(create.mock.calls[0][0].status).toBe(ResidentStatus.ARCHIVED);
+      });
     });
 
     // Story 121: import de múltiplos acolhimentos (histórico na ficha).

@@ -12,6 +12,7 @@ Status possíveis:
 - `TEMP_LEAVE`: Interno temporariamente ausente da instituição, por permissão ou saída programada, mas com vínculo ativo.
 - `DISCHARGED`: Interno oficialmente desligado do serviço, com alta registrada e fim do vínculo institucional.
 - `EVADED`: Interno que fugiu ou evadiu-se sem autorização, status usado para controle e ações de retorno.
+- `ARCHIVED`: Registro histórico vindo do import em lote sem correspondência na planilha de referência (arquivo morto). Não conta como presente/ativo em nenhuma listagem ou contador de ocupação.
 
 Transições devem ser controladas via service.
 

@@ -17,6 +17,7 @@ import { residentSchema, type ResidentFormData } from '../../lib/residentSchema'
 import {
   admissionsFromPreview,
   buildCommitPayload,
+  defaultImportStatus,
   previewToFormValues,
   relativesFromPreview,
   resolveHouseId,
@@ -64,6 +65,9 @@ export function ImportFichaModal({
         maritalStatus: '',
         familyInvestment: '',
         ...previewToFormValues(preview?.resident ?? {}),
+        // Ficha fora da planilha entra como ARCHIVED (editável na revisão).
+        // `undefined` (não '') quando não força: o schema valida enum ou ausente.
+        status: defaultImportStatus(preview) || undefined,
       }) as ResidentFormData,
     [preview],
   );

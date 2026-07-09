@@ -86,6 +86,20 @@ export function predictAdmissionStatus(admission: ImportAdmission): ResidentStat
     : ResidentStatus.EVADED;
 }
 
+/**
+ * Status default de um item do import a partir do cross-match com a planilha:
+ * ficha sem correspondência (`unmatched`) entra como ARCHIVED (arquivo morto) —
+ * regra de negócio do import em lote. Ficha casada não força nada (`''` deixa
+ * o fluxo normal decidir: exitDate deriva Alta/Evasão no backend, senão ACTIVE).
+ * Status já extraído da ficha tem precedência.
+ */
+export function defaultImportStatus(preview: ImportPreviewResult | null): ResidentStatus | '' {
+  if (!preview) return '';
+  const extracted = (preview.resident as { status?: unknown }).status;
+  if (typeof extracted === 'string' && extracted) return extracted as ResidentStatus;
+  return preview.matchStatus === 'unmatched' ? ResidentStatus.ARCHIVED : '';
+}
+
 /** Casa o nome da casa (aba/ficha) com o `id` da casa cadastrada. */
 export function resolveHouseId(houseName: string | null, houses: House[]): string {
   const target = normalizeForSearch(houseName ?? '').trim();
@@ -179,6 +193,8 @@ export function buildCommitPayloadFromPreview(
   const formValues = {
     ...previewToFormValues(preview.resident),
     houseId: resolveHouseId(preview.matchedHouseName ?? preview.houseName, houses),
+    // Ficha fora da planilha entra como ARCHIVED (regra do import em lote).
+    status: defaultImportStatus(preview),
   } as ResidentFormData;
   return buildCommitPayload(formValues, {
     relatives: relativesFromPreview(preview),

@@ -14,4 +14,5 @@ export const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   TEMP_LEAVE:    { label: 'Saída temp.',  color: '#2563eb' },
   DISCHARGED:    { label: 'Alta',         color: '#9333ea' },
   EVADED:        { label: 'Evasão',       color: '#dc2626' },
+  ARCHIVED:      { label: 'Arquivado',    color: '#6b7280' },
 };

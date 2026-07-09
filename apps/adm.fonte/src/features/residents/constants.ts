@@ -218,6 +218,9 @@ export const IMPORT_TEXTS = {
   onlyXlsx: 'Apenas planilhas .xlsx são aceitas.',
   conflictBadge: 'Conflito',
   okSummary: 'Sem alertas',
+  // Ficha fora da planilha de referência: entra como arquivado.
+  archivedBadge: 'Arquivado',
+  archivedBadgeTitle: 'Fora da planilha de referência — será importado como arquivado.',
   // Aprovação / commit (story 105).
   approve: 'Aprovar',
   viewFicha: 'Ver ficha',

@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarArrowDown, CalendarArrowUp, Home, Loader2, RotateCcw, Trash2, User } from 'lucide-react';
+import { AlertTriangle, Archive, CalendarArrowDown, CalendarArrowUp, Home, Loader2, RotateCcw, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -96,6 +96,17 @@ export function ImportItemCard({
               {status === 'processing' && <Loader2 size={11} className="mr-1 animate-spin" />}
               {IMPORT_ITEM_STATUS_LABELS[status]}
             </Badge>
+            {/* Ficha fora da planilha: entra como arquivado (status ARCHIVED). */}
+            {preview?.matchStatus === 'unmatched' && (status === 'ready' || isImported) && (
+              <Badge
+                variant="secondary"
+                className="shrink-0 gap-1"
+                title={IMPORT_TEXTS.archivedBadgeTitle}
+              >
+                <Archive size={11} />
+                {IMPORT_TEXTS.archivedBadge}
+              </Badge>
+            )}
           </div>
 
           {/* Erro de extração ou motivo de pulo/falha da aprovação em lote. */}

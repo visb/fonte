@@ -51,6 +51,18 @@ describe('ImportItemCard', () => {
     expect(screen.getByText('Sem alertas')).toBeInTheDocument();
   });
 
+  it('ficha fora da planilha (unmatched) exibe o badge Arquivado', () => {
+    const item = readyItem();
+    (item.preview as { matchStatus: string }).matchStatus = 'unmatched';
+    renderWithClient(<ImportItemCard item={item} onRemove={vi.fn()} />);
+    expect(screen.getByText('Arquivado')).toBeInTheDocument();
+  });
+
+  it('ficha casada com a planilha não exibe o badge Arquivado', () => {
+    renderWithClient(<ImportItemCard item={readyItem()} onRemove={vi.fn()} />);
+    expect(screen.queryByText('Arquivado')).not.toBeInTheDocument();
+  });
+
   it('mostra saída e esconde a casa atual quando há exitDate', () => {
     const item = readyItem();
     (item.preview!.resident as Record<string, unknown>).exitDate = '2024-06-01';

@@ -990,7 +990,7 @@
                 "residents"
               ]
             },
-            "description": "houseId é opcional quando status = ARCHIVED (import em lote de ficha fora da planilha, casa desconhecida); obrigatório para os demais status."
+            "description": "houseId é opcional para qualquer status; quando presente deve ser UUID válido. Filho sem casa fica fora das listagens/contagens por casa."
           }
         },
         {
@@ -1804,7 +1804,7 @@
                 "commit"
               ]
             },
-            "description": "Persiste o import aprovado de forma atômica (uma transação): revalida conflito por CPF (409 se já existir), cria o resident + relatives (≥1 obrigatório), anexa a foto (photoBase64 opcional) e cria as contribuições retroativas (contributionMonths ISO YYYY-MM-01). Retorna { resident, contributionsCreated: { created, skipped } }. Rollback não deixa nada persistido.\n\nStory 121 — múltiplos acolhimentos: `resident.admissions` (opcional) é o histórico de pares { entryDate, exitDate? } vindo da planilha. Quando há mais de um item, o commit cria um `Admission` por par (o topo do resident = acolhimento mais recente; os anteriores entram como histórico), cada um com status terminal derivado pela permanência entrada→saída (≥6 meses → DISCHARGED, <6 meses → EVADED; sem saída → ACTIVE). Um único acolhimento (ou campo ausente) mantém o comportamento anterior (só o topo). Roles: ADMIN, COORDINATOR.\n\nhouseId é opcional quando status = ARCHIVED (import em lote de ficha fora da planilha, casa desconhecida); obrigatório para os demais status."
+            "description": "Persiste o import aprovado de forma atômica (uma transação): revalida conflito por CPF (409 se já existir), cria o resident + relatives (≥1 obrigatório), anexa a foto (photoBase64 opcional) e cria as contribuições retroativas (contributionMonths ISO YYYY-MM-01). Retorna { resident, contributionsCreated: { created, skipped } }. Rollback não deixa nada persistido.\n\nStory 121 — múltiplos acolhimentos: `resident.admissions` (opcional) é o histórico de pares { entryDate, exitDate? } vindo da planilha. Quando há mais de um item, o commit cria um `Admission` por par (o topo do resident = acolhimento mais recente; os anteriores entram como histórico), cada um com status terminal derivado pela permanência entrada→saída (≥6 meses → DISCHARGED, <6 meses → EVADED; sem saída → ACTIVE). Um único acolhimento (ou campo ausente) mantém o comportamento anterior (só o topo). Roles: ADMIN, COORDINATOR.\n\nhouseId é opcional para qualquer status; quando presente deve ser UUID válido. Filho sem casa fica fora das listagens/contagens por casa."
           }
         },
         {

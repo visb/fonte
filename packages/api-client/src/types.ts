@@ -456,7 +456,7 @@ export interface Resident {
   photoUrl: string | null;
   photoThumbUrl: string | null;
   house: { id: string; name: string } | null;
-  // Nulo só para ARCHIVED (import sem correspondência na planilha).
+  // Casa é opcional — nulo quando o filho não tem casa conhecida.
   houseId: string | null;
   ministry: { id: string; name: string } | null;
   ministryId: string | null;
@@ -464,7 +464,7 @@ export interface Resident {
 
 export interface CreateResidentInput {
   name: string;
-  // Obrigatória para todo status exceto ARCHIVED.
+  // Casa é opcional para qualquer status.
   houseId?: string | null;
   birthDate?: string | null;
   cpf?: string | null;

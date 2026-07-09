@@ -11,13 +11,13 @@ import {
 } from './residentSchema';
 
 describe('residentSchema', () => {
-  it('exige nome e casa', () => {
+  it('exige nome; casa é opcional', () => {
     const res = residentSchema.safeParse({ name: '', houseId: '' });
     expect(res.success).toBe(false);
     if (!res.success) {
       const fields = res.error.issues.map((i) => i.path[0]);
       expect(fields).toContain('name');
-      expect(fields).toContain('houseId');
+      expect(fields).not.toContain('houseId');
     }
   });
 
@@ -26,19 +26,15 @@ describe('residentSchema', () => {
     expect(res.success).toBe(true);
   });
 
-  it('dispensa a casa quando o status é ARCHIVED', () => {
+  it('aceita ficha sem casa em qualquer status', () => {
+    expect(residentSchema.safeParse({ name: 'João' }).success).toBe(true);
     expect(
-      residentSchema.safeParse({ name: 'João', houseId: '', status: ResidentStatus.ARCHIVED })
+      residentSchema.safeParse({ name: 'João', houseId: '', status: ResidentStatus.ACTIVE })
         .success,
     ).toBe(true);
     expect(
       residentSchema.safeParse({ name: 'João', status: ResidentStatus.ARCHIVED }).success,
     ).toBe(true);
-    // qualquer outro status segue exigindo casa
-    expect(
-      residentSchema.safeParse({ name: 'João', houseId: '', status: ResidentStatus.ACTIVE })
-        .success,
-    ).toBe(false);
   });
 
   it('rejeita e-mail inválido mas aceita vazio', () => {

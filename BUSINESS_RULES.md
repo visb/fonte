@@ -22,7 +22,7 @@ Não permitir alteração manual arbitrária sem validação.
 
 ## 2. Cadastro de Interno
 
-- Deve estar vinculado a uma House — exceção: status `ARCHIVED` pode não ter House (import em lote de ficha fora da planilha, casa desconhecida)
+- Vínculo com House é opcional (ex.: registro histórico do import em lote sem casa conhecida); filho sem casa não aparece em listagens/contagens por casa
 - Deve possuir pelo menos um responsável (Relative/familiar)
 - Não pode ser removido fisicamente (soft delete)
 

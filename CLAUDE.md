@@ -306,7 +306,7 @@ SEMPRE extrair o item como componente separado (ex: `ResidentRow`, `HouseCard`).
 
 Consulte `BUSINESS_RULES.md` antes de tocar nestes fluxos:
 
-- Resident deve ter `house_id` e pelo menos um Relative cadastrado (exceção: status `ARCHIVED` dispensa `house_id`).
+- Resident deve ter pelo menos um Relative cadastrado; `house_id` é opcional (filho sem casa fica fora das listagens/contagens por casa).
 - Staff deve ter `house_id`.
 - Status de Resident só muda por transição validada em service.
 - RoutineEntry não pode ser editada após 24h.

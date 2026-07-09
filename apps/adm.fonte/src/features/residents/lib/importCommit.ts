@@ -9,6 +9,7 @@ import type {
 } from '@fonte/api-client';
 import { normalizeForSearch } from '@/lib/utils';
 import { normalizePhoneWithDefaultDDD } from '@/lib/masks';
+import { RELATIONSHIP_OPTIONS } from '../constants';
 import { buildResidentPayload, type ResidentFormData } from './residentSchema';
 
 /**
@@ -111,6 +112,22 @@ export function admissionsFromPreview(preview: ImportPreviewResult): ImportAdmis
   );
 }
 
+/**
+ * Casa o parentesco extraído pela IA (ex.: "pai", "mãe", "MAE") com o rótulo
+ * canônico das opções (ex.: "Pai", "Mãe"), ignorando caixa e acento. Sem esse
+ * casamento o `<Select>` (match exato) exibe vazio mesmo com o dado presente.
+ * Retorna o valor original (aparado) quando não há opção equivalente.
+ */
+export function normalizeRelationship(value: string | null | undefined): string {
+  const raw = (value ?? '').trim();
+  if (!raw) return '';
+  const target = normalizeForSearch(raw);
+  const match = RELATIONSHIP_OPTIONS.find(
+    (o) => o !== 'Outro' && normalizeForSearch(o) === target,
+  );
+  return match ?? raw;
+}
+
 /** Familiares do preview no formato mínimo do commit (nome + telefone + parentesco). */
 export function relativesFromPreview(preview: ImportPreviewResult): CommitImportRelative[] {
   return preview.relatives
@@ -119,7 +136,8 @@ export function relativesFromPreview(preview: ImportPreviewResult): CommitImport
       name: r.name.trim(),
       // Telefone do familiar vem cru da extração; mascara e assume DDD 41 se faltar.
       phone: r.phone?.trim() ? normalizePhoneWithDefaultDDD(r.phone) : null,
-      relationship: r.relationship?.trim() || null,
+      // Parentesco vem cru da IA ("pai"/"mãe"); casa com o rótulo canônico da lista.
+      relationship: normalizeRelationship(r.relationship) || null,
     }));
 }
 

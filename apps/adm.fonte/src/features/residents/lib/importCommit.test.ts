@@ -107,6 +107,32 @@ describe('relativesFromPreview', () => {
     );
     expect(result[0].phone).toBe('(11) 99999-8888');
   });
+
+  it('casa o parentesco cru da IA com o rótulo canônico (caixa/acento)', () => {
+    const result = relativesFromPreview(
+      preview({
+        relatives: [
+          { name: 'Kleber', phone: '999996231', relationship: 'pai' },
+          { name: 'Eleide', phone: '996328431', relationship: 'MÃE' },
+          { name: 'Ana', phone: '996328432', relationship: 'mae' },
+        ],
+      }),
+    );
+    expect(result.map((r) => r.relationship)).toEqual(['Pai', 'Mãe', 'Mãe']);
+  });
+
+  it('mantém parentesco livre quando não há opção equivalente, e null quando vazio', () => {
+    const result = relativesFromPreview(
+      preview({
+        relatives: [
+          { name: 'Fulano', phone: '999996231', relationship: 'vizinho' },
+          { name: 'Beltrano', phone: '996328431', relationship: '' },
+        ],
+      }),
+    );
+    expect(result[0].relationship).toBe('vizinho');
+    expect(result[1].relationship).toBeNull();
+  });
 });
 
 describe('buildCommitPayload', () => {

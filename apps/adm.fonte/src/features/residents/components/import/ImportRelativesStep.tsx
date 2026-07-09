@@ -5,17 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { RELATIONSHIP_OPTIONS } from '../../constants';
+import { normalizeRelationship } from '../../lib/importCommit';
 import { WizardActions } from './WizardActions';
 import type { DraftRelative } from '../../lib/types';
-
-// Maps an AI-parsed relationship (e.g. "mãe") to the canonical option label so it
-// preselects in the dropdown. Returns the original value when there's no match.
-function normalizeRelationship(value: string): string {
-  const match = RELATIONSHIP_OPTIONS.find(
-    (o) => o !== 'Outro' && o.toLowerCase() === value.trim().toLowerCase(),
-  );
-  return match ?? value;
-}
 
 interface ImportRelativesStepProps {
   relatives: DraftRelative[];

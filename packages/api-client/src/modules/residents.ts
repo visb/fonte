@@ -12,6 +12,7 @@ import type {
   ImportPreviewResult,
   ParseSpreadsheetResult,
   CheckImportConflictResult,
+  CheckImportFilesResult,
   CommitImportPayload,
   CommitImportResult,
   ReadmitResidentInput,
@@ -160,6 +161,14 @@ export function createResidentsModule(http: AxiosInstance) {
 
     bulkCreateContributions: (id: string, data: BulkCreateContributionsInput): Promise<{ created: number; skipped: number }> =>
       http.post(`/residents/${id}/follow-ups/bulk-contributions`, data).then((r) => r.data),
+
+    // Import em lote: casa o nome do filho embutido no nome do arquivo com os
+    // filhos já cadastrados — roda ANTES da extração por IA para não gastar
+    // crédito com ficha já importada.
+    checkImportFiles: (fileNames: string[]): Promise<CheckImportFilesResult> =>
+      http
+        .post<CheckImportFilesResult>('/residents/import/check-files', { fileNames })
+        .then((r) => r.data),
 
     // Import em lote (story 103): checa conflito por nome/CPF antes de aprovar.
     checkImportConflict: (name?: string, cpf?: string): Promise<CheckImportConflictResult> =>

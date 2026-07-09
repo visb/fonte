@@ -1781,6 +1781,34 @@
           }
         },
         {
+          "name": "Check import files (pre-IA)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/residents/import/check-files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "import",
+                "check-files"
+              ]
+            },
+            "description": "Checagem em lote ANTES da extração por IA: casa o nome do filho embutido no nome do arquivo da ficha (.docx) com os filhos já cadastrados, para pular a extração de fichas já importadas (economia de crédito do modelo). Match: nome normalizado do filho contido como sequência de palavras no nome do arquivo limpo (sem extensão, separadores e dígitos); nome de uma palavra exige igualdade exata. Body: { fileNames: string[] } (máx 5000). Retorna { matches: [{ fileName, residentId, residentName }] }. ADMIN/COORDINATOR.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileNames\": [\"FICHA João da Silva.docx\", \"02_maria-souza.docx\"]\n}"
+            }
+          }
+        },
+        {
           "name": "Commit import (atomic)",
           "request": {
             "method": "POST",

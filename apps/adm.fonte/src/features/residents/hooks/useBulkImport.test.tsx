@@ -7,6 +7,7 @@ vi.mock('@/lib/api', () => ({
       parseSpreadsheet: vi.fn(),
       parseDocxWithSpreadsheet: vi.fn(),
       checkImportConflict: vi.fn(),
+      checkImportFiles: vi.fn(),
       commitImport: vi.fn(),
     },
     houses: { list: vi.fn() },
@@ -43,7 +44,11 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Sem match por padrão: os testes de fila seguem direto para a extração.
+  vi.mocked(api.residents.checkImportFiles).mockResolvedValue({ matches: [] } as never);
+});
 afterEach(() => vi.clearAllMocks());
 
 describe('useParseSpreadsheet', () => {
@@ -154,6 +159,54 @@ describe('useImportQueue', () => {
     // o segundo item segue vivo e conclui normalmente
     act(() => ok.resolve({ resident: {}, warnings: {}, houseName: '' }));
     await waitFor(() => expect(result.current.items[1].status).toBe('ready'));
+  });
+
+  it('arquivo cujo nome casa com filho cadastrado entra cancelled, sem gastar extração', async () => {
+    vi.mocked(api.residents.checkImportFiles).mockResolvedValue({
+      matches: [{ fileName: 'FICHA João.docx', residentId: 'r9', residentName: 'João da Silva' }],
+    } as never);
+    const d = deferred<unknown>();
+    vi.mocked(api.residents.parseDocxWithSpreadsheet).mockReturnValue(d.promise as never);
+    const { result } = renderHookWithClient(() => useImportQueue([]));
+
+    act(() => result.current.addFiles([docx('FICHA João.docx'), docx('outra.docx')]));
+    await waitFor(() => expect(result.current.items).toHaveLength(2));
+
+    const matched = result.current.items.find((i) => i.fileName === 'FICHA João.docx')!;
+    expect(matched.status).toBe('cancelled');
+    expect(matched.error).toContain('João da Silva');
+    // só a ficha sem match foi para a extração por IA
+    await waitFor(() => expect(api.residents.parseDocxWithSpreadsheet).toHaveBeenCalledTimes(1));
+    const fd = vi.mocked(api.residents.parseDocxWithSpreadsheet).mock.calls[0][0] as FormData;
+    expect((fd.get('file') as File).name).toBe('outra.docx');
+
+    // restaurar força a extração mesmo assim
+    act(() => result.current.restoreItem(matched.id));
+    await waitFor(() => expect(api.residents.parseDocxWithSpreadsheet).toHaveBeenCalledTimes(2));
+  });
+
+  it('falha no check-files não bloqueia: todos entram na fila', async () => {
+    vi.mocked(api.residents.checkImportFiles).mockRejectedValue(new Error('offline'));
+    vi.mocked(api.residents.parseDocxWithSpreadsheet).mockReturnValue(
+      deferred<unknown>().promise as never,
+    );
+    const { result } = renderHookWithClient(() => useImportQueue([]));
+    act(() => result.current.addFiles([docx('a.docx')]));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(['queued', 'processing']).toContain(result.current.items[0].status);
+  });
+
+  it('re-arrastar arquivo com mesmo nome não duplica na fila', async () => {
+    vi.mocked(api.residents.parseDocxWithSpreadsheet).mockReturnValue(
+      deferred<unknown>().promise as never,
+    );
+    const { result } = renderHookWithClient(() => useImportQueue([]));
+    act(() => result.current.addFiles([docx('a.docx'), docx('A.DOCX')]));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    act(() => result.current.addFiles([docx('a.docx')]));
+    // segunda leva com o mesmo nome é ignorada
+    await waitFor(() => expect(api.residents.checkImportFiles).toHaveBeenCalledTimes(2));
+    expect(result.current.items).toHaveLength(1);
   });
 
   it('removeItem marca cancelled sem apagar o item (story 109)', async () => {
@@ -304,6 +357,7 @@ describe('useImportQueue — aprovação e conflito de sessão', () => {
     });
     const { result } = renderHookWithClient(() => useImportQueue([]));
     act(() => result.current.addFiles(specs.map((_, i) => docx(`${i}.docx`))));
+    await waitFor(() => expect(result.current.items).toHaveLength(specs.length));
     await waitFor(() => expect(result.current.items.every((it) => it.status === 'ready')).toBe(true));
     return result;
   }
@@ -370,6 +424,9 @@ describe('useApproveAll', () => {
       return { queue, approveAll };
     });
     act(() => rendered.result.current.queue.addFiles(specs.map((_, i) => docx(`${i}.docx`))));
+    // addFiles é assíncrono (check-files antes de enfileirar): espera os itens
+    // existirem antes de checar que todos ficaram prontos — [].every() é true.
+    await waitFor(() => expect(rendered.result.current.queue.items).toHaveLength(specs.length));
     await waitFor(() =>
       expect(rendered.result.current.queue.items.every((it) => it.status === 'ready')).toBe(true),
     );

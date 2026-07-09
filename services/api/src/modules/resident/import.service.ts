@@ -92,6 +92,46 @@ export class ImportService {
   }
 
   /**
+   * Fichas cujo nome de arquivo casa com um filho já cadastrado. Roda ANTES da
+   * extração por IA: nomes de arquivo tipo "FICHA João da Silva.docx" carregam
+   * o nome do filho — se ele já existe no banco, não precisamos gastar crédito
+   * do modelo re-extraindo a ficha. Match: o nome normalizado do filho aparece
+   * como sequência de palavras no nome do arquivo limpo (sem extensão,
+   * separadores e dígitos); nome de uma palavra só exige igualdade exata para
+   * não gerar falso positivo.
+   */
+  async checkImportedFiles(
+    fileNames: string[],
+  ): Promise<{ matches: Array<{ fileName: string; residentId: string; residentName: string }> }> {
+    const wanted = fileNames.map((n) => n.trim()).filter(Boolean);
+    if (wanted.length === 0) return { matches: [] };
+
+    // `find` do TypeORM já exclui soft-deleted.
+    const residents = await this.residentRepository.find({ select: ['id', 'name'] });
+    const candidates = residents
+      .map((r) => ({ id: r.id, name: r.name, normalized: normalizeName(r.name) }))
+      .filter((c) => c.normalized.length > 0);
+
+    const matches: Array<{ fileName: string; residentId: string; residentName: string }> = [];
+    for (const fileName of wanted) {
+      const cleaned = normalizeName(
+        fileName
+          .replace(/\.[^.]+$/, '') // extensão
+          .replace(/[_\-.()[\]]+/g, ' ') // separadores comuns
+          .replace(/\d+/g, ' '), // numeração de arquivo
+      );
+      if (!cleaned) continue;
+      const hit = candidates.find((c) =>
+        c.normalized.includes(' ')
+          ? ` ${cleaned} `.includes(` ${c.normalized} `)
+          : cleaned === c.normalized,
+      );
+      if (hit) matches.push({ fileName, residentId: hit.id, residentName: hit.name });
+    }
+    return { matches };
+  }
+
+  /**
    * Persiste o import aprovado de forma atômica: revalida o conflito por CPF,
    * cria o resident + relatives, anexa a foto (se houver) e cria as
    * contribuições retroativas — tudo numa transação. `actingUserId` atribui o

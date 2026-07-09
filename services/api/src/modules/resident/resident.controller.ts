@@ -62,6 +62,7 @@ import { SpreadsheetImportService } from './spreadsheet-parser.service';
 import { ImportMatchService, ImportPreviewResult } from './import-match.service';
 import { ImportService } from './import.service';
 import { CommitImportDto } from './dto/commit-import.dto';
+import { CheckImportFilesDto } from './dto/check-import-files.dto';
 import { CheckImportConflictResult, ParseSpreadsheetResult, SpreadsheetImportRow } from '@fonte/types';
 
 const photoOptions = {
@@ -243,6 +244,17 @@ export class ResidentController {
     @Query('cpf') cpf?: string,
   ): Promise<CheckImportConflictResult> {
     return this.importService.checkConflict(name, cpf);
+  }
+
+  // Checagem em lote: casa o nome do filho embutido no nome do arquivo com os
+  // filhos já cadastrados — roda antes da extração por IA para não gastar
+  // crédito com ficha já importada.
+  @Post('import/check-files')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  checkImportFiles(
+    @Body() dto: CheckImportFilesDto,
+  ): Promise<{ matches: Array<{ fileName: string; residentId: string; residentName: string }> }> {
+    return this.importService.checkImportedFiles(dto.fileNames);
   }
 
   @Post('import/commit')

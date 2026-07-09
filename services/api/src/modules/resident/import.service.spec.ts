@@ -88,6 +88,50 @@ describe('ImportService', () => {
     });
   });
 
+  describe('checkImportedFiles', () => {
+    let service: ImportService;
+    const find = jest.fn();
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      service = new ImportService({ find } as never, {} as never, {} as never, {} as never);
+    });
+
+    it('casa o nome do filho embutido no nome do arquivo (prefixo/acento/caixa)', async () => {
+      find.mockResolvedValue([
+        { id: 'r1', name: 'João da Silva' },
+        { id: 'r2', name: 'Maria Souza' },
+      ]);
+      const { matches } = await service.checkImportedFiles([
+        'FICHA JOAO DA SILVA.docx',
+        'Ficha de Acolhimento - Pedro Alves.docx',
+      ]);
+      expect(matches).toEqual([
+        { fileName: 'FICHA JOAO DA SILVA.docx', residentId: 'r1', residentName: 'João da Silva' },
+      ]);
+    });
+
+    it('ignora separadores e numeração do arquivo', async () => {
+      find.mockResolvedValue([{ id: 'r1', name: 'João da Silva' }]);
+      const { matches } = await service.checkImportedFiles(['02_joao-da-silva (2).docx']);
+      expect(matches).toHaveLength(1);
+    });
+
+    it('nome de uma palavra só exige igualdade exata (evita falso positivo)', async () => {
+      find.mockResolvedValue([{ id: 'r1', name: 'Carlos' }]);
+      const prefixed = await service.checkImportedFiles(['FICHA Carlos.docx']);
+      expect(prefixed.matches).toEqual([]);
+      const exact = await service.checkImportedFiles(['carlos.docx']);
+      expect(exact.matches).toHaveLength(1);
+    });
+
+    it('lista vazia não consulta o banco', async () => {
+      const { matches } = await service.checkImportedFiles(['', '   ']);
+      expect(matches).toEqual([]);
+      expect(find).not.toHaveBeenCalled();
+    });
+  });
+
   describe('commit', () => {
     let service: ImportService;
     const create = jest.fn();

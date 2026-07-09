@@ -126,6 +126,8 @@ export type {
   ParseSpreadsheetResult,
   ImportAdmission,
   CheckImportConflictResult,
+  CheckImportFilesResult,
+  ImportFileMatch,
   ImportContributionsSummary,
   StreetSaleType,
   StreetSale,

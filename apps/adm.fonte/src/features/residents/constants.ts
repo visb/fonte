@@ -249,6 +249,15 @@ export const IMPORT_TEXTS = {
   admissionsTitle: 'Acolhimentos detectados',
 } as const;
 
+/**
+ * Motivo de pulo pré-extração: o nome do arquivo da ficha casa com um filho já
+ * cadastrado — o item entra em Canceladas sem gastar crédito de IA; restaurar
+ * força a extração.
+ */
+export function alreadyImportedMessage(name: string): string {
+  return `Já cadastrado: ${name}. Restaure o item para extrair mesmo assim.`;
+}
+
 /** Prefixo do alerta de conflito com um filho já importado nesta sessão. */
 export function sessionConflictMessage(name: string): string {
   return `Já importado nesta sessão: ${name}.`;

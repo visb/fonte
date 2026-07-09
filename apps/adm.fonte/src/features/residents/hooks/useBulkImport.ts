@@ -13,6 +13,7 @@ import { normalizeForSearch } from '@/lib/utils';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { buildCommitPayloadFromPreview } from '../lib/importCommit';
 import {
+  alreadyImportedMessage,
   IMPORT_BATCH_SIZE,
   IMPORT_TABS,
   IMPORT_TAB_STATUSES,
@@ -173,12 +174,48 @@ export function useImportQueue(rows: SpreadsheetImportRow[]): UseImportQueue {
   }, [items, processItem]);
 
   const addFiles = useCallback((files: File[]) => {
-    const newItems = files.map<ImportQueueItem>((file) => {
-      const id = crypto.randomUUID();
-      filesRef.current.set(id, file);
-      return { id, fileName: file.name, status: 'queued', preview: null, error: null };
-    });
-    setItems((prev) => [...prev, ...newItems]);
+    void (async () => {
+      // Dedupe entre os próprios arquivos do drop (mesmo nome, case-insensitive).
+      const seen = new Set<string>();
+      const unique = files.filter((file) => {
+        const key = file.name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Checagem barata ANTES da extração por IA: o nome do arquivo carrega o
+      // nome do filho ("FICHA João da Silva.docx") — se ele já está cadastrado,
+      // a ficha entra como `cancelled` com o motivo, sem gastar crédito do
+      // modelo. Restaurar o item força a extração mesmo assim.
+      let matchByFile = new Map<string, string>();
+      try {
+        const { matches } = await api.residents.checkImportFiles(unique.map((f) => f.name));
+        matchByFile = new Map(matches.map((m) => [m.fileName.toLowerCase(), m.residentName]));
+      } catch {
+        // Falha na checagem não bloqueia o fluxo — segue sem o filtro.
+      }
+
+      setItems((prev) => {
+        // Dedupe contra a fila atual: re-arrastar o mesmo arquivo não duplica.
+        const inQueue = new Set(prev.map((item) => item.fileName.toLowerCase()));
+        const newItems = unique
+          .filter((file) => !inQueue.has(file.name.toLowerCase()))
+          .map<ImportQueueItem>((file) => {
+            const id = crypto.randomUUID();
+            filesRef.current.set(id, file);
+            const matchedName = matchByFile.get(file.name.toLowerCase());
+            return {
+              id,
+              fileName: file.name,
+              status: matchedName ? 'cancelled' : 'queued',
+              preview: null,
+              error: matchedName ? alreadyImportedMessage(matchedName) : null,
+            };
+          });
+        return [...prev, ...newItems];
+      });
+    })();
   }, []);
 
   const removeItem = useCallback((id: string) => {
@@ -348,7 +385,7 @@ export function useApproveAll(
         }
         // Ficha sem familiar conhecido é aprovável no import (regra "≥1
         // relative" vale só para o acolhimento manual).
-        const payload = buildCommitPayloadFromPreview(item.preview!, housesRef.current);
+        const payload = buildCommitPayloadFromPreview(item.preview!, housesRef.current, item.fileName);
         await api.residents.commitImport(payload);
         queueRef.current.markImported(item.id);
         remember(item);

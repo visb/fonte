@@ -341,6 +341,30 @@ describe('Resident import — conflito e commit (e2e)', () => {
       expect(relatives.body).toHaveLength(0);
     });
 
+    it('check-files casa nome de arquivo com filho já importado (pré-IA)', async () => {
+      // Nome sem dígitos: o check-files descarta números do nome do arquivo.
+      const suffix = Math.random().toString(36).replace(/[0-9]/g, 'x').slice(2, 8);
+      const name = `Zuleico Checkfiles ${suffix}`;
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/residents/import/commit`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ resident: { name, houseId }, relatives: [], contributionMonths: [] })
+        .expect(201);
+      createdIds.push(res.body.resident.id);
+
+      const check = await request(app.getHttpServer())
+        .post(`${BASE}/residents/import/check-files`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ fileNames: [`FICHA ${name.toUpperCase()}.docx`, 'Ninguem Conhecido.docx'] })
+        .expect(201);
+      expect(check.body.matches).toHaveLength(1);
+      expect(check.body.matches[0]).toMatchObject({
+        fileName: `FICHA ${name.toUpperCase()}.docx`,
+        residentId: res.body.resident.id,
+        residentName: name,
+      });
+    });
+
     it('SERVANT sem permissão → 403', () =>
       request(app.getHttpServer())
         .post(`${BASE}/residents/import/commit`)

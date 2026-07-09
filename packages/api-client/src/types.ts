@@ -1297,6 +1297,18 @@ export interface CommitImportPayload {
   photoBase64?: string | null;
 }
 
+/** Um arquivo de ficha cujo nome casa com um filho já cadastrado. */
+export interface ImportFileMatch {
+  fileName: string;
+  residentId: string;
+  residentName: string;
+}
+
+/** Resposta do check-files: fichas que casam com filhos já cadastrados. */
+export interface CheckImportFilesResult {
+  matches: ImportFileMatch[];
+}
+
 /** Resposta do commit do import: filho criado + resumo das contribuições. */
 export interface CommitImportResult {
   resident: Resident;

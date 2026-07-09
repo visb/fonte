@@ -203,6 +203,15 @@ describe('buildCommitPayloadFromPreview', () => {
     expect(payload.resident.status).toBe(ResidentStatus.ARCHIVED);
   });
 
+  it('ficha unmatched sem casa resolvível → houseId null (permitido para ARCHIVED)', () => {
+    const payload = buildCommitPayloadFromPreview(
+      preview({ matchStatus: 'unmatched', houseName: 'Casa Desconhecida', matchedHouseName: null }),
+      houses,
+    );
+    expect(payload.resident.houseId).toBeNull();
+    expect(payload.resident.status).toBe(ResidentStatus.ARCHIVED);
+  });
+
   it('normaliza familiar sem telefone/parentesco (null) e trata campos ausentes', () => {
     const payload = buildCommitPayloadFromPreview(
       preview({

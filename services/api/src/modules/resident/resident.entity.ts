@@ -38,12 +38,14 @@ export class Resident {
   @Column({ name: 'user_id', nullable: true, type: 'uuid' })
   userId: string | null;
 
-  @ManyToOne(() => House, { eager: false })
+  @ManyToOne(() => House, { eager: false, nullable: true })
   @JoinColumn({ name: 'house_id' })
-  house: House;
+  house: House | null;
 
-  @Column({ name: 'house_id' })
-  houseId: string;
+  // Nullable só para ARCHIVED (import sem correspondência na planilha); os
+  // demais status exigem casa via DTO.
+  @Column({ name: 'house_id', nullable: true, type: 'uuid' })
+  houseId: string | null;
 
   @ManyToOne(() => Ministry, { eager: false, nullable: true })
   @JoinColumn({ name: 'ministry_id' })

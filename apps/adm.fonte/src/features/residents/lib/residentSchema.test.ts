@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FamilyInvestment, Gender } from '@fonte/types';
+import { FamilyInvestment, Gender, ResidentStatus } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import {
   residentSchema,
@@ -24,6 +24,21 @@ describe('residentSchema', () => {
   it('aceita ficha mínima válida', () => {
     const res = residentSchema.safeParse({ name: 'João', houseId: 'h1' });
     expect(res.success).toBe(true);
+  });
+
+  it('dispensa a casa quando o status é ARCHIVED', () => {
+    expect(
+      residentSchema.safeParse({ name: 'João', houseId: '', status: ResidentStatus.ARCHIVED })
+        .success,
+    ).toBe(true);
+    expect(
+      residentSchema.safeParse({ name: 'João', status: ResidentStatus.ARCHIVED }).success,
+    ).toBe(true);
+    // qualquer outro status segue exigindo casa
+    expect(
+      residentSchema.safeParse({ name: 'João', houseId: '', status: ResidentStatus.ACTIVE })
+        .success,
+    ).toBe(false);
   });
 
   it('rejeita e-mail inválido mas aceita vazio', () => {

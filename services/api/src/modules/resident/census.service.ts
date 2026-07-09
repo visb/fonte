@@ -45,7 +45,11 @@ export class CensusService {
 
     const [staff, house] = await Promise.all([
       this.staffRepo.findOne({ where: { userId: requesterUserId } }),
-      this.houseRepo.findOne({ where: { id: resident.houseId } }),
+      // Censo sempre cria com casa (DTO exige fora de ARCHIVED); o guard só
+      // satisfaz o tipo nullable da coluna.
+      resident.houseId
+        ? this.houseRepo.findOne({ where: { id: resident.houseId } })
+        : Promise.resolve(null),
     ]);
 
     await this.notifySafely(() =>

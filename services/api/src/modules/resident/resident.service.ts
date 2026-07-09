@@ -61,7 +61,8 @@ import { StorageService } from '../storage/storage.service';
 export interface ResidentMeView {
   id: string;
   name: string;
-  houseId: string;
+  // Nulo só em ARCHIVED — que nunca recebe acesso, mas o tipo acompanha a coluna.
+  houseId: string | null;
   userId: string;
   photoUrl: string | null;
   photoThumbUrl: string | null;
@@ -212,7 +213,8 @@ export class ResidentService {
 
     const admission = admissionRepo.create({
       residentId: saved.id,
-      houseId: saved.houseId,
+      // Sem casa (ARCHIVED do import): acolhimento registrado sem house.
+      houseId: saved.houseId ?? null,
       ministryId: saved.ministryId ?? null,
       entryDate: saved.entryDate,
       exitDate: saved.exitDate ?? null,

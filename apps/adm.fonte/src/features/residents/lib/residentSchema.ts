@@ -5,7 +5,8 @@ import { maskCPF, maskRG, maskPhone } from '@/lib/masks';
 
 export const residentSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
-  houseId: z.string().min(1, 'Casa é obrigatória'),
+  // Obrigatória para todo status exceto ARCHIVED (validado no superRefine).
+  houseId: z.string().optional(),
   status: z.nativeEnum(ResidentStatus).optional(),
   birthDate: z.string().optional(),
   cpf: z.string().optional(),
@@ -50,6 +51,16 @@ export const residentSchema = z.object({
     (v) => (v === '' || v === null || v === undefined ? undefined : String(v)),
     z.string().optional(),
   ),
+}).superRefine((data, ctx) => {
+  // Casa obrigatória exceto para ARCHIVED (import sem correspondência na
+  // planilha — a casa pode ser desconhecida).
+  if (data.status !== ResidentStatus.ARCHIVED && !data.houseId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['houseId'],
+      message: 'Casa é obrigatória',
+    });
+  }
 });
 
 export type ResidentFormData = z.infer<typeof residentSchema>;

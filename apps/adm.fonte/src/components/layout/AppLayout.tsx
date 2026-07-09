@@ -12,6 +12,7 @@ import {
   CalendarDays,
   ChevronDown,
   Database,
+  FileUp,
   HandHeart,
   Home,
   KanbanSquare,
@@ -312,6 +313,12 @@ export function AppLayout() {
           )}
           {isAdminOrCoordinator && (
             <FaturamentoSubmenu closeSidebar={closeSidebar} isAdmin={isAdmin} />
+          )}
+          {isAdminOrCoordinator && (
+            <Link to="/import" onClick={closeSidebar} className={navLinkClass}>
+              <FileUp size={16} />
+              Importar
+            </Link>
           )}
           {isAdmin && (
             <Link to="/financeiro/contas-a-pagar" onClick={closeSidebar} className={navLinkClass}>

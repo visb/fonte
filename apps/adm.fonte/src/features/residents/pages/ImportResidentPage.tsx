@@ -108,7 +108,7 @@ export function ImportResidentPage() {
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Button variant="ghost" size="icon" asChild>
-          <Link to="/residents/admission">
+          <Link to="/import">
             <ArrowLeft size={16} />
           </Link>
         </Button>

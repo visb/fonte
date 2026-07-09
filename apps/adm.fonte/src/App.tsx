@@ -17,6 +17,7 @@ import { ResidentDetailPage } from '@/features/residents/pages/ResidentDetailPag
 import { EditResidentPage } from '@/features/residents/pages/EditResidentPage';
 import { ImportResidentPage } from '@/features/residents/pages/ImportResidentPage';
 import { BulkImportPage } from '@/features/residents/pages/BulkImportPage';
+import { ImportPage } from '@/features/import/pages/ImportPage';
 import { StaffPage } from '@/features/staff/pages/StaffPage';
 import { NewStaffPage } from '@/features/staff/pages/NewStaffPage';
 import { StaffDetailPage } from '@/features/staff/pages/StaffDetailPage';
@@ -83,6 +84,7 @@ export default function App() {
               <Route path="residents" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ResidentsPage /></ProtectedRoute>} />
               <Route path="residents/admission" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><NewAdmissionGatewayPage /></ProtectedRoute>} />
               <Route path="residents/new" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><AdmissionWizardPage /></ProtectedRoute>} />
+              <Route path="import" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ImportPage /></ProtectedRoute>} />
               <Route path="residents/import" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ImportResidentPage /></ProtectedRoute>} />
               <Route path="residents/import-lote" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><BulkImportPage /></ProtectedRoute>} />
               <Route path="residents/readmit/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><ReadmissionPage /></ProtectedRoute>} />

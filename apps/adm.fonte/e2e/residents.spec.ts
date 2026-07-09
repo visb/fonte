@@ -365,9 +365,9 @@ test.describe('Filhos (Residentes)', () => {
       });
     });
 
-    await page.getByRole('link', { name: 'Novo acolhimento' }).click();
-    await expect(page).toHaveURL('/residents/admission');
-    await page.locator('a[href="/residents/import"]').click();
+    await page.getByRole('link', { name: 'Importar', exact: true }).click();
+    await expect(page).toHaveURL('/import');
+    await page.getByRole('link', { name: 'Individual' }).click();
     await expect(page).toHaveURL('/residents/import');
 
     // Upload do .docx (conteúdo irrelevante — a resposta é mockada).

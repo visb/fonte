@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Loader2, FileUp } from 'lucide-react';
+import { ArrowLeft, Search, Loader2 } from 'lucide-react';
 import { ResidentStatus } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { api } from '@/lib/api';
@@ -103,7 +103,7 @@ export function NewAdmissionGatewayPage() {
         É o primeiro acolhimento deste filho ou ele já passou pela casa?
       </p>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {/* Primeiro acolhimento */}
         <Link
           to="/residents/new"
@@ -115,23 +115,6 @@ export function NewAdmissionGatewayPage() {
           <span className="text-lg font-semibold">Primeiro acolhimento</span>
           <span className="text-sm text-muted-foreground">
             Filho nunca passou pela casa. Preencher cadastro completo.
-          </span>
-        </Link>
-
-        {/* Importar ficha */}
-        <Link
-          to="/residents/import"
-          className={cn(
-            'flex flex-col gap-2 rounded-xl border-2 p-6 transition-colors hover:border-primary hover:bg-primary/5',
-            'cursor-pointer select-none',
-          )}
-        >
-          <div className="flex items-center gap-2">
-            <FileUp size={18} className="text-muted-foreground" />
-            <span className="text-lg font-semibold">Importar ficha</span>
-          </div>
-          <span className="text-sm text-muted-foreground">
-            Enviar o .docx da ficha de acolhimento preenchida e importar automaticamente.
           </span>
         </Link>
 

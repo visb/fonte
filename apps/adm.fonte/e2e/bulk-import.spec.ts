@@ -100,12 +100,12 @@ test.describe('Import em lote de filhos', () => {
     // modal usaria as casas reais do seed. (story 105)
     await mockImportRoutes(page);
     await login(page);
-    await page.getByRole('link', { name: 'Filhos' }).click();
-    await expect(page).toHaveURL('/residents');
+    await page.getByRole('link', { name: 'Importar', exact: true }).click();
+    await expect(page).toHaveURL('/import');
   });
 
-  test('botão "Importar em lote" leva à tela e a dropzone de fichas começa desabilitada', async ({ page }) => {
-    await page.getByRole('link', { name: 'Importar em lote' }).click();
+  test('botão "Em lote" leva à tela e a dropzone de fichas começa desabilitada', async ({ page }) => {
+    await page.getByRole('link', { name: 'Em lote' }).click();
     await expect(page).toHaveURL('/residents/import-lote');
     await expect(page.getByRole('heading', { name: 'Importar filhos em lote' })).toBeVisible();
     await expect(
@@ -116,7 +116,7 @@ test.describe('Import em lote de filhos', () => {
   });
 
   test('upload da planilha + fichas: cards processam, ficam prontos com dados inline e conflito', async ({ page }) => {
-    await page.getByRole('link', { name: 'Importar em lote' }).click();
+    await page.getByRole('link', { name: 'Em lote' }).click();
     await expect(page).toHaveURL('/residents/import-lote');
 
     // 1. Planilha de referência.
@@ -173,7 +173,7 @@ test.describe('Import em lote de filhos', () => {
   // interceptado porque a ficha mockada não bate com dados reais do seed — o
   // teste assevera o payload persistido e a transição do card para "Importado".
   test('modal da ficha: editar campo, aprovar → payload persistido e card importado; conflito bloqueia', async ({ page }) => {
-    await page.getByRole('link', { name: 'Importar em lote' }).click();
+    await page.getByRole('link', { name: 'Em lote' }).click();
     await expect(page).toHaveURL('/residents/import-lote');
 
     await page.locator('input[accept*="spreadsheetml"]').setInputFiles({
@@ -251,7 +251,7 @@ test.describe('Import em lote de filhos', () => {
   // story 109: as fichas migram entre as abas conforme o estágio. Cancelar não
   // apaga — move para Canceladas e permite Restaurar de volta a Processadas.
   test('abas: cancelar move para Canceladas e Restaurar devolve para Processadas', async ({ page }) => {
-    await page.getByRole('link', { name: 'Importar em lote' }).click();
+    await page.getByRole('link', { name: 'Em lote' }).click();
     await expect(page).toHaveURL('/residents/import-lote');
 
     await page.locator('input[accept*="spreadsheetml"]').setInputFiles({

@@ -38,7 +38,7 @@ export function BulkImportPage() {
     <div className="max-w-3xl">
       <div className="mb-6 flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
-          <Link to="/residents">
+          <Link to="/import">
             <ArrowLeft size={16} />
           </Link>
         </Button>

@@ -98,7 +98,8 @@ export function ImportItemCard({
             </Badge>
           </div>
 
-          {status === 'error' && (
+          {/* Erro de extração ou motivo de pulo/falha da aprovação em lote. */}
+          {item.error && (
             <p className="text-sm text-destructive">{item.error}</p>
           )}
 

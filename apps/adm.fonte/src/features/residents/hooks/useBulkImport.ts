@@ -10,10 +10,13 @@ import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { getErrorMessage } from '@/lib/errors';
 import { normalizeForSearch } from '@/lib/utils';
+import { useHouses } from '@/features/houses/hooks/useHouses';
+import { buildCommitPayloadFromPreview } from '../lib/importCommit';
 import {
   IMPORT_BATCH_SIZE,
   IMPORT_TABS,
   IMPORT_TAB_STATUSES,
+  IMPORT_TEXTS,
   type ImportItemStatus,
   type ImportTab,
 } from '../constants';
@@ -96,6 +99,11 @@ export interface UseImportQueue {
   restoreItem: (id: string) => void;
   /** Marca o item como `imported` após o commit aprovar (não remove da lista). */
   markImported: (id: string) => void;
+  /**
+   * Anota no item o motivo de uma falha/pulo de aprovação em lote, sem mudar o
+   * status — o item continua `ready` e pode ser aprovado manualmente depois.
+   */
+  setItemError: (id: string, message: string) => void;
   /**
    * Nome de um filho já aprovado nesta sessão que conflita com o item (mesmo CPF
    * ou mesmo nome normalizado), ou `null` se não há conflito de sessão.
@@ -193,7 +201,13 @@ export function useImportQueue(rows: SpreadsheetImportRow[]): UseImportQueue {
 
   const markImported = useCallback((id: string) => {
     setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: 'imported' } : item)),
+      prev.map((item) => (item.id === id ? { ...item, status: 'imported', error: null } : item)),
+    );
+  }, []);
+
+  const setItemError = useCallback((id: string, message: string) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, error: message } : item)),
     );
   }, []);
 
@@ -230,9 +244,131 @@ export function useImportQueue(rows: SpreadsheetImportRow[]): UseImportQueue {
     removeItem,
     restoreItem,
     markImported,
+    setItemError,
     sessionConflictName,
     processingCount,
     pendingCount,
     tabCounts,
   };
+}
+
+// ─── Aprovação em lote (aprovar todos) ──────────────────────────────────────
+
+export interface ApproveAllProgress {
+  total: number;
+  done: number;
+  approved: number;
+  skipped: number;
+  failed: number;
+}
+
+export interface UseApproveAll {
+  /** Progresso do run atual (ou do último concluído); `null` antes do 1º run. */
+  progress: ApproveAllProgress | null;
+  isRunning: boolean;
+  start: () => void;
+  /** Interrompe após o item em andamento — nada fica pela metade. */
+  stop: () => void;
+}
+
+/**
+ * Aprova todas as fichas `ready` da fila, uma por vez (concorrência 1): com
+ * centenas/milhares de fichas, disparar commits em paralelo derrubaria browser
+ * e API — sequencial mantém o uso de rede/memória constante. Por item: pula
+ * conflito de sessão (identidade local, sem rede), pula conflito no banco
+ * (checagem fresca por item), pula ficha sem familiar; falha de commit não
+ * derruba o run. Itens pulados/falhos continuam `ready` com o motivo anotado
+ * (`setItemError`), para revisão manual. As queries de residents/houses são
+ * invalidadas UMA vez ao final — invalidar por item causaria um refetch em
+ * cascata a cada aprovação.
+ */
+export function useApproveAll(
+  queue: Pick<UseImportQueue, 'items' | 'markImported' | 'setItemError'>,
+): UseApproveAll {
+  const queryClient = useQueryClient();
+  const { data: houses = [] } = useHouses();
+  const [progress, setProgress] = useState<ApproveAllProgress | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const cancelRef = useRef(false);
+  // Refs para o loop assíncrono ler sempre o valor mais recente sem re-criar o run.
+  const queueRef = useRef(queue);
+  queueRef.current = queue;
+  const housesRef = useRef(houses);
+  housesRef.current = houses;
+
+  const stop = useCallback(() => {
+    cancelRef.current = true;
+  }, []);
+
+  const start = useCallback(async () => {
+    const all = queueRef.current.items;
+    const ready = all.filter((item) => item.status === 'ready' && item.preview);
+    if (ready.length === 0) return;
+    cancelRef.current = false;
+    setIsRunning(true);
+    const tally: ApproveAllProgress = {
+      total: ready.length,
+      done: 0,
+      approved: 0,
+      skipped: 0,
+      failed: 0,
+    };
+    setProgress({ ...tally });
+
+    // Identidades já importadas na sessão + as aprovadas durante este run.
+    // Conjunto local (não o estado React): o loop não pode depender de re-render.
+    const importedNames = new Set<string>();
+    const importedCpfs = new Set<string>();
+    const remember = (item: ImportQueueItem) => {
+      const { name, cpf } = itemIdentity(item);
+      if (name) importedNames.add(name);
+      if (cpf) importedCpfs.add(cpf);
+    };
+    all.filter((item) => item.status === 'imported').forEach(remember);
+
+    for (const item of ready) {
+      if (cancelRef.current) break;
+      const { name, cpf } = itemIdentity(item);
+      try {
+        if ((cpf && importedCpfs.has(cpf)) || (name && importedNames.has(name))) {
+          queueRef.current.setItemError(item.id, IMPORT_TEXTS.sessionConflictReason);
+          tally.skipped += 1;
+          continue;
+        }
+        const resident = (item.preview?.resident ?? {}) as Record<string, unknown>;
+        const rawName = typeof resident.name === 'string' ? resident.name : undefined;
+        const rawCpf = typeof resident.cpf === 'string' ? resident.cpf : undefined;
+        if (rawName || rawCpf) {
+          const { conflicts } = await api.residents.checkImportConflict(rawName, rawCpf);
+          if (conflicts.length > 0) {
+            queueRef.current.setItemError(item.id, IMPORT_TEXTS.conflictReason);
+            tally.skipped += 1;
+            continue;
+          }
+        }
+        const payload = buildCommitPayloadFromPreview(item.preview!, housesRef.current);
+        if (payload.relatives.length === 0) {
+          queueRef.current.setItemError(item.id, IMPORT_TEXTS.noRelativesReason);
+          tally.skipped += 1;
+          continue;
+        }
+        await api.residents.commitImport(payload);
+        queueRef.current.markImported(item.id);
+        remember(item);
+        tally.approved += 1;
+      } catch (err) {
+        tally.failed += 1;
+        queueRef.current.setItemError(item.id, getErrorMessage(err, IMPORT_TEXTS.commitError));
+      } finally {
+        tally.done += 1;
+        setProgress({ ...tally });
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: queryKeys.residents.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.houses.all });
+    setIsRunning(false);
+  }, [queryClient]);
+
+  return { progress, isRunning, start, stop };
 }

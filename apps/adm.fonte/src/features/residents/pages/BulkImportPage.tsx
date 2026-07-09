@@ -7,12 +7,14 @@ import { SpreadsheetUploadStep } from '../components/import/SpreadsheetUploadSte
 import { FichaDropzone } from '../components/import/FichaDropzone';
 import { ImportQueue } from '../components/import/ImportQueue';
 import { ImportFichaModal } from '../components/import/ImportFichaModal';
-import { useImportQueue, type ImportQueueItem } from '../hooks/useBulkImport';
+import { ImportApproveAll } from '../components/import/ImportApproveAll';
+import { useApproveAll, useImportQueue, type ImportQueueItem } from '../hooks/useBulkImport';
 
 export function BulkImportPage() {
   const [rows, setRows] = useState<SpreadsheetImportRow[]>([]);
   const [meta, setMeta] = useState<ParseSpreadsheetResult | null>(null);
   const [modalItem, setModalItem] = useState<ImportQueueItem | null>(null);
+  const queue = useImportQueue(rows);
   const {
     items,
     addFiles,
@@ -22,7 +24,8 @@ export function BulkImportPage() {
     sessionConflictName,
     pendingCount,
     tabCounts,
-  } = useImportQueue(rows);
+  } = queue;
+  const approveAll = useApproveAll(queue);
 
   const handleParsed = (parsedRows: SpreadsheetImportRow[], result: ParseSpreadsheetResult) => {
     setRows(parsedRows);
@@ -57,9 +60,18 @@ export function BulkImportPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">
-            3. Fila de importação{pendingCount > 0 ? ` (${pendingCount} pendente${pendingCount > 1 ? 's' : ''})` : ''}
-          </h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-muted-foreground">
+              3. Fila de importação{pendingCount > 0 ? ` (${pendingCount} pendente${pendingCount > 1 ? 's' : ''})` : ''}
+            </h2>
+            <ImportApproveAll
+              pendingCount={pendingCount}
+              progress={approveAll.progress}
+              isRunning={approveAll.isRunning}
+              onStart={approveAll.start}
+              onStop={approveAll.stop}
+            />
+          </div>
           <ImportQueue
             items={items}
             onRemove={removeItem}

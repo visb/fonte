@@ -9,18 +9,20 @@ vi.mock('@/lib/api', () => ({
       checkImportConflict: vi.fn(),
       commitImport: vi.fn(),
     },
+    houses: { list: vi.fn() },
   },
 }));
 
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { renderHookWithClient } from '@/test/utils';
-import { IMPORT_BATCH_SIZE } from '../constants';
+import { IMPORT_BATCH_SIZE, IMPORT_TEXTS } from '../constants';
 import {
   useParseSpreadsheet,
   useCheckImportConflict,
   useCommitImport,
   useImportQueue,
+  useApproveAll,
   type ImportQueueItem,
 } from './useBulkImport';
 
@@ -333,5 +335,161 @@ describe('useImportQueue — aprovação e conflito de sessão', () => {
     const { result } = renderHookWithClient(() => useImportQueue([]));
     const empty = { id: 'x', fileName: 'x.docx', status: 'ready', preview: null, error: null } as ImportQueueItem;
     expect(result.current.sessionConflictName(empty)).toBeNull();
+  });
+});
+
+describe('useApproveAll', () => {
+  interface Spec {
+    name: string;
+    cpf: string;
+    relatives?: { name: string; phone: string | null; relationship: string | null }[];
+  }
+
+  function preview(spec: Spec) {
+    return {
+      resident: { name: spec.name, cpf: spec.cpf },
+      relatives: spec.relatives ?? [{ name: 'Mãe', phone: null, relationship: 'Mãe' }],
+      warnings: {},
+      houseName: 'Casa A',
+      matchedHouseName: 'Casa A',
+      contributionMonths: [],
+    };
+  }
+
+  /** Sobe fila + hook juntos, com todos os itens já `ready`. */
+  async function seed(specs: Spec[]) {
+    vi.mocked(api.houses.list).mockResolvedValue([{ id: 'h1', name: 'Casa A' }] as never);
+    vi.mocked(api.residents.parseDocxWithSpreadsheet).mockImplementation((fd) => {
+      const file = (fd as FormData).get('file') as File;
+      const idx = Number(file.name.replace(/\D/g, ''));
+      return Promise.resolve(preview(specs[idx]) as never);
+    });
+    const rendered = renderHookWithClient(() => {
+      const queue = useImportQueue([]);
+      const approveAll = useApproveAll(queue);
+      return { queue, approveAll };
+    });
+    act(() => rendered.result.current.queue.addFiles(specs.map((_, i) => docx(`${i}.docx`))));
+    await waitFor(() =>
+      expect(rendered.result.current.queue.items.every((it) => it.status === 'ready')).toBe(true),
+    );
+    return rendered;
+  }
+
+  it('aprova todas as fichas prontas em sequência e invalida as queries uma vez', async () => {
+    vi.mocked(api.residents.checkImportConflict).mockResolvedValue({ conflicts: [] } as never);
+    const first = deferred<unknown>();
+    vi.mocked(api.residents.commitImport)
+      .mockReturnValueOnce(first.promise as never)
+      .mockResolvedValue({ resident: { id: 'r2' } } as never);
+    const { result, queryClient } = await seed([
+      { name: 'João', cpf: '111' },
+      { name: 'Ana', cpf: '222' },
+    ]);
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    act(() => {
+      void result.current.approveAll.start();
+    });
+    await waitFor(() => expect(result.current.approveAll.isRunning).toBe(true));
+
+    // sequencial: o 2º commit só dispara depois do 1º resolver
+    await waitFor(() => expect(api.residents.commitImport).toHaveBeenCalledTimes(1));
+    act(() => first.resolve({ resident: { id: 'r1' } }));
+    await waitFor(() => expect(api.residents.commitImport).toHaveBeenCalledTimes(2));
+
+    await waitFor(() => expect(result.current.approveAll.isRunning).toBe(false));
+    expect(result.current.approveAll.progress).toMatchObject({
+      total: 2, done: 2, approved: 2, skipped: 0, failed: 0,
+    });
+    expect(result.current.queue.items.every((it) => it.status === 'imported')).toBe(true);
+    // invalidação única ao final (não por item)
+    expect(spy.mock.calls.filter(([arg]) => arg?.queryKey === queryKeys.residents.all)).toHaveLength(1);
+    expect(spy.mock.calls.filter(([arg]) => arg?.queryKey === queryKeys.houses.all)).toHaveLength(1);
+  });
+
+  it('pula ficha com conflito no banco e anota o motivo, sem commitar', async () => {
+    vi.mocked(api.residents.checkImportConflict).mockResolvedValue({
+      conflicts: [{ id: 'r9', name: 'João' }],
+    } as never);
+    const { result } = await seed([{ name: 'João', cpf: '111' }]);
+
+    await act(async () => result.current.approveAll.start());
+
+    await waitFor(() => expect(result.current.approveAll.isRunning).toBe(false));
+    expect(api.residents.commitImport).not.toHaveBeenCalled();
+    expect(result.current.approveAll.progress).toMatchObject({ approved: 0, skipped: 1 });
+    expect(result.current.queue.items[0].status).toBe('ready');
+    expect(result.current.queue.items[0].error).toBe(IMPORT_TEXTS.conflictReason);
+  });
+
+  it('pula ficha sem familiar com o motivo noRelativesReason', async () => {
+    vi.mocked(api.residents.checkImportConflict).mockResolvedValue({ conflicts: [] } as never);
+    const { result } = await seed([{ name: 'João', cpf: '111', relatives: [] }]);
+
+    await act(async () => result.current.approveAll.start());
+
+    await waitFor(() => expect(result.current.approveAll.isRunning).toBe(false));
+    expect(api.residents.commitImport).not.toHaveBeenCalled();
+    expect(result.current.queue.items[0].error).toBe(IMPORT_TEXTS.noRelativesReason);
+  });
+
+  it('pula duplicata de sessão (mesmo cpf) sem consultar conflito de novo', async () => {
+    vi.mocked(api.residents.checkImportConflict).mockResolvedValue({ conflicts: [] } as never);
+    vi.mocked(api.residents.commitImport).mockResolvedValue({ resident: { id: 'r1' } } as never);
+    const { result } = await seed([
+      { name: 'João', cpf: '111' },
+      { name: 'João Neto', cpf: '111' },
+    ]);
+
+    await act(async () => result.current.approveAll.start());
+
+    await waitFor(() => expect(result.current.approveAll.isRunning).toBe(false));
+    expect(api.residents.commitImport).toHaveBeenCalledTimes(1);
+    expect(result.current.approveAll.progress).toMatchObject({ approved: 1, skipped: 1 });
+    expect(result.current.queue.items[1].error).toBe(IMPORT_TEXTS.sessionConflictReason);
+  });
+
+  it('falha de commit num item não derruba o run (os demais seguem)', async () => {
+    vi.mocked(api.residents.checkImportConflict).mockResolvedValue({ conflicts: [] } as never);
+    vi.mocked(api.residents.commitImport)
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue({ resident: { id: 'r2' } } as never);
+    const { result } = await seed([
+      { name: 'João', cpf: '111' },
+      { name: 'Ana', cpf: '222' },
+    ]);
+
+    await act(async () => result.current.approveAll.start());
+
+    await waitFor(() => expect(result.current.approveAll.isRunning).toBe(false));
+    expect(result.current.approveAll.progress).toMatchObject({ approved: 1, failed: 1, done: 2 });
+    expect(result.current.queue.items[0].status).toBe('ready');
+    expect(result.current.queue.items[0].error).toBeTruthy();
+    expect(result.current.queue.items[1].status).toBe('imported');
+  });
+
+  it('stop interrompe o run após o item em andamento', async () => {
+    vi.mocked(api.residents.checkImportConflict).mockResolvedValue({ conflicts: [] } as never);
+    const first = deferred<unknown>();
+    vi.mocked(api.residents.commitImport).mockReturnValueOnce(first.promise as never);
+    const { result } = await seed([
+      { name: 'João', cpf: '111' },
+      { name: 'Ana', cpf: '222' },
+    ]);
+
+    act(() => {
+      void result.current.approveAll.start();
+    });
+    await waitFor(() => expect(api.residents.commitImport).toHaveBeenCalledTimes(1));
+
+    act(() => result.current.approveAll.stop());
+    act(() => first.resolve({ resident: { id: 'r1' } }));
+
+    await waitFor(() => expect(result.current.approveAll.isRunning).toBe(false));
+    // o 2º item nunca foi commitado
+    expect(api.residents.commitImport).toHaveBeenCalledTimes(1);
+    expect(result.current.approveAll.progress).toMatchObject({ approved: 1, done: 1, total: 2 });
+    expect(result.current.queue.items[1].status).toBe('ready');
   });
 });

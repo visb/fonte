@@ -230,6 +230,12 @@ export const IMPORT_TEXTS = {
   sessionConflictReason: 'Já importado nesta sessão.',
   noRelativesReason: 'Cadastre ao menos um familiar para aprovar.',
   commitError: 'Não foi possível aprovar a importação.',
+  // Aprovação em lote de todas as fichas prontas.
+  approveAll: 'Aprovar todos',
+  approveAllStop: 'Parar',
+  approveAllConfirmTitle: 'Aprovar todas as fichas prontas?',
+  approveAllConfirm: 'Aprovar',
+  approveAllCancel: 'Cancelar',
   relativesTitle: 'Familiares',
   addRelative: 'Adicionar familiar',
   // Histórico de contribuição (story 108) — read-only, vindo da planilha.
@@ -249,6 +255,25 @@ export function existingConflictMessage(names: string[]): string {
   return names.length === 1
     ? `Já existe um filho cadastrado que confere: ${names[0]}.`
     : `Já existem filhos cadastrados que conferem: ${names.join(', ')}.`;
+}
+
+/** Descrição do confirm de aprovação em lote. */
+export function approveAllConfirmDescription(count: number): string {
+  const fichas = count === 1 ? '1 ficha pronta' : `${count} fichas prontas`;
+  return `${fichas} serão aprovadas uma a uma. Fichas com conflito, já importadas nesta sessão ou sem familiar serão puladas e permanecem na aba Processadas com o motivo.`;
+}
+
+/** Progresso da aprovação em lote (ex.: "Aprovando 12/456..."). */
+export function approveAllProgressLabel(done: number, total: number): string {
+  return `Aprovando ${done}/${total}...`;
+}
+
+/** Resumo final da aprovação em lote. */
+export function approveAllSummary(approved: number, skipped: number, failed: number): string {
+  const parts = [`${approved} aprovada${approved === 1 ? '' : 's'}`];
+  if (skipped > 0) parts.push(`${skipped} pulada${skipped === 1 ? '' : 's'}`);
+  if (failed > 0) parts.push(`${failed} com erro`);
+  return parts.join(', ') + '.';
 }
 
 /** Rótulo de resumo a partir da contagem de alertas (warnings). */

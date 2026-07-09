@@ -246,6 +246,111 @@ describe('SpreadsheetImportService', () => {
       expect(row.exitDate).toBeNull();
     });
 
+    it('linhas ACIMA do cabeçalho são parseadas (seção de quem já saiu, com data de saída)', async () => {
+      const buffer = await buildWorkbook({
+        Casa: [
+          // seção pré-cabeçalho: quem saiu, nas mesmas colunas
+          ['Fulano que Saiu', '2024-06-24', '996575209', '996.575.209-59', '2024-10-24'],
+          ['Nome:', 'Chegada:', 'Telefone:', 'C.P.F.:', 'Saída:'],
+          ['Ativo Atual', '2025-01-10', '998877665', '111.222.333-44', null],
+        ],
+      });
+      const result = await service.parseSpreadsheet(buffer);
+
+      expect(result.rows).toHaveLength(2);
+      const saiu = result.rows.find((r) => r.name === 'Fulano que Saiu')!;
+      expect(saiu.entryDate).toBe('2024-06-24');
+      expect(saiu.exitDate).toBe('2024-10-24');
+      const ativo = result.rows.find((r) => r.name === 'Ativo Atual')!;
+      expect(ativo.exitDate).toBeNull();
+    });
+
+    it('mesma pessoa acima (saiu) e abaixo (ativa) do cabeçalho → linha única com histórico', async () => {
+      const buffer = await buildWorkbook({
+        Casa: [
+          ['Guaraci Adams', '2023-09-26', '998016278', '018.519.799-05', '2024-10-01'],
+          ['Nome:', 'Chegada:', 'Telefone:', 'C.P.F.:', 'Saída:'],
+          ['Guaraci Adams', '2025-10-07', '998016278', '018.519.799-05', null],
+        ],
+      });
+      const result = await service.parseSpreadsheet(buffer);
+
+      expect(result.rows).toHaveLength(1);
+      const row = result.rows[0];
+      expect(row.admissions).toEqual([
+        { entryDate: '2023-09-26', exitDate: '2024-10-01' },
+        { entryDate: '2025-10-07', exitDate: null },
+      ]);
+      // topo = acolhimento mais recente (ativo, em aberto)
+      expect(row.entryDate).toBe('2025-10-07');
+      expect(row.exitDate).toBeNull();
+    });
+
+    it('mesma pessoa em ABAS diferentes (saiu de uma casa, voltou em outra) → linha única; casa = acolhimento mais recente', async () => {
+      const buffer = await buildWorkbook({
+        'Casa Antiga': [
+          // linha antiga sem CPF (acima do cabeçalho na planilha real)
+          ['Vinicius Borges', '2025-10-27', null, null, '2025-11-23'],
+          ['Nome:', 'Chegada:', 'Telefone:', 'C.P.F.:', 'Saída:'],
+        ],
+        'Casa Nova': [
+          ['Nome:', 'Chegada:', 'Telefone:', 'C.P.F.:', 'Saída:'],
+          ['Vinicius Borges', '2026-03-30', '999112233', '072.925.509-32', null],
+        ],
+      });
+      const result = await service.parseSpreadsheet(buffer);
+
+      expect(result.rows).toHaveLength(1);
+      const row = result.rows[0];
+      expect(row.houseName).toBe('Casa Nova');
+      expect(row.cpf).toBe('07292550932');
+      expect(row.admissions).toEqual([
+        { entryDate: '2025-10-27', exitDate: '2025-11-23' },
+        { entryDate: '2026-03-30', exitDate: null },
+      ]);
+      expect(row.entryDate).toBe('2026-03-30');
+      expect(row.exitDate).toBeNull();
+    });
+
+    it('nomes iguais com CPFs diferentes NÃO são fundidos (pessoas distintas)', async () => {
+      const buffer = await buildWorkbook({
+        Casa: [
+          ['Nome:', 'Chegada:', 'C.P.F.:', 'Saída:'],
+          ['José da Silva', '2024-01-01', '111.111.111-11', '2024-06-01'],
+          ['José da Silva', '2025-01-01', '222.222.222-22', null],
+        ],
+      });
+      const result = await service.parseSpreadsheet(buffer);
+      expect(result.rows).toHaveLength(2);
+    });
+
+    it('cabeçalho repetido no meio da aba é descartado, não vira filho', async () => {
+      const buffer = await buildWorkbook({
+        Casa: [
+          ['Nome:', 'Chegada:', 'Saída:'],
+          ['Primeiro', '2024-01-01', null],
+          ['Nome:', 'Chegada:', 'Saída:'],
+          ['Segundo', '2024-02-01', null],
+        ],
+      });
+      const result = await service.parseSpreadsheet(buffer);
+      expect(result.rows.map((r) => r.name)).toEqual(['Primeiro', 'Segundo']);
+      expect(result.skipped).toBe(1);
+    });
+
+    it('coluna "STATUS ACOLHIMENTO" não é tratada como coluna de entrada', async () => {
+      const buffer = await buildWorkbook({
+        Casa: [
+          ['Nome:', 'Chegada:', 'Saída:', 'STATUS ACOLHIMENTO'],
+          // valor com cara de data no status não pode virar acolhimento fantasma
+          ['Com Status', '2024-03-01', '2024-09-01', '2024-05-05'],
+        ],
+      });
+      const result = await service.parseSpreadsheet(buffer);
+      const row = result.rows[0];
+      expect(row.admissions).toEqual([{ entryDate: '2024-03-01', exitDate: '2024-09-01' }]);
+    });
+
     it('sem nenhuma data de entrada → admissions vazio e topo null', async () => {
       const buffer = await buildWorkbook({
         Casa: [

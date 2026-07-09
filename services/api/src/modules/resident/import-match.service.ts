@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MatchStatus, SpreadsheetImportRow } from '@fonte/types';
+import { ImportAdmission, MatchStatus, SpreadsheetImportRow } from '@fonte/types';
 import { normalizeName } from '../../common/lib/normalize';
 import {
   DocxParserService,
@@ -88,25 +88,41 @@ export class ImportMatchService {
 
     const row = candidates[0];
 
-    // A planilha é fonte de verdade destes campos. Quando a ficha também trouxe
-    // e diverge, mantém o valor da planilha e registra a divergência.
-    if (row.entryDate) {
-      if (resident.entryDate && resident.entryDate !== row.entryDate) {
-        warnings.entryDate = `ficha=${resident.entryDate}, planilha=${row.entryDate}`;
+    const fichaEntryDates = this.readFichaEntryDates(resident);
+    if (fichaEntryDates.length > 1) {
+      // Ficha com mais de uma data de acolhimento (readmissão): une as entradas
+      // da ficha com os pares da planilha e fecha os acolhimentos anteriores com
+      // as datas de saída da planilha — vira histórico de múltiplos internamentos.
+      const merged = this.mergeFichaAdmissions(fichaEntryDates, row.admissions ?? []);
+      resident.admissions = merged;
+      const latest = merged[merged.length - 1];
+      resident.entryDate = latest.entryDate;
+      resident.exitDate = latest.exitDate;
+      const previousOpen = merged.slice(0, -1).some((a) => !a.exitDate);
+      warnings.entryDate = previousOpen
+        ? `A ficha traz ${merged.length} datas de acolhimento e o histórico foi montado, mas não foi encontrada data de saída na planilha para acolhimento anterior. Confira o histórico e informe a saída.`
+        : `A ficha traz ${merged.length} datas de acolhimento. O histórico foi montado com as datas de saída da planilha — confira as datas.`;
+    } else {
+      // A planilha é fonte de verdade destes campos. Quando a ficha também trouxe
+      // e diverge, mantém o valor da planilha e registra a divergência.
+      if (row.entryDate) {
+        if (resident.entryDate && resident.entryDate !== row.entryDate) {
+          warnings.entryDate = `ficha=${resident.entryDate}, planilha=${row.entryDate}`;
+        }
+        resident.entryDate = row.entryDate;
       }
-      resident.entryDate = row.entryDate;
-    }
-    if (row.exitDate) {
-      if (resident.exitDate && resident.exitDate !== row.exitDate) {
-        warnings.exitDate = `ficha=${resident.exitDate}, planilha=${row.exitDate}`;
+      if (row.exitDate) {
+        if (resident.exitDate && resident.exitDate !== row.exitDate) {
+          warnings.exitDate = `ficha=${resident.exitDate}, planilha=${row.exitDate}`;
+        }
+        resident.exitDate = row.exitDate;
       }
-      resident.exitDate = row.exitDate;
-    }
 
-    // Histórico de acolhimentos da planilha (story 121): a planilha é a fonte de
-    // verdade. Propaga os pares entrada→saída para o commit criar os `Admission`.
-    if (row.admissions?.length) {
-      resident.admissions = row.admissions;
+      // Histórico de acolhimentos da planilha (story 121): a planilha é a fonte de
+      // verdade. Propaga os pares entrada→saída para o commit criar os `Admission`.
+      if (row.admissions?.length) {
+        resident.admissions = row.admissions;
+      }
     }
 
     relatives = this.applyFamilyContact(relatives, row.familyContact, warnings);
@@ -142,9 +158,52 @@ export class ImportMatchService {
   }
 
   /**
-   * O contato familiar da planilha vira/atualiza um relative de contato: quando
-   * há familiares na ficha, atualiza o telefone do primeiro (o contato
-   * principal) e avisa se divergir; quando não há, cria um relative de contato.
+   * Datas de acolhimento extraídas da ficha quando ela traz mais de uma
+   * (readmissões). A IA devolve strings — valida o formato ISO e devolve
+   * ordenado ascendente, sem duplicatas.
+   */
+  private readFichaEntryDates(resident: Partial<ParseDocxResident>): string[] {
+    const raw = resident.entryDates;
+    if (!Array.isArray(raw)) return [];
+    const valid = raw.filter(
+      (d): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d),
+    );
+    return [...new Set(valid)].sort();
+  }
+
+  /**
+   * Une as datas de entrada da ficha com os pares da planilha e fecha cada
+   * acolhimento com a data de saída da planilha que cai no intervalo
+   * [entrada, próxima entrada). Acolhimento sem saída correspondente fica em
+   * aberto (`exitDate: null`) — tipicamente o mais recente.
+   */
+  private mergeFichaAdmissions(
+    fichaEntryDates: string[],
+    rowAdmissions: ImportAdmission[],
+  ): ImportAdmission[] {
+    const entries = [
+      ...new Set([...fichaEntryDates, ...rowAdmissions.map((a) => a.entryDate)]),
+    ].sort();
+    const exits = rowAdmissions
+      .map((a) => a.exitDate)
+      .filter((d): d is string => d !== null)
+      .sort();
+    return entries.map((entryDate, index) => {
+      const next = entries[index + 1];
+      const exitDate =
+        exits.find((e) => e >= entryDate && (next === undefined || e < next)) ?? null;
+      return { entryDate, exitDate };
+    });
+  }
+
+  /**
+   * O contato familiar da planilha vira/atualiza relatives de contato. A célula
+   * pode trazer VÁRIOS números separados por "/" ou "|" (ex.:
+   * "998009667 / 996317707") — cada número é um contato distinto, nunca um único
+   * telefone concatenado. Quando há familiares na ficha, o primeiro número
+   * atualiza o telefone do contato principal (avisando se divergir) e os demais
+   * números ainda não presentes viram novos relatives; quando não há, cada número
+   * cria um relative de contato.
    */
   private applyFamilyContact(
     relatives: ParseDocxRelative[],
@@ -153,14 +212,44 @@ export class ImportMatchService {
   ): ParseDocxRelative[] {
     if (!familyContact) return relatives;
 
+    const contacts = this.splitFamilyContacts(familyContact);
+    if (contacts.length === 0) return relatives;
+
+    // Sem familiares na ficha: cada número da planilha vira um relative de contato.
     if (relatives.length === 0) {
-      return [{ name: 'Contato familiar', phone: familyContact, relationship: '' }];
+      return contacts.map((phone) => ({ name: 'Contato familiar', phone, relationship: '' }));
     }
 
     const [first, ...rest] = relatives;
-    if (first.phone && first.phone !== familyContact) {
+    const [primary, ...extras] = contacts;
+
+    // Primeiro número → telefone do contato principal; avisa se divergir do que a
+    // ficha trouxe (comparação por dígitos, ignorando formatação).
+    if (first.phone && digitsOnly(first.phone) !== digitsOnly(primary)) {
       warnings.familyContact = `ficha=${first.phone}, planilha=${familyContact}`;
     }
-    return [{ ...first, phone: familyContact }, ...rest];
+    const updated: ParseDocxRelative[] = [{ ...first, phone: primary }, ...rest];
+
+    // Números adicionais da planilha ainda não representados entre os familiares
+    // viram novos relatives de contato (nunca concatenados num telefone só).
+    const known = new Set(updated.map((r) => digitsOnly(r.phone)).filter(Boolean));
+    for (const phone of extras) {
+      const digits = digitsOnly(phone);
+      if (known.has(digits)) continue;
+      known.add(digits);
+      updated.push({ name: 'Contato familiar', phone, relationship: '' });
+    }
+    return updated;
+  }
+
+  /**
+   * Divide o contato familiar da planilha nos números individuais, separados por
+   * "/" ou "|". Descarta pedaços sem dígitos (separadores soltos, texto vazio).
+   */
+  private splitFamilyContacts(familyContact: string): string[] {
+    return familyContact
+      .split(/[/|]/)
+      .map((part) => part.trim())
+      .filter((part) => digitsOnly(part).length > 0);
   }
 }

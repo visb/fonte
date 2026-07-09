@@ -91,7 +91,10 @@ export class SpreadsheetImportService {
       skipped += parsed.skipped;
     }
 
-    return { rows, houses, skipped, ignoredSheets };
+    // Funde a MESMA pessoa repetida — inclusive ENTRE abas (saiu de uma casa e
+    // voltou em outra): sem isso o cross-match acharia dois candidatos (ambíguo)
+    // ou casaria só a linha nova, perdendo a saída registrada na aba antiga.
+    return { rows: this.mergeDuplicatePeople(rows), houses, skipped, ignoredSheets };
   }
 
   /**
@@ -111,6 +114,9 @@ export class SpreadsheetImportService {
       row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
         const header = normalizeHeader(cellToString(cell.value));
         if (!header) return;
+        // "STATUS ACOLHIMENTO" contém "acolhimento" mas não é coluna de data —
+        // sem este guard ela entraria em entryDateColumns e desalinharia os pares.
+        if (header.includes('status')) return;
         // Entrada/saída podem repetir (pares de acolhimento): coleta TODAS as
         // colunas que casam, em ordem de coluna, para parear por índice depois.
         if (HEADER_ALIASES.entryDate.some((a) => header.includes(a))) {
@@ -145,9 +151,19 @@ export class SpreadsheetImportService {
     let skipped = 0;
 
     sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber <= layout.headerRow) return;
+      // Só a linha do CABEÇALHO não é dado. As linhas ACIMA dele também são
+      // filhos: a planilha real lista quem já saiu no TOPO da aba, antes do
+      // cabeçalho, nas mesmas colunas — é onde vivem as datas de saída.
+      if (rowNumber === layout.headerRow) return;
 
       const name = this.readText(row, layout.columns.name);
+
+      // Cabeçalho repetido no meio/fim da aba ("Nome:") não é um filho.
+      if (normalizeHeader(name) === 'nome') {
+        skipped += 1;
+        return;
+      }
+
       const cpf = digitsOnly(this.readText(row, layout.columns.cpf));
 
       // Linha sem nome E sem cpf (rodapé, total, linha em branco): descarta.
@@ -176,6 +192,53 @@ export class SpreadsheetImportService {
     });
 
     return { rows, skipped };
+  }
+
+  /**
+   * A planilha real lista o MESMO filho mais de uma vez quando ele saiu e
+   * voltou: a linha antiga (acima do cabeçalho, com data de saída — às vezes em
+   * OUTRA aba/casa) e a linha atual (em aberto). Funde as linhas da mesma
+   * pessoa — CPF quando ambos têm; senão nome normalizado — numa só: os
+   * acolhimentos se somam (o topo passa a ser o mais recente), as contribuições
+   * se unem e a casa passa a ser a do acolhimento mais recente. Nomes iguais
+   * com CPFs diferentes são pessoas distintas e não são fundidos.
+   */
+  private mergeDuplicatePeople(rows: SpreadsheetImportRow[]): SpreadsheetImportRow[] {
+    const merged: SpreadsheetImportRow[] = [];
+    const byKey = new Map<string, SpreadsheetImportRow>();
+
+    for (const row of rows) {
+      const keys = [row.cpf, row.nameNormalized].filter((k): k is string => !!k);
+      const target = keys.map((k) => byKey.get(k)).find((t) => t !== undefined);
+      const sameCpfs = !target?.cpf || !row.cpf || target.cpf === row.cpf;
+
+      if (!target || !sameCpfs) {
+        for (const k of keys) if (!byKey.has(k)) byKey.set(k, row);
+        merged.push(row);
+        continue;
+      }
+
+      const targetLatest = target.admissions[target.admissions.length - 1];
+      const rowLatest = row.admissions[row.admissions.length - 1];
+      // A casa da linha do acolhimento mais recente é onde a pessoa está hoje.
+      if (rowLatest && (!targetLatest || rowLatest.entryDate > targetLatest.entryDate)) {
+        target.houseName = row.houseName;
+      }
+      target.admissions = mergeAdmissionLists(target.admissions, row.admissions);
+      const latest = target.admissions[target.admissions.length - 1];
+      target.entryDate = latest?.entryDate ?? target.entryDate;
+      target.exitDate = latest ? latest.exitDate : target.exitDate;
+      target.name = target.name ?? row.name;
+      target.nameNormalized = target.nameNormalized ?? row.nameNormalized;
+      target.cpf = target.cpf ?? row.cpf;
+      target.familyContact = target.familyContact ?? row.familyContact;
+      target.contributionMonths = [
+        ...new Set([...target.contributionMonths, ...row.contributionMonths]),
+      ].sort();
+      for (const k of keys) if (!byKey.has(k)) byKey.set(k, target);
+    }
+
+    return merged;
   }
 
   /**
@@ -249,6 +312,16 @@ function normalizeHeader(text: string): string {
 
 function digitsOnly(text: string): string {
   return text.replace(/\D/g, '');
+}
+
+/** Une listas de acolhimentos, deduplicando pela entrada (prefere a com saída). */
+function mergeAdmissionLists(a: ImportAdmission[], b: ImportAdmission[]): ImportAdmission[] {
+  const byEntry = new Map<string, ImportAdmission>();
+  for (const adm of [...a, ...b]) {
+    const existing = byEntry.get(adm.entryDate);
+    if (!existing || (!existing.exitDate && adm.exitDate)) byEntry.set(adm.entryDate, adm);
+  }
+  return [...byEntry.values()].sort((x, y) => x.entryDate.localeCompare(y.entryDate));
 }
 
 function pad2(n: number): string {

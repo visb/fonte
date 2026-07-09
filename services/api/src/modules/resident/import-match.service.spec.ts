@@ -215,6 +215,154 @@ describe('ImportMatchService', () => {
       expect(result.relatives[0].phone).toBe('(47)98403-7330');
       expect(result.warnings.familyContact).toBe('ficha=(41)99999-0000, planilha=(47)98403-7330');
     });
+
+    it('familyContact com múltiplos números ("/") vira um relative por número, sem concatenar', () => {
+      const parse = docxResult({ resident: { name: 'João', cpf: '11122233344' }, relatives: [] });
+      const rows = [row({ familyContact: '998009667 / 996317707' })];
+
+      const result = service.matchAndEnrich(parse, rows);
+
+      expect(result.relatives).toHaveLength(2);
+      expect(result.relatives[0].phone).toBe('998009667');
+      expect(result.relatives[1].phone).toBe('996317707');
+    });
+
+    it('familyContact multi-número atualiza o principal e anexa os demais como novos contatos', () => {
+      const parse = docxResult({
+        resident: { name: 'João', cpf: '11122233344' },
+        relatives: [{ name: 'Maria', phone: '998009667', relationship: 'mãe' }],
+      });
+      const rows = [row({ familyContact: '998009667 / 996317707' })];
+
+      const result = service.matchAndEnrich(parse, rows);
+
+      expect(result.relatives).toHaveLength(2);
+      expect(result.relatives[0]).toEqual({ name: 'Maria', phone: '998009667', relationship: 'mãe' });
+      expect(result.relatives[1].phone).toBe('996317707');
+      // primeiro número casa com o da ficha → sem warning de divergência
+      expect(result.warnings.familyContact).toBeUndefined();
+    });
+
+    it('familyContact multi-número não duplica número que a ficha já trouxe', () => {
+      const parse = docxResult({
+        resident: { name: 'João', cpf: '11122233344' },
+        relatives: [
+          { name: 'Maria', phone: '998009667', relationship: 'mãe' },
+          { name: 'José', phone: '996317707', relationship: 'pai' },
+        ],
+      });
+      const rows = [row({ familyContact: '998009667 / 996317707' })];
+
+      const result = service.matchAndEnrich(parse, rows);
+
+      expect(result.relatives).toHaveLength(2);
+      expect(result.relatives.map((r) => r.phone)).toEqual(['998009667', '996317707']);
+    });
+  });
+
+  describe('matchAndEnrich — múltiplas datas de acolhimento na ficha (readmissão)', () => {
+    it('duas datas na ficha + saída na planilha → histórico com o anterior fechado', () => {
+      const parse = docxResult({
+        resident: {
+          name: 'João',
+          cpf: '11122233344',
+          entryDate: '2026-01-12',
+          entryDates: ['2021-11-01', '2026-01-12'],
+        },
+      });
+      const rows = [
+        row({
+          entryDate: '2021-11-01',
+          exitDate: '2023-05-20',
+          admissions: [{ entryDate: '2021-11-01', exitDate: '2023-05-20' }],
+        }),
+      ];
+
+      const result = service.matchAndEnrich(parse, rows);
+
+      expect(result.resident.admissions).toEqual([
+        { entryDate: '2021-11-01', exitDate: '2023-05-20' },
+        { entryDate: '2026-01-12', exitDate: null },
+      ]);
+      // topo do resident = acolhimento mais recente (o da ficha, em aberto)
+      expect(result.resident.entryDate).toBe('2026-01-12');
+      expect(result.resident.exitDate).toBeNull();
+      expect(result.warnings.entryDate).toContain('histórico');
+    });
+
+    it('sem saída na planilha para o acolhimento anterior → histórico montado e warning pede a saída', () => {
+      const parse = docxResult({
+        resident: {
+          name: 'João',
+          cpf: '11122233344',
+          entryDate: '2026-01-12',
+          entryDates: ['2021-11-01', '2026-01-12'],
+        },
+      });
+      const rows = [
+        row({
+          entryDate: '2026-01-12',
+          admissions: [{ entryDate: '2026-01-12', exitDate: null }],
+        }),
+      ];
+
+      const result = service.matchAndEnrich(parse, rows);
+
+      expect(result.resident.admissions).toEqual([
+        { entryDate: '2021-11-01', exitDate: null },
+        { entryDate: '2026-01-12', exitDate: null },
+      ]);
+      expect(result.warnings.entryDate).toContain('saída');
+    });
+
+    it('entrada repetida entre ficha e planilha não duplica acolhimento; saídas caem no intervalo certo', () => {
+      const parse = docxResult({
+        resident: {
+          name: 'João',
+          cpf: '11122233344',
+          entryDate: '2024-06-01',
+          entryDates: ['2021-11-01', '2024-06-01'],
+        },
+      });
+      const rows = [
+        row({
+          entryDate: '2024-06-01',
+          exitDate: '2025-01-15',
+          admissions: [
+            { entryDate: '2021-11-01', exitDate: '2022-03-10' },
+            { entryDate: '2024-06-01', exitDate: '2025-01-15' },
+          ],
+        }),
+      ];
+
+      const result = service.matchAndEnrich(parse, rows);
+
+      expect(result.resident.admissions).toEqual([
+        { entryDate: '2021-11-01', exitDate: '2022-03-10' },
+        { entryDate: '2024-06-01', exitDate: '2025-01-15' },
+      ]);
+      expect(result.resident.entryDate).toBe('2024-06-01');
+      expect(result.resident.exitDate).toBe('2025-01-15');
+    });
+
+    it('entryDates inválido ou com uma data só não muda o comportamento padrão', () => {
+      const parse = docxResult({
+        resident: {
+          name: 'João',
+          cpf: '11122233344',
+          entryDate: '2024-01-10',
+          entryDates: ['2024-01-10'],
+        },
+      });
+      const rows = [row({ entryDate: '2024-02-01' })];
+
+      const result = service.matchAndEnrich(parse, rows);
+
+      // uma data só → prioridade da planilha como antes, sem histórico
+      expect(result.resident.admissions).toBeUndefined();
+      expect(result.resident.entryDate).toBe('2024-02-01');
+      expect(result.warnings.entryDate).toBe('ficha=2024-01-10, planilha=2024-02-01');
+    });
   });
 
   describe('parseDocxWithSpreadsheet', () => {

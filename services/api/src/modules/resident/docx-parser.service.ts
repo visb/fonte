@@ -26,6 +26,10 @@ export interface ParseDocxResident {
   name: string | null;
   birthDate: string | null;
   entryDate: string | null;
+  // Todas as datas de acolhimento quando a ficha traz mais de uma (readmissões).
+  // O cross-match usa junto com as saídas da planilha para montar o histórico
+  // de acolhimentos (múltiplos internamentos).
+  entryDates?: string[] | null;
   // A ficha não traz data de saída; o campo existe para receber o valor da
   // planilha no cross-match (story 102).
   exitDate: string | null;
@@ -87,6 +91,7 @@ Retorne um JSON com esta estrutura exata:
     "name": "string | null",
     "birthDate": "YYYY-MM-DD | null",
     "entryDate": "YYYY-MM-DD | null",
+    "entryDates": "array de YYYY-MM-DD em ordem crescente quando houver MAIS DE UMA data de acolhimento; null quando houver só uma",
     "gender": "MALE | FEMALE | null",
     "cpf": "string | null (formato: 000.000.000-00)",
     "rg": "string | null",
@@ -121,9 +126,11 @@ Retorne um JSON com esta estrutura exata:
 
 Mapeamento de campos (modelo "FICHA DE ACOLHIMENTO - FILHO|RESIDENTE"):
 - "NOME" → name
-- "DATA DO ACOLHIMENTO" → entryDate (formato ISO YYYY-MM-DD). O campo PODE conter duas datas
-  (acolhimento original + readmissão), ex: "14/09/2021 03/08/2023". Nesse caso use a data MAIS
-  RECENTE como entryDate e adicione warning em "entryDate": "Duas datas de acolhimento encontradas — confirmar a correta".
+- "DATA DO ACOLHIMENTO" → entryDate (formato ISO YYYY-MM-DD). O campo PODE conter duas ou mais
+  datas (acolhimento original + readmissões), ex: "14/09/2021 03/08/2023". Nesse caso use a data
+  MAIS RECENTE como entryDate, liste TODAS as datas em "entryDates" (ordem crescente) e adicione
+  warning em "entryDate": "Mais de uma data de acolhimento encontrada na ficha — confirmar o histórico de acolhimentos".
+  Com uma única data, deixe "entryDates" como null.
 - "DATA DE NASCIMENTO" → birthDate (formato ISO YYYY-MM-DD)
 - "IDADE" → ignorar (derivável de birthDate)
 - "SEXO" (Masculino/M → MALE, Feminino/F → FEMALE) → gender
@@ -166,6 +173,13 @@ Mapeamento de campos (modelo "FICHA DE ACOLHIMENTO - FILHO|RESIDENTE"):
       • Se houver APENAS a nota de dia, sem valor/modalidade, deixe familyInvestment e familyInvestmentAmount null
         e adicione warning em "familyInvestment": "A ficha não informa a modalidade de investimento, apenas o dia de pagamento. Selecione a modalidade."
   - "FARÁ O TRATAMENTO NA FONTE" ou "UNIDADE" → houseName
+
+NÃO gere warning nestes casos normais (campo preenchido corretamente, nada a conferir):
+- RG ausente/em branco na ficha → deixe "rg" vazio, SEM warning.
+- "PROBLEMA DE SAÚDE" marcado como "não"/"ñ"/"nenhum" → deixe "healthIssues" vazio, SEM warning.
+- "MEDICAÇÃO" marcada como "não"/"ñ"/"nenhuma" → deixe "continuousMedication" vazio, SEM warning.
+- "FILHOS" indicando ausência ("0"/"ñ"/"não"/"nenhum") → registre "children" como "0", SEM warning.
+Só avise sobre estes campos quando o dado estiver ilegível ou ambíguo — nunca quando a ausência é clara.
 
 Regras de linguagem dos warnings (campo "warnings"):
 - Escreva para um operador SEM conhecimento técnico. Frases curtas, claras, em português natural.

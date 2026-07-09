@@ -118,7 +118,8 @@ export class ImportService {
       // mesma transação → rollback não deixa acolhimento órfão.
       await this.createPreviousAdmissions(manager, created, dto.resident.admissions);
 
-      // Relatives (regra crítica: ≥1, garantida no DTO por @ArrayMinSize).
+      // Relatives: pode vir vazio no import (ficha histórica sem familiar
+      // conhecido); a regra "≥1 relative" vale só para o acolhimento manual.
       const relativeRepo = manager.getRepository(Relative);
       for (const rel of dto.relatives) {
         await relativeRepo.save(

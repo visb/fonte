@@ -1,5 +1,4 @@
 import {
-  ArrayMinSize,
   IsArray,
   IsDateString,
   IsNotEmpty,
@@ -39,8 +38,10 @@ export class CommitImportDto {
   @Type(() => CreateResidentDto)
   resident: CreateResidentDto;
 
+  // Pode vir vazio: ficha histórica sem familiar conhecido. A regra "≥1
+  // relative" vale só para o acolhimento manual — no import em lote o familiar
+  // pode ser cadastrado depois.
   @IsArray()
-  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => CommitImportRelativeDto)
   relatives: CommitImportRelativeDto[];

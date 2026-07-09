@@ -233,7 +233,6 @@ export const IMPORT_TEXTS = {
   imported: 'Filho importado com sucesso.',
   conflictReason: 'Resolva o conflito antes de aprovar.',
   sessionConflictReason: 'Já importado nesta sessão.',
-  noRelativesReason: 'Cadastre ao menos um familiar para aprovar.',
   commitError: 'Não foi possível aprovar a importação.',
   // Aprovação em lote de todas as fichas prontas.
   approveAll: 'Aprovar todos',

@@ -275,8 +275,8 @@ export interface UseApproveAll {
  * Aprova todas as fichas `ready` da fila, uma por vez (concorrência 1): com
  * centenas/milhares de fichas, disparar commits em paralelo derrubaria browser
  * e API — sequencial mantém o uso de rede/memória constante. Por item: pula
- * conflito de sessão (identidade local, sem rede), pula conflito no banco
- * (checagem fresca por item), pula ficha sem familiar; falha de commit não
+ * conflito de sessão (identidade local, sem rede) e conflito no banco
+ * (checagem fresca por item); falha de commit não
  * derruba o run. Itens pulados/falhos continuam `ready` com o motivo anotado
  * (`setItemError`), para revisão manual. As queries de residents/houses são
  * invalidadas UMA vez ao final — invalidar por item causaria um refetch em
@@ -346,12 +346,9 @@ export function useApproveAll(
             continue;
           }
         }
+        // Ficha sem familiar conhecido é aprovável no import (regra "≥1
+        // relative" vale só para o acolhimento manual).
         const payload = buildCommitPayloadFromPreview(item.preview!, housesRef.current);
-        if (payload.relatives.length === 0) {
-          queueRef.current.setItemError(item.id, IMPORT_TEXTS.noRelativesReason);
-          tally.skipped += 1;
-          continue;
-        }
         await api.residents.commitImport(payload);
         queueRef.current.markImported(item.id);
         remember(item);

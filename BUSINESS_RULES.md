@@ -23,7 +23,7 @@ Não permitir alteração manual arbitrária sem validação.
 ## 2. Cadastro de Interno
 
 - Vínculo com House é opcional (ex.: registro histórico do import em lote sem casa conhecida); filho sem casa não aparece em listagens/contagens por casa
-- Deve possuir pelo menos um responsável (Relative/familiar)
+- Deve possuir pelo menos um responsável (Relative/familiar) no acolhimento manual — exceção: import em lote aceita ficha sem familiar (registro histórico; familiar pode ser cadastrado depois)
 - Não pode ser removido fisicamente (soft delete)
 
 ---

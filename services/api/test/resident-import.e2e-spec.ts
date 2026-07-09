@@ -321,12 +321,25 @@ describe('Resident import — conflito e commit (e2e)', () => {
         .expect(409);
     });
 
-    it('sem relatives → 400 (regra: ≥1 familiar)', () =>
-      request(app.getHttpServer())
+    it('sem relatives → cria mesmo assim (regra ≥1 familiar vale só no acolhimento manual)', async () => {
+      const res = await request(app.getHttpServer())
         .post(`${BASE}/residents/import/commit`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ resident: { name: 'Sem Familiar', houseId }, relatives: [], contributionMonths: [] })
-        .expect(400));
+        .send({
+          resident: { name: `Sem Familiar ${Date.now()}`, houseId },
+          relatives: [],
+          contributionMonths: [],
+        })
+        .expect(201);
+      createdIds.push(res.body.resident.id);
+
+      const relatives = await request(app.getHttpServer())
+        .get(`${BASE}/relatives`)
+        .query({ residentId: res.body.resident.id })
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(relatives.body).toHaveLength(0);
+    });
 
     it('SERVANT sem permissão → 403', () =>
       request(app.getHttpServer())

@@ -100,13 +100,13 @@ export function ImportFichaModal({
   const warningsList = preview ? warningsToList(preview.warnings) : [];
   const admissions = preview ? admissionsFromPreview(preview) : [];
   const namedRelatives = relatives.filter((r) => r.name.trim());
+  // Sem exigência de familiar no import (diferente do acolhimento manual):
+  // ficha histórica pode não ter familiar conhecido.
   const blockedReason = conflicts.length > 0
     ? IMPORT_TEXTS.conflictReason
     : sessionConflictName
       ? IMPORT_TEXTS.sessionConflictReason
-      : namedRelatives.length === 0
-        ? IMPORT_TEXTS.noRelativesReason
-        : null;
+      : null;
 
   const onSubmit = (values: ResidentFormData) => {
     const payload = buildCommitPayload(values, {

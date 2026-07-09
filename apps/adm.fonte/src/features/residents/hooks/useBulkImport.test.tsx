@@ -423,15 +423,19 @@ describe('useApproveAll', () => {
     expect(result.current.queue.items[0].error).toBe(IMPORT_TEXTS.conflictReason);
   });
 
-  it('pula ficha sem familiar com o motivo noRelativesReason', async () => {
+  it('aprova ficha sem familiar (regra ≥1 vale só no acolhimento manual)', async () => {
     vi.mocked(api.residents.checkImportConflict).mockResolvedValue({ conflicts: [] } as never);
+    vi.mocked(api.residents.commitImport).mockResolvedValue({ resident: { id: 'r1' } } as never);
     const { result } = await seed([{ name: 'João', cpf: '111', relatives: [] }]);
 
     await act(async () => result.current.approveAll.start());
 
     await waitFor(() => expect(result.current.approveAll.isRunning).toBe(false));
-    expect(api.residents.commitImport).not.toHaveBeenCalled();
-    expect(result.current.queue.items[0].error).toBe(IMPORT_TEXTS.noRelativesReason);
+    expect(api.residents.commitImport).toHaveBeenCalledTimes(1);
+    const payload = vi.mocked(api.residents.commitImport).mock.calls[0][0];
+    expect(payload.relatives).toEqual([]);
+    expect(result.current.approveAll.progress).toMatchObject({ approved: 1, skipped: 0 });
+    expect(result.current.queue.items[0].status).toBe('imported');
   });
 
   it('pula duplicata de sessão (mesmo cpf) sem consultar conflito de novo', async () => {

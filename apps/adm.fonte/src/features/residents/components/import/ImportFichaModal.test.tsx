@@ -214,10 +214,13 @@ describe('ImportFichaModal', () => {
     expect(screen.getByRole('button', { name: 'Aprovar' })).toBeDisabled();
   });
 
-  it('desabilita Aprovar sem nenhum familiar preenchido', async () => {
-    await renderModal({ relatives: [] });
-    await waitFor(() => expect(api.residents.checkImportConflict).toHaveBeenCalled());
-    expect(screen.getByRole('button', { name: 'Aprovar' })).toBeDisabled();
+  it('permite aprovar sem nenhum familiar (regra ≥1 vale só no acolhimento manual)', async () => {
+    const { onApproved } = await renderModal({ relatives: [] });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));
+    await waitFor(() => expect(onApproved).toHaveBeenCalledWith('i1'));
+    const payload = vi.mocked(api.residents.commitImport).mock.calls[0][0];
+    expect(payload.relatives).toEqual([]);
   });
 
   it('mostra a mensagem de erro quando o commit falha', async () => {

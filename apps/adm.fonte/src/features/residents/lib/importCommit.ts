@@ -104,6 +104,11 @@ export function defaultImportStatus(preview: ImportPreviewResult | null): Reside
  * Casa o nome da casa (aba/ficha) com o `id` da casa cadastrada. As abas da
  * planilha costumam ser nomeadas pela cidade da casa, então o casamento também
  * considera `house.city` — só o `name` deixava a ficha sem casa.
+ *
+ * Precedência: match pelo `name` vence o match pela `city` (a aba "Feminina"
+ * casa pelo nome mesmo que outra casa esteja na mesma cidade). Quando mais de
+ * uma casa está na mesma cidade, a casa mãe (`isMotherHouse`) desempata — abas
+ * nomeadas pela cidade referem-se a ela.
  */
 export function resolveHouseId(houseName: string | null, houses: House[]): string {
   const target = normalizeForSearch(houseName ?? '').trim();
@@ -113,8 +118,11 @@ export function resolveHouseId(houseName: string | null, houses: House[]): strin
     if (!normalized) return false;
     return normalized.includes(target) || target.includes(normalized);
   };
-  const found = houses.find((h) => matches(h.name) || matches(h.city));
-  return found?.id ?? '';
+  const byName = houses.find((h) => matches(h.name));
+  if (byName) return byName.id;
+  const byCity = houses.filter((h) => matches(h.city));
+  if (!byCity.length) return '';
+  return (byCity.find((h) => h.isMotherHouse) ?? byCity[0]).id;
 }
 
 /**

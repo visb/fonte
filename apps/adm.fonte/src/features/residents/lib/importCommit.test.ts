@@ -96,6 +96,22 @@ describe('resolveHouseId', () => {
     expect(resolveHouseId(null, houses)).toBe('');
     expect(resolveHouseId('Inexistente', houses)).toBe('');
   });
+
+  it('duas casas na mesma cidade: aba com a cidade vai para a casa mãe', () => {
+    const sameCity = [
+      { id: 'fem', name: 'Casa Feminina', city: 'Rio Branco do Sul', isMotherHouse: false },
+      { id: 'mae', name: 'Casa Mãe', city: 'Rio Branco do Sul', isMotherHouse: true },
+    ] as House[];
+    expect(resolveHouseId('Rio Branco do Sul', sameCity)).toBe('mae');
+  });
+
+  it('match pelo nome vence o match pela cidade (aba "Feminina")', () => {
+    const sameCity = [
+      { id: 'mae', name: 'Casa Mãe', city: 'Rio Branco do Sul', isMotherHouse: true },
+      { id: 'fem', name: 'Casa Feminina', city: 'Rio Branco do Sul', isMotherHouse: false },
+    ] as House[];
+    expect(resolveHouseId('Feminina', sameCity)).toBe('fem');
+  });
 });
 
 describe('relativesFromPreview', () => {

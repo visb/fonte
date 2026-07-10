@@ -14,7 +14,7 @@ import {
 
 const houses = [
   { id: 'h1', name: 'Casa Betânia' },
-  { id: 'h2', name: 'Casa Nazaré' },
+  { id: 'h2', name: 'Casa Nazaré', city: 'Mandirituba' },
 ] as House[];
 
 function preview(over: Partial<ImportPreviewResult> = {}): ImportPreviewResult {
@@ -87,6 +87,10 @@ describe('resolveHouseId', () => {
   });
   it('casa por inclusão inversa (casa ⊂ ficha)', () => {
     expect(resolveHouseId('Casa Betânia (masculina)', houses)).toBe('h1');
+  });
+  it('casa pela cidade quando a aba da planilha é nomeada pela cidade', () => {
+    expect(resolveHouseId('Mandirituba', houses)).toBe('h2');
+    expect(resolveHouseId('mandirituba', houses)).toBe('h2');
   });
   it('devolve vazio sem nome ou sem match', () => {
     expect(resolveHouseId(null, houses)).toBe('');

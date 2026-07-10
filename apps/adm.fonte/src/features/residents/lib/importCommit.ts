@@ -100,14 +100,20 @@ export function defaultImportStatus(preview: ImportPreviewResult | null): Reside
   return preview.matchStatus === 'unmatched' ? ResidentStatus.ARCHIVED : '';
 }
 
-/** Casa o nome da casa (aba/ficha) com o `id` da casa cadastrada. */
+/**
+ * Casa o nome da casa (aba/ficha) com o `id` da casa cadastrada. As abas da
+ * planilha costumam ser nomeadas pela cidade da casa, então o casamento também
+ * considera `house.city` — só o `name` deixava a ficha sem casa.
+ */
 export function resolveHouseId(houseName: string | null, houses: House[]): string {
   const target = normalizeForSearch(houseName ?? '').trim();
   if (!target) return '';
-  const found = houses.find((h) => {
-    const name = normalizeForSearch(h.name);
-    return name.includes(target) || target.includes(name);
-  });
+  const matches = (value: string | null) => {
+    const normalized = normalizeForSearch(value ?? '').trim();
+    if (!normalized) return false;
+    return normalized.includes(target) || target.includes(normalized);
+  };
+  const found = houses.find((h) => matches(h.name) || matches(h.city));
   return found?.id ?? '';
 }
 

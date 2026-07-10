@@ -28,7 +28,7 @@ export class Admission {
   @JoinColumn({ name: 'house_id' })
   house: House | null;
 
-  // Nullable: acolhimento pode não ter casa conhecida (filho sem casa).
+  // Nullable: acolhimento de filho ARCHIVED pode não ter casa conhecida.
   @Column({ name: 'house_id', nullable: true, type: 'uuid' })
   houseId: string | null;
 

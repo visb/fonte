@@ -116,7 +116,7 @@ export function ResidentAdmissionSections({
 
       <SectionTitle>Admissão</SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Casa" error={errors.houseId?.message}>
+        <FormField label="Casa *" error={errors.houseId?.message}>
           <Select {...register("houseId")}>
             <option value="">Selecione a casa</option>
             {houses.map((h) => (

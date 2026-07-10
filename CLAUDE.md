@@ -306,7 +306,7 @@ SEMPRE extrair o item como componente separado (ex: `ResidentRow`, `HouseCard`).
 
 Consulte `BUSINESS_RULES.md` antes de tocar nestes fluxos:
 
-- Resident deve ter pelo menos um Relative no acolhimento manual (import em lote dispensa); `house_id` é opcional (filho sem casa fica fora das listagens/contagens por casa).
+- Resident deve ter pelo menos um Relative no acolhimento manual (import em lote dispensa); `house_id` é obrigatório exceto para status `ARCHIVED` (filho sem casa fica fora das listagens/contagens por casa).
 - Staff deve ter `house_id`.
 - Status de Resident só muda por transição validada em service.
 - RoutineEntry não pode ser editada após 24h.

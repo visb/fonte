@@ -43,7 +43,7 @@ describe('ResidentAdmissionSections', () => {
   it('mostra investimento, casa e data de entrada', () => {
     render(<AdmissionHarness />);
     expect(screen.getByText('Investimento')).toBeInTheDocument();
-    expect(screen.getByText('Casa')).toBeInTheDocument();
+    expect(screen.getByText('Casa *')).toBeInTheDocument();
     expect(screen.getByText('Casa Belém')).toBeInTheDocument();
   });
 

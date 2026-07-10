@@ -10,6 +10,7 @@ import {
   IsUUID,
   Max,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
@@ -21,9 +22,9 @@ export class CreateResidentDto {
   @IsNotEmpty()
   name: string;
 
-  // Casa é opcional para qualquer status (ex.: import de ficha fora da
-  // planilha, registro histórico sem casa conhecida).
-  @IsOptional()
+  // Obrigatória para todo status exceto ARCHIVED (import sem correspondência
+  // na planilha, casa desconhecida). `null` explícito só passa quando ARCHIVED.
+  @ValidateIf((o: CreateResidentDto) => o.status !== ResidentStatus.ARCHIVED || o.houseId != null)
   @IsUUID()
   houseId?: string | null;
 

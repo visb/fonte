@@ -42,8 +42,8 @@ export class Resident {
   @JoinColumn({ name: 'house_id' })
   house: House | null;
 
-  // Casa opcional: filho sem casa (ex.: registro histórico do import) fica
-  // fora das listagens/contagens por casa.
+  // Nullable só para ARCHIVED (import sem correspondência na planilha); os
+  // demais status exigem casa via DTO.
   @Column({ name: 'house_id', nullable: true, type: 'uuid' })
   houseId: string | null;
 

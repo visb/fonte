@@ -22,7 +22,7 @@ Não permitir alteração manual arbitrária sem validação.
 
 ## 2. Cadastro de Interno
 
-- Vínculo com House é opcional (ex.: registro histórico do import em lote sem casa conhecida); filho sem casa não aparece em listagens/contagens por casa
+- Deve estar vinculado a uma House — exceção: status `ARCHIVED` pode não ter House (import em lote de ficha fora da planilha, casa desconhecida); filho sem casa não aparece em listagens/contagens por casa
 - Deve possuir pelo menos um responsável (Relative/familiar) no acolhimento manual — exceção: import em lote aceita ficha sem familiar (registro histórico; familiar pode ser cadastrado depois)
 - Não pode ser removido fisicamente (soft delete)
 
@@ -37,7 +37,7 @@ As seguintes entidades devem obrigatoriamente estar associadas a uma House:
 
 Regras:
 
-- Não é permitido cadastrar essas entidades sem House associada
+- Não é permitido cadastrar essas entidades sem House associada (exceção: Resident com status `ARCHIVED` pode não ter House)
 - A House determina o escopo operacional do usuário (storeroom, rotina, ocorrências)
 
 ---

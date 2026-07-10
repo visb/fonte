@@ -61,7 +61,7 @@ import { StorageService } from '../storage/storage.service';
 export interface ResidentMeView {
   id: string;
   name: string;
-  // Acompanha a coluna nullable (filho sem casa).
+  // Nulo só em ARCHIVED — que nunca recebe acesso, mas o tipo acompanha a coluna.
   houseId: string | null;
   userId: string;
   photoUrl: string | null;

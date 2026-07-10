@@ -413,3 +413,100 @@ describe('ResidentReceivableService.recalcFuturePending', () => {
     expect(repriced[0].familyInvestment).toBe('NEGOTIATED');
   });
 });
+
+describe('ResidentReceivableService.markImportedPayments', () => {
+  it('marca parcela PENDING existente como PAID preservando valor/plano da parcela', async () => {
+    const repo = makeRepo({
+      find: jest.fn().mockResolvedValue([
+        { id: 'rcv-1', referenceMonth: '2026-01-01', status: 'PENDING', amount: 700, familyInvestment: 'PAYMENT_700' },
+      ]),
+    });
+    const residentRepo = { findOne: jest.fn().mockResolvedValue(makeResident()) };
+    const service = makeService(repo, residentRepo);
+
+    const result = await service.markImportedPayments('res-1', ['2026-01-01']);
+
+    expect(result).toEqual({ paid: 1, skipped: 0 });
+    expect(repo.update).toHaveBeenCalledWith(
+      'rcv-1',
+      expect.objectContaining({
+        status: 'PAID',
+        paidAt: '2026-01-15',
+        paidAmount: 700,
+        paidFamilyInvestment: 'PAYMENT_700',
+      }),
+    );
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('competência sem parcela é criada já paga (mandatory dentro da janela de 6 meses)', async () => {
+    const repo = makeRepo();
+    const residentRepo = { findOne: jest.fn().mockResolvedValue(makeResident()) };
+    const service = makeService(repo, residentRepo);
+
+    const result = await service.markImportedPayments('res-1', ['2026-02-01']);
+
+    expect(result).toEqual({ paid: 1, skipped: 0 });
+    expect(repo.save).toHaveBeenCalledTimes(1);
+    expect(repo.save.mock.calls[0][0]).toMatchObject({
+      residentId: 'res-1',
+      referenceMonth: '2026-02-01',
+      status: 'PAID',
+      amount: 700,
+      paidAmount: 700,
+      mandatory: true,
+    });
+  });
+
+  it('competência anterior à entrada (acolhimento antigo) é criada paga e não-obrigatória', async () => {
+    const repo = makeRepo();
+    const residentRepo = { findOne: jest.fn().mockResolvedValue(makeResident()) };
+    const service = makeService(repo, residentRepo);
+
+    await service.markImportedPayments('res-1', ['2025-06-01']);
+
+    expect(repo.save.mock.calls[0][0]).toMatchObject({
+      referenceMonth: '2025-06-01',
+      status: 'PAID',
+      mandatory: false,
+    });
+  });
+
+  it('parcela já PAID é preservada (skipped)', async () => {
+    const repo = makeRepo({
+      find: jest.fn().mockResolvedValue([
+        { id: 'rcv-1', referenceMonth: '2026-01-01', status: 'PAID', amount: 700, familyInvestment: 'PAYMENT_700' },
+      ]),
+    });
+    const residentRepo = { findOne: jest.fn().mockResolvedValue(makeResident()) };
+    const service = makeService(repo, residentRepo);
+
+    const result = await service.markImportedPayments('res-1', ['2026-01-01']);
+
+    expect(result).toEqual({ paid: 0, skipped: 1 });
+    expect(repo.update).not.toHaveBeenCalled();
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('sem meses → noop (nem consulta o resident)', async () => {
+    const repo = makeRepo();
+    const residentRepo = { findOne: jest.fn() };
+    const service = makeService(repo, residentRepo);
+
+    const result = await service.markImportedPayments('res-1', []);
+
+    expect(result).toEqual({ paid: 0, skipped: 0 });
+    expect(residentRepo.findOne).not.toHaveBeenCalled();
+  });
+
+  it('meses duplicados no payload viram uma única parcela', async () => {
+    const repo = makeRepo();
+    const residentRepo = { findOne: jest.fn().mockResolvedValue(makeResident()) };
+    const service = makeService(repo, residentRepo);
+
+    const result = await service.markImportedPayments('res-1', ['2026-02-01', '2026-02-01']);
+
+    expect(result).toEqual({ paid: 1, skipped: 0 });
+    expect(repo.save).toHaveBeenCalledTimes(1);
+  });
+});

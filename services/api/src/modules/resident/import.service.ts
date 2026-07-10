@@ -8,6 +8,7 @@ import { Admission } from './admission.entity';
 import { Relative } from '../relative/relative.entity';
 import { ResidentService } from './resident.service';
 import { ResidentFollowUpService } from '../resident-follow-up/resident-follow-up.service';
+import { ResidentReceivableService } from '../resident-receivable/resident-receivable.service';
 import { CommitImportDto } from './dto/commit-import.dto';
 import { CreateResidentDto } from './dto/create-resident.dto';
 import { ImportAdmissionDto } from './dto/import-admission.dto';
@@ -60,6 +61,7 @@ export class ImportService {
     private readonly residentRepository: Repository<Resident>,
     private readonly residentService: ResidentService,
     private readonly followUpService: ResidentFollowUpService,
+    private readonly receivableService: ResidentReceivableService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -184,6 +186,11 @@ export class ImportService {
         actingUserId,
         manager,
       );
+
+      // Carnê: as mesmas competências marcam as parcelas correspondentes como
+      // pagas (parcela ausente é criada já paga) — é o que a aba Contribuições
+      // exibe; só o follow-up deixava o carnê 100% pendente após o import.
+      await this.receivableService.markImportedPayments(created.id, dto.contributionMonths, manager);
 
       const resident = (await manager
         .getRepository(Resident)

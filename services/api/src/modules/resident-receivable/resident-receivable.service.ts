@@ -231,6 +231,73 @@ export class ResidentReceivableService {
     }
   }
 
+  /**
+   * Marca como pagas as competências vindas do histórico de contribuição da
+   * planilha no import em lote. A parcela existente da competência vira PAID
+   * (preservando valor/plano da parcela); competência sem parcela (ex.:
+   * acolhimento anterior à entrada atual) é criada já paga. Parcela já paga é
+   * preservada. `manager` opcional: roda dentro da transação do commit.
+   */
+  async markImportedPayments(
+    residentId: string,
+    months: string[],
+    manager?: EntityManager,
+  ): Promise<{ paid: number; skipped: number }> {
+    if (months.length === 0) return { paid: 0, skipped: 0 };
+    const residentRepo = manager ? manager.getRepository(Resident) : this.residentRepo;
+    const repo = manager ? manager.getRepository(ResidentReceivable) : this.repo;
+    const resident = await residentRepo.findOne({ where: { id: residentId } });
+    if (!resident) return { paid: 0, skipped: 0 };
+
+    const plan = resident.familyInvestment ?? FamilyInvestment.SOCIAL;
+    const amount = resolveAmount(plan, resident.familyInvestmentAmount);
+    const dueDay = resident.entryDate ? this.dueDay(resident) : 1;
+    const startIdx = this.startIndex(resident);
+    const existing = await repo.find({ where: { residentId } });
+    const byMonth = new Map(existing.map((r) => [String(r.referenceMonth).slice(0, 7), r]));
+    const notes = 'Importado da planilha (histórico de contribuição)';
+
+    let paid = 0;
+    let skipped = 0;
+    for (const month of [...new Set(months.map((m) => m.slice(0, 10)))].sort()) {
+      const { year, month0 } = parseYearMonth(month);
+      const current = byMonth.get(`${year}-${pad(month0 + 1)}`);
+      if (current?.status === ReceivableStatus.PAID) {
+        skipped += 1;
+        continue;
+      }
+      const dueDate = dueDateStr(year, month0, dueDay);
+      if (current) {
+        await repo.update(current.id, {
+          status: ReceivableStatus.PAID,
+          paidAt: dueDate as unknown as Date,
+          paidAmount: current.amount,
+          paidFamilyInvestment: current.familyInvestment,
+          notes,
+        });
+      } else {
+        const idx = monthIndex(year, month0);
+        await repo.save(
+          repo.create({
+            residentId,
+            referenceMonth: refMonthStr(year, month0) as unknown as Date,
+            dueDate: dueDate as unknown as Date,
+            amount,
+            familyInvestment: plan,
+            mandatory: startIdx != null && idx >= startIdx && idx - startIdx < TREATMENT_MONTHS,
+            status: ReceivableStatus.PAID,
+            paidAt: dueDate as unknown as Date,
+            paidAmount: amount,
+            paidFamilyInvestment: plan,
+            notes,
+          }),
+        );
+      }
+      paid += 1;
+    }
+    return { paid, skipped };
+  }
+
   async registerPayment(
     residentId: string,
     receivableId: string,

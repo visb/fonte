@@ -38,6 +38,7 @@ describe('ImportService', () => {
         {} as never,
         {} as never,
         {} as never,
+        {} as never,
       );
     });
 
@@ -94,7 +95,7 @@ describe('ImportService', () => {
 
     beforeEach(() => {
       jest.clearAllMocks();
-      service = new ImportService({ find } as never, {} as never, {} as never, {} as never);
+      service = new ImportService({ find } as never, {} as never, {} as never, {} as never, {} as never);
     });
 
     it('casa o nome do filho embutido no nome do arquivo (prefixo/acento/caixa)', async () => {
@@ -137,6 +138,7 @@ describe('ImportService', () => {
     const create = jest.fn();
     const uploadPhoto = jest.fn();
     const bulkCreateContributions = jest.fn();
+    const markImportedPayments = jest.fn();
 
     // Repositório do Resident dentro da transação.
     const residentTxFind = jest.fn();
@@ -167,10 +169,12 @@ describe('ImportService', () => {
       residentTxFindOne.mockResolvedValue(resident({ id: 'new-1', name: 'Maria' }));
       create.mockResolvedValue({ id: 'new-1', name: 'Maria' });
       bulkCreateContributions.mockResolvedValue({ created: 2, skipped: 0 });
+      markImportedPayments.mockResolvedValue({ paid: 2, skipped: 0 });
       service = new ImportService(
         {} as never,
         { create, uploadPhoto } as never,
         { bulkCreateContributions } as never,
+        { markImportedPayments } as never,
         { transaction } as never,
       );
     });
@@ -192,6 +196,16 @@ describe('ImportService', () => {
       );
       expect(result.contributionsCreated).toEqual({ created: 2, skipped: 0 });
       expect(result.resident.id).toBe('new-1');
+    });
+
+    it('marca as competências da planilha como parcelas pagas do carnê, na transação', async () => {
+      await service.commit(commitDto(), 'user-1');
+
+      expect(markImportedPayments).toHaveBeenCalledWith(
+        'new-1',
+        ['2024-01-01', '2024-02-01'],
+        managerMock,
+      );
     });
 
     it('conflito por CPF existente → ConflictException e nada persistido (rollback)', async () => {

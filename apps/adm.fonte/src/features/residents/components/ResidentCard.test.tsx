@@ -6,12 +6,6 @@ import type { Resident } from '@fonte/api-client';
 
 vi.mock('@/lib/api', () => ({ api: { photoUrl: (u: string | null) => u } }));
 
-const navigate = vi.fn();
-vi.mock('react-router-dom', async (orig) => {
-  const actual = await orig<typeof import('react-router-dom')>();
-  return { ...actual, useNavigate: () => navigate };
-});
-
 import { ResidentCard } from './ResidentCard';
 
 function makeResident(overrides: Partial<Resident> = {}): Resident {
@@ -54,10 +48,12 @@ describe('ResidentCard', () => {
     expect(screen.getByText(/anos$/)).toBeInTheDocument();
   });
 
-  it('navega ao clicar no card', () => {
+  it('card é um link para o detalhe', () => {
     renderCard(makeResident());
-    fireEvent.click(screen.getByText('Maria Interna'));
-    expect(navigate).toHaveBeenCalledWith('/residents/r1');
+    expect(screen.getByRole('link', { name: 'Maria Interna' })).toHaveAttribute(
+      'href',
+      '/residents/r1',
+    );
   });
 
   it('SOCIAL mostra badge Social e nenhum badge de pagamento', () => {
@@ -71,12 +67,11 @@ describe('ResidentCard', () => {
     expect(screen.queryByText(/Vence|Atrasado/)).not.toBeInTheDocument();
   });
 
-  it('investimento PAYMENT em status ativo mostra um badge de pagamento clicável', () => {
+  it('investimento PAYMENT em status ativo mostra um badge de pagamento que linka ao carnê', () => {
     renderCard(makeResident({ familyInvestment: FamilyInvestment.PAYMENT_700, contributionDueDay: 10 }));
     const badge = screen.getByText(/Vence|Atrasado/);
     expect(badge).toBeInTheDocument();
-    fireEvent.click(badge);
-    expect(navigate).toHaveBeenCalledWith('/residents/r1?tab=contributions');
+    expect(badge.closest('a')).toHaveAttribute('href', '/residents/r1?tab=contributions');
   });
 
   it('sem entryDate não calcula badge de pagamento', () => {
@@ -84,15 +79,14 @@ describe('ResidentCard', () => {
     expect(screen.queryByText(/Vence|Atrasado/)).not.toBeInTheDocument();
   });
 
-  it('botão editar e excluir', () => {
+  it('link editar e botão excluir', () => {
     const onDelete = vi.fn();
     render(
       <MemoryRouter>
         <ResidentCard resident={makeResident()} onDelete={onDelete} />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByTitle('Editar'));
-    expect(navigate).toHaveBeenCalledWith('/residents/r1/edit');
+    expect(screen.getByTitle('Editar')).toHaveAttribute('href', '/residents/r1/edit');
     fireEvent.click(screen.getByTitle('Excluir'));
     expect(onDelete).toHaveBeenCalled();
   });

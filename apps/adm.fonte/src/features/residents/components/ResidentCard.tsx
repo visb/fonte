@@ -1,11 +1,12 @@
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Building2, CalendarDays, Pencil, Trash2, User } from 'lucide-react';
 import { FamilyInvestment, ResidentStatus } from '@fonte/types';
 import { api } from '@/lib/api';
 import type { Resident } from '@fonte/api-client';
-import { Badge } from '@/components/ui/badge';
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import type { BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { RESIDENT_STATUS_LABELS, RESIDENT_STATUS_VARIANT } from '../constants';
 
 type BadgeVariant = NonNullable<BadgeProps['variant']>;
@@ -118,7 +119,6 @@ interface Props {
 }
 
 export function ResidentCard({ resident, onDelete }: Props) {
-  const navigate = useNavigate();
   const age = computeAge(resident.birthDate);
 
   const paymentBadge = getPaymentBadge(
@@ -130,63 +130,69 @@ export function ResidentCard({ resident, onDelete }: Props) {
   );
 
   return (
-    <>
-      <div
-        className="flex w-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer"
-        onClick={() => navigate(`/residents/${resident.id}`)}
-      >
-        <ResidentAvatar url={resident.photoThumbUrl ?? resident.photoUrl} name={resident.name} />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold truncate">{resident.name}</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
-            {resident.house && (
-              <span className="flex items-center gap-1">
-                <Building2 size={13} />
-                {resident.house.name}
-              </span>
-            )}
-            {resident.entryDate && (
-              <span className="flex items-center gap-1">
-                <CalendarDays size={13} />
-                {formatLocalDate(resident.entryDate)}
-              </span>
-            )}
-            {age != null && <span>{age} anos</span>}
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-1 shrink-0">
-          <Badge variant={RESIDENT_STATUS_VARIANT[resident.status]}>
-            {RESIDENT_STATUS_LABELS[resident.status]}
-          </Badge>
-          {resident.familyInvestment === FamilyInvestment.SOCIAL && (
-            <Badge variant="destructive">Social</Badge>
+    <div className="relative flex w-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-accent/50 transition-colors">
+      {/* Stretched link: cobre o card inteiro para permitir abrir em nova aba
+          (ctrl/meio-click). Ações ficam acima via z-10. */}
+      <Link
+        to={`/residents/${resident.id}`}
+        className="absolute inset-0 rounded-lg"
+        aria-label={resident.name}
+      />
+      <ResidentAvatar url={resident.photoThumbUrl ?? resident.photoUrl} name={resident.name} />
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold truncate">{resident.name}</p>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
+          {resident.house && (
+            <span className="flex items-center gap-1">
+              <Building2 size={13} />
+              {resident.house.name}
+            </span>
           )}
-          {paymentBadge && (
-            <Badge
-              variant={paymentBadge.variant}
-              className="cursor-pointer hover:opacity-80"
-              onClick={(e) => { e.stopPropagation(); navigate(`/residents/${resident.id}?tab=contributions`); }}
-              title="Ver carnê de contribuição"
-            >
-              {paymentBadge.label}
-            </Badge>
+          {resident.entryDate && (
+            <span className="flex items-center gap-1">
+              <CalendarDays size={13} />
+              {formatLocalDate(resident.entryDate)}
+            </span>
           )}
-        </div>
-        <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/residents/${resident.id}/edit`)} title="Editar">
-            <Pencil size={16} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
-            onClick={onDelete}
-            title="Excluir"
-          >
-            <Trash2 size={16} />
-          </Button>
+          {age != null && <span>{age} anos</span>}
         </div>
       </div>
-    </>
+      <div className="flex flex-wrap gap-1 shrink-0">
+        <Badge variant={RESIDENT_STATUS_VARIANT[resident.status]}>
+          {RESIDENT_STATUS_LABELS[resident.status]}
+        </Badge>
+        {resident.familyInvestment === FamilyInvestment.SOCIAL && (
+          <Badge variant="destructive">Social</Badge>
+        )}
+        {paymentBadge && (
+          <Link
+            to={`/residents/${resident.id}?tab=contributions`}
+            className={cn(
+              badgeVariants({ variant: paymentBadge.variant }),
+              'relative z-10 cursor-pointer hover:opacity-80',
+            )}
+            title="Ver carnê de contribuição"
+          >
+            {paymentBadge.label}
+          </Link>
+        )}
+      </div>
+      <div className="relative z-10 flex gap-1 shrink-0">
+        <Button asChild variant="ghost" size="icon" title="Editar">
+          <Link to={`/residents/${resident.id}/edit`}>
+            <Pencil size={16} />
+          </Link>
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-destructive hover:text-destructive"
+          onClick={onDelete}
+          title="Excluir"
+        >
+          <Trash2 size={16} />
+        </Button>
+      </div>
+    </div>
   );
 }

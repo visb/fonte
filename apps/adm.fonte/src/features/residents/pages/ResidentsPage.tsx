@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Loader2 } from 'lucide-react';
-import type { ResidentStatus } from '@fonte/types';
+import { ResidentStatus } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -19,13 +19,37 @@ import { ResidentsFilters } from '../components/ResidentsFilters';
 
 export function ResidentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Resident | null>(null);
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<ResidentStatus | ''>('');
-  const [houseId, setHouseId] = useState('');
-  const [overdueContribution, setOverdueContribution] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  // Filtros persistidos na URL. Status ausente = "Ativo" (padrão da listagem);
+  // presente-e-vazio = "Todos os status" (o usuário optou explicitamente).
+  const status = (searchParams.has('status')
+    ? searchParams.get('status')
+    : ResidentStatus.ACTIVE) as ResidentStatus | '';
+  const houseId = searchParams.get('house') ?? '';
+  const overdueContribution = searchParams.get('overdue') === '1';
+
+  const setParam = (key: string, value: string | undefined) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === undefined) next.delete(key);
+        else next.set(key, value);
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  // Busca: input controlado localmente (responsivo) e sincronizado à URL após debounce.
+  const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const debouncedSearch = useDebounce(search, 400);
+
+  useEffect(() => {
+    setParam('q', debouncedSearch || undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
 
   const {
     data,
@@ -77,11 +101,11 @@ export function ResidentsPage() {
         search={search}
         onSearchChange={setSearch}
         status={status}
-        onStatusChange={setStatus}
+        onStatusChange={(value) => setParam('status', value)}
         houseId={houseId}
-        onHouseIdChange={setHouseId}
+        onHouseIdChange={(value) => setParam('house', value || undefined)}
         overdueContribution={overdueContribution}
-        onOverdueContributionChange={setOverdueContribution}
+        onOverdueContributionChange={(value) => setParam('overdue', value ? '1' : undefined)}
       />
 
       {isLoading ? (

@@ -138,6 +138,42 @@ describe('SpreadsheetImportService', () => {
     expect(result.rows[0].contributionMonths).toEqual([]);
   });
 
+  it('pagamentos além da última coluna "MÊS N" contam como competências seguintes', async () => {
+    const buffer = await buildWorkbook({
+      Casa: [
+        // Cabeçalho só até MÊS 2, mas a linha tem pagamentos nas 2 colunas seguintes
+        // (planilha real: os meses continuam sendo registrados sem novo cabeçalho).
+        ['Nome:', 'Chegada:', 'Telefone:', 'C.P.F.', 'Saída:', 'STATUS', 'MENSALIDADE MÊS 1', 'MENSALIDADE MÊS 2'],
+        ['Pagador Longo', '2024-01-10', '999', '111.222.333-44', null, null, 'PAGO', 'PAGO', 'PAGO', 'PAGO'],
+      ],
+    });
+    const result = await service.parseSpreadsheet(buffer);
+    expect(result.rows[0].contributionMonths).toEqual([
+      '2024-01-01',
+      '2024-02-01',
+      '2024-03-01',
+      '2024-04-01',
+    ]);
+  });
+
+  it('aba sem cabeçalho "MÊS N" lê o histórico da coluna G em diante', async () => {
+    const buffer = await buildWorkbook({
+      // Layout da aba "Tranqueira escritório" real: cabeçalho para até STATUS (F),
+      // mas os pagamentos vivem em G+ mesmo assim.
+      Escritorio: [
+        ['Nome:', 'Chegada:', 'Telefone:', 'C.P.F.', 'Saída:', 'STATUS'],
+        ['Sem Cabecalho Mes', '2024-05-21', '996', '510.482.139-00', null, 'somando', 'PAGO 500,00', 'PAGO 500,00', '', 'PAGO 500,00'],
+      ],
+    });
+    const result = await service.parseSpreadsheet(buffer);
+    // G → mês de entrada; H → mês seguinte; I vazio pulado; J → 4ª competência.
+    expect(result.rows[0].contributionMonths).toEqual([
+      '2024-05-01',
+      '2024-06-01',
+      '2024-08-01',
+    ]);
+  });
+
   it('deixa data irreconhecível como null e converte números/booleanos em texto', async () => {
     const buffer = await buildWorkbook({
       Casa: [

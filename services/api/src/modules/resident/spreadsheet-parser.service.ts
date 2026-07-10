@@ -33,6 +33,15 @@ const HEADER_ALIASES: Record<ColumnKey, string[]> = {
 /** Cabeçalho de coluna de contribuição, ex.: "MENSALIDADE MÊS 1", "MÊS 2". */
 const CONTRIBUTION_HEADER = /(?:mensalidade\s*)?mes\s*\d+/;
 
+/**
+ * Coluna G. Na planilha real o histórico de contribuição começa na coluna G,
+ * mas nem toda aba tem os cabeçalhos "MENSALIDADE MÊS N" (e onde tem, os
+ * pagamentos continuam além da última coluna com cabeçalho). Por isso as
+ * contribuições são lidas por POSIÇÃO — da primeira coluna de contribuição até
+ * o fim da linha — e não apenas nas colunas com cabeçalho.
+ */
+const DEFAULT_CONTRIBUTION_START_COLUMN = 7;
+
 interface SheetColumns {
   columns: Partial<Record<SingleColumnKey, number>>;
   /**
@@ -42,8 +51,15 @@ interface SheetColumns {
    */
   entryDateColumns: number[];
   exitDateColumns: number[];
-  /** Colunas de contribuição em ordem cronológica (mês 1, mês 2, ...). */
-  contributionColumns: number[];
+  /**
+   * Primeira coluna de contribuição: a menor coluna com cabeçalho "MÊS N", ou o
+   * fallback (coluna G / após a última coluna mapeada) quando a aba não tem os
+   * cabeçalhos. Cada célula preenchida a partir dela é a competência
+   * `(coluna - início)`-ésima após o mês de entrada.
+   */
+  contributionStartColumn: number;
+  /** Colunas mapeadas a outros campos (nome, cpf, datas, status) — nunca são contribuição. */
+  reservedColumns: Set<number>;
 }
 
 @Injectable()
@@ -111,32 +127,51 @@ export class SpreadsheetImportService {
       const entryDateColumns: number[] = [];
       const exitDateColumns: number[] = [];
       const contributionColumns: number[] = [];
+      const reservedColumns = new Set<number>();
       row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
         const header = normalizeHeader(cellToString(cell.value));
         if (!header) return;
         // "STATUS ACOLHIMENTO" contém "acolhimento" mas não é coluna de data —
         // sem este guard ela entraria em entryDateColumns e desalinharia os pares.
-        if (header.includes('status')) return;
+        if (header.includes('status')) {
+          reservedColumns.add(colNumber);
+          return;
+        }
         // Entrada/saída podem repetir (pares de acolhimento): coleta TODAS as
         // colunas que casam, em ordem de coluna, para parear por índice depois.
         if (HEADER_ALIASES.entryDate.some((a) => header.includes(a))) {
           entryDateColumns.push(colNumber);
+          reservedColumns.add(colNumber);
           return;
         }
         if (HEADER_ALIASES.exitDate.some((a) => header.includes(a))) {
           exitDateColumns.push(colNumber);
+          reservedColumns.add(colNumber);
           return;
         }
         for (const key of singleKeys) {
           if (columns[key] === undefined && HEADER_ALIASES[key].some((a) => header.includes(a))) {
             columns[key] = colNumber;
+            reservedColumns.add(colNumber);
             return;
           }
         }
         if (CONTRIBUTION_HEADER.test(header)) contributionColumns.push(colNumber);
       });
       if (columns.name !== undefined) {
-        result = { columns, entryDateColumns, exitDateColumns, contributionColumns, headerRow: rowNumber };
+        // Sem cabeçalho "MÊS N" a aba ainda tem contribuições (planilha real):
+        // caem na coluna G em diante, ou logo após a última coluna mapeada.
+        const contributionStartColumn = contributionColumns.length
+          ? Math.min(...contributionColumns)
+          : Math.max(DEFAULT_CONTRIBUTION_START_COLUMN, Math.max(0, ...reservedColumns) + 1);
+        result = {
+          columns,
+          entryDateColumns,
+          exitDateColumns,
+          contributionStartColumn,
+          reservedColumns,
+          headerRow: rowNumber,
+        };
       }
     });
     return result;
@@ -187,7 +222,7 @@ export class SpreadsheetImportService {
         entryDate: mostRecent?.entryDate ?? null,
         exitDate: mostRecent?.exitDate ?? null,
         admissions,
-        contributionMonths: this.readContributions(row, layout.contributionColumns, earliestEntry),
+        contributionMonths: this.readContributions(row, layout, earliestEntry),
       });
     });
 
@@ -264,17 +299,23 @@ export class SpreadsheetImportService {
   }
 
   /**
-   * Cada coluna de contribuição ("MÊS N") preenchida representa a competência
-   * N-ésima a partir do mês de entrada. Sem data de entrada não há como derivar
-   * as competências, então a lista fica vazia.
+   * Cada célula de contribuição preenchida representa a competência
+   * `(coluna - início)`-ésima a partir do mês de entrada. A leitura é por
+   * posição, da primeira coluna de contribuição até o fim da linha: a planilha
+   * real registra pagamentos além da última coluna com cabeçalho "MÊS N" e tem
+   * abas sem esses cabeçalhos (histórico na coluna G em diante). Colunas
+   * reservadas (nome, datas, status) nunca contam. Sem data de entrada não há
+   * como derivar as competências, então a lista fica vazia.
    */
-  private readContributions(row: ExcelJS.Row, columns: number[], entryDate: string | null): string[] {
-    if (!entryDate || columns.length === 0) return [];
+  private readContributions(row: ExcelJS.Row, layout: SheetColumns, entryDate: string | null): string[] {
+    if (!entryDate) return [];
     const base = new Date(`${entryDate}T00:00:00Z`);
     const months: string[] = [];
-    columns.forEach((col, index) => {
-      if (!this.readText(row, col)) return;
-      const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + index, 1));
+    row.eachCell({ includeEmpty: false }, (cell, col) => {
+      if (col < layout.contributionStartColumn || layout.reservedColumns.has(col)) return;
+      if (!cellToString(cell.value).trim()) return;
+      const offset = col - layout.contributionStartColumn;
+      const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + offset, 1));
       months.push(`${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-01`);
     });
     return months;

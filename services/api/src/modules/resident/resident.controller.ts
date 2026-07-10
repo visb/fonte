@@ -184,6 +184,9 @@ export class ResidentController {
 
   @Post('import/parse-docx')
   @Roles(Role.ADMIN, Role.COORDINATOR)
+  // O CPF/RG extraídos preenchem o formulário de import individual; só
+  // ADMIN/COORDINATOR chegam aqui, então devolvemos o documento completo.
+  @RevealSensitive()
   @UseInterceptors(FileInterceptor('file', docxOptions))
   parseDocx(
     @UploadedFile(

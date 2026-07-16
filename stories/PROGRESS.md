@@ -1,51 +1,51 @@
-# PROGRESS — ledger da rodada AUTORUN corrente
+# PROGRESS — stories 125–130 (sugeridos do curso + toast + assinatura + ordenação/preferências)
 
-Estado da execução autônoma corrente (conduzida por `AUTORUN.md`). **Fonte de verdade para
-retomar: este arquivo + `git log`.** Histórico de execuções já concluídas vive em
-`stories/done/PROGRESS-NN-MM.md` (uma por rodada) + `git log` (stories arquivadas em
-`stories/done/`) — não acumular logs antigos aqui.
+Ordem: 125 → 126 → 127 → 128 → 129 → 130. Fonte de verdade: esta seção + git log.
 
-**Nenhuma rodada ativa no momento.** Rodadas encerradas:
+**Config da rodada**
 
-- `done/PROGRESS-64-75.md`
-- `done/PROGRESS-77-84.md` — cobertura de testes (piso 80%)
-- `done/PROGRESS-85-91.md` — cobertura de testes (piso 90%)
-- `done/PROGRESS-92-98.md` — features (curso bíblico, bucket, eventos, perfil servo)
-- `done/PROGRESS-99-106.md` — curso: sugerir matrícula + import em lote de filhos (106 purga de histórico PENDENTE-MANUAL)
-- `done/PROGRESS-107-115.md` — import em lote UX + contribuição valor/produtos + squash migrations (9/9 OK; 114 Maestro PENDENTE-MANUAL)
-- `done/PROGRESS-116-123.md` — dashboard/navbar adm + melhorias no import de filhos + wipe bucket (8/8 OK)
-
-Ao abrir uma rodada nova, copiar o modelo abaixo aqui e preencher fila + config. Ao encerrar,
-mover a seção da rodada para `stories/done/PROGRESS-NN-MM.md` e restaurar este stub.
-
-## Legenda
-
-`[OK]` story implementada, suíte tocada verde, commitada (e mergeada, se a rodada usar merge) ·
-`[PARCIAL]` código completo mas parte depende de serviço externo sem credencial (mock nos testes) ·
-`[BLOQUEADO]` impedida (registrar o motivo) · `[ ]` pendente
-
----
-
-<!--
-Modelo de seção por rodada — copiar abaixo ao iniciar:
-
-# PROGRESS — stories NN–MM (<feature/epic>)
-
-Ordem: <NN → ... → MM>. Fonte de verdade: esta seção + git log.
-Config da rodada: branch base, deps rígidas, cuidados (migrations/contratos/postman/externo).
+- **Branch base:** `main` (cada branch parte da main ATUAL, já com o merge da anterior).
+- **Prefixo de branch:** `feat/story-NN-<slug>`.
+- **Deps rígidas** (se a de cima bloquear, a de baixo bloqueia junto — não pular):
+  - **127 → 126** (usa `toastAction` "Desfazer"; sem o toast a story não fecha) **e 127 → 125**
+    (ambas editam `EligibleResidentRow.tsx`; 125 remove o `<label>` que a 127 depende de não existir).
+  - **130 → 129** (`sort` só existe na URL depois da 129; a chave `residents.filters` guarda `sort`).
+  - 128 é independente das demais.
+- **Cuidados da rodada:**
+  - **Migrations novas em 3 stories** (127 `bible_course_external_completions`, 128
+    `staff.signature_url`, 130 `user_preferences`). Última aplicada: `1783036900000-AllowNullResidentHouse`.
+    Timestamps **crescentes e únicos** entre elas; nunca editar migration já aplicada; rodar
+    `pnpm --filter api migration:run:test` após criar.
+  - **Contratos** (`packages/types` + `api-client`) mudam em 127, 128, 129 e 130 → `pnpm build:types
+    && pnpm build:api-client` antes de rodar suíte do adm (sem o `dist/` a suíte adm inteira quebra).
+  - **Postman obrigatório** (`fonte-api.postman_collection.json`): 127 (3 endpoints), 128
+    (`POST /staff/me/signature` + `signatureUrl` no `GET /staff/me`), 129 (`sort`/`order` em
+    `GET /residents`), 130 (3 endpoints).
+  - **Dependências novas** (rodar `pnpm install` no app): 126 `sonner`, 128 `react-signature-canvas`.
+  - **Bucket/storage** (128, assinatura): usar o `StorageService` existente atrás da interface, com
+    mock nos testes. Não chamar bucket real; se o ambiente de teste não tiver storage, marcar
+    PENDENTE-MANUAL só a parte de upload real — a lógica e os testes vão mockados.
+  - **Gate de cobertura ≥ 90** no pacote tocado, sem `skip`/`only`/`xfail` injustificado.
+  - **Armadilhas já mapeadas nos planos** (estão nos `.md`, repetidas aqui por serem silenciosas):
+    128 → `ALWAYS_AVAILABLE` em `AttachmentsTab.tsx` precisa incluir `signature`; 129 → desempate por
+    `id ASC` senão a paginação repete/pula; 130 → preservar a distinção `status` ausente vs
+    presente-e-vazio.
 
 ## Fila
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | NN — <título> | [ ] | | | |
+| 1 | 125 — sugeridos: selecionar todos + abrir filho em nova aba | [ ] | | | |
+| 2 | 126 — adotar toast (sonner) no adm.fonte | [ ] | | | |
+| 3 | 127 — marcar "já fez" o curso bíblico fora do sistema | [ ] | | | |
+| 4 | 128 — assinatura do usuário logado nos documentos | [ ] | | | |
+| 5 | 129 — ordenação na listagem de filhos | [ ] | | | |
+| 6 | 130 — preferências do usuário + filtros persistidos | [ ] | | | |
 
 ## Log
 
 Entrada curta — máx. ~3 linhas. Detalhe rico vai no corpo do commit ou no `.md` arquivado.
-[OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver>
 
 ## Resumo final
 
-<o que passou, o que ficou pendente/bloqueado e por quê, comandos para reproduzir>
--->
+<pendente — rodada em andamento>

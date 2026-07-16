@@ -36,7 +36,7 @@ Ordem: 125 → 126 → 127 → 128 → 129 → 130. Fonte de verdade: esta seç�
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 125 — sugeridos: selecionar todos + abrir filho em nova aba | [OK] | unit 1214/1214 · cov adm 92% | e73cf01 | 81c45e8 |
-| 2 | 126 — adotar toast (sonner) no adm.fonte | [ ] | | | |
+| 2 | 126 — adotar toast (sonner) no adm.fonte | [OK] | unit 1230/1230 · cov 92.03% | 4b34010 | 824e972 |
 | 3 | 127 — marcar "já fez" o curso bíblico fora do sistema | [ ] | | | |
 | 4 | 128 — assinatura do usuário logado nos documentos | [ ] | | | |
 | 5 | 129 — ordenação na listagem de filhos | [ ] | | | |
@@ -57,6 +57,19 @@ got 3", `residentSchema.ts`) e 7 e2e falhando (`residents`/`payables`/`activitie
 idênticos com `git stash` (pré-existentes). **129 e 130 tocam `features/residents`** — o implementer
 dessas stories não vai conseguir suíte limpa nessa área e deve distinguir regressão nova de falha
 pré-existente (comparar com a main via stash antes de reportar).
+
+[OK] 126 — testes: adm unit 1230/1230 (+16 vs baseline main, zero regressão) · e2e bible-courses 13
+passed/2 skipped · cov `features/bible-courses` 91.71%→92.02%, `src/lib` 75.19%→76.33% — commit:
+4b34010 — merge: 824e972 — 2026-07-16. `toastAction(msg, {label,onClick})` pronto para a 127.
+
+**Nota 126:** contagem de falhas pré-existentes corrigida — são **8** (7 `residents` + 1 `payables`;
+`activities` está verde), confirmadas byte-idênticas na main via stash. Agent também precisou
+reinstalar o `sonner` e reiniciar o dev server 5174: quem rodar e2e após um `pnpm install` pode
+precisar do restart (o Vite quebra com `Failed to resolve import "sonner"` e derruba todo o e2e no
+login). Dois desvios conscientes do plano, ambos coerentes com a decisão 4: `EnrollResidentDialog`
+perdeu o erro inline (o hook dele está na tabela — inline + toast ficaria duplicado) e
+`BibleModuleDialog` ficou intacto (hooks fora da tabela; sem toast, remover o inline deixaria falha
+sem feedback).
 
 **Ressalva 125:** os 2 skips do e2e são do seed, não do código — o seed tem filho com `entry_date` =
 hoje e a regra exige 3+ meses, então `eligible-residents` volta `[]` e o painel não renderiza (atinge

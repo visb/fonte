@@ -1,10 +1,5 @@
 # Backlog
 
-## sugestões de matriculas para novas turmas do curso biblico
-
-- ignorar na listagem filhos q ja passaram pelo curso biblico.
-- adicionar botão "ja fez" para remover o filho para sempre dessa lista de sugestao
-
 ## assinatura de documentos vinculada ao usuario logado no admin
 
 - adicionar field "asinatura" no editor de documentos. Este field, ao gerar o documento, deve inserir a assinatura do usuario logado

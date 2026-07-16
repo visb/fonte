@@ -74,14 +74,14 @@ Nada. Sem hook novo, sem query key nova, sem mudança em `packages/types` ou `ap
 
 Story frontend-only → sem `test:api`/`test:api:cov`, sem build de contratos, sem Postman.
 
-- **`pnpm --filter adm.fonte test:unit`** — estender `EligibleResidentsPanel.test.tsx`:
+- **`pnpm test:adm:unit`** — estender `EligibleResidentsPanel.test.tsx`:
   - default mantém todos marcados e o checkbox do cabeçalho vem `checked`;
   - clicar no cabeçalho com todos marcados → seleção vazia; botão "Matricular selecionados (0)" fica
     `disabled`;
   - clicar de novo → todos marcados; botão volta a habilitar com a contagem certa;
   - desmarcar **um** filho → cabeçalho fica `indeterminate` (nem `checked` nem vazio);
   - a partir do estado parcial, clicar no cabeçalho → marca todos (não desmarca).
-- **`pnpm --filter adm.fonte test:unit`** — estender `EligibleResidentRow.test.tsx`:
+- **`pnpm test:adm:unit`** — estender `EligibleResidentRow.test.tsx`:
   - renderiza link com `href="/residents/<id>"`, `target="_blank"` e `rel` contendo `noopener`;
   - **clicar no link NÃO chama `onToggle`** (regressão da decisão 4 — o `<label>` saiu);
   - clicar no nome/foto continua chamando `onToggle` com o id;
@@ -91,13 +91,13 @@ Story frontend-only → sem `test:api`/`test:api:cov`, sem build de contratos, s
   matricular → matrículas aparecem na turma.
 
 **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente —
-nenhum código novo entra sem teste. Rodar `pnpm --filter adm.fonte test:unit:cov`; **não reduzir** a
+nenhum código novo entra sem teste. Rodar `pnpm test:adm:unit:cov`; **não reduzir** a
 cobertura de `features/bible-courses`. Sem `skip`/`only`/`xfail` sem justificativa no código
 (CLAUDE.md).
 
 ## Fora de escopo
 
-- Botão "já fez" / dispensa permanente da sugestão — story [[126]].
+- Botão "já fez" / dispensa permanente da sugestão — story [[127]].
 - Mudar a regra de elegibilidade (DROPPED, tempo mínimo, status) — comportamento atual está correto
   e permanece.
 - Exibir o painel quando a turma já tem matrículas (hoje só aparece com `enrollments.length === 0`).

@@ -1,14 +1,5 @@
 # Backlog
 
-## assinatura de documentos vinculada ao usuario logado no admin
-
-- adicionar field "asinatura" no editor de documentos. Este field, ao gerar o documento, deve inserir a assinatura do usuario logado
-- o espaço reservado para assinatura deve conter uma linha de demarcação, composta de 25x"\_".
-- ao gerar documento, se a assinatura para o usuario nao estiver configurada, deve exibir modal para configuração da mesma
-- a assinatura pode ser configurada no menu de perfil do usuario logado
-
----
-
 ## ordenação na listagem de filhos
 
 - mudar ordenação padrao para ordenar pela data de entrada, com os mais recentes aparecendo primeiro

@@ -11,6 +11,12 @@ test.describe('Curso Bíblico', () => {
     await expect(page).toHaveURL('/bible-courses');
   });
 
+  // Painel de sugeridos (story 125): o cabeçalho também é um checkbox, então as
+  // linhas precisam ser localizadas pelo aria-label próprio de cada filho.
+  const selectAllBox = (page: Page) => page.getByRole('checkbox', { name: 'Selecionar todos' });
+  const eligibleRowBoxes = (page: Page) =>
+    page.getByRole('checkbox', { name: /^Selecionar (?!todos)/ });
+
   async function createClass(page: Page, name: string) {
     await page.getByRole('button', { name: 'Nova turma' }).click();
     await page.getByLabel('Nome *').fill(name);
@@ -94,7 +100,7 @@ test.describe('Curso Bíblico', () => {
     const hasEligible = await heading.isVisible();
     test.skip(!hasEligible, 'Sem filhos elegíveis (3+ meses) no seed de teste');
 
-    const rows = page.getByRole('checkbox');
+    const rows = eligibleRowBoxes(page);
     const count = await rows.count();
 
     // Elegíveis vêm marcados por padrão.
@@ -107,6 +113,38 @@ test.describe('Curso Bíblico', () => {
     }
 
     // Matricula os selecionados restantes → refletido como matrícula na turma.
+    await page.getByRole('button', { name: /Matricular selecionados \([1-9]/ }).click();
+    await expect(page.getByText('Matriculado').first()).toBeVisible();
+  });
+
+  test('seleciona/deseleciona todos os sugeridos e matricula (story 125)', async ({ page }) => {
+    const name = `Turma Todos ${ts()}`;
+    await createClass(page, name);
+
+    await page.getByText(name).click();
+    await expect(page).toHaveURL(/\/bible-courses\/.+/);
+
+    const heading = page.getByRole('heading', { name: 'Sugestões de matrícula' });
+    await expect(heading.or(page.getByText('Nenhum filho elegível.'))).toBeVisible();
+    const hasEligible = await heading.isVisible();
+    test.skip(!hasEligible, 'Sem filhos elegíveis (3+ meses) no seed de teste');
+
+    const header = selectAllBox(page);
+    const rows = eligibleRowBoxes(page);
+
+    // Default da story 99 não regride: todos marcados.
+    await expect(header).toBeChecked();
+    await expect(rows.first()).toBeChecked();
+
+    // Desmarca todos pelo cabeçalho → botão sem contagem fica desabilitado.
+    await header.click();
+    await expect(rows.first()).not.toBeChecked();
+    await expect(page.getByRole('button', { name: 'Matricular selecionados (0)' })).toBeDisabled();
+
+    // Marca todos de novo e matricula → matrículas aparecem na turma.
+    await header.click();
+    await expect(header).toBeChecked();
+    await expect(rows.first()).toBeChecked();
     await page.getByRole('button', { name: /Matricular selecionados \([1-9]/ }).click();
     await expect(page.getByText('Matriculado').first()).toBeVisible();
   });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -24,11 +24,23 @@ export function EligibleResidentsPanel({ classId, enrolledIds, enabled = true }:
   const enrolledSet = new Set(enrolledIds);
   const eligible = (data ?? []).filter((r) => !enrolledSet.has(r.id));
 
+  const allSelected = eligible.length > 0 && selected.size === eligible.length;
+  const partiallySelected = selected.size > 0 && selected.size < eligible.length;
+
   // Marca todos por padrão sempre que a lista de elegíveis muda.
   useEffect(() => {
     setSelected(new Set(eligible.map((r) => r.id)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+
+  // `indeterminate` não existe como atributo do DOM — só via propriedade.
+  // Callback ref sincroniza na montagem e a cada mudança da seleção parcial.
+  const selectAllRef = useCallback(
+    (node: HTMLInputElement | null) => {
+      if (node) node.indeterminate = partiallySelected;
+    },
+    [partiallySelected],
+  );
 
   if (!enabled) return null;
   if (isLoading) return <LoadingState />;
@@ -43,6 +55,10 @@ export function EligibleResidentsPanel({ classId, enrolledIds, enabled = true }:
       return next;
     });
 
+  // Marcado (todos) → limpa; desmarcado ou parcial → marca todos.
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(eligible.map((r) => r.id)));
+
   const handleEnroll = () => {
     if (selected.size === 0) return;
     enrollMutation.mutate([...selected]);
@@ -51,10 +67,21 @@ export function EligibleResidentsPanel({ classId, enrolledIds, enabled = true }:
   return (
     <div className="rounded-lg border bg-card p-4 space-y-3">
       <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          ref={selectAllRef}
+          className="h-4 w-4 shrink-0 cursor-pointer"
+          checked={allSelected}
+          onChange={toggleAll}
+          aria-label="Selecionar todos"
+        />
         <Sparkles size={16} className="text-primary" />
         <h2 className="text-sm font-semibold">Sugestões de matrícula</h2>
         <span className="text-xs text-muted-foreground">
           Filhos com 3+ meses de casa e sem turma
+        </span>
+        <span className="text-xs text-muted-foreground ml-auto shrink-0">
+          {selected.size} de {eligible.length} selecionados
         </span>
       </div>
 

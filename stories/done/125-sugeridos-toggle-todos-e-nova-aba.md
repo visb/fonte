@@ -29,7 +29,13 @@ Story **frontend-only**: nenhuma mudança de backend, contrato ou Postman.
 
 1. **Toggle é um checkbox no cabeçalho do painel**, não dois botões separados. Estado
    **tri-state**: marcado (todos), desmarcado (nenhum), `indeterminate` (seleção parcial). Clicar
-   quando está marcado/indeterminado → desmarca todos; quando desmarcado → marca todos.
+   quando está marcado → desmarca todos; quando está desmarcado **ou indeterminado** → marca todos
+   (é o comportamento nativo do checkbox tri-state).
+
+   > Correção pós-implementação: a redação original desta decisão dizia "marcado/indeterminado →
+   > desmarca todos", contradizendo o Desenho e a Validação desta mesma story, que sempre disseram
+   > "parcial → marca todos". Prevaleceu o Desenho/Validação; o texto acima foi corrigido para
+   > refletir o que foi implementado e testado.
 2. **O default continua "todos marcados"** (comportamento da story 99, não regride).
 3. **O link abre em nova aba** (`target="_blank"` + `rel="noopener noreferrer"`), preservando a
    seleção em andamento no painel — esse é o motivo de ser nova aba e não navegação normal.

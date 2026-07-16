@@ -87,22 +87,22 @@ Nenhuma mudança em `services/api`, `packages/types`, `api-client` ou Postman.
 
 Story frontend-only → sem `test:api`/`test:api:cov`, sem build de contratos, sem Postman.
 
-- **`pnpm --filter adm.fonte test:unit`** — novo `lib/toast.test.ts` (mockando `sonner`):
+- **`pnpm test:adm:unit`** — novo `lib/toast.test.ts` (mockando `sonner`):
   - `toastSuccess` chama `toast.success` com a mensagem;
   - `toastError` chama `toast.error` com o texto de `getErrorMessage` (erro de API com
     `response.data.message`) e com o **fallback** quando o erro não tem mensagem;
   - `toastAction` repassa `label`/`onClick` para a ação do toast.
-- **`pnpm --filter adm.fonte test:unit`** — estender `useBibleCourses.test.tsx` (mockando
+- **`pnpm test:adm:unit`** — estender `useBibleCourses.test.tsx` (mockando
   `@/lib/toast`): cada mutation da tabela acima dispara `toastSuccess` no sucesso e `toastError`
   (com o fallback certo) no erro, sem quebrar os `invalidateQueries` já cobertos.
-- **`pnpm --filter adm.fonte test:unit`** — atualizar `BibleClassDialog.test.tsx` e
+- **`pnpm test:adm:unit`** — atualizar `BibleClassDialog.test.tsx` e
   `EligibleResidentsPanel.test.tsx`: asserções de erro de mutation inline saem e viram asserção de
   `toastError`; **asserções de erro de campo continuam passando inalteradas** (prova da decisão 3).
 - **`pnpm test:adm`** (Playwright, `e2e/bible-courses.spec.ts`): criar turma → toast de sucesso
   visível; forçar erro de mutation (rota interceptada com 500) → toast de erro visível.
 
 **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente —
-nenhum código novo entra sem teste. Rodar `pnpm --filter adm.fonte test:unit:cov`; **não reduzir** a
+nenhum código novo entra sem teste. Rodar `pnpm test:adm:unit:cov`; **não reduzir** a
 cobertura de `features/bible-courses` nem de `lib/`. Sem `skip`/`only`/`xfail` sem justificativa no
 código (CLAUDE.md).
 

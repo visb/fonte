@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { getErrorMessage } from '@/lib/errors';
 import {
   useBibleCourseClassPhotos,
   useUploadBibleCourseClassPhoto,
@@ -20,7 +19,8 @@ interface Props {
 /**
  * Galeria de fotos da turma (story 92): grid de miniaturas + botão de upload
  * (imagens) + exclusão individual com confirmação. Estados via componentes
- * compartilhados; erros via getErrorMessage.
+ * compartilhados; erro de mutation vira toast no hook (story 126) e a validação
+ * local do arquivo fica inline.
  */
 export function BibleCourseClassPhotoGallery({ classId }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -66,12 +66,8 @@ export function BibleCourseClassPhotoGallery({ classId }: Props) {
         </Button>
       </div>
 
+      {/* Validação local do arquivo é erro de campo → inline (ver @/lib/toast). */}
       {clientError && <p className="text-xs text-destructive">{clientError}</p>}
-      {uploadMutation.isError && (
-        <p className="text-xs text-destructive">
-          {getErrorMessage(uploadMutation.error, 'Erro ao enviar a foto.')}
-        </p>
-      )}
 
       {isLoading ? (
         <LoadingState />

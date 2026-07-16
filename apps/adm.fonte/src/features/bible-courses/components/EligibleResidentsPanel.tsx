@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { getErrorMessage } from '@/lib/errors';
 import { useEligibleResidents, useEnrollBulk } from '../hooks/useBibleCourses';
 import { EligibleResidentRow } from './EligibleResidentRow';
 
@@ -95,12 +94,6 @@ export function EligibleResidentsPanel({ classId, enrolledIds, enabled = true }:
           />
         ))}
       </div>
-
-      {enrollMutation.error && (
-        <p className="text-xs text-destructive">
-          {getErrorMessage(enrollMutation.error, 'Erro ao matricular.')}
-        </p>
-      )}
 
       <div className="flex justify-end">
         <Button

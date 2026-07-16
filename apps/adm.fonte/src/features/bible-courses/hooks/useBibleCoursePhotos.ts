@@ -1,10 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
+import { toastError } from '@/lib/toast';
 
 /**
  * Galeria de fotos de uma turma do curso bíblico (story 92). Query + mutations de
  * upload/remoção no mesmo arquivo; mutations invalidam a key da galeria.
+ *
+ * Erro de mutation vira toast (story 126). O sucesso não tem toast: a miniatura
+ * aparecendo/sumindo já é o feedback. A validação local do arquivo (tipo) segue
+ * inline no componente — ver a fronteira em `@/lib/toast`.
  */
 export function useBibleCourseClassPhotos(classId: string | null) {
   return useQuery({
@@ -26,6 +31,7 @@ export function useUploadBibleCourseClassPhoto(classId: string) {
       queryClient.invalidateQueries({
         queryKey: queryKeys.bibleCourses.photos(classId),
       }),
+    onError: (error) => toastError(error, 'Erro ao enviar a foto.'),
   });
 }
 
@@ -37,5 +43,6 @@ export function useDeleteBibleCourseClassPhoto(classId: string) {
       queryClient.invalidateQueries({
         queryKey: queryKeys.bibleCourses.photos(classId),
       }),
+    onError: (error) => toastError(error, 'Erro ao remover a foto.'),
   });
 }

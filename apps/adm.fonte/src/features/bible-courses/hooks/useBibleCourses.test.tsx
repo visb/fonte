@@ -24,8 +24,15 @@ vi.mock('@/lib/api', () => ({
   },
 }));
 
+vi.mock('@/lib/toast', () => ({
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+  toastAction: vi.fn(),
+}));
+
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
+import { toastError, toastSuccess } from '@/lib/toast';
 import { renderHookWithClient } from '@/test/utils';
 import {
   useBibleClasses,
@@ -129,6 +136,106 @@ describe('turmas', () => {
     expect(api.bibleCourse.enrollBulk).toHaveBeenCalledWith('c1', ['r1', 'r2']);
     expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.bibleCourses.detail('c1') });
     expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.bibleCourses.all });
+  });
+});
+
+// Story 126: o toast é feedback de ação e mora no hook da mutation — todo
+// consumidor (dialog, painel, página) ganha o mesmo feedback sem markup inline.
+describe('toast das mutations (story 126)', () => {
+  it('sucesso de cada mutation dispara toastSuccess com a mensagem da tabela', async () => {
+    vi.mocked(api.bibleCourse.createClass).mockResolvedValue({ id: 'c1' } as never);
+    vi.mocked(api.bibleCourse.updateClass).mockResolvedValue({ id: 'c1' } as never);
+    vi.mocked(api.bibleCourse.deleteClass).mockResolvedValue(undefined as never);
+    vi.mocked(api.bibleCourse.enrollBulk).mockResolvedValue({ enrolled: 3 } as never);
+    vi.mocked(api.bibleCourse.enroll).mockResolvedValue({} as never);
+    vi.mocked(api.bibleCourse.updateEnrollment).mockResolvedValue({} as never);
+    vi.mocked(api.bibleCourse.removeEnrollment).mockResolvedValue(undefined as never);
+
+    const { result: c } = renderHookWithClient(() => useCreateBibleClass());
+    c.current.mutate({ name: 'T' } as never);
+    await waitFor(() => expect(c.current.isSuccess).toBe(true));
+    expect(toastSuccess).toHaveBeenCalledWith('Turma criada.');
+
+    const { result: u } = renderHookWithClient(() => useUpdateBibleClass());
+    u.current.mutate({ id: 'c1', data: { name: 'E' } } as never);
+    await waitFor(() => expect(u.current.isSuccess).toBe(true));
+    expect(toastSuccess).toHaveBeenCalledWith('Turma atualizada.');
+
+    const { result: del } = renderHookWithClient(() => useDeleteBibleClass());
+    del.current.mutate('c1');
+    await waitFor(() => expect(del.current.isSuccess).toBe(true));
+    expect(toastSuccess).toHaveBeenCalledWith('Turma excluída.');
+
+    // Contagem vem da resposta do backend, não do tamanho da seleção.
+    const { result: bulk } = renderHookWithClient(() => useEnrollBulk('c1'));
+    bulk.current.mutate(['r1', 'r2', 'r3']);
+    await waitFor(() => expect(bulk.current.isSuccess).toBe(true));
+    expect(toastSuccess).toHaveBeenCalledWith('3 filho(s) matriculado(s).');
+
+    const { result: e } = renderHookWithClient(() => useEnrollResident('c1'));
+    e.current.mutate({ residentId: 'r1' } as never);
+    await waitFor(() => expect(e.current.isSuccess).toBe(true));
+    expect(toastSuccess).toHaveBeenCalledWith('Filho matriculado.');
+
+    const { result: ue } = renderHookWithClient(() => useUpdateEnrollment('c1'));
+    ue.current.mutate({ id: 'en1', data: { status: 'DONE' } } as never);
+    await waitFor(() => expect(ue.current.isSuccess).toBe(true));
+    expect(toastSuccess).toHaveBeenCalledWith('Matrícula atualizada.');
+
+    const { result: rm } = renderHookWithClient(() => useRemoveEnrollment('c1'));
+    rm.current.mutate('en1');
+    await waitFor(() => expect(rm.current.isSuccess).toBe(true));
+    expect(toastSuccess).toHaveBeenCalledWith('Matrícula removida.');
+
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('falha de cada mutation dispara toastError com o fallback da tabela', async () => {
+    const boom = new Error('boom');
+    vi.mocked(api.bibleCourse.createClass).mockRejectedValue(boom);
+    vi.mocked(api.bibleCourse.updateClass).mockRejectedValue(boom);
+    vi.mocked(api.bibleCourse.deleteClass).mockRejectedValue(boom);
+    vi.mocked(api.bibleCourse.enrollBulk).mockRejectedValue(boom);
+    vi.mocked(api.bibleCourse.enroll).mockRejectedValue(boom);
+    vi.mocked(api.bibleCourse.updateEnrollment).mockRejectedValue(boom);
+    vi.mocked(api.bibleCourse.removeEnrollment).mockRejectedValue(boom);
+
+    const { result: c } = renderHookWithClient(() => useCreateBibleClass());
+    c.current.mutate({ name: 'T' } as never);
+    await waitFor(() => expect(c.current.isError).toBe(true));
+    expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao salvar turma.');
+
+    const { result: u } = renderHookWithClient(() => useUpdateBibleClass());
+    u.current.mutate({ id: 'c1', data: { name: 'E' } } as never);
+    await waitFor(() => expect(u.current.isError).toBe(true));
+    expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao salvar turma.');
+
+    const { result: del } = renderHookWithClient(() => useDeleteBibleClass());
+    del.current.mutate('c1');
+    await waitFor(() => expect(del.current.isError).toBe(true));
+    expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao excluir turma.');
+
+    const { result: bulk } = renderHookWithClient(() => useEnrollBulk('c1'));
+    bulk.current.mutate(['r1']);
+    await waitFor(() => expect(bulk.current.isError).toBe(true));
+    expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao matricular.');
+
+    const { result: e } = renderHookWithClient(() => useEnrollResident('c1'));
+    e.current.mutate({ residentId: 'r1' } as never);
+    await waitFor(() => expect(e.current.isError).toBe(true));
+    expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao matricular.');
+
+    const { result: ue } = renderHookWithClient(() => useUpdateEnrollment('c1'));
+    ue.current.mutate({ id: 'en1', data: { status: 'DONE' } } as never);
+    await waitFor(() => expect(ue.current.isError).toBe(true));
+    expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao atualizar matrícula.');
+
+    const { result: rm } = renderHookWithClient(() => useRemoveEnrollment('c1'));
+    rm.current.mutate('en1');
+    await waitFor(() => expect(rm.current.isError).toBe(true));
+    expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao remover matrícula.');
+
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 });
 

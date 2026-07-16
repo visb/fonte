@@ -11,8 +11,15 @@ vi.mock('@/lib/api', () => ({
   },
 }));
 
+vi.mock('@/lib/toast', () => ({
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+  toastAction: vi.fn(),
+}));
+
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
+import { toastError } from '@/lib/toast';
 import { renderHookWithClient } from '@/test/utils';
 import {
   useBibleCourseClassPhotos,
@@ -64,5 +71,25 @@ describe('useBibleCourseClassPhotos', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.bibleCourse.deleteClassPhoto).toHaveBeenCalledWith('c1', 'p1');
     expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.bibleCourses.photos('c1') });
+  });
+
+  // Story 126: erro de mutation vira toast no hook (sucesso não tem toast — a
+  // miniatura aparecendo/sumindo já é o feedback).
+  it('falha no upload dispara toastError com o fallback da foto', async () => {
+    const boom = new Error('boom');
+    vi.mocked(api.bibleCourse.uploadClassPhoto).mockRejectedValue(boom);
+    const { result } = renderHookWithClient(() => useUploadBibleCourseClassPhoto('c1'));
+    result.current.mutate(new File(['x'], 'foto.jpg', { type: 'image/jpeg' }));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao enviar a foto.');
+  });
+
+  it('falha ao remover dispara toastError com o fallback da remoção', async () => {
+    const boom = new Error('boom');
+    vi.mocked(api.bibleCourse.deleteClassPhoto).mockRejectedValue(boom);
+    const { result } = renderHookWithClient(() => useDeleteBibleCourseClassPhoto('c1'));
+    result.current.mutate('p1');
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao remover a foto.');
   });
 });

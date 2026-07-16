@@ -96,10 +96,24 @@ describe('BibleCourseClassPhotoGallery', () => {
     confirmSpy.mockRestore();
   });
 
-  it('mostra mensagem de erro de upload', () => {
+  // Story 126: o erro do upload virou toast no hook (coberto em
+  // useBibleCoursePhotos.test.tsx); a galeria não mostra mais o texto inline.
+  it('não renderiza erro de mutation inline', () => {
     uploadState.isError = true;
     uploadState.error = { message: 'boom' } as never;
     render(<BibleCourseClassPhotoGallery classId="c1" />);
-    expect(screen.getByText(/Erro ao enviar a foto\.|boom/)).toBeInTheDocument();
+    expect(screen.queryByText(/Erro ao enviar a foto\.|boom/)).not.toBeInTheDocument();
+  });
+
+  // Decisão 3: validação local do arquivo é erro de campo → segue inline,
+  // inclusive quando a mutation também falhou.
+  it('erro de validação do arquivo continua inline mesmo com erro de mutation', () => {
+    uploadState.isError = true;
+    uploadState.error = { message: 'boom' } as never;
+    const { container } = render(<BibleCourseClassPhotoGallery classId="c1" />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(['x'], 'doc.pdf', { type: 'application/pdf' })] } });
+    expect(screen.getByText(/Tipo de arquivo não permitido/)).toBeInTheDocument();
+    expect(uploadMutate).not.toHaveBeenCalled();
   });
 });

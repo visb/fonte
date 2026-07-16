@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Role } from '@fonte/types';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { Toaster } from '@/components/ui/sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
@@ -57,6 +58,8 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        {/* Fora das rotas: o toast sobrevive à navegação (story 126). */}
+        <Toaster />
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />

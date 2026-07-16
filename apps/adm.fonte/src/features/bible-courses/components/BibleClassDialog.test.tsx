@@ -91,9 +91,21 @@ describe('BibleClassDialog', () => {
     expect(updateMutate.mock.calls[0][0].id).toBe('c1');
   });
 
-  it('mostra erro da mutation', () => {
+  // Story 126: erro de mutation é feedback de ação → toast disparado no hook
+  // (coberto em useBibleCourses.test.tsx). O dialog não renderiza mais o erro
+  // inline; o toast sobrevive ao fechamento do dialog, o texto inline não.
+  it('não renderiza erro de mutation inline', () => {
     createState = { isPending: false, error: new Error('boom') };
     render(<BibleClassDialog open klass={null} defaultStartDate="2026-02-01" onClose={vi.fn()} />);
-    expect(screen.getByText(/Erro ao salvar turma|boom/)).toBeInTheDocument();
+    expect(screen.queryByText(/Erro ao salvar turma|boom/)).not.toBeInTheDocument();
+  });
+
+  // Decisão 3: validação de campo pertence ao campo — continua inline mesmo com
+  // erro de mutation na tela.
+  it('erro de campo continua inline (decisão 3)', async () => {
+    createState = { isPending: false, error: new Error('boom') };
+    render(<BibleClassDialog open klass={null} defaultStartDate="2026-02-01" onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+    expect(await screen.findByText(/obrigatório/i)).toBeInTheDocument();
   });
 });

@@ -7,6 +7,7 @@ import type {
 } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
+import { toastError, toastSuccess } from '@/lib/toast';
 
 export function useBibleClasses(status?: string) {
   return useQuery({
@@ -27,7 +28,11 @@ export function useCreateBibleClass() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateBibleCourseClassInput) => api.bibleCourse.createClass(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.all });
+      toastSuccess('Turma criada.');
+    },
+    onError: (error) => toastError(error, 'Erro ao salvar turma.'),
   });
 }
 
@@ -39,7 +44,9 @@ export function useUpdateBibleClass() {
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.detail(id) });
+      toastSuccess('Turma atualizada.');
     },
+    onError: (error) => toastError(error, 'Erro ao salvar turma.'),
   });
 }
 
@@ -47,7 +54,11 @@ export function useDeleteBibleClass() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.bibleCourse.deleteClass(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.all });
+      toastSuccess('Turma excluída.');
+    },
+    onError: (error) => toastError(error, 'Erro ao excluir turma.'),
   });
 }
 
@@ -63,10 +74,12 @@ export function useEnrollBulk(classId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (residentIds: string[]) => api.bibleCourse.enrollBulk(classId, residentIds),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.detail(classId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.all });
+      toastSuccess(`${result.enrolled} filho(s) matriculado(s).`);
     },
+    onError: (error) => toastError(error, 'Erro ao matricular.'),
   });
 }
 
@@ -77,7 +90,9 @@ export function useEnrollResident(classId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.detail(classId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.all });
+      toastSuccess('Filho matriculado.');
     },
+    onError: (error) => toastError(error, 'Erro ao matricular.'),
   });
 }
 
@@ -86,8 +101,11 @@ export function useUpdateEnrollment(classId: string) {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateBibleCourseEnrollmentInput }) =>
       api.bibleCourse.updateEnrollment(id, data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.detail(classId) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.detail(classId) });
+      toastSuccess('Matrícula atualizada.');
+    },
+    onError: (error) => toastError(error, 'Erro ao atualizar matrícula.'),
   });
 }
 
@@ -98,6 +116,8 @@ export function useRemoveEnrollment(classId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.detail(classId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.all });
+      toastSuccess('Matrícula removida.');
     },
+    onError: (error) => toastError(error, 'Erro ao remover matrícula.'),
   });
 }

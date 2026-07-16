@@ -149,6 +149,35 @@ test.describe('Curso Bíblico', () => {
     await expect(page.getByText('Matriculado').first()).toBeVisible();
   });
 
+  // Story 126: feedback de ação é toast (sonner), não texto inline no dialog.
+  test('criar turma mostra toast de sucesso', async ({ page }) => {
+    const name = `Turma Toast ${ts()}`;
+    await createClass(page, name);
+
+    await expect(page.getByText('Turma criada.')).toBeVisible();
+  });
+
+  test('erro na criação da turma mostra toast de erro (story 126)', async ({ page }) => {
+    // Só o POST de criação falha — o GET da lista segue normal.
+    await page.route('**/api/v1/bible-course/classes', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Falha proposital do e2e' }),
+      });
+    });
+
+    await page.getByRole('button', { name: 'Nova turma' }).click();
+    await page.getByLabel('Nome *').fill(`Turma Erro ${ts()}`);
+    await page.getByLabel('Casa *').selectOption({ index: 1 });
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    // A mensagem da API chega via getErrorMessage; o dialog não fecha.
+    await expect(page.getByText('Falha proposital do e2e')).toBeVisible();
+    await expect(page.getByRole('dialog')).toBeVisible();
+  });
+
   test('exclui turma e some da lista', async ({ page }) => {
     const name = `Turma Excluir ${ts()}`;
     await createClass(page, name);

@@ -35,6 +35,15 @@ function baseQuery() {
   return { data: [] as EligibleResident[], isLoading: false, isError: false, refetch: vi.fn() };
 }
 
+/** Checkbox "Selecionar todos" do cabeçalho. */
+function headerBox() {
+  return screen.getByRole('checkbox', { name: 'Selecionar todos' }) as HTMLInputElement;
+}
+/** Checkboxes das linhas (excluindo o do cabeçalho). */
+function rowBoxes() {
+  return screen.getAllByRole('checkbox', { name: /^Selecionar Filho/ }) as HTMLInputElement[];
+}
+
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => cleanup());
 
@@ -69,7 +78,7 @@ describe('EligibleResidentsPanel', () => {
     mockQuery({ data: [resident(), resident({ id: 'r2', name: 'Filho B' })] });
     render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
 
-    const boxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
+    const boxes = rowBoxes();
     expect(boxes).toHaveLength(2);
     expect(boxes.every((b) => b.checked)).toBe(true);
 
@@ -81,8 +90,7 @@ describe('EligibleResidentsPanel', () => {
     mockQuery({ data: [resident(), resident({ id: 'r2', name: 'Filho B' })] });
     render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
 
-    const boxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
-    fireEvent.click(boxes[0]); // desmarca r1
+    fireEvent.click(rowBoxes()[0]); // desmarca r1
 
     fireEvent.click(screen.getByText(/Matricular selecionados \(1\)/));
     expect(enrollMutate).toHaveBeenCalledWith(['r2']);
@@ -93,5 +101,85 @@ describe('EligibleResidentsPanel', () => {
     render(<EligibleResidentsPanel classId="c1" enrolledIds={['r1']} />);
     expect(screen.queryByText('Filho A')).not.toBeInTheDocument();
     expect(screen.getByText('Filho B')).toBeInTheDocument();
+  });
+});
+
+describe('EligibleResidentsPanel — selecionar todos (story 125)', () => {
+  const twoResidents = () => [resident(), resident({ id: 'r2', name: 'Filho B' })];
+
+  it('vem com todos marcados por padrão e cabeçalho checked', () => {
+    mockQuery({ data: twoResidents() });
+    render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
+
+    expect(headerBox().checked).toBe(true);
+    expect(headerBox().indeterminate).toBe(false);
+    expect(screen.getByText('2 de 2 selecionados')).toBeInTheDocument();
+  });
+
+  it('clicar no cabeçalho com todos marcados esvazia a seleção e desabilita o botão', () => {
+    mockQuery({ data: twoResidents() });
+    render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
+
+    fireEvent.click(headerBox());
+
+    expect(headerBox().checked).toBe(false);
+    expect(headerBox().indeterminate).toBe(false);
+    expect(rowBoxes().every((b) => !b.checked)).toBe(true);
+    expect(screen.getByText('0 de 2 selecionados')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Matricular selecionados (0)' })).toBeDisabled();
+  });
+
+  it('clicar de novo no cabeçalho remarca todos e reabilita o botão', () => {
+    mockQuery({ data: twoResidents() });
+    render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
+
+    fireEvent.click(headerBox()); // limpa
+    fireEvent.click(headerBox()); // marca todos
+
+    expect(headerBox().checked).toBe(true);
+    expect(rowBoxes().every((b) => b.checked)).toBe(true);
+    const button = screen.getByRole('button', { name: 'Matricular selecionados (2)' });
+    expect(button).toBeEnabled();
+
+    fireEvent.click(button);
+    expect(enrollMutate).toHaveBeenCalledWith(['r1', 'r2']);
+  });
+
+  it('desmarcar um filho deixa o cabeçalho indeterminate', () => {
+    mockQuery({ data: twoResidents() });
+    render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
+
+    fireEvent.click(rowBoxes()[0]);
+
+    expect(headerBox().checked).toBe(false);
+    expect(headerBox().indeterminate).toBe(true);
+    expect(screen.getByText('1 de 2 selecionados')).toBeInTheDocument();
+  });
+
+  it('remarcar a última linha desmarcada volta o cabeçalho para checked', () => {
+    mockQuery({ data: twoResidents() });
+    render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
+
+    fireEvent.click(rowBoxes()[0]); // desmarca → parcial
+    expect(headerBox().indeterminate).toBe(true);
+
+    fireEvent.click(rowBoxes()[0]); // remarca → todos
+
+    expect(headerBox().checked).toBe(true);
+    expect(headerBox().indeterminate).toBe(false);
+    expect(screen.getByText('2 de 2 selecionados')).toBeInTheDocument();
+  });
+
+  it('a partir do estado parcial, clicar no cabeçalho marca todos', () => {
+    mockQuery({ data: twoResidents() });
+    render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
+
+    fireEvent.click(rowBoxes()[0]); // parcial
+    fireEvent.click(headerBox());
+
+    expect(headerBox().checked).toBe(true);
+    expect(headerBox().indeterminate).toBe(false);
+    expect(rowBoxes().every((b) => b.checked)).toBe(true);
+    expect(screen.getByText('2 de 2 selecionados')).toBeInTheDocument();
   });
 });

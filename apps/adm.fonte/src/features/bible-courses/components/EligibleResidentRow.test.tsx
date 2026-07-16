@@ -48,6 +48,48 @@ describe('EligibleResidentRow', () => {
     expect(onToggle).toHaveBeenCalledWith('r1');
   });
 
+  it('checkbox tem aria-label com o nome do filho (sem <label> de wrapper)', () => {
+    render(<EligibleResidentRow resident={resident()} checked={false} onToggle={vi.fn()} />);
+    const box = screen.getByRole('checkbox', { name: 'Selecionar Filho A' });
+    expect(box).toBeInTheDocument();
+    expect((box as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('clicar no nome chama onToggle com o id', () => {
+    const onToggle = vi.fn();
+    render(<EligibleResidentRow resident={resident()} checked onToggle={onToggle} />);
+    fireEvent.click(screen.getByText('Filho A'));
+    expect(onToggle).toHaveBeenCalledWith('r1');
+  });
+
+  it('clicar na foto chama onToggle com o id', () => {
+    const onToggle = vi.fn();
+    render(
+      <EligibleResidentRow
+        resident={resident({ photoThumbUrl: 'thumb.jpg' })}
+        checked
+        onToggle={onToggle}
+      />,
+    );
+    fireEvent.click(screen.getByAltText('Filho A'));
+    expect(onToggle).toHaveBeenCalledWith('r1');
+  });
+
+  it('renderiza link para a ficha do filho em nova aba', () => {
+    render(<EligibleResidentRow resident={resident()} checked onToggle={vi.fn()} />);
+    const link = screen.getByRole('link', { name: 'Abrir ficha de Filho A em nova aba' });
+    expect(link).toHaveAttribute('href', '/residents/r1');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link.getAttribute('rel')).toContain('noopener');
+  });
+
+  it('clicar no link NÃO chama onToggle (o <label> de wrapper saiu)', () => {
+    const onToggle = vi.fn();
+    render(<EligibleResidentRow resident={resident()} checked onToggle={onToggle} />);
+    fireEvent.click(screen.getByRole('link', { name: 'Abrir ficha de Filho A em nova aba' }));
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
   it('renderiza a foto quando há thumbnail', () => {
     render(
       <EligibleResidentRow

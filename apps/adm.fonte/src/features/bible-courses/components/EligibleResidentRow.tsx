@@ -1,4 +1,4 @@
-import { User } from 'lucide-react';
+import { ExternalLink, User } from 'lucide-react';
 import type { EligibleResident } from '@fonte/api-client';
 import { api } from '@/lib/api';
 
@@ -15,27 +15,45 @@ function formatMonths(months: number): string {
 export function EligibleResidentRow({ resident, checked, onToggle }: Props) {
   const src = api.photoUrl(resident.photoThumbUrl);
 
+  // Sem <label> de wrapper (story 125): o link de ficha não pode alternar o
+  // checkbox. Checkbox controlado + área de conteúdo clicável, link fora dela.
   return (
-    <label className="flex items-center gap-3 border rounded px-3 py-2 cursor-pointer hover:bg-muted/50">
+    <div className="flex items-center gap-3 border rounded px-3 py-2 hover:bg-muted/50">
       <input
         type="checkbox"
-        className="h-4 w-4 shrink-0"
+        className="h-4 w-4 shrink-0 cursor-pointer"
         checked={checked}
         onChange={() => onToggle(resident.id)}
+        aria-label={`Selecionar ${resident.name}`}
       />
-      <div className="w-9 h-9 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
-        {src ? (
-          <img src={src} alt={resident.name} className="w-full h-full object-cover" />
-        ) : (
-          <User size={16} className="text-muted-foreground" />
-        )}
+      <div
+        className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+        onClick={() => onToggle(resident.id)}
+      >
+        <div className="w-9 h-9 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+          {src ? (
+            <img src={src} alt={resident.name} className="w-full h-full object-cover" />
+          ) : (
+            <User size={16} className="text-muted-foreground" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <span className="text-sm font-medium">{resident.name}</span>
+          <p className="text-xs text-muted-foreground truncate">
+            {resident.houseName} · {formatMonths(resident.monthsInTreatment)}
+          </p>
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <span className="text-sm font-medium">{resident.name}</span>
-        <p className="text-xs text-muted-foreground truncate">
-          {resident.houseName} · {formatMonths(resident.monthsInTreatment)}
-        </p>
-      </div>
-    </label>
+      <a
+        href={`/residents/${resident.id}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`Abrir ficha de ${resident.name} em nova aba`}
+        aria-label={`Abrir ficha de ${resident.name} em nova aba`}
+        className="shrink-0 text-muted-foreground hover:text-primary"
+      >
+        <ExternalLink size={14} />
+      </a>
+    </div>
   );
 }

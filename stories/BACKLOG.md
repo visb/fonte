@@ -1,10 +1,5 @@
 # Backlog
 
-## ordenação na listagem de filhos
-
-- mudar ordenação padrao para ordenar pela data de entrada, com os mais recentes aparecendo primeiro
-- criar um select de ordenaçao na listagem, junto com os filtros
-
 ## preferencias do usuario
 
 - criar mecanismo para salvar preferencias gerais do sistema

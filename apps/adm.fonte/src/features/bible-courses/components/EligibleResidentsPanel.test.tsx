@@ -102,6 +102,21 @@ describe('EligibleResidentsPanel', () => {
     expect(screen.queryByText('Filho A')).not.toBeInTheDocument();
     expect(screen.getByText('Filho B')).toBeInTheDocument();
   });
+
+  // Story 126: o erro da matrícula em lote virou toast no hook (coberto em
+  // useBibleCourses.test.tsx) — o painel não mostra mais o texto inline.
+  it('não renderiza erro de mutation inline', () => {
+    mockQuery({ data: [resident()] });
+    useEnrollBulk.mockReturnValue({
+      mutate: enrollMutate,
+      isPending: false,
+      error: new Error('boom'),
+    });
+    render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
+    expect(screen.queryByText(/Erro ao matricular|boom/)).not.toBeInTheDocument();
+    // A lista segue utilizável apesar do erro.
+    expect(screen.getByText('Filho A')).toBeInTheDocument();
+  });
 });
 
 describe('EligibleResidentsPanel — selecionar todos (story 125)', () => {

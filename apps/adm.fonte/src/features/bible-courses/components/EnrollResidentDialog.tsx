@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { getErrorMessage } from '@/lib/errors';
 import { useDebounce } from '@/lib/useDebounce';
 import { useInfiniteResidents } from '@/features/residents/hooks/useResidents';
 import { useEnrollResident } from '../hooks/useBibleCourses';
@@ -49,12 +48,6 @@ export function EnrollResidentDialog({ open, classId, enrolledIds, onClose }: Pr
               autoFocus
             />
           </div>
-
-          {enrollMutation.error && (
-            <p className="text-xs text-destructive">
-              {getErrorMessage(enrollMutation.error, 'Erro ao matricular.')}
-            </p>
-          )}
 
           <div className="max-h-72 overflow-y-auto space-y-1">
             {isLoading ? (

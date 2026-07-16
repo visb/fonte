@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { getErrorMessage } from '@/lib/errors';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { useCreateBibleClass, useUpdateBibleClass } from '../hooks/useBibleCourses';
 import { bibleClassSchema, type BibleClassFormData, addDays } from '../lib/bibleCourseSchema';
@@ -72,8 +71,9 @@ export function BibleClassDialog({ open, klass, defaultStartDate, onClose }: Pro
     }
   };
 
+  // Erro de mutation é feedback de ação → toast, disparado no hook (story 126).
+  // Os erros de campo (`errors.*`) continuam inline, ao lado do campo.
   const isPending = createMutation.isPending || updateMutation.isPending;
-  const mutationError = createMutation.error || updateMutation.error;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -123,12 +123,6 @@ export function BibleClassDialog({ open, klass, defaultStartDate, onClose }: Pro
               <Label htmlFor="bc-notes">Observações</Label>
               <Input id="bc-notes" {...register('notes')} placeholder="Opcional" />
             </div>
-
-            {mutationError && (
-              <p className="text-xs text-destructive">
-                {getErrorMessage(mutationError, 'Erro ao salvar turma.')}
-              </p>
-            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>

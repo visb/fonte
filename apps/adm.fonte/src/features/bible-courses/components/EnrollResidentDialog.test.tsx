@@ -64,9 +64,14 @@ describe('EnrollResidentDialog', () => {
     expect(screen.getByText('Nenhum filho disponível.')).toBeInTheDocument();
   });
 
-  it('erro de matrícula é exibido', () => {
+  // Story 126: o erro da matrícula virou toast no hook `useEnrollResident`
+  // (coberto em useBibleCourses.test.tsx) — sem isso o erro apareceria duas
+  // vezes (toast + inline).
+  it('não renderiza erro de mutation inline', () => {
     enrollState = { isPending: false, error: new Error('falhou') };
     render(<EnrollResidentDialog open classId="c1" enrolledIds={[]} onClose={vi.fn()} />);
-    expect(screen.getByText(/falhou|Erro ao matricular/)).toBeInTheDocument();
+    expect(screen.queryByText(/falhou|Erro ao matricular/)).not.toBeInTheDocument();
+    // A lista segue utilizável apesar do erro.
+    expect(screen.getByText('Filho Ana')).toBeInTheDocument();
   });
 });

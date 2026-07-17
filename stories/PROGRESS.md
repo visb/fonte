@@ -38,7 +38,7 @@ Ordem: 125 → 126 → 127 → 128 → 129 → 130. Fonte de verdade: esta seç�
 | 1 | 125 — sugeridos: selecionar todos + abrir filho em nova aba | [OK] | unit 1214/1214 · cov adm 92% | e73cf01 | 81c45e8 |
 | 2 | 126 — adotar toast (sonner) no adm.fonte | [OK] | unit 1230/1230 · cov 92.03% | 4b34010 | 824e972 |
 | 3 | 127 — marcar "já fez" o curso bíblico fora do sistema | [OK] | api 1206/1206 · e2e 468/468 · adm unit 1248/1248 · cov escopo ≥90 | aa1a6c7 | ea544cd |
-| 4 | 128 — assinatura do usuário logado nos documentos | [ ] | | | |
+| 4 | 128 — assinatura do usuário logado nos documentos | [OK] | api 1220/1220 · e2e 473/473 · adm unit 1259/1259 · cov escopo ≥90 | 63eab0e | c827276 |
 | 5 | 129 — ordenação na listagem de filhos | [ ] | | | |
 | 6 | 130 — preferências do usuário + filtros persistidos | [ ] | | | |
 
@@ -84,6 +84,16 @@ Playwright bible-courses story-127 PASS · cov escopo ≥90 — commit: aa1a6c7 
 forFeature faltando, corrigido pelo orquestrador); retomado via SendMessage do transcript. As 8
 falhas de `test:adm` (Playwright) em features/residents seguem pré-existentes (confirmado por stash;
 superconjunto na main).
+
+[OK] 128 — testes: api unit 1220/1220 · e2e 473/473 · adm unit 1259/1259 · api-client 260/260 · cov
+`document-template` 95.03% / `staff` 93.2% (API escopo) · adm global 92.02% st (catraca exit 0) —
+commit: 63eab0e — merge: c827276 — 2026-07-17. 1º spawn deixou a story quase completa; retomada
+partiu do diff não commitado na branch (não recomeçou do zero). Correção: 3 asserts em
+`document-template.service.spec.ts` checavam substring `doc-signature`/`doc-signature-img` que também
+aparece no CSS de `wrapPage` → apertados p/ markup real do corpo. Playwright `document-templates` 12/12;
+`residents.spec.ts` 6 failed/22 passed **idêntico na main via stash** (pré-existente, zero regressão).
+PENDENTE-MANUAL: upload de bucket mockado (sem S3 no teste, mesmo padrão da foto); sem spec Playwright
+dedicado ao desenho no canvas (frágil; coberto por unit — `SignatureDialog`/`AttachmentsTab`).
 
 ## Resumo final
 

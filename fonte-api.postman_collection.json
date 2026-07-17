@@ -159,7 +159,8 @@
                 "staff",
                 "me"
               ]
-            }
+            },
+            "description": "Retorna o perfil do staff logado. Inclui `photoUrl` e `signatureUrl` (story 128), ambos assinados na leitura quando armazenados no bucket."
           }
         },
         {
@@ -213,6 +214,34 @@
                 "photo"
               ]
             }
+          }
+        },
+        {
+          "name": "Upload My Signature",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/staff/me/signature",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "me",
+                "signature"
+              ]
+            },
+            "description": "Story 128 — envia a assinatura desenhada (PNG transparente, fundo transparente). Substitui a anterior. O GET /staff/me passa a retornar `signatureUrl` (assinada na leitura)."
           }
         },
         {

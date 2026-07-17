@@ -72,6 +72,20 @@ export class StaffController {
     return this.staffService.uploadPhotoMe(user.userId, file);
   }
 
+  // Story 128 — assinatura do próprio usuário. Exige PNG (decisão 1 pede fundo
+  // transparente, que só o PNG garante). Espelha me/photo.
+  @Post('me/signature')
+  @UseInterceptors(FileInterceptor('file', photoOptions))
+  uploadSignatureMe(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<Staff> {
+    if (!file) throw new BadRequestException('Nenhum arquivo enviado');
+    if (file.mimetype !== 'image/png') throw new BadRequestException('A assinatura deve ser um PNG');
+    if (file.size > 5 * 1024 * 1024) throw new BadRequestException('Arquivo muito grande: máximo 5 MB');
+    return this.staffService.uploadSignatureMe(user.userId, file);
+  }
+
   @Get()
   @Roles(Role.ADMIN, Role.COORDINATOR)
   findAll(@CurrentUser() user: AuthenticatedUser): Promise<Staff[]> {

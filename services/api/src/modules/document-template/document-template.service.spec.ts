@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { DocumentTemplateService } from './document-template.service';
 import { DocumentTemplate } from './document-template.entity';
 import { Relative } from '../relative/relative.entity';
+import { Staff } from '../staff/staff.entity';
 import { Resident } from '../resident/resident.entity';
 import { StorageService } from '../storage/storage.service';
 import { extractImageUrls } from '../storage/storage.util';
@@ -37,10 +38,12 @@ function makeService(
   repo: ReturnType<typeof makeRepo>,
   relativeRepo = makeRepo(),
   storage: StorageService = makeStorage(),
+  staffRepo = makeRepo(),
 ) {
   return new DocumentTemplateService(
     repo as unknown as Repository<DocumentTemplate>,
     relativeRepo as unknown as Repository<Relative>,
+    staffRepo as unknown as Repository<Staff>,
     storage,
   );
 }
@@ -256,6 +259,7 @@ describe('DocumentTemplateService.uploadImage', () => {
     const service = new DocumentTemplateService(
       makeRepo() as unknown as Repository<DocumentTemplate>,
       makeRepo() as unknown as Repository<Relative>,
+      makeRepo() as unknown as Repository<Staff>,
       storage,
     );
 
@@ -416,5 +420,142 @@ describe('DocumentTemplateService.renderForResident', () => {
     // Story 29 — o tracejado de célula de tabela sem borda é guia SÓ do editor; o PDF
     // mantém a tabela borderless e NÃO recebe a regra `dashed`.
     expect(html).not.toContain('dashed');
+  });
+});
+
+// Story 128 — a variável {{signature}} injeta o bloco de assinatura do usuário
+// que gera o documento: imagem + linha de 25 "_" + nome + label PT da role.
+describe('DocumentTemplateService signature block (story 128)', () => {
+  const SIGNATURE_LINE = '_'.repeat(25);
+
+  function makeSigningStorage(overrides: Partial<StorageService> = {}): StorageService {
+    return makeStorage({
+      canonicalizeS3Url: ((u: string) => u) as never,
+      isS3Url: (() => true) as never,
+      signUrl: (async (u: string) => `${u}?X-Amz-signed`) as never,
+      ...overrides,
+    });
+  }
+
+  function makeStaffRepo(staff: unknown) {
+    return makeRepo({ findOne: jest.fn().mockResolvedValue(staff) });
+  }
+
+  it('renders <img>, the 25-underscore line, name and PT role label with a signature', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: 'Eu, {{name}}. {{signature}}' }),
+    });
+    const staffRepo = makeStaffRepo({
+      name: 'João Silva',
+      signatureUrl: 'https://s3/sig.png',
+      user: { role: 'COORDINATOR' },
+    });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }), makeSigningStorage(), staffRepo);
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    expect(html).toContain('<img class="doc-signature-img" src="https://s3/sig.png?X-Amz-signed"');
+    expect(html).toContain(SIGNATURE_LINE);
+    expect(html).not.toContain('_'.repeat(26));
+    expect(html).toContain('João Silva');
+    expect(html).toContain('Coordenador');
+    expect(html).not.toContain('{{signature}}');
+    // as demais variáveis seguem substituídas
+    expect(html).toContain('Eu, Ana.');
+  });
+
+  it('maps ADMIN and SERVANT role labels', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '{{signature}}' }),
+    });
+    const admin = makeService(
+      repo,
+      makeRepo({ findOne: jest.fn().mockResolvedValue(null) }),
+      makeSigningStorage(),
+      makeStaffRepo({ name: 'Adm', signatureUrl: 'https://s3/a.png', user: { role: 'ADMIN' } }),
+    );
+    const adminHtml = await admin.renderForResident('tpl-1', { id: 'r', name: 'x' } as Resident, 'u');
+    expect(adminHtml).toContain('Administrador');
+
+    const servant = makeService(
+      makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '{{signature}}' }) }),
+      makeRepo({ findOne: jest.fn().mockResolvedValue(null) }),
+      makeSigningStorage(),
+      makeStaffRepo({ name: 'Servo', signatureUrl: 'https://s3/s.png', user: { role: 'SERVANT' } }),
+    );
+    const servantHtml = await servant.renderForResident('tpl-1', { id: 'r', name: 'x' } as Resident, 'u');
+    expect(servantHtml).toContain('Servo');
+  });
+
+  it('renders the line + name but NO <img> when the signer has no signature', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '{{signature}}' }),
+    });
+    const staffRepo = makeStaffRepo({ name: 'João Silva', signatureUrl: null, user: { role: 'COORDINATOR' } });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }), makeSigningStorage(), staffRepo);
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    expect(html).toContain(SIGNATURE_LINE);
+    expect(html).toContain('João Silva');
+    // sem <img> no corpo — o CSS `.doc-signature-img{}` sempre existe no <style>,
+    // então checamos a tag de imagem real, não a classe.
+    expect(html).not.toContain('<img class="doc-signature-img"');
+  });
+
+  it('never leaves {{signature}} raw when there is no signer at all', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: 'Assino: {{signature}}' }),
+    });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident);
+
+    expect(html).not.toContain('{{signature}}');
+    expect(html).toContain(SIGNATURE_LINE);
+  });
+
+  it('does not add any signature block when the template omits {{signature}}', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: 'Só o nome: {{name}}' }),
+    });
+    const staffRepo = makeStaffRepo({ name: 'João', signatureUrl: 'https://s3/sig.png', user: { role: 'ADMIN' } });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }), makeSigningStorage(), staffRepo);
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    // sem bloco de assinatura no corpo — o CSS `.doc-signature{}` sempre existe
+    // no <style>, então checamos a div real do bloco.
+    expect(html).not.toContain('<div class="doc-signature">');
+    expect(html).toContain('Só o nome: Ana');
+  });
+
+  it('signs the signature URL before injecting it (story 76 regression)', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '{{signature}}' }),
+    });
+    const signUrl = jest.fn().mockResolvedValue('https://s3/sig.png?X-Amz-signed');
+    const storage = makeSigningStorage({ signUrl: signUrl as never });
+    const staffRepo = makeStaffRepo({ name: 'João', signatureUrl: 'https://s3/sig.png', user: { role: 'ADMIN' } });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }), storage, staffRepo);
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    expect(signUrl).toHaveBeenCalledWith('https://s3/sig.png');
+    expect(html).toContain('src="https://s3/sig.png?X-Amz-signed"');
+    expect(html).not.toContain('src="https://s3/sig.png"');
+  });
+
+  it('resolves no signer when the user has no staff profile', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '{{signature}}' }),
+    });
+    const staffRepo = makeStaffRepo(null);
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }), makeSigningStorage(), staffRepo);
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'ghost-user');
+
+    expect(html).toContain(SIGNATURE_LINE);
+    expect(html).not.toContain('<img class="doc-signature-img"');
   });
 });

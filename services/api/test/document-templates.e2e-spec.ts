@@ -289,4 +289,69 @@ describe('DocumentTemplateController (e2e)', () => {
       expect(res.body.url).toContain('/uploads/documents/');
     });
   });
+
+  // ── {{signature}} variable — signer comes from the request token (story 128) ──
+
+  describe('signature variable rendering (story 128)', () => {
+    let templateId: string;
+    let residentId: string;
+    let adminName: string;
+    let coordName: string;
+
+    beforeAll(async () => {
+      const name = `Termo assinatura ${tag}`;
+      createdNames.push(name);
+      const tpl = await request(app.getHttpServer())
+        .post(`${BASE}/document-templates`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name, content: 'Assinado por: {{signature}}' })
+        .expect(201);
+      templateId = tpl.body.id;
+
+      const residents = await request(app.getHttpServer())
+        .get(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      residentId = residents.body.data[0].id;
+
+      // Admin configura a própria assinatura (PNG) — o signer sai do token.
+      await request(app.getHttpServer())
+        .post(`${BASE}/staff/me/signature`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .attach('file', TINY_PNG, { filename: 'sig.png', contentType: 'image/png' })
+        .expect(201);
+
+      const adminMe = await request(app.getHttpServer())
+        .get(`${BASE}/staff/me`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      adminName = adminMe.body.name;
+      const coordMe = await request(app.getHttpServer())
+        .get(`${BASE}/staff/me`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      coordName = coordMe.body.name;
+    });
+
+    it('render embeds the signature block of the TOKEN user, never raw {{signature}}', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/documents/${templateId}/render`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(res.text).toContain('doc-signature');
+      expect(res.text).toContain('<img class="doc-signature-img"');
+      expect(res.text).toContain(adminName);
+      expect(res.text).not.toContain('{{signature}}');
+    });
+
+    it('a different token user yields a different signer (per-token signature)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/documents/${templateId}/render`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      expect(res.text).toContain(coordName);
+      // nomes distintos comprovam que a assinatura vem do usuário do token
+      expect(coordName).not.toBe(adminName);
+    });
+  });
 });

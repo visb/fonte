@@ -311,6 +311,61 @@ describe('StaffService.uploadPhoto', () => {
   });
 });
 
+describe('StaffService.uploadSignature (story 128)', () => {
+  it('stores the CANONICAL url in signature_url and deletes the previous file', async () => {
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', signatureUrl: 'old.png' }) });
+    const storage = {
+      delete: jest.fn().mockResolvedValue(undefined),
+      uniqueFilename: jest.fn().mockReturnValue('sig.png'),
+      upload: jest.fn().mockResolvedValue('https://cdn/signatures/sig.png'),
+    };
+    const service = makeService(staffRepo, makeRepo(), makeRepo(), storage as never);
+
+    await service.uploadSignature('staff-1', { originalname: 's.png', buffer: Buffer.from(''), mimetype: 'image/png' } as never);
+
+    expect(storage.delete).toHaveBeenCalledWith('old.png');
+    expect(storage.upload).toHaveBeenCalledWith('signatures', 'sig.png', expect.any(Buffer), 'image/png');
+    // URL canônica (sem query de assinatura) — a assinatura de acesso é aplicada na leitura.
+    expect(staffRepo.update).toHaveBeenCalledWith('staff-1', { signatureUrl: 'https://cdn/signatures/sig.png' });
+  });
+
+  it('does not delete when there is no previous signature', async () => {
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', signatureUrl: null }) });
+    const storage = {
+      delete: jest.fn().mockResolvedValue(undefined),
+      uniqueFilename: jest.fn().mockReturnValue('sig.png'),
+      upload: jest.fn().mockResolvedValue('https://cdn/signatures/sig.png'),
+    };
+    const service = makeService(staffRepo, makeRepo(), makeRepo(), storage as never);
+
+    await service.uploadSignature('staff-1', { originalname: 's.png', buffer: Buffer.from(''), mimetype: 'image/png' } as never);
+
+    expect(storage.delete).not.toHaveBeenCalled();
+  });
+
+  it('uploadSignatureMe resolves the staff by userId then uploads', async () => {
+    const staffRepo = makeRepo({
+      findOne: jest
+        .fn()
+        // findByUserId lookup (relations user/house)
+        .mockResolvedValueOnce({ id: 'staff-1', userId: 'user-1', signatureUrl: null })
+        // findOne(id) inside uploadSignature
+        .mockResolvedValue({ id: 'staff-1', signatureUrl: null }),
+    });
+    const permRepo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
+    const storage = {
+      delete: jest.fn(),
+      uniqueFilename: jest.fn().mockReturnValue('sig.png'),
+      upload: jest.fn().mockResolvedValue('https://cdn/signatures/sig.png'),
+    };
+    const service = makeService(staffRepo, makeRepo(), permRepo, storage as never);
+
+    await service.uploadSignatureMe('user-1', { originalname: 's.png', buffer: Buffer.from(''), mimetype: 'image/png' } as never);
+
+    expect(staffRepo.update).toHaveBeenCalledWith('staff-1', { signatureUrl: 'https://cdn/signatures/sig.png' });
+  });
+});
+
 describe('StaffService.remove', () => {
   it('deactivates and soft-deletes both user and staff', async () => {
     const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }) });

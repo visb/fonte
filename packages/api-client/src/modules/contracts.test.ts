@@ -856,6 +856,13 @@ describe('staff module', () => {
       headers: { 'Content-Type': undefined },
     });
   });
+  it('uploadMySignature envia FormData', async () => {
+    const form = new FormData();
+    await m.uploadMySignature(form);
+    expect(http.post).toHaveBeenCalledWith('/staff/me/signature', form, {
+      headers: { 'Content-Type': undefined },
+    });
+  });
   it('list busca staff', async () => {
     await m.list();
     expect(http.get).toHaveBeenCalledWith('/staff');

@@ -4,9 +4,10 @@ import { DocumentTemplate } from './document-template.entity';
 import { DocumentTemplateController } from './document-template.controller';
 import { DocumentTemplateService } from './document-template.service';
 import { Relative } from '../relative/relative.entity';
+import { Staff } from '../staff/staff.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([DocumentTemplate, Relative])],
+  imports: [TypeOrmModule.forFeature([DocumentTemplate, Relative, Staff])],
   controllers: [DocumentTemplateController],
   providers: [DocumentTemplateService],
   exports: [DocumentTemplateService],

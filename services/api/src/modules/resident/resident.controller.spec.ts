@@ -186,16 +186,17 @@ describe('ResidentController', () => {
   it('renderDocument writes HTML to the response', async () => {
     const { c } = make();
     const res = { setHeader: jest.fn(), send: jest.fn() } as never;
-    await c.renderDocument('r1', 't1', res);
-    expect(docTpl.renderForResident).toHaveBeenCalledWith('t1', { id: 'r1', name: 'Ana' });
+    // Story 128 — o usuário do token é repassado ao service como signer.
+    await c.renderDocument('r1', 't1', { userId: 'u1' } as never, res);
+    expect(docTpl.renderForResident).toHaveBeenCalledWith('t1', { id: 'r1', name: 'Ana' }, 'u1');
     expect((res as { send: jest.Mock }).send).toHaveBeenCalledWith('<html></html>');
   });
 
   it('downloadPdf streams the PDF with headers', async () => {
     const { c } = make();
     const res = { setHeader: jest.fn(), send: jest.fn() } as never;
-    await c.downloadPdf('r1', 't1', res);
-    expect(docTpl.generatePdf).toHaveBeenCalledWith('t1', { id: 'r1', name: 'Ana' });
+    await c.downloadPdf('r1', 't1', { userId: 'u1' } as never, res);
+    expect(docTpl.generatePdf).toHaveBeenCalledWith('t1', { id: 'r1', name: 'Ana' }, 'u1');
     expect((res as { setHeader: jest.Mock }).setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
     expect((res as { send: jest.Mock }).send).toHaveBeenCalled();
   });

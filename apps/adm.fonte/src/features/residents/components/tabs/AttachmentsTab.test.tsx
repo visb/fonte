@@ -6,6 +6,7 @@ const hooks = {
   signedDocs: [] as unknown[],
   attachments: [] as unknown[],
   templates: [] as unknown[],
+  me: { signatureUrl: null } as { signatureUrl: string | null },
 };
 const addAttachmentMutate = vi.fn();
 const deleteAttachmentMutate = vi.fn();
@@ -21,6 +22,18 @@ vi.mock('../../hooks/useResidents', () => ({
 }));
 vi.mock('@/features/settings/hooks/useDocumentTemplates', () => ({
   useDocumentTemplates: () => ({ data: hooks.templates }),
+}));
+vi.mock('@/features/staff/hooks/useStaff', () => ({
+  useStaffMe: () => ({ data: hooks.me }),
+}));
+vi.mock('@/features/auth/components/SignatureDialog', () => ({
+  SignatureDialog: ({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved?: () => void }) =>
+    open ? (
+      <div data-testid="signature-dialog">
+        <button data-testid="sig-save" onClick={() => { onSaved?.(); onClose(); }}>salvar</button>
+        <button data-testid="sig-close" onClick={() => onClose()}>fechar</button>
+      </div>
+    ) : null,
 }));
 vi.mock('../MissingFieldsDialog', () => ({
   MissingFieldsDialog: ({ open }: { open: boolean }) =>
@@ -47,6 +60,7 @@ beforeEach(() => {
   hooks.signedDocs = [];
   hooks.attachments = [];
   hooks.templates = [];
+  hooks.me = { signatureUrl: null };
 });
 afterEach(() => cleanup());
 
@@ -112,6 +126,60 @@ describe('AttachmentsTab', () => {
     fireEvent.click(screen.getByRole('button', { name: /Baixar PDF/ }));
     expect(await screen.findByTestId('missing-dialog')).toBeInTheDocument();
     expect(downloadDocumentPdf).not.toHaveBeenCalled();
+  });
+
+  // ─── Assinatura do usuário (story 128) ──────────────────────────────────────
+
+  it('template com {{signature}} e usuário sem assinatura abre o diálogo e NÃO gera', async () => {
+    hooks.me = { signatureUrl: null };
+    hooks.templates = [template({ isRequired: true, content: 'Assino: {{signature}}' })];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    fireEvent.click(screen.getByRole('button', { name: /Baixar PDF/ }));
+    expect(await screen.findByTestId('signature-dialog')).toBeInTheDocument();
+    expect(downloadDocumentPdf).not.toHaveBeenCalled();
+  });
+
+  it('salvar a assinatura no diálogo dispara a geração', async () => {
+    downloadDocumentPdf.mockResolvedValue(new Blob(['pdf']));
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:1'), revokeObjectURL: vi.fn() });
+    hooks.me = { signatureUrl: null };
+    hooks.templates = [template({ isRequired: true, content: 'Assino: {{signature}}' })];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    fireEvent.click(screen.getByRole('button', { name: /Baixar PDF/ }));
+    fireEvent.click(await screen.findByTestId('sig-save'));
+    await waitFor(() => expect(downloadDocumentPdf).toHaveBeenCalledWith('r1', 't1'));
+  });
+
+  it('fechar o diálogo de assinatura sem salvar NÃO gera', async () => {
+    hooks.me = { signatureUrl: null };
+    hooks.templates = [template({ isRequired: true, content: 'Assino: {{signature}}' })];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    fireEvent.click(screen.getByRole('button', { name: /Baixar PDF/ }));
+    fireEvent.click(await screen.findByTestId('sig-close'));
+    expect(downloadDocumentPdf).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('signature-dialog')).not.toBeInTheDocument();
+  });
+
+  it('usuário COM assinatura gera direto, sem abrir o diálogo', async () => {
+    downloadDocumentPdf.mockResolvedValue(new Blob(['pdf']));
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:1'), revokeObjectURL: vi.fn() });
+    hooks.me = { signatureUrl: 'https://cdn/sig.png' };
+    hooks.templates = [template({ isRequired: true, content: 'Assino: {{signature}}' })];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    fireEvent.click(screen.getByRole('button', { name: /Baixar PDF/ }));
+    await waitFor(() => expect(downloadDocumentPdf).toHaveBeenCalledWith('r1', 't1'));
+    expect(screen.queryByTestId('signature-dialog')).not.toBeInTheDocument();
+  });
+
+  it('{{signature}} não é tratada como campo faltante do filho (regressão ALWAYS_AVAILABLE)', async () => {
+    downloadDocumentPdf.mockResolvedValue(new Blob(['pdf']));
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:1'), revokeObjectURL: vi.fn() });
+    hooks.me = { signatureUrl: 'https://cdn/sig.png' };
+    hooks.templates = [template({ isRequired: true, content: '{{signature}}' })];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    fireEvent.click(screen.getByRole('button', { name: /Baixar PDF/ }));
+    await waitFor(() => expect(downloadDocumentPdf).toHaveBeenCalledWith('r1', 't1'));
+    expect(screen.queryByTestId('missing-dialog')).not.toBeInTheDocument();
   });
 
   it('erro ao gerar mostra alerta dispensável', async () => {

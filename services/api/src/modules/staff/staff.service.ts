@@ -208,6 +208,25 @@ export class StaffService {
     return this.uploadPhoto(staff.id, file);
   }
 
+  // Story 128 — assinatura desenhada no perfil. Espelha uploadPhoto: apaga o
+  // arquivo anterior (decisão 8 — redesenhar substitui) e grava a URL CANÔNICA
+  // (regra da story 76); a assinatura de acesso é aplicada só na leitura.
+  async uploadSignature(id: string, file: Express.Multer.File): Promise<Staff> {
+    const staff = await this.findOne(id);
+    if (staff.signatureUrl) {
+      await this.storageService.delete(staff.signatureUrl);
+    }
+    const filename = this.storageService.uniqueFilename(file.originalname);
+    const url = await this.storageService.upload('signatures', filename, file.buffer, file.mimetype);
+    await this.staffRepository.update(id, { signatureUrl: url });
+    return this.findOne(id);
+  }
+
+  async uploadSignatureMe(userId: string, file: Express.Multer.File): Promise<Staff> {
+    const staff = await this.findByUserId(userId);
+    return this.uploadSignature(staff.id, file);
+  }
+
   async remove(id: string): Promise<void> {
     const staff = await this.findOne(id);
     await this.userRepository.update(staff.userId, { isActive: false });

@@ -2,11 +2,29 @@ import { ConflictException, Injectable, Logger, NotFoundException, OnModuleDestr
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Browser } from 'puppeteer';
+import { Role } from '@fonte/types';
 import { DOCUMENT_PRINT_CSS } from '@fonte/doc-styles';
 import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
+import { Staff } from '../staff/staff.entity';
 import { DocumentTemplate } from './document-template.entity';
 import { StorageService } from '../storage/storage.service';
+
+// Label PT da role impressa sob a assinatura (story 128, decisão 3).
+const ROLE_LABEL_PT: Record<string, string> = {
+  [Role.ADMIN]: 'Administrador',
+  [Role.COORDINATOR]: 'Coordenador',
+  [Role.SERVANT]: 'Servo',
+};
+
+// Quem assina o documento: dados já resolvidos (nome, role e URL da assinatura
+// JÁ ASSINADA de acesso). Pré-resolvido fora do applyVariables, que é síncrono
+// e não pode aguardar o signUrl (decisão 7 — regra da story 76).
+interface DocumentSigner {
+  name: string;
+  role: Role | null;
+  signatureUrl: string | null;
+}
 
 @Injectable()
 export class DocumentTemplateService implements OnModuleDestroy {
@@ -15,6 +33,8 @@ export class DocumentTemplateService implements OnModuleDestroy {
     private repo: Repository<DocumentTemplate>,
     @InjectRepository(Relative)
     private relativeRepo: Repository<Relative>,
+    @InjectRepository(Staff)
+    private staffRepo: Repository<Staff>,
     private storageService: StorageService,
   ) {}
 
@@ -40,9 +60,9 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return this.browserPromise;
   }
 
-  async generatePdf(templateId: string, resident: Resident): Promise<{ buffer: Buffer; filename: string }> {
+  async generatePdf(templateId: string, resident: Resident, signerUserId?: string): Promise<{ buffer: Buffer; filename: string }> {
     const template = await this.findOne(templateId);
-    const html = await this.renderForResident(templateId, resident);
+    const html = await this.renderForResident(templateId, resident, signerUserId);
     const filename = this.slugify(`${resident.name} ${template.name}`) + '.pdf';
     const browser = await this.getBrowser();
     const page = await browser.newPage();
@@ -168,16 +188,50 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return { url };
   }
 
-  async renderForResident(templateId: string, resident: Resident): Promise<string> {
+  async renderForResident(templateId: string, resident: Resident, signerUserId?: string): Promise<string> {
     const template = await this.findOne(templateId);
     const responsible = await this.relativeRepo.findOne({
       where: { residentId: resident.id, isResponsible: true },
     });
-    const content = this.applyVariables(template.content, resident, responsible);
+    const signer = await this.resolveSigner(signerUserId);
+    const content = this.applyVariables(template.content, resident, responsible, signer);
     return this.wrapPage(template.name, content);
   }
 
-  private applyVariables(content: string, resident: Resident, responsible: Relative | null): string {
+  // Resolve o staff que está gerando o documento e pré-assina a URL da sua
+  // assinatura (decisão 7): applyVariables é síncrono e roda depois do findOne
+  // que já assinou o conteúdo, então a URL da imagem tem que chegar pronta.
+  private async resolveSigner(userId?: string): Promise<DocumentSigner | null> {
+    if (!userId) return null;
+    const staff = await this.staffRepo.findOne({ where: { userId }, relations: ['user'] });
+    if (!staff) return null;
+    let signatureUrl: string | null = null;
+    if (staff.signatureUrl) {
+      const canonical = this.storageService.canonicalizeS3Url(staff.signatureUrl);
+      signatureUrl = this.storageService.isS3Url(canonical)
+        ? await this.storageService.signUrl(canonical)
+        : staff.signatureUrl;
+    }
+    return { name: staff.name, role: staff.user?.role ?? null, signatureUrl };
+  }
+
+  // Bloco da assinatura (story 128, decisão 3): imagem acima da linha (25 "_"),
+  // nome e label da role abaixo. Sem imagem, sai só a linha + identificação —
+  // o documento nunca imprime {{signature}} cru.
+  private buildSignatureBlock(signer: DocumentSigner | null): string {
+    const line = '_'.repeat(25);
+    const img = signer?.signatureUrl
+      ? `<img class="doc-signature-img" src="${signer.signatureUrl}" alt="Assinatura"/>`
+      : '';
+    const name = signer?.name
+      ? `<div class="doc-signature-name">${signer.name}</div>`
+      : '';
+    const roleLabel = signer?.role ? (ROLE_LABEL_PT[signer.role] ?? '') : '';
+    const role = roleLabel ? `<div class="doc-signature-role">${roleLabel}</div>` : '';
+    return `<div class="doc-signature">${img}<div class="doc-signature-line">${line}</div>${name}${role}</div>`;
+  }
+
+  private applyVariables(content: string, resident: Resident, responsible: Relative | null, signer?: DocumentSigner | null): string {
     const MARITAL_PT: Record<string, string> = {
       SINGLE: 'Solteiro(a)', MARRIED: 'Casado(a)', DIVORCED: 'Divorciado(a)',
     };
@@ -210,6 +264,10 @@ export class DocumentTemplateService implements OnModuleDestroy {
     for (const [key, value] of Object.entries(vars)) {
       result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
     }
+    // {{signature}} sai só quando o template a usa. Substituição por função para
+    // não interpretar `$` da URL assinada como padrão de replace.
+    const signatureBlock = this.buildSignatureBlock(signer ?? null);
+    result = result.replace(/\{\{signature\}\}/g, () => signatureBlock);
     return result;
   }
 
@@ -252,6 +310,13 @@ export class DocumentTemplateService implements OnModuleDestroy {
     /* Shared document typography/layout — single source of truth used by BOTH
        this PDF and the editor's A4 frame (story 24). Do not inline rules here. */
     ${DOCUMENT_PRINT_CSS}
+    /* Signature block (story 128). Fixed image height so the drawn signature
+       never pushes the A4 pagination (story 24 convention). */
+    .doc-signature{margin-top:24px}
+    .doc-signature-img{display:block;height:64px;width:auto;max-width:280px;object-fit:contain}
+    .doc-signature-line{font-family:inherit;letter-spacing:1px;line-height:1;margin-bottom:2px}
+    .doc-signature-name{font-weight:600}
+    .doc-signature-role{color:#333}
     /* PDF-document-only chrome (the on-screen "Imprimir" button). */
     .print-btn{position:fixed;top:16px;right:16px;background:#1a1a1a;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit}
     .print-btn:hover{background:#333}

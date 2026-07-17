@@ -6,6 +6,7 @@ function svc() {
     findByUserId: jest.fn().mockResolvedValue({ id: 's-me' }),
     updateMe: jest.fn().mockResolvedValue({ id: 's-me' }),
     uploadPhotoMe: jest.fn().mockResolvedValue({ id: 's-me' }),
+    uploadSignatureMe: jest.fn().mockResolvedValue({ id: 's-me' }),
     uploadPhoto: jest.fn().mockResolvedValue({ id: 's1' }),
     findAll: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue({ id: 's1' }),
@@ -62,6 +63,30 @@ describe('StaffController', () => {
     const s = svc();
     await new StaffController(s as never, attSvc() as never).uploadPhotoMe(user, img);
     expect(s.uploadPhotoMe).toHaveBeenCalledWith('u1', img);
+  });
+
+  // ─── Signature (story 128) ──────────────────────────────────────────────────
+
+  it('uploadSignatureMe rejects a missing file', () => {
+    expect(() => new StaffController(svc() as never, attSvc() as never).uploadSignatureMe(user, undefined)).toThrow(BadRequestException);
+  });
+
+  it('uploadSignatureMe rejects a non-PNG (transparency requires PNG)', () => {
+    expect(() =>
+      new StaffController(svc() as never, attSvc() as never).uploadSignatureMe(user, { mimetype: 'image/jpeg', size: 1 } as Express.Multer.File),
+    ).toThrow(BadRequestException);
+  });
+
+  it('uploadSignatureMe rejects a file over 5 MB', () => {
+    expect(() =>
+      new StaffController(svc() as never, attSvc() as never).uploadSignatureMe(user, { mimetype: 'image/png', size: 6 * 1024 * 1024 } as Express.Multer.File),
+    ).toThrow(BadRequestException);
+  });
+
+  it('uploadSignatureMe accepts a valid PNG and delegates', async () => {
+    const s = svc();
+    await new StaffController(s as never, attSvc() as never).uploadSignatureMe(user, img);
+    expect(s.uploadSignatureMe).toHaveBeenCalledWith('u1', img);
   });
 
   it('findAll passes the caller scope', async () => {

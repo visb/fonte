@@ -89,6 +89,12 @@ export class Staff {
   @Column({ name: 'photo_url', nullable: true, type: 'varchar' })
   photoUrl: string | null;
 
+  // Assinatura do usuário (story 128). PNG transparente desenhado no perfil e
+  // inserido nos documentos via variável {{signature}}. Persistida como URL
+  // canônica (regra da story 76); assinada na leitura pelo StorageUrlInterceptor.
+  @Column({ name: 'signature_url', nullable: true, type: 'varchar' })
+  signatureUrl: string | null;
+
   // Nível espiritual do servo (SERVANT). Null para ADMIN/COORDINATOR.
   @Column({ name: 'rank', type: 'enum', enum: ServantRank, nullable: true })
   rank: ServantRank | null;

@@ -508,10 +508,11 @@ export class ResidentController {
   async renderDocument(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('templateId', ParseUUIDPipe) templateId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Res() res: Response,
   ): Promise<void> {
     const resident = await this.residentService.findOne(id);
-    const html = await this.documentTemplateService.renderForResident(templateId, resident);
+    const html = await this.documentTemplateService.renderForResident(templateId, resident, user.userId);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   }
@@ -522,10 +523,11 @@ export class ResidentController {
   async downloadPdf(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('templateId', ParseUUIDPipe) templateId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Res() res: Response,
   ): Promise<void> {
     const resident = await this.residentService.findOne(id);
-    const { buffer, filename } = await this.documentTemplateService.generatePdf(templateId, resident);
+    const { buffer, filename } = await this.documentTemplateService.generatePdf(templateId, resident, user.userId);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(buffer);

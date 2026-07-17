@@ -339,6 +339,8 @@ export interface Staff {
   // WhatsApp do servo — também é o identificador de login (story 97).
   whatsapp: string | null;
   photoUrl: string | null;
+  // Assinatura do usuário para documentos gerados (story 128). URL assinada na leitura.
+  signatureUrl?: string | null;
   houseId: string | null;
   house: { id: string; name: string } | null;
   supportGroupId: string | null;
@@ -377,6 +379,8 @@ export interface StaffMe {
   name: string;
   whatsapp: string | null;
   photoUrl: string | null;
+  // Assinatura do usuário para documentos gerados (story 128). URL assinada na leitura.
+  signatureUrl?: string | null;
   houseId: string | null;
   house: { id: string; name: string } | null;
   supportGroupId: string | null;

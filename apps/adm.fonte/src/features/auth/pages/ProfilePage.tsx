@@ -13,6 +13,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { maskPhone, withMask } from '@/lib/masks';
 import { useStaffMe, useUpdateStaffMe } from '@/features/staff/hooks/useStaff';
 import { ChangePasswordDialog } from '../components/ChangePasswordDialog';
+import { SignatureSection } from '../components/SignatureSection';
 
 const schema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -120,6 +121,8 @@ export function ProfilePage() {
             placeholder="(11) 99999-9999"
           />
         </div>
+
+        <SignatureSection />
 
         <div className="flex items-center gap-3 pt-2">
           <Button

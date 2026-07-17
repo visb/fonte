@@ -15,6 +15,8 @@ import {
   useAddAttachment, useDeleteAttachment, useUploadSignedDocument,
 } from '../../hooks/useResidents';
 import { useDocumentTemplates } from '@/features/settings/hooks/useDocumentTemplates';
+import { useStaffMe } from '@/features/staff/hooks/useStaff';
+import { SignatureDialog } from '@/features/auth/components/SignatureDialog';
 import { MissingFieldsDialog } from '../MissingFieldsDialog';
 import type { MissingField } from '../MissingFieldsDialog';
 import type { DocumentTemplate, Resident, ResidentDocument, ResidentAttachment, UpdateResidentInput } from '@fonte/api-client';
@@ -30,7 +32,10 @@ function slugify(text: string): string {
     .replace(/^-|-$/g, '');
 }
 
-const ALWAYS_AVAILABLE = new Set(['name', 'house', 'entryDate', 'date', 'dateLong']);
+// `signature` é a assinatura do USUÁRIO logado (staff), não um campo do filho:
+// tem que ficar fora do gate de campos faltantes do resident (story 128), senão
+// o MissingFieldsDialog dispara errado tratando-a como dado do acolhido faltante.
+const ALWAYS_AVAILABLE = new Set(['name', 'house', 'entryDate', 'date', 'dateLong', 'signature']);
 
 interface VarMapping {
   residentField: keyof UpdateResidentInput;
@@ -233,6 +238,7 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
   const { data: signedDocs = [] } = useResidentDocuments(residentId);
   const { data: attachments = [] } = useResidentAttachments(residentId);
   const { data: templates = [] } = useDocumentTemplates();
+  const { data: me } = useStaffMe();
 
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -240,6 +246,9 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
     missingFields: MissingField[];
     template: DocumentTemplate;
   } | null>(null);
+  // Story 128 — quando o template usa {{signature}} e o usuário ainda não tem
+  // assinatura, configura antes de gerar (decisão 6).
+  const [signatureDialog, setSignatureDialog] = useState<{ template: DocumentTemplate } | null>(null);
 
   const downloadPdf = useCallback(async (template: DocumentTemplate) => {
     setGeneratingId(template.id);
@@ -267,13 +276,18 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
       return;
     }
     const vars = extractTemplateVars(template.content);
+    // Assinatura do usuário logado ausente → configura antes de gerar (story 128).
+    if (vars.includes('signature') && !me?.signatureUrl) {
+      setSignatureDialog({ template });
+      return;
+    }
     const missing = findMissingFields(vars, resident);
     if (missing.length === 0) {
       downloadPdf(template);
     } else {
       setMissingDialog({ missingFields: missing, template });
     }
-  }, [resident, downloadPdf]);
+  }, [resident, me, downloadPdf]);
 
   const docByTemplate = Object.fromEntries(signedDocs.map((d) => [d.templateId, d]));
   const requiredTemplates = templates.filter((t) => t.isRequired);
@@ -374,6 +388,14 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
         residentId={residentId}
         onSaved={() => {
           if (missingDialog) downloadPdf(missingDialog.template);
+        }}
+      />
+
+      <SignatureDialog
+        open={signatureDialog !== null}
+        onClose={() => setSignatureDialog(null)}
+        onSaved={() => {
+          if (signatureDialog) downloadPdf(signatureDialog.template);
         }}
       />
     </div>

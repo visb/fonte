@@ -28,6 +28,21 @@ export function useUpdateStaffMe() {
   });
 }
 
+// Story 128 — envia a assinatura desenhada (PNG transparente) do próprio usuário.
+export function useUploadMySignature() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (blob: Blob) => {
+      const fd = new window.FormData();
+      fd.append('file', blob, 'signature.png');
+      await api.staff.uploadMySignature(fd);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.staffMe.current });
+    },
+  });
+}
+
 export function useStaff(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.staff.all,

@@ -7,6 +7,12 @@ import * as request from 'supertest';
 import { Role } from '@fonte/types';
 import { bootstrapApp, login, BASE } from './helpers/e2e-app';
 
+// Minimal 1x1 transparent PNG for the signature upload happy-path.
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64',
+);
+
 describe('StaffController (e2e)', () => {
   let app: INestApplication;
   let adminToken: string;
@@ -176,6 +182,37 @@ describe('StaffController (e2e)', () => {
         .get(`${BASE}/staff/00000000-0000-0000-0000-000000000000`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(404));
+  });
+
+  // ─── Signature (story 128) ──────────────────────────────────────────────────
+
+  describe('signature', () => {
+    it('POST /staff/me/signature → 401 without token', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/staff/me/signature`)
+        .attach('file', TINY_PNG, { filename: 'sig.png', contentType: 'image/png' })
+        .expect(401));
+
+    it('POST /staff/me/signature → 400 for a non-PNG file (transparency requires PNG)', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/staff/me/signature`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .attach('file', Buffer.from('fake-jpeg'), { filename: 'sig.jpg', contentType: 'image/jpeg' })
+        .expect(400));
+
+    it('uploads a PNG signature and GET /staff/me returns signatureUrl', async () => {
+      await request(app.getHttpServer())
+        .post(`${BASE}/staff/me/signature`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .attach('file', TINY_PNG, { filename: 'sig.png', contentType: 'image/png' })
+        .expect(201);
+
+      const me = await request(app.getHttpServer())
+        .get(`${BASE}/staff/me`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      expect(me.body.signatureUrl).toBeTruthy();
+    });
   });
 
   // ─── Attachments (story 98) ─────────────────────────────────────────────────

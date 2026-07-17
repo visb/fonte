@@ -6,6 +6,7 @@ import { BibleCourseClass } from './bible-course-class.entity';
 import { BibleCourseEnrollment } from './bible-course-enrollment.entity';
 import { BibleCourseModule } from './bible-course-module.entity';
 import { BibleCourseGrade } from './bible-course-grade.entity';
+import { BibleCourseExternalCompletion } from './bible-course-external-completion.entity';
 
 function makeRepo(overrides: Record<string, jest.Mock> = {}, queryImpl?: jest.Mock) {
   return {
@@ -29,12 +30,14 @@ function makeService(
   enrollmentRepo = makeRepo(),
   moduleRepo = makeRepo(),
   gradeRepo = makeRepo(),
+  externalCompletionRepo = makeRepo(),
 ) {
   return new BibleCourseService(
     classRepo as unknown as Repository<BibleCourseClass>,
     enrollmentRepo as unknown as Repository<BibleCourseEnrollment>,
     moduleRepo as unknown as Repository<BibleCourseModule>,
     gradeRepo as unknown as Repository<BibleCourseGrade>,
+    externalCompletionRepo as unknown as Repository<BibleCourseExternalCompletion>,
   );
 }
 
@@ -189,6 +192,19 @@ describe('BibleCourseService.findEligibleResidents', () => {
     expect(sql).toContain("e.status <> 'DROPPED'");
     // ordena por entryDate asc.
     expect(sql).toContain('ORDER BY r.entry_date ASC');
+  });
+
+  // Story 127: quem já fez o curso fora do sistema não volta a ser sugerido.
+  // O filtro é do banco, então aqui garantimos que a cláusula existe e olha só
+  // a marcação ATIVA; a exclusão/reinclusão de verdade é coberta no e2e.
+  it('excludes residents marked as having done the course outside the system (story 127)', async () => {
+    const query = eligibleQuery();
+    const service = makeService(makeRepo({}, query));
+    await service.findEligibleResidents(3);
+    const sql = (query.mock.calls[0][0] as string).replace(/\s+/g, ' ');
+
+    expect(sql).toContain('FROM bible_course_external_completions x');
+    expect(sql).toContain('WHERE x.resident_id = r.id AND x.deleted_at IS NULL');
   });
 
   it('maps rows preserving order and computing monthsInTreatment', async () => {
@@ -485,5 +501,214 @@ describe('BibleCourseService.getClassGrades', () => {
     const result = await service.getClassGrades('c1');
     expect(result.rows[0].average).toBeNull();
     expect(result.rows[0].modules[0].moduleAverage).toBeNull();
+  });
+});
+
+// ─── Conclusão fora do sistema (story 127) ─────────────────────────────────────
+// A marcação é fato histórico do filho: atravessa alta/evasão/readmissão e o
+// tira das sugestões para sempre. Desfazer é soft delete (histórico preservado).
+
+describe('BibleCourseService.markExternalCompletion', () => {
+  /** `residentRow` vazio = filho inexistente; `completionRow` = o SELECT do retorno. */
+  function makeQuery(
+    residentRow: Array<{ id: string }> = [{ id: 'res-1' }],
+    completionRow: Array<Record<string, unknown>> = [
+      { markedAt: new Date('2026-07-17T12:00:00Z'), markedById: 'u1', markedByName: 'Coord' },
+    ],
+  ) {
+    return jest.fn().mockResolvedValueOnce(residentRow).mockResolvedValueOnce(completionRow);
+  }
+
+  function serviceWith(repo: ReturnType<typeof makeRepo>) {
+    return makeService(makeRepo(), makeRepo(), makeRepo(), makeRepo(), repo);
+  }
+
+  it('creates the mark with the current user as markedBy', async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) }, makeQuery());
+    const service = serviceWith(repo);
+
+    const result = await service.markExternalCompletion('res-1', 'u1');
+
+    expect(repo.create).toHaveBeenCalledWith({ residentId: 'res-1', markedBy: 'u1' });
+    expect(repo.save).toHaveBeenCalled();
+    expect(result).toEqual({
+      residentId: 'res-1',
+      markedAt: '2026-07-17T12:00:00.000Z',
+      markedBy: { id: 'u1', name: 'Coord' },
+    });
+  });
+
+  // Decisão 6: duplo clique não cria segunda marcação nem estoura erro.
+  it('is idempotent — a second call returns the existing mark without inserting', async () => {
+    const repo = makeRepo(
+      { findOne: jest.fn().mockResolvedValue({ id: 'x1', residentId: 'res-1' }) },
+      makeQuery(),
+    );
+    const service = serviceWith(repo);
+
+    const result = await service.markExternalCompletion('res-1', 'u2');
+
+    expect(repo.save).not.toHaveBeenCalled();
+    // Quem marcou continua sendo o primeiro — a segunda chamada não reescreve.
+    expect(result.markedBy).toEqual({ id: 'u1', name: 'Coord' });
+  });
+
+  // Corrida real (dois cliques simultâneos): o índice único parcial barra a 2ª
+  // inserção e o service devolve a marcação existente em vez de vazar 500.
+  it('swallows the unique-violation race and returns the winning mark', async () => {
+    const repo = makeRepo(
+      {
+        findOne: jest.fn().mockResolvedValue(null),
+        save: jest.fn().mockRejectedValue({ code: '23505' }),
+      },
+      makeQuery(),
+    );
+    const service = serviceWith(repo);
+
+    const result = await service.markExternalCompletion('res-1', 'u1');
+    expect(result.markedBy).toEqual({ id: 'u1', name: 'Coord' });
+  });
+
+  it('rethrows a save error that is not a unique violation', async () => {
+    const repo = makeRepo(
+      {
+        findOne: jest.fn().mockResolvedValue(null),
+        save: jest.fn().mockRejectedValue({ code: '42P01' }),
+      },
+      makeQuery(),
+    );
+    const service = serviceWith(repo);
+
+    await expect(service.markExternalCompletion('res-1', 'u1')).rejects.toMatchObject({
+      code: '42P01',
+    });
+  });
+
+  it('throws NotFound when the resident does not exist', async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) }, makeQuery([]));
+    const service = serviceWith(repo);
+
+    await expect(service.markExternalCompletion('nope', 'u1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('ignores soft-deleted residents when checking existence', async () => {
+    const query = makeQuery();
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) }, query);
+    const service = serviceWith(repo);
+
+    await service.markExternalCompletion('res-1', 'u1');
+    expect(query.mock.calls[0][0]).toContain('deleted_at IS NULL');
+  });
+
+  // Depois de desmarcar, a linha antiga fica soft-deletada e o findOne não a vê:
+  // marcar de novo insere linha nova e o histórico anterior permanece.
+  it('creates a new row when marking again after an unmark', async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) }, makeQuery());
+    const service = serviceWith(repo);
+
+    await service.markExternalCompletion('res-1', 'u1');
+
+    expect(repo.save).toHaveBeenCalledTimes(1);
+    expect(repo.softDelete).not.toHaveBeenCalled();
+  });
+
+  it('accepts a null user (mark without an identified author)', async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) }, makeQuery());
+    const service = serviceWith(repo);
+
+    await service.markExternalCompletion('res-1', null);
+    expect(repo.create).toHaveBeenCalledWith({ residentId: 'res-1', markedBy: null });
+  });
+});
+
+describe('BibleCourseService.unmarkExternalCompletion', () => {
+  it('soft deletes the active mark (keeps the row for history)', async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'x1' }) });
+    const service = makeService(makeRepo(), makeRepo(), makeRepo(), makeRepo(), repo);
+
+    await service.unmarkExternalCompletion('res-1');
+
+    expect(repo.softDelete).toHaveBeenCalledWith('x1');
+    expect(repo.delete).not.toHaveBeenCalled();
+  });
+
+  it('throws NotFound when there is no active mark', async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const service = makeService(makeRepo(), makeRepo(), makeRepo(), makeRepo(), repo);
+
+    await expect(service.unmarkExternalCompletion('res-1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(repo.softDelete).not.toHaveBeenCalled();
+  });
+});
+
+describe('BibleCourseService.findExternalCompletion', () => {
+  function serviceWithQuery(query: jest.Mock) {
+    return makeService(makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo({}, query));
+  }
+
+  it('returns markedAt and markedBy for an active mark', async () => {
+    const service = serviceWithQuery(
+      jest
+        .fn()
+        .mockResolvedValue([
+          { markedAt: new Date('2026-07-17T12:00:00Z'), markedById: 'u1', markedByName: 'Coord' },
+        ]),
+    );
+
+    await expect(service.findExternalCompletion('res-1')).resolves.toEqual({
+      residentId: 'res-1',
+      markedAt: '2026-07-17T12:00:00.000Z',
+      markedBy: { id: 'u1', name: 'Coord' },
+    });
+  });
+
+  it('returns null when the resident is not marked', async () => {
+    const service = serviceWithQuery(jest.fn().mockResolvedValue([]));
+    await expect(service.findExternalCompletion('res-1')).resolves.toBeNull();
+  });
+
+  // Marcação desfeita não é marcação: o filtro `deleted_at IS NULL` mora no SQL,
+  // então o banco devolve zero linhas e o service responde null.
+  it('only looks at active marks (soft-deleted ones are invisible)', async () => {
+    const query = jest.fn().mockResolvedValue([]);
+    const service = serviceWithQuery(query);
+
+    await expect(service.findExternalCompletion('res-1')).resolves.toBeNull();
+    expect((query.mock.calls[0][0] as string).replace(/\s+/g, ' ')).toContain(
+      'x.resident_id = $1 AND x.deleted_at IS NULL',
+    );
+  });
+
+  // FK ON DELETE SET NULL: staff removido zera markedBy, mas o fato permanece.
+  it('returns markedBy null when the author was removed', async () => {
+    const service = serviceWithQuery(
+      jest
+        .fn()
+        .mockResolvedValue([
+          { markedAt: new Date('2026-07-17T12:00:00Z'), markedById: null, markedByName: null },
+        ]),
+    );
+
+    const result = await service.findExternalCompletion('res-1');
+    expect(result?.markedBy).toBeNull();
+    expect(result?.markedAt).toBe('2026-07-17T12:00:00.000Z');
+  });
+
+  it('falls back to an empty name when the author has no resolvable name', async () => {
+    const service = serviceWithQuery(
+      jest
+        .fn()
+        .mockResolvedValue([
+          { markedAt: new Date('2026-07-17T12:00:00Z'), markedById: 'u1', markedByName: null },
+        ]),
+    );
+
+    const result = await service.findExternalCompletion('res-1');
+    expect(result?.markedBy).toEqual({ id: 'u1', name: '' });
   });
 });

@@ -451,4 +451,188 @@ describe('BibleCourseController (e2e)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(404));
   });
+
+  // Story 127: "já fez" = concluiu o curso FORA do sistema. Fato histórico do
+  // filho — tira ele das sugestões para sempre, atravessando acolhimentos.
+  describe('external completion (curso feito fora do sistema, story 127)', () => {
+    const UNKNOWN_ID = '00000000-0000-0000-0000-000000000000';
+    let residentId: string;
+    let coordinatorName: string;
+
+    const externalUrl = (id: string) => `${BASE}/bible-course/residents/${id}/external-completion`;
+    const eligibleUrl = `${BASE}/bible-course/classes/eligible-residents`;
+
+    async function isEligible(id: string): Promise<boolean> {
+      const res = await request(app.getHttpServer())
+        .get(eligibleUrl)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      return res.body.some((r: { id: string }) => r.id === id);
+    }
+
+    beforeAll(async () => {
+      const me = await request(app.getHttpServer())
+        .get(`${BASE}/staff/me`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      coordinatorName = me.body.name;
+
+      // Elegível: ativo e com casa suficiente — só a marcação pode excluí-lo.
+      const resident = await request(app.getHttpServer())
+        .post(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Externo ${Date.now()}`, houseId, status: 'ACTIVE', entryDate: '2020-01-01' })
+        .expect(201);
+      residentId = resident.body.id;
+    });
+
+    it('GET → 401 without token', () =>
+      request(app.getHttpServer()).get(externalUrl(residentId)).expect(401));
+
+    it('POST/DELETE/GET → 403 for a role without permission (servant)', async () => {
+      await request(app.getHttpServer())
+        .post(externalUrl(residentId))
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(403);
+      await request(app.getHttpServer())
+        .delete(externalUrl(residentId))
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(403);
+      await request(app.getHttpServer())
+        .get(externalUrl(residentId))
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(403);
+    });
+
+    it('POST/DELETE/GET → 400 for a non-UUID residentId', async () => {
+      await request(app.getHttpServer())
+        .post(externalUrl('not-a-uuid'))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400);
+      await request(app.getHttpServer())
+        .delete(externalUrl('not-a-uuid'))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400);
+      await request(app.getHttpServer())
+        .get(externalUrl('not-a-uuid'))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400);
+    });
+
+    it('POST → 404 for an unknown resident', () =>
+      request(app.getHttpServer())
+        .post(externalUrl(UNKNOWN_ID))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404));
+
+    it('GET → null before the resident is marked', async () => {
+      const res = await request(app.getHttpServer())
+        .get(externalUrl(residentId))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(res.body).toEqual({});
+    });
+
+    it('DELETE → 404 when there is no active mark', () =>
+      request(app.getHttpServer())
+        .delete(externalUrl(residentId))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404));
+
+    it('starts out as an eligible suggestion', async () => {
+      expect(await isEligible(residentId)).toBe(true);
+    });
+
+    it('POST marks the resident and drops him from the eligible list', async () => {
+      const res = await request(app.getHttpServer())
+        .post(externalUrl(residentId))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      expect(res.body.residentId).toBe(residentId);
+      expect(res.body.markedAt).toBeDefined();
+      expect(await isEligible(residentId)).toBe(false);
+    });
+
+    it('GET returns who marked it', async () => {
+      const res = await request(app.getHttpServer())
+        .get(externalUrl(residentId))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body.residentId).toBe(residentId);
+      expect(res.body.markedBy.name).toBe(coordinatorName);
+      expect(res.body.markedBy.id).toBeDefined();
+    });
+
+    // Decisão 6: clique repetido não cria segunda marcação nem estoura erro.
+    it('POST again is idempotent — same mark, no error', async () => {
+      const first = await request(app.getHttpServer())
+        .get(externalUrl(residentId))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const again = await request(app.getHttpServer())
+        .post(externalUrl(residentId))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      expect(again.body.markedAt).toBe(first.body.markedAt);
+    });
+
+    it('DELETE unmarks and the resident comes back to the eligible list', async () => {
+      await request(app.getHttpServer())
+        .delete(externalUrl(residentId))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(204);
+
+      const res = await request(app.getHttpServer())
+        .get(externalUrl(residentId))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(res.body).toEqual({});
+
+      expect(await isEligible(residentId)).toBe(true);
+    });
+
+    it('marking again after an unmark works (new row, history kept)', async () => {
+      await request(app.getHttpServer())
+        .post(externalUrl(residentId))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+      expect(await isEligible(residentId)).toBe(false);
+    });
+
+    // Decisão 2: o fato é do filho, não do acolhimento. Alta + readmissão com
+    // tempo de casa suficiente NÃO devolve o filho às sugestões.
+    it('survives discharge and readmission (the fact belongs to the resident)', async () => {
+      await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${residentId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'DISCHARGED', exitDate: '2026-01-01' })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(`${BASE}/residents/${residentId}/readmit`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ houseId, entryDate: '2020-01-01' })
+        .expect(201);
+
+      // Readmissão volta o filho para PRE_ADMISSION; ACTIVE + entrada antiga o
+      // tornaria elegível de novo se não fosse a marcação.
+      await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${residentId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'ACTIVE' })
+        .expect(200);
+
+      const mark = await request(app.getHttpServer())
+        .get(externalUrl(residentId))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(mark.body.markedAt).toBeDefined();
+
+      expect(await isEligible(residentId)).toBe(false);
+    });
+  });
 });

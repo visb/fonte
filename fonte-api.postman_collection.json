@@ -3653,7 +3653,7 @@
                 {
                   "key": "months",
                   "value": "3",
-                  "description": "Tempo mínimo de casa em meses (default 3). Filhos ativos (ACTIVE/DISCIPLINE, exitDate nulo) com entryDate <= hoje − months e sem matrícula ativa, de todas as casas."
+                  "description": "Tempo mínimo de casa em meses (default 3). Filhos ativos (ACTIVE/DISCIPLINE, exitDate nulo) com entryDate <= hoje − months, sem matrícula ativa e sem marcação de curso feito fora do sistema (story 127), de todas as casas."
                 }
               ]
             }
@@ -3802,6 +3802,63 @@
                 "{{enrollmentId}}"
               ]
             }
+          }
+        },
+        {
+          "name": "Mark External Completion",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/residents/{{residentId}}/external-completion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "residents",
+                "{{residentId}}",
+                "external-completion"
+              ]
+            },
+            "description": "Marca que o filho concluiu o curso bíblico FORA do sistema (story 127). Fato histórico do filho, não do acolhimento: sobrevive a alta/evasão/readmissão e o exclui das sugestões de matrícula para sempre. Idempotente: clique repetido devolve a marcação existente, sem duplicar nem estourar erro. `markedBy` sai do JWT, não do body. ADMIN/COORDINATOR. 404 se o filho não existe; 400 se o residentId não é UUID."
+          }
+        },
+        {
+          "name": "Unmark External Completion",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/residents/{{residentId}}/external-completion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "residents",
+                "{{residentId}}",
+                "external-completion"
+              ]
+            },
+            "description": "Desfaz a marcação de curso feito fora do sistema (story 127). Soft delete: a linha fica no histórico e o filho volta a ser sugerido, se ainda elegível. 204 no sucesso. ADMIN/COORDINATOR. 404 se não há marcação ativa."
+          }
+        },
+        {
+          "name": "Get External Completion",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/bible-course/residents/{{residentId}}/external-completion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bible-course",
+                "residents",
+                "{{residentId}}",
+                "external-completion"
+              ]
+            },
+            "description": "Marcação ativa de curso feito fora do sistema (story 127), com quem marcou e quando; `null` se o filho não foi marcado (inclusive quando a marcação foi desfeita). `markedBy` é nulo quando o usuário que marcou foi removido (FK ON DELETE SET NULL — o fato não se perde com o staff). ADMIN/COORDINATOR."
           }
         },
         {

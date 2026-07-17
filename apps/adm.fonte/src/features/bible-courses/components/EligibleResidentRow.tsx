@@ -1,4 +1,4 @@
-import { ExternalLink, User } from 'lucide-react';
+import { ExternalLink, GraduationCap, User } from 'lucide-react';
 import type { EligibleResident } from '@fonte/api-client';
 import { api } from '@/lib/api';
 
@@ -6,13 +6,15 @@ interface Props {
   resident: EligibleResident;
   checked: boolean;
   onToggle: (id: string) => void;
+  /** Marca que o filho já fez o curso fora do sistema (story 127). */
+  onMarkExternal: (id: string) => void;
 }
 
 function formatMonths(months: number): string {
   return months === 1 ? '1 mês de casa' : `${months} meses de casa`;
 }
 
-export function EligibleResidentRow({ resident, checked, onToggle }: Props) {
+export function EligibleResidentRow({ resident, checked, onToggle, onMarkExternal }: Props) {
   const src = api.photoUrl(resident.photoThumbUrl);
 
   // Sem <label> de wrapper (story 125): o link de ficha não pode alternar o
@@ -44,6 +46,16 @@ export function EligibleResidentRow({ resident, checked, onToggle }: Props) {
           </p>
         </div>
       </div>
+      {/* Fora da área clicável: marcar "já fez" não pode alternar o checkbox. */}
+      <button
+        type="button"
+        onClick={() => onMarkExternal(resident.id)}
+        title={`Marcar ${resident.name} como já fez o curso`}
+        aria-label={`Marcar ${resident.name} como já fez o curso`}
+        className="shrink-0 text-muted-foreground hover:text-primary"
+      >
+        <GraduationCap size={14} />
+      </button>
       <a
         href={`/residents/${resident.id}`}
         target="_blank"

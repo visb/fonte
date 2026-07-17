@@ -5,12 +5,15 @@ import type { EligibleResident } from '@fonte/api-client';
 vi.mock('@/lib/api', () => ({ api: { photoUrl: (u: string | null) => u } }));
 
 const enrollMutate = vi.fn();
+const markExternalMutate = vi.fn();
 const useEligibleResidents = vi.fn();
 const useEnrollBulk = vi.fn(() => ({ mutate: enrollMutate, isPending: false, error: null }));
+const useMarkExternalCompletion = vi.fn(() => ({ mutate: markExternalMutate, isPending: false }));
 
 vi.mock('../hooks/useBibleCourses', () => ({
   useEligibleResidents: (...args: unknown[]) => useEligibleResidents(...args),
   useEnrollBulk: (...args: unknown[]) => useEnrollBulk(...args),
+  useMarkExternalCompletion: (...args: unknown[]) => useMarkExternalCompletion(...args),
 }));
 
 import { EligibleResidentsPanel } from './EligibleResidentsPanel';
@@ -43,8 +46,17 @@ function headerBox() {
 function rowBoxes() {
   return screen.getAllByRole('checkbox', { name: /^Selecionar Filho/ }) as HTMLInputElement[];
 }
+/** Botão "já fez" da linha do filho (story 127). */
+function markButton(name: string) {
+  return screen.getByRole('button', { name: `Marcar ${name} como já fez o curso` });
+}
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Depois do clear: `clearAllMocks` derruba o retorno padrão da factory.
+  useMarkExternalCompletion.mockReturnValue({ mutate: markExternalMutate, isPending: false });
+  useEnrollBulk.mockReturnValue({ mutate: enrollMutate, isPending: false, error: null });
+});
 afterEach(() => cleanup());
 
 describe('EligibleResidentsPanel', () => {
@@ -116,6 +128,55 @@ describe('EligibleResidentsPanel', () => {
     expect(screen.queryByText(/Erro ao matricular|boom/)).not.toBeInTheDocument();
     // A lista segue utilizável apesar do erro.
     expect(screen.getByText('Filho A')).toBeInTheDocument();
+  });
+});
+
+// Story 127: marcar "já fez" tira o filho da sugestão. O toast com "Desfazer" e
+// as invalidações moram no hook da mutation (story 126) e são cobertos em
+// useBibleCourses.test.tsx — aqui garantimos o que é do painel: o filho marcado
+// não pode ser arrastado para a matrícula em lote logo depois.
+describe('EligibleResidentsPanel — "já fez" (story 127)', () => {
+  const twoResidents = () => [resident(), resident({ id: 'r2', name: 'Filho B' })];
+
+  it('marcar chama a mutation com o id e o nome do filho', () => {
+    mockQuery({ data: twoResidents() });
+    render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
+
+    fireEvent.click(markButton('Filho B'));
+
+    // O nome vai junto porque a mensagem do toast é "<nome> marcado como...".
+    expect(markExternalMutate).toHaveBeenCalledWith({ residentId: 'r2', residentName: 'Filho B' });
+  });
+
+  it('marcar tira o filho da seleção e a contagem do botão cai', () => {
+    mockQuery({ data: twoResidents() });
+    render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
+
+    expect(screen.getByText('2 de 2 selecionados')).toBeInTheDocument();
+
+    fireEvent.click(markButton('Filho B'));
+
+    expect(screen.getByText('1 de 2 selecionados')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Matricular selecionados (1)' })).toBeEnabled();
+  });
+
+  it('o filho marcado não entra na matrícula em lote', () => {
+    mockQuery({ data: twoResidents() });
+    render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
+
+    fireEvent.click(markButton('Filho B'));
+    fireEvent.click(screen.getByText(/Matricular selecionados \(1\)/));
+
+    expect(enrollMutate).toHaveBeenCalledWith(['r1']);
+  });
+
+  it('marcar o único elegível esvazia a seleção e desabilita o botão', () => {
+    mockQuery({ data: [resident()] });
+    render(<EligibleResidentsPanel classId="c1" enrolledIds={[]} />);
+
+    fireEvent.click(markButton('Filho A'));
+
+    expect(screen.getByRole('button', { name: 'Matricular selecionados (0)' })).toBeDisabled();
   });
 });
 

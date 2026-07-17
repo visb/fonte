@@ -60,6 +60,11 @@ export const queryKeys = {
     photos: (classId: string) => ['bible-courses', classId, 'photos'] as const,
     eligibleResidents: (months?: number) =>
       ['bible-courses', 'eligible-residents', months ?? null] as const,
+    /** Prefixo — invalida os elegíveis de qualquer `months` (story 127). */
+    eligibleResidentsAll: ['bible-courses', 'eligible-residents'] as const,
+    /** Marcação de curso feito fora do sistema, na ficha do filho (story 127). */
+    externalCompletion: (residentId: string) =>
+      ['bible-courses', 'external-completion', residentId] as const,
   },
   storeroom: {
     byHouse: (houseId: string) => ['storeroom', houseId] as const,

@@ -120,7 +120,7 @@ export function ResidentDetailPage() {
         ))}
       </div>
 
-      {activeTab === 'overview' && <OverviewTab resident={resident} />}
+      {activeTab === 'overview' && <OverviewTab resident={resident} canManage={canManage} />}
 
       {activeTab === 'timeline' && <TrackingTab residentId={id!} />}
 

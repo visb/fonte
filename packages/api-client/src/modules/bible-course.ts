@@ -15,6 +15,7 @@ import type {
   BibleClassGrades,
   UpsertBibleGradeInput,
   BibleCourseClassPhoto,
+  BibleCourseExternalCompletion,
 } from '../types.js';
 
 export function createBibleCourseModule(http: AxiosInstance) {
@@ -55,6 +56,27 @@ export function createBibleCourseModule(http: AxiosInstance) {
     updateEnrollment: (id: string, data: UpdateBibleCourseEnrollmentInput) =>
       http.patch<BibleCourseEnrollment>(`/bible-course/enrollments/${id}`, data).then((r) => r.data),
     removeEnrollment: (id: string) => http.delete(`/bible-course/enrollments/${id}`),
+
+    // ── curso feito fora do sistema (story 127) ──────────────────────────────
+    /** Marca que o filho concluiu o curso fora do sistema. Idempotente. */
+    markExternalCompletion: (residentId: string) =>
+      http
+        .post<BibleCourseExternalCompletion>(
+          `/bible-course/residents/${residentId}/external-completion`,
+        )
+        .then((r) => r.data),
+
+    /** Desfaz a marcação (soft delete no backend — histórico preservado). */
+    unmarkExternalCompletion: (residentId: string) =>
+      http.delete(`/bible-course/residents/${residentId}/external-completion`),
+
+    /** Marcação ativa do filho, ou `null` se ele não foi marcado. */
+    getExternalCompletion: (residentId: string) =>
+      http
+        .get<BibleCourseExternalCompletion | null>(
+          `/bible-course/residents/${residentId}/external-completion`,
+        )
+        .then((r) => r.data),
 
     getClassGrades: (classId: string) =>
       http.get<BibleClassGrades>(`/bible-course/classes/${classId}/grades`).then((r) => r.data),

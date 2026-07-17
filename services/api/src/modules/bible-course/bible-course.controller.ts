@@ -16,6 +16,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@fonte/types';
+import {
+  AuthenticatedUser,
+  CurrentUser,
+} from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -144,6 +148,32 @@ export class BibleCourseController {
   @Roles(Role.ADMIN, Role.COORDINATOR)
   removeEnrollment(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.service.removeEnrollment(id);
+  }
+
+  // ─── Conclusão fora do sistema (story 127) ───────────────────────────────────
+
+  @Post('residents/:residentId/external-completion')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  markExternalCompletion(
+    @Param('residentId', ParseUUIDPipe) residentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.markExternalCompletion(residentId, user?.userId ?? null);
+  }
+
+  @Delete('residents/:residentId/external-completion')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  unmarkExternalCompletion(
+    @Param('residentId', ParseUUIDPipe) residentId: string,
+  ): Promise<void> {
+    return this.service.unmarkExternalCompletion(residentId);
+  }
+
+  @Get('residents/:residentId/external-completion')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  findExternalCompletion(@Param('residentId', ParseUUIDPipe) residentId: string) {
+    return this.service.findExternalCompletion(residentId);
   }
 
   // ─── Grades (notas por módulo, ADMIN) ────────────────────────────────────────

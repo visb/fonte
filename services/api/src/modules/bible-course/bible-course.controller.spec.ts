@@ -18,6 +18,9 @@ function svc() {
     removeEnrollment: jest.fn().mockResolvedValue(undefined),
     getClassGrades: jest.fn().mockResolvedValue([]),
     upsertGrade: jest.fn().mockResolvedValue({ id: 'gr1' }),
+    markExternalCompletion: jest.fn().mockResolvedValue({ residentId: 'res1' }),
+    unmarkExternalCompletion: jest.fn().mockResolvedValue(undefined),
+    findExternalCompletion: jest.fn().mockResolvedValue(null),
   };
 }
 
@@ -48,5 +51,40 @@ describe('BibleCourseController', () => {
     expect(s.enroll).toHaveBeenCalledWith('cl1', { residentId: 'res1' });
     expect(s.enrollBulk).toHaveBeenCalledWith('cl1', ['res1', 'res2']);
     expect(s.upsertGrade).toHaveBeenCalledWith('en1', 'mod1', { grade: 9 });
+  });
+});
+
+// Story 127: o controller só roteia — quem marcou sai do JWT, não do body, para
+// o cliente não conseguir forjar a autoria da marcação.
+describe('BibleCourseController — conclusão fora do sistema (story 127)', () => {
+  const user = { userId: 'u1', role: 'COORDINATOR', profileType: 'STAFF' };
+
+  it('mark takes markedBy from the authenticated user', async () => {
+    const s = svc();
+    const c = new BibleCourseController(s as never);
+
+    await c.markExternalCompletion('res1', user as never);
+
+    expect(s.markExternalCompletion).toHaveBeenCalledWith('res1', 'u1');
+  });
+
+  it('mark falls back to a null author when the request has no user', async () => {
+    const s = svc();
+    const c = new BibleCourseController(s as never);
+
+    await c.markExternalCompletion('res1', undefined as never);
+
+    expect(s.markExternalCompletion).toHaveBeenCalledWith('res1', null);
+  });
+
+  it('unmark and get delegate to the service with the resident id', async () => {
+    const s = svc();
+    const c = new BibleCourseController(s as never);
+
+    await c.unmarkExternalCompletion('res1');
+    await c.findExternalCompletion('res1');
+
+    expect(s.unmarkExternalCompletion).toHaveBeenCalledWith('res1');
+    expect(s.findExternalCompletion).toHaveBeenCalledWith('res1');
   });
 });

@@ -37,7 +37,7 @@ Ordem: 125 → 126 → 127 → 128 → 129 → 130. Fonte de verdade: esta seç�
 | --- | --- | --- | --- | --- | --- |
 | 1 | 125 — sugeridos: selecionar todos + abrir filho em nova aba | [OK] | unit 1214/1214 · cov adm 92% | e73cf01 | 81c45e8 |
 | 2 | 126 — adotar toast (sonner) no adm.fonte | [OK] | unit 1230/1230 · cov 92.03% | 4b34010 | 824e972 |
-| 3 | 127 — marcar "já fez" o curso bíblico fora do sistema | [ ] | | | |
+| 3 | 127 — marcar "já fez" o curso bíblico fora do sistema | [OK] | api 1206/1206 · e2e 468/468 · adm unit 1248/1248 · cov escopo ≥90 | aa1a6c7 | ea544cd |
 | 4 | 128 — assinatura do usuário logado nos documentos | [ ] | | | |
 | 5 | 129 — ordenação na listagem de filhos | [ ] | | | |
 | 6 | 130 — preferências do usuário + filtros persistidos | [ ] | | | |
@@ -76,6 +76,14 @@ hoje e a regra exige 3+ meses, então `eligible-residents` volta `[]` e o painel
 também o e2e da story 99). O agent retrodatou o seed temporariamente, viu os 2 passarem de verdade e
 restaurou o banco. Fluxo validado, mas a suíte versionada segue pulando: corrigir exige mexer no seed
 (fora do escopo). Candidato a story própria, junto do conserto da `residents`.
+
+[OK] 127 — testes: api unit 1206/1206 · e2e 468/468 (bible-courses +13 casos; storerooms era
+poluição de dados no DB de teste, 65/65 após reseed — não regressão) · adm unit 1248/1248 · adm
+Playwright bible-courses story-127 PASS · cov escopo ≥90 — commit: aa1a6c7 — merge: ea544cd —
+2026-07-17. 1º spawn cortado 2× por limite de sessão (deixou markup corrompido na entity/migration +
+forFeature faltando, corrigido pelo orquestrador); retomado via SendMessage do transcript. As 8
+falhas de `test:adm` (Playwright) em features/residents seguem pré-existentes (confirmado por stash;
+superconjunto na main).
 
 ## Resumo final
 

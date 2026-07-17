@@ -1008,6 +1008,18 @@ export interface EligibleResident {
   houseName: string;
 }
 
+/**
+ * Conclusão do curso bíblico FORA do sistema (story 127): fato histórico do
+ * filho (não do acolhimento) — sobrevive a alta/evasão/readmissão e o exclui
+ * das sugestões de matrícula. `markedBy` é nulo quando o usuário que marcou já
+ * foi removido (FK ON DELETE SET NULL — o fato não se perde com o staff).
+ */
+export interface BibleCourseExternalCompletion {
+  residentId: string;
+  markedAt: string;
+  markedBy: { id: string; name: string } | null;
+}
+
 export interface BulkEnrollInput {
   residentIds: string[];
 }

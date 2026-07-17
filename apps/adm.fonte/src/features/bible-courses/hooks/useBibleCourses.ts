@@ -7,7 +7,7 @@ import type {
 } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
-import { toastError, toastSuccess } from '@/lib/toast';
+import { toastAction, toastError, toastSuccess } from '@/lib/toast';
 
 export function useBibleClasses(status?: string) {
   return useQuery({
@@ -106,6 +106,75 @@ export function useUpdateEnrollment(classId: string) {
       toastSuccess('Matrícula atualizada.');
     },
     onError: (error) => toastError(error, 'Erro ao atualizar matrícula.'),
+  });
+}
+
+// ── curso feito fora do sistema (story 127) ──────────────────────────────────
+
+/** Argumento das mutations: o nome vai para a mensagem do toast. */
+interface ExternalCompletionVars {
+  residentId: string;
+  residentName: string;
+}
+
+/**
+ * Marcação de curso feito fora do sistema, para a ficha do filho. O endpoint é
+ * ADMIN/COORDINATOR — o consumidor desliga a query (`enabled`) para quem não
+ * pode gerenciar, em vez de tomar 403.
+ */
+export function useResidentExternalCompletion(
+  residentId: string,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.bibleCourses.externalCompletion(residentId),
+    queryFn: () => api.bibleCourse.getExternalCompletion(residentId),
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * Desfaz a marcação. Dois caminhos chegam aqui (decisão 5 da story 127): a ação
+ * "Desfazer" do toast, logo após marcar, e o botão permanente na ficha do filho.
+ */
+export function useUnmarkExternalCompletion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ residentId }: ExternalCompletionVars) =>
+      api.bibleCourse.unmarkExternalCompletion(residentId),
+    onSuccess: (_data, { residentId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.eligibleResidentsAll });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.bibleCourses.externalCompletion(residentId),
+      });
+      toastSuccess('Marcação removida.');
+    },
+    onError: (error) => toastError(error, 'Erro ao remover marcação.'),
+  });
+}
+
+/**
+ * Marca que o filho já fez o curso fora do sistema. O filho sai das sugestões
+ * (invalida os elegíveis) e a ficha passa a mostrar o fato (invalida a ficha).
+ * O toast traz "Desfazer" para o engano na hora (decisão 5).
+ */
+export function useMarkExternalCompletion() {
+  const queryClient = useQueryClient();
+  const unmark = useUnmarkExternalCompletion();
+  return useMutation({
+    mutationFn: ({ residentId }: ExternalCompletionVars) =>
+      api.bibleCourse.markExternalCompletion(residentId),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.bibleCourses.eligibleResidentsAll });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.bibleCourses.externalCompletion(vars.residentId),
+      });
+      toastAction(`${vars.residentName} marcado como já fez o curso.`, {
+        label: 'Desfazer',
+        onClick: () => unmark.mutate(vars),
+      });
+    },
+    onError: (error) => toastError(error, 'Erro ao marcar o curso como já feito.'),
   });
 }
 

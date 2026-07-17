@@ -4,9 +4,11 @@ import { FamilyInvestment, Gender, MaritalStatus } from '@fonte/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { maskCPF, maskPhone, maskRG } from '@/lib/masks';
+import { useResidentExternalCompletion } from '@/features/bible-courses/hooks/useBibleCourses';
 import { FAMILY_INVESTMENT_LABELS } from '../../constants';
 import { GenerateResidentAccessDialog } from '../GenerateResidentAccessDialog';
 import { ResetResidentPasswordDialog } from '../ResetResidentPasswordDialog';
+import { ResidentBibleCourseField } from '../ResidentBibleCourseField';
 import type { Resident } from '@fonte/api-client';
 
 const GENDER_LABELS: Record<string, string> = {
@@ -67,11 +69,18 @@ function InfoRow({ label, value, full }: { label: string; value: React.ReactNode
 
 interface Props {
   resident: Resident;
+  /** ADMIN/COORDINATOR — libera o campo "Curso bíblico" (story 127). */
+  canManage?: boolean;
 }
 
-export function OverviewTab({ resident }: Props) {
+export function OverviewTab({ resident, canManage = false }: Props) {
   const [generateAccessOpen, setGenerateAccessOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  // O endpoint da marcação é ADMIN/COORDINATOR: sem `canManage` a query fica
+  // ociosa em vez de tomar 403 ao abrir a ficha.
+  const { data: bibleCourseCompletion } = useResidentExternalCompletion(resident.id, {
+    enabled: canManage,
+  });
 
   return (
     <div className="space-y-1">
@@ -102,6 +111,22 @@ export function OverviewTab({ resident }: Props) {
         <InfoRow label="Cidade" value={val(resident.city)} />
         <InfoRow label="UF" value={val(resident.state)} />
         <InfoRow label="Endereço" value={val(resident.address)} full />
+        {/* Só quando marcado: sem marcação o sistema não sabe se o filho fez o
+            curso fora daqui — a linha some em vez de afirmar "não fez". */}
+        {bibleCourseCompletion && (
+          <InfoRow
+            label="Curso bíblico"
+            value={
+              <ResidentBibleCourseField
+                residentId={resident.id}
+                residentName={resident.name}
+                completion={bibleCourseCompletion}
+                canManage={canManage}
+              />
+            }
+            full
+          />
+        )}
       </InfoGrid>
 
       <SectionTitle>Perfil Social</SectionTitle>

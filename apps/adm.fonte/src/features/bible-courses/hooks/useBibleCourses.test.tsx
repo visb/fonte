@@ -20,6 +20,9 @@ vi.mock('@/lib/api', () => ({
       createModule: vi.fn(),
       updateModule: vi.fn(),
       deleteModule: vi.fn(),
+      markExternalCompletion: vi.fn(),
+      unmarkExternalCompletion: vi.fn(),
+      getExternalCompletion: vi.fn(),
     },
   },
 }));
@@ -32,7 +35,7 @@ vi.mock('@/lib/toast', () => ({
 
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
-import { toastError, toastSuccess } from '@/lib/toast';
+import { toastAction, toastError, toastSuccess } from '@/lib/toast';
 import { renderHookWithClient } from '@/test/utils';
 import {
   useBibleClasses,
@@ -45,6 +48,9 @@ import {
   useRemoveEnrollment,
   useEligibleResidents,
   useEnrollBulk,
+  useMarkExternalCompletion,
+  useUnmarkExternalCompletion,
+  useResidentExternalCompletion,
 } from './useBibleCourses';
 import { useBibleClassGrades, useUpsertBibleGrade, useUpsertBibleGradesBulk } from './useBibleGrades';
 import {
@@ -236,6 +242,96 @@ describe('toast das mutations (story 126)', () => {
     expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao remover matrícula.');
 
     expect(toastSuccess).not.toHaveBeenCalled();
+  });
+});
+
+// Story 127: marcar/desmarcar mexe em duas telas — o painel de sugeridos (o
+// filho some/volta) e a ficha do filho (o campo aparece/some). Por isso as duas
+// queries são invalidadas nos dois sentidos.
+describe('curso feito fora do sistema (story 127)', () => {
+  it('busca a marcação da ficha e fica ociosa quando desabilitada', async () => {
+    vi.mocked(api.bibleCourse.getExternalCompletion).mockResolvedValue(null as never);
+
+    const { result } = renderHookWithClient(() => useResidentExternalCompletion('r1'));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.bibleCourse.getExternalCompletion).toHaveBeenCalledWith('r1');
+
+    // Sem permissão a query não roda — o endpoint é ADMIN/COORDINATOR.
+    const { result: off } = renderHookWithClient(() =>
+      useResidentExternalCompletion('r1', { enabled: false }),
+    );
+    expect(off.current.fetchStatus).toBe('idle');
+  });
+
+  it('marcar invalida elegíveis e ficha', async () => {
+    vi.mocked(api.bibleCourse.markExternalCompletion).mockResolvedValue({} as never);
+
+    const { result, queryClient } = renderHookWithClient(() => useMarkExternalCompletion());
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    result.current.mutate({ residentId: 'r1', residentName: 'Filho A' });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(api.bibleCourse.markExternalCompletion).toHaveBeenCalledWith('r1');
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.bibleCourses.eligibleResidentsAll });
+    expect(spy).toHaveBeenCalledWith({
+      queryKey: queryKeys.bibleCourses.externalCompletion('r1'),
+    });
+  });
+
+  it('desmarcar invalida elegíveis e ficha', async () => {
+    vi.mocked(api.bibleCourse.unmarkExternalCompletion).mockResolvedValue(undefined as never);
+
+    const { result, queryClient } = renderHookWithClient(() => useUnmarkExternalCompletion());
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    result.current.mutate({ residentId: 'r1', residentName: 'Filho A' });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(api.bibleCourse.unmarkExternalCompletion).toHaveBeenCalledWith('r1');
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.bibleCourses.eligibleResidentsAll });
+    expect(spy).toHaveBeenCalledWith({
+      queryKey: queryKeys.bibleCourses.externalCompletion('r1'),
+    });
+    expect(toastSuccess).toHaveBeenCalledWith('Marcação removida.');
+  });
+
+  // Decisão 5: engano na hora se conserta pelo próprio toast.
+  it('o toast de marcar traz "Desfazer" que desmarca de verdade', async () => {
+    vi.mocked(api.bibleCourse.markExternalCompletion).mockResolvedValue({} as never);
+    vi.mocked(api.bibleCourse.unmarkExternalCompletion).mockResolvedValue(undefined as never);
+
+    const { result } = renderHookWithClient(() => useMarkExternalCompletion());
+    result.current.mutate({ residentId: 'r1', residentName: 'Filho A' });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(toastAction).toHaveBeenCalledWith(
+      'Filho A marcado como já fez o curso.',
+      expect.objectContaining({ label: 'Desfazer' }),
+    );
+    // Toast de ação, não de sucesso: o "Desfazer" precisa caber na mensagem.
+    expect(toastSuccess).not.toHaveBeenCalled();
+
+    vi.mocked(toastAction).mock.calls[0][1].onClick();
+    await waitFor(() =>
+      expect(api.bibleCourse.unmarkExternalCompletion).toHaveBeenCalledWith('r1'),
+    );
+  });
+
+  it('falha de marcar/desmarcar dispara toastError com o fallback da tabela', async () => {
+    const boom = new Error('boom');
+    vi.mocked(api.bibleCourse.markExternalCompletion).mockRejectedValue(boom);
+    vi.mocked(api.bibleCourse.unmarkExternalCompletion).mockRejectedValue(boom);
+
+    const { result: m } = renderHookWithClient(() => useMarkExternalCompletion());
+    m.current.mutate({ residentId: 'r1', residentName: 'Filho A' });
+    await waitFor(() => expect(m.current.isError).toBe(true));
+    expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao marcar o curso como já feito.');
+
+    const { result: u } = renderHookWithClient(() => useUnmarkExternalCompletion());
+    u.current.mutate({ residentId: 'r1', residentName: 'Filho A' });
+    await waitFor(() => expect(u.current.isError).toBe(true));
+    expect(toastError).toHaveBeenCalledWith(boom, 'Erro ao remover marcação.');
+
+    expect(toastAction).not.toHaveBeenCalled();
   });
 });
 

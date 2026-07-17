@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { FamilyInvestment } from '@fonte/types';
-import type { Resident } from '@fonte/api-client';
+import type { BibleCourseExternalCompletion, Resident } from '@fonte/api-client';
 
 vi.mock('../GenerateResidentAccessDialog', () => ({
   GenerateResidentAccessDialog: ({ open }: { open: boolean }) =>
@@ -12,7 +12,24 @@ vi.mock('../ResetResidentPasswordDialog', () => ({
     open ? <div data-testid="reset-pwd" /> : null,
 }));
 
+const unmarkMutate = vi.fn();
+const useResidentExternalCompletion = vi.fn();
+vi.mock('@/features/bible-courses/hooks/useBibleCourses', () => ({
+  useResidentExternalCompletion: (...args: unknown[]) => useResidentExternalCompletion(...args),
+  useUnmarkExternalCompletion: () => ({ mutate: unmarkMutate, isPending: false }),
+}));
+
 import { OverviewTab } from './OverviewTab';
+
+/** Marcação de curso feito fora do sistema (story 127). */
+function completion(over: Partial<BibleCourseExternalCompletion> = {}): BibleCourseExternalCompletion {
+  return {
+    residentId: 'r1',
+    markedAt: '2026-07-17T12:00:00.000Z',
+    markedBy: { id: 'u1', name: 'Coord Maria' },
+    ...over,
+  };
+}
 
 function res(over: Partial<Resident> = {}): Resident {
   return {
@@ -28,6 +45,11 @@ function res(over: Partial<Resident> = {}): Resident {
   } as unknown as Resident;
 }
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Sem marcação por padrão: o campo "Curso bíblico" é exceção, não regra.
+  useResidentExternalCompletion.mockReturnValue({ data: undefined });
+});
 afterEach(() => cleanup());
 
 describe('OverviewTab', () => {
@@ -66,5 +88,65 @@ describe('OverviewTab', () => {
     render(<OverviewTab resident={res({ userId: 'u1', user: { email: 'f@x.com' } } as Partial<Resident>)} />);
     fireEvent.click(screen.getByRole('button', { name: /Resetar Senha/ }));
     expect(screen.getByTestId('reset-pwd')).toBeInTheDocument();
+  });
+});
+
+// Story 127: a ficha é o ponto permanente de desfazer (decisão 5) e o lugar
+// onde o fato "fez o curso fora do sistema" vive — não é só um filtro da lista.
+describe('OverviewTab — curso bíblico feito fora do sistema (story 127)', () => {
+  it('mostra a linha com quem marcou e quando', () => {
+    useResidentExternalCompletion.mockReturnValue({ data: completion() });
+    render(<OverviewTab resident={res()} canManage />);
+
+    expect(screen.getByText('Curso bíblico')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Concluído fora do sistema · marcado por Coord Maria em 17\/07\/2026/),
+    ).toBeInTheDocument();
+  });
+
+  // Sem marcação o sistema não sabe se o filho fez o curso fora daqui: a linha
+  // some em vez de afirmar "não fez".
+  it('não mostra a linha quando não há marcação', () => {
+    useResidentExternalCompletion.mockReturnValue({ data: undefined });
+    render(<OverviewTab resident={res()} canManage />);
+
+    expect(screen.queryByText('Curso bíblico')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Concluído fora do sistema/)).not.toBeInTheDocument();
+  });
+
+  it('"Remover marcação" desfaz com id e nome do filho', () => {
+    useResidentExternalCompletion.mockReturnValue({ data: completion() });
+    render(<OverviewTab resident={res()} canManage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover marcação' }));
+
+    expect(unmarkMutate).toHaveBeenCalledWith({ residentId: 'r1', residentName: 'Fulano' });
+  });
+
+  it('sem canManage não mostra "Remover marcação"', () => {
+    useResidentExternalCompletion.mockReturnValue({ data: completion() });
+    render(<OverviewTab resident={res()} canManage={false} />);
+
+    expect(screen.queryByRole('button', { name: 'Remover marcação' })).not.toBeInTheDocument();
+  });
+
+  // O endpoint da marcação é ADMIN/COORDINATOR: sem permissão a query nem roda.
+  it('desliga a query de marcação para quem não pode gerenciar', () => {
+    render(<OverviewTab resident={res()} />);
+    expect(useResidentExternalCompletion).toHaveBeenCalledWith('r1', { enabled: false });
+
+    cleanup();
+    render(<OverviewTab resident={res()} canManage />);
+    expect(useResidentExternalCompletion).toHaveBeenCalledWith('r1', { enabled: true });
+  });
+
+  // FK ON DELETE SET NULL: o staff que marcou pode ter sido removido; o fato
+  // sobrevive a ele, então o texto omite o autor em vez de mostrar vazio.
+  it('omite o autor quando quem marcou foi removido', () => {
+    useResidentExternalCompletion.mockReturnValue({ data: completion({ markedBy: null }) });
+    render(<OverviewTab resident={res()} canManage />);
+
+    expect(screen.getByText(/Concluído fora do sistema em 17\/07\/2026/)).toBeInTheDocument();
+    expect(screen.queryByText(/marcado por/)).not.toBeInTheDocument();
   });
 });

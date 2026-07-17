@@ -4,7 +4,11 @@ import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { useEligibleResidents, useEnrollBulk } from '../hooks/useBibleCourses';
+import {
+  useEligibleResidents,
+  useEnrollBulk,
+  useMarkExternalCompletion,
+} from '../hooks/useBibleCourses';
 import { EligibleResidentRow } from './EligibleResidentRow';
 
 interface Props {
@@ -18,6 +22,7 @@ interface Props {
 export function EligibleResidentsPanel({ classId, enrolledIds, enabled = true }: Props) {
   const { data, isLoading, isError, refetch } = useEligibleResidents({ enabled });
   const enrollMutation = useEnrollBulk(classId);
+  const markExternalMutation = useMarkExternalCompletion();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const enrolledSet = new Set(enrolledIds);
@@ -63,6 +68,18 @@ export function EligibleResidentsPanel({ classId, enrolledIds, enabled = true }:
     enrollMutation.mutate([...selected]);
   };
 
+  // Tira o filho da seleção ANTES do refetch: quem acabou de ser marcado como
+  // "já fez" não pode ser matriculado pelo botão em lote logo em seguida.
+  const handleMarkExternal = (id: string) => {
+    const resident = eligible.find((r) => r.id === id);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    markExternalMutation.mutate({ residentId: id, residentName: resident?.name ?? '' });
+  };
+
   return (
     <div className="rounded-lg border bg-card p-4 space-y-3">
       <div className="flex items-center gap-2">
@@ -91,6 +108,7 @@ export function EligibleResidentsPanel({ classId, enrolledIds, enabled = true }:
             resident={r}
             checked={selected.has(r.id)}
             onToggle={toggle}
+            onMarkExternal={handleMarkExternal}
           />
         ))}
       </div>

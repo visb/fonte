@@ -162,6 +162,7 @@ export type {
   UpdateBibleCourseClassInput,
   EnrollResidentInput,
   EligibleResident,
+  BibleCourseExternalCompletion,
   BulkEnrollInput,
   BulkEnrollResult,
   UpdateBibleCourseEnrollmentInput,

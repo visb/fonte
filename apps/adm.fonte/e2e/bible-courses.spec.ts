@@ -1,5 +1,35 @@
-import { test, expect, type Page } from '@playwright/test';
-import { login } from './helpers/auth';
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { login, TEST_ADMIN } from './helpers/auth';
+
+const API = 'http://localhost:3001/api/v1';
+
+/**
+ * Cria um filho elegível para sugestão de matrícula (story 127).
+ *
+ * O seed nasce com `entryDate` = hoje e a regra exige 3+ meses de casa, então
+ * sem isto o painel de sugeridos fica vazio e o teste vira skip — ou seja, o
+ * fluxo não seria verificado. Criar pela API é o único jeito de ter data de
+ * entrada antiga: o wizard sempre usa hoje.
+ */
+async function seedEligibleResident(
+  request: APIRequestContext,
+  name: string,
+): Promise<void> {
+  const loginRes = await request.post(`${API}/auth/login`, {
+    data: { identifier: TEST_ADMIN.email, password: TEST_ADMIN.password },
+  });
+  const token = (await loginRes.json()).accessToken as string;
+  const headers = { Authorization: `Bearer ${token}` };
+
+  const housesRes = await request.get(`${API}/houses`, { headers });
+  const houses = (await housesRes.json()) as Array<{ id: string }>;
+
+  const res = await request.post(`${API}/residents`, {
+    headers,
+    data: { name, houseId: houses[0].id, status: 'ACTIVE', entryDate: '2020-01-01' },
+  });
+  expect(res.status()).toBe(201);
+}
 
 test.describe('Curso Bíblico', () => {
   const ts = () => Date.now();
@@ -147,6 +177,39 @@ test.describe('Curso Bíblico', () => {
     await expect(rows.first()).toBeChecked();
     await page.getByRole('button', { name: /Matricular selecionados \([1-9]/ }).click();
     await expect(page.getByText('Matriculado').first()).toBeVisible();
+  });
+
+  // Story 127: quem fez o curso antes do sistema existir não tem matrícula, então
+  // nada o tirava da sugestão. "Já fez" fecha esse furo — e o toast desfaz o
+  // engano na hora (decisão 5), devolvendo o filho à lista.
+  test('marca sugerido como "já fez" e desfaz pelo toast (story 127)', async ({
+    page,
+    request,
+  }) => {
+    // Filho próprio do teste: garante a sugestão e não depende de quem o seed
+    // (ou os outros testes, que matriculam os elegíveis) deixou disponível.
+    const residentName = `Já Fez E2E ${ts()}`;
+    await seedEligibleResident(request, residentName);
+
+    const name = `Turma Já Fez ${ts()}`;
+    await createClass(page, name);
+
+    await page.getByText(name).click();
+    await expect(page).toHaveURL(/\/bible-courses\/.+/);
+
+    await expect(page.getByRole('heading', { name: 'Sugestões de matrícula' })).toBeVisible();
+    const rowBox = page.getByRole('checkbox', { name: `Selecionar ${residentName}` });
+    await expect(rowBox).toBeVisible();
+
+    // Marcar → o filho sai da sugestão e o toast confirma nomeando quem saiu.
+    await page.getByRole('button', { name: `Marcar ${residentName} como já fez o curso` }).click();
+    await expect(page.getByText(`${residentName} marcado como já fez o curso.`)).toBeVisible();
+    await expect(rowBox).toHaveCount(0);
+
+    // Desfazer → a marcação cai e o filho volta a ser sugerido.
+    await page.getByRole('button', { name: 'Desfazer' }).click();
+    await expect(page.getByText('Marcação removida.')).toBeVisible();
+    await expect(rowBox).toBeVisible();
   });
 
   // Story 126: feedback de ação é toast (sonner), não texto inline no dialog.

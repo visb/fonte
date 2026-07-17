@@ -6,11 +6,16 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BibleCourseEnrollmentStatus, ResidentStatus } from '@fonte/types';
-import { BibleClassGrades, EligibleResident } from '@fonte/types';
+import {
+  BibleClassGrades,
+  BibleCourseExternalCompletion as BibleCourseExternalCompletionDto,
+  EligibleResident,
+} from '@fonte/types';
 import { BibleCourseClass } from './bible-course-class.entity';
 import { BibleCourseEnrollment } from './bible-course-enrollment.entity';
 import { BibleCourseModule } from './bible-course-module.entity';
 import { BibleCourseGrade } from './bible-course-grade.entity';
+import { BibleCourseExternalCompletion } from './bible-course-external-completion.entity';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
@@ -36,6 +41,8 @@ export class BibleCourseService {
     private moduleRepo: Repository<BibleCourseModule>,
     @InjectRepository(BibleCourseGrade)
     private gradeRepo: Repository<BibleCourseGrade>,
+    @InjectRepository(BibleCourseExternalCompletion)
+    private externalCompletionRepo: Repository<BibleCourseExternalCompletion>,
   ) {}
 
   // ─── Modules (catalogo compartilhado) ────────────────────────────────────────
@@ -238,9 +245,10 @@ export class BibleCourseService {
   /**
    * Filhos elegíveis para sugestão de matrícula no curso, de TODAS as casas:
    * ativos (`status ∈ {ACTIVE, DISCIPLINE}` e `exitDate` nulo), com pelo menos
-   * `months` meses de casa (`entryDate <= hoje − months`) e sem matrícula ativa
-   * (qualquer enrollment não-desistente em turma não deletada). Ordena por
-   * `entryDate` (mais antigo primeiro).
+   * `months` meses de casa (`entryDate <= hoje − months`), sem matrícula ativa
+   * (qualquer enrollment não-desistente em turma não deletada) e sem marcação
+   * de curso feito fora do sistema (story 127). Ordena por `entryDate` (mais
+   * antigo primeiro).
    */
   async findEligibleResidents(
     months: number = ELIGIBLE_TREATMENT_MONTHS,
@@ -273,6 +281,12 @@ export class BibleCourseService {
            WHERE e.resident_id = r.id
              AND e.deleted_at IS NULL
              AND e.status <> '${BibleCourseEnrollmentStatus.DROPPED}'
+         )
+         AND NOT EXISTS (
+           SELECT 1
+           FROM bible_course_external_completions x
+           WHERE x.resident_id = r.id
+             AND x.deleted_at IS NULL
          )
        ORDER BY r.entry_date ASC`,
       [months],
@@ -428,6 +442,85 @@ export class BibleCourseService {
       classId,
       modules: modules.map((m) => ({ id: m.id, name: m.name, sequence: m.sequence })),
       rows,
+    };
+  }
+
+  // ─── Conclusão fora do sistema (story 127) ───────────────────────────────────
+
+  /** 404 se o filho não existe (ou está soft-deletado). */
+  private async assertResidentExists(residentId: string): Promise<void> {
+    const [resident] = await this.externalCompletionRepo.manager.query<
+      Array<{ id: string }>
+    >(`SELECT id FROM residents WHERE id = $1 AND deleted_at IS NULL`, [residentId]);
+    if (!resident) throw new NotFoundException(`Resident ${residentId} not found`);
+  }
+
+  /**
+   * Marca que o filho **concluiu o curso fora do sistema**. Fato histórico do
+   * filho: atravessa alta/evasão/readmissão e o exclui das sugestões para
+   * sempre. **Idempotente** (decisão 6): clique repetido ou corrida não cria
+   * segunda marcação nem estoura erro — devolve a marcação já existente.
+   */
+  async markExternalCompletion(
+    residentId: string,
+    userId: string | null,
+  ): Promise<BibleCourseExternalCompletionDto> {
+    await this.assertResidentExists(residentId);
+
+    const existing = await this.externalCompletionRepo.findOne({ where: { residentId } });
+    if (!existing) {
+      try {
+        await this.externalCompletionRepo.save(
+          this.externalCompletionRepo.create({ residentId, markedBy: userId ?? null }),
+        );
+      } catch (error) {
+        // Corrida entre dois cliques: o índice único parcial barra a segunda
+        // inserção. A marcação existe — devolvê-la é o resultado esperado.
+        if ((error as { code?: string })?.code !== '23505') throw error;
+      }
+    }
+
+    return (await this.findExternalCompletion(residentId)) as BibleCourseExternalCompletionDto;
+  }
+
+  /** Desfaz a marcação (soft delete — a linha fica no histórico). 404 se não há marcação ativa. */
+  async unmarkExternalCompletion(residentId: string): Promise<void> {
+    const existing = await this.externalCompletionRepo.findOne({ where: { residentId } });
+    if (!existing) {
+      throw new NotFoundException(`External completion for resident ${residentId} not found`);
+    }
+    await this.externalCompletionRepo.softDelete(existing.id);
+  }
+
+  /**
+   * Marcação ativa do filho, com quem/quando, ou `null` se não há (inclusive
+   * quando a última marcação foi desfeita). `markedBy` nulo = o usuário que
+   * marcou foi removido (FK ON DELETE SET NULL).
+   */
+  async findExternalCompletion(
+    residentId: string,
+  ): Promise<BibleCourseExternalCompletionDto | null> {
+    const [row] = await this.externalCompletionRepo.manager.query<
+      Array<{ markedAt: Date; markedById: string | null; markedByName: string | null }>
+    >(
+      `SELECT x.marked_at                AS "markedAt",
+              x.marked_by                AS "markedById",
+              COALESCE(s.name, u.email)  AS "markedByName"
+       FROM bible_course_external_completions x
+       LEFT JOIN users u ON u.id = x.marked_by
+       LEFT JOIN staff s ON s.user_id = u.id AND s.deleted_at IS NULL
+       WHERE x.resident_id = $1 AND x.deleted_at IS NULL
+       LIMIT 1`,
+      [residentId],
+    );
+    if (!row) return null;
+
+    return {
+      residentId,
+      markedAt: new Date(row.markedAt).toISOString(),
+      markedBy: row.markedById
+        ? { id: row.markedById, name: row.markedByName ?? '' }
+        : null,
     };
   }
 

@@ -385,7 +385,7 @@ export function useApproveAll(
         }
         // Ficha sem familiar conhecido é aprovável no import (regra "≥1
         // relative" vale só para o acolhimento manual).
-        const payload = buildCommitPayloadFromPreview(item.preview!, housesRef.current, item.fileName);
+        const payload = buildCommitPayloadFromPreview(item.preview!, housesRef.current);
         await api.residents.commitImport(payload);
         queueRef.current.markImported(item.id);
         remember(item);

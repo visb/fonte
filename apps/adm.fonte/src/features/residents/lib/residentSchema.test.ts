@@ -141,4 +141,12 @@ describe('residentToFormValues', () => {
     const resident = { name: 'Ana', houseId: 'h1', status: 'ACTIVE', exitDate: null } as unknown as Resident;
     expect(residentToFormValues(resident).exitDate).toBe('');
   });
+
+  it('normaliza houseId nulo (filho sem casa) para string vazia — form válido', () => {
+    const resident = { name: 'Zé', houseId: null, status: 'ARCHIVED' } as unknown as Resident;
+    const values = residentToFormValues(resident);
+    expect(values.houseId).toBe('');
+    // e o resultado continua parseável pelo schema (ARCHIVED dispensa casa)
+    expect(residentSchema.safeParse(values).success).toBe(true);
+  });
 });

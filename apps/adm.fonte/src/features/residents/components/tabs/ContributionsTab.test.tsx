@@ -13,8 +13,10 @@ vi.mock('../../hooks/useResidentReceivables', () => ({
   useReopenReceivable: () => reopenMutation,
   useSetContributionExempt: () => ({ mutate: vi.fn(), isPending: false }),
 }));
+const inventoryCatalog = vi.fn((_houseId: string | null, _options?: { enabled?: boolean }) => ({ data: [] as unknown[] }));
 vi.mock('../../hooks/useProductContributions', () => ({
-  useInventoryCatalog: () => ({ data: [] }),
+  useInventoryCatalog: (houseId: string | null, options?: { enabled?: boolean }) =>
+    inventoryCatalog(houseId, options),
 }));
 vi.mock('../ChangeContributionPlanDialog', () => ({ ChangeContributionPlanDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="plan-dialog" /> : null) }));
 vi.mock('../RegisterPaymentDialog', () => ({ RegisterPaymentDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="pay-dialog" /> : null) }));
@@ -24,7 +26,7 @@ vi.mock('../ReceivableRow', () => ({ ReceivableRow: ({ receivable, onReopenClick
 
 import { ContributionsTab } from './ContributionsTab';
 
-const resident = { id: 'r1', name: 'Fulano', familyInvestment: 'BASKET_500', contributionExempt: false, contributionDueDay: 10 } as unknown as Resident;
+const resident = { id: 'r1', name: 'Fulano', houseId: 'h1', familyInvestment: 'BASKET_500', contributionExempt: false, contributionDueDay: 10 } as unknown as Resident;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -40,6 +42,17 @@ describe('ContributionsTab', () => {
     auth.role = Role.SERVANT;
     render(<ContributionsTab resident={resident} />);
     expect(screen.getByText('Sem permissão para ver a contribuição.')).toBeInTheDocument();
+  });
+
+  it('sem casa (houseId null) mostra estado vazio coerente e não consulta o catálogo', () => {
+    const semCasa = { ...resident, houseId: null } as unknown as Resident;
+    render(<ContributionsTab resident={semCasa} />);
+    expect(screen.getByText('Sem carnê de contribuição.')).toBeInTheDocument();
+    // o card de plano e as parcelas não renderizam sem casa
+    expect(screen.queryByText('Plano')).not.toBeInTheDocument();
+    expect(screen.queryByText('Nenhuma parcela gerada.')).not.toBeInTheDocument();
+    // a query de inventário fica desligada quando não há casa
+    expect(inventoryCatalog).toHaveBeenCalledWith(null, expect.objectContaining({ enabled: false }));
   });
 
   it('sem parcelas mostra empty state e o card de plano', () => {

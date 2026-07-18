@@ -99,7 +99,10 @@ export function residentToFormValues(r: Resident): ResidentFormData {
   const numStr = (v: number | null | undefined) => (v != null ? String(v) : '');
   return {
     name: r.name,
-    houseId: r.houseId,
+    // `houseId` é anulável (filho ARCHIVED sem casa, migration AllowNullResidentHouse);
+    // o campo do form é `string | undefined`, então normaliza o null para o valor
+    // vazio do <Select> ("Selecione a casa").
+    houseId: r.houseId ?? '',
     status: r.status,
     birthDate: dateStr(r.birthDate),
     cpf: maskCPF(r.cpf ?? ''),

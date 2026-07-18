@@ -29,6 +29,10 @@ export async function createResidentViaWizard(page: Page, name: string) {
 export async function openResidentFromList(page: Page, name: string) {
   await page.getByRole('link', { name: 'Filhos' }).click();
   await expect(page).toHaveURL('/residents');
+  // A listagem abre filtrada por "Ativo" (padrão da tela, story 130). Residentes
+  // recém-criados pelo wizard entram como PRE_ADMISSION, então trocamos para
+  // "Todos os status" antes de buscar pelo nome.
+  await page.locator('select').first().selectOption('');
   await page.getByPlaceholder('Buscar por nome...').fill(name);
   const card = page.locator('.rounded-lg.border.bg-card').filter({ hasText: name });
   await expect(card).toBeVisible();

@@ -19,10 +19,13 @@ export interface InventoryCatalogItem {
  * num único array ordenado por nome. O backend guarda os dois em `inventory_items`
  * (story 111), então qualquer id é um `inventoryItemId` válido na declaração.
  */
-export function useInventoryCatalog(houseId: string, options?: { enabled?: boolean }) {
+export function useInventoryCatalog(houseId: string | null, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.inventory.catalog(houseId),
     queryFn: async (): Promise<InventoryCatalogItem[]> => {
+      // A query só dispara com `houseId` presente (gate no `enabled`); a
+      // asserção documenta a invariante para o TS dentro do queryFn.
+      if (!houseId) return [];
       const [storeroom, supply] = await Promise.all([
         api.storeroom.listItems({ houseId }),
         api.supplyRoom.listItems({ houseId }),

@@ -1,52 +1,55 @@
-# PROGRESS — ledger da rodada AUTORUN corrente
+# PROGRESS — stories 131–134 (dívidas da rodada 125–130: saneamento de teste + LGPD)
 
-Estado da execução autônoma corrente (conduzida por `AUTORUN.md`). **Fonte de verdade para
-retomar: este arquivo + `git log`.** Histórico de execuções já concluídas vive em
-`stories/done/PROGRESS-NN-MM.md` (uma por rodada) + `git log` (stories arquivadas em
-`stories/done/`) — não acumular logs antigos aqui.
+Ordem: 131 → 132 → 133 → 134. Fonte de verdade: esta seção + git log.
 
-**Nenhuma rodada ativa no momento.** Rodadas encerradas:
+**Config da rodada**
 
-- `done/PROGRESS-64-75.md`
-- `done/PROGRESS-77-84.md` — cobertura de testes (piso 80%)
-- `done/PROGRESS-85-91.md` — cobertura de testes (piso 90%)
-- `done/PROGRESS-92-98.md` — features (curso bíblico, bucket, eventos, perfil servo)
-- `done/PROGRESS-99-106.md` — curso: sugerir matrícula + import em lote de filhos (106 purga de histórico PENDENTE-MANUAL)
-- `done/PROGRESS-107-115.md` — import em lote UX + contribuição valor/produtos + squash migrations (9/9 OK; 114 Maestro PENDENTE-MANUAL)
-- `done/PROGRESS-116-123.md` — dashboard/navbar adm + melhorias no import de filhos + wipe bucket (8/8 OK)
-- `done/PROGRESS-125-130.md` — sugeridos + toast + assinatura + ordenação/preferências (6/6 OK)
-
-Ao abrir uma rodada nova, copiar o modelo abaixo aqui e preencher fila + config. Ao encerrar,
-mover a seção da rodada para `stories/done/PROGRESS-NN-MM.md` e restaurar este stub.
-
-## Legenda
-
-`[OK]` story implementada, suíte tocada verde, commitada (e mergeada, se a rodada usar merge) ·
-`[PARCIAL]` código completo mas parte depende de serviço externo sem credencial (mock nos testes) ·
-`[BLOQUEADO]` impedida (registrar o motivo) · `[ ]` pendente
-
----
-
-<!--
-Modelo de seção por rodada — copiar abaixo ao iniciar:
-
-# PROGRESS — stories NN–MM (<feature/epic>)
-
-Ordem: <NN → ... → MM>. Fonte de verdade: esta seção + git log.
-Config da rodada: branch base, deps rígidas, cuidados (migrations/contratos/postman/externo).
+- **Branch base:** `main` (cada branch parte da main ATUAL, já com o merge da anterior).
+- **Prefixo de branch:** `feat/story-NN-<slug>`.
+- **Deps rígidas** (se a de cima bloquear, a de baixo bloqueia junto — não pular):
+  - **133 → 131** (o e2e de preferências precisa de `residents`/suíte e2e verde; sobre suíte instável
+    o sinal do novo spec fica ambíguo). Se 131 bloquear, 133 bloqueia junto.
+  - 132 e 134 são independentes das demais.
+- **Cuidados da rodada:**
+  - **Sem migration nova** em nenhuma das 4 (131 conserta tipos; 132 mexe só no seed de teste; 133 é
+    e2e; 134 é docs). Última migration aplicada: `1783037200000-UserPreferences`. Se alguma
+    investigação revelar necessidade de schema, **parar e registrar** — não improvisar migration.
+  - **Contratos** (`packages/types`/`api-client`): não devem mudar. 131 corrige uso de tipos já
+    existentes (`Resident.houseId: string | null`), não os altera. Se precisar mudar contrato,
+    rebuildar (`pnpm build:types && pnpm build:api-client`) e refletir no Postman.
+  - **Postman:** nenhuma das 4 adiciona/altera endpoint. Só tocar se a investigação do e2e (131)
+    revelar bug de API que exija endpoint novo (improvável).
+  - **Baseline honesto (131):** medir `residents.spec.ts` ANTES (6 failed / 22 passed) e DEPOIS
+    (0 failed); os 4 erros `tsc` são reais e reproduzíveis (`ContributionsTab` 34/77, `useBulkImport`
+    388, `residentSchema` 102). Comparar com a main via `git stash -u` continua sendo a régua.
+  - **Seed compartilhado (132):** adicionar filho elegível NÃO pode regredir contagens que outros
+    specs assumem (listagens por casa, dashboard, ordenação da 129). Preferir filho dedicado +
+    conferir specs de contagem. Datas retrodatadas relativas ao "agora", não fixas.
+  - **Isolamento (133):** cada spec que salva preferência limpa em `afterEach`
+    (`DELETE /preferences/residents.filters`) — senão vaza no DB de teste compartilhado. Rodar 2×/ordem
+    embaralhada pra provar determinismo. Preferir `e2e/preferences.spec.ts` próprio.
+  - **134 é docs-only + REVISÃO HUMANA:** a base legal LGPD é decisão de compliance, não mecânica. O
+    implementer PROPÕE o texto (inventário + gap no roadmap); marcar **PENDENTE-REVISÃO-HUMANA** no
+    ledger ao mergear — o texto entra, mas a assinatura jurídica fica pendente do usuário. Sem gate de
+    cobertura (não há código).
+  - **Gate de cobertura ≥ 90** no pacote tocado (131/132/133 quando tocarem código), sem
+    `skip`/`only`/`xfail` injustificado. 132 REMOVE skips (não adiciona). 134 sem gate de teste.
 
 ## Fila
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | NN — <título> | [ ] | | | |
+| 1 | 131 — sanear tsc + e2e de `features/residents` | [ ] | | | |
+| 2 | 132 — corrigir seed de teste dos elegíveis (remover 2 skips) | [ ] | | | |
+| 3 | 133 — e2e Playwright de preferências / filtros persistidos | [ ] | | | |
+| 4 | 134 — LGPD: inventariar `staff.signature_url` (docs) | [ ] | | | |
 
 ## Log
 
 Entrada curta — máx. ~3 linhas. Detalhe rico vai no corpo do commit ou no `.md` arquivado.
+
 [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver>
 
 ## Resumo final
 
-<o que passou, o que ficou pendente/bloqueado e por quê, comandos para reproduzir>
--->
+<pendente — rodada em andamento>

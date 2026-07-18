@@ -207,6 +207,10 @@ describe('buildCommitPayloadFromPreview', () => {
     expect(payload.contributionMonths).toEqual(['2023-02-01', '2023-03-01']);
     expect(payload.photoBase64).toBe('data:image/png;base64,abc');
     expect(payload.resident.status).toBe(ResidentStatus.ACTIVE);
+    // A função recebe exatamente 2 args (preview + houses): `fileName` não entra
+    // no contrato do commit, então o payload não carrega esse campo (story 131).
+    expect(buildCommitPayloadFromPreview).toHaveLength(2);
+    expect(payload).not.toHaveProperty('fileName');
   });
 
   it('leva a exitDate do preview até o payload do commit (story 120)', () => {

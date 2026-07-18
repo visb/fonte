@@ -29,9 +29,15 @@ interface Props {
 export function ContributionsTab({ resident }: Props) {
   const { role } = useAuth();
   const canManage = role === Role.ADMIN || role === Role.COORDINATOR;
+  // `houseId` é anulável (filho ARCHIVED/sem casa — migration AllowNullResidentHouse).
+  // Sem casa não há carnê nem catálogo de inventário para declarar produtos, então
+  // as queries por casa ficam desligadas e a aba mostra um estado vazio coerente.
+  const houseId = resident.houseId;
 
-  const { data: receivables, isLoading, isError } = useResidentReceivables(resident.id, { enabled: canManage });
-  const { data: catalog = [] } = useInventoryCatalog(resident.houseId, { enabled: canManage });
+  const { data: receivables, isLoading, isError } = useResidentReceivables(resident.id, {
+    enabled: canManage && !!houseId,
+  });
+  const { data: catalog = [] } = useInventoryCatalog(houseId, { enabled: canManage && !!houseId });
   const reopenMutation = useReopenReceivable(resident.id);
 
   const [planOpen, setPlanOpen] = useState(false);
@@ -40,6 +46,15 @@ export function ContributionsTab({ resident }: Props) {
 
   if (!canManage) {
     return <EmptyState title="Sem permissão para ver a contribuição." />;
+  }
+
+  if (!houseId) {
+    return (
+      <EmptyState
+        title="Sem carnê de contribuição."
+        description="A contribuição é gerenciada por casa. Vincule o acolhido a uma casa para gerar o carnê."
+      />
+    );
   }
 
   return (
@@ -74,7 +89,7 @@ export function ContributionsTab({ resident }: Props) {
         onClose={() => setPayTarget(null)}
         residentId={resident.id}
         residentName={resident.name}
-        houseId={resident.houseId}
+        houseId={houseId}
         receivable={payTarget}
       />
 

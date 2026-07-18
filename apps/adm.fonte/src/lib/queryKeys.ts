@@ -76,7 +76,7 @@ export const queryKeys = {
   },
   inventory: {
     // Catálogo unificado (almoxarifado + dispensa) de uma casa — story 111/113.
-    catalog: (houseId: string) => ['inventory', 'catalog', houseId] as const,
+    catalog: (houseId: string | null) => ['inventory', 'catalog', houseId] as const,
   },
   billing: {
     filhos: {

@@ -95,6 +95,8 @@ import type {
   EventInviteSkipReason,
   CommitImportRelative,
   ImportContributionsSummary,
+  UserPreferences,
+  ResidentsFiltersPreference,
 } from '@fonte/types';
 import {
   NotificationType,
@@ -1195,6 +1197,10 @@ export interface UpdateAppSettingsInput {
   timerResetFrequency?: TimerResetFrequency;
   dailyUsageMinutes?: number;
 }
+
+// ─── User Preferences (story 130) ─────────────────────────────────────────────
+
+export type { UserPreferences, ResidentsFiltersPreference };
 
 // ─── Resident Session ─────────────────────────────────────────────────────────
 

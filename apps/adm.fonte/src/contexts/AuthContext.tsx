@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useState } from 'react';
 import { api, TOKEN_STORAGE_KEY } from '@/lib/api';
+import { clearPreferences, writePreferences } from '@/lib/preferences';
 
 interface AuthContextValue {
   token: string | null;
@@ -40,10 +41,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { accessToken } = await api.auth.login({ identifier, password });
     localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
     setToken(accessToken);
+    // Popula o cache de preferências do servidor (decisão 8). Falha aqui não
+    // bloqueia o login — a tela cai no padrão.
+    try {
+      const preferences = await api.preferences.getAll();
+      writePreferences(preferences);
+    } catch {
+      // silencioso: preferência é conveniência, não requisito do login.
+    }
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
+    // Máquina compartilhada: sem isso o próximo usuário herdaria os filtros do
+    // anterior (decisão 9).
+    clearPreferences();
     setToken(null);
   }, []);
 

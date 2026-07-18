@@ -4319,6 +4319,71 @@
       ]
     },
     {
+      "name": "Preferences",
+      "item": [
+        {
+          "name": "Get All Preferences",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "preferences"
+              ]
+            },
+            "description": "Mapa chave->valor das preferencias do usuario do token (story 130)."
+          }
+        },
+        {
+          "name": "Set Preference (upsert)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": {\n    \"status\": \"\",\n    \"house\": \"\",\n    \"overdue\": false,\n    \"sort\": \"entry_desc\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/preferences/residents.filters",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "preferences",
+                "residents.filters"
+              ]
+            },
+            "description": "Upsert idempotente. key casa ^[a-z][a-z0-9.]{0,63}$; value JSON ate 4 KB."
+          }
+        },
+        {
+          "name": "Delete Preference",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/preferences/residents.filters",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "preferences",
+                "residents.filters"
+              ]
+            },
+            "description": "Remove a preferencia (reset ao padrao). 204 mesmo se nao existia."
+          }
+        }
+      ]
+    },
+    {
       "name": "Resident Sessions",
       "item": [
         {

@@ -11,6 +11,16 @@ vi.mock('@/features/houses/hooks/useHouses', () => ({
   useHouses: () => ({ data: [] }),
 }));
 
+// Preferência mockada (story 130): controlamos o valor salvo e espionamos a
+// gravação, sem tocar localStorage nem rede.
+const { setPreferenceValue, prefState } = vi.hoisted(() => ({
+  setPreferenceValue: vi.fn(),
+  prefState: { saved: null as unknown },
+}));
+vi.mock('@/features/preferences/hooks/usePreference', () => ({
+  usePreference: () => [prefState.saved, setPreferenceValue],
+}));
+
 import { useInfiniteResidents, useDeleteResident } from '../hooks/useResidents';
 import { ResidentsPage } from './ResidentsPage';
 
@@ -27,6 +37,7 @@ const del = vi.mocked(useDeleteResident);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  prefState.saved = null;
   infinite.mockReturnValue({
     data: { pages: [{ data: [], total: 0 }] },
     isLoading: false,
@@ -78,6 +89,65 @@ describe('ResidentsPage — ordenação (story 129)', () => {
     });
     expect(infinite).toHaveBeenLastCalledWith(
       expect.objectContaining({ sort: 'name', order: 'desc' }),
+    );
+  });
+});
+
+describe('ResidentsPage — filtros persistidos (story 130)', () => {
+  it('URL vazia + preferência salva → hidrata a URL com os filtros salvos (decisão 4)', () => {
+    prefState.saved = { status: 'DISCIPLINE', house: 'h2', overdue: true, sort: 'name_asc' };
+    renderAt('/residents');
+    expect(infinite).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        status: 'DISCIPLINE',
+        houseId: 'h2',
+        overdueContribution: true,
+        sort: 'name',
+        order: 'asc',
+      }),
+    );
+  });
+
+  it('URL com um filtro → preferência ignorada por inteiro; URL intacta (decisão 5)', () => {
+    prefState.saved = { status: 'DISCIPLINE', house: 'h2', overdue: true, sort: 'name_asc' };
+    renderAt('/residents?house=h1');
+    // Só o filtro da URL vale; status volta ao default (ACTIVE), sem os demais salvos.
+    expect(infinite).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        houseId: 'h1',
+        status: 'ACTIVE',
+        overdueContribution: false,
+        sort: 'entryDate',
+        order: 'desc',
+      }),
+    );
+  });
+
+  it("status='' salvo → hidrata como presente-e-vazio (Todos), não como ausente (Ativo)", () => {
+    prefState.saved = { status: '', house: '', overdue: false, sort: 'entry_desc' };
+    renderAt('/residents');
+    expect(infinite).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: '' }),
+    );
+  });
+
+  it('trocar filtro grava a preferência (sem q — decisão 6)', () => {
+    renderAt('/residents?q=fulano');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Ordenar por' }), {
+      target: { value: 'name_desc' },
+    });
+    expect(setPreferenceValue).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: 'name_desc' }),
+    );
+    const savedArg = setPreferenceValue.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(savedArg).not.toHaveProperty('q');
+  });
+
+  it('sem preferência salva não hidrata nem altera a URL', () => {
+    prefState.saved = null;
+    renderAt('/residents');
+    expect(infinite).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'ACTIVE', houseId: '', sort: 'entryDate' }),
     );
   });
 });

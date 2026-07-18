@@ -1,7 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Loader2 } from 'lucide-react';
-import { ResidentStatus } from '@fonte/types';
+import {
+  ResidentStatus,
+  RESIDENTS_FILTERS_PREFERENCE_KEY,
+  type ResidentsFiltersPreference,
+} from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -13,10 +17,14 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/lib/useDebounce';
+import { usePreference } from '@/features/preferences/hooks/usePreference';
 import { useInfiniteResidents, useDeleteResident } from '../hooks/useResidents';
 import { ResidentCard } from '../components/ResidentCard';
 import { ResidentsFilters } from '../components/ResidentsFilters';
 import { RESIDENT_SORT_PARAMS, toResidentSortOption } from '../constants';
+
+/** Filtros que participam da preferência/hidratação. `q` (busca) fica de fora (decisão 6). */
+const PERSISTED_FILTER_PARAMS = ['status', 'house', 'overdue', 'sort'] as const;
 
 export function ResidentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Resident | null>(null);
@@ -46,11 +54,60 @@ export function ResidentsPage() {
     );
   };
 
+  // Preferência dos filtros (story 130). O valor inicial vem do cache síncrono;
+  // usamos como fonte da hidratação no mount e `setFilters` para persistir.
+  const [savedFilters, setFilters] = usePreference<ResidentsFiltersPreference | null>(
+    RESIDENTS_FILTERS_PREFERENCE_KEY,
+    null,
+  );
+
+  // Persiste o conjunto completo de filtros a cada mudança (decisão 7). `q` nunca
+  // entra (decisão 6). `status` guarda a string como está (`''` = "Todos").
+  const persistFilters = (overrides: Partial<ResidentsFiltersPreference>) => {
+    setFilters({
+      status,
+      house: houseId,
+      overdue: overdueContribution,
+      sort: sortOption,
+      ...overrides,
+    });
+  };
+
+  // Hidratação no mount (decisão 4/5): só quando a URL não traz NENHUM filtro
+  // persistido — se traz qualquer um, a preferência é ignorada por inteiro para
+  // o link compartilhado ser determinístico.
+  useEffect(() => {
+    const urlHasFilter = PERSISTED_FILTER_PARAMS.some((k) => searchParams.has(k));
+    if (urlHasFilter || !savedFilters) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        // `status` é sempre reescrito, inclusive `''` — preserva a distinção
+        // ausente vs presente-e-vazio ("Todos") na URL.
+        next.set('status', savedFilters.status ?? '');
+        if (savedFilters.house) next.set('house', savedFilters.house);
+        if (savedFilters.overdue) next.set('overdue', '1');
+        if (savedFilters.sort) next.set('sort', savedFilters.sort);
+        return next;
+      },
+      { replace: true },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Busca: input controlado localmente (responsivo) e sincronizado à URL após debounce.
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const debouncedSearch = useDebounce(search, 400);
 
+  // Pula a 1ª sincronização (mount): a URL já reflete o `q` inicial e navegar aqui
+  // sobrescreveria a hidratação dos filtros (ambos os efeitos leem a URL original
+  // no mesmo commit — o último a navegar venceria).
+  const didSyncSearch = useRef(false);
   useEffect(() => {
+    if (!didSyncSearch.current) {
+      didSyncSearch.current = true;
+      return;
+    }
     setParam('q', debouncedSearch || undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
@@ -112,13 +169,25 @@ export function ResidentsPage() {
         search={search}
         onSearchChange={setSearch}
         status={status}
-        onStatusChange={(value) => setParam('status', value)}
+        onStatusChange={(value) => {
+          setParam('status', value);
+          persistFilters({ status: value });
+        }}
         houseId={houseId}
-        onHouseIdChange={(value) => setParam('house', value || undefined)}
+        onHouseIdChange={(value) => {
+          setParam('house', value || undefined);
+          persistFilters({ house: value });
+        }}
         overdueContribution={overdueContribution}
-        onOverdueContributionChange={(value) => setParam('overdue', value ? '1' : undefined)}
+        onOverdueContributionChange={(value) => {
+          setParam('overdue', value ? '1' : undefined);
+          persistFilters({ overdue: value });
+        }}
         sort={sortOption}
-        onSortChange={(value) => setParam('sort', value)}
+        onSortChange={(value) => {
+          setParam('sort', value);
+          persistFilters({ sort: value });
+        }}
       />
 
       {isLoading ? (

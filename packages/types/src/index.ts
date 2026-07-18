@@ -1303,3 +1303,26 @@ export interface PayEventResult {
   method: EventPaymentMethod;
   pix: PixPaymentResult | null;
 }
+
+// ─── User Preferences (story 130) ───────────────────────────────────────────
+
+/**
+ * Mapa chave→valor das preferências de UI do usuário logado — exatamente o que
+ * o cliente guarda em cache no `localStorage`. Cada tela usa a própria chave.
+ */
+export type UserPreferences = Record<string, unknown>;
+
+/**
+ * Preferência da listagem de filhos (chave `residents.filters`). Guarda os
+ * filtros e a ordenação (escolha de exibição como as demais). `status` mantém a
+ * distinção ausente vs presente-e-vazio: `''` = "Todos os status".
+ */
+export interface ResidentsFiltersPreference {
+  status: string;
+  house: string;
+  overdue: boolean;
+  sort: string;
+}
+
+/** Chave canônica da preferência de filtros da listagem de filhos. */
+export const RESIDENTS_FILTERS_PREFERENCE_KEY = 'residents.filters';

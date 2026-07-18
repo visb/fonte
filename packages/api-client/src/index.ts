@@ -221,5 +221,7 @@ export type {
   EventInviteResult,
   EventInviteSkipped,
   EventInviteSkipReason,
+  UserPreferences,
+  ResidentsFiltersPreference,
 } from './types.js';
 export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus, ActivityEventType, REGISTRATION_FIELD_TYPES, EventPaymentStatus, EventAudience } from './types.js';

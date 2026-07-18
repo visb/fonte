@@ -25,6 +25,7 @@ import { createCensusModule } from './modules/census.js';
 import { createBackupModule } from './modules/backup.js';
 import { createConsentsModule } from './modules/consents.js';
 import { createAuditModule } from './modules/audit.js';
+import { createPreferencesModule } from './modules/preferences.js';
 
 export interface ApiClientConfig {
   baseURL: string;
@@ -79,6 +80,7 @@ export function createApiClient(config: ApiClientConfig) {
     backup: createBackupModule(http),
     consents: createConsentsModule(http),
     audit: createAuditModule(http),
+    preferences: createPreferencesModule(http),
     photoUrl: (path: string | null | undefined): string | null => {
       if (!path) return null;
       if (path.startsWith('http://') || path.startsWith('https://')) return path;

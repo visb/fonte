@@ -3,13 +3,18 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 const login = vi.fn();
+const getAll = vi.fn(() => Promise.resolve({}));
 
 vi.mock('@/lib/api', () => ({
   TOKEN_STORAGE_KEY: 'fonte_token',
-  api: { auth: { login: (...a: unknown[]) => login(...a) } },
+  api: {
+    auth: { login: (...a: unknown[]) => login(...a) },
+    preferences: { getAll: (...a: unknown[]) => getAll(...a) },
+  },
 }));
 
 import { AuthProvider, useAuth } from './AuthContext';
+import { readPreferences } from '@/lib/preferences';
 
 const wrapper = ({ children }: { children: ReactNode }) => <AuthProvider>{children}</AuthProvider>;
 
@@ -19,6 +24,7 @@ const jwt = (payload: Record<string, unknown>) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getAll.mockResolvedValue({});
   localStorage.clear();
 });
 afterEach(() => cleanup());
@@ -67,6 +73,37 @@ describe('AuthContext', () => {
     act(() => result.current.logout());
     expect(result.current.token).toBeNull();
     expect(localStorage.getItem('fonte_token')).toBeNull();
+  });
+
+  it('login popula o cache de preferências do servidor (decisão 8)', async () => {
+    login.mockResolvedValue({ accessToken: jwt({ role: 'ADMIN', sub: 'u1' }) });
+    getAll.mockResolvedValue({ 'residents.filters': { status: '' } });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await act(async () => {
+      await result.current.login('user', 'pass');
+    });
+    expect(getAll).toHaveBeenCalled();
+    expect(readPreferences()).toEqual({ 'residents.filters': { status: '' } });
+  });
+
+  it('falha ao buscar preferências não impede o login', async () => {
+    login.mockResolvedValue({ accessToken: jwt({ role: 'ADMIN', sub: 'u1' }) });
+    getAll.mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await act(async () => {
+      await result.current.login('user', 'pass');
+    });
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(readPreferences()).toEqual({});
+  });
+
+  it('logout limpa o cache de preferências (decisão 9)', () => {
+    localStorage.setItem('fonte.preferences', JSON.stringify({ 'residents.filters': { status: '' } }));
+    localStorage.setItem('fonte_token', jwt({ role: 'ADMIN', sub: 'u1' }));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    act(() => result.current.logout());
+    expect(localStorage.getItem('fonte.preferences')).toBeNull();
+    expect(readPreferences()).toEqual({});
   });
 
   it('onPasswordChanged troca o token', () => {

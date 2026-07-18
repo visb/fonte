@@ -531,6 +531,10 @@ export interface ListResidentsParams {
   status?: ResidentStatus;
   houseId?: string;
   overdueContribution?: boolean;
+  /** Coluna de ordenação (story 129). Backend default: `name`. */
+  sort?: 'entryDate' | 'name';
+  /** Direção da ordenação (story 129). Backend default: `asc`. */
+  order?: 'asc' | 'desc';
 }
 
 export interface ResidentDocument {

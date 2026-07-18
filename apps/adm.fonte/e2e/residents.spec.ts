@@ -47,6 +47,22 @@ test.describe('Filhos (Residentes)', () => {
     await expect(page.getByText('João Testador')).toBeVisible();
   });
 
+  // ─── Ordenação (story 129) ──────────────────────────────────────────────────
+
+  test('ordenação persiste na URL e sobrevive ao reload', async ({ page }) => {
+    const sortSelect = page.getByLabel('Ordenar por');
+    // Padrão da tela: mais recentes primeiro.
+    await expect(sortSelect).toHaveValue('entry_desc');
+
+    await sortSelect.selectOption('name_asc');
+    await expect(page).toHaveURL(/sort=name_asc/);
+
+    // A ordenação veio da URL: recarregar mantém a escolha.
+    await page.reload();
+    await expect(page).toHaveURL(/sort=name_asc/);
+    await expect(page.getByLabel('Ordenar por')).toHaveValue('name_asc');
+  });
+
   // ─── Gateway de novo acolhimento ────────────────────────────────────────────
 
   test('"Novo acolhimento" navega para gateway /residents/admission', async ({ page }) => {

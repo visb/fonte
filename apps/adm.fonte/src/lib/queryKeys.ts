@@ -12,7 +12,7 @@ export const queryKeys = {
   },
   residents: {
     all: ['residents'] as const,
-    list: (params: { search?: string; status?: string; houseId?: string; overdueContribution?: boolean }) =>
+    list: (params: { search?: string; status?: string; houseId?: string; overdueContribution?: boolean; sort?: string; order?: string }) =>
       ['residents', 'list', params] as const,
     detail: (id: string) => ['residents', id] as const,
     relativesAll: ['relatives'] as const,

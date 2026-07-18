@@ -53,7 +53,7 @@ export interface AdmissionDocumentView {
 import { ResidentAttachment } from './resident-attachment.entity';
 import { ResidentDocument } from './resident-document.entity';
 import { CreateResidentDto } from './dto/create-resident.dto';
-import { ListResidentsDto } from './dto/list-residents.dto';
+import { ListResidentsDto, ResidentSortField } from './dto/list-residents.dto';
 import { ReadmitResidentDto } from './dto/readmit-resident.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
 import { StorageService } from '../storage/storage.service';
@@ -108,7 +108,7 @@ export class ResidentService {
     dto: ListResidentsDto,
     caller?: { role: string; userId: string },
   ): Promise<{ data: Resident[]; total: number; page: number; limit: number }> {
-    const { page = 1, limit = 20, search, status } = dto;
+    const { page = 1, limit = 20, search, status, sort = 'name', order = 'asc' } = dto;
     let { houseId } = dto;
 
     // LGPD art. 6/46 — escopo por casa. Não-ADMIN só enxerga internos da própria
@@ -120,12 +120,24 @@ export class ResidentService {
       houseId = staff.houseId;
     }
 
+    // Ordenação whitelisted (story 129, decisão 5): mapeia o campo validado
+    // pelo DTO para a coluna, nunca interpola o valor recebido no orderBy.
+    const SORT_COLUMNS: Record<ResidentSortField, string> = {
+      name: 'resident.name',
+      entryDate: 'resident.entryDate',
+    };
+    const direction = order === 'desc' ? 'DESC' : 'ASC';
+
     const qb = this.residentRepository
       .createQueryBuilder('resident')
       .leftJoinAndSelect('resident.house', 'house')
       .leftJoinAndSelect('resident.ministry', 'ministry')
       .leftJoinAndSelect('resident.user', 'user')
-      .orderBy('resident.name', 'ASC')
+      // NULLS LAST: filho sem entry_date (ex.: ARCHIVED) vai para o fim nas
+      // duas direções (decisão 4). Desempate por id garante paginação estável
+      // do infinite scroll com datas repetidas (decisão 3).
+      .orderBy(SORT_COLUMNS[sort], direction, 'NULLS LAST')
+      .addOrderBy('resident.id', 'ASC')
       .skip((page - 1) * limit)
       .take(limit);
 

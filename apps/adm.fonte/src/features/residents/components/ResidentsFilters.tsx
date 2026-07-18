@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useHouses } from '@/features/houses/hooks/useHouses';
-import { RESIDENT_STATUS_LABELS } from '../constants';
+import { RESIDENT_STATUS_LABELS, RESIDENT_SORT_OPTIONS, type ResidentSortOption } from '../constants';
 
 interface ResidentsFiltersProps {
   search: string;
@@ -15,6 +15,8 @@ interface ResidentsFiltersProps {
   onHouseIdChange: (value: string) => void;
   overdueContribution: boolean;
   onOverdueContributionChange: (value: boolean) => void;
+  sort: ResidentSortOption;
+  onSortChange: (value: ResidentSortOption) => void;
 }
 
 export function ResidentsFilters({
@@ -26,6 +28,8 @@ export function ResidentsFilters({
   onHouseIdChange,
   overdueContribution,
   onOverdueContributionChange,
+  sort,
+  onSortChange,
 }: ResidentsFiltersProps) {
   const { data: houses = [] } = useHouses();
 
@@ -63,6 +67,19 @@ export function ResidentsFilters({
         {houses.map((house) => (
           <option key={house.id} value={house.id}>
             {house.name}
+          </option>
+        ))}
+      </Select>
+
+      <Select
+        aria-label="Ordenar por"
+        value={sort}
+        onChange={(e) => onSortChange(e.target.value as ResidentSortOption)}
+        className="w-full sm:w-48"
+      >
+        {RESIDENT_SORT_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </Select>

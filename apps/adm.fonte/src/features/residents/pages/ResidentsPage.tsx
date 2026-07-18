@@ -16,6 +16,7 @@ import { useDebounce } from '@/lib/useDebounce';
 import { useInfiniteResidents, useDeleteResident } from '../hooks/useResidents';
 import { ResidentCard } from '../components/ResidentCard';
 import { ResidentsFilters } from '../components/ResidentsFilters';
+import { RESIDENT_SORT_PARAMS, toResidentSortOption } from '../constants';
 
 export function ResidentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Resident | null>(null);
@@ -29,6 +30,9 @@ export function ResidentsPage() {
     : ResidentStatus.ACTIVE) as ResidentStatus | '';
   const houseId = searchParams.get('house') ?? '';
   const overdueContribution = searchParams.get('overdue') === '1';
+  // Ordenação vem da URL; ausente = padrão da tela (mais recentes primeiro).
+  const sortOption = toResidentSortOption(searchParams.get('sort'));
+  const sortParams = RESIDENT_SORT_PARAMS[sortOption];
 
   const setParam = (key: string, value: string | undefined) => {
     setSearchParams(
@@ -59,7 +63,14 @@ export function ResidentsPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteResidents({ search: debouncedSearch, status, houseId, overdueContribution });
+  } = useInfiniteResidents({
+    search: debouncedSearch,
+    status,
+    houseId,
+    overdueContribution,
+    sort: sortParams.sort,
+    order: sortParams.order,
+  });
 
   const deleteMutation = useDeleteResident();
 
@@ -106,6 +117,8 @@ export function ResidentsPage() {
         onHouseIdChange={(value) => setParam('house', value || undefined)}
         overdueContribution={overdueContribution}
         onOverdueContributionChange={(value) => setParam('overdue', value ? '1' : undefined)}
+        sort={sortOption}
+        onSortChange={(value) => setParam('sort', value)}
       />
 
       {isLoading ? (

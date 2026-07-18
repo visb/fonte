@@ -124,11 +124,10 @@ test.describe('Curso Bíblico', () => {
     await page.getByText(name).click();
     await expect(page).toHaveURL(/\/bible-courses\/.+/);
 
-    // Painel de sugestões pós-criação: lista elegíveis marcados ou empty state.
+    // Painel de sugestões pós-criação: o seed (story 132) semeia filhos
+    // elegíveis (acolhimento ≥ 3 meses), então o painel sempre renderiza.
     const heading = page.getByRole('heading', { name: 'Sugestões de matrícula' });
-    await expect(heading.or(page.getByText('Nenhum filho elegível.'))).toBeVisible();
-    const hasEligible = await heading.isVisible();
-    test.skip(!hasEligible, 'Sem filhos elegíveis (3+ meses) no seed de teste');
+    await expect(heading).toBeVisible();
 
     const rows = eligibleRowBoxes(page);
     const count = await rows.count();
@@ -154,10 +153,9 @@ test.describe('Curso Bíblico', () => {
     await page.getByText(name).click();
     await expect(page).toHaveURL(/\/bible-courses\/.+/);
 
+    // O seed (story 132) garante filhos elegíveis, então o painel renderiza.
     const heading = page.getByRole('heading', { name: 'Sugestões de matrícula' });
-    await expect(heading.or(page.getByText('Nenhum filho elegível.'))).toBeVisible();
-    const hasEligible = await heading.isVisible();
-    test.skip(!hasEligible, 'Sem filhos elegíveis (3+ meses) no seed de teste');
+    await expect(heading).toBeVisible();
 
     const header = selectAllBox(page);
     const rows = eligibleRowBoxes(page);

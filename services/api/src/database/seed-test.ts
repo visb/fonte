@@ -135,6 +135,27 @@ async function seed() {
     ['João Testador', house.id, ResidentStatus.ACTIVE, residentUser.id],
   );
 
+  // Filhos elegíveis à sugestão de matrícula no curso bíblico (story 132).
+  // A regra (story 99) exige acolhimento há ≥ 3 meses; o filho principal acima
+  // entrou hoje e nunca é elegível. Sem um dado elegível o painel de sugeridos
+  // não renderiza e 2 e2e do adm viviam em `skip`. Datas retrodatadas de forma
+  // RELATIVA ao "agora" (4/5/6 meses atrás) para nunca expirarem; escalonadas
+  // para dar ordenação determinística no painel (ordena por entryDate ASC).
+  // São ACTIVE, com casa, sem matrícula e sem "já fez" — logo, sugeridos.
+  // Semeamos 3 porque a suíte roda em série e testes anteriores matriculam
+  // elegíveis: manter buffer garante ≥1 sugerido nos casos que dependem disso.
+  for (const [name, monthsAgo] of [
+    ['Lucas Elegível', 6],
+    ['Marcos Elegível', 5],
+    ['Tiago Elegível', 4],
+  ] as const) {
+    await ds.query(
+      `INSERT INTO residents (id, name, house_id, status, entry_date)
+       VALUES (gen_random_uuid(), $1, $2, $3, CURRENT_DATE - ($4::int * INTERVAL '1 month'))`,
+      [name, house.id, ResidentStatus.ACTIVE, monthsAgo],
+    );
+  }
+
   // Relative linked to resident, with userId + mustChangePassword false
   // (com telefone — login por telefone)
   const [relative] = await ds.query<{ id: string }[]>(
@@ -208,6 +229,7 @@ async function seed() {
   console.log('  1º acesso:    familiar2@fonte.com / temp123 (must_change_password)');
   console.log('  Casa:         Casa Teste');
   console.log('  Acolhido:     João Testador (com acesso gerado)');
+  console.log('  Elegíveis:    Lucas/Marcos/Tiago Elegível (curso bíblico, 6/5/4 meses)');
   console.log('  Familiar:     Maria Testadora (com acesso gerado)');
   console.log('  Ministério:   Cozinha');
   console.log('  Dispensa:     Arroz (10 kg)');

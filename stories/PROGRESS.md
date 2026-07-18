@@ -40,7 +40,7 @@ Ordem: 131 → 132 → 133 → 134. Fonte de verdade: esta seção + git log.
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 131 — sanear tsc + e2e de `features/residents` | [OK] | tsc 0 err · adm unit 1293/1293 · Playwright residents 29/0 (era 5 failed) · cov escopo ≥90 | 37e5cc1 | 33f4482 |
-| 2 | 132 — corrigir seed de teste dos elegíveis (remover 2 skips) | [ ] | | | |
+| 2 | 132 — corrigir seed de teste dos elegíveis (remover 2 skips) | [OK] | bible-courses e2e 16/16 (2 reativados) · api e2e 485/485 · eligible=3 | 7d5ab12 | 87bd1cc |
 | 3 | 133 — e2e Playwright de preferências / filtros persistidos | [ ] | | | |
 | 4 | 134 — LGPD: inventariar `staff.signature_url` (docs) | [ ] | | | |
 
@@ -61,6 +61,15 @@ dos 5 e2e:** listagem passou a abrir filtrada por "Ativo" (default da story 130)
 antes de buscar. **Aviso operacional:** DB de teste poluído (residentes ACTIVE acumulados) soterra o
 seed João Testador na paginação "recentes primeiro" e gera falhas fantasma — reseedar (`seed:test`)
 antes de medir e2e. Implementer deixou o DB de teste limpo.
+
+[OK] 132 — testes: bible-courses e2e 16/16 (2 `test.skip` das stories 99 e 125 removidos, passam de
+verdade) · adm e2e 157/159 (2 falhas PRÉ-EXISTENTES: `activities` WYSIWYG + `payables` status, provadas
+via stash, fora de escopo) · api e2e 485/485 · `eligible-residents`=3 — commit: 7d5ab12 — merge: 87bd1cc
+— 2026-07-18. Semeados 3 filhos ACTIVE na Casa Teste com `entry_date = CURRENT_DATE - (6|5|4) meses`
+(relativo, nunca expira), sem user_id/matrícula/"já fez" → elegíveis; 3 (buffer) porque a suíte roda em
+série e testes anteriores matriculam elegíveis. Zero regressão (nenhum spec faz hard-count do total;
+Casa Teste sob capacidade 10). **Descoberta:** 2 falhas e2e novas fora de `residents` (activities/payables)
+— candidatas a nova dívida, não bloqueiam a rodada.
 
 ## Resumo final
 

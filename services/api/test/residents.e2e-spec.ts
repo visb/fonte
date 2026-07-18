@@ -87,6 +87,94 @@ describe('ResidentController (e2e)', () => {
         .expect(400));
   });
 
+  // ─── Ordenação (story 129) ───────────────────────────────────────────────
+  describe('sorting', () => {
+    const tag = `Ordena ${Date.now()}`;
+    const sameDate = '2019-03-15';
+
+    beforeAll(async () => {
+      // Três filhos com datas de entrada distintas para provar a ordem, mais
+      // dois com a MESMA data para provar a estabilidade da paginação.
+      const fixtures = [
+        { name: `${tag} A`, entryDate: '2020-01-10' },
+        { name: `${tag} B`, entryDate: '2021-06-20' },
+        { name: `${tag} C`, entryDate: '2022-12-01' },
+        { name: `${tag} D`, entryDate: sameDate },
+        { name: `${tag} E`, entryDate: sameDate },
+        { name: `${tag} F`, entryDate: sameDate },
+      ];
+      for (const f of fixtures) {
+        const res = await request(app.getHttpServer())
+          .post(`${BASE}/residents`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ ...f, houseId })
+          .expect(201);
+        createdIds.push(res.body.id);
+      }
+    });
+
+    it('GET /residents?sort=entryDate&order=desc returns rows in descending entry_date order', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/residents`)
+        .query({ sort: 'entryDate', order: 'desc', search: tag, limit: 100 })
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const dates: string[] = res.body.data
+        .map((r: { entryDate: string | null }) => r.entryDate)
+        .filter((d: string | null): d is string => d != null);
+      expect(dates.length).toBeGreaterThanOrEqual(3);
+      const sorted = [...dates].sort((a, b) => b.localeCompare(a));
+      expect(dates).toEqual(sorted);
+    });
+
+    it('GET /residents?sort=entryDate&order=asc returns rows in ascending entry_date order', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/residents`)
+        .query({ sort: 'entryDate', order: 'asc', search: tag, limit: 100 })
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const dates: string[] = res.body.data
+        .map((r: { entryDate: string | null }) => r.entryDate)
+        .filter((d: string | null): d is string => d != null);
+      const sorted = [...dates].sort((a, b) => a.localeCompare(b));
+      expect(dates).toEqual(sorted);
+    });
+
+    it('GET /residents → 400 for a sort column outside the whitelist (SQL injection guard)', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/residents`)
+        .query({ sort: 'name;DROP TABLE resident' })
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400));
+
+    it('GET /residents → 400 for an order value outside the whitelist', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/residents`)
+        .query({ sort: 'name', order: 'sideways' })
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400));
+
+    it('paginates stably across repeated entry_date values (no repeats, no skips)', async () => {
+      const fetchPage = (page: number) =>
+        request(app.getHttpServer())
+          .get(`${BASE}/residents`)
+          .query({ sort: 'entryDate', order: 'desc', search: `${tag} `, limit: 2, page })
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200)
+          .then((r) => r.body.data as Array<{ id: string }>);
+
+      const [p1, p2, p3] = await Promise.all([fetchPage(1), fetchPage(2), fetchPage(3)]);
+      const ids = [...p1, ...p2, ...p3].map((r) => r.id);
+      expect(new Set(ids).size).toBe(ids.length); // sem repetição entre páginas
+      // As 6 fixtures (D/E/F com data repetida) devem ser cobertas sem pulos.
+      const seen = new Set(ids);
+      const created = createdIds.filter((_id, i) => i >= createdIds.length - 6);
+      expect(created.every((id) => seen.has(id))).toBe(true);
+    });
+  });
+
   describe('CRUD', () => {
     it('POST /residents → 400 with empty body', () =>
       request(app.getHttpServer())

@@ -25,6 +25,12 @@ describe('queryKeys', () => {
     ]);
   });
 
+  it('a chave da listagem de residentes muda com a ordenação (story 129)', () => {
+    expect(queryKeys.residents.list({ sort: 'entryDate', order: 'desc' })).not.toEqual(
+      queryKeys.residents.list({ sort: 'name', order: 'asc' }),
+    );
+  });
+
   it('produz a mesma chave para a mesma entrada (referência estável por estrutura)', () => {
     expect(queryKeys.associates.detail('x')).toEqual(queryKeys.associates.detail('x'));
     expect(queryKeys.houses.ministries('h')).toEqual(['houses', 'h', 'ministries']);

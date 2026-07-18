@@ -82,7 +82,7 @@ function makeQb(data: Resident[], total: number) {
     qb[name] = jest.fn().mockReturnValue(qb);
     return qb;
   };
-  ['leftJoinAndSelect', 'orderBy', 'skip', 'take', 'andWhere'].forEach(chain);
+  ['leftJoinAndSelect', 'orderBy', 'addOrderBy', 'skip', 'take', 'andWhere'].forEach(chain);
   qb.getManyAndCount = jest.fn().mockResolvedValue([data, total]);
   return qb;
 }
@@ -317,6 +317,48 @@ describe('ResidentService.findAll', () => {
 
     expect(whereCalls.some((s) => s.includes('contributionExempt'))).toBe(false);
     expect(whereCalls.some((s) => s.includes('resident_receivables'))).toBe(false);
+  });
+
+  // ─── Ordenação (story 129) ────────────────────────────────────────────────
+
+  it('orders by name ASC by default, protecting the ops.fonte alfabetical list (decision 1)', async () => {
+    await service.findAll({});
+
+    expect(qb.orderBy).toHaveBeenCalledWith('resident.name', 'ASC', 'NULLS LAST');
+  });
+
+  it('orders by entry_date DESC when sort=entryDate & order=desc (mais recentes primeiro)', async () => {
+    await service.findAll({ sort: 'entryDate', order: 'desc' });
+
+    expect(qb.orderBy).toHaveBeenCalledWith('resident.entryDate', 'DESC', 'NULLS LAST');
+  });
+
+  it('orders by entry_date ASC when sort=entryDate & order=asc (mais antigos primeiro)', async () => {
+    await service.findAll({ sort: 'entryDate', order: 'asc' });
+
+    expect(qb.orderBy).toHaveBeenCalledWith('resident.entryDate', 'ASC', 'NULLS LAST');
+  });
+
+  it('orders by name DESC when sort=name & order=desc (Z–A)', async () => {
+    await service.findAll({ sort: 'name', order: 'desc' });
+
+    expect(qb.orderBy).toHaveBeenCalledWith('resident.name', 'DESC', 'NULLS LAST');
+  });
+
+  it('always adds a stable id ASC tiebreaker so pagination does not repeat/skip rows (decision 3)', async () => {
+    await service.findAll({ sort: 'entryDate', order: 'desc' });
+
+    expect(qb.addOrderBy).toHaveBeenCalledWith('resident.id', 'ASC');
+  });
+
+  it('uses NULLS LAST so a resident without entry_date goes to the end in both directions (decision 4)', async () => {
+    await service.findAll({ sort: 'entryDate', order: 'asc' });
+    expect(qb.orderBy).toHaveBeenLastCalledWith('resident.entryDate', 'ASC', 'NULLS LAST');
+
+    (qb.orderBy as jest.Mock).mockClear();
+
+    await service.findAll({ sort: 'entryDate', order: 'desc' });
+    expect(qb.orderBy).toHaveBeenLastCalledWith('resident.entryDate', 'DESC', 'NULLS LAST');
   });
 });
 
@@ -922,6 +964,19 @@ describe('ResidentService.findAll house scoping', () => {
     await service.findAll({}, { role: 'ADMIN', userId: 'admin-1' });
 
     expect(staffService.findByUserId).not.toHaveBeenCalled();
+  });
+
+  it('keeps the house scope even when a custom sort/order is requested (LGPD regression, story 129)', async () => {
+    const staffService = { findByUserId: jest.fn().mockResolvedValue({ houseId: 'house-9' }) };
+    const { service, qb } = makeScopedService(staffService);
+
+    await service.findAll(
+      { sort: 'entryDate', order: 'desc' },
+      { role: 'SERVANT', userId: 'u1' },
+    );
+
+    expect(qb.andWhere).toHaveBeenCalledWith('resident.houseId = :houseId', { houseId: 'house-9' });
+    expect(qb.orderBy).toHaveBeenCalledWith('resident.entryDate', 'DESC', 'NULLS LAST');
   });
 });
 

@@ -14,6 +14,7 @@ function renderFilters(over: Partial<Parameters<typeof ResidentsFilters>[0]> = {
     status: '' as ResidentStatus | '', onStatusChange: vi.fn(),
     houseId: '', onHouseIdChange: vi.fn(),
     overdueContribution: false, onOverdueContributionChange: vi.fn(),
+    sort: 'entry_desc' as const, onSortChange: vi.fn(),
     ...over,
   };
   render(<ResidentsFilters {...props} />);
@@ -47,5 +48,18 @@ describe('ResidentsFilters', () => {
     const { onOverdueContributionChange } = renderFilters({ overdueContribution: false });
     fireEvent.click(screen.getByRole('button', { name: /Contribuição em atraso/ }));
     expect(onOverdueContributionChange).toHaveBeenCalledWith(true);
+  });
+
+  it('ordenação renderiza as 4 opções', () => {
+    renderFilters();
+    const sortSelect = screen.getByRole('combobox', { name: 'Ordenar por' });
+    const values = Array.from(sortSelect.querySelectorAll('option')).map((o) => o.getAttribute('value'));
+    expect(values).toEqual(['entry_desc', 'entry_asc', 'name_asc', 'name_desc']);
+  });
+
+  it('ordenação propaga o valor escolhido', () => {
+    const { onSortChange } = renderFilters();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Ordenar por' }), { target: { value: 'name_asc' } });
+    expect(onSortChange).toHaveBeenCalledWith('name_asc');
   });
 });

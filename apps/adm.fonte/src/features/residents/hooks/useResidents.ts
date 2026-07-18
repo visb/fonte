@@ -12,9 +12,11 @@ import type {
   UpdateResidentInput,
 } from '@fonte/api-client';
 
-export function useInfiniteResidents(params: { search?: string; status?: ResidentStatus | ''; houseId?: string; overdueContribution?: boolean }) {
+export function useInfiniteResidents(params: { search?: string; status?: ResidentStatus | ''; houseId?: string; overdueContribution?: boolean; sort?: 'entryDate' | 'name'; order?: 'asc' | 'desc' }) {
   return useInfiniteQuery({
-    queryKey: queryKeys.residents.list({ search: params.search, status: params.status, houseId: params.houseId, overdueContribution: params.overdueContribution }),
+    // sort/order entram na query key: sem isso o cache devolveria a lista da
+    // ordenação anterior (story 129).
+    queryKey: queryKeys.residents.list({ search: params.search, status: params.status, houseId: params.houseId, overdueContribution: params.overdueContribution, sort: params.sort, order: params.order }),
     queryFn: ({ pageParam }) =>
       api.residents.list({
         page: pageParam as number,
@@ -23,6 +25,8 @@ export function useInfiniteResidents(params: { search?: string; status?: Residen
         status: (params.status as ResidentStatus) || undefined,
         houseId: params.houseId || undefined,
         overdueContribution: params.overdueContribution || undefined,
+        sort: params.sort,
+        order: params.order,
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {

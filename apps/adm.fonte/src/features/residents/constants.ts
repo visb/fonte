@@ -24,6 +24,40 @@ export const RESIDENT_STATUS_LABELS: Record<ResidentStatus, string> = {
   [ResidentStatus.ARCHIVED]: 'Arquivado',
 };
 
+// ─── Ordenação da listagem (story 129) ─────────────────────────────────────
+
+/** Valor da ordenação persistido na URL (`?sort=`). */
+export type ResidentSortOption = 'entry_desc' | 'entry_asc' | 'name_asc' | 'name_desc';
+
+/** Padrão da tela de filhos: quem entrou por último aparece primeiro (decisão 1). */
+export const RESIDENT_SORT_DEFAULT: ResidentSortOption = 'entry_desc';
+
+/** Opções do select "Ordenar por", na ordem de exibição (decisão 2). */
+export const RESIDENT_SORT_OPTIONS: { value: ResidentSortOption; label: string }[] = [
+  { value: 'entry_desc', label: 'Mais recentes primeiro' },
+  { value: 'entry_asc', label: 'Mais antigos primeiro' },
+  { value: 'name_asc', label: 'Nome (A–Z)' },
+  { value: 'name_desc', label: 'Nome (Z–A)' },
+];
+
+/** Mapa URL → parâmetros do backend (`sort`/`order`). */
+export const RESIDENT_SORT_PARAMS: Record<
+  ResidentSortOption,
+  { sort: 'entryDate' | 'name'; order: 'asc' | 'desc' }
+> = {
+  entry_desc: { sort: 'entryDate', order: 'desc' },
+  entry_asc: { sort: 'entryDate', order: 'asc' },
+  name_asc: { sort: 'name', order: 'asc' },
+  name_desc: { sort: 'name', order: 'desc' },
+};
+
+/** Normaliza o valor bruto da URL para uma opção válida (cai no default se inválido). */
+export function toResidentSortOption(value: string | null): ResidentSortOption {
+  return value != null && value in RESIDENT_SORT_PARAMS
+    ? (value as ResidentSortOption)
+    : RESIDENT_SORT_DEFAULT;
+}
+
 type BadgeVariant = NonNullable<BadgeProps['variant']>;
 
 export const RESIDENT_STATUS_VARIANT: Record<ResidentStatus, BadgeVariant> = {

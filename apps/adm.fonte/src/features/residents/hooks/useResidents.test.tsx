@@ -75,6 +75,17 @@ describe('queries de residente', () => {
     expect(result.current.hasNextPage).toBe(false);
   });
 
+  it('useInfiniteResidents repassa sort/order ao endpoint', async () => {
+    vi.mocked(api.residents.list).mockResolvedValue({ data: [], total: 0 } as never);
+    const { result } = renderHookWithClient(() =>
+      useInfiniteResidents({ sort: 'entryDate', order: 'desc' }),
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.residents.list).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'entryDate', order: 'desc' }),
+    );
+  });
+
   it('getById desliga sem id', () => {
     const { result } = renderHookWithClient(() => useResidentById(''));
     expect(result.current.fetchStatus).toBe('idle');

@@ -603,3 +603,111 @@ describe('DocumentTemplateService signature block (story 128)', () => {
     expect(html).not.toContain('<img class="doc-signature-img"');
   });
 });
+
+// Story 136 — a assinatura deve honrar o text-align aplicado à linha do
+// {{signature}} no editor. Quando o token é o único conteúdo de um <p …>, o
+// PARÁGRAFO INTEIRO vira o <div class="doc-signature"> carregando o alinhamento
+// no style (evita o <div>-em-<p> inválido que perdia o alinhamento e caía à
+// esquerda). CSS: .doc-signature-img{display:inline-block} p/ o text-align
+// centralizar a própria imagem.
+describe('DocumentTemplateService signature alignment (story 136)', () => {
+  const SIGNATURE_LINE = '_'.repeat(25);
+
+  function makeSigningStorage(overrides: Partial<StorageService> = {}): StorageService {
+    return makeStorage({
+      canonicalizeS3Url: ((u: string) => u) as never,
+      isS3Url: (() => true) as never,
+      signUrl: (async (u: string) => `${u}?X-Amz-signed`) as never,
+      ...overrides,
+    });
+  }
+
+  function makeStaffRepo(staff: unknown) {
+    return makeRepo({ findOne: jest.fn().mockResolvedValue(staff) });
+  }
+
+  function makeAlignService(content: string, staff: unknown = null) {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content }),
+    });
+    return makeService(
+      repo,
+      makeRepo({ findOne: jest.fn().mockResolvedValue(null) }),
+      makeSigningStorage(),
+      makeStaffRepo(staff),
+    );
+  }
+
+  it.each(['center', 'right', 'left'])(
+    'carries the paragraph text-align:%s into the signature block style',
+    async (align) => {
+      const service = makeAlignService(`<p style="text-align: ${align}">{{signature}}</p>`, {
+        name: 'João Silva',
+        signatureUrl: 'https://s3/sig.png',
+        user: { role: 'COORDINATOR' },
+      });
+
+      const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+      expect(html).toContain(`<div class="doc-signature" style="text-align:${align}">`);
+      // o parágrafo com o token nu some — não há <div> dentro de <p> nem token cru
+      expect(html).not.toContain('{{signature}}');
+      expect(html).not.toContain(`<p style="text-align: ${align}"><div`);
+      expect(html).toContain(SIGNATURE_LINE);
+    },
+  );
+
+  it('emits no alignment style for a <p> without text-align (default left preserved)', async () => {
+    const service = makeAlignService('<p>{{signature}}</p>', {
+      name: 'João Silva',
+      signatureUrl: 'https://s3/sig.png',
+      user: { role: 'COORDINATOR' },
+    });
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    expect(html).toContain('<div class="doc-signature">');
+    expect(html).not.toContain('style="text-align');
+    expect(html).not.toContain('{{signature}}');
+  });
+
+  it('falls back to the bare-token replace when {{signature}} is inline in a paragraph', async () => {
+    const service = makeAlignService('<p style="text-align: center">Assino: {{signature}} fim</p>', {
+      name: 'João Silva',
+      signatureUrl: 'https://s3/sig.png',
+      user: { role: 'COORDINATOR' },
+    });
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    // inline → fallback: bloco inserido sem style de alinhamento, texto ao redor intacto
+    expect(html).toContain('<div class="doc-signature">');
+    expect(html).not.toContain('{{signature}}');
+    expect(html).toContain('Assino:');
+    expect(html).toContain('fim');
+  });
+
+  it('honors alignment even when the signer has no signature image', async () => {
+    const service = makeAlignService('<p style="text-align: center">{{signature}}</p>', {
+      name: 'João Silva',
+      signatureUrl: null,
+      user: { role: 'COORDINATOR' },
+    });
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    expect(html).toContain('<div class="doc-signature" style="text-align:center">');
+    expect(html).toContain(SIGNATURE_LINE);
+    expect(html).toContain('João Silva');
+    expect(html).not.toContain('<img class="doc-signature-img"');
+  });
+
+  it('CSS: .doc-signature-img uses display:inline-block so text-align centers the image', async () => {
+    const service = makeAlignService('<p>oi</p>');
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident);
+
+    expect(html).toContain('.doc-signature-img{display:inline-block;height:64px');
+    expect(html).not.toContain('.doc-signature-img{display:block');
+  });
+});

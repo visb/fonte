@@ -863,6 +863,12 @@ describe('staff module', () => {
       headers: { 'Content-Type': undefined },
     });
   });
+  it('removeMySignature chama DELETE /staff/me/signature e desserializa', async () => {
+    const sentinel = { id: 's-me', signatureUrl: null };
+    http.delete.mockResolvedValueOnce({ data: sentinel });
+    expect(await m.removeMySignature()).toBe(sentinel);
+    expect(http.delete).toHaveBeenCalledWith('/staff/me/signature');
+  });
   it('list busca staff', async () => {
     await m.list();
     expect(http.get).toHaveBeenCalledWith('/staff');

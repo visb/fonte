@@ -86,6 +86,13 @@ export class StaffController {
     return this.staffService.uploadSignatureMe(user.userId, file);
   }
 
+  // Story 138 — redefine (remove) a assinatura do próprio perfil. Idempotente:
+  // sem assinatura retorna o staff (200) sem erro.
+  @Delete('me/signature')
+  removeSignatureMe(@CurrentUser() user: AuthenticatedUser): Promise<Staff> {
+    return this.staffService.removeSignatureMe(user.userId);
+  }
+
   @Get()
   @Roles(Role.ADMIN, Role.COORDINATOR)
   findAll(@CurrentUser() user: AuthenticatedUser): Promise<Staff[]> {

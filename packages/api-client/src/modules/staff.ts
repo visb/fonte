@@ -13,6 +13,10 @@ export function createStaffModule(http: AxiosInstance) {
     // com o Blob, mesma convenção de upload de foto.
     uploadMySignature: (formData: FormData): Promise<StaffMe> =>
       http.post<StaffMe>('/staff/me/signature', formData, { headers: { 'Content-Type': undefined } }).then((r) => r.data),
+    // Story 138 — redefine (remove) a assinatura do próprio perfil. Idempotente
+    // no backend; devolve o StaffMe atualizado (signatureUrl null).
+    removeMySignature: (): Promise<StaffMe> =>
+      http.delete<StaffMe>('/staff/me/signature').then((r) => r.data),
     list: () => http.get<Staff[]>('/staff').then((r) => r.data),
     getById: (id: string) => http.get<Staff>(`/staff/${id}`).then((r) => r.data),
     create: (data: CreateStaffInput) => http.post<Staff>('/staff', data).then((r) => r.data),

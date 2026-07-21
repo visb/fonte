@@ -227,6 +227,23 @@ export class StaffService {
     return this.uploadSignature(staff.id, file);
   }
 
+  // Story 138 — remove a assinatura do próprio perfil. Espelha uploadSignature:
+  // apaga o arquivo (bucket ou /uploads) se existir e zera a URL. Idempotente:
+  // sem assinatura é no-op e devolve o staff como está.
+  async removeSignature(id: string): Promise<Staff> {
+    const staff = await this.findOne(id);
+    if (staff.signatureUrl) {
+      await this.storageService.delete(staff.signatureUrl);
+      await this.staffRepository.update(id, { signatureUrl: null });
+    }
+    return this.findOne(id);
+  }
+
+  async removeSignatureMe(userId: string): Promise<Staff> {
+    const staff = await this.findByUserId(userId);
+    return this.removeSignature(staff.id);
+  }
+
   async remove(id: string): Promise<void> {
     const staff = await this.findOne(id);
     await this.userRepository.update(staff.userId, { isActive: false });

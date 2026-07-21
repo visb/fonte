@@ -213,6 +213,36 @@ describe('StaffController (e2e)', () => {
         .expect(200);
       expect(me.body.signatureUrl).toBeTruthy();
     });
+
+    // Story 138 — redefinir (remover) a assinatura do próprio perfil.
+    it('DELETE /staff/me/signature → 401 without token', () =>
+      request(app.getHttpServer()).delete(`${BASE}/staff/me/signature`).expect(401));
+
+    it('removes the signature (upload → DELETE → GET me sem signatureUrl) and is idempotent', async () => {
+      await request(app.getHttpServer())
+        .post(`${BASE}/staff/me/signature`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .attach('file', TINY_PNG, { filename: 'sig.png', contentType: 'image/png' })
+        .expect(201);
+
+      const removed = await request(app.getHttpServer())
+        .delete(`${BASE}/staff/me/signature`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      expect(removed.body.signatureUrl).toBeNull();
+
+      const me = await request(app.getHttpServer())
+        .get(`${BASE}/staff/me`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      expect(me.body.signatureUrl).toBeNull();
+
+      // Segunda remoção não falha (idempotente).
+      await request(app.getHttpServer())
+        .delete(`${BASE}/staff/me/signature`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+    });
   });
 
   // ─── Attachments (story 98) ─────────────────────────────────────────────────

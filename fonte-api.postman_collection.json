@@ -245,6 +245,24 @@
           }
         },
         {
+          "name": "Remove My Signature",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/staff/me/signature",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "me",
+                "signature"
+              ]
+            },
+            "description": "Story 138 — remove (redefine) a assinatura do próprio perfil. Apaga o arquivo e zera `signatureUrl`. Idempotente: sem assinatura é no-op e retorna o staff (200)."
+          }
+        },
+        {
           "name": "List Staff",
           "request": {
             "method": "GET",

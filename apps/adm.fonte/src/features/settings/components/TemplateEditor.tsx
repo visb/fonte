@@ -32,6 +32,7 @@ import { LinkToolbar } from './LinkToolbar';
 import { LinkBubbleMenu } from './LinkBubbleMenu';
 import { TableBlockMenu } from './TableBlockMenu';
 import { A4EditorFrame } from './A4EditorFrame';
+import { VariablesPanel } from './VariablesPanel';
 
 // ─── FontSize mark ────────────────────────────────────────────────────────────
 // Custom inline mark — stores pt value; avoids @tiptap/extension-text-style
@@ -408,34 +409,6 @@ function ToolbarButton({ active, onClick, title, children }: {
   );
 }
 
-// ─── Variables ────────────────────────────────────────────────────────────────
-
-const VARIABLES: { key: string; label: string; description: string }[] = [
-  { key: '{{name}}',          label: 'Nome completo',      description: 'Nome completo do acolhido' },
-  { key: '{{cpf}}',           label: 'CPF',                description: 'CPF formatado (000.000.000-00)' },
-  { key: '{{rg}}',            label: 'RG',                 description: 'Registro Geral do acolhido' },
-  { key: '{{nationality}}',   label: 'Nacionalidade',      description: 'Nacionalidade do acolhido' },
-  { key: '{{city}}',          label: 'Cidade',             description: 'Cidade de residência do acolhido' },
-  { key: '{{state}}',         label: 'UF',                 description: 'Estado (sigla) de residência do acolhido' },
-  { key: '{{birthDate}}',     label: 'Data de nascimento', description: 'Data de nascimento no formato dd/mm/aaaa' },
-  { key: '{{age}}',           label: 'Idade',              description: 'Idade atual calculada em anos' },
-  { key: '{{maritalStatus}}', label: 'Estado civil',       description: 'Solteiro(a), Casado(a) ou Divorciado(a)' },
-  { key: '{{address}}',       label: 'Endereço',           description: 'Endereço residencial do acolhido' },
-  { key: '{{phone}}',         label: 'Telefone',           description: 'Telefone de contato do acolhido' },
-  { key: '{{house}}',         label: 'Nome da casa',       description: 'Nome da unidade de acolhimento' },
-  { key: '{{houseName}}',     label: 'Casa — nome',        description: 'Nome da casa onde o acolhido está' },
-  { key: '{{houseAddress}}',  label: 'Casa — endereço',    description: 'Endereço da casa onde o acolhido está' },
-  { key: '{{houseCity}}',     label: 'Casa — cidade',      description: 'Cidade da casa onde o acolhido está' },
-  { key: '{{houseState}}',    label: 'Casa — UF',          description: 'Estado (sigla) da casa onde o acolhido está' },
-  { key: '{{entryDate}}',     label: 'Data de entrada',    description: 'Data de entrada na comunidade (dd/mm/aaaa)' },
-  { key: '{{date}}',          label: 'Data de hoje',       description: 'Data atual no momento da impressão (dd/mm/aaaa)' },
-  { key: '{{dateLong}}',      label: 'Data por extenso',   description: 'Data atual por extenso (ex: 1 de junho de 2026)' },
-  { key: '{{responsibleName}}',         label: 'Responsável — nome',       description: 'Nome do familiar marcado como responsável' },
-  { key: '{{responsibleRelationship}}', label: 'Responsável — parentesco', description: 'Parentesco do responsável com o acolhido' },
-  { key: '{{responsiblePhone}}',        label: 'Responsável — telefone',   description: 'Telefone do familiar responsável' },
-  { key: '{{signature}}',               label: 'Assinatura',               description: 'Assinatura do usuário que gerar o documento' },
-];
-
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
 const schema = z.object({ name: z.string().min(1), isRequired: z.boolean(), signAtAdmission: z.boolean() });
@@ -446,7 +419,6 @@ type FormData = z.infer<typeof schema>;
 interface Props { template: DocumentTemplate; onSaved: (updated: DocumentTemplate) => void; }
 
 export function TemplateEditor({ template, onSaved }: Props) {
-  const [copied, setCopied]                    = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
@@ -622,11 +594,10 @@ export function TemplateEditor({ template, onSaved }: Props) {
     editor.chain().focus().unsetAllMarks().clearNodes().run();
   };
 
+  // Inserção da variável no cursor. Clipboard + feedback "inserido" vivem no
+  // VariablesPanel (story 139).
   const insertVariable = (key: string) => {
     if (editor) editor.chain().focus().insertContent(key).run();
-    navigator.clipboard.writeText(key).catch(() => {});
-    setCopied(key);
-    setTimeout(() => setCopied(null), 1500);
   };
 
   if (!editor) return null;
@@ -762,28 +733,8 @@ export function TemplateEditor({ template, onSaved }: Props) {
       {/* Alça de seleção + menu de ações da tabela inteira (story 30) */}
       <TableBlockMenu editor={editor} />
 
-      {/* Variables */}
-      <div className="rounded-md border bg-muted/30 p-3 space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Variáveis disponíveis — clique para inserir no editor
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-          {VARIABLES.map(({ key, label, description }) => (
-            <button
-              key={key}
-              onClick={() => insertVariable(key)}
-              className="flex items-start gap-2 rounded px-2 py-1.5 text-left bg-background border hover:bg-accent transition-colors group"
-            >
-              <span className="font-mono text-xs text-primary shrink-0 mt-0.5 group-hover:underline">
-                {copied === key ? '✓ inserido' : key}
-              </span>
-              <span className="text-xs text-muted-foreground leading-tight">
-                <span className="font-medium text-foreground">{label}</span>{' — '}{description}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Variáveis — barra vertical colapsável fixa à direita (story 139). */}
+      <VariablesPanel onInsert={insertVariable} />
 
       {updateMutation.isError && (
         <p className="text-sm text-destructive">

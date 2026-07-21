@@ -2,7 +2,6 @@
 
 ## Assinatura nos documentos
 
-- Abaixo da assinatura está mostrando o nome e a role do usuario, nao precisa mostrar a role, só o nome e pode tirar o bold do nome
 - No perfil, onde cria a assinatura, tem q ter um botao para "redefinir"(remover a assinatura definida)
 
 ## Editor de templates de documentos

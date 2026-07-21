@@ -7,6 +7,7 @@ function svc() {
     updateMe: jest.fn().mockResolvedValue({ id: 's-me' }),
     uploadPhotoMe: jest.fn().mockResolvedValue({ id: 's-me' }),
     uploadSignatureMe: jest.fn().mockResolvedValue({ id: 's-me' }),
+    removeSignatureMe: jest.fn().mockResolvedValue({ id: 's-me', signatureUrl: null }),
     uploadPhoto: jest.fn().mockResolvedValue({ id: 's1' }),
     findAll: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue({ id: 's1' }),
@@ -87,6 +88,12 @@ describe('StaffController', () => {
     const s = svc();
     await new StaffController(s as never, attSvc() as never).uploadSignatureMe(user, img);
     expect(s.uploadSignatureMe).toHaveBeenCalledWith('u1', img);
+  });
+
+  it('removeSignatureMe delegates to removeSignatureMe(user.userId) (story 138)', async () => {
+    const s = svc();
+    await new StaffController(s as never, attSvc() as never).removeSignatureMe(user);
+    expect(s.removeSignatureMe).toHaveBeenCalledWith('u1');
   });
 
   it('findAll passes the caller scope', async () => {

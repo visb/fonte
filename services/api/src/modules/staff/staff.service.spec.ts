@@ -366,6 +366,57 @@ describe('StaffService.uploadSignature (story 128)', () => {
   });
 });
 
+describe('StaffService.removeSignature (story 138)', () => {
+  it('deletes the file and clears signature_url when a signature exists', async () => {
+    const staffRepo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'staff-1', signatureUrl: 'sig.png' })
+        .mockResolvedValue({ id: 'staff-1', signatureUrl: null }),
+    });
+    const storage = { delete: jest.fn().mockResolvedValue(undefined) };
+    const service = makeService(staffRepo, makeRepo(), makeRepo(), storage as never);
+
+    const result = await service.removeSignature('staff-1');
+
+    expect(storage.delete).toHaveBeenCalledWith('sig.png');
+    expect(staffRepo.update).toHaveBeenCalledWith('staff-1', { signatureUrl: null });
+    expect(result).toEqual({ id: 'staff-1', signatureUrl: null });
+  });
+
+  it('is idempotent: no delete and no update when there is no signature', async () => {
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', signatureUrl: null }) });
+    const storage = { delete: jest.fn() };
+    const service = makeService(staffRepo, makeRepo(), makeRepo(), storage as never);
+
+    const result = await service.removeSignature('staff-1');
+
+    expect(storage.delete).not.toHaveBeenCalled();
+    expect(staffRepo.update).not.toHaveBeenCalled();
+    expect(result).toEqual({ id: 'staff-1', signatureUrl: null });
+  });
+
+  it('removeSignatureMe resolves the staff by userId then removes', async () => {
+    const staffRepo = makeRepo({
+      findOne: jest
+        .fn()
+        // findByUserId lookup (relations user/house)
+        .mockResolvedValueOnce({ id: 'staff-1', userId: 'user-1', signatureUrl: 'sig.png' })
+        // findOne(id) inside removeSignature (before) and after update
+        .mockResolvedValueOnce({ id: 'staff-1', signatureUrl: 'sig.png' })
+        .mockResolvedValue({ id: 'staff-1', signatureUrl: null }),
+    });
+    const permRepo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
+    const storage = { delete: jest.fn().mockResolvedValue(undefined) };
+    const service = makeService(staffRepo, makeRepo(), permRepo, storage as never);
+
+    await service.removeSignatureMe('user-1');
+
+    expect(storage.delete).toHaveBeenCalledWith('sig.png');
+    expect(staffRepo.update).toHaveBeenCalledWith('staff-1', { signatureUrl: null });
+  });
+});
+
 describe('StaffService.remove', () => {
   it('deactivates and soft-deletes both user and staff', async () => {
     const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }) });

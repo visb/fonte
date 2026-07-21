@@ -43,6 +43,17 @@ export function useUploadMySignature() {
   });
 }
 
+// Story 138 — remove a assinatura do próprio perfil (botão "Redefinir").
+export function useRemoveMySignature() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.staff.removeMySignature(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.staffMe.current });
+    },
+  });
+}
+
 export function useStaff(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.staff.all,

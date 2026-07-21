@@ -210,7 +210,7 @@ export class DocumentTemplateService implements OnModuleDestroy {
       const canonical = this.storageService.canonicalizeS3Url(staff.signatureUrl);
       signatureUrl = this.storageService.isS3Url(canonical)
         ? await this.storageService.signUrl(canonical)
-        : staff.signatureUrl;
+        : await this.storageService.toDataUri(staff.signatureUrl);
     }
     return { name: staff.name, role: staff.user?.role ?? null, signatureUrl };
   }

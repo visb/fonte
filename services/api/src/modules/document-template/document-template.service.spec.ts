@@ -546,6 +546,50 @@ describe('DocumentTemplateService signature block (story 128)', () => {
     expect(html).not.toContain('src="https://s3/sig.png"');
   });
 
+  // Story 135 — em modo local (não-S3) a assinatura sai como caminho relativo
+  // /uploads/... que o puppeteer não resolve; resolveSigner passa por toDataUri
+  // para inline como data URI. Em S3, segue presignando (sem regressão).
+  it('inlines the signature as a data URI in non-S3 mode', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '{{signature}}' }),
+    });
+    const toDataUri = jest.fn().mockResolvedValue('data:image/png;base64,AAAA');
+    const storage = makeStorage({
+      canonicalizeS3Url: ((u: string) => u) as never,
+      isS3Url: (() => false) as never,
+      toDataUri: toDataUri as never,
+    });
+    const staffRepo = makeStaffRepo({
+      name: 'João',
+      signatureUrl: '/uploads/signatures/sig.png',
+      user: { role: 'ADMIN' },
+    });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }), storage, staffRepo);
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    expect(toDataUri).toHaveBeenCalledWith('/uploads/signatures/sig.png');
+    expect(html).toContain('<img class="doc-signature-img" src="data:image/png;base64,AAAA"');
+    expect(html).not.toContain('src="/uploads/');
+  });
+
+  it('keeps presigning (never inlines) in S3 mode — no regression', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '{{signature}}' }),
+    });
+    const signUrl = jest.fn().mockResolvedValue('https://s3/sig.png?X-Amz-signed');
+    const toDataUri = jest.fn();
+    const storage = makeSigningStorage({ signUrl: signUrl as never, toDataUri: toDataUri as never });
+    const staffRepo = makeStaffRepo({ name: 'João', signatureUrl: 'https://s3/sig.png', user: { role: 'ADMIN' } });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }), storage, staffRepo);
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    expect(signUrl).toHaveBeenCalledWith('https://s3/sig.png');
+    expect(toDataUri).not.toHaveBeenCalled();
+    expect(html).toContain('src="https://s3/sig.png?X-Amz-signed"');
+  });
+
   it('resolves no signer when the user has no staff profile', async () => {
     const repo = makeRepo({
       findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '{{signature}}' }),

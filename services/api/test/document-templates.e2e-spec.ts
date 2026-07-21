@@ -342,6 +342,11 @@ describe('DocumentTemplateController (e2e)', () => {
       expect(res.text).toContain('<img class="doc-signature-img"');
       expect(res.text).toContain(adminName);
       expect(res.text).not.toContain('{{signature}}');
+      // Story 135 — em modo local (não-S3) a assinatura é inline como data URI
+      // (puppeteer não resolve /uploads/... sem base URL). O <img> nunca sai com
+      // caminho relativo quebrado.
+      expect(res.text).toContain('src="data:image/png;base64,');
+      expect(res.text).not.toContain('src="/uploads/');
     });
 
     it('a different token user yields a different signer (per-token signature)', async () => {

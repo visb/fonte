@@ -44,7 +44,7 @@ Ordem: 135 → 136 → 137 → 138 → 139 → 140 → 141. Fonte de verdade: es
 | 2 | 136 — assinatura honra alinhamento no PDF | [OK] | api unit 1268/1268 · doc-templates e2e 21/21 (7 casos novos) · cov escopo 100% | 3f1dbeb | (merge na main) |
 | 3 | 137 — assinatura só nome (sem role, sem bold) | [OK] | api unit 1269/1269 · e2e 485/485 (doc-templates 21/21) · código tocado 100% | e69a745 | (merge na main) |
 | 4 | 138 — botão redefinir assinatura no perfil (DELETE endpoint) | [OK] | api unit 1273/1273 · api e2e 487/487 (staff 26/26) · api-client 265/265 · adm unit 1302/1302 · cov novos 100% | 889a070 | (merge na main) |
-| 5 | 139 — barra de variáveis colapsável fixa à direita | [ ] | | | |
+| 5 | 139 — barra de variáveis colapsável fixa à direita | [OK] | adm unit 1311/1311 (7 novos) · e2e doc-templates 12/12 · VariablesPanel cov 100% · global adm ≥gate | bf45d9e | (merge na main) |
 | 6 | 140 — drag-and-drop das variáveis para o editor | [ ] | | | |
 | 7 | 141 — placeholder do {{signature}} no editor (decoration) | [ ] | | | |
 
@@ -78,6 +78,12 @@ confirmou sem outros usos). Fixes 135/136 intactos.
 delete arquivo + signatureUrl=null); api-client `removeMySignature` (types+api-client rebuildados); hook
 `useRemoveMySignature`; SignatureSection botão "Redefinir" + `RemoveSignatureDialog` (AlertDialog). Postman
 atualizado. Sem migration.
+
+[OK] 139 — testes: adm unit 1311/1311 (5 VariablesPanel + 2 TemplateEditor) · e2e doc-templates 12/12 ·
+VariablesPanel cov 100% · global adm ≥90 — commit: bf45d9e — merge: (main --no-ff) — 2026-07-21. Novo
+`VariablesPanel` (position:fixed direita, default recolhido, 1 var/linha rótulo+chave, onInsert preserva
+clipboard+feedback); grid antigo do rodapé REMOVIDO (`VARIABLES` só no painel; teste garante ausência de
+duplicidade). Frontend adm-only.
 
 ## Resumo final
 

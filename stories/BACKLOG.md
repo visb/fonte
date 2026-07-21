@@ -1,9 +1,5 @@
 # Backlog
 
-## Assinatura nos documentos
-
-- No perfil, onde cria a assinatura, tem q ter um botao para "redefinir"(remover a assinatura definida)
-
 ## Editor de templates de documentos
 
 - Mover o quadro de variaveis disponiveis para uma barra vertical colapsavel com position fixed à direita. mostrar uma variavel por linha.

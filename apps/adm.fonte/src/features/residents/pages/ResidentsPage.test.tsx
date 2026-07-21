@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -57,6 +58,18 @@ function renderAt(url: string) {
     <MemoryRouter initialEntries={[url]}>
       <ResidentsPage />
     </MemoryRouter>,
+  );
+}
+
+// Renderiza sob StrictMode para reproduzir o duplo-mount que só o app real
+// aciona (main.tsx usa <StrictMode>): os efeitos rodam setup → cleanup → setup.
+function renderAtStrict(url: string) {
+  return render(
+    <StrictMode>
+      <MemoryRouter initialEntries={[url]}>
+        <ResidentsPage />
+      </MemoryRouter>
+    </StrictMode>,
   );
 }
 
@@ -148,6 +161,24 @@ describe('ResidentsPage — filtros persistidos (story 130)', () => {
     renderAt('/residents');
     expect(infinite).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: 'ACTIVE', houseId: '', sort: 'entryDate' }),
+    );
+  });
+
+  // Regressão story-133: sob StrictMode (o app real), um guard "primeira montagem"
+  // por ref era marcado na 1ª passada e, na 2ª, o efeito de busca navegava com
+  // `q` sobre uma URL defasada, apagando o `status` recém-hidratado. O guard por
+  // valor (só sincroniza `q` quando difere da URL) sobrevive ao duplo-mount.
+  it('(regressão story-133) sob StrictMode, a hidratação da preferência sobrevive ao duplo-mount', () => {
+    prefState.saved = { status: 'DISCIPLINE', house: 'h2', overdue: true, sort: 'name_asc' };
+    renderAtStrict('/residents');
+    expect(infinite).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        status: 'DISCIPLINE',
+        houseId: 'h2',
+        overdueContribution: true,
+        sort: 'name',
+        order: 'asc',
+      }),
     );
   });
 });

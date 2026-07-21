@@ -1,12 +1,25 @@
 import { test, expect, type Page } from '@playwright/test';
 import { login } from './helpers/auth';
 import { createResidentViaWizard, openResidentFromList } from './helpers/residents';
+import { resetResidentsFilters } from './helpers/preferences';
 
 test.describe('Filhos (Residentes)', () => {
   test.beforeEach(async ({ page }) => {
+    // Vários testes daqui trocam filtros, que a story 130 persiste como
+    // preferência no DB compartilhado. Sem zerar antes de cada teste, a
+    // hidratação reaplicaria o filtro salvo e a asserção de URL limpa abaixo
+    // (e a listagem do João Testador) quebraria. Reset é via API, antes do
+    // login — o contexto do teste anterior já fechou, então não há PUT tardio.
+    await resetResidentsFilters();
     await login(page);
     await page.getByRole('link', { name: 'Filhos' }).click();
-    await expect(page).toHaveURL('/residents');
+    await expect(page).toHaveURL(/\/residents(\?|$)/);
+  });
+
+  // Deixa o DB de teste limpo para as demais suítes (o último teste daqui pode
+  // ter gravado um filtro).
+  test.afterAll(async () => {
+    await resetResidentsFilters();
   });
 
   test('lista residente criado pelo seed', async ({ page }) => {
@@ -301,9 +314,10 @@ test.describe('Filhos (Residentes)', () => {
     await page.getByRole('button', { name: 'Salvar' }).click();
     await expect(page).toHaveURL(/\/residents\/.+/);
 
-    // Volta para lista e abre gateway de novo acolhimento
+    // Volta para lista e abre gateway de novo acolhimento. A URL pode carregar
+    // filtros persistidos (story 130 — o helper de busca troca o status).
     await page.getByRole('link', { name: 'Filhos' }).click();
-    await expect(page).toHaveURL('/residents');
+    await expect(page).toHaveURL(/\/residents(\?|$)/);
     await page.getByRole('link', { name: 'Novo acolhimento' }).click();
     await expect(page).toHaveURL('/residents/admission');
 

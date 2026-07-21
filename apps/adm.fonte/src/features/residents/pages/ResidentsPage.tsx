@@ -99,15 +99,16 @@ export function ResidentsPage() {
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const debouncedSearch = useDebounce(search, 400);
 
-  // Pula a 1ª sincronização (mount): a URL já reflete o `q` inicial e navegar aqui
-  // sobrescreveria a hidratação dos filtros (ambos os efeitos leem a URL original
-  // no mesmo commit — o último a navegar venceria).
-  const didSyncSearch = useRef(false);
+  // Sincroniza a busca à URL após o debounce, guardando por VALOR (não por um ref
+  // de "primeira montagem"). No mount — e sob o duplo-mount do StrictMode — o valor
+  // debounced já é igual ao `q` da URL, então não navegamos. Um ref one-shot seria
+  // marcado na 1ª passada do StrictMode e, na 2ª, dispararia um setParam('q') que
+  // sobrescreveria a hidratação dos filtros: o `setSearchParams` do react-router
+  // não encadeia updates no mesmo commit (a última navegação vence, com `prev`
+  // defasado), então essa navegação limparia o `status` recém-hidratado.
   useEffect(() => {
-    if (!didSyncSearch.current) {
-      didSyncSearch.current = true;
-      return;
-    }
+    const currentQuery = searchParams.get('q') ?? '';
+    if (debouncedSearch === currentQuery) return;
     setParam('q', debouncedSearch || undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);

@@ -46,7 +46,7 @@ Ordem: 135 → 136 → 137 → 138 → 139 → 140 → 141. Fonte de verdade: es
 | 4 | 138 — botão redefinir assinatura no perfil (DELETE endpoint) | [OK] | api unit 1273/1273 · api e2e 487/487 (staff 26/26) · api-client 265/265 · adm unit 1302/1302 · cov novos 100% | 889a070 | (merge na main) |
 | 5 | 139 — barra de variáveis colapsável fixa à direita | [OK] | adm unit 1311/1311 (7 novos) · e2e doc-templates 12/12 · VariablesPanel cov 100% · global adm ≥gate | bf45d9e | (merge na main) |
 | 6 | 140 — drag-and-drop das variáveis para o editor | [OK] | adm unit 1321/1321 (+10) · doc-templates e2e 12/12 · templateDrop cov 100% · global adm ≥90 | e5d3f13 | (merge na main) |
-| 7 | 141 — placeholder do {{signature}} no editor (decoration) | [ ] | | | |
+| 7 | 141 — placeholder do {{signature}} no editor (decoration) | [OK] | adm unit 1332/1332 (spec 11/11) · doc-templates e2e 12/12 · SignaturePlaceholder cov 100% · getHTML mantém {{signature}} | 6383ddf | (merge na main) |
 
 ## Log
 
@@ -91,6 +91,42 @@ adm 92.54% — commit: e5d3f13 — merge: (main --no-ff) — 2026-07-21. Linhas 
 `templateDrop.ts` (isVariableToken/handleVariableDrop). **Drop coberto por função pura, não e2e** — Playwright
 não simula DnD HTML5 nativo com dataTransfer (previsto no ledger). Clique (139) e handlePaste intactos.
 
+[OK] 141 — testes: adm unit 1332/1332 (spec 11/11) · doc-templates e2e 12/12 · SignaturePlaceholder cov
+100% stmts/lines · global adm 92.58% — commit: 6383ddf — merge: (main --no-ff) — 2026-07-21. Extensão
+`SignaturePlaceholder` (Plugin + DecorationSet): esconde o token cru e renderiza caixa tracejada "Assinatura"
+inline-block, altura 100px (img 64 + linha/nome 36) + margin-top 24px, referenciando `.doc-signature`.
+**Guarda travada por teste: `getHTML()` mantém `{{signature}}` literal** → 135/136/137 intactos. Alinhamento
+(136) posiciona o placeholder via text-align do `<p>`. Removido 1 teste que dependia de TextAlign fora do
+StarterKit bare (coberto pelo e2e real). Frontend adm-only.
+
 ## Resumo final
 
-<pendente — rodada em andamento>
+**Rodada 135–141 CONCLUÍDA — 7/7 [OK], zero BLOQUEADO/PENDENTE-MANUAL.** 2026-07-21.
+
+**Bloco "Assinatura nos documentos" (135–138):**
+- 135 — assinatura no PDF local vira data URI (`StorageService.toDataUri`), fim da URL quebrada em modo
+  não-S3; S3 e imagem de conteúdo intactos. `8a3f35a`.
+- 136 — assinatura honra o `text-align` do editor (troca do `<p>{{signature}}</p>` inteiro + img
+  inline-block). `3f1dbeb`.
+- 137 — bloco de assinatura só com o nome (sem role, sem bold); plumbing de role removido com segurança.
+  `e69a745`.
+- 138 — botão "Redefinir" no perfil + `DELETE /staff/me/signature` idempotente; api-client `removeMySignature`,
+  Postman atualizado. `889a070`.
+
+**Bloco "Editor de templates" (139–141):**
+- 139 — `VariablesPanel`: barra colapsável fixa à direita (default recolhido, 1 var/linha), grid antigo
+  removido. `bf45d9e`.
+- 140 — drag-and-drop das variáveis para o corpo (`templateDrop.ts` + `handleDrop`); drop coberto por
+  função pura (Playwright não simula DnD HTML5 nativo). `e5d3f13`.
+- 141 — placeholder visual do `{{signature}}` no editor via decoration (documento mantém o token literal).
+  `6383ddf`.
+
+**Gates reproduzíveis:** backend `pnpm test:api` (1273/1273 na 138) · `pnpm test:api:e2e` (487/487) ·
+`pnpm test:api:cov` ≥90 escopo · api-client 265/265 · adm Vitest (1332/1332 no fim) · Playwright
+document-templates 12/12 · `tsc -b` limpo. Cada story: branch `feat/story-NN-*` → `merge --no-ff` na
+main → plano em `stories/done/`. **Sem push, sem PR** (branches preservadas localmente).
+
+**Serviços deixados de pé:** docker (postgres+redis), API teste (3001), adm teste (5174).
+
+**Dívidas herdadas (não desta rodada):** stories 133/134 DEFERIDAS (ver done/PROGRESS-131-134.md); 2
+falhas e2e adm pré-existentes em `activities`/`payables` (descobertas na 132).

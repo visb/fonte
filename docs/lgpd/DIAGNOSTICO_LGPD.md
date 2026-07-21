@@ -18,7 +18,7 @@ Categorias: **P** = dado pessoal; **S** = dado pessoal sensível (art. 11).
 |---|---|---|---|
 | User | `services/api/src/modules/user/user.entity.ts` | `email`, `passwordHash` | — |
 | Resident | `services/api/src/modules/resident/resident.entity.ts` | `name`, `birthDate`, `cpf`, `rg`, `nationality`, `city`, `state`, `address`, `contactPhone`, `email`, `maritalStatus`, `children`, `occupation`, `education`, `weight`, `height`, `photoUrl` | **S**: `healthIssues`, `continuousMedication`, `religion`, `addiction` |
-| Staff | `services/api/src/modules/staff/staff.entity.ts` | `name`, `phone`, `birthDate`, `cpf`, `rg`, `nationality`, `gender`, `city`, `state`, `address`, `maritalStatus`, `children`, `occupation`, `education`, `photoUrl` | **S**: `healthIssues`, `continuousMedication`, `religion`, `addiction` |
+| Staff | `services/api/src/modules/staff/staff.entity.ts` | `name`, `phone`, `birthDate`, `cpf`, `rg`, `nationality`, `gender`, `city`, `state`, `address`, `maritalStatus`, `children`, `occupation`, `education`, `photoUrl`, `signatureUrl` (imagem de assinatura manuscrita — ver §2.1) | **S**: `healthIssues`, `continuousMedication`, `religion`, `addiction` |
 | Admission | `services/api/src/modules/resident/admission.entity.ts` | `entryDate`, `exitDate` | **S**: `healthIssues`, `continuousMedication`, `weight`, `height` — **sem soft delete** |
 | Relative | `services/api/src/modules/relative/relative.entity.ts` | `name`, `phone`, `relationship`, `photoUrl`, `isResponsible` | — |
 | Message | `services/api/src/modules/message/message.entity.ts` | `content`, `attachmentUrl`, `attachmentType` | Comunicação privada — **sem soft delete** |
@@ -30,6 +30,25 @@ Categorias: **P** = dado pessoal; **S** = dado pessoal sensível (art. 11).
 | Incident | `services/api/src/modules/incident/incident.entity.ts` | `description`, `severity` | Disciplinar/comportamental |
 | SupportGroupCheckin / RelativeCheckin | `services/api/src/modules/support-group/*` | `checkedInAt` | Presença de família — **sem soft delete** |
 | House | `services/api/src/modules/house/house.entity.ts` | `name`, `address`, `city`, `state`, `phone` | Facilidade (não pessoal) |
+
+### 2.1 Assinatura funcional do staff (`staff.signature_url`)
+
+> Proposta de inventário — **base legal sujeita a revisão humana (compliance/jurídico)**. Origem do dado: story 128; regra de URL assinada: story 76.
+
+- **Dado:** imagem da **assinatura manuscrita** do colaborador, desenhada pelo próprio staff no app e persistida como arquivo **PNG** (com transparência) no bucket, pasta `signatures/`. Referenciada em `staff.signature_url`.
+- **Titular:** colaborador (**Staff** — roles `ADMIN` / `COORDINATOR` / `SERVANT`).
+- **Categoria:** dado pessoal de identificação (**P**). A assinatura identifica o colaborador e autentica documentos; não é dado sensível do art. 11, mas tem valor probatório/identificatório e exige cuidado equivalente ao da foto.
+- **Finalidade:** **assinar automaticamente** os documentos institucionais gerados a partir de templates (variável `{{signature}}`), substituindo a assinatura manual folha a folha. Desde a story 137, o bloco impresso traz **nome + assinatura** (a role deixou de ser impressa abaixo da assinatura).
+- **Fluxo / armazenamento:**
+  - Upload via `POST /staff/me/signature` (o próprio titular envia; validação de PNG, transparência e limite de 5 MB).
+  - No banco fica a **URL canônica** (não a URL assinada). A URL é **assinada na leitura** (regra da story 76): as respostas da API entregam uma URL temporária assinada, e a canônica nunca vaza.
+  - Ao **redesenhar**, o arquivo anterior é **apagado** do bucket antes de gravar o novo (story 128, decisão 8) — não acumula versões órfãs.
+  - Em **produção** (S3), vale o comportamento canônico + assinada-na-leitura descrito acima. Em **dev local** (storage não-S3), a story 135 serve a assinatura como *data URI* embutido apenas para viabilizar o preview local; isso **não** se aplica a produção.
+- **Base legal (proposta):** **legítimo interesse / execução do contrato de trabalho** (art. 7, II e IX) — a assinatura funcional do colaborador em documentos institucionais é instrumento ordinário da relação de trabalho e da atividade-fim da instituição. **Não** se enquadra como consentimento: coerente com o critério do projeto (§5), o consentimento fica reservado a **imagem/divulgação/marketing e divulgação religiosa**; dados operacionais do vínculo têm base própria. A assinatura aqui é uso funcional interno (autenticar documentos), não divulgação da imagem do colaborador.
+- **Retenção / eliminação:**
+  - O dado vive enquanto o staff mantém sua assinatura configurada. Redesenhar **sobrescreve e apaga** o arquivo anterior (story 128, dec. 8).
+  - **Eliminação sob demanda pelo titular já existe:** `DELETE /staff/me/signature` (story 138) — botão "Redefinir" no perfil, **idempotente**, apaga o arquivo do bucket e zera `signature_url`.
+  - **Gap remanescente:** não há eliminação **automática** no **desligamento/offboarding** do colaborador — o titular consegue remover manualmente, mas nenhuma rotina apaga a assinatura ao encerrar o vínculo. Ver `ROADMAP_LGPD.md` (Fase 4).
 
 ## 3. Mapa de gaps
 
@@ -69,6 +88,7 @@ Mapeamento definido (a validar com jurídico). A base **não é única** — var
 | Prontuário social e acompanhamento | Saúde, medicação, dependência | Tutela da saúde; proteção da vida |
 | Controle de medicamentos | Saúde, medicação contínua | Tutela da saúde |
 | Contato com familiares | Nome, telefone, parentesco | Legítimo interesse / execução contratual |
+| Assinatura funcional do staff em documentos (§2.1) | `signatureUrl` (imagem de assinatura) | Legítimo interesse / execução do contrato de trabalho — **proposta, a validar com jurídico** |
 | Controle de acesso ao sistema | Login, IP, auditoria | Legítimo interesse e segurança |
 | Emissão de documentos fiscais | CPF, dados financeiros | Obrigação legal |
 | Histórico de atendimento | Saúde e dependência | Tutela da saúde |

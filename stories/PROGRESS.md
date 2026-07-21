@@ -45,7 +45,7 @@ Ordem: 135 → 136 → 137 → 138 → 139 → 140 → 141. Fonte de verdade: es
 | 3 | 137 — assinatura só nome (sem role, sem bold) | [OK] | api unit 1269/1269 · e2e 485/485 (doc-templates 21/21) · código tocado 100% | e69a745 | (merge na main) |
 | 4 | 138 — botão redefinir assinatura no perfil (DELETE endpoint) | [OK] | api unit 1273/1273 · api e2e 487/487 (staff 26/26) · api-client 265/265 · adm unit 1302/1302 · cov novos 100% | 889a070 | (merge na main) |
 | 5 | 139 — barra de variáveis colapsável fixa à direita | [OK] | adm unit 1311/1311 (7 novos) · e2e doc-templates 12/12 · VariablesPanel cov 100% · global adm ≥gate | bf45d9e | (merge na main) |
-| 6 | 140 — drag-and-drop das variáveis para o editor | [ ] | | | |
+| 6 | 140 — drag-and-drop das variáveis para o editor | [OK] | adm unit 1321/1321 (+10) · doc-templates e2e 12/12 · templateDrop cov 100% · global adm ≥90 | e5d3f13 | (merge na main) |
 | 7 | 141 — placeholder do {{signature}} no editor (decoration) | [ ] | | | |
 
 ## Log
@@ -84,6 +84,12 @@ VariablesPanel cov 100% · global adm ≥90 — commit: bf45d9e — merge: (main
 `VariablesPanel` (position:fixed direita, default recolhido, 1 var/linha rótulo+chave, onInsert preserva
 clipboard+feedback); grid antigo do rodapé REMOVIDO (`VARIABLES` só no painel; teste garante ausência de
 duplicidade). Frontend adm-only.
+
+[OK] 140 — testes: adm unit 1321/1321 (+10) · doc-templates e2e 12/12 · `templateDrop.ts` cov 100% · global
+adm 92.54% — commit: e5d3f13 — merge: (main --no-ff) — 2026-07-21. Linhas da VariablesPanel `draggable`
+(dataTransfer text/plain=token); `editorProps.handleDrop` insere token em `posAtCoords`. Lógica extraída p/
+`templateDrop.ts` (isVariableToken/handleVariableDrop). **Drop coberto por função pura, não e2e** — Playwright
+não simula DnD HTML5 nativo com dataTransfer (previsto no ledger). Clique (139) e handlePaste intactos.
 
 ## Resumo final
 

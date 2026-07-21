@@ -40,7 +40,7 @@ Ordem: 135 → 136 → 137 → 138 → 139 → 140 → 141. Fonte de verdade: es
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 135 — assinatura URL quebrada no PDF local (data URI) | [ ] | | | |
+| 1 | 135 — assinatura URL quebrada no PDF local (data URI) | [OK] | api unit 1261/1261 · doc-templates e2e 21/21 · cov escopo 100% (toDataUri) | 8a3f35a | (merge abaixo) |
 | 2 | 136 — assinatura honra alinhamento no PDF | [ ] | | | |
 | 3 | 137 — assinatura só nome (sem role, sem bold) | [ ] | | | |
 | 4 | 138 — botão redefinir assinatura no perfil (DELETE endpoint) | [ ] | | | |
@@ -53,6 +53,12 @@ Ordem: 135 → 136 → 137 → 138 → 139 → 140 → 141. Fonte de verdade: es
 Entrada curta — máx. ~3 linhas. Detalhe rico vai no corpo do commit ou no `.md` arquivado.
 
 [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver>
+
+[OK] 135 — testes: api unit 1261/1261 · document-templates e2e 21/21 (afirma `data:image/png;base64,` e
+ausência de `/uploads/` no bloco de assinatura) · cov escopo novo 100% (toDataUri+mime) — commit: 8a3f35a
+— merge: (na main via --no-ff) — 2026-07-21. Helper `StorageService.toDataUri` (não-S3 + `/uploads/` →
+`download()` + data URI, mime por extensão); `resolveSigner` ramo não-S3 usa o helper; S3 e imagem de
+conteúdo intactos. Sem migration/contrato/Postman.
 
 ## Resumo final
 

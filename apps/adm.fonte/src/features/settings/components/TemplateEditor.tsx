@@ -33,6 +33,7 @@ import { LinkBubbleMenu } from './LinkBubbleMenu';
 import { TableBlockMenu } from './TableBlockMenu';
 import { A4EditorFrame } from './A4EditorFrame';
 import { VariablesPanel } from './VariablesPanel';
+import { handleVariableDrop } from './templateDrop';
 
 // ─── FontSize mark ────────────────────────────────────────────────────────────
 // Custom inline mark — stores pt value; avoids @tiptap/extension-text-style
@@ -477,6 +478,12 @@ export function TemplateEditor({ template, onSaved }: Props) {
         if (el?.closest('a')) event.preventDefault();
         return false;
       },
+      // Drag-and-drop de variáveis (story 140) — soltar um token `{{chave}}`
+      // arrastado da VariablesPanel insere-o na posição do drop. Só o token nu é
+      // tratado; qualquer outro conteúdo cai no comportamento padrão (`false`),
+      // preservando o DnD nativo e o handlePaste de imagem. O clique-para-inserir
+      // (story 139) segue independente disto.
+      handleDrop: (view, event) => handleVariableDrop(view, event as DragEvent),
       // Intercept clipboard paste — if image file present, upload instead of embedding base64
       handlePaste: (_view, event) => {
         const items = event.clipboardData?.items;

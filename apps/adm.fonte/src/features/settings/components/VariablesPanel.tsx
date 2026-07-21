@@ -99,7 +99,7 @@ export function VariablesPanel({ onInsert }: Props) {
       </div>
 
       <p className="px-3 pt-2 text-[11px] leading-tight text-muted-foreground">
-        Clique para inserir no editor.
+        Clique ou arraste para o corpo do documento.
       </p>
 
       <div className="flex-1 space-y-1 overflow-y-auto p-2">
@@ -109,8 +109,15 @@ export function VariablesPanel({ onInsert }: Props) {
             type="button"
             title={description}
             onClick={() => handleInsert(key)}
+            draggable
+            onDragStart={(e) => {
+              // Fonte de arraste (story 140): o token literal viaja como texto
+              // puro; o handleDrop do editor o insere na posição solta.
+              e.dataTransfer.setData('text/plain', key);
+              e.dataTransfer.effectAllowed = 'copy';
+            }}
             className={cn(
-              'group flex w-full flex-col items-start gap-0.5 rounded border bg-background px-2 py-1.5 text-left transition-colors hover:bg-accent',
+              'group flex w-full cursor-grab flex-col items-start gap-0.5 rounded border bg-background px-2 py-1.5 text-left transition-colors hover:bg-accent active:cursor-grabbing',
             )}
           >
             <span className="text-xs font-medium leading-tight text-foreground">{label}</span>

@@ -30,12 +30,22 @@ rodada 135–141 fechou.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 133 — e2e Playwright de preferências / filtros persistidos | [ ] | | | |
+| 1 | 133 — e2e Playwright de preferências / filtros persistidos | [OK] | preferences 3/3 · determinismo 6/6 · suíte e2e 160/2 (2 pré-existentes) · unit 1333/1333 · cov ≥90 | a94e940 | (merge na main) |
 | 2 | 134 — LGPD: inventariar `staff.signature_url` (docs) | [ ] | | | |
 
 ## Log
 
 [OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data> — <bloqueio se houver>
+
+[OK] 133 — testes: preferences.spec 3/3 · determinismo 6/6 (--repeat-each=2) · preferences+residents 32/32
+(não-vazamento) · suíte e2e adm 160 passed/2 failed (só pré-existentes activities+payables) · unit 1333/1333
+· cov adm ≥90 — commit: a94e940 — merge: (main --no-ff) — 2026-07-21. Novo `e2e/preferences.spec.ts` (3
+cenários) + helper `resetResidentsFilters` (DELETE via API) + afterEach de limpeza. **Pegou bug REAL de
+produção:** hidratação sob StrictMode — guard `didSyncSearch` por ref era marcado no duplo-mount e a sync de
+`q` sobrescrevia o `status` hidratado; fix = guard por VALOR (só sincroniza `q` quando difere da URL),
+regressão unit sob `<StrictMode>` provada via stash. `residents.spec` ganhou limpeza + asserts de URL
+tolerantes (sancionado pelo plano). Bug de isolamento no afterEach (URL relativa → 404 → não limpava)
+corrigido com URL absoluta.
 
 ## Resumo final
 

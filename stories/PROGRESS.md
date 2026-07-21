@@ -41,7 +41,7 @@ Ordem: 135 → 136 → 137 → 138 → 139 → 140 → 141. Fonte de verdade: es
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 135 — assinatura URL quebrada no PDF local (data URI) | [OK] | api unit 1261/1261 · doc-templates e2e 21/21 · cov escopo 100% (toDataUri) | 8a3f35a | (merge abaixo) |
-| 2 | 136 — assinatura honra alinhamento no PDF | [ ] | | | |
+| 2 | 136 — assinatura honra alinhamento no PDF | [OK] | api unit 1268/1268 · doc-templates e2e 21/21 (7 casos novos) · cov escopo 100% | 3f1dbeb | (merge na main) |
 | 3 | 137 — assinatura só nome (sem role, sem bold) | [ ] | | | |
 | 4 | 138 — botão redefinir assinatura no perfil (DELETE endpoint) | [ ] | | | |
 | 5 | 139 — barra de variáveis colapsável fixa à direita | [ ] | | | |
@@ -59,6 +59,12 @@ ausência de `/uploads/` no bloco de assinatura) · cov escopo novo 100% (toData
 — merge: (na main via --no-ff) — 2026-07-21. Helper `StorageService.toDataUri` (não-S3 + `/uploads/` →
 `download()` + data URI, mime por extensão); `resolveSigner` ramo não-S3 usa o helper; S3 e imagem de
 conteúdo intactos. Sem migration/contrato/Postman.
+
+[OK] 136 — testes: api unit 1268/1268 · document-templates e2e 21/21 (7 casos: center/right/left, sem-align,
+inline fallback, sem-assinatura, CSS inline-block) · cov escopo novo 100% — commit: 3f1dbeb — merge: (main
+--no-ff) — 2026-07-21. `applyVariables` troca `<p …>{{signature}}</p>` inteiro carregando `text-align` p/
+`buildSignatureBlock(signer, align)`; fallback do token nu mantido; `.doc-signature-img` → inline-block. Fix
+135 (data URI) preservado.
 
 ## Resumo final
 

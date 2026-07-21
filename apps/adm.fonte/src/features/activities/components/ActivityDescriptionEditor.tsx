@@ -41,6 +41,11 @@ function ToolbarButton({
   return (
     <button
       type="button"
+      // Preserva foco/seleção do contenteditable: sem isto, o mousedown tira o
+      // foco do editor e colapsa a seleção, e o stored mark do TipTap
+      // (toggleBold/toggleItalic em cursor vazio) não pega o 1º caractere
+      // digitado — só a partir do 2º. Padrão de toolbar do TipTap.
+      onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       disabled={disabled}
       title={title}

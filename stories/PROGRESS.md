@@ -43,7 +43,7 @@ Ordem: 135 → 136 → 137 → 138 → 139 → 140 → 141. Fonte de verdade: es
 | 1 | 135 — assinatura URL quebrada no PDF local (data URI) | [OK] | api unit 1261/1261 · doc-templates e2e 21/21 · cov escopo 100% (toDataUri) | 8a3f35a | (merge abaixo) |
 | 2 | 136 — assinatura honra alinhamento no PDF | [OK] | api unit 1268/1268 · doc-templates e2e 21/21 (7 casos novos) · cov escopo 100% | 3f1dbeb | (merge na main) |
 | 3 | 137 — assinatura só nome (sem role, sem bold) | [OK] | api unit 1269/1269 · e2e 485/485 (doc-templates 21/21) · código tocado 100% | e69a745 | (merge na main) |
-| 4 | 138 — botão redefinir assinatura no perfil (DELETE endpoint) | [ ] | | | |
+| 4 | 138 — botão redefinir assinatura no perfil (DELETE endpoint) | [OK] | api unit 1273/1273 · api e2e 487/487 (staff 26/26) · api-client 265/265 · adm unit 1302/1302 · cov novos 100% | 889a070 | (merge na main) |
 | 5 | 139 — barra de variáveis colapsável fixa à direita | [ ] | | | |
 | 6 | 140 — drag-and-drop das variáveis para o editor | [ ] | | | |
 | 7 | 141 — placeholder do {{signature}} no editor (decoration) | [ ] | | | |
@@ -71,6 +71,13 @@ e69a745 — merge: (main --no-ff) — 2026-07-21. `buildSignatureBlock` deixou d
 CSS `.doc-signature-name` → font-weight:normal e regra `.doc-signature-role` removida. Plumbing órfão
 REMOVIDO com segurança: `DocumentSigner.role`, `ROLE_LABEL_PT`, `import Role`, `relations:['user']` (grep
 confirmou sem outros usos). Fixes 135/136 intactos.
+
+[OK] 138 — testes: api unit 1273/1273 · api e2e 487/487 (staff 26/26) · api-client 265/265 (contratos 190)
+· adm unit 1302/1302 · cov: staff.service 91.9% / controller 100% / componentes novos adm 100% — commit:
+889a070 — merge: (main --no-ff) — 2026-07-21. `DELETE /staff/me/signature` idempotente (removeSignatureMe:
+delete arquivo + signatureUrl=null); api-client `removeMySignature` (types+api-client rebuildados); hook
+`useRemoveMySignature`; SignatureSection botão "Redefinir" + `RemoveSignatureDialog` (AlertDialog). Postman
+atualizado. Sem migration.
 
 ## Resumo final
 

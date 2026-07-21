@@ -4,6 +4,17 @@ import { login } from './helpers/auth';
 test.describe('Contas a Pagar (Financeiro)', () => {
   const ts = () => Date.now();
 
+  // Vencimento relativo ao "agora" (nunca data literal, que envelheceria e mudaria o status).
+  // Positivo = futuro (conta nasce OPEN não-vencida); negativo = passado (conta nasce vencida).
+  function dueDateFromNow(daysAhead = 30) {
+    const d = new Date();
+    d.setDate(d.getDate() + daysAhead);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   async function goto(page: import('@playwright/test').Page) {
     await page.goto('/financeiro/contas-a-pagar');
     await expect(page).toHaveURL('/financeiro/contas-a-pagar');
@@ -14,12 +25,13 @@ test.describe('Contas a Pagar (Financeiro)', () => {
     page: import('@playwright/test').Page,
     description: string,
     amount = '250.00',
+    dueDate = dueDateFromNow(),
   ) {
     await page.getByRole('button', { name: 'Nova conta' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.getByLabel('Descrição *').fill(description);
     await page.getByLabel('Valor (R$) *').fill(amount);
-    await page.getByLabel('Vencimento *').fill('2026-06-20');
+    await page.getByLabel('Vencimento *').fill(dueDate);
     await page.getByLabel('Categoria *').selectOption('UTILITIES');
     await page.getByRole('button', { name: 'Criar' }).click();
     await expect(page.getByRole('dialog')).not.toBeVisible();

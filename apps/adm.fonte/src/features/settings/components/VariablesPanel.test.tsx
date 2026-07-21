@@ -94,6 +94,27 @@ describe('VariablesPanel', () => {
     }
   });
 
+  it('dragstart numa linha seta o token no dataTransfer (fonte de arraste, story 140)', () => {
+    render(<VariablesPanel onInsert={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Variáveis/i }));
+
+    // Mock de DataTransfer (jsdom não popula em eventos sintéticos de DnD).
+    const store: Record<string, string> = {};
+    const dataTransfer = {
+      setData: vi.fn((type: string, value: string) => { store[type] = value; }),
+      getData: (type: string) => store[type] ?? '',
+      effectAllowed: 'none',
+    };
+
+    const row = screen.getByText('{{name}}').closest('button')!;
+    expect(row).toHaveAttribute('draggable', 'true');
+
+    fireEvent.dragStart(row, { dataTransfer });
+
+    expect(dataTransfer.setData).toHaveBeenCalledWith('text/plain', '{{name}}');
+    expect(dataTransfer.effectAllowed).toBe('copy');
+  });
+
   it('não quebra quando a cópia para o clipboard falha', async () => {
     (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error('clipboard bloqueado'),

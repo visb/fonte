@@ -31,7 +31,7 @@ rodada 135–141 fechou.
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 133 — e2e Playwright de preferências / filtros persistidos | [OK] | preferences 3/3 · determinismo 6/6 · suíte e2e 160/2 (2 pré-existentes) · unit 1333/1333 · cov ≥90 | a94e940 | (merge na main) |
-| 2 | 134 — LGPD: inventariar `staff.signature_url` (docs) | [ ] | | | |
+| 2 | 134 — LGPD: inventariar `staff.signature_url` (docs) | [OK] PENDENTE-REVISÃO-HUMANA | docs-only, sem gate | ceee8c4 | (merge na main) |
 
 ## Log
 
@@ -47,6 +47,27 @@ regressão unit sob `<StrictMode>` provada via stash. `residents.spec` ganhou li
 tolerantes (sancionado pelo plano). Bug de isolamento no afterEach (URL relativa → 404 → não limpava)
 corrigido com URL absoluta.
 
+[OK] 134 — docs-only (sem gate de teste) — commit: ceee8c4 — merge: (main --no-ff) — 2026-07-21 —
+**PENDENTE-REVISÃO-HUMANA**. `DIAGNOSTICO_LGPD.md`: nova §2.1 (assinatura funcional do staff) + linha na
+tabela §2 (categoria P) + base legal §5. Base legal PROPOSTA: legítimo interesse / execução de contrato de
+trabalho (art. 7 II/IX), não consentimento — sujeita a revisão jurídica. `ROADMAP_LGPD.md` Fase 4: eliminação
+sob demanda pelo titular JÁ existe (story 138, `DELETE /staff/me/signature`); gap remanescente = eliminação
+AUTOMÁTICA no offboarding. Reflete estado pós-135–141 (137 removeu role impressa; 135 data URI só dev-local,
+prod segue canônico+assinado).
+
 ## Resumo final
 
-<pendente — rodada em andamento>
+**Rodada 133–134 CONCLUÍDA — 2/2 [OK]** (134 com PENDENTE-REVISÃO-HUMANA na base legal). 2026-07-21.
+Retomou as duas deferidas da rodada 131–134.
+
+- 133 — e2e Playwright de preferências (3 cenários + isolamento via afterEach). Pegou e corrigiu bug real de
+  hidratação sob StrictMode em `ResidentsPage`. preferences 3/3 · determinismo 6/6 · suíte e2e 160/2 (2
+  pré-existentes) · unit 1333/1333 · cov ≥90. `a94e940`.
+- 134 — inventário LGPD de `staff.signature_url` (docs). Base legal proposta (legítimo interesse) →
+  **revisão humana pendente**. `ceee8c4`.
+
+**Ações humanas pendentes:** (1) revisar/ratificar a base legal LGPD da assinatura (134). (2) Dívida ainda
+aberta fora desta rodada: 2 falhas e2e adm pré-existentes em `activities` (WYSIWYG) e `payables` (status) —
+descobertas na 132, não são regressão; candidatas a story própria.
+
+**Serviços deixados de pé:** docker, API teste (3001), adm teste (5174). **Sem push, sem PR.**

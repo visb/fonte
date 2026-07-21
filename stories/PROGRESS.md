@@ -42,7 +42,7 @@ Ordem: 135 → 136 → 137 → 138 → 139 → 140 → 141. Fonte de verdade: es
 | --- | --- | --- | --- | --- | --- |
 | 1 | 135 — assinatura URL quebrada no PDF local (data URI) | [OK] | api unit 1261/1261 · doc-templates e2e 21/21 · cov escopo 100% (toDataUri) | 8a3f35a | (merge abaixo) |
 | 2 | 136 — assinatura honra alinhamento no PDF | [OK] | api unit 1268/1268 · doc-templates e2e 21/21 (7 casos novos) · cov escopo 100% | 3f1dbeb | (merge na main) |
-| 3 | 137 — assinatura só nome (sem role, sem bold) | [ ] | | | |
+| 3 | 137 — assinatura só nome (sem role, sem bold) | [OK] | api unit 1269/1269 · e2e 485/485 (doc-templates 21/21) · código tocado 100% | e69a745 | (merge na main) |
 | 4 | 138 — botão redefinir assinatura no perfil (DELETE endpoint) | [ ] | | | |
 | 5 | 139 — barra de variáveis colapsável fixa à direita | [ ] | | | |
 | 6 | 140 — drag-and-drop das variáveis para o editor | [ ] | | | |
@@ -65,6 +65,12 @@ inline fallback, sem-assinatura, CSS inline-block) · cov escopo novo 100% — c
 --no-ff) — 2026-07-21. `applyVariables` troca `<p …>{{signature}}</p>` inteiro carregando `text-align` p/
 `buildSignatureBlock(signer, align)`; fallback do token nu mantido; `.doc-signature-img` → inline-block. Fix
 135 (data URI) preservado.
+
+[OK] 137 — testes: api unit 1269/1269 · e2e 485/485 (doc-templates 21/21) · código tocado 100% — commit:
+e69a745 — merge: (main --no-ff) — 2026-07-21. `buildSignatureBlock` deixou de emitir `.doc-signature-role`;
+CSS `.doc-signature-name` → font-weight:normal e regra `.doc-signature-role` removida. Plumbing órfão
+REMOVIDO com segurança: `DocumentSigner.role`, `ROLE_LABEL_PT`, `import Role`, `relations:['user']` (grep
+confirmou sem outros usos). Fixes 135/136 intactos.
 
 ## Resumo final
 

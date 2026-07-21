@@ -344,6 +344,58 @@ describe('StorageService.clearBucket (story 123)', () => {
   });
 });
 
+// Story 135 — em modo local (não-S3) a assinatura tem URL relativa /uploads/...
+// que o puppeteer não resolve (setContent sem base URL). toDataUri inline o
+// arquivo como data URI para o <img> renderizar em qualquer ambiente local.
+describe('StorageService.toDataUri (story 135)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('inlines a local /uploads png as a data URI in non-S3 mode (reusing download)', async () => {
+    const svc = makeService({ AWS_S3_BUCKET_NAME: undefined, AWS_ENDPOINT_URL: undefined });
+    const buffer = Buffer.from('PNGBYTES');
+    const download = jest.spyOn(svc, 'download').mockResolvedValue(buffer);
+
+    const result = await svc.toDataUri('/uploads/signatures/x.png');
+
+    expect(download).toHaveBeenCalledWith('/uploads/signatures/x.png');
+    expect(result).toBe(`data:image/png;base64,${buffer.toString('base64')}`);
+  });
+
+  it('infers mime by extension (.jpg/.jpeg → image/jpeg, .webp → image/webp)', async () => {
+    const svc = makeService({ AWS_S3_BUCKET_NAME: undefined, AWS_ENDPOINT_URL: undefined });
+    jest.spyOn(svc, 'download').mockResolvedValue(Buffer.from('X'));
+
+    expect(await svc.toDataUri('/uploads/a.jpg')).toContain('data:image/jpeg;base64,');
+    expect(await svc.toDataUri('/uploads/a.jpeg')).toContain('data:image/jpeg;base64,');
+    expect(await svc.toDataUri('/uploads/a.webp')).toContain('data:image/webp;base64,');
+  });
+
+  it('falls back to application/octet-stream for an unknown extension', async () => {
+    const svc = makeService({ AWS_S3_BUCKET_NAME: undefined, AWS_ENDPOINT_URL: undefined });
+    jest.spyOn(svc, 'download').mockResolvedValue(Buffer.from('X'));
+
+    expect(await svc.toDataUri('/uploads/a.bin')).toContain('data:application/octet-stream;base64,');
+  });
+
+  it('returns the URL unchanged in S3 mode (never inlines)', async () => {
+    const svc = makeService();
+    const download = jest.spyOn(svc, 'download');
+
+    expect(await svc.toDataUri('/uploads/x.png')).toBe('/uploads/x.png');
+    expect(download).not.toHaveBeenCalled();
+  });
+
+  it('returns absolute/external URLs unchanged in non-S3 mode', async () => {
+    const svc = makeService({ AWS_S3_BUCKET_NAME: undefined, AWS_ENDPOINT_URL: undefined });
+    const download = jest.spyOn(svc, 'download');
+
+    expect(await svc.toDataUri('https://cdn.test/x.png')).toBe('https://cdn.test/x.png');
+    expect(download).not.toHaveBeenCalled();
+  });
+});
+
 describe('StorageService.signContentUrls', () => {
   beforeEach(() => {
     let n = 0;

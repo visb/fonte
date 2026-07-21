@@ -220,6 +220,32 @@ export class StorageService implements OnModuleInit {
     return readFile(join(process.cwd(), relative));
   }
 
+  // Inlines a local media URL as a data URI so it renders without an HTTP origin
+  // (story 135). Puppeteer's `setContent` has no base URL, so a relative
+  // `/uploads/...` <img src> breaks in local (non-S3) mode. Reads the file off
+  // disk via `download` and returns `data:<mime>;base64,...`. No-op in S3 mode
+  // (URLs are presigned/absolute there) and for already-absolute/external URLs.
+  async toDataUri(url: string): Promise<string> {
+    if (this.isS3Mode() || !url.startsWith("/uploads/")) return url;
+    const buffer = await this.download(url);
+    const mime = this.mimeFromExtension(url);
+    return `data:${mime};base64,${buffer.toString("base64")}`;
+  }
+
+  private mimeFromExtension(url: string): string {
+    switch (extname(url).toLowerCase()) {
+      case ".png":
+        return "image/png";
+      case ".jpg":
+      case ".jpeg":
+        return "image/jpeg";
+      case ".webp":
+        return "image/webp";
+      default:
+        return "application/octet-stream";
+    }
+  }
+
   async delete(fileUrl: string): Promise<void> {
     if (this.s3 && this.bucketName && this.publicBaseUrl) {
       const key = fileUrl.startsWith(this.publicBaseUrl + "/")

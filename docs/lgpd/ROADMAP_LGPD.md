@@ -52,6 +52,7 @@ Maior risco × menor esforço. Não depende da Fase 0.
 | Política de retenção + purga | Job de purga/anonimização após prazo legal | Dados expirados purgados/anonimizados |
 | Limpeza de arquivos órfãos | Fluxo de exclusão em `resident.service.ts` / `StorageService` | Bucket não retém arquivo de registro excluído |
 | Anonimização de PII em backups | `backup.service.ts`, `database/backup-export.ts` | Avaliação concluída; medida aplicada se cabível |
+| Eliminação da assinatura do staff no desligamento | `staff.service.ts` (offboarding); espelhar `removeSignature` já existente | Ao encerrar o vínculo, `signature_url` é zerada e o PNG apagado do bucket automaticamente. **Parcial hoje:** eliminação sob demanda pelo titular já existe (`DELETE /staff/me/signature`, story 138, idempotente); falta só a rotina automática no offboarding. Ver `DIAGNOSTICO_LGPD.md` §2.1 |
 
 ## Matriz pilar → fase
 

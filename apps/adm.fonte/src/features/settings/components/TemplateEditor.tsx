@@ -34,6 +34,7 @@ import { TableBlockMenu } from './TableBlockMenu';
 import { A4EditorFrame } from './A4EditorFrame';
 import { VariablesPanel } from './VariablesPanel';
 import { handleVariableDrop } from './templateDrop';
+import { SignaturePlaceholder } from './SignaturePlaceholder';
 
 // ─── FontSize mark ────────────────────────────────────────────────────────────
 // Custom inline mark — stores pt value; avoids @tiptap/extension-text-style
@@ -447,6 +448,10 @@ export function TemplateEditor({ template, onSaved }: Props) {
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       FontSize,
       ParagraphIndent,
+      // Story 141 — placeholder visual do {{signature}}: decoration (não nó) que
+      // renderiza uma caixa rotulada da altura do bloco de assinatura do PDF por
+      // cima do token, sem alterar o documento (getHTML segue com {{signature}}).
+      SignaturePlaceholder,
       ResizableImage.configure({ inline: false, allowBase64: false }),
       // Link visível (azul + sublinhado vêm do CSS compartilhado, não daqui, p/
       // o editor casar 1:1 com o PDF). openOnClick: false p/ não navegar ao

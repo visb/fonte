@@ -2,7 +2,6 @@ import { ConflictException, Injectable, Logger, NotFoundException, OnModuleDestr
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Browser } from 'puppeteer';
-import { Role } from '@fonte/types';
 import { DOCUMENT_PRINT_CSS } from '@fonte/doc-styles';
 import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
@@ -10,19 +9,12 @@ import { Staff } from '../staff/staff.entity';
 import { DocumentTemplate } from './document-template.entity';
 import { StorageService } from '../storage/storage.service';
 
-// Label PT da role impressa sob a assinatura (story 128, decisão 3).
-const ROLE_LABEL_PT: Record<string, string> = {
-  [Role.ADMIN]: 'Administrador',
-  [Role.COORDINATOR]: 'Coordenador',
-  [Role.SERVANT]: 'Servo',
-};
-
-// Quem assina o documento: dados já resolvidos (nome, role e URL da assinatura
-// JÁ ASSINADA de acesso). Pré-resolvido fora do applyVariables, que é síncrono
-// e não pode aguardar o signUrl (decisão 7 — regra da story 76).
+// Quem assina o documento: dados já resolvidos (nome e URL da assinatura JÁ
+// ASSINADA de acesso). Pré-resolvido fora do applyVariables, que é síncrono e
+// não pode aguardar o signUrl (decisão 7 — regra da story 76). A role NÃO é mais
+// impressa abaixo da assinatura (story 137).
 interface DocumentSigner {
   name: string;
-  role: Role | null;
   signatureUrl: string | null;
 }
 
@@ -203,7 +195,7 @@ export class DocumentTemplateService implements OnModuleDestroy {
   // que já assinou o conteúdo, então a URL da imagem tem que chegar pronta.
   private async resolveSigner(userId?: string): Promise<DocumentSigner | null> {
     if (!userId) return null;
-    const staff = await this.staffRepo.findOne({ where: { userId }, relations: ['user'] });
+    const staff = await this.staffRepo.findOne({ where: { userId } });
     if (!staff) return null;
     let signatureUrl: string | null = null;
     if (staff.signatureUrl) {
@@ -212,12 +204,12 @@ export class DocumentTemplateService implements OnModuleDestroy {
         ? await this.storageService.signUrl(canonical)
         : await this.storageService.toDataUri(staff.signatureUrl);
     }
-    return { name: staff.name, role: staff.user?.role ?? null, signatureUrl };
+    return { name: staff.name, signatureUrl };
   }
 
-  // Bloco da assinatura (story 128, decisão 3): imagem acima da linha (25 "_"),
-  // nome e label da role abaixo. Sem imagem, sai só a linha + identificação —
-  // o documento nunca imprime {{signature}} cru.
+  // Bloco da assinatura (story 128): imagem acima da linha (25 "_") e nome abaixo.
+  // Sem imagem, sai só a linha + nome — o documento nunca imprime {{signature}}
+  // cru. Story 137: a role deixou de ser impressa e o nome não é mais negrito.
   private buildSignatureBlock(signer: DocumentSigner | null, align?: string): string {
     const line = '_'.repeat(25);
     const img = signer?.signatureUrl
@@ -226,13 +218,11 @@ export class DocumentTemplateService implements OnModuleDestroy {
     const name = signer?.name
       ? `<div class="doc-signature-name">${signer.name}</div>`
       : '';
-    const roleLabel = signer?.role ? (ROLE_LABEL_PT[signer.role] ?? '') : '';
-    const role = roleLabel ? `<div class="doc-signature-role">${roleLabel}</div>` : '';
     // Story 136 — quando o {{signature}} está numa linha com alinhamento próprio,
     // carrega o text-align para o style do bloco (o CSS centraliza a img via
     // .doc-signature-img{display:inline-block}). Sem align → default à esquerda.
     const style = align ? ` style="text-align:${align}"` : '';
-    return `<div class="doc-signature"${style}>${img}<div class="doc-signature-line">${line}</div>${name}${role}</div>`;
+    return `<div class="doc-signature"${style}>${img}<div class="doc-signature-line">${line}</div>${name}</div>`;
   }
 
   // Story 136 — extrai o text-align dos atributos de um <p> que só contém o
@@ -336,8 +326,8 @@ export class DocumentTemplateService implements OnModuleDestroy {
     .doc-signature{margin-top:24px}
     .doc-signature-img{display:inline-block;height:64px;width:auto;max-width:280px;object-fit:contain}
     .doc-signature-line{font-family:inherit;letter-spacing:1px;line-height:1;margin-bottom:2px}
-    .doc-signature-name{font-weight:600}
-    .doc-signature-role{color:#333}
+    /* Story 137 — nome sem negrito (peso herdado do corpo); a role deixou de ser impressa. */
+    .doc-signature-name{font-weight:normal}
     /* PDF-document-only chrome (the on-screen "Imprimir" button). */
     .print-btn{position:fixed;top:16px;right:16px;background:#1a1a1a;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit}
     .print-btn:hover{background:#333}

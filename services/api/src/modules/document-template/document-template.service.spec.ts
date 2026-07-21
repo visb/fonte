@@ -424,7 +424,8 @@ describe('DocumentTemplateService.renderForResident', () => {
 });
 
 // Story 128 — a variável {{signature}} injeta o bloco de assinatura do usuário
-// que gera o documento: imagem + linha de 25 "_" + nome + label PT da role.
+// que gera o documento: imagem + linha de 25 "_" + nome. Story 137 — a role NÃO
+// é mais impressa abaixo da assinatura e o nome deixou de ser negrito.
 describe('DocumentTemplateService signature block (story 128)', () => {
   const SIGNATURE_LINE = '_'.repeat(25);
 
@@ -441,7 +442,7 @@ describe('DocumentTemplateService signature block (story 128)', () => {
     return makeRepo({ findOne: jest.fn().mockResolvedValue(staff) });
   }
 
-  it('renders <img>, the 25-underscore line, name and PT role label with a signature', async () => {
+  it('renders <img>, the 25-underscore line and name with a signature', async () => {
     const repo = makeRepo({
       findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: 'Eu, {{name}}. {{signature}}' }),
     });
@@ -458,33 +459,49 @@ describe('DocumentTemplateService signature block (story 128)', () => {
     expect(html).toContain(SIGNATURE_LINE);
     expect(html).not.toContain('_'.repeat(26));
     expect(html).toContain('João Silva');
-    expect(html).toContain('Coordenador');
     expect(html).not.toContain('{{signature}}');
     // as demais variáveis seguem substituídas
     expect(html).toContain('Eu, Ana.');
   });
 
-  it('maps ADMIN and SERVANT role labels', async () => {
+  // Story 137 — a role deixou de ser impressa abaixo da assinatura: nem o label
+  // PT (Coordenador/Administrador/Servo) nem o <div class="doc-signature-role">.
+  it('does NOT print the signer role below the signature (story 137)', async () => {
     const repo = makeRepo({
       findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '{{signature}}' }),
     });
-    const admin = makeService(
-      repo,
-      makeRepo({ findOne: jest.fn().mockResolvedValue(null) }),
-      makeSigningStorage(),
-      makeStaffRepo({ name: 'Adm', signatureUrl: 'https://s3/a.png', user: { role: 'ADMIN' } }),
-    );
-    const adminHtml = await admin.renderForResident('tpl-1', { id: 'r', name: 'x' } as Resident, 'u');
-    expect(adminHtml).toContain('Administrador');
+    const staffRepo = makeStaffRepo({
+      name: 'João Silva',
+      signatureUrl: 'https://s3/sig.png',
+      user: { role: 'COORDINATOR' },
+    });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }), makeSigningStorage(), staffRepo);
 
-    const servant = makeService(
-      makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '{{signature}}' }) }),
-      makeRepo({ findOne: jest.fn().mockResolvedValue(null) }),
-      makeSigningStorage(),
-      makeStaffRepo({ name: 'Servo', signatureUrl: 'https://s3/s.png', user: { role: 'SERVANT' } }),
-    );
-    const servantHtml = await servant.renderForResident('tpl-1', { id: 'r', name: 'x' } as Resident, 'u');
-    expect(servantHtml).toContain('Servo');
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    expect(html).toContain('João Silva');
+    expect(html).not.toContain('doc-signature-role');
+    expect(html).not.toContain('Coordenador');
+    expect(html).not.toContain('Administrador');
+    // "Servo" é substring de outras palavras; garantimos que o label PT da role
+    // não sai como bloco próprio verificando a ausência da div dedicada acima.
+  });
+
+  // Story 137 — o CSS do bloco não aplica negrito ao nome nem carrega mais a
+  // regra .doc-signature-role.
+  it('CSS does not bold the signer name and drops the role rule (story 137)', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '{{signature}}' }),
+    });
+    const staffRepo = makeStaffRepo({ name: 'João Silva', signatureUrl: 'https://s3/sig.png', user: { role: 'ADMIN' } });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }), makeSigningStorage(), staffRepo);
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    expect(html).not.toContain('.doc-signature-name{font-weight:600}');
+    expect(html).not.toContain('.doc-signature-role');
+    // a regra do nome segue existindo, agora com peso normal
+    expect(html).toContain('.doc-signature-name{font-weight:normal}');
   });
 
   it('renders the line + name but NO <img> when the signer has no signature', async () => {

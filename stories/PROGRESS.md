@@ -26,12 +26,12 @@ Rodada autorun **142–143** — correção das duas falhas e2e pré-existentes 
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 142 — e2e payables drift de vencimento | [ ] | — | — | — |
+| 1 | 142 — e2e payables drift de vencimento | [OK] | e2e 8/8 (2×) | 050cc21 | 76904d7 |
 | 2 | 143 — negrito não pega no 1º char (editor atividade) | [ ] | — | — | — |
 
 ## Log
 
-<vazio>
+[OK] 142 — teste-only: `createPayable` gera vencimento relativo ao now (hoje+30d) via `dueDateFromNow`; fim do drift. e2e payables 8/8 verde 2× — commit 050cc21 — merge 76904d7 — 2026-07-21
 
 ## Resumo final
 

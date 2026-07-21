@@ -218,7 +218,7 @@ export class DocumentTemplateService implements OnModuleDestroy {
   // Bloco da assinatura (story 128, decisão 3): imagem acima da linha (25 "_"),
   // nome e label da role abaixo. Sem imagem, sai só a linha + identificação —
   // o documento nunca imprime {{signature}} cru.
-  private buildSignatureBlock(signer: DocumentSigner | null): string {
+  private buildSignatureBlock(signer: DocumentSigner | null, align?: string): string {
     const line = '_'.repeat(25);
     const img = signer?.signatureUrl
       ? `<img class="doc-signature-img" src="${signer.signatureUrl}" alt="Assinatura"/>`
@@ -228,7 +228,18 @@ export class DocumentTemplateService implements OnModuleDestroy {
       : '';
     const roleLabel = signer?.role ? (ROLE_LABEL_PT[signer.role] ?? '') : '';
     const role = roleLabel ? `<div class="doc-signature-role">${roleLabel}</div>` : '';
-    return `<div class="doc-signature">${img}<div class="doc-signature-line">${line}</div>${name}${role}</div>`;
+    // Story 136 — quando o {{signature}} está numa linha com alinhamento próprio,
+    // carrega o text-align para o style do bloco (o CSS centraliza a img via
+    // .doc-signature-img{display:inline-block}). Sem align → default à esquerda.
+    const style = align ? ` style="text-align:${align}"` : '';
+    return `<div class="doc-signature"${style}>${img}<div class="doc-signature-line">${line}</div>${name}${role}</div>`;
+  }
+
+  // Story 136 — extrai o text-align dos atributos de um <p> que só contém o
+  // {{signature}}, para que o bloco da assinatura honre o alinhamento do editor.
+  private extractTextAlign(attrs: string): string | undefined {
+    const match = attrs.match(/text-align\s*:\s*(left|right|center|justify)/i);
+    return match ? match[1].toLowerCase() : undefined;
   }
 
   private applyVariables(content: string, resident: Resident, responsible: Relative | null, signer?: DocumentSigner | null): string {
@@ -266,7 +277,17 @@ export class DocumentTemplateService implements OnModuleDestroy {
     }
     // {{signature}} sai só quando o template a usa. Substituição por função para
     // não interpretar `$` da URL assinada como padrão de replace.
-    const signatureBlock = this.buildSignatureBlock(signer ?? null);
+    const resolvedSigner = signer ?? null;
+    // Story 136 — quando o {{signature}} é o único conteúdo de um <p …>, troca o
+    // PARÁGRAFO INTEIRO pelo bloco, carregando o text-align do <p>. Isso evita o
+    // <div>-em-<p> inválido (que fazia o parser fechar o <p> e perder o alinhamento)
+    // e faz a assinatura honrar o alinhamento escolhido no editor.
+    result = result.replace(
+      /<p([^>]*)>\s*\{\{signature\}\}\s*<\/p>/g,
+      (_m, attrs: string) => this.buildSignatureBlock(resolvedSigner, this.extractTextAlign(attrs)),
+    );
+    // Fallback: ocorrências inline remanescentes do token nu (sem alinhamento).
+    const signatureBlock = this.buildSignatureBlock(resolvedSigner);
     result = result.replace(/\{\{signature\}\}/g, () => signatureBlock);
     return result;
   }
@@ -313,7 +334,7 @@ export class DocumentTemplateService implements OnModuleDestroy {
     /* Signature block (story 128). Fixed image height so the drawn signature
        never pushes the A4 pagination (story 24 convention). */
     .doc-signature{margin-top:24px}
-    .doc-signature-img{display:block;height:64px;width:auto;max-width:280px;object-fit:contain}
+    .doc-signature-img{display:inline-block;height:64px;width:auto;max-width:280px;object-fit:contain}
     .doc-signature-line{font-family:inherit;letter-spacing:1px;line-height:1;margin-bottom:2px}
     .doc-signature-name{font-weight:600}
     .doc-signature-role{color:#333}

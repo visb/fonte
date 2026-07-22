@@ -35,6 +35,7 @@ import { A4EditorFrame } from './A4EditorFrame';
 import { VariablesPanel } from './VariablesPanel';
 import { handleVariableDrop } from './templateDrop';
 import { SignaturePlaceholder } from './SignaturePlaceholder';
+import { VariableSuggestion } from './templateVariableSuggestion';
 
 // ─── FontSize mark ────────────────────────────────────────────────────────────
 // Custom inline mark — stores pt value; avoids @tiptap/extension-text-style
@@ -429,6 +430,8 @@ export function TemplateEditor({ template, onSaved }: Props) {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
+  // Drawer de variáveis controlado (story 144): digitar `{{` abre o drawer.
+  const [variablesOpen, setVariablesOpen] = useState(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageInputRef  = useRef<HTMLInputElement>(null);
   // Ref so the paste handler (defined at useEditor time) can call the latest upload fn
@@ -457,6 +460,10 @@ export function TemplateEditor({ template, onSaved }: Props) {
       // renderiza uma caixa rotulada da altura do bloco de assinatura do PDF por
       // cima do token, sem alterar o documento (getHTML segue com {{signature}}).
       SignaturePlaceholder,
+      // Autocomplete inline de variáveis (story 144): `{{` abre o popup no cursor
+      // filtrando VARIABLES; escolher insere `{{key}}`. `onOpen` também expande o
+      // drawer VariablesPanel (os dois comportamentos juntos, decisão do plano).
+      VariableSuggestion.configure({ onOpen: () => setVariablesOpen(true) }),
       ResizableImage.configure({ inline: false, allowBase64: false }),
       // Link visível (azul + sublinhado vêm do CSS compartilhado, não daqui, p/
       // o editor casar 1:1 com o PDF). openOnClick: false p/ não navegar ao
@@ -750,8 +757,14 @@ export function TemplateEditor({ template, onSaved }: Props) {
       {/* Alça de seleção + menu de ações da tabela inteira (story 30) */}
       <TableBlockMenu editor={editor} />
 
-      {/* Variáveis — barra vertical colapsável fixa à direita (story 139). */}
-      <VariablesPanel onInsert={insertVariable} />
+      {/* Variáveis — barra vertical colapsável fixa à direita (story 139). O
+          `open` é controlado (story 144): digitar `{{` no editor expande o
+          drawer via a extensão VariableSuggestion. */}
+      <VariablesPanel
+        onInsert={insertVariable}
+        open={variablesOpen}
+        onOpenChange={setVariablesOpen}
+      />
 
       {updateMutation.isError && (
         <p className="text-sm text-destructive">

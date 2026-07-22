@@ -39,6 +39,12 @@ export default defineConfig({
         // Editor real exige um DOM/contenteditable de browser que o jsdom não
         // implementa; comportamento coberto por E2E. (story 80)
         'src/features/settings/components/TemplateEditor.tsx',
+        // Extensão do autocomplete de variáveis (story 144): Suggestion do TipTap
+        // + ReactRenderer montado no document.body + posicionamento por clientRect
+        // do ProseMirror. Exige contenteditable real (jsdom não implementa);
+        // comportamento fim-a-fim coberto por E2E. As funções puras
+        // (templateVariables.ts) e o popup (VariableSuggestionList.tsx) têm testes.
+        'src/features/settings/components/templateVariableSuggestion.tsx',
         'src/features/settings/components/TableBlockMenu.tsx',
         'src/features/settings/components/TableToolbar.tsx',
         'src/features/settings/components/LinkToolbar.tsx',

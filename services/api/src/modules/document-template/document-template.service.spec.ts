@@ -674,6 +674,30 @@ describe('DocumentTemplateService signature alignment (story 136)', () => {
     },
   );
 
+  // Regressão produção — o editor embrulha o token num <span> de fonte e prefixa
+  // `&nbsp;`, então o {{signature}} não é filho direto do <p>. O parágrafo mesmo
+  // assim deve virar o bloco carregando o text-align do <p> (antes caía no
+  // fallback inline sem alinhamento → assinatura não centralizava no PDF).
+  it('carries the paragraph alignment when the token is wrapped in a <span> with &nbsp;', async () => {
+    const content =
+      '<p style="text-align: center;">' +
+      '<span data-font-size="12" style="font-size: 12pt; line-height: 1.2;">&nbsp;{{signature}}</span>' +
+      '</p>';
+    const service = makeAlignService(content, {
+      name: 'João Silva',
+      signatureUrl: 'https://s3/sig.png',
+      user: { role: 'COORDINATOR' },
+    });
+
+    const html = await service.renderForResident('tpl-1', { id: 'res-1', name: 'Ana' } as Resident, 'user-1');
+
+    expect(html).toContain('<div class="doc-signature" style="text-align:center">');
+    // parágrafo inteiro substituído — sem <div> aninhado em <span>/<p> nem token cru
+    expect(html).not.toContain('{{signature}}');
+    expect(html).not.toContain('<span data-font-size="12"');
+    expect(html).toContain(SIGNATURE_LINE);
+  });
+
   it('emits no alignment style for a <p> without text-align (default left preserved)', async () => {
     const service = makeAlignService('<p>{{signature}}</p>', {
       name: 'João Silva',

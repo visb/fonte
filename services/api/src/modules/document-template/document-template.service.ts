@@ -268,12 +268,20 @@ export class DocumentTemplateService implements OnModuleDestroy {
     // {{signature}} sai só quando o template a usa. Substituição por função para
     // não interpretar `$` da URL assinada como padrão de replace.
     const resolvedSigner = signer ?? null;
-    // Story 136 — quando o {{signature}} é o único conteúdo de um <p …>, troca o
-    // PARÁGRAFO INTEIRO pelo bloco, carregando o text-align do <p>. Isso evita o
-    // <div>-em-<p> inválido (que fazia o parser fechar o <p> e perder o alinhamento)
-    // e faz a assinatura honrar o alinhamento escolhido no editor.
+    // Story 136 — quando o {{signature}} é o único conteúdo "visível" de um <p …>,
+    // troca o PARÁGRAFO INTEIRO pelo bloco, carregando o text-align do <p>. Isso
+    // evita o <div>-em-<p> inválido (que fazia o parser fechar o <p> e perder o
+    // alinhamento) e faz a assinatura honrar o alinhamento escolhido no editor.
+    //
+    // O editor embrulha o token num <span> de fonte e às vezes prefixa `&nbsp;`
+    // (ex.: `<p style="text-align:center"><span …>&nbsp;{{signature}}</span></p>`),
+    // então o token NÃO é filho direto do <p>. O grupo abaixo tolera spans de
+    // abertura/fechamento, `&nbsp;` e espaços em volta do token — caso contrário
+    // o parágrafo não casava e a assinatura caía no fallback inline sem
+    // alinhamento (bug: assinatura não centralizava no PDF em produção).
+    const SIG_WRAP = String.raw`(?:\s|&nbsp;|<span[^>]*>|</span>)*`;
     result = result.replace(
-      /<p([^>]*)>\s*\{\{signature\}\}\s*<\/p>/g,
+      new RegExp(`<p([^>]*)>${SIG_WRAP}\\{\\{signature\\}\\}${SIG_WRAP}</p>`, 'g'),
       (_m, attrs: string) => this.buildSignatureBlock(resolvedSigner, this.extractTextAlign(attrs)),
     );
     // Fallback: ocorrências inline remanescentes do token nu (sem alinhamento).

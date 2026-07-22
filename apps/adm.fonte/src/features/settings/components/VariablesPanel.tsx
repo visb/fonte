@@ -1,50 +1,28 @@
 import { useState } from 'react';
 import { PanelRightClose, Variable, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { VARIABLES } from './templateVariables';
 
 // ─── Variables ────────────────────────────────────────────────────────────────
-// Fonte única das variáveis de template no frontend (só apresentação; a
-// substituição real acontece no backend). Movida para cá a partir do
-// TemplateEditor (story 139) — a barra colapsável é a nova casa da lista e será
-// a fonte de arraste na story 140.
-
-export interface TemplateVariable {
-  key: string;
-  label: string;
-  description: string;
-}
-
-export const VARIABLES: TemplateVariable[] = [
-  { key: '{{name}}',          label: 'Nome completo',      description: 'Nome completo do acolhido' },
-  { key: '{{cpf}}',           label: 'CPF',                description: 'CPF formatado (000.000.000-00)' },
-  { key: '{{rg}}',            label: 'RG',                 description: 'Registro Geral do acolhido' },
-  { key: '{{nationality}}',   label: 'Nacionalidade',      description: 'Nacionalidade do acolhido' },
-  { key: '{{city}}',          label: 'Cidade',             description: 'Cidade de residência do acolhido' },
-  { key: '{{state}}',         label: 'UF',                 description: 'Estado (sigla) de residência do acolhido' },
-  { key: '{{birthDate}}',     label: 'Data de nascimento', description: 'Data de nascimento no formato dd/mm/aaaa' },
-  { key: '{{age}}',           label: 'Idade',              description: 'Idade atual calculada em anos' },
-  { key: '{{maritalStatus}}', label: 'Estado civil',       description: 'Solteiro(a), Casado(a) ou Divorciado(a)' },
-  { key: '{{address}}',       label: 'Endereço',           description: 'Endereço residencial do acolhido' },
-  { key: '{{phone}}',         label: 'Telefone',           description: 'Telefone de contato do acolhido' },
-  { key: '{{house}}',         label: 'Nome da casa',       description: 'Nome da unidade de acolhimento' },
-  { key: '{{houseName}}',     label: 'Casa — nome',        description: 'Nome da casa onde o acolhido está' },
-  { key: '{{houseAddress}}',  label: 'Casa — endereço',    description: 'Endereço da casa onde o acolhido está' },
-  { key: '{{houseCity}}',     label: 'Casa — cidade',      description: 'Cidade da casa onde o acolhido está' },
-  { key: '{{houseState}}',    label: 'Casa — UF',          description: 'Estado (sigla) da casa onde o acolhido está' },
-  { key: '{{entryDate}}',     label: 'Data de entrada',    description: 'Data de entrada na comunidade (dd/mm/aaaa)' },
-  { key: '{{date}}',          label: 'Data de hoje',       description: 'Data atual no momento da impressão (dd/mm/aaaa)' },
-  { key: '{{dateLong}}',      label: 'Data por extenso',   description: 'Data atual por extenso (ex: 1 de junho de 2026)' },
-  { key: '{{responsibleName}}',         label: 'Responsável — nome',       description: 'Nome do familiar marcado como responsável' },
-  { key: '{{responsibleRelationship}}', label: 'Responsável — parentesco', description: 'Parentesco do responsável com o acolhido' },
-  { key: '{{responsiblePhone}}',        label: 'Responsável — telefone',   description: 'Telefone do familiar responsável' },
-  { key: '{{signature}}',               label: 'Assinatura',               description: 'Assinatura do usuário que gerar o documento' },
-];
+// A fonte única das variáveis vive em `templateVariables.ts` (story 144 extraiu a
+// lista para um módulo irmão sem JSX, consumido também pelo autocomplete inline).
+// Re-exportadas aqui para não quebrar imports existentes (`VariablesPanel` era a
+// casa original da lista — stories 139/140).
+export { VARIABLES } from './templateVariables';
+export type { TemplateVariable } from './templateVariables';
 
 const FEEDBACK_MS = 1500;
 
 interface Props {
   /** Insere a variável no editor (no cursor). O clipboard + feedback são deste painel. */
   onInsert: (key: string) => void;
+  /**
+   * Estado `open` controlado (story 144): quando definido, o editor comanda a
+   * expansão/recolhimento do painel (o `{{` abre o drawer). Ausente = painel
+   * autônomo (comportamento original, story 139).
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // ─── VariablesPanel ─────────────────────────────────────────────────────────
@@ -54,9 +32,17 @@ interface Props {
 // feedback "inserido" por ~1,5s. `z-40`: acima do conteúdo/toolbar sticky (z-20)
 // e abaixo dos dialogs do Radix (z-50).
 
-export function VariablesPanel({ onInsert }: Props) {
-  const [open, setOpen] = useState(false);
+export function VariablesPanel({ onInsert, open: openProp, onOpenChange }: Props) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Modo controlado (editor comanda o `open`) vs. autônomo (estado interno).
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = (value: boolean) => {
+    if (!isControlled) setInternalOpen(value);
+    onOpenChange?.(value);
+  };
 
   const handleInsert = (key: string) => {
     onInsert(key);

@@ -126,4 +126,29 @@ describe('VariablesPanel', () => {
     // Feedback aparece mesmo com a cópia rejeitada.
     await waitFor(() => expect(screen.getByText(/inserido/)).toBeInTheDocument());
   });
+
+  // ─── open controlado (story 144) ────────────────────────────────────────────
+  // Quando o editor passa `open`/`onOpenChange`, o painel obedece à prop (é o
+  // que faz digitar `{{` abrir o drawer). O auto-collapse segue igual, agora
+  // subindo o novo estado pelo callback.
+
+  it('abre quando a prop `open` muda para true (modo controlado)', () => {
+    const { rerender } = render(<VariablesPanel onInsert={vi.fn()} open={false} onOpenChange={vi.fn()} />);
+    // Fechado: só a aba, sem a lista.
+    expect(screen.queryByText('{{name}}')).not.toBeInTheDocument();
+
+    // O editor "abre" o drawer via prop → a lista aparece sem clique do usuário.
+    rerender(<VariablesPanel onInsert={vi.fn()} open onOpenChange={vi.fn()} />);
+    expect(screen.getByText('{{name}}')).toBeInTheDocument();
+  });
+
+  it('modo controlado: recolher sobe o novo estado por onOpenChange sem alternar sozinho', () => {
+    const onOpenChange = vi.fn();
+    render(<VariablesPanel onInsert={vi.fn()} open onOpenChange={onOpenChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Recolher variáveis/i }));
+    // Estado é do dono (editor): o painel só avisa; não fecha por conta própria.
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(screen.getByText('{{name}}')).toBeInTheDocument();
+  });
 });

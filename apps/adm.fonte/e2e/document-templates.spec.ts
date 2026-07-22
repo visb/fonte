@@ -426,6 +426,91 @@ test.describe('Editor de templates — seleção e menu de ações da tabela', (
   });
 });
 
+// Story 144 — autocomplete inline de variáveis. Ao digitar `{{` no corpo, duas
+// coisas ao mesmo tempo: o drawer VariablesPanel expande E um popup de sugestões
+// aparece no cursor filtrando VARIABLES conforme se digita. Escolher (Enter)
+// substitui o trecho `{{parcial` pelo token completo `{{key}}` (nunca duplica as
+// chaves). Coberto por E2E porque o autocomplete depende de um contenteditable/
+// ProseMirror real que o jsdom não implementa.
+test.describe('Editor de templates — autocomplete de variáveis ({{)', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Configurações' }).click();
+    await page.getByRole('link', { name: 'Templates de documentos' }).click();
+    await expect(page).toHaveURL('/settings/templates');
+  });
+
+  test('digitar {{ abre o drawer e o popup; escolher insere {{name}} e persiste', async ({ page }) => {
+    const templateName = `E2E Autocomplete ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+
+    // Digitar `{{` dispara os DOIS comportamentos: o drawer expande...
+    await page.keyboard.type('{{');
+    await expect(page.getByText('Clique ou arraste para o corpo do documento.')).toBeVisible();
+    // ...e o popup de sugestões aparece no cursor (com a lista completa).
+    const popup = page.locator('[data-variable-suggestion]');
+    await expect(popup).toBeVisible();
+    await expect(popup.getByTestId('variable-suggestion-list')).toBeVisible();
+
+    // Filtrando por `nome` a sugestão "Nome completo" aparece no popup.
+    await page.keyboard.type('nome');
+    await expect(popup.getByText('Nome completo')).toBeVisible();
+
+    // Enter confirma o item ativo → o trecho `{{nome` vira o token completo
+    // `{{name}}` (sem duplicar as chaves: nem `{{nome}}` nem `{{{{name}}`).
+    await page.keyboard.press('Enter');
+    await expect(popup).toHaveCount(0);
+
+    const html = await editor.evaluate((el) => el.innerHTML);
+    expect(html).toContain('{{name}}');
+    expect(html).not.toContain('{{nome}}');
+    expect(html).not.toContain('{{{{');
+
+    // Recolhe o drawer (aberto pelo `{{`) para liberar o botão de salvar, que
+    // fica no canto inferior direito sob a barra fixa quando ela está expandida.
+    await page.getByRole('button', { name: 'Recolher variáveis' }).click();
+
+    // Salvar persiste o token.
+    await page.getByRole('button', { name: 'Salvar template' }).click();
+    await expect(page.getByText('Template salvo')).toBeVisible({ timeout: 15000 });
+
+    // Recarrega e reabre o template — o token `{{name}}` sobreviveu ao salvar.
+    await page.reload();
+    await page.getByText(templateName, { exact: true }).click();
+    await expect(page.locator('.ProseMirror')).toContainText('{{name}}');
+  });
+
+  test('sem match o popup some, sem bloquear a digitação de `{{` literal', async ({ page }) => {
+    const templateName = `E2E Sem Match ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+
+    await page.keyboard.type('{{');
+    const popupList = page.locator('[data-variable-suggestion] [data-testid="variable-suggestion-list"]');
+    await expect(popupList).toBeVisible();
+
+    // Texto que não casa nenhuma variável → o popup some (não bloqueia digitar).
+    await page.keyboard.type('zzz');
+    await expect(popupList).toBeHidden();
+
+    // O texto literal `{{zzz` permanece no corpo (o gatilho não engoliu nada).
+    await expect(editor).toContainText('{{zzz');
+  });
+});
+
 // Story 27 — link/unlink no editor. Texto com link vira <a class="doc-link"> e o
 // CSS compartilhado o pinta de azul + sublinhado (mesma regra do PDF).
 test.describe('Editor de templates — link/unlink', () => {

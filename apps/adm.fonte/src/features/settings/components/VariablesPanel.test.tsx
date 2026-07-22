@@ -48,7 +48,7 @@ describe('VariablesPanel', () => {
     expect(screen.queryByText('{{name}}')).not.toBeInTheDocument();
   });
 
-  it('renderiza uma variável por linha com rótulo + chave', () => {
+  it('renderiza uma variável por item com rótulo + chave + descrição', () => {
     render(<VariablesPanel onInsert={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /Variáveis/i }));
 
@@ -57,10 +57,21 @@ describe('VariablesPanel', () => {
       expect(screen.getByText(key)).toBeInTheDocument();
       expect(screen.getByText(label)).toBeInTheDocument();
     }
+  });
 
-    // A descrição vira tooltip (title), não linha própria.
+  it('a descrição da variável aparece como TEXTO visível (3ª linha), não só como title (story 145)', () => {
+    render(<VariablesPanel onInsert={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Variáveis/i }));
+
     const name = VARIABLES.find((v) => v.key === '{{name}}')!;
-    expect(screen.getByTitle(name.description)).toBeInTheDocument();
+    // A descrição é texto impresso no corpo do item...
+    expect(screen.getByText('Nome completo do acolhido')).toBeInTheDocument();
+    expect(screen.getByText(name.description)).toBeInTheDocument();
+
+    // ...e o tooltip redundante `title={description}` foi removido do botão.
+    expect(screen.queryByTitle(name.description)).not.toBeInTheDocument();
+    const row = screen.getByText(name.key).closest('button')!;
+    expect(row).not.toHaveAttribute('title');
   });
 
   it('clicar numa variável chama onInsert com a chave e mostra feedback "inserido"', async () => {

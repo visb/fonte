@@ -28,7 +28,8 @@ interface Props {
 // ─── VariablesPanel ─────────────────────────────────────────────────────────
 // Barra vertical colapsável fixa à direita (story 139). Default recolhido: só a
 // aba "Variáveis" na borda. Ao expandir, lista rolável com uma variável por
-// linha (rótulo + chave). Clicar insere no editor + copia pro clipboard + mostra
+// item, empilhada em três linhas (rótulo / chave / descrição). Clicar insere no
+// editor + copia pro clipboard + mostra
 // feedback "inserido" por ~1,5s. `z-40`: acima do conteúdo/toolbar sticky (z-20)
 // e abaixo dos dialogs do Radix (z-50).
 
@@ -93,7 +94,6 @@ export function VariablesPanel({ onInsert, open: openProp, onOpenChange }: Props
           <button
             key={key}
             type="button"
-            title={description}
             onClick={() => handleInsert(key)}
             draggable
             onDragStart={(e) => {
@@ -114,6 +114,7 @@ export function VariablesPanel({ onInsert, open: openProp, onOpenChange }: Props
                 key
               )}
             </span>
+            <span className="text-[10px] leading-tight text-muted-foreground">{description}</span>
           </button>
         ))}
       </div>

@@ -74,6 +74,10 @@ function placeholderEl(editor: Editor): HTMLElement | null {
   return editor.view.dom.querySelector('[data-signature-placeholder]');
 }
 
+function removeBtn(editor: Editor): HTMLButtonElement | null {
+  return editor.view.dom.querySelector('[data-signature-remove]');
+}
+
 afterEach(() => {
   while (editors.length) editors.pop()?.destroy();
   document.body.innerHTML = '';
@@ -84,10 +88,36 @@ describe('SignaturePlaceholder — decoration no editor', () => {
     const editor = makeEditor(`<p>${SIGNATURE_TOKEN}</p>`);
     const box = placeholderEl(editor);
     expect(box).not.toBeNull();
-    expect(box?.textContent).toBe('Assinatura');
+    // Rótulo "Assinatura" + botão de remover convivem na caixa.
+    expect(box?.textContent).toContain('Assinatura');
     expect(box?.style.height).toBe(`${SIGNATURE_PLACEHOLDER_HEIGHT_PX}px`);
     // Não editável internamente.
     expect(box?.getAttribute('contenteditable')).toBe('false');
+  });
+
+  it('caixa expõe botão × para remover a variável de assinatura', () => {
+    const editor = makeEditor(`<p>Assine: ${SIGNATURE_TOKEN}</p>`);
+    expect(removeBtn(editor)).not.toBeNull();
+  });
+
+  it('clicar no × remove o token e a caixa (getHTML sem {{signature}})', () => {
+    const editor = makeEditor(`<p>Assine: ${SIGNATURE_TOKEN} fim</p>`);
+    const btn = removeBtn(editor);
+    expect(btn).not.toBeNull();
+    btn?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    expect(placeholderEl(editor)).toBeNull();
+    expect(editor.getHTML()).not.toContain(SIGNATURE_TOKEN);
+    // Só o token some — o texto ao redor permanece.
+    expect(editor.getHTML()).toContain('Assine:');
+    expect(editor.getHTML()).toContain('fim');
+  });
+
+  it('clicar na caixa seleciona o range do token', () => {
+    const editor = makeEditor(`<p>${SIGNATURE_TOKEN}</p>`);
+    const box = placeholderEl(editor);
+    box?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    const { from, to } = editor.state.selection;
+    expect(editor.state.doc.textBetween(from, to)).toBe(SIGNATURE_TOKEN);
   });
 
   it('getHTML() AINDA contém {{signature}} literal (não quebra backend 135/136/137)', () => {

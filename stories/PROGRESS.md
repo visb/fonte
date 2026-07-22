@@ -28,12 +28,12 @@ drawer (145). Aberta 2026-07-22.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 144 — `{{` abre drawer + autocomplete inline de variáveis | [ ] | — | — | — |
+| 1 | 144 — `{{` abre drawer + autocomplete inline de variáveis | [OK] | unit 1359/1359, e2e 14/14 (2×) | c2c9d91 | 0fd7464 |
 | 2 | 145 — descrição da variável sempre visível no drawer | [ ] | — | — | — |
 
 ## Log
 
-<vazio>
+[OK] 144 — @tiptap/suggestion@3.22.5; extension VariableSuggestion + popup; VARIABLES extraída p/ templateVariables.ts; guarda `allow` fecha gatilho ao surgir `}` (evita re-trigger do token inserido). unit 1359/1359, e2e document-templates 14/14 (2×), cobertura adm 92.64% (ramo novo 100%; extension excluída, coberta por e2e) — commit c2c9d91 — merge 0fd7464 — 2026-07-22
 
 ## Resumo final
 

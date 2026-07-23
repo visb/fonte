@@ -21,7 +21,7 @@
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 146 — reintrodução exibir CPF completo (double-mask) | [ ] | | | |
+| 1 | 146 — reintrodução exibir CPF completo (double-mask) | [OK] | 1371/1371, cov≥90 | 6ce8b70 | merged |
 | 2 | 147 — editar dados de identidade na reintrodução | [ ] | | | |
 | 3 | 148 — reintrodução volta com status ativo | [ ] | | | |
 | 4 | 149 — esconder acesso digital do filho (flag) | [ ] | | | |
@@ -30,7 +30,7 @@
 
 ## Log
 
-<vazio>
+[OK] 146 — adm unit 1371/1371, cov≥90 (masks.ts 100%) — commit: 6ce8b70 — merge --no-ff na main — 2026-07-23 — helpers displayCpf/displayRg criados (reuso pela 151). Nota: script de cobertura adm é `test:unit:cov`.
 
 ## Resumo final
 

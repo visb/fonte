@@ -8,6 +8,7 @@ vi.mock('@/lib/api', () => ({
       getById: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateIdentity: vi.fn(),
       delete: vi.fn(),
       uploadPhoto: vi.fn(),
       generateAccess: vi.fn(),
@@ -40,6 +41,7 @@ import {
   useResidentById,
   useCreateResident,
   useUpdateResident,
+  useUpdateResidentIdentity,
   useDeleteResident,
   useGenerateResidentAccess,
   usePromoteResidentToServant,
@@ -143,6 +145,17 @@ describe('mutations de residente', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.residents.uploadPhoto).toHaveBeenCalled();
     expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.residents.detail('r1') });
+  });
+
+  it('updateIdentity muta e invalida detalhe + lista (story 147)', async () => {
+    vi.mocked(api.residents.updateIdentity).mockResolvedValue({ id: 'r1' } as never);
+    const { result, queryClient } = renderHookWithClient(() => useUpdateResidentIdentity('r1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    result.current.mutate({ name: 'Novo Nome', cpf: '12345678900' });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.residents.updateIdentity).toHaveBeenCalledWith('r1', { name: 'Novo Nome', cpf: '12345678900' });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.residents.detail('r1') });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.residents.all });
   });
 
   it('delete invalida lista', async () => {

@@ -54,6 +54,12 @@ describe('residents module', () => {
     expect(http.patch).toHaveBeenCalledWith('/residents/res-2', body);
   });
 
+  it('updateIdentity chama PATCH em /identity com id e body (story 147)', async () => {
+    const body = { name: 'Pedro Silva', cpf: '12345678900' };
+    await residents.updateIdentity('res-2', body);
+    expect(http.patch).toHaveBeenCalledWith('/residents/res-2/identity', body);
+  });
+
   it('delete chama DELETE no path com id', async () => {
     await residents.delete('res-3');
     expect(http.delete).toHaveBeenCalledWith('/residents/res-3');

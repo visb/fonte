@@ -12,12 +12,14 @@ describe('ResidentController (e2e)', () => {
   let token: string;
   let houseId: string;
   let adminToken: string;
+  let servantToken: string;
   const createdIds: string[] = [];
 
   beforeAll(async () => {
     app = await bootstrapApp();
     ({ token, houseId } = await loginCoordinator(app));
     adminToken = await login(app, 'admin@fonte.com', 'admin123');
+    servantToken = await login(app, 'operator@fonte.com', 'operator123');
   });
 
   afterAll(async () => {
@@ -221,5 +223,53 @@ describe('ResidentController (e2e)', () => {
         .expect(200);
       expect(updated.body.status).toBe(ResidentStatus.ACTIVE);
     });
+  });
+
+  // Correção dos "dados de identidade" na reintrodução (story 147). Endpoint
+  // dedicado ADMIN-only com RevealSensitive.
+  describe('PATCH /residents/:id/identity (story 147)', () => {
+    let residentId: string;
+
+    beforeAll(async () => {
+      const created = await request(app.getHttpServer())
+        .post(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `Identidade E2E ${Date.now()}`, houseId, cpf: '12345678900', rg: '123456789' })
+        .expect(201);
+      residentId = created.body.id;
+      createdIds.push(residentId);
+    });
+
+    it('ADMIN corrige a identidade → 200 e resposta revela CPF/RG completos', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${residentId}/identity`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: 'Nome Corrigido', cpf: '98765432100', rg: '987654321', gender: 'MALE' })
+        .expect(200);
+      expect(res.body.name).toBe('Nome Corrigido');
+      // RevealSensitive: ADMIN recebe o documento cru completo, não redigido.
+      expect(res.body.cpf).toBe('98765432100');
+      expect(res.body.rg).toBe('987654321');
+    });
+
+    it('COORDINATOR → 403 (gate ADMIN-only)', () =>
+      request(app.getHttpServer())
+        .patch(`${BASE}/residents/${residentId}/identity`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Tentativa Coord' })
+        .expect(403));
+
+    it('SERVANT → 403 (gate ADMIN-only)', () =>
+      request(app.getHttpServer())
+        .patch(`${BASE}/residents/${residentId}/identity`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .send({ name: 'Tentativa Servant' })
+        .expect(403));
+
+    it('→ 401 sem token', () =>
+      request(app.getHttpServer())
+        .patch(`${BASE}/residents/${residentId}/identity`)
+        .send({ name: 'X' })
+        .expect(401));
   });
 });

@@ -28,6 +28,7 @@ export type {
   ResetResidentPasswordInput,
   CreateResidentInput,
   UpdateResidentInput,
+  UpdateResidentIdentityInput,
   ResidentDocument,
   ResidentAttachment,
   AdmissionDocument,

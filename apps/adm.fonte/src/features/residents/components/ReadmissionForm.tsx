@@ -2,9 +2,11 @@ import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FamilyInvestment, FollowUpType, FollowUpAccessLevel, Gender, MaritalStatus } from '@fonte/types';
+import { FamilyInvestment, FollowUpType, FollowUpAccessLevel, Gender, MaritalStatus, Role } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { EditResidentIdentityDialog } from './EditResidentIdentityDialog';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +57,9 @@ interface ReadmissionFormProps {
 export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionFormProps) {
   const pendingPhotoRef = useRef<Blob | null>(null);
   const [firstPaymentPaid, setFirstPaymentPaid] = useState(false);
+  const [editIdentityOpen, setEditIdentityOpen] = useState(false);
+  const { role } = useAuth();
+  const canEditIdentity = role === Role.ADMIN;
   const { data: houses = [] } = useHouses();
   const mutation = useReadmitResident(resident.id);
 
@@ -142,9 +147,21 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
         {/* Banner de identidade imutável */}
         <div className="rounded-lg border bg-muted/40 p-4 mb-2">
-          <p className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-wide">
-            Dados de identificação — não editáveis
-          </p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+              Dados de identificação
+            </p>
+            {canEditIdentity && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditIdentityOpen(true)}
+              >
+                Editar
+              </Button>
+            )}
+          </div>
           <div className="flex items-start gap-4">
             <AvatarUpload
               currentUrl={resident.photoUrl ? api.photoUrl(resident.photoUrl) : null}
@@ -300,6 +317,14 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
           </Button>
         </div>
       </form>
+
+      {canEditIdentity && (
+        <EditResidentIdentityDialog
+          open={editIdentityOpen}
+          onClose={() => setEditIdentityOpen(false)}
+          resident={resident}
+        />
+      )}
     </div>
   );
 }

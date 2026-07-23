@@ -62,7 +62,7 @@ jest.mock('@fonte/types', () => ({
   },
 }));
 
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ResidentStatus } from '@fonte/types';
 import { Repository } from 'typeorm';
 import { ResidentService } from './resident.service';
@@ -486,6 +486,39 @@ describe('ResidentService.update', () => {
         order: { createdAt: 'DESC' },
       }),
     );
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// updateIdentity (story 147)
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('ResidentService.updateIdentity', () => {
+  it('atualiza SÓ os campos de identidade e retorna o resident', async () => {
+    const before = makeResident({ name: 'Ana', cpf: null, rg: null } as Partial<Resident>);
+    const after = makeResident({ name: 'Ana Maria', cpf: '12345678900', rg: '123456' } as Partial<Resident>);
+    const residentFindOne = jest.fn().mockResolvedValueOnce(before).mockResolvedValue(after);
+    const residentUpdate = jest.fn().mockResolvedValue({ affected: 1 });
+
+    const service = makeService({ findOne: residentFindOne, update: residentUpdate });
+
+    const dto = { name: 'Ana Maria', cpf: '12345678900', rg: '123456' };
+    const result = await service.updateIdentity(RESIDENT_ID, dto);
+
+    // O repo.update recebe apenas o dto de identidade — não mistura outros campos.
+    expect(residentUpdate).toHaveBeenCalledWith(RESIDENT_ID, dto);
+    expect(result).toBe(after);
+  });
+
+  it('lança NotFound quando o resident não existe', async () => {
+    const residentFindOne = jest.fn().mockRejectedValue(new NotFoundException());
+    const residentUpdate = jest.fn();
+    const service = makeService({ findOne: residentFindOne, update: residentUpdate });
+
+    await expect(service.updateIdentity(RESIDENT_ID, { name: 'X' })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(residentUpdate).not.toHaveBeenCalled();
   });
 });
 

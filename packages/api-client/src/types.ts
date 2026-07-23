@@ -508,6 +508,16 @@ export interface CreateResidentInput {
 
 export type UpdateResidentInput = Partial<CreateResidentInput>;
 
+// Correção dos "dados de identidade" na reintrodução (story 147). Só os 5 campos
+// não-editáveis do banner; endpoint dedicado `PATCH /residents/:id/identity`.
+export interface UpdateResidentIdentityInput {
+  name?: string;
+  cpf?: string | null;
+  rg?: string | null;
+  birthDate?: string | null;
+  gender?: Gender | null;
+}
+
 export interface ResidentMe {
   id: string;
   name: string;

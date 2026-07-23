@@ -10,6 +10,7 @@ import type {
   PromoteToServantInput,
   ReadmitResidentInput,
   UpdateResidentInput,
+  UpdateResidentIdentityInput,
 } from '@fonte/api-client';
 
 export function useInfiniteResidents(params: { search?: string; status?: ResidentStatus | ''; houseId?: string; overdueContribution?: boolean; sort?: 'entryDate' | 'name'; order?: 'asc' | 'desc' }) {
@@ -90,6 +91,19 @@ export function useUpdateResident(id: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.residents.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.houses.all });
+    },
+  });
+}
+
+// Correção dos "dados de identidade" na reintrodução (story 147). ADMIN-only no
+// backend; invalida o detalhe (banner reflete a correção) e as listagens.
+export function useUpdateResidentIdentity(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateResidentIdentityInput) => api.residents.updateIdentity(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(id) });
     },
   });
 }

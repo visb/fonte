@@ -44,6 +44,37 @@ export function normalizePhoneWithDefaultDDD(v: string, ddd = '41') {
   return maskPhone(withDDD);
 }
 
+/**
+ * Helpers de EXIBIÇÃO para documentos (CPF/RG) que já vêm resolvidos do backend.
+ *
+ * O backend aplica a política LGPD (`SensitiveDataInterceptor` + `@RevealSensitive`):
+ * ADMIN/COORDINATOR recebem o documento cru completo; SERVANT recebe a versão
+ * redigida (`***.***.789-00` / `***XX`). Reaplicar `maskCPF`/`maskRG` (formatadores
+ * de input, dígitos crus → formatado) sobre esse valor pronto quebra o redigido —
+ * `***.***.789-00` vira `789.00`. Estes helpers evitam o double-mask: só formatam
+ * quando o valor é dígito cru completo; caso contrário devolvem como veio.
+ *
+ * NÃO substituem `maskCPF`/`maskRG`/`withMask`, que continuam sendo as máscaras de
+ * input dos formulários.
+ */
+export function displayCpf(v?: string | null): string {
+  if (v == null) return '';
+  if (v.includes('*')) return v;
+  const digits = v.replace(/\D/g, '');
+  if (digits.length === 11) return maskCPF(digits);
+  return v;
+}
+
+export function displayRg(v?: string | null): string {
+  if (v == null) return '';
+  if (v.includes('*')) return v;
+  const raw = v.replace(/[^0-9Xx]/g, '');
+  // Só reformata quando o valor veio cru (sem separadores) — evita mexer no que já
+  // chegou formatado ou redigido.
+  if (raw.length > 0 && raw === v) return maskRG(raw);
+  return v;
+}
+
 export function withMask(field: FieldReturn, maskFn: (v: string) => string) {
   return {
     ...field,

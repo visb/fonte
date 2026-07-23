@@ -12,7 +12,7 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionTitle, FormField } from '@/components/shared/FormField';
 import { getErrorMessage } from '@/lib/errors';
-import { maskPhone, maskCPF, maskRG, withMask } from '@/lib/masks';
+import { maskPhone, displayCpf, displayRg, withMask } from '@/lib/masks';
 import { FAMILY_INVESTMENT_LABELS } from '../constants';
 import { useReadmitResident } from '../hooks/useResidents';
 import { useHouses } from '@/features/houses/hooks/useHouses';
@@ -156,13 +156,13 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
               {resident.cpf && (
                 <>
                   <span className="text-muted-foreground">CPF</span>
-                  <span>{maskCPF(resident.cpf)}</span>
+                  <span>{displayCpf(resident.cpf)}</span>
                 </>
               )}
               {resident.rg && (
                 <>
                   <span className="text-muted-foreground">RG</span>
-                  <span>{maskRG(resident.rg)}</span>
+                  <span>{displayRg(resident.rg)}</span>
                 </>
               )}
               {resident.birthDate && (

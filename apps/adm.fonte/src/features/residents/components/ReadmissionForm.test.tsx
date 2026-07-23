@@ -8,8 +8,15 @@ vi.mock('@/features/houses/hooks/useHouses', () => ({
 }));
 
 const readmitState = { mutate: vi.fn(), isPending: false, isError: false, error: null as unknown };
+const identityState = { mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false, error: null as unknown };
 vi.mock('../hooks/useResidents', () => ({
   useReadmitResident: () => readmitState,
+  useUpdateResidentIdentity: () => identityState,
+}));
+
+let authRole: string | null = 'COORDINATOR';
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ role: authRole }),
 }));
 
 vi.mock('@/components/AvatarUpload', () => ({
@@ -40,6 +47,7 @@ function renderForm() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  authRole = 'COORDINATOR';
   readmitState.mutate = vi.fn();
   readmitState.isPending = false;
   readmitState.isError = false;
@@ -122,6 +130,31 @@ describe('ReadmissionForm', () => {
     readmitState.error = new Error('boom');
     renderForm();
     expect(screen.getByText(/Erro ao reintroduzir acolhido|boom/)).toBeInTheDocument();
+  });
+
+  it('botão Editar (identidade) aparece só para ADMIN', () => {
+    authRole = 'ADMIN';
+    renderForm();
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeInTheDocument();
+  });
+
+  it('botão Editar não aparece para COORDINATOR', () => {
+    authRole = 'COORDINATOR';
+    renderForm();
+    expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
+  });
+
+  it('botão Editar não aparece para SERVANT', () => {
+    authRole = 'SERVANT';
+    renderForm();
+    expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
+  });
+
+  it('clicar em Editar abre o dialog de correção de identidade', () => {
+    authRole = 'ADMIN';
+    renderForm();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
+    expect(screen.getByText('Corrigir dados de identificação')).toBeInTheDocument();
   });
 
   it('cancelar e voltar disparam onBack', () => {

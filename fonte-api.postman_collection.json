@@ -1077,6 +1077,34 @@
           }
         },
         {
+          "name": "Update Resident Identity (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João da Silva Corrigido\",\n  \"cpf\": \"12345678900\",\n  \"rg\": \"123456789\",\n  \"birthDate\": \"1990-05-10\",\n  \"gender\": \"MALE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/identity",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "identity"
+              ]
+            },
+            "description": "Correção dos dados de identidade (nome, CPF, RG, nascimento, gênero) na reintrodução (story 147). Somente ADMIN; a resposta revela CPF/RG completos (RevealSensitive)."
+          }
+        },
+        {
           "name": "Delete Resident",
           "request": {
             "method": "DELETE",

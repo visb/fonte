@@ -9,6 +9,7 @@ function residentSvc() {
     findOne: jest.fn().mockResolvedValue({ id: 'r1', name: 'Ana' }),
     create: jest.fn().mockResolvedValue({ id: 'r1' }),
     update: jest.fn().mockResolvedValue({ id: 'r1' }),
+    updateIdentity: jest.fn().mockResolvedValue({ id: 'r1', cpf: '12345678900' }),
     remove: jest.fn().mockResolvedValue(undefined),
     readmit: jest.fn().mockResolvedValue({ id: 'r1' }),
     findAdmissions: jest.fn().mockResolvedValue([]),
@@ -90,12 +91,14 @@ describe('ResidentController', () => {
     await c.findOne('r1');
     await c.create({ name: 'Ana' } as never);
     await c.update('r1', { name: 'B' } as never);
+    await c.updateIdentity('r1', { name: 'C', cpf: '12345678900' } as never);
     await c.remove('r1');
     await c.readmit('r1', {} as never);
     await c.getAdmissions('r1');
     expect(rs.findAll).toHaveBeenCalledWith({}, { role: 'ADMIN', userId: 'u1' });
     expect(rs.findMe).toHaveBeenCalledWith('u1');
     expect(rs.create).toHaveBeenCalledWith({ name: 'Ana' });
+    expect(rs.updateIdentity).toHaveBeenCalledWith('r1', { name: 'C', cpf: '12345678900' });
     expect(rs.remove).toHaveBeenCalledWith('r1');
   });
 

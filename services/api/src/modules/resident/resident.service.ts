@@ -56,6 +56,7 @@ import { CreateResidentDto } from './dto/create-resident.dto';
 import { ListResidentsDto, ResidentSortField } from './dto/list-residents.dto';
 import { ReadmitResidentDto } from './dto/readmit-resident.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
+import { UpdateResidentIdentityDto } from './dto/update-resident-identity.dto';
 import { StorageService } from '../storage/storage.service';
 
 export interface ResidentMeView {
@@ -305,6 +306,17 @@ export class ResidentService {
       this.emitCountsChanged();
     }
 
+    return this.findOne(id);
+  }
+
+  // Correção dos "dados de identidade" na reintrodução (story 147). Diferente de
+  // `update`, atualiza SÓ os 5 campos de identidade (nome, CPF, RG, nascimento,
+  // gênero) — não toca em admissão, carnê, status nem eventos de acolhimento. A
+  // rota é ADMIN-only (`@Roles(Role.ADMIN)`); aqui não há regra extra de status.
+  async updateIdentity(id: string, dto: UpdateResidentIdentityDto): Promise<Resident> {
+    // `findOne` valida a existência (lança NotFound) antes de gravar.
+    await this.findOne(id);
+    await this.residentRepository.update(id, dto);
     return this.findOne(id);
   }
 

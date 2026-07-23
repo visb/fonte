@@ -36,6 +36,7 @@ import { Staff } from '../staff/staff.entity';
 import { ListResidentsDto } from './dto/list-residents.dto';
 import { ResetResidentPasswordDto } from './dto/reset-resident-password.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
+import { UpdateResidentIdentityDto } from './dto/update-resident-identity.dto';
 import { ResidentAttachment } from './resident-attachment.entity';
 import { ResidentDocument } from './resident-document.entity';
 import { Admission } from './admission.entity';
@@ -294,6 +295,21 @@ export class ResidentController {
     @Body() dto: UpdateResidentDto,
   ): Promise<Resident> {
     return this.residentService.update(id, dto);
+  }
+
+  // Correção dos "dados de identidade" na reintrodução (story 147). Endpoint
+  // dedicado ADMIN-only para os 5 campos sensíveis, em vez de afrouxar o
+  // `PATCH :id` compartilhado (ADMIN+COORDINATOR). `@RevealSensitive` para a
+  // resposta devolver CPF/RG completos ao ADMIN que acabou de corrigir.
+  @Patch(':id/identity')
+  @Roles(Role.ADMIN)
+  @RevealSensitive()
+  @Audit('resident.identity.update', 'resident')
+  updateIdentity(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateResidentIdentityDto,
+  ): Promise<Resident> {
+    return this.residentService.updateIdentity(id, dto);
   }
 
   @Delete(':id')

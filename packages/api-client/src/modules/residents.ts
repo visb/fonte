@@ -22,6 +22,7 @@ import type {
   ResetResidentPasswordInput,
   CreateResidentInput,
   UpdateResidentInput,
+  UpdateResidentIdentityInput,
   ResidentDocument,
   ResidentAttachment,
   AdmissionDocument,
@@ -44,6 +45,10 @@ export function createResidentsModule(http: AxiosInstance) {
       http.post<Resident>('/residents', data).then((r) => r.data),
     update: (id: string, data: UpdateResidentInput) =>
       http.patch<Resident>(`/residents/${id}`, data).then((r) => r.data),
+    // Correção dos dados de identidade na reintrodução (story 147). ADMIN-only no
+    // backend; devolve o resident com CPF/RG completos (RevealSensitive).
+    updateIdentity: (id: string, data: UpdateResidentIdentityInput) =>
+      http.patch<Resident>(`/residents/${id}/identity`, data).then((r) => r.data),
     delete: (id: string) => http.delete(`/residents/${id}`),
     uploadPhoto: (id: string, formData: FormData) =>
       http

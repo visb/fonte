@@ -56,6 +56,27 @@ describe('ReadmissionForm', () => {
     expect(screen.getByTestId('avatar-upload')).toBeInTheDocument();
   });
 
+  it('mostra o CPF completo formatado quando o backend entrega o dígito cru (ADMIN/COORDINATOR)', () => {
+    renderForm();
+    // resident.cpf = '12345678900' → displayCpf → formatado, nunca truncado
+    expect(screen.getByText('123.456.789-00')).toBeInTheDocument();
+    expect(screen.getByText('12.345.6')).toBeInTheDocument(); // rg '123456'
+  });
+
+  it('mostra o CPF/RG redigidos as-is para SERVANT (nunca 789.00)', () => {
+    const redacted = {
+      ...(resident as object),
+      cpf: '***.***.789-00',
+      rg: '***56',
+    } as unknown as Resident;
+    const onBack = vi.fn();
+    const onSuccess = vi.fn();
+    render(<ReadmissionForm resident={redacted} onBack={onBack} onSuccess={onSuccess} />);
+    expect(screen.getByText('***.***.789-00')).toBeInTheDocument();
+    expect(screen.getByText('***56')).toBeInTheDocument();
+    expect(screen.queryByText('789.00')).not.toBeInTheDocument();
+  });
+
   it('bloqueia o submit sem casa selecionada', async () => {
     renderForm();
     fireEvent.click(screen.getByRole('button', { name: /Reintroduzir acolhido/ }));

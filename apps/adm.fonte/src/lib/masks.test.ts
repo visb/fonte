@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { maskCPF, maskPhone, maskRG, normalizePhoneWithDefaultDDD, withMask } from './masks';
+import {
+  displayCpf,
+  displayRg,
+  maskCPF,
+  maskPhone,
+  maskRG,
+  normalizePhoneWithDefaultDDD,
+  withMask,
+} from './masks';
 
 describe('maskCPF', () => {
   it('formata progressivamente conforme os dígitos', () => {
@@ -68,6 +76,52 @@ describe('normalizePhoneWithDefaultDDD', () => {
   it('é idempotente sobre um valor já mascarado', () => {
     const once = normalizePhoneWithDefaultDDD('999998888');
     expect(normalizePhoneWithDefaultDDD(once)).toBe('(41) 99999-8888');
+  });
+});
+
+describe('displayCpf', () => {
+  it('formata CPF cru de 11 dígitos', () => {
+    expect(displayCpf('12345678901')).toBe('123.456.789-01');
+  });
+
+  it('formata CPF cru mesmo com separadores parciais, quando são 11 dígitos', () => {
+    expect(displayCpf('123.456.789-01')).toBe('123.456.789-01');
+  });
+
+  it('devolve o redigido do backend as-is (nunca 789.00)', () => {
+    expect(displayCpf('***.***.789-00')).toBe('***.***.789-00');
+    expect(displayCpf('***.***.789-00')).not.toBe('789.00');
+  });
+
+  it('trata null e vazio', () => {
+    expect(displayCpf(null)).toBe('');
+    expect(displayCpf(undefined)).toBe('');
+    expect(displayCpf('')).toBe('');
+  });
+
+  it('devolve valores não-11-dígitos como vieram', () => {
+    expect(displayCpf('12345')).toBe('12345');
+  });
+});
+
+describe('displayRg', () => {
+  it('formata RG cru', () => {
+    expect(displayRg('123456789')).toBe('12.345.678-9');
+  });
+
+  it('devolve o redigido do backend as-is', () => {
+    expect(displayRg('***XX')).toBe('***XX');
+    expect(displayRg('***XX')).not.toBe('XX');
+  });
+
+  it('não reformata RG que já veio com separadores', () => {
+    expect(displayRg('12.345.678-9')).toBe('12.345.678-9');
+  });
+
+  it('trata null e vazio', () => {
+    expect(displayRg(null)).toBe('');
+    expect(displayRg(undefined)).toBe('');
+    expect(displayRg('')).toBe('');
   });
 });
 

@@ -25,7 +25,7 @@
 | 2 | 147 — editar dados de identidade na reintrodução | [OK] | api 1276, e2e 491, api-client 266, adm 1381; cov≥90 | 627edf5 | merged |
 | 3 | 148 — reintrodução volta com status ativo | [OK] | api 1279/1279, cov≥90 | 65e2ad3 | merged |
 | 4 | 149 — esconder acesso digital do filho (flag) | [OK] | adm 1384/1384, tocado 100% | abb927e | merged |
-| 5 | 150 — aba filhos da casa com infinite scroll | [ ] | | | |
+| 5 | 150 — aba filhos da casa com infinite scroll | [OK] | adm 1396/1396, tocado ≥97% | fa64c33 | merged |
 | 6 | 151 — sanear double-mask CPF/RG no adm | [ ] | | | |
 
 ## Log
@@ -34,6 +34,7 @@
 [OK] 147 — api 1276/1276, e2e 491/491, api-client 266/266, adm 1381/1381, cov≥90 — commit: 627edf5 — merge --no-ff — 2026-07-23 — endpoint PATCH /residents/:id/identity @Roles(ADMIN); Postman+contratos atualizados. Banner label virou "Dados de identificação". ReadmissionForm passou a consumir useAuth.
 [OK] 148 — api 1279/1279 (resident 61/61), cov≥90 — commit: 65e2ad3 — merge --no-ff — 2026-07-23 — readmit vira ACTIVE (admission+resident) + notifyAdmissionCreated. Backend-only.
 [OK] 149 — adm 1384/1384, tocado 100% — commit: abb927e — merge --no-ff — 2026-07-23 — flag RESIDENT_APP_ENABLED=false em apps/adm.fonte/src/config/features.ts esconde seção "Acesso Digital" do filho. Frontend-only.
+[OK] 150 — adm 1396/1396, tocado ≥97% — commit: fa64c33 — merge --no-ff — 2026-07-23 — ResidentsTab reusa useInfiniteResidents (houseId fixo); ResidentsFilters ganhou hideHouseFilter; extraídos HouseResidentRow/HouseResidentDetailDialog. useHouseResidents mantido (usado por ministry dialogs).
 
 ## Resumo final
 

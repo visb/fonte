@@ -63,7 +63,7 @@ jest.mock('@fonte/types', () => ({
 }));
 
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { ResidentStatus } from '@fonte/types';
+import { FollowUpType, NotificationType, ResidentStatus } from '@fonte/types';
 import { Repository } from 'typeorm';
 import { ResidentService } from './resident.service';
 import { Resident } from './resident.entity';
@@ -149,6 +149,9 @@ function makeService(
     cancelAfterExit: jest.fn().mockResolvedValue(undefined),
   },
   eventEmitter: { emit: jest.Mock } = { emit: jest.fn() },
+  notifications: Record<string, jest.Mock> = {
+    create: jest.fn().mockResolvedValue(undefined),
+  },
 ) {
   return new ResidentService(
     residentRepo as Repository<Resident>,
@@ -161,7 +164,7 @@ function makeService(
     receivableService as never, // ResidentReceivableService
     staffService as never, // StaffService
     { query: jest.fn().mockResolvedValue([]) } as never, // DataSource
-    { create: jest.fn().mockResolvedValue(undefined) } as never, // NotificationService
+    notifications as never, // NotificationService
     eventEmitter as never, // EventEmitter2
   );
 }
@@ -537,7 +540,7 @@ describe('ResidentService.readmit', () => {
 
   function makeReadmitService(residentOverrides: Partial<Resident> = {}) {
     const resident = makeResident(residentOverrides);
-    const updatedResident = makeResident({ ...residentOverrides, status: 'PRE_ADMISSION' as Resident['status'] });
+    const updatedResident = makeResident({ ...residentOverrides, status: ResidentStatus.ACTIVE });
 
     const residentFindOne = jest.fn()
       .mockResolvedValueOnce(resident)      // called inside readmit at start
@@ -547,14 +550,38 @@ describe('ResidentService.readmit', () => {
     const admissionCreate = jest.fn().mockImplementation((v) => v);
     const admissionSave = jest.fn().mockResolvedValue({});
     const userSoftDelete = jest.fn().mockResolvedValue({ affected: 1 });
+    const createAuto = jest.fn().mockResolvedValue(undefined);
+    const generateSchedule = jest.fn().mockResolvedValue(undefined);
+    const notificationsCreate = jest.fn().mockResolvedValue(undefined);
 
     const service = makeService(
       { findOne: residentFindOne, update: residentUpdate },
       { create: admissionCreate, save: admissionSave },
       { softDelete: userSoftDelete },
+      undefined,
+      { createAuto, getLastContributionDates: jest.fn().mockResolvedValue(new Map()) },
+      {
+        getLastPaidDates: jest.fn().mockResolvedValue(new Map()),
+        generateSchedule,
+        recalcFuturePending: jest.fn().mockResolvedValue(undefined),
+        cancelFuturePending: jest.fn().mockResolvedValue(undefined),
+        cancelAfterExit: jest.fn().mockResolvedValue(undefined),
+      },
+      undefined,
+      { create: notificationsCreate },
     );
 
-    return { service, residentFindOne, residentUpdate, admissionCreate, admissionSave, userSoftDelete };
+    return {
+      service,
+      residentFindOne,
+      residentUpdate,
+      admissionCreate,
+      admissionSave,
+      userSoftDelete,
+      createAuto,
+      generateSchedule,
+      notificationsCreate,
+    };
   }
 
   it('throws BadRequestException when status is ACTIVE', async () => {
@@ -605,7 +632,7 @@ describe('ResidentService.readmit', () => {
     expect(userSoftDelete).not.toHaveBeenCalled();
   });
 
-  it('creates new Admission with PRE_ADMISSION status and dto fields', async () => {
+  it('creates new Admission with ACTIVE status and dto fields', async () => {
     const { service, admissionCreate, admissionSave } = makeReadmitService({
       status: ResidentStatus.DISCHARGED,
     });
@@ -616,7 +643,7 @@ describe('ResidentService.readmit', () => {
       expect.objectContaining({
         residentId: RESIDENT_ID,
         houseId: dto.houseId,
-        status: 'PRE_ADMISSION',
+        status: 'ACTIVE',
         healthIssues: dto.healthIssues,
         weight: dto.weight,
         height: dto.height,
@@ -627,7 +654,7 @@ describe('ResidentService.readmit', () => {
     expect(admissionSave).toHaveBeenCalledTimes(1);
   });
 
-  it('resets Resident fields to PRE_ADMISSION with new houseId', async () => {
+  it('resets Resident fields to ACTIVE with new houseId', async () => {
     const { service, residentUpdate } = makeReadmitService({
       status: ResidentStatus.DISCHARGED,
     });
@@ -636,16 +663,53 @@ describe('ResidentService.readmit', () => {
 
     // Last residentUpdate call (after user revoke is first if userId present)
     const calls = residentUpdate.mock.calls;
-    const resetCall = calls.find(([, update]) => update.status === 'PRE_ADMISSION');
+    const resetCall = calls.find(([, update]) => update.status === ResidentStatus.ACTIVE);
     expect(resetCall).toBeDefined();
     expect(resetCall![1]).toMatchObject({
       houseId: dto.houseId,
-      status: 'PRE_ADMISSION',
+      status: ResidentStatus.ACTIVE,
       ministryId: null,
       exitDate: null,
       photoUrl: null,
       userId: null,
     });
+  });
+
+  it('returns the resident with ACTIVE status after readmission', async () => {
+    const { service } = makeReadmitService({ status: ResidentStatus.DISCHARGED });
+
+    const result = await service.readmit(RESIDENT_ID, dto);
+
+    expect(result.status).toBe(ResidentStatus.ACTIVE);
+  });
+
+  it('emits the ADMISSION_CREATED notification once for ADMIN', async () => {
+    const { service, notificationsCreate } = makeReadmitService({
+      status: ResidentStatus.DISCHARGED,
+      houseId: null,
+    });
+
+    await service.readmit(RESIDENT_ID, dto);
+
+    expect(notificationsCreate).toHaveBeenCalledTimes(1);
+    expect(notificationsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: NotificationType.ADMISSION_CREATED }),
+    );
+  });
+
+  it('creates the READMISSION follow-up and generates the schedule', async () => {
+    const { service, createAuto, generateSchedule } = makeReadmitService({
+      status: ResidentStatus.DISCHARGED,
+    });
+
+    await service.readmit(RESIDENT_ID, dto);
+
+    expect(createAuto).toHaveBeenCalledWith(
+      RESIDENT_ID,
+      FollowUpType.READMISSION,
+      dto.entryDate,
+    );
+    expect(generateSchedule).toHaveBeenCalledWith(RESIDENT_ID);
   });
 
   it('uses today as entryDate when dto.entryDate is not provided', async () => {
@@ -666,7 +730,7 @@ describe('ResidentService.readmit', () => {
     const { service, residentUpdate } = makeReadmitService({ status: ResidentStatus.DISCHARGED });
     await service.readmit(RESIDENT_ID, dtoWithDueDay);
 
-    const resetCall = residentUpdate.mock.calls.find(([, update]) => update.status === 'PRE_ADMISSION');
+    const resetCall = residentUpdate.mock.calls.find(([, update]) => update.status === ResidentStatus.ACTIVE);
     expect(resetCall![1]).toMatchObject({ contributionDueDay: 15 });
   });
 
@@ -674,7 +738,7 @@ describe('ResidentService.readmit', () => {
     const { service, residentUpdate } = makeReadmitService({ status: ResidentStatus.DISCHARGED });
     await service.readmit(RESIDENT_ID, dto);
 
-    const resetCall = residentUpdate.mock.calls.find(([, update]) => update.status === 'PRE_ADMISSION');
+    const resetCall = residentUpdate.mock.calls.find(([, update]) => update.status === ResidentStatus.ACTIVE);
     expect(resetCall![1]).not.toHaveProperty('contributionDueDay');
   });
 });

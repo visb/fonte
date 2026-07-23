@@ -408,7 +408,7 @@ export class ResidentService {
       ministryId: null,
       entryDate: (dto.entryDate ?? today) as unknown as Date,
       exitDate: null,
-      status: 'PRE_ADMISSION',
+      status: 'ACTIVE',
       healthIssues: dto.healthIssues ?? null,
       continuousMedication: dto.continuousMedication ?? null,
       weight: dto.weight ?? null,
@@ -426,7 +426,7 @@ export class ResidentService {
       houseId: dto.houseId,
       entryDate: (dto.entryDate ?? today) as unknown as Date,
       exitDate: null,
-      status: 'PRE_ADMISSION' as Resident['status'],
+      status: ResidentStatus.ACTIVE as Resident['status'],
       ministryId: null,
       userId: null,
       photoUrl: null,
@@ -451,6 +451,11 @@ export class ResidentService {
     if (dto.contributionDueDay !== undefined) residentUpdate.contributionDueDay = dto.contributionDueDay;
 
     await this.residentRepository.update(id, residentUpdate);
+
+    // Reintrodução entra direto como ACTIVE: dispara a mesma notificação de
+    // "acolhimento concluído" do fluxo normal PRE→ACTIVE. Best-effort — a falha
+    // de notificação nunca quebra o readmit.
+    await this.notifyAdmissionCreated(resident);
 
     await this.receivableService.generateSchedule(id);
 

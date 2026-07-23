@@ -12,6 +12,16 @@ vi.mock('../ResetResidentPasswordDialog', () => ({
     open ? <div data-testid="reset-pwd" /> : null,
 }));
 
+// Story 149: a seção "Acesso Digital" (acesso do interno/RESIDENT) fica atrás
+// da flag `RESIDENT_APP_ENABLED`, oculta enquanto o `resident.fonte` não está
+// em produção. Getter mutável para exercitar os dois estados da flag.
+let residentAppEnabled = false;
+vi.mock('@/config/features', () => ({
+  get RESIDENT_APP_ENABLED() {
+    return residentAppEnabled;
+  },
+}));
+
 const unmarkMutate = vi.fn();
 const useResidentExternalCompletion = vi.fn();
 vi.mock('@/features/bible-courses/hooks/useBibleCourses', () => ({
@@ -47,6 +57,8 @@ function res(over: Partial<Resident> = {}): Resident {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Flag desligada por padrão (app do interno fora de produção).
+  residentAppEnabled = false;
   // Sem marcação por padrão: o campo "Curso bíblico" é exceção, não regra.
   useResidentExternalCompletion.mockReturnValue({ data: undefined });
 });
@@ -77,15 +89,37 @@ describe('OverviewTab', () => {
     expect(screen.queryByText('Dia de vencimento da contribuição')).not.toBeInTheDocument();
   });
 
-  it('sem acesso digital abre o diálogo de gerar acesso', () => {
+});
+
+// Story 149: acesso do interno (RESIDENT) só aparece quando o `resident.fonte`
+// entrar em produção; hoje a seção inteira fica atrás da flag e não renderiza.
+describe('OverviewTab — seção "Acesso Digital" atrás da flag RESIDENT_APP_ENABLED (story 149)', () => {
+  it('flag desligada (default): não renderiza a seção para filho SEM acesso', () => {
     render(<OverviewTab resident={res({ userId: null })} />);
+    expect(screen.queryByText('Acesso Digital')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sem acesso gerado.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Gerar Acesso/ })).not.toBeInTheDocument();
+  });
+
+  it('flag desligada (default): não renderiza a seção para filho COM acesso', () => {
+    render(<OverviewTab resident={res({ userId: 'u1', user: { email: 'f@x.com' } } as Partial<Resident>)} />);
+    expect(screen.queryByText('Acesso Digital')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Resetar Senha/ })).not.toBeInTheDocument();
+  });
+
+  it('flag ligada: volta a renderizar e abre o diálogo de gerar acesso (filho SEM acesso)', () => {
+    residentAppEnabled = true;
+    render(<OverviewTab resident={res({ userId: null })} />);
+    expect(screen.getByText('Acesso Digital')).toBeInTheDocument();
     expect(screen.getByText('Sem acesso gerado.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Gerar Acesso/ }));
     expect(screen.getByTestId('gen-access')).toBeInTheDocument();
   });
 
-  it('com acesso digital mostra email e abre reset de senha', () => {
+  it('flag ligada: mostra email e abre reset de senha (filho COM acesso)', () => {
+    residentAppEnabled = true;
     render(<OverviewTab resident={res({ userId: 'u1', user: { email: 'f@x.com' } } as Partial<Resident>)} />);
+    expect(screen.getByText('Acesso Digital')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Resetar Senha/ }));
     expect(screen.getByTestId('reset-pwd')).toBeInTheDocument();
   });

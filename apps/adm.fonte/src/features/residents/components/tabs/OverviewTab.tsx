@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { KeyRound } from 'lucide-react';
 import { FamilyInvestment, Gender, MaritalStatus } from '@fonte/types';
+import { RESIDENT_APP_ENABLED } from '@/config/features';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { maskCPF, maskPhone, maskRG } from '@/lib/masks';
@@ -171,40 +172,47 @@ export function OverviewTab({ resident, canManage = false }: Props) {
         )}
       </InfoGrid>
 
-      <SectionTitle>Acesso Digital</SectionTitle>
-      <div className="flex items-center justify-between py-2">
-        {resident.userId ? (
-          <>
-            <div className="text-sm">
-              <span className="text-muted-foreground">E-mail: </span>
-              <span>{resident.user?.email ?? '—'}</span>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setResetPasswordOpen(true)}>
-              <KeyRound size={14} className="mr-2" />
-              Resetar Senha
-            </Button>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-muted-foreground">Sem acesso gerado.</p>
-            <Button variant="outline" size="sm" onClick={() => setGenerateAccessOpen(true)}>
-              <KeyRound size={14} className="mr-2" />
-              Gerar Acesso
-            </Button>
-          </>
-        )}
-      </div>
+      {/* Acesso do interno (RESIDENT): oculto enquanto o app `resident.fonte`
+          não está em produção (RESIDENT_APP_ENABLED). Reativar é flipar a flag;
+          o hook e os dialogs seguem intactos. Não afeta o acesso de familiar. */}
+      {RESIDENT_APP_ENABLED && (
+        <>
+          <SectionTitle>Acesso Digital</SectionTitle>
+          <div className="flex items-center justify-between py-2">
+            {resident.userId ? (
+              <>
+                <div className="text-sm">
+                  <span className="text-muted-foreground">E-mail: </span>
+                  <span>{resident.user?.email ?? '—'}</span>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setResetPasswordOpen(true)}>
+                  <KeyRound size={14} className="mr-2" />
+                  Resetar Senha
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">Sem acesso gerado.</p>
+                <Button variant="outline" size="sm" onClick={() => setGenerateAccessOpen(true)}>
+                  <KeyRound size={14} className="mr-2" />
+                  Gerar Acesso
+                </Button>
+              </>
+            )}
+          </div>
 
-      <GenerateResidentAccessDialog
-        open={generateAccessOpen}
-        onClose={() => setGenerateAccessOpen(false)}
-        resident={{ id: resident.id, name: resident.name }}
-      />
-      <ResetResidentPasswordDialog
-        open={resetPasswordOpen}
-        onClose={() => setResetPasswordOpen(false)}
-        resident={{ id: resident.id, name: resident.name }}
-      />
+          <GenerateResidentAccessDialog
+            open={generateAccessOpen}
+            onClose={() => setGenerateAccessOpen(false)}
+            resident={{ id: resident.id, name: resident.name }}
+          />
+          <ResetResidentPasswordDialog
+            open={resetPasswordOpen}
+            onClose={() => setResetPasswordOpen(false)}
+            resident={{ id: resident.id, name: resident.name }}
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -7,55 +7,59 @@ Bloco **App adm → Reintrodução de acolhido** do BACKLOG. Contexto compartilh
 
 No banner "Dados de identificação — não editáveis" da tela de reintrodução
 (`apps/adm.fonte/src/features/residents/components/ReadmissionForm.tsx:159`), o CPF aparece
-truncado — só os 5 primeiros dígitos (ex: `123.45`). Deveria mostrar o CPF completo.
+truncado (ex: `789.00`). Deveria mostrar o CPF completo (quando o solicitante tem direito de vê-lo).
 
-Decisão travada com o usuário: **é bug de exibição, não dado truncado.** O CPF completo está no
-banco; a tela é que trunca. A story deve caçar e corrigir o ponto de truncamento.
+**Causa-raiz confirmada no planning — double-mask (redator + formatador):**
 
-Investigação já feita no planning (pistas para a implementação):
+- Backend tem proteção LGPD (`SensitiveDataInterceptor` +
+  `services/api/src/common/lib/mask.ts`). `maskCpf` **redige** o documento:
+  `12345678901` → `***.***.789-00`; `maskRg` → `***XX`.
+- `GET /residents/:id` (`resident.controller.ts:273`) é `@RevealSensitive()`: **ADMIN/COORDINATOR
+  recebem o CPF/RG completos; SERVANT recebe redigido.**
+- No frontend, `maskCPF`/`maskRG` (`apps/adm.fonte/src/lib/masks.ts`) são **formatadores** (dígitos
+  crus → `000.000.000-00`), não redatores — nome colide com o do backend. O banner aplica
+  `maskCPF(resident.cpf)` sobre um valor que **já vem pronto do backend**. Quando vem redigido
+  (`***.***.789-00`), o formatador tira os não-dígitos (`78900`, 5 dígitos) e devolve `789.00` —
+  exatamente o bug relatado. Para SERVANT o CPF nunca poderá ser completo (é LGPD, correto); para
+  ADMIN/COORDINATOR o valor completo chega, mas o double-mask ainda pode reformatá-lo errado.
 
-- A tela usa `maskCPF(resident.cpf)`. `maskCPF` (`apps/adm.fonte/src/lib/masks.ts:8`) formata
-  corretamente os 11 dígitos — não é a fonte do truncamento isolada.
-- `resident` vem de `useResidentById` → `GET /residents/:id`. O `findOne`
-  (`services/api/src/modules/resident/resident.service.ts:196`) retorna a entidade inteira, **sem
-  mask de CPF**. Nenhum `@Transform`/`@Exclude` sobre `cpf`.
-- Nenhuma máscara parcial / `slice(0,5)` / mask LGPD de CPF foi encontrada no `adm.fonte`.
-
-Como o código lido já exibiria o CPF inteiro, a implementação **precisa reproduzir** o bug com um
-filho readmissível real (status `DISCHARGED` ou `EVADED`) para localizar o truncamento (candidatos:
-o valor que `resident.cpf` realmente chega no cliente; algum ponto de mapeamento no `@fonte/api-client`
-ou no `useResidentById`; dupla aplicação de máscara). **Atenção:** o `.env` local do api aponta para
-o banco de **produção** — reproduzir em ambiente de teste/seed, nunca consultando produção.
-
-Fallback: se, ao reproduzir, o CPF do filho estiver **de fato** truncado no banco (dado ruim de
-import antigo), o conserto de exibição vira no-op e a correção real do dado passa a depender da
-story 147 (editar os "dados não editáveis"). Registrar isso na PR se for o caso.
+Decisão travada: o conserto é **não reaplicar o formatador sobre valor já resolvido pelo backend**.
+O banner deve renderizar `resident.cpf`/`resident.rg` como vieram, formatando **apenas** quando
+forem dígitos crus completos (CPF 11 dígitos / RG cru), e exibindo as-is quando já vierem redigidos
+(`*`) ou já formatados. Não remover a proteção LGPD: SERVANT continua vendo o CPF redigido — isso é
+esperado, não é o bug.
 
 ## Desenho
 
-1. Reproduzir num filho readmissível de teste com CPF completo, confirmando onde o valor perde
-   dígitos entre `GET /residents/:id` e o render do banner.
-2. Corrigir o ponto de truncamento para que o banner exiba os 11 dígitos formatados
-   (`000.000.000-00`) sempre que o `cpf` completo existir.
-3. Manter o comportamento atual quando `cpf` for `null` (o bloco CPF não renderiza — linha 156).
+1. No banner de `ReadmissionForm`, parar de reaplicar `maskCPF`/`maskRG` cegamente. Renderizar o
+   valor do backend, formatando só quando for dígito cru completo:
+   - se `cpf` contém `*` → exibir como veio (redigido pelo backend);
+   - se `cpf` são 11 dígitos crus → formatar `000.000.000-00`;
+   - caso contrário → exibir como veio.
+   - RG análogo.
+2. Preferir extrair um helper de exibição (ex: `displayCpf`/`displayRg` em `lib/masks.ts`) para não
+   espalhar o `if`, e para reuso por outras telas que sofram do mesmo double-mask.
+3. Resultado: ADMIN/COORDINATOR veem o CPF completo formatado; SERVANT vê o redigido do backend;
+   nunca aparece o `789.00` truncado.
 
-Escopo é frontend-only (`adm.fonte`), a menos que a reprodução prove que o truncamento nasce no
-backend/`api-client` — nesse caso corrigir na origem e ajustar o contrato.
+Escopo frontend-only (`adm.fonte`). Backend já entrega o valor correto por role — não mexer no
+interceptor nem no `@RevealSensitive`.
 
 ## Validação
 
 Testes por camada tocada, sem `skip`/`only`/`xfail` injustificado. Gate: **código novo sem teste
-não fecha a story** (`pnpm --filter adm.fonte test:cov` verde e cobertura ≥90 do código tocado; se
-tocar backend/`api-client`, `pnpm test:api:cov` + `pnpm build:types`/`build:api-client`).
+não fecha a story** (`pnpm --filter adm.fonte test:cov` verde e cobertura ≥90 do código tocado).
 
-- Unit (`ReadmissionForm.test.tsx`): dado um `resident` com `cpf` de 11 dígitos, o banner
-  "não editáveis" exibe o CPF completo formatado `000.000.000-00` (não os 5 primeiros dígitos).
-- Unit: `resident.cpf === null` → bloco CPF não renderiza.
-- Se o truncamento estiver no `api-client`/backend: teste na camada de origem cobrindo que o
-  `cpf` completo trafega intacto.
+- Unit no helper de exibição (`masks.test.ts` ou equivalente):
+  - `cpf` 11 dígitos crus → `000.000.000-00`;
+  - `cpf` já redigido `***.***.789-00` → devolvido as-is (não vira `789.00`);
+  - `cpf` `null` → tratado;
+  - RG cru → formatado; RG redigido `***XX` → as-is.
+- Unit (`ReadmissionForm.test.tsx`): resident com `cpf` completo → banner mostra CPF completo;
+  resident com `cpf` redigido (SERVANT) → banner mostra o redigido, nunca `789.00`.
 
 ## Fora de escopo
 
 - Permitir editar os dados não editáveis (story 147).
 - Status inicial da reintrodução (story 148).
-- Qualquer mask/ocultação de CPF por LGPD.
+- Alterar a política LGPD de redação/`@RevealSensitive` — a redação para SERVANT é intencional.

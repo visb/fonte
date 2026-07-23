@@ -213,6 +213,33 @@ describe('staffToFormValues', () => {
     expect(values.birthDate).toBe('1990-01-01');
   });
 
+  // Story 151 — o prefill do form de edição não pode reprocessar um CPF/RG
+  // redigido pelo backend (`***.***.789-00` / `***XX`): injetar `789.00` no campo
+  // editável arriscaria persistir um documento corrompido.
+  it('prefill de CPF/RG redigido carrega as-is, sem gerar dígitos falsos', () => {
+    const staff = {
+      name: 'Zé',
+      houseId: 'h1',
+      user: { email: 'ze@x.com', role: Role.SERVANT },
+      cpf: '***.***.789-00',
+      rg: '***XX',
+    } as unknown as Staff;
+    const values = staffToFormValues(staff);
+    expect(values.cpf).toBe('***.***.789-00');
+    expect(values.cpf).not.toBe('789.00');
+    expect(values.rg).toBe('***XX');
+  });
+
+  it('prefill de CPF cru completo é formatado', () => {
+    const staff = {
+      name: 'Léo',
+      houseId: 'h1',
+      user: { email: 'leo@x.com', role: Role.SERVANT },
+      cpf: '98765432100',
+    } as unknown as Staff;
+    expect(staffToFormValues(staff).cpf).toBe('987.654.321-00');
+  });
+
   it('servo com casa não serve em grupo', () => {
     const staff = {
       name: 'Bia',

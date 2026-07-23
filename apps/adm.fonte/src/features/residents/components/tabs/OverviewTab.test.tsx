@@ -79,6 +79,15 @@ describe('OverviewTab', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
 
+  // Story 151 — CPF/RG redigidos pelo backend (`***.***.789-00` / `***XX`) para
+  // não-privilegiados são exibidos as-is; nunca reprocessados em `789.00`.
+  it('mostra CPF/RG redigidos as-is, sem reprocessar em 789.00', () => {
+    render(<OverviewTab resident={res({ cpf: '***.***.789-00', rg: '***XX' })} />);
+    expect(screen.getByText('***.***.789-00')).toBeInTheDocument();
+    expect(screen.getByText('***XX')).toBeInTheDocument();
+    expect(screen.queryByText('789.00')).not.toBeInTheDocument();
+  });
+
   it('investimento NEGOTIATED mostra o valor; oculta vencimento p/ SOCIAL', () => {
     const { rerender } = render(
       <OverviewTab resident={res({ familyInvestment: FamilyInvestment.NEGOTIATED, familyInvestmentAmount: 350 })} />,

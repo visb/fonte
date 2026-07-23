@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
-import { maskCPF, maskRG, maskPhone } from '@/lib/masks';
+import { displayCpf, displayRg, maskPhone } from '@/lib/masks';
 
 export const residentSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -105,8 +105,11 @@ export function residentToFormValues(r: Resident): ResidentFormData {
     houseId: r.houseId ?? '',
     status: r.status,
     birthDate: dateStr(r.birthDate),
-    cpf: maskCPF(r.cpf ?? ''),
-    rg: maskRG(r.rg ?? ''),
+    // Prefill sem double-mask (story 151): só formata dígito cru; valor redigido
+    // pelo backend (`***.***.789-00`) NÃO vira `789.00` no campo editável — carrega
+    // como veio, para nunca persistir um CPF derivado de valor redigido.
+    cpf: displayCpf(r.cpf),
+    rg: displayRg(r.rg),
     nationality: r.nationality ?? '',
     city: r.city ?? '',
     state: r.state ?? '',

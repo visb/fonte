@@ -93,4 +93,19 @@ describe('StaffOverviewTab', () => {
     renderTab(makeStaff({ city: null, address: null }));
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
+
+  // Story 151 — o backend redige CPF/RG para não-privilegiados
+  // (`***.***.789-00` / `***XX`). A ficha exibe o valor redigido as-is; nunca
+  // pode reprocessá-lo e virar o `789.00` do double-mask.
+  it('mostra CPF/RG redigidos as-is, sem reprocessar em 789.00', () => {
+    renderTab(makeStaff({ cpf: '***.***.789-00', rg: '***XX' }));
+    expect(screen.getByText('***.***.789-00')).toBeInTheDocument();
+    expect(screen.getByText('***XX')).toBeInTheDocument();
+    expect(screen.queryByText('789.00')).not.toBeInTheDocument();
+  });
+
+  it('mostra CPF cru completo formatado', () => {
+    renderTab(makeStaff({ cpf: '98765432100' }));
+    expect(screen.getByText('987.654.321-00')).toBeInTheDocument();
+  });
 });

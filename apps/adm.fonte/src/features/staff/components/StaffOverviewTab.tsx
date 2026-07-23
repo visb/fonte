@@ -4,7 +4,7 @@ import { Gender, MaritalStatus, Role } from '@fonte/types';
 import type { Staff } from '@fonte/api-client';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { maskCPF, maskPhone, maskRG } from '@/lib/masks';
+import { displayCpf, displayRg, maskPhone } from '@/lib/masks';
 import { SERVANT_RANK_LABELS, SERVANT_RANK_VARIANT } from '../constants';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -82,8 +82,8 @@ export function StaffOverviewTab({ staff }: Props) {
             ? <Badge variant={SERVANT_RANK_VARIANT[staff.rank]}>{SERVANT_RANK_LABELS[staff.rank]}</Badge>
             : '—'}
         />
-        <InfoRow label="CPF" value={val(staff.cpf, maskCPF)} />
-        <InfoRow label="RG" value={val(staff.rg, maskRG)} />
+        <InfoRow label="CPF" value={val(staff.cpf, displayCpf)} />
+        <InfoRow label="RG" value={val(staff.rg, displayRg)} />
         <InfoRow label="Nacionalidade" value={val(staff.nationality)} />
         <InfoRow
           label="Data de nascimento"

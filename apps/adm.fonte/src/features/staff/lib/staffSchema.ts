@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Gender, MaritalStatus, Role, ServantRank } from '@fonte/types';
 import type { CreateStaffInput, Staff } from '@fonte/api-client';
-import { maskCPF, maskRG, maskPhone } from '@/lib/masks';
+import { displayCpf, displayRg, maskPhone } from '@/lib/masks';
 
 // Campos comuns a criação e edição de servo, agrupados pelas abas do form
 // (story 96). SÓ a aba Sistema tem campos obrigatórios (name, role e — via
@@ -119,8 +119,11 @@ export function staffToFormValues(staff: Staff): EditStaffFormData {
     servesInGroup: !staff.houseId,
     houseId: staff.houseId ?? '',
     supportGroupId: staff.supportGroupId ?? '',
-    cpf: maskCPF(staff.cpf ?? ''),
-    rg: maskRG(staff.rg ?? ''),
+    // Prefill sem double-mask (story 151): só formata dígito cru; valor redigido
+    // pelo backend (`***.***.789-00`) NÃO vira `789.00` no campo editável — carrega
+    // como veio, para nunca persistir um CPF derivado de valor redigido.
+    cpf: displayCpf(staff.cpf),
+    rg: displayRg(staff.rg),
     nationality: staff.nationality ?? '',
     birthDate: dateStr(staff.birthDate),
     gender: (staff.gender as Gender) ?? '',

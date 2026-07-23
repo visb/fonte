@@ -4,7 +4,7 @@ import { FamilyInvestment, Gender, MaritalStatus } from '@fonte/types';
 import { RESIDENT_APP_ENABLED } from '@/config/features';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { maskCPF, maskPhone, maskRG } from '@/lib/masks';
+import { displayCpf, displayRg, maskPhone } from '@/lib/masks';
 import { useResidentExternalCompletion } from '@/features/bible-courses/hooks/useBibleCourses';
 import { FAMILY_INVESTMENT_LABELS } from '../../constants';
 import { GenerateResidentAccessDialog } from '../GenerateResidentAccessDialog';
@@ -88,8 +88,8 @@ export function OverviewTab({ resident, canManage = false }: Props) {
       <SectionTitle>Identificação</SectionTitle>
       <InfoGrid>
         <InfoRow label="Nome" value={resident.name} full />
-        <InfoRow label="CPF" value={val(resident.cpf, maskCPF)} />
-        <InfoRow label="RG" value={val(resident.rg, maskRG)} />
+        <InfoRow label="CPF" value={val(resident.cpf, displayCpf)} />
+        <InfoRow label="RG" value={val(resident.rg, displayRg)} />
         <InfoRow label="Nacionalidade" value={val(resident.nationality)} />
         <InfoRow
           label="Data de nascimento"

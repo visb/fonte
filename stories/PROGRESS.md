@@ -22,7 +22,7 @@
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 146 — reintrodução exibir CPF completo (double-mask) | [OK] | 1371/1371, cov≥90 | 6ce8b70 | merged |
-| 2 | 147 — editar dados de identidade na reintrodução | [ ] | | | |
+| 2 | 147 — editar dados de identidade na reintrodução | [OK] | api 1276, e2e 491, api-client 266, adm 1381; cov≥90 | 627edf5 | merged |
 | 3 | 148 — reintrodução volta com status ativo | [ ] | | | |
 | 4 | 149 — esconder acesso digital do filho (flag) | [ ] | | | |
 | 5 | 150 — aba filhos da casa com infinite scroll | [ ] | | | |
@@ -31,6 +31,7 @@
 ## Log
 
 [OK] 146 — adm unit 1371/1371, cov≥90 (masks.ts 100%) — commit: 6ce8b70 — merge --no-ff na main — 2026-07-23 — helpers displayCpf/displayRg criados (reuso pela 151). Nota: script de cobertura adm é `test:unit:cov`.
+[OK] 147 — api 1276/1276, e2e 491/491, api-client 266/266, adm 1381/1381, cov≥90 — commit: 627edf5 — merge --no-ff — 2026-07-23 — endpoint PATCH /residents/:id/identity @Roles(ADMIN); Postman+contratos atualizados. Banner label virou "Dados de identificação". ReadmissionForm passou a consumir useAuth.
 
 ## Resumo final
 

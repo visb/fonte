@@ -4,7 +4,6 @@
 
 ### Reintroduçao de acolhido
 
-- deve ter uma opção para editar estes "dados nao editaveis", caso no acolhimento anterior tenha sido cadastrado errado
 - Ao reintroduzir um filho, deve vir com status ativo, hoje está vindo com "pre-admission"
 
 ### Detalhes do filho

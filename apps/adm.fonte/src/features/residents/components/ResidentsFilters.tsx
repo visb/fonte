@@ -11,12 +11,15 @@ interface ResidentsFiltersProps {
   onSearchChange: (value: string) => void;
   status: ResidentStatus | '';
   onStatusChange: (value: ResidentStatus | '') => void;
-  houseId: string;
-  onHouseIdChange: (value: string) => void;
+  /** Casa selecionada. Ignorado quando `hideHouseFilter` (casa é fixa no contexto). */
+  houseId?: string;
+  onHouseIdChange?: (value: string) => void;
   overdueContribution: boolean;
   onOverdueContributionChange: (value: boolean) => void;
   sort: ResidentSortOption;
   onSortChange: (value: ResidentSortOption) => void;
+  /** Oculta o seletor de Casa quando a casa é fixa (ex.: aba Filhos do detalhe da casa). */
+  hideHouseFilter?: boolean;
 }
 
 export function ResidentsFilters({
@@ -24,14 +27,15 @@ export function ResidentsFilters({
   onSearchChange,
   status,
   onStatusChange,
-  houseId,
+  houseId = '',
   onHouseIdChange,
   overdueContribution,
   onOverdueContributionChange,
   sort,
   onSortChange,
+  hideHouseFilter = false,
 }: ResidentsFiltersProps) {
-  const { data: houses = [] } = useHouses();
+  const { data: houses = [] } = useHouses({ enabled: !hideHouseFilter });
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-4">
@@ -58,18 +62,20 @@ export function ResidentsFilters({
         ))}
       </Select>
 
-      <Select
-        value={houseId}
-        onChange={(e) => onHouseIdChange(e.target.value)}
-        className="w-full sm:w-48"
-      >
-        <option value="">Todas as casas</option>
-        {houses.map((house) => (
-          <option key={house.id} value={house.id}>
-            {house.name}
-          </option>
-        ))}
-      </Select>
+      {!hideHouseFilter && (
+        <Select
+          value={houseId}
+          onChange={(e) => onHouseIdChange?.(e.target.value)}
+          className="w-full sm:w-48"
+        >
+          <option value="">Todas as casas</option>
+          {houses.map((house) => (
+            <option key={house.id} value={house.id}>
+              {house.name}
+            </option>
+          ))}
+        </Select>
+      )}
 
       <Select
         aria-label="Ordenar por"

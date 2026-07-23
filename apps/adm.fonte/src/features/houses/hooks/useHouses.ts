@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import type { CreateHouseInput, UpdateHouseInput } from '@fonte/api-client';
-export function useHouses() {
+export function useHouses(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.houses.all,
     queryFn: () => api.houses.list(),
+    enabled: options?.enabled ?? true,
   });
 }
 

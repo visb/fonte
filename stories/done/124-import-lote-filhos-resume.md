@@ -1,9 +1,37 @@
-# Runbook: retomar o import em lote dos filhos (crédito Anthropic esgotado)
+# Runbook: retomar o import em lote dos filhos
 
-> **Status: PENDENTE — aguardando recarga de crédito na key Anthropic.**
-> Não é uma story de código: é o registro de uma migração de dados em andamento,
-> parada por falta de crédito. O runner e todo o estado NÃO estão no repo — vivem
-> junto dos dados, em `Documents/Fonte de Misericórdia/Filhos/_import/`.
+> **✅ CONCLUÍDA (2026-07-26).** Import em lote 100% finalizado direto em produção
+> pelo Claude Code (sem `ANTHROPIC_API_KEY`). Resultado: todas as fichas novas +
+> readmissões (via `admissions`) + `commit-missing` (`#SemFicha`) importadas;
+> `Fichas/done/` = 1177, `Fichas/` topo = 0. Johnatan Batista de Faria resolvido
+> (500 era data inválida `2026-04-31` na planilha, não bug de backend). Detalhes na
+> memória `project-bulk-import-filhos`.
+>
+> **Código NÃO commitado por decisão do dono:** os 2 endpoints auxiliares
+> (`import/extract-docx-raw`, `import/match-extracted`), o DTO `match-extracted`,
+> os testes, a coleção Postman e a skill `fonte-import-filhos` foram ferramentas
+> descartáveis desta migração única e ficam apenas no working tree (não serão usados
+> de novo). O runner/estado vive fora do repo, em `Documents/.../Filhos/_import/`.
+
+> **Status (2026-07-23): DESBLOQUEADO — não depende mais de crédito Anthropic.**
+> A extração da ficha agora é feita PELO Claude Code (sem `ANTHROPIC_API_KEY`).
+> Ver skill **`fonte-import-filhos`** (`.claude/skills/`) para o runbook completo do
+> novo fluxo de 3 fases (`prep` → extração no Claude Code → `commit`).
+> O texto abaixo é o registro histórico da rodada de 2026-07-10 (IA no backend).
+> O runner e todo o estado vivem junto dos dados, em
+> `Documents/Fonte de Misericórdia/Filhos/_import/`.
+
+## Novo fluxo sem API key (2026-07-23)
+
+Backend ganhou 2 endpoints sem IA: `import/extract-docx-raw` (texto+imagens da ficha)
+e `import/match-extracted` (cross-match do já-extraído). O runner (`import-runner.mjs`)
+ganhou os modos `prep` e `commit`. Escopo real: **825 fichas pendentes** em `Fichas/`
+(as 377 de `done/` já foram). Importar todas — as ~70 que casam a planilha entram ricas,
+as ~755 restantes como ARCHIVED só-ficha. Passo a passo e regras de extração na skill.
+
+---
+
+## Registro histórico (rodada 2026-07-10, IA no backend)
 
 ## Context
 

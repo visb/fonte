@@ -7,10 +7,12 @@
     "scheme": "ops-fonte",
     "userInterfaceStyle": "light",
     "backgroundColor": "#272950",
+    "icon": "./assets/icon.png",
     "newArchEnabled": false,
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#2563eb"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#272950"
       },
       "package": "org.fonte.ops"
     },

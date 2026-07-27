@@ -2,6 +2,7 @@ import '../global.css';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
+import Head from 'expo-router/head';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Sentry from '@sentry/react-native';
@@ -25,6 +26,9 @@ function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <Head>
+        <title>Fonte de Misericórdia</title>
+      </Head>
       <AuthProvider>
         <Stack screenOptions={{ headerShown: false }} />
       </AuthProvider>

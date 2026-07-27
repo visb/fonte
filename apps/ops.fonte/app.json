@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "scheme": "ops-fonte",
     "userInterfaceStyle": "light",
+    "backgroundColor": "#272950",
     "newArchEnabled": false,
     "android": {
       "adaptiveIcon": {
@@ -22,6 +23,15 @@
       "expo-router",
       "expo-font",
       "@sentry/react-native",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "backgroundColor": "#272950"
+        }
+      ],
       [
         "expo-build-properties",
         {

@@ -21,9 +21,11 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
         <link rel="manifest" href="/site.webmanifest" />
-        <meta name="theme-color" content="#2563eb" />
+        <meta name="theme-color" content="#272950" />
 
         <ScrollViewStyleReset />
+        {/* Evita flash branco entre o splash do PWA e o primeiro render do React. */}
+        <style dangerouslySetInnerHTML={{ __html: `html,body,#root{background-color:#272950;}` }} />
       </head>
       <body>{children}</body>
     </html>

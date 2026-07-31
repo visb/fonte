@@ -1,4 +1,5 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { PDFDocument } from 'pdf-lib';
 import { DOCUMENT_PRINT_CSS, A4_PAGE_WIDTH_PX } from '@fonte/doc-styles';
 import { Repository } from 'typeorm';
 import { DocumentTemplateService } from './document-template.service';
@@ -329,6 +330,101 @@ describe('DocumentTemplateService.generatePdf', () => {
     expect(result.filename).toBe('joao-silva-termo-de-adesao.pdf');
     expect(Buffer.isBuffer(result.buffer)).toBe(true);
     expect(page.close).toHaveBeenCalled();
+  });
+});
+
+// Story 152 — PDF combinado: os documentos são renderizados um a um e só depois
+// mesclados, então o arquivo final tem a SOMA das páginas (nenhum documento
+// começa na página onde o anterior terminou).
+describe('DocumentTemplateService.generateCombinedPdf', () => {
+  // PDF A4 real com `count` páginas, para o merge do pdf-lib ter o que copiar.
+  async function pdfWithPages(count: number): Promise<Buffer> {
+    const doc = await PDFDocument.create();
+    for (let i = 0; i < count; i += 1) doc.addPage([595.28, 841.89]);
+    return Buffer.from(await doc.save());
+  }
+
+  function makeCombinedService(templates: Record<string, { name: string; content: string }>) {
+    const repo = makeRepo({
+      findOne: jest.fn().mockImplementation(({ where }: { where: { id: string } }) => {
+        const found = templates[where.id];
+        return Promise.resolve(found ? { id: where.id, ...found } : null);
+      }),
+    });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+    const page = {
+      setContent: jest.fn().mockResolvedValue(undefined),
+      pdf: jest.fn(),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+    const browser = { newPage: jest.fn().mockResolvedValue(page) };
+    (service as any).browserPromise = Promise.resolve(browser);
+    return { service, repo, page, browser };
+  }
+
+  const resident = { id: 'res-1', name: 'João Silva' } as Resident;
+
+  it('renders each template in the received order and merges every page', async () => {
+    const { service, page } = makeCombinedService({
+      'tpl-a': { name: 'Termo A', content: '<p>DOC-A</p>' },
+      'tpl-b': { name: 'Termo B', content: '<p>DOC-B</p>' },
+    });
+    page.pdf
+      .mockResolvedValueOnce(await pdfWithPages(2))
+      .mockResolvedValueOnce(await pdfWithPages(3));
+
+    const result = await service.generateCombinedPdf(['tpl-a', 'tpl-b'], resident);
+
+    // Ordem da tela = ordem no arquivo final.
+    expect(page.setContent.mock.calls[0][0]).toContain('DOC-A');
+    expect(page.setContent.mock.calls[1][0]).toContain('DOC-B');
+    // 2 + 3 páginas: nada foi concatenado dentro da mesma página.
+    const merged = await PDFDocument.load(result.buffer);
+    expect(merged.getPageCount()).toBe(5);
+    expect(result.filename).toBe('joao-silva-documentos.pdf');
+    expect(page.close).toHaveBeenCalledTimes(2);
+  });
+
+  it('honours the inverse order too (the caller decides the sequence)', async () => {
+    const { service, page } = makeCombinedService({
+      'tpl-a': { name: 'Termo A', content: '<p>DOC-A</p>' },
+      'tpl-b': { name: 'Termo B', content: '<p>DOC-B</p>' },
+    });
+    page.pdf
+      .mockResolvedValueOnce(await pdfWithPages(1))
+      .mockResolvedValueOnce(await pdfWithPages(1));
+
+    await service.generateCombinedPdf(['tpl-b', 'tpl-a'], resident);
+
+    expect(page.setContent.mock.calls[0][0]).toContain('DOC-B');
+    expect(page.setContent.mock.calls[1][0]).toContain('DOC-A');
+  });
+
+  it('rejects an empty selection without opening a browser page', async () => {
+    const { service, browser } = makeCombinedService({});
+    await expect(service.generateCombinedPdf([], resident)).rejects.toBeInstanceOf(BadRequestException);
+    expect(browser.newPage).not.toHaveBeenCalled();
+  });
+
+  it('throws NotFound when any template id does not exist', async () => {
+    const { service, page } = makeCombinedService({ 'tpl-a': { name: 'Termo A', content: '<p>A</p>' } });
+    page.pdf.mockResolvedValue(await pdfWithPages(1));
+    await expect(
+      service.generateCombinedPdf(['tpl-a', 'nope'], resident),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('closes every opened page when a render fails midway', async () => {
+    const { service, page } = makeCombinedService({
+      'tpl-a': { name: 'Termo A', content: '<p>A</p>' },
+      'tpl-b': { name: 'Termo B', content: '<p>B</p>' },
+    });
+    page.pdf
+      .mockResolvedValueOnce(await pdfWithPages(1))
+      .mockRejectedValueOnce(new Error('render falhou'));
+
+    await expect(service.generateCombinedPdf(['tpl-a', 'tpl-b'], resident)).rejects.toThrow('render falhou');
+    expect(page.close).toHaveBeenCalledTimes(2);
   });
 });
 

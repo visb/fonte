@@ -1,3 +1,7 @@
+import 'reflect-metadata';
+import { Role } from '@fonte/types';
+import { ROLES_KEY } from '../../common/decorators/roles.decorator';
+import { AUDIT_KEY } from '../../common/decorators/audit.decorator';
 import { ResidentController } from './resident.controller';
 
 function residentSvc() {
@@ -30,6 +34,9 @@ function residentSvc() {
 const docTpl = {
   renderForResident: jest.fn().mockResolvedValue('<html></html>'),
   generatePdf: jest.fn().mockResolvedValue({ buffer: Buffer.from('pdf'), filename: 'f.pdf' }),
+  generateCombinedPdf: jest
+    .fn()
+    .mockResolvedValue({ buffer: Buffer.from('combined'), filename: 'ana-documentos.pdf' }),
   findAdmissionTemplates: jest.fn().mockResolvedValue([{ id: 't1', name: 'Termo' }]),
 };
 const followUp = {
@@ -202,5 +209,41 @@ describe('ResidentController', () => {
     expect(docTpl.generatePdf).toHaveBeenCalledWith('t1', { id: 'r1', name: 'Ana' }, 'u1');
     expect((res as { setHeader: jest.Mock }).setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
     expect((res as { send: jest.Mock }).send).toHaveBeenCalled();
+  });
+
+  // Story 152 — PDF combinado para impressão em lote.
+  it('downloadCombinedPdf streams the merged PDF with the combined filename', async () => {
+    const { c } = make();
+    const res = { setHeader: jest.fn(), send: jest.fn() } as never;
+    await c.downloadCombinedPdf('r1', { templateIds: ['t1', 't2'] }, { userId: 'u1' } as never, res);
+    expect(docTpl.generateCombinedPdf).toHaveBeenCalledWith(
+      ['t1', 't2'],
+      { id: 'r1', name: 'Ana' },
+      'u1',
+    );
+    const setHeader = (res as { setHeader: jest.Mock }).setHeader;
+    expect(setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+    expect(setHeader).toHaveBeenCalledWith(
+      'Content-Disposition',
+      'attachment; filename="ana-documentos.pdf"',
+    );
+    expect((res as { send: jest.Mock }).send).toHaveBeenCalledWith(Buffer.from('combined'));
+  });
+
+  it('downloadCombinedPdf guarda os mesmos papéis do download individual e audita', () => {
+    const roles = (fn: unknown) => Reflect.getMetadata(ROLES_KEY, fn as object);
+    expect(roles(ResidentController.prototype.downloadCombinedPdf)).toEqual(
+      roles(ResidentController.prototype.downloadPdf),
+    );
+    expect(roles(ResidentController.prototype.downloadCombinedPdf)).toEqual([
+      Role.ADMIN,
+      Role.COORDINATOR,
+      Role.SERVANT,
+    ]);
+    expect(Reflect.getMetadata(AUDIT_KEY, ResidentController.prototype.downloadCombinedPdf)).toEqual({
+      action: 'resident.document.combined-pdf',
+      targetType: 'resident',
+      targetParam: 'id',
+    });
   });
 });

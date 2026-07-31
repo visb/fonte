@@ -31,6 +31,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { DocumentTemplateService } from '../document-template/document-template.service';
 import { CreateResidentDto } from './dto/create-resident.dto';
 import { GenerateAccessDto } from './dto/generate-access.dto';
+import { GenerateCombinedPdfDto } from './dto/generate-combined-pdf.dto';
 import { PromoteToServantDto } from './dto/promote-to-servant.dto';
 import { Staff } from '../staff/staff.entity';
 import { ListResidentsDto } from './dto/list-residents.dto';
@@ -544,6 +545,31 @@ export class ResidentController {
   ): Promise<void> {
     const resident = await this.residentService.findOne(id);
     const { buffer, filename } = await this.documentTemplateService.generatePdf(templateId, resident, user.userId);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  }
+
+  // Story 152 — vários documentos num PDF só, para imprimir em lote no
+  // acolhimento. POST (e não GET com query string) porque a seleção pode ficar
+  // longa demais para a URL. Mesmos guards/roles do download individual.
+  @Post(':id/documents/combined-pdf')
+  // POST que não cria recurso: o PDF é artefato descartável de impressão.
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  @Audit('resident.document.combined-pdf', 'resident')
+  async downloadCombinedPdf(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: GenerateCombinedPdfDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() res: Response,
+  ): Promise<void> {
+    const resident = await this.residentService.findOne(id);
+    const { buffer, filename } = await this.documentTemplateService.generateCombinedPdf(
+      dto.templateIds,
+      resident,
+      user.userId,
+    );
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(buffer);

@@ -103,6 +103,15 @@ describe('residents module', () => {
     });
   });
 
+  it('downloadCombinedDocumentsPdf posta os ids e pede responseType blob', async () => {
+    await residents.downloadCombinedDocumentsPdf('res-1', ['tpl-1', 'tpl-2']);
+    expect(http.post).toHaveBeenCalledWith(
+      '/residents/res-1/documents/combined-pdf',
+      { templateIds: ['tpl-1', 'tpl-2'] },
+      { responseType: 'blob' },
+    );
+  });
+
   it('getAdmissionDocuments busca documentos de acolhimento', async () => {
     await residents.getAdmissionDocuments('res-1');
     expect(http.get).toHaveBeenCalledWith('/residents/res-1/admission-documents');

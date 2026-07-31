@@ -1,7 +1,8 @@
-import { ConflictException, Injectable, Logger, NotFoundException, OnModuleDestroy } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Browser } from 'puppeteer';
+import { PDFDocument } from 'pdf-lib';
 import { DOCUMENT_PRINT_CSS } from '@fonte/doc-styles';
 import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
@@ -69,6 +70,38 @@ export class DocumentTemplateService implements OnModuleDestroy {
     } finally {
       await page.close();
     }
+  }
+
+  // Story 152 — PDF único para impressão em lote no acolhimento.
+  //
+  // Cada template é renderizado pelo `generatePdf` normal (mesmo browser, página
+  // aberta e fechada por documento) e só DEPOIS os PDFs são mesclados. NÃO
+  // concatenar os HTMLs num único `wrapPage`: a convenção de margem única da
+  // story 24 zera a margem do puppeteer e deixa a margem real por conta do
+  // `padding` do body, que só vale na primeira e na última página do fluxo — do
+  // 2º documento em diante o texto encostaria na borda do papel. Mesclando PDFs
+  // já paginados, cada documento sai idêntico ao download individual e, por ser
+  // um arquivo inteiro, começa obrigatoriamente numa página nova.
+  async generateCombinedPdf(
+    templateIds: string[],
+    resident: Resident,
+    signerUserId?: string,
+  ): Promise<{ buffer: Buffer; filename: string }> {
+    if (!templateIds?.length) {
+      throw new BadRequestException('Selecione ao menos um documento.');
+    }
+    const merged = await PDFDocument.create();
+    // Sequencial de propósito: uma página do puppeteer por vez (paralelo estoura
+    // memória do browser) e a ordem recebida é a ordem final do impresso.
+    for (const templateId of templateIds) {
+      const { buffer } = await this.generatePdf(templateId, resident, signerUserId);
+      const source = await PDFDocument.load(buffer);
+      const pages = await merged.copyPages(source, source.getPageIndices());
+      for (const page of pages) merged.addPage(page);
+    }
+    const bytes = await merged.save();
+    const filename = this.slugify(`${resident.name} documentos`) + '.pdf';
+    return { buffer: Buffer.from(bytes), filename };
   }
 
   private slugify(text: string): string {

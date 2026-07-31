@@ -359,4 +359,73 @@ describe('DocumentTemplateController (e2e)', () => {
       expect(coordName).not.toBe(adminName);
     });
   });
+
+  // ── PDF combinado para impressão em lote (story 152) ─────────────────────────
+
+  describe('combined PDF (story 152)', () => {
+    const templateIds: string[] = [];
+    let residentId: string;
+
+    beforeAll(async () => {
+      for (const suffix of ['A', 'B']) {
+        const name = `Termo combinado ${suffix} ${tag}`;
+        createdNames.push(name);
+        const tpl = await request(app.getHttpServer())
+          .post(`${BASE}/document-templates`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ name, content: `<p>Documento ${suffix} de {{name}}</p>`, isRequired: true })
+          .expect(201);
+        templateIds.push(tpl.body.id);
+      }
+
+      const residents = await request(app.getHttpServer())
+        .get(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      residentId = residents.body.data[0].id;
+    });
+
+    // Renderiza de verdade (puppeteer) os dois templates e mescla: é o gate que
+    // garante que o merge produz um PDF válido, não um HTML concatenado.
+    it('POST /residents/:id/documents/combined-pdf → 200 com um PDF não vazio', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/residents/${residentId}/documents/combined-pdf`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ templateIds })
+        .buffer()
+        .parse((r, cb) => {
+          const chunks: Buffer[] = [];
+          r.on('data', (c: Buffer) => chunks.push(Buffer.from(c)));
+          r.on('end', () => cb(null, Buffer.concat(chunks)));
+        })
+        .expect(200);
+
+      expect(res.headers['content-type']).toContain('application/pdf');
+      expect(res.headers['content-disposition']).toContain('attachment; filename="');
+      expect(res.headers['content-disposition']).toContain('-documentos.pdf"');
+      const body = res.body as Buffer;
+      expect(body.length).toBeGreaterThan(0);
+      expect(body.subarray(0, 4).toString()).toBe('%PDF');
+    }, 120_000);
+
+    it('templateIds vazio → 400', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/residents/${residentId}/documents/combined-pdf`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ templateIds: [] })
+        .expect(400));
+
+    it('templateIds com id inválido → 400', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/residents/${residentId}/documents/combined-pdf`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ templateIds: ['nao-uuid'] })
+        .expect(400));
+
+    it('sem token → 401', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/residents/${residentId}/documents/combined-pdf`)
+        .send({ templateIds })
+        .expect(401));
+  });
 });

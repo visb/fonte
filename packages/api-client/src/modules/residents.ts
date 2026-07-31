@@ -62,6 +62,17 @@ export function createResidentsModule(http: AxiosInstance) {
       http
         .get<Blob>(`/residents/${id}/documents/${templateId}/pdf`, { responseType: 'blob' })
         .then((r) => r.data),
+    // Story 152 — vários templates num PDF só, para impressão em lote. POST
+    // porque a lista de ids pode ficar longa demais para a query string; a
+    // ordem enviada é a ordem dos documentos no arquivo final.
+    downloadCombinedDocumentsPdf: (id: string, templateIds: string[]) =>
+      http
+        .post<Blob>(
+          `/residents/${id}/documents/combined-pdf`,
+          { templateIds },
+          { responseType: 'blob' },
+        )
+        .then((r) => r.data),
     getAdmissionDocuments: (id: string) =>
       http.get<AdmissionDocument[]>(`/residents/${id}/admission-documents`).then((r) => r.data),
     getAttachments: (id: string) =>

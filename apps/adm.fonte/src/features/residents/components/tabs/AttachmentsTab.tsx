@@ -1,232 +1,18 @@
-import { useCallback, useRef, useState } from 'react';
-import {
-  AlertCircle, ChevronDown, Download, ExternalLink, FileText, Loader2, Paperclip, Trash2, Upload,
-} from 'lucide-react';
-import { MaritalStatus } from '@fonte/types';
-import { api } from '@/lib/api';
-import { getErrorMessage } from '@/lib/errors';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   useResidentById, useResidentDocuments, useResidentAttachments,
-  useAddAttachment, useDeleteAttachment, useUploadSignedDocument,
 } from '../../hooks/useResidents';
+import { useDocumentGeneration } from '../../hooks/useDocumentGeneration';
 import { useDocumentTemplates } from '@/features/settings/hooks/useDocumentTemplates';
 import { useStaffMe } from '@/features/staff/hooks/useStaff';
 import { SignatureDialog } from '@/features/auth/components/SignatureDialog';
 import { MissingFieldsDialog } from '../MissingFieldsDialog';
-import type { MissingField } from '../MissingFieldsDialog';
-import type { DocumentTemplate, Resident, ResidentDocument, ResidentAttachment, UpdateResidentInput } from '@fonte/api-client';
-
-function slugify(text: string): string {
-  return text
-    .normalize('NFD')
-    .split('')
-    .filter((c) => c.charCodeAt(0) < 0x0300 || c.charCodeAt(0) > 0x036f)
-    .join('')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-// `signature` é a assinatura do USUÁRIO logado (staff), não um campo do filho:
-// tem que ficar fora do gate de campos faltantes do resident (story 128), senão
-// o MissingFieldsDialog dispara errado tratando-a como dado do acolhido faltante.
-const ALWAYS_AVAILABLE = new Set(['name', 'house', 'entryDate', 'date', 'dateLong', 'signature']);
-
-interface VarMapping {
-  residentField: keyof UpdateResidentInput;
-  label: string;
-  inputType: 'text' | 'date' | 'select';
-  options?: { value: string; label: string }[];
-  isEmpty: (r: Resident) => boolean;
-}
-
-const VAR_TO_FIELD: Record<string, VarMapping> = {
-  cpf:          { residentField: 'cpf',           label: 'CPF',                inputType: 'text',   isEmpty: (r) => !r.cpf },
-  rg:           { residentField: 'rg',            label: 'RG',                 inputType: 'text',   isEmpty: (r) => !r.rg },
-  nationality:  { residentField: 'nationality',   label: 'Nacionalidade',      inputType: 'text',   isEmpty: (r) => !r.nationality },
-  city:         { residentField: 'city',          label: 'Cidade',             inputType: 'text',   isEmpty: (r) => !r.city },
-  state:        { residentField: 'state',         label: 'UF',                 inputType: 'text',   isEmpty: (r) => !r.state },
-  birthDate:    { residentField: 'birthDate',     label: 'Data de nascimento', inputType: 'date',   isEmpty: (r) => !r.birthDate },
-  age:          { residentField: 'birthDate',     label: 'Data de nascimento', inputType: 'date',   isEmpty: (r) => !r.birthDate },
-  maritalStatus: {
-    residentField: 'maritalStatus',
-    label: 'Estado civil',
-    inputType: 'select',
-    options: [
-      { value: MaritalStatus.SINGLE,   label: 'Solteiro(a)' },
-      { value: MaritalStatus.MARRIED,  label: 'Casado(a)' },
-      { value: MaritalStatus.DIVORCED, label: 'Divorciado(a)' },
-    ],
-    isEmpty: (r) => !r.maritalStatus,
-  },
-  address: { residentField: 'address',      label: 'Endereço', inputType: 'text', isEmpty: (r) => !r.address },
-  phone:   { residentField: 'contactPhone', label: 'Telefone', inputType: 'text', isEmpty: (r) => !r.contactPhone },
-};
-
-function extractTemplateVars(content: string): string[] {
-  const matches = content.match(/\{\{(\w+)\}\}/g) ?? [];
-  return [...new Set(matches.map((m) => m.slice(2, -2)))];
-}
-
-function findMissingFields(vars: string[], resident: Resident): MissingField[] {
-  const seen = new Set<string>();
-  const result: MissingField[] = [];
-  for (const varName of vars) {
-    if (ALWAYS_AVAILABLE.has(varName)) continue;
-    const mapping = VAR_TO_FIELD[varName];
-    if (!mapping) continue;
-    const fieldKey = mapping.residentField as string;
-    if (seen.has(fieldKey)) continue;
-    if (!mapping.isEmpty(resident)) continue;
-    seen.add(fieldKey);
-    result.push({
-      residentField: mapping.residentField,
-      label: mapping.label,
-      inputType: mapping.inputType,
-      options: mapping.options,
-    });
-  }
-  return result;
-}
-
-function GenerateDocumentMenu({ templates, onGenerate, generatingId }: {
-  templates: DocumentTemplate[];
-  onGenerate: (template: DocumentTemplate) => void;
-  generatingId: string | null;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" disabled={generatingId !== null}>
-          {generatingId !== null
-            ? <Loader2 size={14} className="animate-spin mr-1.5" />
-            : <FileText size={14} className="mr-1.5" />}
-          Gerar documento
-          <ChevronDown size={14} className="ml-1.5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {templates.map((t) => (
-          <DropdownMenuItem key={t.id} onClick={() => onGenerate(t)}>{t.name}</DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function AttachmentUploadButton({ residentId }: { residentId: string }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const mutation = useAddAttachment(residentId);
-
-  return (
-    <>
-      <Button variant="outline" size="sm" disabled={mutation.isPending} onClick={() => fileInputRef.current?.click()}>
-        {mutation.isPending ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Upload size={14} className="mr-1.5" />}
-        Adicionar anexo
-      </Button>
-      <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => {
-        const file = e.target.files?.[0];
-        if (file) mutation.mutate(file);
-        e.target.value = '';
-      }} />
-    </>
-  );
-}
-
-function AttachmentRow({ attachment }: { attachment: ResidentAttachment }) {
-  const deleteMutation = useDeleteAttachment(attachment.residentId);
-  const date = new Date(attachment.createdAt).toLocaleDateString('pt-BR');
-
-  return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
-      <Paperclip size={16} className="text-muted-foreground shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{attachment.filename}</p>
-        <p className="text-xs text-muted-foreground">{date}</p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <Button variant="outline" size="sm" onClick={() => window.open(api.photoUrl(attachment.fileUrl)!, '_blank', 'noreferrer')}>
-          <ExternalLink size={14} className="mr-1.5" />
-          Abrir
-        </Button>
-        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(attachment.id)}>
-          {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function DocumentCard({ template, residentId, signedDoc, residentName, onGenerate, generating }: {
-  template: DocumentTemplate;
-  residentId: string;
-  signedDoc: ResidentDocument | null;
-  residentName: string;
-  onGenerate: (template: DocumentTemplate) => void;
-  generating: boolean;
-}) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadMutation = useUploadSignedDocument(residentId);
-
-  const pdfFilename = `${slugify(`${residentName} ${template.name}`)}.pdf`;
-  const wasSigned = signedDoc?.signed ?? false;
-  const withinWindow = signedDoc?.withinWindow ?? false;
-  const signedAt = signedDoc?.signedAt
-    ? new Date(signedDoc.signedAt).toLocaleString('pt-BR', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-      })
-    : null;
-
-  return (
-    <div className="flex items-center gap-4 rounded-lg border bg-card px-4 py-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
-        <FileText size={18} className="text-muted-foreground" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{template.name}</p>
-        <p className="text-xs text-muted-foreground truncate">{pdfFilename}</p>
-        <div className="mt-0.5">
-          {wasSigned ? (
-            <Badge variant="outline" className="text-xs text-green-600 border-green-200">Assinado</Badge>
-          ) : (
-            <Badge variant="outline" className="text-xs text-muted-foreground">Pendente assinatura</Badge>
-          )}
-          {signedAt && <p className="text-xs text-muted-foreground mt-0.5">{signedAt}</p>}
-        </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <Button variant="outline" size="sm" disabled={generating} onClick={() => onGenerate(template)}>
-          {generating
-            ? <Loader2 size={14} className="animate-spin mr-1.5" />
-            : <Download size={14} className="mr-1.5" />}
-          <span className="hidden sm:inline">Baixar PDF</span>
-        </Button>
-        {(!wasSigned || withinWindow) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={uploadMutation.isPending}
-            onClick={() => fileInputRef.current?.click()}
-            title={wasSigned ? 'Substituir documento assinado' : 'Enviar documento assinado'}
-          >
-            {uploadMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-            <span className="ml-1.5 hidden sm:inline">{wasSigned ? 'Substituir' : 'Enviar assinado'}</span>
-          </Button>
-        )}
-        <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) uploadMutation.mutate({ templateId: template.id, file });
-          e.target.value = '';
-        }} />
-      </div>
-    </div>
-  );
-}
+import { AttachmentRow } from './AttachmentRow';
+import { AttachmentUploadButton } from './AttachmentUploadButton';
+import { CombinedPdfBar } from './CombinedPdfBar';
+import { DocumentCardList } from './DocumentCardList';
+import { GenerateDocumentMenu } from './GenerateDocumentMenu';
+import { GenerateErrorAlert } from './GenerateErrorAlert';
 
 interface Props {
   residentId: string;
@@ -240,78 +26,46 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
   const { data: templates = [] } = useDocumentTemplates();
   const { data: me } = useStaffMe();
 
-  const [generatingId, setGeneratingId] = useState<string | null>(null);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [missingDialog, setMissingDialog] = useState<{
-    missingFields: MissingField[];
-    template: DocumentTemplate;
-  } | null>(null);
-  // Story 128 — quando o template usa {{signature}} e o usuário ainda não tem
-  // assinatura, configura antes de gerar (decisão 6).
-  const [signatureDialog, setSignatureDialog] = useState<{ template: DocumentTemplate } | null>(null);
-
-  const downloadPdf = useCallback(async (template: DocumentTemplate) => {
-    setGeneratingId(template.id);
-    setGenerateError(null);
-    try {
-      const blob = await api.residents.downloadDocumentPdf(residentId, template.id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${slugify(`${residentName} ${template.name}`)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setGenerateError(getErrorMessage(e, `Falha ao gerar "${template.name}". Tente novamente em instantes.`));
-    } finally {
-      setGeneratingId(null);
-    }
-  }, [residentId, residentName]);
-
-  const handleGenerateRequest = useCallback((template: DocumentTemplate) => {
-    if (!resident) {
-      downloadPdf(template);
-      return;
-    }
-    const vars = extractTemplateVars(template.content);
-    // Assinatura do usuário logado ausente → configura antes de gerar (story 128).
-    if (vars.includes('signature') && !me?.signatureUrl) {
-      setSignatureDialog({ template });
-      return;
-    }
-    const missing = findMissingFields(vars, resident);
-    if (missing.length === 0) {
-      downloadPdf(template);
-    } else {
-      setMissingDialog({ missingFields: missing, template });
-    }
-  }, [resident, me, downloadPdf]);
+  const gen = useDocumentGeneration({
+    residentId,
+    residentName,
+    resident,
+    signatureUrl: me?.signatureUrl ?? null,
+  });
 
   const docByTemplate = Object.fromEntries(signedDocs.map((d) => [d.templateId, d]));
   const requiredTemplates = templates.filter((t) => t.isRequired);
   const optionalTemplates = templates.filter((t) => !t.isRequired);
   const admissionSignTemplates = templates.filter((t) => t.signAtAdmission);
+  // Story 152 — ordem do PDF combinado = ordem da tela (obrigatórios e depois os
+  // de assinatura no acolhimento). Um template que esteja nos dois grupos entra
+  // uma única vez no arquivo final.
+  const selectableTemplates = [
+    ...requiredTemplates,
+    ...admissionSignTemplates.filter((t) => !t.isRequired),
+  ];
+  const selectedTemplates = selectableTemplates.filter((t) => gen.selectedIds.has(t.id));
+
+  const cardListProps = {
+    residentId,
+    residentName,
+    docByTemplate,
+    generatingId: gen.generatingId,
+    onGenerate: gen.requestSingle,
+    selectedIds: gen.selectedIds,
+    onToggleSelect: gen.toggleSelected,
+  };
 
   return (
     <div className="space-y-6">
-      {generateError && (
-        <div
-          role="alert"
-          className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-        >
-          <AlertCircle size={16} className="mt-0.5 shrink-0" />
-          <span className="flex-1">{generateError}</span>
-          <button
-            type="button"
-            onClick={() => setGenerateError(null)}
-            className="text-xs underline underline-offset-2 hover:no-underline"
-          >
-            Fechar
-          </button>
-        </div>
-      )}
+      {gen.error && <GenerateErrorAlert message={gen.error} onDismiss={gen.dismissError} />}
+
+      <CombinedPdfBar
+        count={selectedTemplates.length}
+        generating={gen.generatingCombined}
+        onGenerate={() => gen.requestCombined(selectedTemplates)}
+        onClear={gen.clearSelection}
+      />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -321,8 +75,8 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
           {optionalTemplates.length > 0 && (
             <GenerateDocumentMenu
               templates={optionalTemplates}
-              onGenerate={handleGenerateRequest}
-              generatingId={generatingId}
+              onGenerate={gen.requestSingle}
+              generatingId={gen.generatingId}
             />
           )}
         </div>
@@ -330,17 +84,7 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
         {requiredTemplates.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">Nenhum template marcado como obrigatório no acolhimento.</p>
         ) : (
-          requiredTemplates.map((template) => (
-            <DocumentCard
-              key={template.id}
-              template={template}
-              residentId={residentId}
-              residentName={residentName}
-              signedDoc={docByTemplate[template.id] ?? null}
-              onGenerate={handleGenerateRequest}
-              generating={generatingId === template.id}
-            />
-          ))
+          <DocumentCardList templates={requiredTemplates} {...cardListProps} />
         )}
       </div>
 
@@ -352,17 +96,7 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
             </h3>
             <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">LGPD</Badge>
           </div>
-          {admissionSignTemplates.map((template) => (
-            <DocumentCard
-              key={template.id}
-              template={template}
-              residentId={residentId}
-              residentName={residentName}
-              signedDoc={docByTemplate[template.id] ?? null}
-              onGenerate={handleGenerateRequest}
-              generating={generatingId === template.id}
-            />
-          ))}
+          <DocumentCardList templates={admissionSignTemplates} {...cardListProps} />
         </div>
       )}
 
@@ -382,21 +116,17 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
       </div>
 
       <MissingFieldsDialog
-        open={missingDialog !== null}
-        onClose={() => setMissingDialog(null)}
-        missingFields={missingDialog?.missingFields ?? []}
+        open={gen.missingDialog !== null}
+        onClose={gen.closeMissingDialog}
+        missingFields={gen.missingDialog?.missingFields ?? []}
         residentId={residentId}
-        onSaved={() => {
-          if (missingDialog) downloadPdf(missingDialog.template);
-        }}
+        onSaved={() => gen.missingDialog?.run()}
       />
 
       <SignatureDialog
-        open={signatureDialog !== null}
-        onClose={() => setSignatureDialog(null)}
-        onSaved={() => {
-          if (signatureDialog) downloadPdf(signatureDialog.template);
-        }}
+        open={gen.signatureDialog !== null}
+        onClose={gen.closeSignatureDialog}
+        onSaved={() => gen.signatureDialog?.run()}
       />
     </div>
   );

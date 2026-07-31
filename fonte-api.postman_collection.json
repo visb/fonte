@@ -1312,6 +1312,35 @@
           }
         },
         {
+          "name": "Export Combined Documents (PDF)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"templateIds\": [\"{{templateId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/documents/combined-pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "documents",
+                "combined-pdf"
+              ]
+            },
+            "description": "Story 152 — mescla os templates informados (na ordem recebida) num único PDF A4 para impressão em lote. Responde application/pdf com Content-Disposition attachment."
+          }
+        },
+        {
           "name": "Get Resident Attachments",
           "request": {
             "method": "GET",

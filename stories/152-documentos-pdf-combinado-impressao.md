@@ -87,7 +87,7 @@ assinatura), [[24-editor-template-preview-a4]] (convenção de margem única) e
 
 Testes por camada tocada, sem `skip`/`only`/`xfail` injustificado. Gate: **código novo sem teste
 não fecha a story** — `pnpm test:api` e `pnpm test:api:cov` verdes com cobertura ≥90 do código
-tocado, `pnpm --filter adm.fonte test:cov` idem, e `pnpm build:api-client` verde (contrato mudou).
+tocado, `pnpm --filter adm.fonte test:unit:cov` idem, e `pnpm build:api-client` verde (contrato mudou).
 
 - **Unit `document-template.service.spec.ts`**: `generateCombinedPdf` com 2+ templates chama o
   render de cada um **na ordem recebida**; o PDF resultante tem a **soma** das páginas dos

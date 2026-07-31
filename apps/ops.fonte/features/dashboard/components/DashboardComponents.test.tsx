@@ -35,13 +35,20 @@ describe('QuickActions', () => {
     render(<QuickActions />);
     expect(screen.getByText('Nova ocorrência')).toBeTruthy();
     expect(screen.getByText('Faturamento')).toBeTruthy();
+    expect(screen.queryByText('Contagem')).toBeNull();
     expect(screen.queryByText('Configurações da casa')).toBeNull();
     fireEvent.press(screen.getByText('Atividades'));
     expect(mockPush).toHaveBeenCalledWith('/(app)/activities');
   });
 
-  it('com showHouseSettings inclui ações de coordenador', () => {
-    render(<QuickActions showHouseSettings />);
+  it('com showCensus inclui contagem sem configurações da casa', () => {
+    render(<QuickActions showCensus />);
+    expect(screen.getByText('Contagem')).toBeTruthy();
+    expect(screen.queryByText('Configurações da casa')).toBeNull();
+  });
+
+  it('com showHouseSettings inclui configurações da casa', () => {
+    render(<QuickActions showCensus showHouseSettings />);
     expect(screen.getByText('Contagem')).toBeTruthy();
     expect(screen.getByText('Configurações da casa')).toBeTruthy();
   });

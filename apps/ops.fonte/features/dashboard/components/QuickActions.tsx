@@ -61,7 +61,7 @@ const ACTIONS = [
   },
 ];
 
-const COORDINATOR_ACTIONS = [
+const CENSUS_ACTIONS = [
   {
     label: "Contagem",
     icon: "checkbox-outline" as const,
@@ -69,6 +69,9 @@ const COORDINATOR_ACTIONS = [
     bg: "#f0fdfa",
     route: "/(app)/census",
   },
+];
+
+const HOUSE_SETTINGS_ACTIONS = [
   {
     label: "Configurações da casa",
     icon: "settings-outline" as const,
@@ -79,11 +82,19 @@ const COORDINATOR_ACTIONS = [
 ];
 
 interface Props {
+  showCensus?: boolean;
   showHouseSettings?: boolean;
 }
 
-export function QuickActions({ showHouseSettings = false }: Props) {
-  const actions = showHouseSettings ? [...ACTIONS, ...COORDINATOR_ACTIONS] : ACTIONS;
+export function QuickActions({
+  showCensus = false,
+  showHouseSettings = false,
+}: Props) {
+  const actions = [
+    ...ACTIONS,
+    ...(showCensus ? CENSUS_ACTIONS : []),
+    ...(showHouseSettings ? HOUSE_SETTINGS_ACTIONS : []),
+  ];
 
   return (
     <View>

@@ -17,12 +17,14 @@ export function DashboardPage() {
     useResidentCountByHouse(staff?.houseId);
   const { data: incidents = [], refetch: refetchIncidents } =
     useIncidentsToday(staff?.houseId);
+  const isCoordinator = staff?.user.role === Role.COORDINATOR;
+
   const { data: house } = useHouseById(staff?.houseId, {
-    enabled: staff?.user.role === Role.COORDINATOR,
+    enabled: isCoordinator,
   });
 
   const isHouseCoordinator =
-    staff?.user.role === Role.COORDINATOR && !!house && house.coordinatorId === staff.id;
+    isCoordinator && !!house && house.coordinatorId === staff.id;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -53,7 +55,10 @@ export function DashboardPage() {
           residentCount={presentResidentsCount}
           incidentCount={todayIncidentsCount}
         />
-        <QuickActions showHouseSettings={isHouseCoordinator} />
+        <QuickActions
+          showCensus={isCoordinator}
+          showHouseSettings={isHouseCoordinator}
+        />
       </View>
     </ScrollView>
   );

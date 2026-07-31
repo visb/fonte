@@ -1,17 +1,17 @@
-import '../global.css';
-import { useEffect } from 'react';
-import { Platform } from 'react-native';
-import { Stack } from 'expo-router';
-import Head from 'expo-router/head';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import * as SplashScreen from 'expo-splash-screen';
-import * as Sentry from '@sentry/react-native';
-import { AuthProvider } from '@/lib/auth';
-import { initSentry } from '@/lib/sentry';
+import "../global.css";
+import { useEffect } from "react";
+import { Platform } from "react-native";
+import { Stack } from "expo-router";
+import Head from "expo-router/head";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as SplashScreen from "expo-splash-screen";
+import * as Sentry from "@sentry/react-native";
+import { AuthProvider } from "@/lib/auth";
+import { initSentry } from "@/lib/sentry";
 
 initSentry();
 
-if (Platform.OS !== 'web') {
+if (Platform.OS !== "web") {
   SplashScreen.preventAutoHideAsync().catch(() => {});
 }
 
@@ -21,7 +21,7 @@ const queryClient = new QueryClient({
 
 function RootLayout() {
   useEffect(() => {
-    if (Platform.OS !== 'web') SplashScreen.hideAsync().catch(() => {});
+    if (Platform.OS !== "web") SplashScreen.hideAsync().catch(() => {});
   }, []);
 
   return (

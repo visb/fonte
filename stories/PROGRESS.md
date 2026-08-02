@@ -38,12 +38,16 @@ Rodadas encerradas são arquivadas em `stories/done/PROGRESS-NN-MM.md`.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 156 — isolar `clear-bucket.spec` do ambiente | [ ] | — | — | — |
+| 1 | 156 — isolar `clear-bucket.spec` do ambiente | [OK] | 1299/1299 · spec 8→9 | `89942d7` | `c53881c` |
 | 2 | 155 — datas relativas nos e2e de eventos | [ ] | — | — | — |
 
 ## Log
 
-<vazio>
+```
+[OK] 156 — testes: api 1299/1299 (119 suites), clear-bucket.spec 8/8→9/9; cobertura global inalterada (91.7/77.92/88.8/93.61) — commit: 89942d7 — merge: c53881c — 2026-08-02
+Prova de isolamento verde: `pnpm test:api` completo com e sem vars S3 no ambiente deu resultado idêntico.
+Relatado p/ story futura: e2e de eventos-payment/associates-payment herdam `PAGARME_WEBHOOK_USER` do ambiente (`?? 'hookuser'`) — mesma família de defeito, fora do escopo da 156.
+```
 
 ## Resumo final
 

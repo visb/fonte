@@ -265,6 +265,24 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return match ? match[1].toLowerCase() : undefined;
   }
 
+  // Story 153 — variável ÚNICA e condicional para o rótulo de assinatura do
+  // familiar responsável. Substitui o rodapé escrito à mão
+  // `{{responsibleName}}({{responsibleRelationship}})`, que imprimia
+  // `não informado(não informado)` quando o acolhido não tinha responsável.
+  //
+  //   nome + parentesco → `Maria Souza (Mãe)`  (com espaço antes do parêntese)
+  //   nome sem parentesco → `Maria Souza`      (sem parênteses vazios)
+  //   sem responsável / nome em branco → `Responsável` (rótulo da linha de assinatura)
+  //
+  // `relationship` é texto livre: sai como foi digitado, sem tradução. O `trim()`
+  // vale para os dois campos, então espaços em branco contam como ausência.
+  private buildResponsibleWithRelationship(responsible: Relative | null): string {
+    const name = responsible?.name?.trim();
+    if (!name) return 'Responsável';
+    const rel = responsible?.relationship?.trim();
+    return rel ? `${name} (${rel})` : name;
+  }
+
   private applyVariables(content: string, resident: Resident, responsible: Relative | null, signer?: DocumentSigner | null): string {
     const MARITAL_PT: Record<string, string> = {
       SINGLE: 'Solteiro(a)', MARRIED: 'Casado(a)', DIVORCED: 'Divorciado(a)',
@@ -292,6 +310,7 @@ export class DocumentTemplateService implements OnModuleDestroy {
       dateLong:      this.formatDateLong(new Date()),
       responsibleName:         responsible?.name ?? 'não informado',
       responsibleRelationship: responsible?.relationship ?? 'não informado',
+      responsibleWithRelationship: this.buildResponsibleWithRelationship(responsible),
       responsiblePhone:        responsible?.phone ?? 'não informado',
     };
     let result = content;

@@ -5,6 +5,27 @@ import {
   filterVariables,
 } from './templateVariables';
 
+// ─── VARIABLES ────────────────────────────────────────────────────────────────
+// Story 153 — a lista é a fonte ÚNICA que alimenta a barra e o autocomplete: se
+// a entrada não estiver aqui, o operador não descobre a variável no editor.
+
+describe('VARIABLES', () => {
+  it('inclui {{responsibleWithRelationship}} com rótulo e descrição próprios (story 153)', () => {
+    const variable = VARIABLES.find((v) => v.key === '{{responsibleWithRelationship}}');
+    expect(variable).toBeDefined();
+    expect(variable!.label).toBe('Responsável — nome e parentesco');
+    expect(variable!.description).toBe(
+      'Nome do responsável com o parentesco entre parênteses; "Responsável" se não houver',
+    );
+  });
+
+  it('mantém {{responsibleName}} e {{responsibleRelationship}} na lista (decisão 6 — aditivo)', () => {
+    const keys = VARIABLES.map((v) => v.key);
+    expect(keys).toContain('{{responsibleName}}');
+    expect(keys).toContain('{{responsibleRelationship}}');
+  });
+});
+
 // ─── filterVariables ──────────────────────────────────────────────────────────
 // Filtro puro do autocomplete inline (story 144): casa label + key,
 // accent-insensitive e case-insensitive.
@@ -23,13 +44,23 @@ describe('filterVariables', () => {
     expect(result[0].label).toBe('Nacionalidade');
   });
 
-  it('`resp` → os 3 de Responsável', () => {
+  it('`resp` → os 4 de Responsável', () => {
     const result = filterVariables('resp');
     expect(result.map((v) => v.key)).toEqual([
       '{{responsibleName}}',
       '{{responsibleRelationship}}',
+      '{{responsibleWithRelationship}}',
       '{{responsiblePhone}}',
     ]);
+  });
+
+  // Story 153 — o token condicional novo entra na busca por "parentesco" junto
+  // com o token simples; quem procura o parentesco vê as duas opções.
+  it('`parentesco` → {{responsibleRelationship}} E {{responsibleWithRelationship}}', () => {
+    const keys = filterVariables('parentesco').map((v) => v.key);
+    expect(keys).toContain('{{responsibleRelationship}}');
+    expect(keys).toContain('{{responsibleWithRelationship}}');
+    expect(keys).toHaveLength(2);
   });
 
   it('accent-insensitive: `endereco` casa "Endereço"', () => {
@@ -65,6 +96,17 @@ describe('buildVariableInsertion', () => {
 
   it('key nua → embrulha em um único par de chaves', () => {
     expect(buildVariableInsertion('name')).toBe('{{name}}');
+  });
+
+  // Story 153 — a key mais longa da lista continua saindo com EXATAMENTE um par
+  // de chaves (o backend casa `\{\{responsibleWithRelationship\}\}` literal).
+  it('responsibleWithRelationship → exatamente um par de chaves', () => {
+    expect(buildVariableInsertion('responsibleWithRelationship')).toBe(
+      '{{responsibleWithRelationship}}',
+    );
+    expect(buildVariableInsertion('{{responsibleWithRelationship}}')).toBe(
+      '{{responsibleWithRelationship}}',
+    );
   });
 
   it('nunca gera chaves aninhadas ({{{{name}} etc.)', () => {

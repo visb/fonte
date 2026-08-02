@@ -11,6 +11,7 @@ import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
 import { bootstrapApp, login, BASE } from './helpers/e2e-app';
+import { daysFromNow } from './helpers/dates';
 import { PAYMENT_GATEWAY } from '../src/modules/associate/gateway/gateway.types';
 
 /**
@@ -42,7 +43,8 @@ describe('Events payment (e2e)', () => {
         status: 'pending',
         pixQrCode: '00020126PIX-EMV',
         pixQrCodeUrl: 'https://qr/img.png',
-        pixExpiresAt: '2026-07-01T13:00:00Z',
+        // Eco do gateway mockado: PIX sempre com vencimento à frente do `now()`.
+        pixExpiresAt: daysFromNow(1),
       });
     });
     const gatewayMock = {
@@ -66,8 +68,6 @@ describe('Events payment (e2e)', () => {
     await app.close();
   });
 
-  const future = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
-
   async function createEvent(body: Record<string, unknown>): Promise<string> {
     const res = await request(app.getHttpServer())
       .post(`${BASE}/events`)
@@ -81,7 +81,7 @@ describe('Events payment (e2e)', () => {
     return createEvent({
       title: 'Retiro pago',
       description: 'd',
-      startAt: future(30),
+      startAt: daysFromNow(30),
       paymentEnabled: true,
       priceCents: 5000,
     });
@@ -104,7 +104,7 @@ describe('Events payment (e2e)', () => {
       .send({
         title: 'Pago sem preço',
         description: 'd',
-        startAt: future(30),
+        startAt: daysFromNow(30),
         registrationEnabled: true,
         paymentEnabled: true,
       })
@@ -113,7 +113,7 @@ describe('Events payment (e2e)', () => {
   // ── Register ────────────────────────────────────────────────────────────────
 
   it('register grátis: NONE e sem payment_token', async () => {
-    const id = await createEvent({ title: 'Grátis', description: 'd', startAt: future(30) });
+    const id = await createEvent({ title: 'Grátis', description: 'd', startAt: daysFromNow(30) });
     const { token, status } = await register(id);
     expect(status).toBe('NONE');
     expect(token).toBeNull();

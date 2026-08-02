@@ -6,6 +6,7 @@ import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
+import { daysFromNow } from './helpers/dates';
 import { WHATSAPP_CLIENT } from '../src/modules/associate/whatsapp/whatsapp.types';
 
 /**
@@ -56,6 +57,14 @@ describe('Event staff invite (e2e)', () => {
     await app.close();
   });
 
+  // Data do evento sempre futura em relação ao `now()` da execução (story 155).
+  const EVENT_START_AT = daysFromNow(30);
+  /** Mesma formatação do serviço: pt-BR curto no fuso de Brasília. */
+  const EXPECTED_START_AT_DATE = new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeZone: 'America/Sao_Paulo',
+  }).format(new Date(EVENT_START_AT));
+
   async function createEvent(extra: Record<string, unknown> = {}): Promise<string> {
     const res = await request(app.getHttpServer())
       .post(`${BASE}/events`)
@@ -63,7 +72,7 @@ describe('Event staff invite (e2e)', () => {
       .send({
         title: 'Encontro dos Servos',
         description: 'Formação interna',
-        startAt: '2026-09-01T18:00:00.000Z',
+        startAt: EVENT_START_AT,
         location: 'Sede',
         audience: 'INTERNAL',
         ...extra,
@@ -147,7 +156,7 @@ describe('Event staff invite (e2e)', () => {
       expect(call.urlLink).toContain(`/eventos/${id}`);
       expect(call.variables).toEqual([
         'Encontro dos Servos',
-        expect.stringContaining('/2026'),
+        expect.stringContaining(EXPECTED_START_AT_DATE),
         'Sede',
       ]);
     }

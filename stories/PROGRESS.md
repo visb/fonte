@@ -29,12 +29,16 @@ Rodada aberta: **153-154 — documentos: variável de responsável + margem de p
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 153 — variável `{{responsibleWithRelationship}}` | [ ] | — | — | — |
+| 1 | 153 — variável `{{responsibleWithRelationship}}` | [OK] | api 1295/1296 · adm 1435/1435 | `d26a9d1` | `b38c8d0` |
 | 2 | 154 — margem de página em todas as páginas do PDF | [ ] | — | — | — |
 
 ## Log
 
-_(vazio — rodada recém-aberta)_
+[OK] 153 — testes: `test:api` 1295/1296, `document-template.service.ts` 95.67% stmts / 89.41% branches;
+adm `test:unit:cov` 1435/1435, arquivos tocados 100% — commit: `d26a9d1` — merge: `b38c8d0` — 2026-08-02.
+**Nota (não é da story):** `src/database/clear-bucket.spec.ts:144` já falhava na `main` limpa — o
+`buildStorage()` lê o `.env` ambiente, que tem credenciais S3, então `isS3Mode()` volta `true`.
+Verificado rodando o spec na `main` sem nenhuma mudança da story. Vale uma story pra isolar esse spec do ambiente.
 
 ## Resumo final
 

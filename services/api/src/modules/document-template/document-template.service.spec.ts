@@ -519,6 +519,69 @@ describe('DocumentTemplateService.renderForResident', () => {
   });
 });
 
+// Story 153 — {{responsibleWithRelationship}}: variável ÚNICA e condicional que
+// decide o texto pelo que existe de fato, no lugar do rodapé escrito à mão
+// `{{responsibleName}}({{responsibleRelationship}})` (que imprimia
+// `não informado(não informado)` para acolhido sem responsável).
+describe('DocumentTemplateService {{responsibleWithRelationship}} (story 153)', () => {
+  // Renderiza um template cujo conteúdo é SÓ o token novo, com o `responsible`
+  // que o relativeRepo devolver.
+  async function renderWith(responsible: unknown, content = '{{responsibleWithRelationship}}') {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content }),
+    });
+    const relativeRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(responsible) });
+    const service = makeService(repo, relativeRepo);
+    return service.renderForResident('tpl-1', { id: 'res-1', name: 'João' } as Resident);
+  }
+
+  it('nome + parentesco → "Nome (Parentesco)" com espaço antes do parêntese (decisão 1)', async () => {
+    const html = await renderWith({ name: 'Maria Souza', relationship: 'Mãe' });
+    expect(html).toContain('Maria Souza (Mãe)');
+  });
+
+  it('parentesco null → só o nome, sem parênteses vazios (decisão 2)', async () => {
+    const html = await renderWith({ name: 'Maria Souza', relationship: null });
+    expect(html).toContain('Maria Souza');
+    expect(html).not.toContain('Maria Souza (');
+  });
+
+  it('parentesco só de espaços → só o nome (decisão 4 — trim antes de decidir)', async () => {
+    const html = await renderWith({ name: 'Maria Souza', relationship: '   ' });
+    expect(html).toContain('Maria Souza');
+    expect(html).not.toContain('Maria Souza (');
+  });
+
+  it('sem responsável → o literal "Responsável" (decisão 3)', async () => {
+    const html = await renderWith(null);
+    expect(html).toContain('Responsável');
+    // Nunca o lixo que a story veio consertar.
+    expect(html).not.toContain('não informado');
+  });
+
+  it('responsável com nome em branco → "Responsável", nunca um parentesco órfão (decisão 5)', async () => {
+    const html = await renderWith({ name: '  ', relationship: 'Mãe' });
+    expect(html).toContain('Responsável');
+    expect(html).not.toContain('(Mãe)');
+  });
+
+  // Decisão 6 — a variável nova é ADITIVA: templates já salvos em produção usam
+  // o par antigo e têm que continuar rendendo exatamente igual, inclusive o
+  // fallback 'não informado'. Nenhum token é prefixo de outro dentro das chaves
+  // duplas, então {{responsibleName}} não é sequestrado pelo token novo.
+  it('regressão: {{responsibleName}} e {{responsibleRelationship}} seguem inalterados no mesmo render', async () => {
+    const content =
+      'A: {{responsibleName}}({{responsibleRelationship}}) | B: {{responsibleWithRelationship}}';
+    const withData = await renderWith({ name: 'Maria Souza', relationship: 'Mãe' }, content);
+    expect(withData).toContain('A: Maria Souza(Mãe)');
+    expect(withData).toContain('B: Maria Souza (Mãe)');
+
+    const withoutData = await renderWith(null, content);
+    expect(withoutData).toContain('A: não informado(não informado)');
+    expect(withoutData).toContain('B: Responsável');
+  });
+});
+
 // Story 128 — a variável {{signature}} injeta o bloco de assinatura do usuário
 // que gera o documento: imagem + linha de 25 "_" + nome. Story 137 — a role NÃO
 // é mais impressa abaixo da assinatura e o nome deixou de ser negrito.

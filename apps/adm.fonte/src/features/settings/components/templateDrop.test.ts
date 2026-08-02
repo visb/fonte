@@ -8,6 +8,8 @@ describe('isVariableToken', () => {
     expect(isVariableToken('{{name}}')).toBe(true);
     expect(isVariableToken('{{signature}}')).toBe(true);
     expect(isVariableToken('{{responsibleName}}')).toBe(true);
+    // Story 153 — o token condicional novo é arrastável como qualquer outro.
+    expect(isVariableToken('{{responsibleWithRelationship}}')).toBe(true);
   });
 
   it('tolera espaços em volta do token', () => {

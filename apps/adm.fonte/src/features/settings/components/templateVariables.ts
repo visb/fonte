@@ -36,6 +36,9 @@ export const VARIABLES: TemplateVariable[] = [
   { key: '{{dateLong}}',      label: 'Data por extenso',   description: 'Data atual por extenso (ex: 1 de junho de 2026)' },
   { key: '{{responsibleName}}',         label: 'Responsável — nome',       description: 'Nome do familiar marcado como responsável' },
   { key: '{{responsibleRelationship}}', label: 'Responsável — parentesco', description: 'Parentesco do responsável com o acolhido' },
+  // Story 153 — variável condicional: evita o `não informado(não informado)` que
+  // o par `{{responsibleName}}({{responsibleRelationship}})` imprimia à mão.
+  { key: '{{responsibleWithRelationship}}', label: 'Responsável — nome e parentesco', description: 'Nome do responsável com o parentesco entre parênteses; "Responsável" se não houver' },
   { key: '{{responsiblePhone}}',        label: 'Responsável — telefone',   description: 'Telefone do familiar responsável' },
   { key: '{{signature}}',               label: 'Assinatura',               description: 'Assinatura do usuário que gerar o documento' },
 ];

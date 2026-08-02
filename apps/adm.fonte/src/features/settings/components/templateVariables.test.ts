@@ -24,6 +24,17 @@ describe('VARIABLES', () => {
     expect(keys).toContain('{{responsibleName}}');
     expect(keys).toContain('{{responsibleRelationship}}');
   });
+
+  // Story 157 — sem a entrada no catálogo o operador não descobre a variável de
+  // foto: nem na barra lateral, nem no autocomplete, nem no drag-and-drop.
+  it('inclui {{residentPhoto}} com rótulo e descrição próprios (story 157)', () => {
+    const variable = VARIABLES.find((v) => v.key === '{{residentPhoto}}');
+    expect(variable).toBeDefined();
+    expect(variable!.label).toBe('Foto do acolhido');
+    expect(variable!.description).toBe(
+      'Foto do acolhido em 4×4 cm; moldura vazia com o rótulo "Foto" se não houver',
+    );
+  });
 });
 
 // ─── filterVariables ──────────────────────────────────────────────────────────
@@ -82,6 +93,12 @@ describe('filterVariables', () => {
   it('sem match → lista vazia', () => {
     expect(filterVariables('zzz_inexistente')).toEqual([]);
   });
+
+  // Story 157 — quem procura pela palavra "foto" tem que achar a variável nova.
+  it('`foto` → encontra {{residentPhoto}} (story 157)', () => {
+    const keys = filterVariables('foto').map((v) => v.key);
+    expect(keys).toContain('{{residentPhoto}}');
+  });
 });
 
 // ─── buildVariableInsertion ───────────────────────────────────────────────────
@@ -107,6 +124,13 @@ describe('buildVariableInsertion', () => {
     expect(buildVariableInsertion('{{responsibleWithRelationship}}')).toBe(
       '{{responsibleWithRelationship}}',
     );
+  });
+
+  // Story 157 — o backend casa `\{\{residentPhoto\}\}` literal: um par de chaves
+  // a mais ou a menos deixaria o token cru no papel.
+  it('residentPhoto → exatamente um par de chaves (story 157)', () => {
+    expect(buildVariableInsertion('residentPhoto')).toBe('{{residentPhoto}}');
+    expect(buildVariableInsertion('{{residentPhoto}}')).toBe('{{residentPhoto}}');
   });
 
   it('nunca gera chaves aninhadas ({{{{name}} etc.)', () => {

@@ -31,6 +31,10 @@ export const VARIABLES: TemplateVariable[] = [
   { key: '{{houseAddress}}',  label: 'Casa — endereço',    description: 'Endereço da casa onde o acolhido está' },
   { key: '{{houseCity}}',     label: 'Casa — cidade',      description: 'Cidade da casa onde o acolhido está' },
   { key: '{{houseState}}',    label: 'Casa — UF',          description: 'Estado (sigla) da casa onde o acolhido está' },
+  // Story 157 — variável de BLOCO: imprime a foto do acolhido (ou a moldura
+  // vazia para colar à mão). `residentPhoto`, e não `photo`, deixa explícito de
+  // quem é a foto e abre espaço para um `{{responsiblePhoto}}` futuro.
+  { key: '{{residentPhoto}}', label: 'Foto do acolhido',   description: 'Foto do acolhido em 4×4 cm; moldura vazia com o rótulo "Foto" se não houver' },
   { key: '{{entryDate}}',     label: 'Data de entrada',    description: 'Data de entrada na comunidade (dd/mm/aaaa)' },
   { key: '{{date}}',          label: 'Data de hoje',       description: 'Data atual no momento da impressão (dd/mm/aaaa)' },
   { key: '{{dateLong}}',      label: 'Data por extenso',   description: 'Data atual por extenso (ex: 1 de junho de 2026)' },

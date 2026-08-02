@@ -10,6 +10,8 @@ describe('isVariableToken', () => {
     expect(isVariableToken('{{responsibleName}}')).toBe(true);
     // Story 153 — o token condicional novo é arrastável como qualquer outro.
     expect(isVariableToken('{{responsibleWithRelationship}}')).toBe(true);
+    // Story 157 — a variável de foto entra no drag-and-drop (story 140) de graça.
+    expect(isVariableToken('{{residentPhoto}}')).toBe(true);
   });
 
   it('tolera espaços em volta do token', () => {

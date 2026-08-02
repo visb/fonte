@@ -53,6 +53,17 @@ describe('findMissingFields', () => {
     expect(missing[0].inputType).toBe('date');
   });
 
+  // Story 157 — filho SEM foto não vira pergunta: a ausência de foto imprime a
+  // moldura vazia, então o MissingFieldsDialog nunca deve abrir por causa dela
+  // (nem sozinha, nem junto de campos que faltam de verdade).
+  it('residentPhoto nunca vira campo faltante, mesmo sem foto (story 157)', () => {
+    const semFoto = resident({ photoUrl: null } as Partial<Resident>);
+    expect(findMissingFields(['residentPhoto'], semFoto)).toEqual([]);
+    expect(findMissingFields(['residentPhoto', 'cpf'], semFoto).map((f) => f.residentField)).toEqual([
+      'cpf',
+    ]);
+  });
+
   it('estado civil vem com as opções do select', () => {
     const missing = findMissingFields(['maritalStatus'], resident());
     expect(missing[0].options?.map((o) => o.value)).toEqual([

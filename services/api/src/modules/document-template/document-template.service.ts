@@ -236,7 +236,11 @@ export class DocumentTemplateService implements OnModuleDestroy {
       where: { residentId: resident.id, isResponsible: true },
     });
     const signer = await this.resolveSigner(signerUserId);
-    const content = this.applyVariables(template.content, resident, responsible, signer);
+    // Story 157 — a foto do acolhido é resolvida aqui, ao lado do signer, pelo
+    // mesmo motivo: applyVariables é síncrono e não pode aguardar o signUrl/
+    // toDataUri.
+    const residentPhotoUrl = await this.resolveResidentPhotoUrl(resident);
+    const content = this.applyVariables(template.content, resident, responsible, signer, residentPhotoUrl);
     return this.wrapPage(template.name, content);
   }
 
@@ -257,6 +261,20 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return { name: staff.name, signatureUrl };
   }
 
+  // Story 157 — URL da foto do acolhido pronta para o `<img src>` do documento.
+  // Espelha o resolveSigner acima: canonicaliza ANTES (uma URL que já chegue
+  // assinada não pode ser assinada de novo) e então presigna (S3) ou inline como
+  // data URI (modo local — o puppeteer não resolve `/uploads/...`, regra da
+  // story 135). Sem foto → null, e o bloco imprime a moldura vazia; a foto NUNCA
+  // bloqueia a geração do documento.
+  private async resolveResidentPhotoUrl(resident: Resident): Promise<string | null> {
+    if (!resident?.photoUrl) return null;
+    const canonical = this.storageService.canonicalizeS3Url(resident.photoUrl);
+    return this.storageService.isS3Url(canonical)
+      ? this.storageService.signUrl(canonical)
+      : this.storageService.toDataUri(resident.photoUrl);
+  }
+
   // Bloco da assinatura (story 128): imagem acima da linha (25 "_") e nome abaixo.
   // Sem imagem, sai só a linha + nome — o documento nunca imprime {{signature}}
   // cru. Story 137: a role deixou de ser impressa e o nome não é mais negrito.
@@ -275,11 +293,58 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return `<div class="doc-signature"${style}>${img}<div class="doc-signature-line">${line}</div>${name}</div>`;
   }
 
+  // Story 157 — bloco da foto do acolhido ({{residentPhoto}}). Com foto, a
+  // imagem em quadrado fixo (CSS `.doc-photo-img`, 151px ≈ 4 cm); sem foto, a
+  // MOLDURA VAZIA rotulada "Foto" — análogo direto da linha de 25 "_" que a
+  // assinatura imprime quando não há imagem: o papel sai com o espaço reservado
+  // para colar a foto à mão, e o documento nunca imprime {{residentPhoto}} cru.
+  // `align` funciona igual ao bloco de assinatura (story 136).
+  private buildResidentPhotoBlock(photoUrl: string | null, align?: string): string {
+    const inner = photoUrl
+      ? `<img class="doc-photo-img" src="${photoUrl}" alt="Foto"/>`
+      : '<div class="doc-photo-placeholder">Foto</div>';
+    const style = align ? ` style="text-align:${align}"` : '';
+    return `<div class="doc-photo"${style}>${inner}</div>`;
+  }
+
   // Story 136 — extrai o text-align dos atributos de um <p> que só contém o
   // {{signature}}, para que o bloco da assinatura honre o alinhamento do editor.
   private extractTextAlign(attrs: string): string | undefined {
     const match = attrs.match(/text-align\s*:\s*(left|right|center|justify)/i);
     return match ? match[1].toLowerCase() : undefined;
+  }
+
+  // Ruído que o editor deixa em volta do token dentro do <p>: espaços, `&nbsp;`
+  // e os <span> de fonte (ex.:
+  // `<p style="text-align:center"><span …>&nbsp;{{signature}}</span></p>`).
+  // Sem tolerar isso, o parágrafo não casa e o bloco cai no fallback inline sem
+  // alinhamento (bug de produção da story 136). Compartilhado pelas DUAS
+  // variáveis de bloco desde a story 157 — era o `SIG_WRAP` da assinatura.
+  private static readonly TOKEN_WRAP = String.raw`(?:\s|&nbsp;|<span[^>]*>|</span>)*`;
+
+  // Mecânica das variáveis de BLOCO ({{signature}}, story 128/136;
+  // {{residentPhoto}}, story 157): um token cujo valor é HTML de bloco, não
+  // texto. Extraído na story 157 para as duas variáveis compartilharem
+  // exatamente o mesmo comportamento. Em ordem:
+  //   1. troca o <p …> INTEIRO quando o token é seu único conteúdo visível,
+  //      carregando o text-align do parágrafo — evita <div> dentro de <p>
+  //      (parser fecha o <p> e o alinhamento se perde);
+  //   2. fallback inline para as ocorrências remanescentes (sem alinhamento).
+  // Os dois `replace` usam FUNÇÃO: o `$` de uma URL presignada não pode ser
+  // interpretado como padrão de substituição.
+  private replaceBlockToken(
+    html: string,
+    token: string,
+    build: (align?: string) => string,
+  ): string {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const wrap = DocumentTemplateService.TOKEN_WRAP;
+    const result = html.replace(
+      new RegExp(`<p([^>]*)>${wrap}${escaped}${wrap}</p>`, 'g'),
+      (_m, attrs: string) => build(this.extractTextAlign(attrs)),
+    );
+    const inlineBlock = build();
+    return result.replace(new RegExp(escaped, 'g'), () => inlineBlock);
   }
 
   // Story 153 — variável ÚNICA e condicional para o rótulo de assinatura do
@@ -300,7 +365,13 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return rel ? `${name} (${rel})` : name;
   }
 
-  private applyVariables(content: string, resident: Resident, responsible: Relative | null, signer?: DocumentSigner | null): string {
+  private applyVariables(
+    content: string,
+    resident: Resident,
+    responsible: Relative | null,
+    signer?: DocumentSigner | null,
+    residentPhotoUrl?: string | null,
+  ): string {
     const MARITAL_PT: Record<string, string> = {
       SINGLE: 'Solteiro(a)', MARRIED: 'Casado(a)', DIVORCED: 'Divorciado(a)',
     };
@@ -334,28 +405,17 @@ export class DocumentTemplateService implements OnModuleDestroy {
     for (const [key, value] of Object.entries(vars)) {
       result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
     }
-    // {{signature}} sai só quando o template a usa. Substituição por função para
-    // não interpretar `$` da URL assinada como padrão de replace.
+    // Variáveis de BLOCO — saem só quando o template as usa; ambas passam pelo
+    // mesmo replaceBlockToken (parágrafo inteiro + fallback inline).
     const resolvedSigner = signer ?? null;
-    // Story 136 — quando o {{signature}} é o único conteúdo "visível" de um <p …>,
-    // troca o PARÁGRAFO INTEIRO pelo bloco, carregando o text-align do <p>. Isso
-    // evita o <div>-em-<p> inválido (que fazia o parser fechar o <p> e perder o
-    // alinhamento) e faz a assinatura honrar o alinhamento escolhido no editor.
-    //
-    // O editor embrulha o token num <span> de fonte e às vezes prefixa `&nbsp;`
-    // (ex.: `<p style="text-align:center"><span …>&nbsp;{{signature}}</span></p>`),
-    // então o token NÃO é filho direto do <p>. O grupo abaixo tolera spans de
-    // abertura/fechamento, `&nbsp;` e espaços em volta do token — caso contrário
-    // o parágrafo não casava e a assinatura caía no fallback inline sem
-    // alinhamento (bug: assinatura não centralizava no PDF em produção).
-    const SIG_WRAP = String.raw`(?:\s|&nbsp;|<span[^>]*>|</span>)*`;
-    result = result.replace(
-      new RegExp(`<p([^>]*)>${SIG_WRAP}\\{\\{signature\\}\\}${SIG_WRAP}</p>`, 'g'),
-      (_m, attrs: string) => this.buildSignatureBlock(resolvedSigner, this.extractTextAlign(attrs)),
+    result = this.replaceBlockToken(result, '{{signature}}', (align) =>
+      this.buildSignatureBlock(resolvedSigner, align),
     );
-    // Fallback: ocorrências inline remanescentes do token nu (sem alinhamento).
-    const signatureBlock = this.buildSignatureBlock(resolvedSigner);
-    result = result.replace(/\{\{signature\}\}/g, () => signatureBlock);
+    // Story 157 — foto do acolhido. Sem foto (`null`), o bloco vira a moldura
+    // vazia: nunca sobra `{{residentPhoto}}` cru no papel.
+    result = this.replaceBlockToken(result, '{{residentPhoto}}', (align) =>
+      this.buildResidentPhotoBlock(residentPhotoUrl ?? null, align),
+    );
     return result;
   }
 
@@ -405,6 +465,14 @@ export class DocumentTemplateService implements OnModuleDestroy {
     .doc-signature-line{font-family:inherit;letter-spacing:1px;line-height:1;margin-bottom:2px}
     /* Story 137 — nome sem negrito (peso herdado do corpo); a role deixou de ser impressa. */
     .doc-signature-name{font-weight:normal}
+    /* Foto do acolhido (story 157) — variável residentPhoto. Quadrado FIXO de 151px
+       (≈ 4 cm a 96 dpi), a mesma proporção do avatar das telas: object-fit cover
+       enquadra sem deformar. Altura fixa pelo mesmo motivo da assinatura — é o
+       que mantém a paginação A4 do editor fiel à do PDF (convenção da story 24).
+       Sem foto sai a moldura vazia rotulada, do MESMO tamanho, para colar a foto
+       à mão. Se estes 151 mudarem, sincronizar ResidentPhotoPlaceholder no adm. */
+    .doc-photo-img{width:151px;height:151px;object-fit:cover;display:inline-block;vertical-align:top}
+    .doc-photo-placeholder{width:151px;height:151px;box-sizing:border-box;border:1px solid #333;display:inline-flex;align-items:center;justify-content:center;color:#666;vertical-align:top}
     /* PDF-document-only chrome (the on-screen "Imprimir" button). */
     .print-btn{position:fixed;top:16px;right:16px;background:#1a1a1a;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit}
     .print-btn:hover{background:#333}

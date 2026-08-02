@@ -968,3 +968,220 @@ describe('DocumentTemplateService signature alignment (story 136)', () => {
     expect(html).not.toContain('.doc-signature-img{display:block');
   });
 });
+
+// Story 157 — {{residentPhoto}}: a SEGUNDA variável de bloco do sistema. Com
+// foto cadastrada imprime a imagem em 4×4 cm; sem foto imprime a MOLDURA VAZIA
+// rotulada "Foto" (análogo à linha de 25 "_" da assinatura), para colar a foto à
+// mão. Nunca bloqueia a geração e nunca sai crua no papel.
+describe('DocumentTemplateService resident photo block (story 157)', () => {
+  function makeSigningStorage(overrides: Partial<StorageService> = {}): StorageService {
+    return makeStorage({
+      canonicalizeS3Url: ((u: string) => (u.includes('?') ? u.slice(0, u.indexOf('?')) : u)) as never,
+      isS3Url: ((u: string) => u.startsWith('https://s3/')) as never,
+      signUrl: (async (u: string) => `${u}?X-Amz-signed`) as never,
+      toDataUri: (async (u: string) => u) as never,
+      ...overrides,
+    });
+  }
+
+  // Renderiza `content` para um resident arbitrário (o que interessa é o photoUrl).
+  function makePhotoService(content: string, storage: StorageService = makeSigningStorage()) {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content }),
+    });
+    return makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }), storage);
+  }
+
+  function residentWith(photoUrl: string | null): Resident {
+    return { id: 'res-1', name: 'Ana', photoUrl } as Resident;
+  }
+
+  it('acolhido COM foto → <img class="doc-photo-img"> com a URL assinada, sem moldura vazia', async () => {
+    const service = makePhotoService('<p>Foto:</p>{{residentPhoto}}');
+
+    const html = await service.renderForResident('tpl-1', residentWith('https://s3/residents/ana.jpg'));
+
+    expect(html).toContain(
+      '<img class="doc-photo-img" src="https://s3/residents/ana.jpg?X-Amz-signed" alt="Foto"/>',
+    );
+    // a moldura vazia é o caminho do "sem foto" — não sai junto com a imagem
+    expect(html).not.toContain('<div class="doc-photo-placeholder">Foto</div>');
+    expect(html).not.toContain('{{residentPhoto}}');
+  });
+
+  it('acolhido SEM foto → moldura vazia rotulada "Foto", sem nenhum <img> de foto', async () => {
+    const service = makePhotoService('{{residentPhoto}}');
+
+    const html = await service.renderForResident('tpl-1', residentWith(null));
+
+    expect(html).toContain('<div class="doc-photo-placeholder">Foto</div>');
+    // o CSS `.doc-photo-img{...}` sempre existe no <style>, então checamos a TAG
+    expect(html).not.toContain('<img class="doc-photo-img"');
+    expect(html).not.toContain('{{residentPhoto}}');
+  });
+
+  // Story 135 — em modo local a foto é `/uploads/residents/...`, que o puppeteer
+  // não resolve (setContent não tem base URL): tem que virar data URI.
+  it('modo não-S3 → a src sai como data URI (regressão da story 135)', async () => {
+    const toDataUri = jest.fn().mockResolvedValue('data:image/jpeg;base64,AAAA');
+    const storage = makeStorage({
+      canonicalizeS3Url: ((u: string) => u) as never,
+      isS3Url: (() => false) as never,
+      toDataUri: toDataUri as never,
+    });
+    const service = makePhotoService('{{residentPhoto}}', storage);
+
+    const html = await service.renderForResident('tpl-1', residentWith('/uploads/residents/ana.jpg'));
+
+    expect(toDataUri).toHaveBeenCalledWith('/uploads/residents/ana.jpg');
+    expect(html).toContain('<img class="doc-photo-img" src="data:image/jpeg;base64,AAAA"');
+    expect(html).not.toContain('src="/uploads/');
+  });
+
+  // Decisão 5 — canonicaliza ANTES de assinar: uma URL que já chega assinada não
+  // pode ganhar uma segunda query de assinatura.
+  it('URL já assinada na entrada → assinada UMA vez só (decisão 5)', async () => {
+    const signUrl = jest.fn().mockResolvedValue('https://s3/residents/ana.jpg?X-Amz-fresh');
+    const storage = makeSigningStorage({ signUrl: signUrl as never });
+    const service = makePhotoService('{{residentPhoto}}', storage);
+
+    const html = await service.renderForResident(
+      'tpl-1',
+      residentWith('https://s3/residents/ana.jpg?X-Amz-Signature=velha&X-Amz-Expires=900'),
+    );
+
+    expect(signUrl).toHaveBeenCalledTimes(1);
+    expect(signUrl).toHaveBeenCalledWith('https://s3/residents/ana.jpg');
+    expect(html).toContain('src="https://s3/residents/ana.jpg?X-Amz-fresh"');
+    expect(html).not.toContain('X-Amz-Signature=velha');
+  });
+
+  // A URL presignada carrega `$` e `&`: o replace tem que ser por FUNÇÃO, senão
+  // `$'`/`$&` viriam interpretados como padrão de substituição.
+  it('URL presignada com $ e & entra literal no src (replace por função)', async () => {
+    const signed = "https://s3/residents/ana.jpg?X-Amz-Signature=a$'b&X-Amz-Expires=900";
+    const storage = makeSigningStorage({ signUrl: (async () => signed) as never });
+    const service = makePhotoService('{{residentPhoto}}', storage);
+
+    const html = await service.renderForResident('tpl-1', residentWith('https://s3/residents/ana.jpg'));
+
+    expect(html).toContain(`src="${signed}"`);
+  });
+
+  it.each(['center', 'right', 'left'])(
+    'token sozinho num <p style="text-align:%s"> → o bloco herda o alinhamento e o <p> some',
+    async (align) => {
+      const service = makePhotoService(`<p style="text-align: ${align}">{{residentPhoto}}</p>`);
+
+      const html = await service.renderForResident('tpl-1', residentWith('https://s3/residents/ana.jpg'));
+
+      expect(html).toContain(`<div class="doc-photo" style="text-align:${align}">`);
+      // sem <div> dentro de <p> e sem token cru
+      expect(html).not.toContain(`<p style="text-align: ${align}"><div`);
+      expect(html).not.toContain('{{residentPhoto}}');
+    },
+  );
+
+  it('token embrulhado em <span> com &nbsp; também troca o parágrafo inteiro', async () => {
+    const content =
+      '<p style="text-align: center;">' +
+      '<span data-font-size="12" style="font-size: 12pt; line-height: 1.2;">&nbsp;{{residentPhoto}}</span>' +
+      '</p>';
+    const service = makePhotoService(content);
+
+    const html = await service.renderForResident('tpl-1', residentWith('https://s3/residents/ana.jpg'));
+
+    expect(html).toContain('<div class="doc-photo" style="text-align:center">');
+    expect(html).not.toContain('<span data-font-size="12"');
+    expect(html).not.toContain('{{residentPhoto}}');
+  });
+
+  it('<p> sem text-align → bloco sem style de alinhamento (default à esquerda)', async () => {
+    const service = makePhotoService('<p>{{residentPhoto}}</p>');
+
+    const html = await service.renderForResident('tpl-1', residentWith(null));
+
+    expect(html).toContain('<div class="doc-photo">');
+    expect(html).not.toContain('style="text-align');
+  });
+
+  it('ocorrência inline no meio do parágrafo → fallback, nunca token cru no papel', async () => {
+    const service = makePhotoService('<p style="text-align: center">Foto: {{residentPhoto}} fim</p>');
+
+    const html = await service.renderForResident('tpl-1', residentWith('https://s3/residents/ana.jpg'));
+
+    // inline → bloco sem style de alinhamento, texto ao redor preservado
+    expect(html).toContain('<div class="doc-photo">');
+    expect(html).not.toContain('{{residentPhoto}}');
+    expect(html).toContain('Foto:');
+    expect(html).toContain('fim');
+  });
+
+  it('N ocorrências → um bloco por token', async () => {
+    const service = makePhotoService('<p>{{residentPhoto}}</p><p>x {{residentPhoto}} y</p>');
+
+    const html = await service.renderForResident('tpl-1', residentWith('https://s3/residents/ana.jpg'));
+
+    expect(html.match(/<div class="doc-photo"/g)).toHaveLength(2);
+    expect(html).not.toContain('{{residentPhoto}}');
+  });
+
+  it('template sem o token → nenhum bloco de foto no corpo', async () => {
+    const service = makePhotoService('<p>Só o nome: {{name}}</p>');
+
+    const html = await service.renderForResident('tpl-1', residentWith('https://s3/residents/ana.jpg'));
+
+    // o CSS `.doc-photo-*` sempre existe no <style>; checamos a div real do bloco
+    expect(html).not.toContain('<div class="doc-photo"');
+    expect(html).toContain('Só o nome: Ana');
+  });
+
+  it('acolhido sem foto NÃO impede o render (a foto nunca bloqueia a geração)', async () => {
+    const service = makePhotoService('<p>{{name}}</p>{{residentPhoto}}');
+
+    await expect(
+      service.renderForResident('tpl-1', residentWith(null)),
+    ).resolves.toContain('doc-photo-placeholder');
+  });
+
+  it('CSS: quadrado fixo de 151px com object-fit:cover, moldura do mesmo tamanho', async () => {
+    const service = makePhotoService('<p>oi</p>');
+
+    const html = await service.renderForResident('tpl-1', residentWith(null));
+
+    expect(html).toContain(
+      '.doc-photo-img{width:151px;height:151px;object-fit:cover;display:inline-block;vertical-align:top}',
+    );
+    expect(html).toContain('.doc-photo-placeholder{width:151px;height:151px;');
+  });
+
+  // Regressão da extração do replaceBlockToken: as DUAS variáveis de bloco
+  // convivem no mesmo template sem uma comer a outra.
+  it('{{signature}} e {{residentPhoto}} no mesmo template saem os dois blocos', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({
+        id: 'tpl-1',
+        name: 'Termo',
+        content: '<p style="text-align: center">{{residentPhoto}}</p><p>{{signature}}</p>',
+      }),
+    });
+    const staffRepo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ name: 'João Silva', signatureUrl: null }),
+    });
+    const service = makeService(
+      repo,
+      makeRepo({ findOne: jest.fn().mockResolvedValue(null) }),
+      makeSigningStorage(),
+      staffRepo,
+    );
+
+    const html = await service.renderForResident('tpl-1', residentWith('https://s3/residents/ana.jpg'), 'user-1');
+
+    expect(html).toContain('<div class="doc-photo" style="text-align:center">');
+    expect(html).toContain('<div class="doc-signature">');
+    expect(html).toContain('João Silva');
+    expect(html).toContain('_'.repeat(25));
+    expect(html).not.toContain('{{residentPhoto}}');
+    expect(html).not.toContain('{{signature}}');
+  });
+});

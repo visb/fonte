@@ -18,7 +18,13 @@ export function slugify(text: string): string {
 // `signature` é a assinatura do USUÁRIO logado (staff), não um campo do filho:
 // tem que ficar fora do gate de campos faltantes do resident (story 128), senão
 // o MissingFieldsDialog dispara errado tratando-a como dado do acolhido faltante.
-const ALWAYS_AVAILABLE = new Set(['name', 'house', 'entryDate', 'date', 'dateLong', 'signature']);
+// `residentPhoto` (story 157) é campo do filho, mas a ausência de foto vira a
+// MOLDURA VAZIA impressa — nunca bloqueia a geração, então também fica fora do
+// gate. Está aqui de propósito (e testado), não por acaso de não existir no
+// VAR_TO_FIELD.
+const ALWAYS_AVAILABLE = new Set([
+  'name', 'house', 'entryDate', 'date', 'dateLong', 'signature', 'residentPhoto',
+]);
 
 interface VarMapping {
   residentField: keyof UpdateResidentInput;

@@ -35,6 +35,7 @@ import { A4EditorFrame } from './A4EditorFrame';
 import { VariablesPanel } from './VariablesPanel';
 import { handleVariableDrop } from './templateDrop';
 import { SignaturePlaceholder } from './SignaturePlaceholder';
+import { ResidentPhotoPlaceholder } from './ResidentPhotoPlaceholder';
 import { VariableSuggestion } from './templateVariableSuggestion';
 
 // ─── FontSize mark ────────────────────────────────────────────────────────────
@@ -460,6 +461,9 @@ export function TemplateEditor({ template, onSaved }: Props) {
       // renderiza uma caixa rotulada da altura do bloco de assinatura do PDF por
       // cima do token, sem alterar o documento (getHTML segue com {{signature}}).
       SignaturePlaceholder,
+      // Story 157 — mesma ideia para o {{residentPhoto}}: caixa de 151×151 (o
+      // quadrado que a foto ocupa no PDF) por cima do token, documento intocado.
+      ResidentPhotoPlaceholder,
       // Autocomplete inline de variáveis (story 144): `{{` abre o popup no cursor
       // filtrando VARIABLES; escolher insere `{{key}}`. `onOpen` também expande o
       // drawer VariablesPanel (os dois comportamentos juntos, decisão do plano).

@@ -361,6 +361,72 @@ describe('DocumentTemplateController (e2e)', () => {
     });
   });
 
+  // ── {{residentPhoto}} — foto do acolhido no documento (story 157) ────────────
+
+  describe('resident photo variable rendering (story 157)', () => {
+    let templateId: string;
+    let withPhotoId: string;
+    let withoutPhotoId: string;
+
+    beforeAll(async () => {
+      const name = `Termo foto ${tag}`;
+      createdNames.push(name);
+      const tpl = await request(app.getHttpServer())
+        .post(`${BASE}/document-templates`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name, content: '<p style="text-align: center">{{residentPhoto}}</p><p>{{name}}</p>' })
+        .expect(201);
+      templateId = tpl.body.id;
+
+      // Um acolhido ganha foto de verdade (POST /residents/:id/photo)...
+      const residents = await request(app.getHttpServer())
+        .get(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      withPhotoId = residents.body.data[0].id;
+      await request(app.getHttpServer())
+        .post(`${BASE}/residents/${withPhotoId}/photo`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .attach('file', TINY_PNG, { filename: 'foto.png', contentType: 'image/png' })
+        .expect(201);
+
+      // ...e outro fica sem nenhuma, para provar a moldura vazia.
+      const [semFoto] = await dataSource.query(
+        `SELECT id FROM residents WHERE photo_url IS NULL AND deleted_at IS NULL AND id <> $1 LIMIT 1`,
+        [withPhotoId],
+      );
+      withoutPhotoId = semFoto?.id;
+      expect(withoutPhotoId).toBeDefined();
+    });
+
+    it('acolhido COM foto → a imagem entra no documento, nunca o token cru', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${withPhotoId}/documents/${templateId}/render`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.text).toContain('<div class="doc-photo" style="text-align:center">');
+      expect(res.text).toContain('<img class="doc-photo-img"');
+      expect(res.text).not.toContain('{{residentPhoto}}');
+      expect(res.text).not.toContain('<div class="doc-photo-placeholder">');
+      // Story 135 — modo local (não-S3): a foto sai inline como data URI, nunca
+      // como /uploads/... (que o puppeteer não resolveria no PDF).
+      expect(res.text).toContain('src="data:image/png;base64,');
+      expect(res.text).not.toContain('src="/uploads/');
+    });
+
+    it('acolhido SEM foto → moldura vazia rotulada, nunca o token cru', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${withoutPhotoId}/documents/${templateId}/render`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.text).toContain('<div class="doc-photo-placeholder">Foto</div>');
+      expect(res.text).not.toContain('<img class="doc-photo-img"');
+      expect(res.text).not.toContain('{{residentPhoto}}');
+    });
+  });
+
   // ── PDF combinado para impressão em lote (story 152) ─────────────────────────
 
   describe('combined PDF (story 152)', () => {

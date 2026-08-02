@@ -511,6 +511,64 @@ test.describe('Editor de templates — autocomplete de variáveis ({{)', () => {
   });
 });
 
+// Story 157 — {{residentPhoto}}: variável de BLOCO nova. No editor o token vira
+// uma CAIXA ROTULADA de 151×151 (o quadrado que a foto ocupa no PDF), via
+// decoration do ProseMirror — o documento segue com o token literal, que é o que
+// o backend substitui. É wiring de ProseMirror que o jsdom não alcança (mesmo
+// motivo do caso do autocomplete acima).
+test.describe('Editor de templates — variável de foto do acolhido', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Configurações' }).click();
+    await page.getByRole('link', { name: 'Templates de documentos' }).click();
+    await expect(page).toHaveURL('/settings/templates');
+  });
+
+  test('inserir {{residentPhoto}} pelo autocomplete mostra a caixa e salva o token literal', async ({ page }) => {
+    const templateName = `E2E Foto ${Date.now()}`;
+    await page.getByRole('button', { name: 'Novo template' }).click();
+    await page.getByLabel('Nome do documento').fill(templateName);
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    await page.getByText(templateName, { exact: true }).click();
+
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+
+    // `{{foto` filtra a variável nova pelo rótulo "Foto do acolhido".
+    await page.keyboard.type('{{');
+    const popup = page.locator('[data-variable-suggestion]');
+    await expect(popup).toBeVisible();
+    await page.keyboard.type('foto');
+    await expect(popup.getByText('Foto do acolhido')).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(popup).toHaveCount(0);
+
+    // A caixa rotulada aparece no lugar do token, com o quadrado do PDF (151px).
+    const box = editor.locator('[data-resident-photo-placeholder]');
+    await expect(box).toBeVisible();
+    await expect(box).toContainText('Foto do acolhido');
+    await expect(box).toHaveCSS('width', '151px');
+    await expect(box).toHaveCSS('height', '151px');
+
+    // O documento NÃO foi alterado: o token literal continua no HTML do editor
+    // (é ele que o backend troca pelo bloco da foto).
+    expect(await editor.evaluate((el) => el.innerHTML)).toContain('{{residentPhoto}}');
+
+    // Recolhe o drawer (aberto pelo `{{`) para liberar o botão de salvar.
+    await page.getByRole('button', { name: 'Recolher variáveis' }).click();
+    await page.getByRole('button', { name: 'Salvar template' }).click();
+    await expect(page.getByText('Template salvo')).toBeVisible({ timeout: 15000 });
+
+    // Recarrega e reabre: o token sobreviveu ao salvar e a caixa volta a aparecer.
+    await page.reload();
+    await page.getByText(templateName, { exact: true }).click();
+    const reopened = page.locator('.ProseMirror');
+    await expect(reopened.locator('[data-resident-photo-placeholder]')).toBeVisible();
+    expect(await reopened.evaluate((el) => el.innerHTML)).toContain('{{residentPhoto}}');
+  });
+});
+
 // Story 27 — link/unlink no editor. Texto com link vira <a class="doc-link"> e o
 // CSS compartilhado o pinta de azul + sublinhado (mesma regra do PDF).
 test.describe('Editor de templates — link/unlink', () => {

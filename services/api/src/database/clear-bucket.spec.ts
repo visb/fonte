@@ -137,10 +137,52 @@ describe('clear-bucket run', () => {
   });
 });
 
+// `buildStorage()` reads `process.env` directly (correct for a CLI script), so
+// these tests BUILD the environment they assert on instead of assuming one —
+// the api `.env` of a configured machine has real S3 credentials and would
+// otherwise flip the result. `S3_ENV_KEYS` are exactly the keys the
+// StorageService constructor consults; only BUCKET_NAME + ENDPOINT_URL decide
+// `isS3Mode()`, the rest are cleared/set so no real credential leaks into the
+// client. Values are fabricated and unreachable: the constructor only
+// instantiates an S3Client (no connection, no I/O), and no test here ever calls
+// the destructive `main()`/`run()` against the real env.
+const S3_ENV_KEYS = [
+  'AWS_S3_BUCKET_NAME',
+  'AWS_ENDPOINT_URL',
+  'AWS_DEFAULT_REGION',
+  'AWS_ACCESS_KEY_ID',
+  'AWS_SECRET_ACCESS_KEY',
+] as const;
+
 describe('clear-bucket buildStorage', () => {
-  it('constructs a StorageService from process.env', () => {
+  let savedEnv: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    savedEnv = { ...process.env };
+  });
+
+  afterEach(() => {
+    // Restore verbatim so the suite never leaks env to neighbouring specs.
+    process.env = { ...savedEnv };
+  });
+
+  it('constructs a StorageService in local mode when the S3 env is absent', () => {
+    for (const key of S3_ENV_KEYS) delete process.env[key];
+
     const storage = buildStorage();
-    // No S3 env in the test process → local (non-S3) mode.
+
     expect(storage.isS3Mode()).toBe(false);
+  });
+
+  it('constructs a StorageService in S3 mode when the S3 env is present', () => {
+    process.env.AWS_S3_BUCKET_NAME = 'test-bucket';
+    process.env.AWS_ENDPOINT_URL = 'https://s3.invalid';
+    process.env.AWS_DEFAULT_REGION = 'auto';
+    process.env.AWS_ACCESS_KEY_ID = 'test-access-key-id';
+    process.env.AWS_SECRET_ACCESS_KEY = 'test-secret-access-key';
+
+    const storage = buildStorage();
+
+    expect(storage.isS3Mode()).toBe(true);
   });
 });

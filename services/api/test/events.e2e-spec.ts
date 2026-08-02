@@ -6,6 +6,7 @@ import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
+import { daysFromNow } from './helpers/dates';
 import { StorageService } from '../src/modules/storage/storage.service';
 
 // Storage mockado: nenhum bucket real é tocado e o upload devolve uma URL
@@ -45,10 +46,12 @@ describe('EventController (e2e)', () => {
     await app.close();
   });
 
+  // Evento sempre FUTURO em relação ao `now()` da execução: rotas como
+  // GET /events/internal e o filtro `upcoming` só devolvem `start_at >= now`.
   const validBody = () => ({
     title: 'Retiro de famílias',
     description: 'Encontro anual da comunidade',
-    startAt: '2026-08-01T18:00:00.000Z',
+    startAt: daysFromNow(30),
     location: 'Sede',
   });
 
@@ -106,11 +109,12 @@ describe('EventController (e2e)', () => {
         .send({ ...validBody(), capacity: 0 })
         .expect(400));
 
+    // O que importa é o endAt ser ANTERIOR ao startAt (+30), não a data em si.
     it('400 when endAt precedes startAt', () =>
       request(app.getHttpServer())
         .post(`${BASE}/events`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ ...validBody(), endAt: '2026-07-01T18:00:00.000Z' })
+        .send({ ...validBody(), endAt: daysFromNow(29) })
         .expect(400));
 
     it('400 when registrationClosesAt precedes registrationOpensAt (registration on)', () =>
@@ -120,8 +124,8 @@ describe('EventController (e2e)', () => {
         .send({
           ...validBody(),
           registrationEnabled: true,
-          registrationOpensAt: '2026-07-20T00:00:00.000Z',
-          registrationClosesAt: '2026-07-10T00:00:00.000Z',
+          registrationOpensAt: daysFromNow(20),
+          registrationClosesAt: daysFromNow(10),
         })
         .expect(400));
 
@@ -132,8 +136,8 @@ describe('EventController (e2e)', () => {
         .send({
           ...validBody(),
           registrationEnabled: false,
-          registrationOpensAt: '2026-07-20T00:00:00.000Z',
-          registrationClosesAt: '2026-07-10T00:00:00.000Z',
+          registrationOpensAt: daysFromNow(20),
+          registrationClosesAt: daysFromNow(10),
         })
         .expect(201));
   });
@@ -258,10 +262,13 @@ describe('EventController (e2e)', () => {
     });
 
     it('lists events ordered by start_at ascending', async () => {
-      await request(app.getHttpServer())
+      // Criado por ÚLTIMO mas com data ANTERIOR (+15 vs +30 do validBody): se a
+      // rota não ordenasse por start_at, ele viria no fim e o teste quebraria —
+      // é a ordenação que está sendo provada, não coincidência de calendário.
+      const previous = await request(app.getHttpServer())
         .post(`${BASE}/events`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ ...validBody(), title: 'Evento anterior', startAt: '2026-07-15T18:00:00.000Z' })
+        .send({ ...validBody(), title: 'Evento anterior', startAt: daysFromNow(15) })
         .expect(201);
 
       const res = await request(app.getHttpServer())
@@ -270,27 +277,49 @@ describe('EventController (e2e)', () => {
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
+      const ids = res.body.map((e: { id: string }) => e.id);
       const dates = res.body.map((e: { startAt: string }) => e.startAt);
       const sorted = [...dates].sort();
       expect(dates).toEqual(sorted);
+      // Criado por último, mas não vem por último: fica antes dos +30.
+      expect(ids.indexOf(previous.body.id)).toBeLessThan(ids.length - 1);
     });
 
     it('filters upcoming vs past', async () => {
+      // Âncoras de SINAIS OPOSTOS: quem separa os dois grupos é o sinal do
+      // offset (+30 / -30), não a posição do calendário em relação a um literal.
+      const futureEvent = await request(app.getHttpServer())
+        .post(`${BASE}/events`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ ...validBody(), title: 'Evento futuro', startAt: daysFromNow(30) })
+        .expect(201);
+      const pastEvent = await request(app.getHttpServer())
+        .post(`${BASE}/events`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ ...validBody(), title: 'Evento passado', startAt: daysFromNow(-30) })
+        .expect(201);
+
       const upcoming = await request(app.getHttpServer())
         .get(`${BASE}/events?filter=upcoming`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
+      const upcomingIds = upcoming.body.map((e: { id: string }) => e.id);
       expect(
         upcoming.body.every((e: { startAt: string }) => new Date(e.startAt) >= new Date()),
       ).toBe(true);
+      expect(upcomingIds).toContain(futureEvent.body.id);
+      expect(upcomingIds).not.toContain(pastEvent.body.id);
 
       const past = await request(app.getHttpServer())
         .get(`${BASE}/events?filter=past`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
+      const pastIds = past.body.map((e: { id: string }) => e.id);
       expect(past.body.every((e: { startAt: string }) => new Date(e.startAt) < new Date())).toBe(
         true,
       );
+      expect(pastIds).toContain(pastEvent.body.id);
+      expect(pastIds).not.toContain(futureEvent.body.id);
     });
 
     it('gets one event by id', async () => {

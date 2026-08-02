@@ -1,6 +1,11 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PDFDocument } from 'pdf-lib';
-import { DOCUMENT_PRINT_CSS, A4_PAGE_WIDTH_PX } from '@fonte/doc-styles';
+import {
+  DOCUMENT_PRINT_CSS,
+  A4_PAGE_WIDTH_PX,
+  A4_MARGIN_TOP_PX,
+  A4_MARGIN_X_PX,
+} from '@fonte/doc-styles';
 import { Repository } from 'typeorm';
 import { DocumentTemplateService } from './document-template.service';
 import { DocumentTemplate } from './document-template.entity';
@@ -331,6 +336,52 @@ describe('DocumentTemplateService.generatePdf', () => {
     expect(Buffer.isBuffer(result.buffer)).toBe(true);
     expect(page.close).toHaveBeenCalled();
   });
+
+  // Story 154 — a margem do PDF deixou de ser o `padding` do body (caixa do
+  // FLUXO: só materializa no topo da 1ª página e no pé da última) e passou a ser
+  // margem da PÁGINA, que se repete em todas. No Chrome, a margem passada ao
+  // printToPDF tem precedência sobre o `@page` do CSS: se esta continuasse
+  // zerada, o `@page` do DOCUMENT_PRINT_CSS seria ignorado no caminho principal
+  // e a página 2 voltaria a sangrar até a borda do papel.
+  describe('page margin (story 154)', () => {
+    async function callPdf() {
+      const repo = makeRepo({
+        findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '<p>oi</p>' }),
+      });
+      const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+      const page = {
+        setContent: jest.fn().mockResolvedValue(undefined),
+        pdf: jest.fn().mockResolvedValue(Buffer.from('PDFDATA')),
+        close: jest.fn().mockResolvedValue(undefined),
+      };
+      (service as any).browserPromise = Promise.resolve({ newPage: jest.fn().mockResolvedValue(page) });
+      await service.generatePdf('tpl-1', { id: 'res-1', name: 'João Silva' } as Resident);
+      return page.pdf.mock.calls[0][0] as {
+        format: string;
+        margin: { top: string; bottom: string; left: string; right: string };
+      };
+    }
+
+    it('passes all FOUR margins to page.pdf, from the shared constants', async () => {
+      const options = await callPdf();
+      expect(options.format).toBe('A4');
+      expect(options.margin).toEqual({
+        top: `${A4_MARGIN_TOP_PX}px`,
+        bottom: `${A4_MARGIN_TOP_PX}px`,
+        left: `${A4_MARGIN_X_PX}px`,
+        right: `${A4_MARGIN_X_PX}px`,
+      });
+      // Valores reais da convenção — trava contra "constante nova com outro número".
+      expect(options.margin).toEqual({ top: '48px', bottom: '48px', left: '40px', right: '40px' });
+    });
+
+    it('never sends the zeroed margin of the old convention (direct regression)', async () => {
+      const options = await callPdf();
+      for (const side of ['top', 'bottom', 'left', 'right'] as const) {
+        expect(options.margin[side]).not.toBe('0');
+      }
+    });
+  });
 });
 
 // Story 152 — PDF combinado: os documentos são renderizados um a um e só depois
@@ -508,7 +559,13 @@ describe('DocumentTemplateService.renderForResident', () => {
     expect(html).toContain(DOCUMENT_PRINT_CSS);
     // Geometria/typografia consolidadas das stories 21/22/23 presentes no PDF.
     expect(html).toContain('font-size:12pt'); // story 23 — base unificada
-    expect(html).toContain(`width:${A4_PAGE_WIDTH_PX}px`); // story 24 — A4 794px
+    // Story 154 — a margem chega ao HTML servido pelo botão "Imprimir" via @page
+    // (esse caminho não passa pela opção `margin` do puppeteer).
+    expect(html).toContain(`@page{size:A4;margin:${A4_MARGIN_TOP_PX}px ${A4_MARGIN_X_PX}px}`);
+    // ...e o body não carrega mais a geometria da página (largura fixa/padding):
+    // ele ocupa a área imprimível deixada pela margem da página.
+    expect(html).toContain('width:100%');
+    expect(html).not.toContain(`width:${A4_PAGE_WIDTH_PX}px`);
     expect(html).toContain('table.doc-table'); // story 21 — tabelas
     expect(html).toContain('img{max-width:100%}'); // story 22 — guarda de imagem
     expect(html).toContain('text-decoration:underline'); // story 27 — link visível

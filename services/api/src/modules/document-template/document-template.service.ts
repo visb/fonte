@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Browser } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
-import { DOCUMENT_PRINT_CSS } from '@fonte/doc-styles';
+import { DOCUMENT_PRINT_CSS, A4_MARGIN_TOP_PX, A4_MARGIN_X_PX } from '@fonte/doc-styles';
 import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
 import { Staff } from '../staff/staff.entity';
@@ -61,11 +61,25 @@ export class DocumentTemplateService implements OnModuleDestroy {
     const page = await browser.newPage();
     try {
       await page.setContent(html, { waitUntil: 'networkidle0' });
-      // Single margin convention (story 24 §2): puppeteer margin is ZEROED so the
-      // ONLY page margin is the body `padding` from DOCUMENT_PRINT_CSS. This makes
-      // the usable content height unambiguous (A4 1123px − 2×48px = 1027px) and
-      // lets the editor's A4 frame paginate at exactly the same offset as the PDF.
-      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '0', bottom: '0', left: '0', right: '0' } });
+      // Margem única (story 24), agora na CAIXA DA PÁGINA (story 154): os mesmos
+      // valores são declarados no `@page` do DOCUMENT_PRINT_CSS e aqui, sempre
+      // vindos do @fonte/doc-styles — nunca hardcodados. Repetir aqui não é
+      // redundância: no Chrome a margem passada ao printToPDF tem PRECEDÊNCIA
+      // sobre o `@page`, então deixá-la zerada (como era até a story 154)
+      // anularia o CSS justo no caminho principal. Antes a margem era o `padding`
+      // do body, que é caixa do fluxo e só aparecia na 1ª e na última página;
+      // como margem de página ela vale em TODAS, e a altura útil declarada
+      // (A4_CONTENT_HEIGHT_PX = 1027px) passa a ser verdadeira em todas elas.
+      const pdf = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: `${A4_MARGIN_TOP_PX}px`,
+          bottom: `${A4_MARGIN_TOP_PX}px`,
+          left: `${A4_MARGIN_X_PX}px`,
+          right: `${A4_MARGIN_X_PX}px`,
+        },
+      });
       return { buffer: Buffer.from(pdf), filename };
     } finally {
       await page.close();
@@ -76,12 +90,15 @@ export class DocumentTemplateService implements OnModuleDestroy {
   //
   // Cada template é renderizado pelo `generatePdf` normal (mesmo browser, página
   // aberta e fechada por documento) e só DEPOIS os PDFs são mesclados. NÃO
-  // concatenar os HTMLs num único `wrapPage`: a convenção de margem única da
-  // story 24 zera a margem do puppeteer e deixa a margem real por conta do
-  // `padding` do body, que só vale na primeira e na última página do fluxo — do
-  // 2º documento em diante o texto encostaria na borda do papel. Mesclando PDFs
-  // já paginados, cada documento sai idêntico ao download individual e, por ser
-  // um arquivo inteiro, começa obrigatoriamente numa página nova.
+  // concatenar os HTMLs num único `wrapPage`: num fluxo só, o 2º documento
+  // começaria onde o 1º terminou, no meio da página. Mesclando PDFs já
+  // paginados, cada documento sai idêntico ao download individual e, por ser um
+  // arquivo inteiro, começa obrigatoriamente numa página nova.
+  //
+  // (O motivo original registrado aqui — "o `padding` do body só vale na 1ª e na
+  // última página do fluxo, então do 2º documento em diante o texto encostaria na
+  // borda" — deixou de valer na story 154, que moveu a margem para o `@page`. A
+  // decisão de mesclar PDFs continua certa, pelo motivo acima.)
   async generateCombinedPdf(
     templateIds: string[],
     resident: Resident,

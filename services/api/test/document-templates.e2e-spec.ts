@@ -5,6 +5,7 @@ process.env.NODE_ENV = 'test';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
+import { PDFDocument } from 'pdf-lib';
 import { bootstrapApp, login, BASE } from './helpers/e2e-app';
 
 // Minimal valid 1x1 transparent PNG (used for the happy-path image upload).
@@ -427,5 +428,69 @@ describe('DocumentTemplateController (e2e)', () => {
         .post(`${BASE}/residents/${residentId}/documents/combined-pdf`)
         .send({ templateIds })
         .expect(401));
+  });
+
+  // ── Margem de página em TODAS as páginas (story 154) ─────────────────────────
+
+  describe('page margin on every page (story 154)', () => {
+    let templateId: string;
+    let residentId: string;
+
+    beforeAll(async () => {
+      const name = `Termo multipagina ${tag}`;
+      createdNames.push(name);
+      // Parágrafos independentes o bastante para estourar a página: a quebra cai
+      // ENTRE parágrafos, sem depender de fragmentação dentro de um bloco só.
+      const paragraphs = Array.from(
+        { length: 90 },
+        (_, i) => `<p>Parágrafo ${i + 1} — texto de enchimento para forçar a quebra de página.</p>`,
+      ).join('');
+      const tpl = await request(app.getHttpServer())
+        .post(`${BASE}/document-templates`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name, content: `<p>Documento de {{name}}</p>${paragraphs}` })
+        .expect(201);
+      templateId = tpl.body.id;
+
+      const residents = await request(app.getHttpServer())
+        .get(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      residentId = residents.body.data[0].id;
+    });
+
+    // Antes da story 154 a margem era o `padding` do body (caixa do fluxo): só
+    // aparecia no topo da 1ª página e no pé da última. Agora é margem da PÁGINA
+    // (`@page` + opção do puppeteer), então a folha continua A4 e o conteúdo é
+    // reduzido pela margem em vez de a margem comer o papel.
+    it('GET /:id/documents/:templateId/pdf → PDF de 2+ páginas, todas em A4', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/documents/${templateId}/pdf`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .buffer()
+        .parse((r, cb) => {
+          const chunks: Buffer[] = [];
+          r.on('data', (c: Buffer) => chunks.push(Buffer.from(c)));
+          r.on('end', () => cb(null, Buffer.concat(chunks)));
+        })
+        .expect(200);
+
+      const body = res.body as Buffer;
+      expect(body.subarray(0, 4).toString()).toBe('%PDF');
+
+      const pdf = await PDFDocument.load(body);
+      // O conteúdo quebrou: existe uma página 2 (que é justamente a que saía sem
+      // margem nenhuma antes desta story).
+      expect(pdf.getPageCount()).toBeGreaterThanOrEqual(2);
+      // Toda página segue medindo A4 (~595 × 842 pt) — a margem não veio às custas
+      // do tamanho do papel. Tolerância de 1pt porque o Chrome arredonda o A4 para
+      // 8.27 × 11.69 pol (595.92 × 841.68pt) em vez dos 595.28 × 841.89 exatos.
+      for (const page of pdf.getPages()) {
+        expect(page.getWidth()).toBeGreaterThan(594);
+        expect(page.getWidth()).toBeLessThan(597);
+        expect(page.getHeight()).toBeGreaterThan(841);
+        expect(page.getHeight()).toBeLessThan(843);
+      }
+    }, 120_000);
   });
 });

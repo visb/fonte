@@ -50,12 +50,12 @@ commit: `a347294` — merge: `608fbbf` — 2026-08-02 — **PENDENTE-MANUAL: con
 
 Postman, migrations, `packages/types` e `api-client`: intocados nas duas stories, como previsto.
 
-### PENDENTE-MANUAL (não bloqueia, mas falta fazer)
+### Conferência visual da 154 — FEITA, aprovada (2026-08-02)
 
-**Conferência visual da 154.** Nenhum teste prova que a margem *renderiza* — só que ela chega ao
-`page.pdf` e ao HTML. Falta olhar: respiro no pé da página 1 e no topo da página 2, e que um
-documento real de 1 página não mudou de aparência. Amostras de 5 páginas geradas com o CSS/margens
-exatos do `generatePdf`:
+O usuário conferiu as amostras a olho e aprovou: a margem renderiza em todas as páginas. Fica o
+registro de que nenhum teste cobre isso — só que a margem chega ao `page.pdf` e ao HTML; qualquer
+mexida futura na geometria exige nova conferência visual. Amostras de 5 páginas geradas com o
+CSS/margens exatos do `generatePdf`:
 
 - depois: `%TEMP%\claude\C--code-fonte-services-api\4854ac8e-fb99-42db-bf38-efa663bd7728\scratchpad\story-154-amostra.pdf`
 - antes (contraste): `...\scratchpad\story-154-antes.pdf`

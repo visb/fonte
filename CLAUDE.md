@@ -13,6 +13,7 @@ Monorepo pnpm com backend NestJS centralizado e múltiplos frontends.
 ```
 apps/
   adm.fonte/       ← web React/Vite — gestão administrativa
+  portal.fonte/    ← web React/Vite — portal público sem login (pagamento de associado, autocancelamento, eventos)
   ops.fonte/       ← Expo/React Native — operadores da casa
   app.fonte/       ← Expo/React Native — familiares (role RELATIVE, ativo)
   resident.fonte/  ← mobile Expo — internos em kiosk (planejado; role RESIDENT já ativa no backend)
@@ -21,7 +22,13 @@ services/
 packages/
   api-client/      ← cliente HTTP compartilhado
   types/           ← contratos/tipos compartilhados
+  doc-styles/      ← estilos dos documentos gerados (build via `pnpm build:doc-styles`)
 ```
+
+`portal.fonte` é público e acessado por link tokenizado (WhatsApp), sem autenticação:
+`/p/:token` e `/:token` (pagamento), `/cancelar/:token` (autocancelamento de assinatura),
+`/eventos` + `/eventos/:id` (eventos públicos), `/pagamento/:token` (inscrição em evento pago).
+Segue os mesmos padrões de `adm.fonte` (features/, hooks, react-hook-form + zod, `@fonte/api-client`).
 
 ---
 
@@ -31,7 +38,7 @@ Skills `fonte-*` (em `.claude/skills/`) carregam automaticamente quando a tarefa
 
 - `fonte-project-map` — onde encontrar cada tipo de mudança no monorepo.
 - `fonte-backend` — padrões do backend NestJS, módulos, auth e migrations.
-- `fonte-frontend` — padrões dos apps `adm.fonte` e `ops.fonte`.
+- `fonte-frontend` — padrões dos apps `adm.fonte`, `portal.fonte` e `ops.fonte`.
 - `fonte-workflow` — comandos e validação por tipo de mudança.
 - `fonte-backup` — runbook de backup banco+bucket.
 - `fonte-support-groups` — feature Grupos de Apoio.
@@ -52,13 +59,15 @@ pnpm install
 pnpm docker:up
 pnpm dev:api
 pnpm dev:adm
+pnpm dev:portal
 pnpm dev:ops
 pnpm build:types
+pnpm build:doc-styles
 pnpm build:api-client
 pnpm build:api
 ```
 
-`pnpm dev:api`, `pnpm dev:adm` e `pnpm dev:ops` já recompilam dependências compartilhadas. Se alterar `packages/types/src/index.ts`, rode `pnpm build:types` ou reinicie o dev server.
+Todos os `dev:*` já recompilam dependências compartilhadas. Se alterar `packages/types/src/index.ts`, rode `pnpm build:types` ou reinicie o dev server.
 
 ---
 
@@ -77,6 +86,7 @@ pnpm dev:api          # http://localhost:3000
 
 # terminal 3 — frontend desejado
 pnpm dev:adm          # http://localhost:5173
+pnpm dev:portal       # http://localhost:5175
 pnpm dev:ops          # http://localhost:8082
 pnpm dev:app          # Expo (QR code no terminal)
 ```
@@ -107,14 +117,20 @@ pnpm --filter adm.fonte dev:test   # porta 5174, aponta para API em 3001 (.env.t
 | `pnpm test:api:cov` | Unit tests com cobertura |
 | `pnpm test:api:e2e` | E2E do backend (Jest + supertest) |
 | `pnpm test:adm` | E2E do adm.fonte (Playwright) |
+| `pnpm test:portal` | Unit tests do portal.fonte (Vitest) |
+| `pnpm test:portal:e2e` | E2E do portal.fonte (Playwright, porta 5176) |
 | `pnpm test:ops` | E2E do ops.fonte (Maestro) |
 | `pnpm test:app` | E2E do app.fonte (Maestro) |
+
+Cada frontend também tem unit tests: `test:adm:unit`, `test:ops:unit`, `test:app:unit`
+(mais `test:api-client`). `pnpm test:cov:all` roda tudo com cobertura.
 
 ### Pré-requisitos por tipo
 
 - **`test:api`** — apenas `pnpm docker:up` com DB de teste disponível.
 - **`test:api:e2e`** — `pnpm test:setup` + `pnpm dev:api:test` rodando.
 - **`test:adm`** — `pnpm test:setup` + `pnpm dev:api:test` + `pnpm dev:adm` rodando na porta 5174.
+- **`test:portal` / `test:portal:e2e`** — o unit não precisa de nada; o e2e sobe o próprio Vite na porta 5176 (não reusa o dev), mas precisa de `pnpm test:setup` + `pnpm dev:api:test`.
 - **`test:ops` / `test:app`** — Maestro instalado + emulador/dispositivo conectado + API de teste rodando + Metro bundler rodando (`pnpm dev:ops` ou `pnpm dev:app`). No Android, pode ser necessário `adb reverse tcp:8081 tcp:8081` para o emulador alcançar o Metro.
 
 ### Antes de commitar
@@ -330,12 +346,12 @@ Consulte `BUSINESS_RULES.md` antes de tocar nestes fluxos:
 
 ## Observabilidade (Sentry — story 43)
 
-Sentry SaaS, **1 projeto/DSN por app** (`fonte-api`, `fonte-adm`, `fonte-associados`,
+Sentry SaaS, **1 projeto/DSN por app** (`fonte-api`, `fonte-adm`, `fonte-associados` ← `portal.fonte`,
 `fonte-ops`, `fonte-app`). Cobre errors, tracing, profiling e logs estruturados.
 
 - **DSN sempre via env.** Sem DSN o SDK fica inerte — dev local e testes não disparam eventos.
   - api: `SENTRY_DSN` (+ `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_PROFILES_SAMPLE_RATE`).
-  - adm/associados: `VITE_SENTRY_DSN` (+ `VITE_SENTRY_*_SAMPLE_RATE`).
+  - adm/portal: `VITE_SENTRY_DSN` (+ `VITE_SENTRY_*_SAMPLE_RATE`).
   - ops/app: `EXPO_PUBLIC_SENTRY_DSN` (+ `EXPO_PUBLIC_SENTRY_*_SAMPLE_RATE`).
 - **Init**: api em `src/instrument.ts` (importado 1ª linha do `main.ts`); web em
   `src/lib/sentry.ts` (chamado no `main.tsx`); RN em `lib/sentry.ts` (chamado no `app/_layout.tsx`,

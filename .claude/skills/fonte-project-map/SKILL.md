@@ -11,10 +11,12 @@ description: Mapa do monorepo fonte — onde encontrar cada tipo de mudança (m�
 
 - `services/api` — API NestJS centralizada.
 - `apps/adm.fonte` — app web administrativo em React/Vite.
+- `apps/portal.fonte` — portal público web em React/Vite, sem login; acesso por link tokenizado (pagamento de associado, autocancelamento de assinatura, eventos públicos).
 - `apps/ops.fonte` — PWA/mobile Expo para operadores da casa.
 - `apps/app.fonte` — app mobile Expo para familiares (role RELATIVE).
 - `packages/types` — tipos compartilhados entre backend, frontends e cliente HTTP.
 - `packages/api-client` — cliente HTTP compartilhado usado pelos frontends.
+- `packages/doc-styles` — estilos dos documentos gerados pela API.
 - `BUSINESS_RULES.md` — regras de negócio e permissões por role.
 - `CONTRIBUTING.md` — convenção de commits.
 
@@ -29,6 +31,11 @@ description: Mapa do monorepo fonte — onde encontrar cada tipo de mudança (m�
 | Tela administrativa | `apps/adm.fonte/src/pages/*` |
 | Layout/rotas web admin | `apps/adm.fonte/src/App.tsx`, `apps/adm.fonte/src/components/layout/*` |
 | Tela do app de operação | `apps/ops.fonte/app/*` |
+| Página pública do portal | `apps/portal.fonte/src/features/*/pages/*` |
+| Rotas do portal público | `apps/portal.fonte/src/App.tsx` |
+| Pagamento de associado por link | `apps/portal.fonte/src/features/payment/` |
+| Autocancelamento de assinatura | `apps/portal.fonte/src/features/cancel/` |
+| Eventos públicos e inscrição | `apps/portal.fonte/src/features/events/`, `services/api/src/modules/event/` |
 | Autenticação frontend | `apps/adm.fonte/src/contexts/AuthContext.tsx`, `apps/ops.fonte/lib/auth.tsx` |
 | Configuração de API frontend | `apps/adm.fonte/src/lib/api.ts`, `apps/ops.fonte/lib/api.ts` |
 | Banco/migrations | `services/api/src/database/*` |
@@ -50,9 +57,11 @@ description: Mapa do monorepo fonte — onde encontrar cada tipo de mudança (m�
 ```text
 services/api ─┐
               ├─ depende de @fonte/types
-apps/adm.fonte ─┬─ depende de @fonte/types
-apps/ops.fonte ─┤
-                └─ depende de @fonte/api-client ─ depende de @fonte/types
+apps/adm.fonte ────┬─ depende de @fonte/types
+apps/portal.fonte ─┤
+apps/ops.fonte ────┤
+apps/app.fonte ────┤
+                   └─ depende de @fonte/api-client ─ depende de @fonte/types
 ```
 
 Quando `packages/types/src/index.ts` mudar, reconstrua `@fonte/types`. Quando o cliente HTTP mudar, reconstrua `@fonte/api-client` antes de validar apps consumidores.

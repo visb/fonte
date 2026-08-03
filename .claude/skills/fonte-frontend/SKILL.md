@@ -1,6 +1,6 @@
 ---
 name: fonte-frontend
-description: Padrões dos apps adm.fonte (React/Vite) e ops.fonte (Expo Router/React Native) — arquitetura em vertical slices (features/) + MVVM (Model = tipos/api-client, ViewModel = hooks, View = pages/components), cliente HTTP @fonte/api-client compartilhado, rotas/auth/config de cada app, modo Resident e timer de uso no ops.fonte, tipos compartilhados. Use ao editar apps/adm.fonte ou apps/ops.fonte.
+description: Padrões dos apps adm.fonte (React/Vite), portal.fonte (React/Vite público, sem login) e ops.fonte/app.fonte (Expo Router/React Native) — arquitetura em vertical slices (features/) + MVVM (Model = tipos/api-client, ViewModel = hooks, View = pages/components), cliente HTTP @fonte/api-client compartilhado, rotas/auth/config de cada app, modo Resident e timer de uso no ops.fonte, tipos compartilhados. Use ao editar apps/adm.fonte, apps/portal.fonte, apps/ops.fonte ou apps/app.fonte.
 ---
 
 # Guia dos frontends para IA
@@ -8,6 +8,7 @@ description: Padrões dos apps adm.fonte (React/Vite) e ops.fonte (Expo Router/R
 ## Apps
 
 - `apps/adm.fonte` — React + Vite para gestão administrativa.
+- `apps/portal.fonte` — React + Vite público, sem login; acesso por token na URL.
 - `apps/ops.fonte` — Expo Router/React Native para operadores.
 - `apps/app.fonte` — Expo/React Native para familiares (role `RELATIVE`).
 
@@ -102,6 +103,30 @@ Padrões:
 
 ---
 
+## `portal.fonte`
+
+Portal público em React + Vite (porta dev 5175). **Sem login e sem `AuthContext`**: a credencial é o
+token da URL, enviado pelo backend em link de WhatsApp.
+
+- Rotas (`src/App.tsx`): `/p/:token` e `/:token` (pagamento de associado), `/cancelar/:token`
+  (autocancelamento de assinatura), `/eventos` + `/eventos/:id` (eventos públicos),
+  `/pagamento/:token` (inscrição em evento pago). Raiz e rota desconhecida caem em `InvalidLinkPage`.
+- Slices: `src/features/payment`, `src/features/cancel`, `src/features/events` — mesma estrutura
+  vertical slice + MVVM do `adm.fonte`.
+- Compartilhado: `src/lib/api.ts`, `queryKeys.ts`, `errors.ts`, `money.ts`, `cardTokenizer.ts`
+  (tokenização de cartão no cliente — o PAN nunca vai para a API do fonte),
+  `src/components/BrandHeader.tsx` e `StateScreens.tsx` (loading/erro/link inválido).
+- Não tem design system próprio como `components/ui` do adm; componentes visuais ficam no slice ou
+  em `src/components/`.
+
+Padrões:
+
+- Token sempre vem de `useParams` e é repassado ao hook do slice — nunca guarde em contexto global.
+- Toda página precisa tratar token inválido/expirado → `StateScreens`, não crash.
+- Formulários: `react-hook-form` + `zod`, igual ao `adm.fonte`.
+
+---
+
 ## `ops.fonte` e `app.fonte`
 
 - Slices: `apps/ops.fonte/features/*` e `apps/app.fonte/features/*`.
@@ -145,5 +170,6 @@ Residents (role `RESIDENT`) fazem login no ops.fonte com acesso restrito:
 ## Validação recomendada
 
 - Admin web: `pnpm --filter adm.fonte build`.
+- Portal: `pnpm build:portal` (ou `pnpm test:portal` para os unit tests).
 - Ops/app: sem script de build; valide TypeScript (`pnpm --filter ops.fonte exec tsc --noEmit`) e rotas, ou suba com `pnpm dev:ops` / `pnpm dev:app`.
 - Cliente compartilhado: `pnpm build:api-client`.

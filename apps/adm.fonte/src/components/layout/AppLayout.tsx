@@ -219,7 +219,8 @@ export function AppLayout() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="p-6 pt-2 pb-[7px] border-b flex items-center justify-between">
+        {/* Header fixo: nunca é comprimido quando a lista de links cresce. */}
+        <div className="shrink-0 p-6 pt-2 pb-[7px] border-b flex items-center justify-between">
           <h1 className="text-xl font-bold">adm.fonte</h1>
           <div className="flex items-center gap-1">
             <Button
@@ -242,7 +243,13 @@ export function AppLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        {/*
+          `min-h-0` autoriza este item flex a encolher abaixo da altura do
+          conteúdo (o padrão `min-height: auto` faria a lista transbordar e
+          empurrar o rodapé para fora da viewport); `overflow-y-auto` manda o
+          excedente para uma barra de rolagem própria da lista de links.
+        */}
+        <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
           <Link to="/" onClick={closeSidebar} className={navLinkClass}>
             <Home size={16} />
             Dashboard
@@ -337,7 +344,8 @@ export function AppLayout() {
           )}
         </nav>
 
-        <div className="p-4 border-t space-y-1">
+        {/* Rodapé fixo: Meu Perfil e Sair ficam sempre visíveis. */}
+        <div className="shrink-0 p-4 border-t space-y-1">
           <NavLink
             to="/profile"
             onClick={closeSidebar}

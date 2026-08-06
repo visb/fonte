@@ -429,6 +429,73 @@ describe('ResidentService.create', () => {
 
     expect(emitter.emit).toHaveBeenCalledWith('resident.counts.changed');
   });
+
+  function makeCreateServiceForNotification(status: string) {
+    const saved = makeResident({ id: RESIDENT_ID, houseId: HOUSE_ID, status: status as Resident['status'] });
+    const notificationsCreate = jest.fn().mockResolvedValue(undefined);
+    const service = makeService(
+      {
+        create: jest.fn().mockReturnValue(saved),
+        save: jest.fn().mockResolvedValue(saved),
+        findOne: jest.fn().mockResolvedValue(saved),
+        update: jest.fn(),
+      },
+      { create: jest.fn().mockReturnValue(makeAdmission()), save: jest.fn().mockResolvedValue(makeAdmission()) },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { create: notificationsCreate },
+    );
+    return { service, notificationsCreate };
+  }
+
+  it('emits ADMISSION_CREATED when the resident is created already ACTIVE', async () => {
+    const { service, notificationsCreate } = makeCreateServiceForNotification('ACTIVE');
+
+    await service.create({ name: 'Ana', houseId: HOUSE_ID, status: 'ACTIVE' } as never);
+
+    // um para ADMIN, um para a casa
+    expect(notificationsCreate).toHaveBeenCalledTimes(2);
+    expect(notificationsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'ADMISSION_CREATED', recipientRole: 'ADMIN' }),
+    );
+  });
+
+  it('does NOT emit ADMISSION_CREATED for non-ACTIVE statuses', async () => {
+    const { service, notificationsCreate } = makeCreateServiceForNotification('PRE_ADMISSION');
+
+    await service.create({ name: 'Ana', houseId: HOUSE_ID, status: 'PRE_ADMISSION' } as never);
+
+    expect(notificationsCreate).not.toHaveBeenCalled();
+  });
+
+  it('does NOT emit ADMISSION_CREATED when running inside an import transaction', async () => {
+    const saved = makeResident({ id: RESIDENT_ID, houseId: HOUSE_ID, status: 'ACTIVE' as Resident['status'] });
+    const notificationsCreate = jest.fn().mockResolvedValue(undefined);
+    const service = makeService(
+      { findOne: jest.fn().mockResolvedValue(saved), update: jest.fn() },
+      {},
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { create: notificationsCreate },
+    );
+
+    const manager = {
+      getRepository: jest.fn().mockReturnValue({
+        create: jest.fn().mockReturnValue(saved),
+        save: jest.fn().mockResolvedValue(saved),
+      }),
+    } as never;
+
+    await service.create({ name: 'Ana', houseId: HOUSE_ID, status: 'ACTIVE' } as never, manager);
+
+    expect(notificationsCreate).not.toHaveBeenCalled();
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -248,6 +248,12 @@ export class ResidentService {
 
     await this.receivableService.generateSchedule(saved.id, manager);
 
+    // Acolhimento manual já entra ACTIVE — notifica aqui. O import em lote passa
+    // `manager` e fica silencioso para não inundar as notificações.
+    if (!manager && saved.status === ResidentStatus.ACTIVE) {
+      await this.notifyAdmissionCreated(saved);
+    }
+
     this.emitCountsChanged();
     return saved;
   }

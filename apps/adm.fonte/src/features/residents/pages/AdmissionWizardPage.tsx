@@ -83,7 +83,7 @@ export function AdmissionWizardPage() {
       }
 
       const resident = await createMutation.mutateAsync({
-        data: { ...payload, status: ResidentStatus.PRE_ADMISSION } as Parameters<typeof api.residents.create>[0],
+        data: { ...payload, status: ResidentStatus.ACTIVE } as Parameters<typeof api.residents.create>[0],
         photo: pendingPhotoRef.current,
       });
 
@@ -133,6 +133,8 @@ export function AdmissionWizardPage() {
     setError(null);
     setAdvancing(true);
     try {
+      // O filho já nasce ACTIVE no passo de admissão; o update cobre acolhimentos
+      // antigos, criados antes disso, que ficaram parados em PRE_ADMISSION.
       await api.residents.update(residentId, { status: ResidentStatus.ACTIVE });
       navigate(`/residents/${residentId}?tab=overview`);
     } catch (e) {

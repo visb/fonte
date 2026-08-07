@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import type { DocumentTemplate } from '@fonte/api-client';
+import { TemplateAvailability } from '@fonte/types';
 import { TemplateCard } from './TemplateCard';
 
 afterEach(() => cleanup());
@@ -28,6 +29,49 @@ describe('TemplateCard', () => {
     expect(screen.queryByText('Acolhimento')).not.toBeInTheDocument();
     rerender(<TemplateCard template={template({ isRequired: true })} onSelect={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('Acolhimento')).toBeInTheDocument();
+  });
+
+  // ─── Disponibilidade por status do filho (story 160) ───────────────────────
+
+  it('não mostra badge de disponibilidade quando o template vale para todos', () => {
+    render(
+      <TemplateCard
+        template={template({ availableFor: TemplateAvailability.ALL })}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('Só ativos')).not.toBeInTheDocument();
+    expect(screen.queryByText('Só não-ativos')).not.toBeInTheDocument();
+  });
+
+  it('mostra "Só ativos" para ACTIVE_ONLY', () => {
+    render(
+      <TemplateCard
+        template={template({ availableFor: TemplateAvailability.ACTIVE_ONLY })}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Só ativos')).toBeInTheDocument();
+    expect(screen.queryByText('Só não-ativos')).not.toBeInTheDocument();
+  });
+
+  it('mostra "Só não-ativos" para INACTIVE_ONLY', () => {
+    render(
+      <TemplateCard
+        template={template({ availableFor: TemplateAvailability.INACTIVE_ONLY })}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Só não-ativos')).toBeInTheDocument();
+  });
+
+  // Template legado, criado antes da coluna existir no payload da tela.
+  it('sem o campo não mostra badge nenhuma', () => {
+    render(<TemplateCard template={template()} onSelect={vi.fn()} onDelete={vi.fn()} />);
+    expect(screen.queryByText(/Só (não-)?ativos/)).not.toBeInTheDocument();
   });
 
   it('clique no card seleciona; clique no lixo exclui sem propagar select', () => {

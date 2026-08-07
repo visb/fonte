@@ -13,8 +13,10 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { getErrorMessage } from '@/lib/errors';
 import {
   useCreateResident,
+  useResidentById,
   useResidentDocuments,
 } from '../hooks/useResidents';
+import { allRequiredDocsSigned } from '../lib/admissionGate';
 import {
   residentSchema,
   buildResidentPayload,
@@ -63,10 +65,13 @@ export function AdmissionWizardPage() {
 
   // Gating — only read once the resident exists.
   const { data: signedDocs = [] } = useResidentDocuments(residentId ?? '', { enabled: !!residentId });
+  // Sem id o hook já fica desabilitado (`enabled: !!id`); a query é a mesma que a
+  // aba de anexos do passo 4 usa, então vem do cache, sem viagem extra.
+  const { data: resident } = useResidentById(residentId ?? '');
   const { data: templates = [] } = useDocumentTemplates();
-  const requiredTemplates = templates.filter((t) => t.isRequired);
-  const signedMap = new Map(signedDocs.map((d) => [d.templateId, d]));
-  const allDocsSigned = requiredTemplates.every((t) => signedMap.get(t.id)?.signed);
+  // Story 160 — o gate só conta os obrigatórios que valem para o status do filho
+  // (a regra em si vive em lib/admissionGate.ts; a page só orquestra).
+  const allDocsSigned = allRequiredDocsSigned(templates, signedDocs, resident?.status);
 
   const ensureResident = async () => {
     setError(null);

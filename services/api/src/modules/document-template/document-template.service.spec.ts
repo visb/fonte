@@ -7,6 +7,7 @@ import {
   A4_MARGIN_X_PX,
 } from '@fonte/doc-styles';
 import { Repository } from 'typeorm';
+import { ResidentStatus, TemplateAvailability } from '@fonte/types';
 import { DocumentTemplateService } from './document-template.service';
 import { DocumentTemplate } from './document-template.entity';
 import { Relative } from '../relative/relative.entity';
@@ -1257,5 +1258,199 @@ describe('DocumentTemplateService resident photo block (story 157)', () => {
     expect(html).toContain('_'.repeat(25));
     expect(html).not.toContain('{{residentPhoto}}');
     expect(html).not.toContain('{{signature}}');
+  });
+});
+
+// ─── Disponibilidade por status do filho (story 160) ─────────────────────────
+//
+// A tela esconde o card, mas quem VETA é o service: ele é o choke point dos três
+// caminhos de geração (render, PDF e PDF combinado) e a URL direta continuaria
+// gerando o documento oculto sem esta guarda.
+
+describe('DocumentTemplateService — disponibilidade por status (story 160)', () => {
+  const MESSAGE = 'Este documento não está disponível para o status atual do acolhido';
+
+  function makeAvailabilityService(availableFor?: TemplateAvailability) {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({
+        id: 'tpl-1',
+        name: 'Declaração de alta',
+        content: '<p>{{name}}</p>',
+        availableFor,
+      }),
+    });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+    const page = {
+      setContent: jest.fn().mockResolvedValue(undefined),
+      pdf: jest.fn().mockResolvedValue(Buffer.from('PDFDATA')),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+    const browser = { newPage: jest.fn().mockResolvedValue(page) };
+    (service as any).browserPromise = Promise.resolve(browser);
+    return { service, browser, page };
+  }
+
+  function residentWithStatus(status: ResidentStatus): Resident {
+    return { id: 'res-1', name: 'João Silva', status } as Resident;
+  }
+
+  describe('renderForResident', () => {
+    it('ACTIVE_ONLY + filho em alta → BadRequest com a mensagem definida', async () => {
+      const { service } = makeAvailabilityService(TemplateAvailability.ACTIVE_ONLY);
+      const promise = service.renderForResident('tpl-1', residentWithStatus(ResidentStatus.DISCHARGED));
+      await expect(promise).rejects.toBeInstanceOf(BadRequestException);
+      await expect(promise).rejects.toThrow(MESSAGE);
+    });
+
+    it('ACTIVE_ONLY + filho ativo → renderiza normalmente', async () => {
+      const { service } = makeAvailabilityService(TemplateAvailability.ACTIVE_ONLY);
+      const html = await service.renderForResident('tpl-1', residentWithStatus(ResidentStatus.ACTIVE));
+      expect(html).toContain('João Silva');
+    });
+
+    // Regressão da decisão 3: PRE_ADMISSION está do lado ATIVO, então um
+    // documento de desligamento não pode ser gerado para quem acabou de chegar.
+    it('INACTIVE_ONLY + filho em PRE_ADMISSION → recusa', async () => {
+      const { service } = makeAvailabilityService(TemplateAvailability.INACTIVE_ONLY);
+      await expect(
+        service.renderForResident('tpl-1', residentWithStatus(ResidentStatus.PRE_ADMISSION)),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('INACTIVE_ONLY + filho evadido → renderiza normalmente', async () => {
+      const { service } = makeAvailabilityService(TemplateAvailability.INACTIVE_ONLY);
+      const html = await service.renderForResident('tpl-1', residentWithStatus(ResidentStatus.EVADED));
+      expect(html).toContain('João Silva');
+    });
+
+    it.each(Object.values(ResidentStatus))('ALL nunca recusa — status %s', async (status) => {
+      const { service } = makeAvailabilityService(TemplateAvailability.ALL);
+      await expect(service.renderForResident('tpl-1', residentWithStatus(status))).resolves.toContain('João Silva');
+    });
+
+    it('template legado (sem availableFor) nunca recusa', async () => {
+      const { service } = makeAvailabilityService(undefined);
+      await expect(
+        service.renderForResident('tpl-1', residentWithStatus(ResidentStatus.ARCHIVED)),
+      ).resolves.toContain('João Silva');
+    });
+  });
+
+  describe('generatePdf', () => {
+    it('ACTIVE_ONLY + filho em alta → BadRequest sem abrir página do browser', async () => {
+      const { service, browser } = makeAvailabilityService(TemplateAvailability.ACTIVE_ONLY);
+      await expect(
+        service.generatePdf('tpl-1', residentWithStatus(ResidentStatus.DISCHARGED)),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(browser.newPage).not.toHaveBeenCalled();
+    });
+
+    it('ACTIVE_ONLY + filho ativo → gera o PDF', async () => {
+      const { service, browser } = makeAvailabilityService(TemplateAvailability.ACTIVE_ONLY);
+      const result = await service.generatePdf('tpl-1', residentWithStatus(ResidentStatus.DISCIPLINE));
+      expect(Buffer.isBuffer(result.buffer)).toBe(true);
+      expect(browser.newPage).toHaveBeenCalled();
+    });
+  });
+
+  describe('generateCombinedPdf', () => {
+    // Um incompatível no MEIO da lista reprova a requisição inteira: nada de PDF
+    // parcial silencioso (decisão 7 do desenho).
+    function makeCombined(templates: Record<string, { name: string; content: string; availableFor?: TemplateAvailability }>) {
+      const repo = makeRepo({
+        findOne: jest.fn().mockImplementation(({ where }: { where: { id: string } }) => {
+          const found = templates[where.id];
+          return Promise.resolve(found ? { id: where.id, ...found } : null);
+        }),
+      });
+      const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+      const page = {
+        setContent: jest.fn().mockResolvedValue(undefined),
+        pdf: jest.fn().mockResolvedValue(Buffer.from('PDFDATA')),
+        close: jest.fn().mockResolvedValue(undefined),
+      };
+      const browser = { newPage: jest.fn().mockResolvedValue(page) };
+      (service as any).browserPromise = Promise.resolve(browser);
+      return { service, browser, page };
+    }
+
+    it('um template incompatível no meio da lista reprova TUDO, sem gerar PDF parcial', async () => {
+      const { service, browser } = makeCombined({
+        'tpl-a': { name: 'Ficha', content: '<p>A</p>' },
+        'tpl-b': { name: 'Declaração de alta', content: '<p>B</p>', availableFor: TemplateAvailability.INACTIVE_ONLY },
+        'tpl-c': { name: 'Contrato', content: '<p>C</p>' },
+      });
+
+      await expect(
+        service.generateCombinedPdf(['tpl-a', 'tpl-b', 'tpl-c'], residentWithStatus(ResidentStatus.ACTIVE)),
+      ).rejects.toThrow(MESSAGE);
+      // Nenhuma página aberta: a validação acontece antes de qualquer render.
+      expect(browser.newPage).not.toHaveBeenCalled();
+    });
+
+    it('todos compatíveis → gera o combinado normalmente', async () => {
+      const { service, page } = makeCombined({
+        'tpl-a': { name: 'Ficha', content: '<p>DOC-A</p>', availableFor: TemplateAvailability.ACTIVE_ONLY },
+        'tpl-b': { name: 'Contrato', content: '<p>DOC-B</p>', availableFor: TemplateAvailability.ALL },
+      });
+      const pdf = await PDFDocument.create();
+      pdf.addPage([595.28, 841.89]);
+      page.pdf.mockResolvedValue(Buffer.from(await pdf.save()));
+
+      const result = await service.generateCombinedPdf(
+        ['tpl-a', 'tpl-b'],
+        residentWithStatus(ResidentStatus.TEMP_LEAVE),
+      );
+
+      expect(result.filename).toBe('joao-silva-documentos.pdf');
+      expect(page.setContent).toHaveBeenCalledTimes(2);
+    });
+  });
+});
+
+describe('DocumentTemplateService — validação do availableFor (story 160)', () => {
+  it('create sem o campo grava ALL', async () => {
+    const repo = makeRepo();
+    const service = makeService(repo);
+    await service.create('Termo', '<p>x</p>');
+    expect(repo.create.mock.calls[0][0]).toMatchObject({ availableFor: TemplateAvailability.ALL });
+  });
+
+  it('create persiste o valor recebido', async () => {
+    const repo = makeRepo();
+    const service = makeService(repo);
+    await service.create('Termo', '<p>x</p>', false, false, TemplateAvailability.INACTIVE_ONLY);
+    expect(repo.create.mock.calls[0][0]).toMatchObject({
+      availableFor: TemplateAvailability.INACTIVE_ONLY,
+    });
+  });
+
+  it('create com valor fora do enum → BadRequest, sem tocar o banco', async () => {
+    const repo = makeRepo();
+    const service = makeService(repo);
+    await expect(
+      service.create('Termo', '<p>x</p>', false, false, 'SO_OS_LOIROS'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('update com valor fora do enum → BadRequest, sem tocar o banco', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '' }),
+    });
+    const service = makeService(repo);
+    await expect(
+      service.update('tpl-1', { availableFor: 'TALVEZ' as TemplateAvailability }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it('update com valor válido persiste', async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '' }),
+    });
+    const service = makeService(repo);
+    await service.update('tpl-1', { availableFor: TemplateAvailability.ACTIVE_ONLY });
+    expect(repo.update.mock.calls[0][1]).toEqual({ availableFor: TemplateAvailability.ACTIVE_ONLY });
   });
 });

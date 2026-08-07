@@ -1,3 +1,4 @@
+import { isTemplateAvailableForStatus } from '@fonte/types';
 import { Badge } from '@/components/ui/badge';
 import {
   useResidentById, useResidentDocuments, useResidentAttachments,
@@ -34,9 +35,18 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
   });
 
   const docByTemplate = Object.fromEntries(signedDocs.map((d) => [d.templateId, d]));
-  const requiredTemplates = templates.filter((t) => t.isRequired);
-  const optionalTemplates = templates.filter((t) => !t.isRequired);
-  const admissionSignTemplates = templates.filter((t) => t.signAtAdmission);
+  // Story 160 — o que não vale para o status do filho não entra em nenhum grupo:
+  // some do card, do menu "Gerar documento" e da seleção do PDF combinado, então
+  // a tela nunca monta uma requisição que o backend vai recusar. É o MESMO
+  // predicado do backend, inclusive com o filho ainda carregando (`resident`
+  // undefined): sem status nenhum template restrito passa — só os `ALL`, que são
+  // exatamente os que o backend aceitaria de qualquer forma.
+  const availableTemplates = templates.filter((t) =>
+    isTemplateAvailableForStatus(t.availableFor, resident?.status),
+  );
+  const requiredTemplates = availableTemplates.filter((t) => t.isRequired);
+  const optionalTemplates = availableTemplates.filter((t) => !t.isRequired);
+  const admissionSignTemplates = availableTemplates.filter((t) => t.signAtAdmission);
   // Story 152 — ordem do PDF combinado = ordem da tela (obrigatórios e depois os
   // de assinatura no acolhimento). Um template que esteja nos dois grupos entra
   // uma única vez no arquivo final.

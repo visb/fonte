@@ -157,27 +157,38 @@ describe('relativesFromPreview', () => {
 });
 
 describe('defaultImportStatus', () => {
-  it('ficha sem correspondência na planilha (unmatched) → ARCHIVED', () => {
-    expect(defaultImportStatus(preview({ matchStatus: 'unmatched' }))).toBe(
-      ResidentStatus.ARCHIVED,
-    );
+  it('ficha fora da planilha COM casa resolvida não força status (entra ATIVA, story 162)', () => {
+    // Regra nova: estar fora da planilha não significa que o filho não está na
+    // casa — com casa conhecida ele entra ativo (`''` → ACTIVE no payload).
+    expect(defaultImportStatus(preview({ matchStatus: 'unmatched' }), 'h1')).toBe('');
   });
 
-  it('ficha casada ou ambígua não força status (fluxo normal decide)', () => {
+  it('ficha fora da planilha SEM casa resolvida → ARCHIVED (único status sem casa)', () => {
+    const p = preview({ matchStatus: 'unmatched' });
+    expect(defaultImportStatus(p)).toBe(ResidentStatus.ARCHIVED);
+    expect(defaultImportStatus(p, '')).toBe(ResidentStatus.ARCHIVED);
+    expect(defaultImportStatus(p, null)).toBe(ResidentStatus.ARCHIVED);
+  });
+
+  it('ficha casada ou ambígua não força status, com ou sem casa (regressão)', () => {
     expect(defaultImportStatus(preview({ matchStatus: 'matched' }))).toBe('');
+    expect(defaultImportStatus(preview({ matchStatus: 'matched' }), 'h1')).toBe('');
     expect(defaultImportStatus(preview({ matchStatus: 'ambiguous' }))).toBe('');
+    expect(defaultImportStatus(preview({ matchStatus: 'ambiguous' }), 'h1')).toBe('');
   });
 
-  it('status já extraído da ficha tem precedência sobre a regra', () => {
+  it('status já extraído da ficha tem precedência, com e sem casa resolvida', () => {
     const p = preview({
       matchStatus: 'unmatched',
       resident: { name: 'João', status: ResidentStatus.DISCHARGED },
     });
     expect(defaultImportStatus(p)).toBe(ResidentStatus.DISCHARGED);
+    expect(defaultImportStatus(p, 'h1')).toBe(ResidentStatus.DISCHARGED);
   });
 
   it('sem preview devolve vazio', () => {
     expect(defaultImportStatus(null)).toBe('');
+    expect(defaultImportStatus(null, 'h1')).toBe('');
   });
 });
 
@@ -222,18 +233,44 @@ describe('buildCommitPayloadFromPreview', () => {
     expect(payload.resident.entryDate).toBe('2023-01-10');
   });
 
-  it('ficha unmatched entra como ARCHIVED no payload do commit', () => {
-    const payload = buildCommitPayloadFromPreview(preview({ matchStatus: 'unmatched' }), houses);
-    expect(payload.resident.status).toBe(ResidentStatus.ARCHIVED);
+  it('ficha unmatched com casa reconhecida entra ATIVA na casa (story 162)', () => {
+    // É o caso relatado: aprovação direta pelo card de uma ficha fora da planilha
+    // cujo nome de casa casa com uma casa cadastrada.
+    const ficha = preview({ matchStatus: 'unmatched', matchedHouseName: null, houseName: 'Betania' });
+    const payload = buildCommitPayloadFromPreview(ficha, houses);
+    expect(payload.resident.status).toBe(ResidentStatus.ACTIVE);
+    expect(payload.resident.houseId).toBe('h1');
+
+    // Mesma ficha sem nenhuma casa cadastrada para casar → ARCHIVED (sem casa).
+    const semCasa = buildCommitPayloadFromPreview(ficha, []);
+    expect(semCasa.resident.status).toBe(ResidentStatus.ARCHIVED);
+    expect(semCasa.resident.houseId).toBeNull();
   });
 
-  it('ficha unmatched sem casa resolvível → houseId null (permitido para ARCHIVED)', () => {
+  it('ficha unmatched sem casa resolvível → ARCHIVED com houseId null (permitido)', () => {
     const payload = buildCommitPayloadFromPreview(
       preview({ matchStatus: 'unmatched', houseName: 'Casa Desconhecida', matchedHouseName: null }),
       houses,
     );
     expect(payload.resident.houseId).toBeNull();
     expect(payload.resident.status).toBe(ResidentStatus.ARCHIVED);
+  });
+
+  it('ficha unmatched com casa e data de saída segue derivando alta/evasão no backend (story 120)', () => {
+    // A regra nova não atropela a antiga: o payload leva a exitDate e um status
+    // "default" (ACTIVE), que é justamente o que `applyExitStatus` sobrescreve.
+    const payload = buildCommitPayloadFromPreview(
+      preview({
+        matchStatus: 'unmatched',
+        matchedHouseName: null,
+        houseName: 'Betania',
+        resident: { name: 'João Silva', entryDate: '2023-01-10', exitDate: '2023-08-10' },
+      }),
+      houses,
+    );
+    expect((payload.resident as { exitDate?: unknown }).exitDate).toBe('2023-08-10');
+    expect(payload.resident.status).toBe(ResidentStatus.ACTIVE);
+    expect(payload.resident.houseId).toBe('h1');
   });
 
   it('normaliza familiar sem telefone/parentesco (null) e trata campos ausentes', () => {

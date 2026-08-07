@@ -58,6 +58,26 @@ describe('ImportItemCard', () => {
     expect(screen.getByText('Arquivado')).toBeInTheDocument();
   });
 
+  it('badge de fora da planilha não depende do status: ficha unmatched entra ATIVA (story 162)', async () => {
+    vi.mocked(api.residents.commitImport).mockResolvedValue({
+      resident: { id: 'r1' },
+      contributionsCreated: { created: 0, skipped: 0 },
+    } as never);
+    const item = readyItem();
+    (item.preview as { matchStatus: string }).matchStatus = 'unmatched';
+    renderWithClient(<ImportItemCard item={item} onRemove={vi.fn()} onImported={vi.fn()} />);
+
+    // O badge sinaliza a falta de correspondência com a planilha e continua lá...
+    expect(screen.getByText('Arquivado')).toBeInTheDocument();
+    // ...mesmo com a casa reconhecida levando o commit a ACTIVE.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));
+    await waitFor(() => expect(api.residents.commitImport).toHaveBeenCalled());
+    const payload = vi.mocked(api.residents.commitImport).mock.calls[0][0];
+    expect(payload.resident.status).toBe('ACTIVE');
+    expect(payload.resident.houseId).toBe('h1');
+  });
+
   it('ficha casada com a planilha não exibe o badge Arquivado', () => {
     renderWithClient(<ImportItemCard item={readyItem()} onRemove={vi.fn()} />);
     expect(screen.queryByText('Arquivado')).not.toBeInTheDocument();

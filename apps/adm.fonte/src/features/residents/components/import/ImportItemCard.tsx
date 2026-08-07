@@ -96,7 +96,10 @@ export function ImportItemCard({
               {status === 'processing' && <Loader2 size={11} className="mr-1 animate-spin" />}
               {IMPORT_ITEM_STATUS_LABELS[status]}
             </Badge>
-            {/* Ficha fora da planilha: entra como arquivado (status ARCHIVED). */}
+            {/* Ficha fora da planilha. Badge ≠ status (story 162): desde a 162 a
+                ficha sem correspondência entra ATIVA quando a casa é resolvida —
+                só cai em ARCHIVED sem casa. O badge sinaliza a falta de
+                correspondência com a planilha, que continua valendo nos dois casos. */}
             {preview?.matchStatus === 'unmatched' && (status === 'ready' || isImported) && (
               <Badge
                 variant="secondary"

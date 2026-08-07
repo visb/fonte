@@ -55,6 +55,12 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
     ...admissionSignTemplates.filter((t) => !t.isRequired),
   ];
   const selectedTemplates = selectableTemplates.filter((t) => gen.selectedIds.has(t.id));
+  // Story 161 — o "marcar todos" da barra opera sobre esta MESMA lista: já
+  // deduplicada (story 152) e já filtrada pelo status do filho (story 160).
+  // Templates opcionais e "outros anexos" ficam de fora — não têm card com
+  // checkbox.
+  const selectableCount = selectableTemplates.length;
+  const selectedCount = selectedTemplates.length;
 
   const cardListProps = {
     residentId,
@@ -71,10 +77,13 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
       {gen.error && <GenerateErrorAlert message={gen.error} onDismiss={gen.dismissError} />}
 
       <CombinedPdfBar
-        count={selectedTemplates.length}
+        count={selectedCount}
+        total={selectableCount}
+        allSelected={selectableCount > 0 && selectedCount === selectableCount}
+        someSelected={selectedCount > 0}
         generating={gen.generatingCombined}
         onGenerate={() => gen.requestCombined(selectedTemplates)}
-        onClear={gen.clearSelection}
+        onToggleAll={() => gen.toggleAll(selectableTemplates.map((t) => t.id))}
       />
 
       <div className="space-y-3">

@@ -69,6 +69,10 @@ export function useDocumentGeneration({ residentId, residentName, resident, sign
         templates.map((t) => t.id),
       );
       triggerDownload(blob, `${slugify(`${residentName} documentos`)}.pdf`);
+      // Story 161 — o download é o fim natural do fluxo: a seleção limpa
+      // sozinha. Só no caminho de sucesso; se falhou, a seleção fica de pé para
+      // o usuário tentar de novo.
+      setSelectedIds(new Set());
     } catch (e) {
       setError(getErrorMessage(e, 'Falha ao gerar o PDF combinado. Tente novamente em instantes.'));
     } finally {
@@ -112,7 +116,14 @@ export function useDocumentGeneration({ residentId, residentName, resident, sign
     });
   }, []);
 
-  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+  // Story 161 — checkbox de cabeçalho da barra: com todos os `ids` já marcados
+  // esvazia; caso contrário (nada ou parte marcada) marca todos.
+  const toggleAll = useCallback((ids: string[]) => {
+    setSelectedIds((prev) => {
+      const everySelected = ids.length > 0 && ids.every((id) => prev.has(id));
+      return everySelected ? new Set<string>() : new Set(ids);
+    });
+  }, []);
 
   return {
     generatingId,
@@ -121,7 +132,7 @@ export function useDocumentGeneration({ residentId, residentName, resident, sign
     dismissError: useCallback(() => setError(null), []),
     selectedIds,
     toggleSelected,
-    clearSelection,
+    toggleAll,
     requestSingle,
     requestCombined,
     missingDialog,

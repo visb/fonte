@@ -342,16 +342,37 @@ describe('AttachmentsTab — PDF combinado', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: `Selecionar ${name}` }));
   }
 
+  // Story 161 — checkbox de cabeçalho da barra (marcar/desmarcar todos).
+  function selectAllCheckbox() {
+    return screen.getByRole('checkbox', { name: 'Selecionar todos os documentos' }) as HTMLInputElement;
+  }
+
   beforeEach(() => {
     Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:1'), revokeObjectURL: vi.fn() });
     downloadCombinedDocumentsPdf.mockResolvedValue(new Blob(['pdf']));
   });
 
-  it('sem seleção a barra de ação não aparece', () => {
+  // Story 161 — a barra nasce na tela, sem nada marcado: o botão existe (e
+  // ensina que a impressão em lote está ali), só desabilitado.
+  it('a barra aparece na primeira renderização, sem seleção, com o botão desabilitado', () => {
     twoTemplates();
     render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
-    expect(screen.queryByRole('button', { name: /Gerar PDF combinado/ })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /Gerar PDF combinado/ })).toBeDisabled();
+    expect(screen.getByText('Nenhum documento selecionado')).toBeInTheDocument();
+    // 2 checkboxes de card + o de "marcar todos" da barra.
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+    expect(selectAllCheckbox()).not.toBeChecked();
+    expect(selectAllCheckbox().indeterminate).toBe(false);
+  });
+
+  // Sem nenhum template selecionável a barra continua na tela (decisão 1), com
+  // os dois controles desabilitados.
+  it('sem documentos selecionáveis a barra permanece, toda desabilitada', () => {
+    hooks.templates = [template({ id: 'opt', name: 'Opcional' })];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    expect(screen.getByText('Nenhum documento selecionado')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Gerar PDF combinado/ })).toBeDisabled();
+    expect(selectAllCheckbox()).toBeDisabled();
   });
 
   it('marcar cards mostra a contagem e gera com os ids na ORDEM DA TELA', async () => {
@@ -384,20 +405,110 @@ describe('AttachmentsTab — PDF combinado', () => {
     expect(screen.getByText('1 documento selecionado')).toBeInTheDocument();
   });
 
-  it('"Limpar seleção" esvazia a barra', () => {
-    twoTemplates();
-    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
-    selectCard('Termo A');
-    fireEvent.click(screen.getByRole('button', { name: 'Limpar seleção' }));
-    expect(screen.queryByRole('button', { name: /Gerar PDF combinado/ })).not.toBeInTheDocument();
-  });
-
   it('template obrigatório E de assinatura entra uma vez só na contagem', () => {
     hooks.templates = [template({ id: 't1', name: 'Termo A', isRequired: true, signAtAdmission: true })];
     render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
     // O card aparece nos dois grupos; marcar qualquer um seleciona o template.
     fireEvent.click(screen.getAllByRole('checkbox', { name: 'Selecionar Termo A' })[0]);
     expect(screen.getByText('1 documento selecionado')).toBeInTheDocument();
+  });
+
+  // ─── Marcar/desmarcar todos (story 161) ───────────────────────────────────
+
+  it('marcar todos pelo checkbox da barra marca os checkboxes dos cards', () => {
+    twoTemplates();
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    fireEvent.click(selectAllCheckbox());
+
+    expect(screen.getByText('2 documentos selecionados')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Selecionar Termo A' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Selecionar Termo B' })).toBeChecked();
+    expect(selectAllCheckbox()).toBeChecked();
+    expect(selectAllCheckbox().indeterminate).toBe(false);
+  });
+
+  it('desmarcar todos pelo checkbox da barra limpa os cards', () => {
+    twoTemplates();
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    fireEvent.click(selectAllCheckbox());
+    fireEvent.click(selectAllCheckbox());
+
+    expect(screen.getByText('Nenhum documento selecionado')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Selecionar Termo A' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Selecionar Termo B' })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: /Gerar PDF combinado/ })).toBeDisabled();
+  });
+
+  it('seleção parcial deixa o checkbox da barra indeterminate e clicar nele marca todos', () => {
+    twoTemplates();
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    selectCard('Termo A');
+    expect(selectAllCheckbox().indeterminate).toBe(true);
+    expect(selectAllCheckbox()).not.toBeChecked();
+
+    fireEvent.click(selectAllCheckbox());
+    expect(screen.getByText('2 documentos selecionados')).toBeInTheDocument();
+  });
+
+  // Decisão 5: opcionais só existem no menu "Gerar documento" — não têm card
+  // com checkbox e não entram no "todos".
+  it('o "marcar todos" ignora os templates opcionais', () => {
+    hooks.templates = [
+      template({ id: 't1', name: 'Termo A', isRequired: true }),
+      template({ id: 'opt', name: 'Opcional' }),
+    ];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    fireEvent.click(selectAllCheckbox());
+    expect(screen.getByText('1 documento selecionado')).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Selecionar Opcional' })).not.toBeInTheDocument();
+  });
+
+  // Regressão da dedupe da story 152: o card aparece nos dois grupos, mas o
+  // total do "todos" é 1 — senão o checkbox nunca ficaria "checked".
+  it('template obrigatório E de assinatura conta uma vez no total do "marcar todos"', () => {
+    hooks.templates = [template({ id: 't1', name: 'Termo A', isRequired: true, signAtAdmission: true })];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    fireEvent.click(selectAllCheckbox());
+
+    expect(screen.getByText('1 documento selecionado')).toBeInTheDocument();
+    expect(selectAllCheckbox()).toBeChecked();
+    expect(selectAllCheckbox().indeterminate).toBe(false);
+  });
+
+  // Story 160 + 161: o "todos" opera sobre a lista JÁ filtrada por status.
+  it('o "marcar todos" não seleciona template indisponível para o status', async () => {
+    hooks.resident = { id: 'r1', name: 'Fulano', cpf: '123', status: ResidentStatus.ACTIVE };
+    twoTemplates({}, { availableFor: TemplateAvailability.INACTIVE_ONLY });
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+
+    fireEvent.click(selectAllCheckbox());
+    expect(screen.getByText('1 documento selecionado')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Gerar PDF combinado/ }));
+    await waitFor(() => expect(downloadCombinedDocumentsPdf).toHaveBeenCalledWith('r1', ['t1']));
+  });
+
+  // Decisão 6: o download é o fim do fluxo — a barra volta ao estado inicial.
+  it('gerar o PDF com sucesso limpa a seleção', async () => {
+    twoTemplates();
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    fireEvent.click(selectAllCheckbox());
+    fireEvent.click(screen.getByRole('button', { name: /Gerar PDF combinado/ }));
+
+    await waitFor(() => expect(screen.getByText('Nenhum documento selecionado')).toBeInTheDocument());
+    expect(screen.getByRole('checkbox', { name: 'Selecionar Termo A' })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: /Gerar PDF combinado/ })).toBeDisabled();
+  });
+
+  it('erro ao gerar o PDF mantém a seleção para nova tentativa', async () => {
+    downloadCombinedDocumentsPdf.mockRejectedValue(new Error('falha'));
+    twoTemplates();
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    fireEvent.click(selectAllCheckbox());
+    fireEvent.click(screen.getByRole('button', { name: /Gerar PDF combinado/ }));
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByText('2 documentos selecionados')).toBeInTheDocument();
   });
 
   it('{{signature}} em qualquer selecionado sem assinatura do staff abre o diálogo e NÃO gera', async () => {

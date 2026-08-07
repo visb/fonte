@@ -41,7 +41,7 @@
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 159 — variável `{{exitDate}}` nos documentos | [OK] | api 1325 · api-e2e 500 · adm-unit 1473 | `9797cde` | `e577b58` |
-| 2 | 160 — template disponível por status do filho | [ ] | — | — | — |
+| 2 | 160 — template disponível por status do filho | [OK] | api 1389 · api-e2e 509 · adm-unit 1494 · api-client 267 | `c1bdafd` | `e0d963f` |
 | 3 | 161 — barra do PDF combinado sempre visível | [ ] | — | — | — |
 | 4 | 162 — import em lote com status ativo | [ ] | — | — | — |
 
@@ -52,6 +52,15 @@
   `templateVariables.ts` 100% — commit: `9797cde` — merge: `e577b58` — 2026-08-07.
 - Nota: o e2e novo altera `exit_date` de dois filhos do seed e **restaura no `afterAll`** — não
   deixa estado no banco de teste.
+- [OK] 160 — testes: api 120 suítes/1389, api-e2e 33/509, adm unit 214 arquivos/1494, api-client 267;
+  migration `1783037300000-AddDocumentTemplateAvailability` aplicada no DB de teste; Postman
+  atualizado — commit: `c1bdafd` — merge: `e0d963f` — 2026-08-07.
+- Nota 160: `resident.service.spec.ts` e `resident-receivable.service.spec.ts` ganharam **uma linha**
+  cada (`...jest.requireActual('@fonte/types')` na factory do mock) — os mocks exaustivos apagavam a
+  constante nova; **nenhuma asserção mudou**. `AttachmentsTab` com `resident` ainda `undefined`
+  aplica o predicado sem exceção (só `ALL` sobrevive), preservando a regressão da story 152.
+- **PENDENTE-MANUAL 160:** migration **não** aplicada em dev/produção (o `.env` local do api aponta
+  para produção) — rodar `migration:run` no deploy.
 
 ## Resumo final
 

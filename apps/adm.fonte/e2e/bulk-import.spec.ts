@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { login } from './helpers/auth';
+import { resetResidentsFilters } from './helpers/preferences';
 
 // Import em lote (story 104 + abas da story 109). O parse real da planilha e das
 // fichas `.docx` depende do backend + IA (Anthropic), indisponível/instável no
@@ -298,5 +299,80 @@ test.describe('Import em lote de filhos', () => {
     await page.getByRole('tab', { name: 'Processadas' }).click();
     await expect(page.getByText('Pronto')).toHaveCount(2);
     await expect(page.getByText('Filho Duplicado')).toBeVisible();
+  });
+});
+
+// story 162: ficha fora da planilha (`unmatched`) com casa reconhecida entra
+// ATIVA — antes entrava ARCHIVED e sumia das listagens. O efeito só é observável
+// ponta a ponta (ARCHIVED fica fora da listagem de filhos), então aqui só o parse
+// é mockado (Anthropic indisponível no ambiente de teste): a lista de casas e o
+// commit são reais, contra o banco de teste (casa "Casa Teste" vem do seed).
+test.describe('Import em lote — ficha fora da planilha entra ativa (story 162)', () => {
+  // Nome único por execução: o commit é real e a checagem de conflito por nome
+  // bloquearia a aprovação se a ficha da execução anterior fosse reencontrada.
+  const fichaName = `Filho Fora Da Planilha ${Date.now()}`;
+
+  test.beforeEach(async ({ page }) => {
+    // A listagem de filhos hidrata o filtro salvo (story 130): sem zerar, um
+    // filtro de status deixado por outra suíte esconderia o filho recém-criado.
+    await resetResidentsFilters();
+    await page.route('**/api/v1/residents/import/parse-spreadsheet', (route) =>
+      route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(SPREADSHEET_ROWS) }),
+    );
+    await page.route('**/api/v1/residents/import/parse-docx-with-spreadsheet', (route) =>
+      route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          resident: { name: fichaName, cpf: null, entryDate: '2023-02-10', exitDate: null },
+          relatives: [{ name: 'Mãe Fora Da Planilha', phone: '(11) 90000-0003', relationship: 'Mãe' }],
+          warnings: { spreadsheet: 'Nenhum filho da planilha corresponde a esta ficha.' },
+          // A casa vem só da própria ficha (não houve casamento com a planilha).
+          houseName: 'Casa Teste',
+          rawText: 'ficha',
+          photoBase64: null,
+          matchedHouseName: null,
+          contributionMonths: [],
+          matchStatus: 'unmatched',
+        }),
+      }),
+    );
+    await login(page);
+    await page.goto('/residents/import-lote');
+  });
+
+  test('aprovar pelo card cria o filho ATIVO e ele aparece na listagem', async ({ page }) => {
+    await page.locator('input[accept*="spreadsheetml"]').setInputFiles({
+      name: 'lista-filhos.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from('planilha de referencia'),
+    });
+    await expect(page.getByText('Planilha carregada')).toBeVisible();
+
+    await page.locator('input[multiple]').setInputFiles({
+      name: 'ficha-fora.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      buffer: Buffer.from('ficha fora da planilha'),
+    });
+
+    await page.getByRole('tab', { name: 'Processadas' }).click();
+    const card = page.getByTestId('import-item-card').filter({ hasText: fichaName });
+    await expect(card).toBeVisible();
+    // O badge de "fora da planilha" segue visível — badge ≠ status.
+    await expect(card.getByText('Arquivado')).toBeVisible();
+
+    const approve = card.getByRole('button', { name: 'Aprovar' });
+    await expect(approve).toBeEnabled();
+    await approve.click();
+    // Aprovado, o card migra para a aba Aprovadas.
+    await page.getByRole('tab', { name: /Aprovadas/ }).click();
+    await expect(page.getByText('Importado')).toBeVisible();
+
+    // Listagem de filhos: ARCHIVED não apareceria aqui — o filho entrou ATIVO.
+    await page.goto('/residents');
+    await page.getByPlaceholder('Buscar por nome...').fill(fichaName);
+    const residentCard = page.locator('.rounded-lg.border.bg-card').filter({ hasText: fichaName });
+    await expect(residentCard).toBeVisible();
+    await expect(residentCard).toContainText('Ativo');
   });
 });

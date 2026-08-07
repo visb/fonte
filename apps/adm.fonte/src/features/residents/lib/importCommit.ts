@@ -87,17 +87,25 @@ export function predictAdmissionStatus(admission: ImportAdmission): ResidentStat
 }
 
 /**
- * Status default de um item do import a partir do cross-match com a planilha:
- * ficha sem correspondência (`unmatched`) entra como ARCHIVED (arquivo morto) —
- * regra de negócio do import em lote. Ficha casada não força nada (`''` deixa
- * o fluxo normal decidir: exitDate deriva Alta/Evasão no backend, senão ACTIVE).
- * Status já extraído da ficha tem precedência.
+ * Status default de um item do import (story 162): ficha fora da planilha
+ * (`unmatched`) entra ATIVA quando a casa foi resolvida — estar fora da planilha
+ * não quer dizer que o filho não está na casa. `ARCHIVED` sobrou só para o caso
+ * "não sei onde esse filho está": sem correspondência **e** sem casa resolvida —
+ * é o único status que o backend aceita sem `houseId`
+ * (`create-resident.dto.ts`), então forçar ACTIVE ali daria 400 no commit.
+ * Qualquer outro caso devolve `''` e deixa o fluxo normal decidir
+ * (`buildCommitPayload` → ACTIVE; exitDate deriva Alta/Evasão no backend,
+ * story 120). Status já extraído da ficha tem precedência sobre tudo isso
+ * (letra morta hoje — o `docx-parser` ainda não extrai status).
  */
-export function defaultImportStatus(preview: ImportPreviewResult | null): ResidentStatus | '' {
+export function defaultImportStatus(
+  preview: ImportPreviewResult | null,
+  resolvedHouseId?: string | null,
+): ResidentStatus | '' {
   if (!preview) return '';
   const extracted = (preview.resident as { status?: unknown }).status;
   if (typeof extracted === 'string' && extracted) return extracted as ResidentStatus;
-  return preview.matchStatus === 'unmatched' ? ResidentStatus.ARCHIVED : '';
+  return preview.matchStatus === 'unmatched' && !resolvedHouseId ? ResidentStatus.ARCHIVED : '';
 }
 
 /**
@@ -204,11 +212,13 @@ export function buildCommitPayloadFromPreview(
   preview: ImportPreviewResult,
   houses: House[],
 ): CommitImportPayload {
+  // A casa é resolvida antes porque o status depende dela (story 162): ficha fora
+  // da planilha com casa entra ativa; sem casa é que cai em ARCHIVED.
+  const houseId = resolveHouseId(preview.matchedHouseName ?? preview.houseName, houses);
   const formValues = {
     ...previewToFormValues(preview.resident),
-    houseId: resolveHouseId(preview.matchedHouseName ?? preview.houseName, houses),
-    // Ficha fora da planilha entra como ARCHIVED (regra do import em lote).
-    status: defaultImportStatus(preview),
+    houseId,
+    status: defaultImportStatus(preview, houseId),
   } as ResidentFormData;
   return buildCommitPayload(formValues, {
     relatives: relativesFromPreview(preview),

@@ -76,16 +76,63 @@ describe('ImportFichaModal', () => {
     expect(screen.getByPlaceholderText('Ex: SP')).toHaveValue('PR');
   });
 
-  it('ficha fora da planilha (unmatched) pré-seleciona o status Arquivado', async () => {
+  it('ficha fora da planilha vira ATIVA quando as casas chegam e a casa resolve (story 162)', async () => {
     const { onApproved } = await renderModal({ matchStatus: 'unmatched' });
     const statusSelect = document.querySelector('select[name="status"]') as HTMLSelectElement;
+    // O default nasce ARCHIVED (sem casa ainda); com a casa resolvida vira ATIVO.
+    await waitFor(() => expect(statusSelect.value).toBe('ACTIVE'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));
+    await waitFor(() => expect(onApproved).toHaveBeenCalledWith('i1'));
+    const payload = vi.mocked(api.residents.commitImport).mock.calls[0][0];
+    expect(payload.resident.status).toBe('ACTIVE');
+    expect(payload.resident.houseId).toBe('h1');
+  });
+
+  it('ficha fora da planilha sem casa reconhecível continua Arquivada (story 162)', async () => {
+    const { onApproved } = await renderModal({
+      matchStatus: 'unmatched',
+      houseName: 'Casa Desconhecida',
+      matchedHouseName: null,
+    });
+    const statusSelect = document.querySelector('select[name="status"]') as HTMLSelectElement;
     expect(statusSelect.value).toBe('ARCHIVED');
-    // e o payload do commit leva ARCHIVED
     await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));
     await waitFor(() => expect(onApproved).toHaveBeenCalledWith('i1'));
     const payload = vi.mocked(api.residents.commitImport).mock.calls[0][0];
     expect(payload.resident.status).toBe('ARCHIVED');
+  });
+
+  it('status escolhido à mão pelo ADM não é sobrescrito quando a casa resolve (story 162)', async () => {
+    // Casas só respondem depois que o ADM mexe no status — é o instante em que o
+    // efeito da story 162 recalcularia o default.
+    let releaseHouses: (houses: unknown) => void = () => {};
+    vi.mocked(api.houses.list).mockReturnValue(
+      new Promise((resolve) => {
+        releaseHouses = resolve;
+      }) as never,
+    );
+
+    renderWithClient(
+      <ImportFichaModal
+        item={item({ matchStatus: 'unmatched' })}
+        open
+        onClose={vi.fn()}
+        onApproved={vi.fn()}
+        sessionConflictName={null}
+      />,
+    );
+
+    const statusSelect = document.querySelector('select[name="status"]') as HTMLSelectElement;
+    expect(statusSelect.value).toBe('ARCHIVED');
+    fireEvent.change(statusSelect, { target: { value: 'EVADED' } });
+
+    releaseHouses([{ id: 'h1', name: 'Casa A' }]);
+
+    const houseSelect = document.querySelector('select[name="houseId"]') as HTMLSelectElement;
+    await waitFor(() => expect(houseSelect.value).toBe('h1'));
+    expect(statusSelect.value).toBe('EVADED');
   });
 
   it('ficha casada com a planilha não força status (segue o fluxo normal)', async () => {

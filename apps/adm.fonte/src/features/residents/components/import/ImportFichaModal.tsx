@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
+import { ResidentStatus } from '@fonte/types';
 import type { CommitImportRelative } from '@fonte/api-client';
 import {
   Dialog,
@@ -65,7 +66,9 @@ export function ImportFichaModal({
         maritalStatus: '',
         familyInvestment: '',
         ...previewToFormValues(preview?.resident ?? {}),
-        // Ficha fora da planilha entra como ARCHIVED (editável na revisão).
+        // Status default sem casa resolvida ainda (as casas chegam depois): ficha
+        // fora da planilha começa ARCHIVED e o efeito abaixo reavalia quando a
+        // casa casa (story 162). Editável na revisão em qualquer caso.
         // `undefined` (não '') quando não força: o schema valida enum ou ausente.
         status: defaultImportStatus(preview) || undefined,
       }) as ResidentFormData,
@@ -76,6 +79,7 @@ export function ImportFichaModal({
     register,
     handleSubmit,
     watch,
+    getValues,
     setValue,
     formState: { errors },
   } = useForm<ResidentFormData>({ resolver: zodResolver(residentSchema), defaultValues: defaults });
@@ -84,13 +88,21 @@ export function ImportFichaModal({
     preview ? relativesFromPreview(preview) : [],
   );
 
-  // Casa a casa pelo nome (aba/ficha) assim que a lista de casas carrega.
+  // Casa a casa pelo nome (aba/ficha) assim que a lista de casas carrega e, com a
+  // casa em mãos, reavalia o status da ficha fora da planilha (story 162): o
+  // `defaults` acima roda antes de `useHouses` responder, quando ainda não há casa
+  // resolvida, e por isso nasce ARCHIVED. Só mexe no campo enquanto ele estiver no
+  // default derivado — escolha manual do ADM sempre vence. O `||` materializa o
+  // `''` como ACTIVE porque o <Select> de status não tem opção vazia.
   useEffect(() => {
-    if (!watch('houseId') && houses.length > 0 && preview) {
-      const id = resolveHouseId(preview.matchedHouseName ?? preview.houseName, houses);
-      if (id) setValue('houseId', id);
+    if (getValues('houseId') || houses.length === 0 || !preview) return;
+    const id = resolveHouseId(preview.matchedHouseName ?? preview.houseName, houses);
+    if (!id) return;
+    setValue('houseId', id);
+    if (preview.matchStatus === 'unmatched' && getValues('status') === defaults.status) {
+      setValue('status', defaultImportStatus(preview, id) || ResidentStatus.ACTIVE);
     }
-  }, [houses, preview, setValue, watch]);
+  }, [defaults.status, getValues, houses, preview, setValue]);
 
   const name = typeof preview?.resident.name === 'string' ? preview.resident.name : null;
   const cpf = typeof preview?.resident.cpf === 'string' ? preview.resident.cpf : null;

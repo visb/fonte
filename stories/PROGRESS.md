@@ -42,7 +42,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 1 | 159 — variável `{{exitDate}}` nos documentos | [OK] | api 1325 · api-e2e 500 · adm-unit 1473 | `9797cde` | `e577b58` |
 | 2 | 160 — template disponível por status do filho | [OK] | api 1389 · api-e2e 509 · adm-unit 1494 · api-client 267 | `c1bdafd` | `e0d963f` |
-| 3 | 161 — barra do PDF combinado sempre visível | [ ] | — | — | — |
+| 3 | 161 — barra do PDF combinado sempre visível | [OK] | adm-unit 1525 · api 1389 (regressão) | `78e6e88` | `6dc0b66` |
 | 4 | 162 — import em lote com status ativo | [ ] | — | — | — |
 
 ## Log
@@ -61,6 +61,13 @@
   aplica o predicado sem exceção (só `ALL` sobrevive), preservando a regressão da story 152.
 - **PENDENTE-MANUAL 160:** migration **não** aplicada em dev/produção (o `.env` local do api aponta
   para produção) — rodar `migration:run` no deploy.
+- [OK] 161 — testes: adm unit 216 arquivos/1525, api 120/1389 (regressão, backend intocado);
+  cobertura `CombinedPdfBar.tsx`, `useDocumentGeneration.ts` e `AttachmentsTab.tsx` 100%,
+  `features/residents` 98,8% stmts — commit: `78e6e88` — merge: `6dc0b66` — 2026-08-07.
+- **PENDENTE-MANUAL 161:** e2e do ciclo completo (marcar todos → gerar → seleção limpa) não escrito —
+  **não existe spec Playwright da aba de anexos do filho** e o `seed-test.ts` não cria
+  `document_template`; seedar um template obrigatório poluiria as outras suítes. Precisa de story de
+  infra de seed E2E de templates.
 
 ## Resumo final
 

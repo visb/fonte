@@ -427,6 +427,75 @@ describe('DocumentTemplateController (e2e)', () => {
     });
   });
 
+  // ── {{exitDate}} — data de saída no documento (story 159) ────────────────────
+
+  describe('exit date variable rendering (story 159)', () => {
+    let templateId: string;
+    let withExitId: string;
+    let withoutExitId: string;
+    // exit_date original de cada filho tocado, restaurado no afterAll para a
+    // suíte não deixar estado (o seed é compartilhado com os outros specs).
+    const originalExitDates = new Map<string, unknown>();
+
+    beforeAll(async () => {
+      const name = `Termo saida ${tag}`;
+      createdNames.push(name);
+      const tpl = await request(app.getHttpServer())
+        .post(`${BASE}/document-templates`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name, content: '<p>Entrada: {{entryDate}} | Saída: {{exitDate}}</p>' })
+        .expect(201);
+      templateId = tpl.body.id;
+
+      // `entry_date IS NOT NULL` porque o template também imprime a entrada: com
+      // entrada nula o traço `___/___/______` viria dela e sujaria a asserção da
+      // saída (que é justamente NÃO imprimir o traço).
+      const rows = await dataSource.query(
+        `SELECT id, exit_date FROM residents
+          WHERE deleted_at IS NULL AND entry_date IS NOT NULL ORDER BY id LIMIT 2`,
+      );
+      expect(rows).toHaveLength(2);
+      for (const row of rows) originalExitDates.set(row.id, row.exit_date);
+      withExitId = rows[0].id;
+      withoutExitId = rows[1].id;
+      // Estado determinístico: um filho com data de saída, outro sem nenhuma.
+      await dataSource.query(`UPDATE residents SET exit_date = '2026-03-09' WHERE id = $1`, [
+        withExitId,
+      ]);
+      await dataSource.query(`UPDATE residents SET exit_date = NULL WHERE id = $1`, [
+        withoutExitId,
+      ]);
+    });
+
+    afterAll(async () => {
+      for (const [id, exitDate] of originalExitDates) {
+        await dataSource.query(`UPDATE residents SET exit_date = $2 WHERE id = $1`, [id, exitDate]);
+      }
+    });
+
+    it('filho COM data de saída → a data no documento, nunca o token cru', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${withExitId}/documents/${templateId}/render`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.text).toContain('09/03/2026');
+      expect(res.text).not.toContain('{{exitDate}}');
+      expect(res.text).not.toContain('{{entryDate}}');
+    });
+
+    it('filho ATIVO (sem saída) → "não informado", nunca o traço nem o token cru', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${withoutExitId}/documents/${templateId}/render`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.text).toContain('Saída: não informado');
+      expect(res.text).not.toContain('___/___/______');
+      expect(res.text).not.toContain('{{exitDate}}');
+    });
+  });
+
   // ── PDF combinado para impressão em lote (story 152) ─────────────────────────
 
   describe('combined PDF (story 152)', () => {

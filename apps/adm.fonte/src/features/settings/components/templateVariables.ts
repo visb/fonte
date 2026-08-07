@@ -36,6 +36,9 @@ export const VARIABLES: TemplateVariable[] = [
   // quem é a foto e abre espaço para um `{{responsiblePhoto}}` futuro.
   { key: '{{residentPhoto}}', label: 'Foto do acolhido',   description: 'Foto do acolhido em 4×4 cm; moldura vazia com o rótulo "Foto" se não houver' },
   { key: '{{entryDate}}',     label: 'Data de entrada',    description: 'Data de entrada na comunidade (dd/mm/aaaa)' },
+  // Story 159 — contraparte da entrada, logo abaixo dela para o par ficar lado a
+  // lado na barra. Sem saída o backend imprime "não informado" (e não o traço).
+  { key: '{{exitDate}}',      label: 'Data de saída',      description: 'Data de saída da comunidade (dd/mm/aaaa); "não informado" se o filho ainda está na casa' },
   { key: '{{date}}',          label: 'Data de hoje',       description: 'Data atual no momento da impressão (dd/mm/aaaa)' },
   { key: '{{dateLong}}',      label: 'Data por extenso',   description: 'Data atual por extenso (ex: 1 de junho de 2026)' },
   { key: '{{responsibleName}}',         label: 'Responsável — nome',       description: 'Nome do familiar marcado como responsável' },

@@ -97,6 +97,7 @@ import type {
   ImportContributionsSummary,
   UserPreferences,
   ResidentsFiltersPreference,
+  TemplateAvailability,
 } from '@fonte/types';
 import {
   NotificationType,
@@ -1124,6 +1125,8 @@ export interface DocumentTemplate {
   content: string;
   isRequired: boolean;
   signAtAdmission: boolean;
+  // Story 160 — para quais filhos este documento pode ser gerado (por status).
+  availableFor: TemplateAvailability;
   updatedAt: string;
 }
 
@@ -1132,6 +1135,7 @@ export interface CreateDocumentTemplateInput {
   content: string;
   isRequired: boolean;
   signAtAdmission?: boolean;
+  availableFor?: TemplateAvailability;
 }
 
 export interface UpdateDocumentTemplateInput {
@@ -1139,6 +1143,7 @@ export interface UpdateDocumentTemplateInput {
   content?: string;
   isRequired?: boolean;
   signAtAdmission?: boolean;
+  availableFor?: TemplateAvailability;
 }
 
 // ─── LGPD ─────────────────────────────────────────────────────────────────────

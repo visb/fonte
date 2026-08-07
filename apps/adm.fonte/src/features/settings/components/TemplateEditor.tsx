@@ -26,7 +26,9 @@ import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
 import { api } from '@/lib/api';
 import type { DocumentTemplate } from '@fonte/api-client';
+import { TemplateAvailability } from '@fonte/types';
 import { useUpdateDocumentTemplate } from '../hooks/useDocumentTemplates';
+import { TemplateAvailabilityField } from './TemplateAvailabilityField';
 import { TableToolbar } from './TableToolbar';
 import { LinkToolbar } from './LinkToolbar';
 import { LinkBubbleMenu } from './LinkBubbleMenu';
@@ -420,7 +422,13 @@ function ToolbarButton({ active, onClick, title, children }: {
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
-const schema = z.object({ name: z.string().min(1), isRequired: z.boolean(), signAtAdmission: z.boolean() });
+const schema = z.object({
+  name: z.string().min(1),
+  isRequired: z.boolean(),
+  signAtAdmission: z.boolean(),
+  // Story 160 — para quais filhos (por status) este documento pode ser gerado.
+  availableFor: z.nativeEnum(TemplateAvailability),
+});
 type FormData = z.infer<typeof schema>;
 
 // ─── TemplateEditor ───────────────────────────────────────────────────────────
@@ -438,13 +446,21 @@ export function TemplateEditor({ template, onSaved }: Props) {
   // Ref so the paste handler (defined at useEditor time) can call the latest upload fn
   const uploadFnRef = useRef<((file: File) => Promise<void>) | null>(null);
 
+  // Template legado/sem o campo cai em ALL — nunca some da tela por omissão.
+  const formValues = (t: DocumentTemplate): FormData => ({
+    name: t.name,
+    isRequired: t.isRequired,
+    signAtAdmission: t.signAtAdmission,
+    availableFor: t.availableFor ?? TemplateAvailability.ALL,
+  });
+
   const { register, getValues, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: template.name, isRequired: template.isRequired, signAtAdmission: template.signAtAdmission },
+    defaultValues: formValues(template),
   });
 
   useEffect(() => {
-    reset({ name: template.name, isRequired: template.isRequired, signAtAdmission: template.signAtAdmission });
+    reset(formValues(template));
     setJustSaved(false);
   }, [template.id, reset]);
 
@@ -565,9 +581,9 @@ export function TemplateEditor({ template, onSaved }: Props) {
 
   const handleSave = useCallback(() => {
     if (!editor) return;
-    const { name, isRequired, signAtAdmission } = getValues();
+    const { name, isRequired, signAtAdmission, availableFor } = getValues();
     updateMutation.mutate(
-      { id: template.id, data: { name, content: editor.getHTML(), isRequired, signAtAdmission } },
+      { id: template.id, data: { name, content: editor.getHTML(), isRequired, signAtAdmission, availableFor } },
       {
         onSuccess: (updated) => {
           onSaved(updated);
@@ -650,6 +666,8 @@ export function TemplateEditor({ template, onSaved }: Props) {
             Assinar no acolhimento
           </Label>
         </div>
+        {/* Story 160 — para quais filhos este documento pode ser gerado. */}
+        <TemplateAvailabilityField field={register('availableFor')} />
       </div>
 
       {/* Toolbar — fica fixa no topo ao rolar. Offset/margens negativos cancelam

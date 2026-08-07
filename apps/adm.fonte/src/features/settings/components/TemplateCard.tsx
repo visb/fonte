@@ -2,6 +2,7 @@ import type { DocumentTemplate } from '@fonte/api-client';
 import { Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { TEMPLATE_AVAILABILITY_BADGE } from '../constants';
 
 interface Props {
   template: DocumentTemplate;
@@ -10,6 +11,8 @@ interface Props {
 }
 
 export function TemplateCard({ template: t, onSelect, onDelete }: Props) {
+  // Story 160 — só sinaliza a restrição; ALL (o padrão) não vira ruído visual.
+  const availabilityLabel = TEMPLATE_AVAILABILITY_BADGE[t.availableFor];
   return (
     <div
       className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors"
@@ -20,6 +23,9 @@ export function TemplateCard({ template: t, onSelect, onDelete }: Props) {
           <span className="font-medium text-sm truncate">{t.name}</span>
           {t.isRequired && (
             <Badge variant="secondary" className="text-xs shrink-0">Acolhimento</Badge>
+          )}
+          {availabilityLabel && (
+            <Badge variant="outline" className="text-xs shrink-0">{availabilityLabel}</Badge>
           )}
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">

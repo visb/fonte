@@ -16,7 +16,7 @@
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { Role } from '@fonte/types';
+import { Role, TemplateAvailability } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -49,8 +49,17 @@ export class DocumentTemplateController {
     @Body('content') content: string,
     @Body('isRequired') isRequired?: boolean,
     @Body('signAtAdmission') signAtAdmission?: boolean,
+    // Story 160 — validado contra TemplateAvailability no service (regra de
+    // negócio); aqui só roteia o valor cru do corpo.
+    @Body('availableFor') availableFor?: string,
   ): Promise<DocumentTemplate> {
-    return this.service.create(name, content ?? '', isRequired ?? false, signAtAdmission ?? false);
+    return this.service.create(
+      name,
+      content ?? '',
+      isRequired ?? false,
+      signAtAdmission ?? false,
+      availableFor,
+    );
   }
 
   @Post('images')
@@ -73,12 +82,15 @@ export class DocumentTemplateController {
     @Body('content') content?: string,
     @Body('isRequired') isRequired?: boolean,
     @Body('signAtAdmission') signAtAdmission?: boolean,
+    @Body('availableFor') availableFor?: string,
   ): Promise<DocumentTemplate> {
-    const data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired' | 'signAtAdmission'>> = {};
+    const data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired' | 'signAtAdmission' | 'availableFor'>> = {};
     if (name !== undefined) data.name = name;
     if (content !== undefined) data.content = content;
     if (isRequired !== undefined) data.isRequired = isRequired;
     if (signAtAdmission !== undefined) data.signAtAdmission = signAtAdmission;
+    // Valor cru: o service valida contra o enum antes de persistir (story 160).
+    if (availableFor !== undefined) data.availableFor = availableFor as TemplateAvailability;
     return this.service.update(id, data);
   }
 

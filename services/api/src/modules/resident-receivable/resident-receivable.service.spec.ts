@@ -1,4 +1,8 @@
 jest.mock('@fonte/types', () => ({
+  // Story 160 — ACTIVE_STATUSES do service passou a vir de @fonte/types
+  // (ACTIVE_RESIDENT_STATUSES): o módulo real entra primeiro para o stub não
+  // apagar a constante. Os enums abaixo seguem stubados como antes.
+  ...jest.requireActual('@fonte/types'),
   FamilyInvestment: {
     BASKET_500: 'BASKET_500',
     PAYMENT_700: 'PAYMENT_700',

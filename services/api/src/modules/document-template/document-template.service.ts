@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import type { Browser } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
 import { DOCUMENT_PRINT_CSS, A4_MARGIN_TOP_PX, A4_MARGIN_X_PX } from '@fonte/doc-styles';
+import { TemplateAvailability, isTemplateAvailableForStatus } from '@fonte/types';
 import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
 import { Staff } from '../staff/staff.entity';
@@ -53,8 +54,32 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return this.browserPromise;
   }
 
+  // Story 160 — o documento só pode ser gerado para um filho cujo status case com
+  // a disponibilidade do template. Guarda dos TRÊS caminhos de geração (render,
+  // PDF e PDF combinado): esconder o card na tela não é regra — a URL direta e a
+  // seleção do combinado continuariam gerando o documento oculto.
+  private assertAvailableForResident(template: DocumentTemplate, resident: Resident): void {
+    if (!isTemplateAvailableForStatus(template.availableFor, resident?.status)) {
+      throw new BadRequestException(
+        'Este documento não está disponível para o status atual do acolhido',
+      );
+    }
+  }
+
+  // Valor do ternário vindo do corpo da requisição. Regra de negócio (e não
+  // roteamento), por isso vive aqui e não no controller — que segue com
+  // `@Body('campo')` avulso, sem DTO.
+  private assertValidAvailability(value: unknown): TemplateAvailability {
+    const allowed = Object.values(TemplateAvailability) as string[];
+    if (typeof value !== 'string' || !allowed.includes(value)) {
+      throw new BadRequestException(`availableFor inválido: use ${allowed.join(', ')}`);
+    }
+    return value as TemplateAvailability;
+  }
+
   async generatePdf(templateId: string, resident: Resident, signerUserId?: string): Promise<{ buffer: Buffer; filename: string }> {
     const template = await this.findOne(templateId);
+    this.assertAvailableForResident(template, resident);
     const html = await this.renderForResident(templateId, resident, signerUserId);
     const filename = this.slugify(`${resident.name} ${template.name}`) + '.pdf';
     const browser = await this.getBrowser();
@@ -107,6 +132,12 @@ export class DocumentTemplateService implements OnModuleDestroy {
     if (!templateIds?.length) {
       throw new BadRequestException('Selecione ao menos um documento.');
     }
+    // Story 160 — valida a lista INTEIRA antes de abrir qualquer página do
+    // browser: um template incompatível com o status do filho reprova a
+    // requisição toda, em vez de devolver um PDF parcial silenciosamente.
+    for (const templateId of templateIds) {
+      this.assertAvailableForResident(await this.findOne(templateId), resident);
+    }
     const merged = await PDFDocument.create();
     // Sequencial de propósito: uma página do puppeteer por vez (paralelo estoura
     // memória do browser) e a ordem recebida é a ordem final do impresso.
@@ -157,7 +188,16 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return this.signContent(template);
   }
 
-  async create(name: string, content: string, isRequired = false, signAtAdmission = false): Promise<DocumentTemplate> {
+  async create(
+    name: string,
+    content: string,
+    isRequired = false,
+    signAtAdmission = false,
+    availableFor?: TemplateAvailability | string,
+  ): Promise<DocumentTemplate> {
+    // Sem o campo o template nasce ALL (default da coluna) — story 160.
+    const availability =
+      availableFor === undefined ? TemplateAvailability.ALL : this.assertValidAvailability(availableFor);
     const existing = await this.repo.findOne({ where: { name } });
     if (existing) throw new ConflictException(`Template com nome "${name}" já existe`);
     // Persist the canonical (unsigned) S3 URLs — never an expiring signature.
@@ -166,11 +206,16 @@ export class DocumentTemplateService implements OnModuleDestroy {
       content: this.storageService.stripContentSignatures(content),
       isRequired,
       signAtAdmission,
+      availableFor: availability,
     });
     return this.signContent(await this.repo.save(template));
   }
 
-  async update(id: string, data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired' | 'signAtAdmission'>>): Promise<DocumentTemplate> {
+  async update(
+    id: string,
+    data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired' | 'signAtAdmission' | 'availableFor'>>,
+  ): Promise<DocumentTemplate> {
+    if (data.availableFor !== undefined) this.assertValidAvailability(data.availableFor);
     // Conteúdo bruto (canônico) atual, para diff de imagens (story 93).
     const existing = await this.repo.findOne({ where: { id } });
     if (!existing) throw new NotFoundException(`Template ${id} not found`);
@@ -232,6 +277,7 @@ export class DocumentTemplateService implements OnModuleDestroy {
 
   async renderForResident(templateId: string, resident: Resident, signerUserId?: string): Promise<string> {
     const template = await this.findOne(templateId);
+    this.assertAvailableForResident(template, resident);
     const responsible = await this.relativeRepo.findOne({
       where: { residentId: resident.id, isResponsible: true },
     });

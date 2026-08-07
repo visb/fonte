@@ -7,7 +7,7 @@ import * as bcrypt from 'bcrypt';
 // require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
 // emits an undefined default for sharp's CommonJS module.
 const sharp = require('sharp') as typeof import('sharp');
-import { ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, NotificationType, ResidentStatus, Role, ServantRank } from '@fonte/types';
+import { ACTIVE_RESIDENT_STATUSES, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isTemplateAvailableForStatus, NotificationType, ResidentStatus, Role, ServantRank, TemplateAvailability } from '@fonte/types';
 import { Logger } from '@nestjs/common';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
@@ -166,12 +166,8 @@ export class ResidentService {
     }
 
     if (dto.overdueContribution) {
-      const activeStatuses = [
-        ResidentStatus.PRE_ADMISSION,
-        ResidentStatus.ACTIVE,
-        ResidentStatus.DISCIPLINE,
-        ResidentStatus.TEMP_LEAVE,
-      ];
+      // Story 160 — definição ÚNICA de "filho ativo", vinda de @fonte/types.
+      const activeStatuses = ACTIVE_RESIDENT_STATUSES;
       qb.andWhere('resident.contributionExempt = false')
         .andWhere('resident.status IN (:...overdActiveStatuses)', { overdActiveStatuses: activeStatuses })
         .andWhere(
@@ -675,13 +671,20 @@ export class ResidentService {
   private static readonly SIGNED_EXPIRY_MS = 30 * 60 * 1000;
 
   async findDocuments(residentId: string): Promise<ResidentDocumentView[]> {
+    const resident = await this.residentRepository.findOne({ where: { id: residentId } });
     const docs = await this.docRepository.find({
       where: { residentId },
       relations: ['template'],
       order: { template: { name: 'ASC' } },
     });
     const now = Date.now();
-    return docs.map((doc) => {
+    // Story 160 — some com o documento cujo template não vale para o status do
+    // filho: sem isto a aba de anexos continuaria listando por esta outra fonte
+    // de dados o documento que o backend recusaria gerar.
+    const visible = docs.filter((doc) =>
+      isTemplateAvailableForStatus(doc.template?.availableFor, resident?.status),
+    );
+    return visible.map((doc) => {
       const withinWindow =
         !!doc.signedFileUrl &&
         now - new Date(doc.updatedAt).getTime() <= ResidentService.SIGNED_EXPIRY_MS;
@@ -704,11 +707,15 @@ export class ResidentService {
   // não acoplar ResidentService ao repositório de templates.
   async findAdmissionDocuments(
     residentId: string,
-    templates: { id: string; name: string }[],
+    templates: { id: string; name: string; availableFor?: TemplateAvailability }[],
   ): Promise<AdmissionDocumentView[]> {
-    await this.findOne(residentId);
+    const resident = await this.findOne(residentId);
     const docs = await this.docRepository.find({ where: { residentId } });
-    return templates.map((t) => {
+    // Story 160 — descarta os templates indisponíveis para o status do filho.
+    const available = templates.filter((t) =>
+      isTemplateAvailableForStatus(t.availableFor, resident.status),
+    );
+    return available.map((t) => {
       const doc = docs.find((d) => d.templateId === t.id);
       return {
         templateId: t.id,

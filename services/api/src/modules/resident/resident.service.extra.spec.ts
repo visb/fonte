@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
-import { Role, ServantRank } from '@fonte/types';
+import { ResidentStatus, Role, ServantRank, TemplateAvailability } from '@fonte/types';
 import { ResidentService } from './resident.service';
 import { Resident } from './resident.entity';
 import { ResidentDocument } from './resident-document.entity';
@@ -267,6 +267,72 @@ describe('ResidentService.findAdmissionDocuments', () => {
     expect(out[0].signed).toBe(true);
     expect(out[0].pdfPath).toContain('/residents/r1/documents/t1/pdf');
     expect(out[1].signed).toBe(false);
+  });
+});
+
+// ─── Disponibilidade do template por status do filho (story 160) ─────────────
+//
+// A guarda do backend recusa GERAR; estas duas listagens é que impedem o
+// documento indisponível de sequer aparecer na aba de anexos — a aba se alimenta
+// das DUAS fontes, então filtrar só numa deixaria o card órfão na tela.
+
+describe('ResidentService.findDocuments — filtro por disponibilidade (story 160)', () => {
+  function buildWithDocs(status: ResidentStatus) {
+    return build({
+      resident: { findOne: jest.fn().mockResolvedValue({ id: 'r1', status }) },
+      doc: {
+        find: jest.fn().mockResolvedValue([
+          { id: 'd1', residentId: 'r1', templateId: 't1', template: { name: 'Ficha', availableFor: TemplateAvailability.ACTIVE_ONLY }, signedFileUrl: null, updatedAt: new Date() },
+          { id: 'd2', residentId: 'r1', templateId: 't2', template: { name: 'Alta', availableFor: TemplateAvailability.INACTIVE_ONLY }, signedFileUrl: null, updatedAt: new Date() },
+          { id: 'd3', residentId: 'r1', templateId: 't3', template: { name: 'Sempre', availableFor: TemplateAvailability.ALL }, signedFileUrl: null, updatedAt: new Date() },
+        ]),
+      },
+    });
+  }
+
+  it('filho ativo vê o ACTIVE_ONLY e o ALL, nunca o INACTIVE_ONLY', async () => {
+    const { service } = buildWithDocs(ResidentStatus.ACTIVE);
+    const out = await service.findDocuments('r1');
+    expect(out.map((d) => d.templateName)).toEqual(['Ficha', 'Sempre']);
+  });
+
+  it('filho em alta vê o INACTIVE_ONLY e o ALL, nunca o ACTIVE_ONLY', async () => {
+    const { service } = buildWithDocs(ResidentStatus.DISCHARGED);
+    const out = await service.findDocuments('r1');
+    expect(out.map((d) => d.templateName)).toEqual(['Alta', 'Sempre']);
+  });
+
+  it('PRE_ADMISSION conta como ativo (decisão 3 da story)', async () => {
+    const { service } = buildWithDocs(ResidentStatus.PRE_ADMISSION);
+    const out = await service.findDocuments('r1');
+    expect(out.map((d) => d.templateName)).toEqual(['Ficha', 'Sempre']);
+  });
+});
+
+describe('ResidentService.findAdmissionDocuments — filtro por disponibilidade (story 160)', () => {
+  const templates = [
+    { id: 't1', name: 'Ficha', availableFor: TemplateAvailability.ACTIVE_ONLY },
+    { id: 't2', name: 'Alta', availableFor: TemplateAvailability.INACTIVE_ONLY },
+    { id: 't3', name: 'Sempre', availableFor: TemplateAvailability.ALL },
+  ];
+
+  function buildFor(status: ResidentStatus) {
+    return build({
+      resident: { findOne: jest.fn().mockResolvedValue({ id: 'r1', status }) },
+      doc: { find: jest.fn().mockResolvedValue([]) },
+    });
+  }
+
+  it('filho ativo não recebe o documento de desligamento', async () => {
+    const { service } = buildFor(ResidentStatus.TEMP_LEAVE);
+    const out = await service.findAdmissionDocuments('r1', templates);
+    expect(out.map((d) => d.templateName)).toEqual(['Ficha', 'Sempre']);
+  });
+
+  it('filho evadido não recebe o documento de acolhimento', async () => {
+    const { service } = buildFor(ResidentStatus.EVADED);
+    const out = await service.findAdmissionDocuments('r1', templates);
+    expect(out.map((d) => d.templateName)).toEqual(['Alta', 'Sempre']);
   });
 });
 

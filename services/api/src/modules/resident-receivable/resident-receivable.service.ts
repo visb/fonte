@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, Repository } from 'typeorm';
 import {
+  ACTIVE_RESIDENT_STATUSES,
   FamilyInvestment,
   NotificationType,
   PaymentMethod,
@@ -28,13 +29,9 @@ const CANONICAL_AMOUNTS: Partial<Record<FamilyInvestment, number>> = {
   [FamilyInvestment.SOCIAL]: 0,
 };
 
-// Statuses where the resident is still under treatment and the carnê keeps rolling.
-const ACTIVE_STATUSES: ResidentStatus[] = [
-  ResidentStatus.PRE_ADMISSION,
-  ResidentStatus.ACTIVE,
-  ResidentStatus.DISCIPLINE,
-  ResidentStatus.TEMP_LEAVE,
-];
+// Statuses where the resident is still under treatment and the carnê keeps
+// rolling. Story 160 — definição ÚNICA de "filho ativo", em @fonte/types.
+const ACTIVE_STATUSES: ResidentStatus[] = ACTIVE_RESIDENT_STATUSES;
 
 export interface ResidentReceivableView {
   id: string;

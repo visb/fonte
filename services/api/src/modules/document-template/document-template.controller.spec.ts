@@ -20,14 +20,23 @@ describe('DocumentTemplateController', () => {
     const s = svc();
     const c = new DocumentTemplateController(s as never);
     await c.create('Termo', undefined as never, undefined, undefined);
-    expect(s.create).toHaveBeenCalledWith('Termo', '', false, false);
+    // availableFor omitido chega cru (undefined) — quem aplica o default ALL e
+    // valida contra o enum é o service (story 160).
+    expect(s.create).toHaveBeenCalledWith('Termo', '', false, false, undefined);
   });
 
   it('create forwards explicit flags', async () => {
     const s = svc();
     const c = new DocumentTemplateController(s as never);
     await c.create('Termo', 'body', true, true);
-    expect(s.create).toHaveBeenCalledWith('Termo', 'body', true, true);
+    expect(s.create).toHaveBeenCalledWith('Termo', 'body', true, true, undefined);
+  });
+
+  it('create forwards availableFor to the service (story 160)', async () => {
+    const s = svc();
+    const c = new DocumentTemplateController(s as never);
+    await c.create('Termo', 'body', false, false, 'INACTIVE_ONLY');
+    expect(s.create).toHaveBeenCalledWith('Termo', 'body', false, false, 'INACTIVE_ONLY');
   });
 
   it('update builds a partial only with provided fields', async () => {
@@ -35,6 +44,13 @@ describe('DocumentTemplateController', () => {
     const c = new DocumentTemplateController(s as never);
     await c.update('d1', 'New name', undefined, true, undefined);
     expect(s.update).toHaveBeenCalledWith('d1', { name: 'New name', isRequired: true });
+  });
+
+  it('update includes availableFor only when provided (story 160)', async () => {
+    const s = svc();
+    const c = new DocumentTemplateController(s as never);
+    await c.update('d1', undefined, undefined, undefined, undefined, 'ACTIVE_ONLY');
+    expect(s.update).toHaveBeenCalledWith('d1', { availableFor: 'ACTIVE_ONLY' });
   });
 
   it('findAll/findOne/remove delegate', async () => {

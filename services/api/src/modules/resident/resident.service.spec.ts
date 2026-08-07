@@ -1,4 +1,10 @@
 jest.mock('@fonte/types', () => ({
+  // Story 160 — o módulo real entra primeiro para que as CONSTANTES e os HELPERS
+  // compartilhados (ACTIVE_RESIDENT_STATUSES, isTemplateAvailableForStatus,
+  // TemplateAvailability) sejam os de verdade: reimplementá-los aqui derrotaria a
+  // razão de existir de uma definição única. Os enums abaixo seguem stubados como
+  // antes e continuam sobrescrevendo os reais.
+  ...jest.requireActual('@fonte/types'),
   FamilyInvestment: {
     BASKET_500: 'BASKET_500',
     PAYMENT_700: 'PAYMENT_700',

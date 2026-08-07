@@ -73,6 +73,53 @@ export const PRESENT_RESIDENT_STATUSES = [
   ResidentStatus.TEMP_LEAVE,
 ] as const;
 
+/**
+ * Filho "ativo" = presente/em tratamento — acolhido cujo processo está em curso.
+ * DIFERE de PRESENT_RESIDENT_STATUSES (ocupação física da casa) por incluir
+ * PRE_ADMISSION: o filho em pré-admissão já é acolhido (é nesse status que o
+ * wizard de acolhimento imprime as fichas), só não tem a admissão concluída.
+ * Castigo (DISCIPLINE) e saída temporária (TEMP_LEAVE) continuam ativos.
+ *
+ * Fonte ÚNICA da definição (story 160): antes a lista era redeclarada em
+ * resident.service e resident-receivable.service. Quem não está aqui já saiu ou
+ * é registro morto: DISCHARGED, EVADED, CENSUS_ADDED, REJECTED_CENSUS, ARCHIVED.
+ */
+export const ACTIVE_RESIDENT_STATUSES: ResidentStatus[] = [
+  ResidentStatus.PRE_ADMISSION,
+  ResidentStatus.ACTIVE,
+  ResidentStatus.DISCIPLINE,
+  ResidentStatus.TEMP_LEAVE,
+];
+
+/**
+ * Disponibilidade de um template de documento por status do filho (story 160).
+ * Ternário de propósito — configurar 9 status por template é granularidade que
+ * ninguém pediu; se um dia precisar, ALL vira a lista completa sem quebrar dado.
+ */
+export enum TemplateAvailability {
+  ALL = 'ALL',
+  ACTIVE_ONLY = 'ACTIVE_ONLY',
+  INACTIVE_ONLY = 'INACTIVE_ONLY',
+}
+
+export function isResidentStatusActive(status: ResidentStatus | null | undefined): boolean {
+  return !!status && ACTIVE_RESIDENT_STATUSES.includes(status);
+}
+
+/**
+ * Predicado ÚNICO (backend + frontend) de "este template vale para este filho".
+ * `availableFor` ausente/desconhecido conta como ALL: template legado (ou payload
+ * sem o campo) nunca some da tela nem é recusado na geração.
+ */
+export function isTemplateAvailableForStatus(
+  availableFor: TemplateAvailability | string | null | undefined,
+  status: ResidentStatus | null | undefined,
+): boolean {
+  if (availableFor === TemplateAvailability.ACTIVE_ONLY) return isResidentStatusActive(status);
+  if (availableFor === TemplateAvailability.INACTIVE_ONLY) return !!status && !isResidentStatusActive(status);
+  return true;
+}
+
 export enum ProfileType {
   STAFF = 'STAFF',
   RELATIVE = 'RELATIVE',

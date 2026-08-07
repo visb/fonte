@@ -231,6 +231,160 @@ describe('DocumentTemplateController (e2e)', () => {
     });
   });
 
+  // ── Disponibilidade por status do filho (story 160) ──────────────────────────
+
+  describe('availableFor (story 160)', () => {
+    it('POST sem o campo → o template nasce ALL (decisão 6: nada muda de comportamento)', async () => {
+      const name = `Termo default ${tag}`;
+      createdNames.push(name);
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/document-templates`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name, content: '<p>x</p>' })
+        .expect(201);
+      expect(res.body.availableFor).toBe('ALL');
+    });
+
+    it('POST grava e devolve o availableFor; o GET também o devolve', async () => {
+      const name = `Termo ativo ${tag}`;
+      createdNames.push(name);
+      const created = await request(app.getHttpServer())
+        .post(`${BASE}/document-templates`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name, content: '<p>x</p>', availableFor: 'ACTIVE_ONLY' })
+        .expect(201);
+      expect(created.body.availableFor).toBe('ACTIVE_ONLY');
+
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/document-templates/${created.body.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(res.body.availableFor).toBe('ACTIVE_ONLY');
+    });
+
+    it('PUT altera o availableFor e a mudança aparece no GET', async () => {
+      const name = `Termo mutavel ${tag}`;
+      createdNames.push(name);
+      const created = await request(app.getHttpServer())
+        .post(`${BASE}/document-templates`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name, content: '<p>x</p>' })
+        .expect(201);
+
+      const upd = await request(app.getHttpServer())
+        .put(`${BASE}/document-templates/${created.body.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ availableFor: 'INACTIVE_ONLY' })
+        .expect(200);
+      expect(upd.body.availableFor).toBe('INACTIVE_ONLY');
+
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/document-templates/${created.body.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(res.body.availableFor).toBe('INACTIVE_ONLY');
+    });
+
+    it('POST com valor fora do enum → 400', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/document-templates`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `Nao deve nascer ${tag}`, content: '<p>x</p>', availableFor: 'SO_OS_ALTOS' })
+        .expect(400));
+
+    it('PUT com valor fora do enum → 400', async () => {
+      const name = `Termo enum ${tag}`;
+      createdNames.push(name);
+      const created = await request(app.getHttpServer())
+        .post(`${BASE}/document-templates`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name, content: '<p>x</p>' })
+        .expect(201);
+      await request(app.getHttpServer())
+        .put(`${BASE}/document-templates/${created.body.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ availableFor: 'TALVEZ' })
+        .expect(400);
+    });
+  });
+
+  // Esconder o card na tela não é regra: a URL direta do PDF/render tem que
+  // recusar. Um filho é levado a DISCHARGED só para esta prova e restaurado.
+  describe('geração recusada por status incompatível (story 160)', () => {
+    let activeOnlyId: string;
+    let inactiveOnlyId: string;
+    let residentId: string;
+    let originalStatus: string;
+
+    beforeAll(async () => {
+      for (const [suffix, availableFor] of [
+        ['ativos', 'ACTIVE_ONLY'],
+        ['nao-ativos', 'INACTIVE_ONLY'],
+      ] as const) {
+        const name = `Termo ${suffix} ${tag}`;
+        createdNames.push(name);
+        const tpl = await request(app.getHttpServer())
+          .post(`${BASE}/document-templates`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ name, content: '<p>Documento de {{name}}</p>', availableFor })
+          .expect(201);
+        if (availableFor === 'ACTIVE_ONLY') activeOnlyId = tpl.body.id;
+        else inactiveOnlyId = tpl.body.id;
+      }
+
+      const [row] = await dataSource.query(
+        `SELECT id, status FROM residents WHERE deleted_at IS NULL ORDER BY id LIMIT 1`,
+      );
+      residentId = row.id;
+      originalStatus = row.status;
+      await dataSource.query(`UPDATE residents SET status = 'DISCHARGED' WHERE id = $1`, [residentId]);
+    });
+
+    afterAll(async () => {
+      await dataSource.query(`UPDATE residents SET status = $2 WHERE id = $1`, [
+        residentId,
+        originalStatus,
+      ]);
+    });
+
+    it('GET /pdf de template ACTIVE_ONLY para filho em alta → 400', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/documents/${activeOnlyId}/pdf`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(400)
+        .then((res) => {
+          expect(res.body.message).toContain('não está disponível para o status atual do acolhido');
+        }));
+
+    it('GET /render do mesmo template → 400 (a URL direta também é barrada)', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/documents/${activeOnlyId}/render`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(400));
+
+    it('combined-pdf com UM incompatível na lista reprova a requisição inteira', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/residents/${residentId}/documents/combined-pdf`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ templateIds: [inactiveOnlyId, activeOnlyId] })
+        .expect(400));
+
+    it('o template INACTIVE_ONLY, esse sim, gera para o filho em alta', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/documents/${inactiveOnlyId}/pdf`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .buffer()
+        .parse((r, cb) => {
+          const chunks: Buffer[] = [];
+          r.on('data', (c: Buffer) => chunks.push(Buffer.from(c)));
+          r.on('end', () => cb(null, Buffer.concat(chunks)));
+        })
+        .expect(200)
+        .then((res) => {
+          expect((res.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+        }), 120_000);
+  });
+
   // ── Content normalization without S3 (no-op pass-through — story 76) ─────────
 
   describe('content normalization (non-S3 mode, story 76)', () => {

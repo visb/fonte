@@ -1270,7 +1270,8 @@
                 "{{residentId}}",
                 "documents"
               ]
-            }
+            },
+            "description": "Omite os documentos cujo template não vale para o status atual do filho (story 160)."
           }
         },
         {
@@ -1289,7 +1290,8 @@
                 "{{templateId}}",
                 "render"
               ]
-            }
+            },
+            "description": "400 quando o availableFor do template não casa com o status do filho (story 160)."
           }
         },
         {
@@ -1308,7 +1310,8 @@
                 "{{templateId}}",
                 "pdf"
               ]
-            }
+            },
+            "description": "400 quando o availableFor do template não casa com o status do filho (story 160)."
           }
         },
         {
@@ -1337,7 +1340,7 @@
                 "combined-pdf"
               ]
             },
-            "description": "Story 152 — mescla os templates informados (na ordem recebida) num único PDF A4 para impressão em lote. Responde application/pdf com Content-Disposition attachment."
+            "description": "Story 152 — mescla os templates informados (na ordem recebida) num único PDF A4 para impressão em lote. Responde application/pdf com Content-Disposition attachment. Story 160 — um único template incompatível com o status do filho reprova a requisição inteira (400), sem PDF parcial."
           }
         },
         {
@@ -1964,7 +1967,7 @@
                 "admission-documents"
               ]
             },
-            "description": "Documentos a assinar no acolhimento (templates signAtAdmission) com status de assinatura e caminho do PDF preenchido."
+            "description": "Documentos a assinar no acolhimento (templates signAtAdmission) com status de assinatura e caminho do PDF preenchido. Story 160 — descarta os templates cujo availableFor não vale para o status do filho."
           }
         },
         {
@@ -4232,7 +4235,8 @@
               "path": [
                 "document-templates"
               ]
-            }
+            },
+            "description": "Cada template devolve availableFor: ALL | ACTIVE_ONLY | INACTIVE_ONLY (story 160)."
           }
         },
         {
@@ -4248,7 +4252,8 @@
                 "document-templates",
                 "{{templateId}}"
               ]
-            }
+            },
+            "description": "Devolve availableFor: ALL | ACTIVE_ONLY | INACTIVE_ONLY (story 160)."
           }
         },
         {
@@ -4263,7 +4268,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Termo de Internação\",\n  \"content\": \"<html>...</html>\"\n}"
+              "raw": "{\n  \"name\": \"Termo de Internação\",\n  \"content\": \"<html>...</html>\",\n  \"isRequired\": false,\n  \"signAtAdmission\": false,\n  \"availableFor\": \"ACTIVE_ONLY\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/document-templates",
@@ -4273,7 +4278,8 @@
               "path": [
                 "document-templates"
               ]
-            }
+            },
+            "description": "availableFor (story 160, opcional): ALL (default) | ACTIVE_ONLY | INACTIVE_ONLY. Ativo = PRE_ADMISSION, ACTIVE, DISCIPLINE, TEMP_LEAVE. Valor fora do enum → 400."
           }
         },
         {
@@ -4288,7 +4294,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Termo Atualizado\",\n  \"content\": \"<html>...</html>\"\n}"
+              "raw": "{\n  \"name\": \"Termo Atualizado\",\n  \"content\": \"<html>...</html>\",\n  \"availableFor\": \"INACTIVE_ONLY\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/document-templates/{{templateId}}",
@@ -4299,7 +4305,8 @@
                 "document-templates",
                 "{{templateId}}"
               ]
-            }
+            },
+            "description": "Campos omitidos ficam inalterados. availableFor (story 160): ALL | ACTIVE_ONLY | INACTIVE_ONLY; valor fora do enum → 400."
           }
         },
         {

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
+import { ResidentStatus, TemplateAvailability } from '@fonte/types';
 
 const hooks = {
   resident: undefined as unknown,
@@ -256,6 +257,75 @@ describe('AttachmentsTab', () => {
   });
 });
 
+// ─── Disponibilidade do template por status do filho (story 160) ─────────────
+
+describe('AttachmentsTab — filtro por status do filho', () => {
+  function threeTemplates() {
+    hooks.templates = [
+      template({ id: 't1', name: 'Ficha de acolhimento', isRequired: true, availableFor: TemplateAvailability.ACTIVE_ONLY }),
+      template({ id: 't2', name: 'Declaração de alta', isRequired: true, availableFor: TemplateAvailability.INACTIVE_ONLY }),
+      template({ id: 't3', name: 'Termo geral', isRequired: true, availableFor: TemplateAvailability.ALL }),
+    ];
+  }
+
+  it('filho ATIVO não vê o documento de desligamento', () => {
+    hooks.resident = { id: 'r1', name: 'Fulano', cpf: '123', status: ResidentStatus.ACTIVE };
+    threeTemplates();
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    expect(screen.getByText('Ficha de acolhimento')).toBeInTheDocument();
+    expect(screen.getByText('Termo geral')).toBeInTheDocument();
+    expect(screen.queryByText('Declaração de alta')).not.toBeInTheDocument();
+  });
+
+  it('filho em ALTA vê o de desligamento e não vê o de acolhimento', () => {
+    hooks.resident = { id: 'r1', name: 'Fulano', cpf: '123', status: ResidentStatus.DISCHARGED };
+    threeTemplates();
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    expect(screen.getByText('Declaração de alta')).toBeInTheDocument();
+    expect(screen.getByText('Termo geral')).toBeInTheDocument();
+    expect(screen.queryByText('Ficha de acolhimento')).not.toBeInTheDocument();
+  });
+
+  // Decisão 3 da story: pré-admissão está do lado ATIVO — é nesse status que o
+  // wizard imprime a ficha de acolhimento.
+  it('filho em PRE_ADMISSION conta como ativo', () => {
+    hooks.resident = { id: 'r1', name: 'Fulano', cpf: '123', status: ResidentStatus.PRE_ADMISSION };
+    threeTemplates();
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    expect(screen.getByText('Ficha de acolhimento')).toBeInTheDocument();
+    expect(screen.queryByText('Declaração de alta')).not.toBeInTheDocument();
+  });
+
+  it('o menu "Gerar documento" (opcionais) também respeita o filtro', () => {
+    hooks.resident = { id: 'r1', name: 'Fulano', cpf: '123', status: ResidentStatus.ACTIVE };
+    hooks.templates = [
+      template({ id: 'opt', name: 'Opcional de alta', availableFor: TemplateAvailability.INACTIVE_ONLY }),
+    ];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    expect(screen.queryByRole('button', { name: /Gerar documento/ })).not.toBeInTheDocument();
+  });
+
+  it('seção de assinatura no acolhimento some quando nenhum template vale para o status', () => {
+    hooks.resident = { id: 'r1', name: 'Fulano', cpf: '123', status: ResidentStatus.EVADED };
+    hooks.templates = [
+      template({ id: 't1', name: 'Termo LGPD', signAtAdmission: true, availableFor: TemplateAvailability.ACTIVE_ONLY }),
+    ];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    expect(screen.queryByText('Documentos para assinatura no acolhimento')).not.toBeInTheDocument();
+  });
+
+  // Enquanto o filho carrega não há status: o predicado é o MESMO do backend,
+  // que também recusaria gerar sem status — só os ALL sobrevivem.
+  it('sem o filho carregado, só os templates ALL aparecem', () => {
+    hooks.resident = undefined;
+    threeTemplates();
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    expect(screen.getByText('Termo geral')).toBeInTheDocument();
+    expect(screen.queryByText('Ficha de acolhimento')).not.toBeInTheDocument();
+    expect(screen.queryByText('Declaração de alta')).not.toBeInTheDocument();
+  });
+});
+
 // ─── PDF combinado para impressão em lote (story 152) ────────────────────────
 
 describe('AttachmentsTab — PDF combinado', () => {
@@ -375,6 +445,19 @@ describe('AttachmentsTab — PDF combinado', () => {
     await waitFor(() =>
       expect(downloadCombinedDocumentsPdf).toHaveBeenCalledWith('r1', ['t1', 't2']),
     );
+  });
+
+  // Story 160 — o template escondido não pode entrar na seleção do combinado:
+  // é o que garante que a tela nunca monta uma requisição que o backend recusa.
+  it('template indisponível para o status não entra na seleção do PDF combinado', async () => {
+    hooks.resident = { id: 'r1', name: 'Fulano', cpf: '123', status: ResidentStatus.ACTIVE };
+    twoTemplates({}, { availableFor: TemplateAvailability.INACTIVE_ONLY });
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+
+    expect(screen.queryByRole('checkbox', { name: 'Selecionar Termo B' })).not.toBeInTheDocument();
+    selectCard('Termo A');
+    fireEvent.click(screen.getByRole('button', { name: /Gerar PDF combinado/ }));
+    await waitFor(() => expect(downloadCombinedDocumentsPdf).toHaveBeenCalledWith('r1', ['t1']));
   });
 
   it('erro do endpoint combinado renderiza o alerta com a mensagem da API', async () => {

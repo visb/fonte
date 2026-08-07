@@ -35,6 +35,21 @@ describe('VARIABLES', () => {
       'Foto do acolhido em 4×4 cm; moldura vazia com o rótulo "Foto" se não houver',
     );
   });
+
+  // Story 159 — sem a entrada no catálogo a variável existe no backend mas é
+  // invisível para quem edita o template.
+  it('inclui {{exitDate}} logo depois de {{entryDate}} (story 159)', () => {
+    const variable = VARIABLES.find((v) => v.key === '{{exitDate}}');
+    expect(variable).toBeDefined();
+    expect(variable!.label).toBe('Data de saída');
+    expect(variable!.description).toBe(
+      'Data de saída da comunidade (dd/mm/aaaa); "não informado" se o filho ainda está na casa',
+    );
+
+    // O par entrada/saída fica lado a lado na barra.
+    const keys = VARIABLES.map((v) => v.key);
+    expect(keys.indexOf('{{exitDate}}')).toBe(keys.indexOf('{{entryDate}}') + 1);
+  });
 });
 
 // ─── filterVariables ──────────────────────────────────────────────────────────
@@ -99,6 +114,19 @@ describe('filterVariables', () => {
     const keys = filterVariables('foto').map((v) => v.key);
     expect(keys).toContain('{{residentPhoto}}');
   });
+
+  // Story 159 — quem digita a palavra encontra a variável com ou sem o acento, já
+  // que o filtro passa pelo normalizeForSearch.
+  it('`saída` e `saida` → ambos encontram {{exitDate}} (story 159)', () => {
+    expect(filterVariables('saída').map((v) => v.key)).toContain('{{exitDate}}');
+    expect(filterVariables('saida').map((v) => v.key)).toContain('{{exitDate}}');
+  });
+
+  it('match por key: `exitDate` casa só {{exitDate}} (story 159)', () => {
+    const result = filterVariables('exitDate');
+    expect(result).toHaveLength(1);
+    expect(result[0].key).toBe('{{exitDate}}');
+  });
 });
 
 // ─── buildVariableInsertion ───────────────────────────────────────────────────
@@ -131,6 +159,12 @@ describe('buildVariableInsertion', () => {
   it('residentPhoto → exatamente um par de chaves (story 157)', () => {
     expect(buildVariableInsertion('residentPhoto')).toBe('{{residentPhoto}}');
     expect(buildVariableInsertion('{{residentPhoto}}')).toBe('{{residentPhoto}}');
+  });
+
+  // Story 159 — idem para a saída: o backend casa `\{\{exitDate\}\}` literal.
+  it('exitDate → exatamente um par de chaves (story 159)', () => {
+    expect(buildVariableInsertion('exitDate')).toBe('{{exitDate}}');
+    expect(buildVariableInsertion('{{exitDate}}')).toBe('{{exitDate}}');
   });
 
   it('nunca gera chaves aninhadas ({{{{name}} etc.)', () => {

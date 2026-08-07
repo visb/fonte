@@ -394,6 +394,14 @@ export class DocumentTemplateService implements OnModuleDestroy {
       houseCity:     resident.house?.city ?? 'não informado',
       houseState:    resident.house?.state ?? 'não informado',
       entryDate:     this.formatDate(resident.entryDate as Date | null),
+      // Story 159 — DIVERGE de propósito das demais datas: sem saída imprime
+      // 'não informado' (fallback de `rg`/`city`/`address`) em vez do traço
+      // `___/___/______` que `formatDate(null)` devolve. Filho SEM saída é o caso
+      // normal (está ativo) e o traço convidaria a preencher à mão uma data que
+      // não existe. O ternário é o que evita cair no traço.
+      exitDate:      resident.exitDate
+        ? this.formatDate(resident.exitDate as Date | null)
+        : 'não informado',
       date:          this.formatDate(new Date()),
       dateLong:      this.formatDateLong(new Date()),
       responsibleName:         responsible?.name ?? 'não informado',

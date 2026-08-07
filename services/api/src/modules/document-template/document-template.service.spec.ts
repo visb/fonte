@@ -576,6 +576,80 @@ describe('DocumentTemplateService.renderForResident', () => {
   });
 });
 
+// Story 159 — {{exitDate}}: a contraparte de {{entryDate}}. Diverge de propósito
+// das demais datas: sem saída imprime 'não informado', NUNCA o traço
+// `___/___/______` que `formatDate(null)` devolveria (decisão 1 do plano).
+describe('DocumentTemplateService {{exitDate}} (story 159)', () => {
+  // Renderiza um template com o `resident` dado; sem responsável (não interessa aqui).
+  async function renderWith(resident: Partial<Resident>, content = 'Saída: {{exitDate}}') {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content }),
+    });
+    const relativeRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const service = makeService(repo, relativeRepo);
+    return service.renderForResident('tpl-1', {
+      id: 'res-1',
+      name: 'João',
+      ...resident,
+    } as Resident);
+  }
+
+  it('filho COM data de saída → dd/mm/aaaa em UTC (mesma regra do {{entryDate}})', async () => {
+    // '2026-03-09' em UTC é 09/03/2026: sem o timeZone: 'UTC' do formatDate a data
+    // retrocederia um dia em fuso negativo (America/Sao_Paulo).
+    const html = await renderWith({ exitDate: '2026-03-09' as unknown as Date });
+    expect(html).toContain('Saída: 09/03/2026');
+    expect(html).not.toContain('{{exitDate}}');
+  });
+
+  it('filho SEM data de saída → exatamente "não informado", nunca o traço (decisão 1)', async () => {
+    const html = await renderWith({ exitDate: null });
+    expect(html).toContain('Saída: não informado');
+    expect(html).not.toContain('___/___/______');
+    expect(html).not.toContain('{{exitDate}}');
+  });
+
+  it('exitDate ausente no objeto (undefined) → também "não informado"', async () => {
+    const html = await renderWith({});
+    expect(html).toContain('Saída: não informado');
+    expect(html).not.toContain('___/___/______');
+  });
+
+  it('template sem o token → HTML inalterado', async () => {
+    const semToken = await renderWith({ exitDate: '2026-03-09' as unknown as Date }, '<p>Sem token nenhum</p>');
+    expect(semToken).toContain('<p>Sem token nenhum</p>');
+    expect(semToken).not.toContain('09/03/2026');
+    expect(semToken).not.toContain('não informado');
+  });
+
+  it('{{exitDate}} repetido → todas as ocorrências substituídas (replace global)', async () => {
+    const content = 'A: {{exitDate}} | B: {{exitDate}} | C: {{exitDate}}';
+    const comData = await renderWith({ exitDate: '2026-03-09' as unknown as Date }, content);
+    expect(comData).toContain('A: 09/03/2026 | B: 09/03/2026 | C: 09/03/2026');
+    expect(comData).not.toContain('{{exitDate}}');
+
+    const semData = await renderWith({ exitDate: null }, content);
+    expect(semData).toContain('A: não informado | B: não informado | C: não informado');
+  });
+
+  // REGRESSÃO — a decisão 1 vale SÓ para a saída: a entrada nula continua caindo
+  // no traço, que ali é justamente o convite a preencher à mão.
+  it('regressão: {{entryDate}} nulo segue imprimindo ___/___/______', async () => {
+    const content = 'Entrada: {{entryDate}} | Saída: {{exitDate}}';
+    const html = await renderWith({ entryDate: null, exitDate: null }, content);
+    expect(html).toContain('Entrada: ___/___/______');
+    expect(html).toContain('Saída: não informado');
+  });
+
+  it('entrada e saída preenchidas convivem no mesmo render', async () => {
+    const html = await renderWith(
+      { entryDate: '2025-01-15' as unknown as Date, exitDate: '2026-03-09' as unknown as Date },
+      'Entrada: {{entryDate}} | Saída: {{exitDate}}',
+    );
+    expect(html).toContain('Entrada: 15/01/2025 | Saída: 09/03/2026');
+  });
+});
+
 // Story 153 — {{responsibleWithRelationship}}: variável ÚNICA e condicional que
 // decide o texto pelo que existe de fato, no lugar do rodapé escrito à mão
 // `{{responsibleName}}({{responsibleRelationship}})` (que imprimia

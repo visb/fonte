@@ -64,6 +64,18 @@ describe('findMissingFields', () => {
     ]);
   });
 
+  // Story 159 — filho ATIVO não tem data de saída, e isso é o caso normal: o
+  // documento imprime "não informado". Se a variável virasse pergunta, o
+  // MissingFieldsDialog abriria em todo documento que a usasse.
+  it('exitDate nunca vira campo faltante, mesmo sem saída (story 159)', () => {
+    const semSaida = resident({ exitDate: null } as Partial<Resident>);
+    expect(findMissingFields(['exitDate'], semSaida)).toEqual([]);
+    expect(findMissingFields(['entryDate', 'exitDate'], semSaida)).toEqual([]);
+    expect(findMissingFields(['exitDate', 'cpf'], semSaida).map((f) => f.residentField)).toEqual([
+      'cpf',
+    ]);
+  });
+
   it('estado civil vem com as opções do select', () => {
     const missing = findMissingFields(['maritalStatus'], resident());
     expect(missing[0].options?.map((o) => o.value)).toEqual([

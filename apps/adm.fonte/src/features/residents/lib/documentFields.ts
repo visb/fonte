@@ -22,8 +22,12 @@ export function slugify(text: string): string {
 // MOLDURA VAZIA impressa — nunca bloqueia a geração, então também fica fora do
 // gate. Está aqui de propósito (e testado), não por acaso de não existir no
 // VAR_TO_FIELD.
+// `exitDate` (story 159) é campo do filho, mas filho SEM saída é o caso normal
+// (está ativo) e o backend imprime "não informado": pedir a data de saída de todo
+// filho ativo, em todo documento que usasse a variável, seria ruído. Fica fora do
+// gate de propósito (e testado), não por acaso de não existir no VAR_TO_FIELD.
 const ALWAYS_AVAILABLE = new Set([
-  'name', 'house', 'entryDate', 'date', 'dateLong', 'signature', 'residentPhoto',
+  'name', 'house', 'entryDate', 'exitDate', 'date', 'dateLong', 'signature', 'residentPhoto',
 ]);
 
 interface VarMapping {

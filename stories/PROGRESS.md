@@ -40,14 +40,18 @@
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 159 — variável `{{exitDate}}` nos documentos | [ ] | — | — | — |
+| 1 | 159 — variável `{{exitDate}}` nos documentos | [OK] | api 1325 · api-e2e 500 · adm-unit 1473 | `9797cde` | `e577b58` |
 | 2 | 160 — template disponível por status do filho | [ ] | — | — | — |
 | 3 | 161 — barra do PDF combinado sempre visível | [ ] | — | — | — |
 | 4 | 162 — import em lote com status ativo | [ ] | — | — | — |
 
 ## Log
 
-<vazio>
+- [OK] 159 — testes: api 119 suítes/1325, api-e2e 33/500, adm unit 213 arquivos/1473; cobertura
+  `document-template.service.ts` 96% stmts / 90,6% branch, `documentFields.ts` e
+  `templateVariables.ts` 100% — commit: `9797cde` — merge: `e577b58` — 2026-08-07.
+- Nota: o e2e novo altera `exit_date` de dois filhos do seed e **restaura no `afterAll`** — não
+  deixa estado no banco de teste.
 
 ## Resumo final
 

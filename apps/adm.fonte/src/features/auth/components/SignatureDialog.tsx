@@ -1,5 +1,4 @@
-import { useRef, useState } from 'react';
-import SignatureCanvas from 'react-signature-canvas';
+import { useState } from 'react';
 import { getErrorMessage } from '@/lib/errors';
 import { useUploadMySignature } from '@/features/staff/hooks/useStaff';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SignatureDrawPad } from './SignatureDrawPad';
+import { SignatureUploadPad } from './SignatureUploadPad';
 
 interface Props {
   open: boolean;
@@ -19,69 +21,80 @@ interface Props {
   onSaved?: () => void;
 }
 
+type SignatureTab = 'draw' | 'upload';
+
+// Story 163 — duas formas de assinar na mesma porta de entrada: desenhar (padrão)
+// ou enviar foto/scan. Trocar de aba não perde o trabalho da outra; o que é salvo
+// é sempre o conteúdo da aba ativa (decisões 7-9).
 export function SignatureDialog({ open, onClose, onSaved }: Props) {
-  const padRef = useRef<SignatureCanvas | null>(null);
-  const [isEmpty, setIsEmpty] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<SignatureTab>('draw');
+  const [drawBlob, setDrawBlob] = useState<Blob | null>(null);
+  const [uploadBlob, setUploadBlob] = useState<Blob | null>(null);
+  const [clearDraw, setClearDraw] = useState(0);
+  const [clearUpload, setClearUpload] = useState(0);
   const mutation = useUploadMySignature();
 
+  const activeBlob = tab === 'draw' ? drawBlob : uploadBlob;
+
   const handleClose = () => {
-    setError(null);
-    setIsEmpty(true);
+    setTab('draw');
+    setDrawBlob(null);
+    setUploadBlob(null);
+    setClearDraw((n) => n + 1);
+    setClearUpload((n) => n + 1);
     mutation.reset();
     onClose();
   };
 
   const handleClear = () => {
-    padRef.current?.clear();
-    setIsEmpty(true);
+    if (tab === 'draw') setClearDraw((n) => n + 1);
+    else setClearUpload((n) => n + 1);
   };
 
   const handleSave = () => {
-    const pad = padRef.current;
-    if (!pad || pad.isEmpty()) {
-      setError('Desenhe sua assinatura antes de salvar.');
-      return;
-    }
-    // PNG mantém o fundo transparente do traço (decisão 1) para imprimir sobre a linha.
-    pad.getCanvas().toBlob((blob) => {
-      if (!blob) {
-        setError('Não foi possível gerar a imagem da assinatura.');
-        return;
-      }
-      mutation.mutate(blob, {
-        onSuccess: () => {
-          onSaved?.();
-          handleClose();
-        },
-      });
-    }, 'image/png');
+    if (!activeBlob) return;
+    mutation.mutate(activeBlob, {
+      onSuccess: () => {
+        onSaved?.();
+        handleClose();
+      },
+    });
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Configurar assinatura</DialogTitle>
           <DialogDescription>
-            Desenhe sua assinatura no quadro abaixo. Ela será inserida nos documentos que você gerar.
+            Desenhe sua assinatura ou envie uma imagem dela. Será inserida nos documentos que você
+            gerar.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-md border bg-white">
-          <SignatureCanvas
-            ref={padRef}
-            penColor="black"
-            onEnd={() => setIsEmpty(padRef.current?.isEmpty() ?? true)}
-            canvasProps={{
-              'aria-label': 'Área de assinatura',
-              className: 'w-full',
-              style: { height: 180 },
-            }}
-          />
-        </div>
+        <Tabs value={tab} onValueChange={(value) => setTab(value as SignatureTab)}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="draw">Desenhar</TabsTrigger>
+            <TabsTrigger value="upload">Enviar imagem</TabsTrigger>
+          </TabsList>
+          {/* forceMount: trocar de aba não pode apagar o traço nem a imagem (decisão 8).
+              Com forceMount o Radix deixa de esconder o painel inativo — daí o `hidden`. */}
+          <TabsContent value="draw" forceMount hidden={tab !== 'draw'}>
+            <SignatureDrawPad
+              onChange={setDrawBlob}
+              clearSignal={clearDraw}
+              disabled={mutation.isPending}
+            />
+          </TabsContent>
+          <TabsContent value="upload" forceMount hidden={tab !== 'upload'}>
+            <SignatureUploadPad
+              onChange={setUploadBlob}
+              clearSignal={clearUpload}
+              disabled={mutation.isPending}
+            />
+          </TabsContent>
+        </Tabs>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
         {mutation.isError && (
           <p className="text-sm text-destructive">
             {getErrorMessage(mutation.error, 'Erro ao salvar assinatura.')}
@@ -96,7 +109,7 @@ export function SignatureDialog({ open, onClose, onSaved }: Props) {
             <Button type="button" variant="outline" onClick={handleClose} disabled={mutation.isPending}>
               Cancelar
             </Button>
-            <Button type="button" onClick={handleSave} disabled={isEmpty || mutation.isPending}>
+            <Button type="button" onClick={handleSave} disabled={!activeBlob || mutation.isPending}>
               {mutation.isPending ? 'Salvando...' : 'Salvar'}
             </Button>
           </div>

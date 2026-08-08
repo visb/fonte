@@ -44,12 +44,14 @@ describe('SignatureSection', () => {
     expect(screen.queryByRole('button', { name: /Redefinir/ })).not.toBeInTheDocument();
   });
 
-  it('mostra a imagem, o botão de redesenhar e o de redefinir quando há assinatura', () => {
+  // Story 163 — com upload disponível, o botão deixa de ser "Redesenhar".
+  it('mostra a imagem, o botão de alterar e o de redefinir quando há assinatura', () => {
     state.signatureUrl = 'https://cdn/sig.png';
     render(<SignatureSection />);
     const img = screen.getByAltText('Sua assinatura') as HTMLImageElement;
     expect(img.src).toContain('https://cdn/sig.png');
-    expect(screen.getByRole('button', { name: /Redesenhar/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Alterar assinatura/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Redesenhar/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Redefinir/ })).toBeInTheDocument();
   });
 

@@ -50,7 +50,8 @@ export function SignatureSection() {
             onClick={() => setOpen(true)}
           >
             <PenLine size={14} />
-            {hasSignature ? 'Redesenhar' : 'Configurar assinatura'}
+            {/* Story 163 — com upload disponível, "Redesenhar" descreveria só metade. */}
+            {hasSignature ? 'Alterar assinatura' : 'Configurar assinatura'}
           </Button>
         </div>
       </div>

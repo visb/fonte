@@ -211,6 +211,106 @@ describe('Resident receivables (e2e)', () => {
   });
 });
 
+// Story 164 — o carnê passa a saber a que acolhimento cada parcela pertence.
+describe('Resident receivables por acolhimento (e2e)', () => {
+  let app: INestApplication;
+  let token: string;
+  let houseId: string;
+  let adminToken: string;
+  let residentId: string;
+  let firstAdmissionId: string;
+  let currentAdmissionId: string;
+
+  const OLD_ENTRY = '2023-01-05';
+  const OLD_EXIT = '2023-08-05';
+  const NEW_ENTRY = '2026-02-10';
+
+  beforeAll(async () => {
+    app = await bootstrapApp();
+    ({ token, houseId } = await loginCoordinator(app));
+    adminToken = await login(app, 'admin@fonte.com', 'admin123');
+
+    const created = await request(app.getHttpServer())
+      .post(`${BASE}/residents`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: `Reacolhido E2E ${Date.now()}`,
+        houseId,
+        entryDate: OLD_ENTRY,
+        familyInvestment: FamilyInvestment.PAYMENT_700,
+        contributionDueDay: 10,
+      })
+      .expect(201);
+    residentId = created.body.id;
+
+    // Encerra o primeiro acolhimento e reintroduz com outro plano.
+    await request(app.getHttpServer())
+      .patch(`${BASE}/residents/${residentId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'DISCHARGED', exitDate: OLD_EXIT })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post(`${BASE}/residents/${residentId}/readmit`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        houseId,
+        entryDate: NEW_ENTRY,
+        familyInvestment: FamilyInvestment.BASKET_500,
+        contributionDueDay: 10,
+      })
+      .expect(201);
+  });
+
+  afterAll(async () => {
+    await request(app.getHttpServer())
+      .delete(`${BASE}/residents/${residentId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    await app.close();
+  });
+
+  it('GET admissions devolve do acolhimento mais recente ao mais antigo', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`${BASE}/residents/${residentId}/admissions`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body).toHaveLength(2);
+    const entries = res.body.map((a: { entryDate: string }) => String(a.entryDate).slice(0, 10));
+    expect(entries).toEqual([NEW_ENTRY, OLD_ENTRY]);
+
+    currentAdmissionId = res.body[0].id;
+    firstAdmissionId = res.body[1].id;
+  });
+
+  it('GET receivables devolve admissionId em toda parcela, separando os acolhimentos', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`${BASE}/residents/${residentId}/receivables`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    const items = res.body as {
+      referenceMonth: string;
+      admissionId: string | null;
+      familyInvestment: string;
+    }[];
+    expect(items.length).toBeGreaterThan(6);
+    expect(items.every((r) => r.admissionId != null)).toBe(true);
+
+    const firstMonthOfNewAdmission = `${NEW_ENTRY.slice(0, 7)}-01`;
+    const old = items.filter((r) => r.referenceMonth < firstMonthOfNewAdmission);
+    const current = items.filter((r) => r.referenceMonth >= firstMonthOfNewAdmission);
+
+    expect(old).toHaveLength(6);
+    expect(old.every((r) => r.admissionId === firstAdmissionId)).toBe(true);
+    expect(old.every((r) => r.familyInvestment === FamilyInvestment.PAYMENT_700)).toBe(true);
+
+    expect(current.length).toBeGreaterThan(0);
+    expect(current.every((r) => r.admissionId === currentAdmissionId)).toBe(true);
+    expect(current.every((r) => r.familyInvestment === FamilyInvestment.BASKET_500)).toBe(true);
+  });
+});
+
 describe('Payment notification is best-effort (e2e)', () => {
   let app: INestApplication;
   let token: string;

@@ -133,6 +133,78 @@ function makeAdmission(overrides: Partial<Admission> = {}): Admission {
   } as unknown as Admission;
 }
 
+// ─── Fake query builder de admissões (story 164) ──────────────────────────────
+//
+// `findCurrentAdmission`/`findAdmissions` dependem de `ORDER BY entry_date DESC
+// NULLS LAST, created_at DESC` — asserção sobre a chamada do QB provaria só que
+// a string foi passada. Este fake APLICA a ordenação declarada sobre uma lista
+// em memória, então o teste falha de verdade se a ordem regredir.
+
+type OrderSpec = { column: string; direction: 'ASC' | 'DESC'; nulls?: string };
+
+const ADMISSION_COLUMNS: Record<string, keyof Admission> = {
+  'adm.entry_date': 'entryDate',
+  'adm.created_at': 'createdAt',
+};
+
+function compareValues(a: unknown, b: unknown, spec: OrderSpec): number {
+  const aNull = a == null;
+  const bNull = b == null;
+  if (aNull || bNull) {
+    if (aNull && bNull) return 0;
+    const nullsLast = spec.nulls === 'NULLS LAST';
+    return aNull ? (nullsLast ? 1 : -1) : nullsLast ? -1 : 1;
+  }
+  const left = a instanceof Date ? a.getTime() : String(a);
+  const right = b instanceof Date ? b.getTime() : String(b);
+  const sign = left === right ? 0 : left < right ? -1 : 1;
+  return spec.direction === 'DESC' ? -sign : sign;
+}
+
+function makeAdmissionQb(rows: Admission[]) {
+  const orders: OrderSpec[] = [];
+  let take: number | null = null;
+
+  const sorted = () => {
+    const list = [...rows].sort((a, b) => {
+      for (const spec of orders) {
+        const field = ADMISSION_COLUMNS[spec.column];
+        const result = compareValues(a[field], b[field], spec);
+        if (result !== 0) return result;
+      }
+      return 0;
+    });
+    return take == null ? list : list.slice(0, take);
+  };
+
+  const qb: Record<string, jest.Mock> = {
+    where: jest.fn(() => qb),
+    andWhere: jest.fn(() => qb),
+    leftJoinAndSelect: jest.fn(() => qb),
+    orderBy: jest.fn((column: string, direction: 'ASC' | 'DESC', nulls?: string) => {
+      orders.length = 0;
+      orders.push({ column, direction, nulls });
+      return qb;
+    }),
+    addOrderBy: jest.fn((column: string, direction: 'ASC' | 'DESC', nulls?: string) => {
+      orders.push({ column, direction, nulls });
+      return qb;
+    }),
+    limit: jest.fn((n: number) => {
+      take = n;
+      return qb;
+    }),
+    getMany: jest.fn(async () => sorted()),
+    getOne: jest.fn(async () => sorted()[0] ?? null),
+  };
+  return qb;
+}
+
+function makeAdmissionRepo(rows: Admission[], extra: Record<string, jest.Mock> = {}) {
+  const qb = makeAdmissionQb(rows);
+  return { repo: { createQueryBuilder: jest.fn(() => qb), ...extra }, qb };
+}
+
 // ─── Service factory ──────────────────────────────────────────────────────────
 
 function makeService(
@@ -510,18 +582,22 @@ describe('ResidentService.create', () => {
 
 describe('ResidentService.update', () => {
   function makeUpdateService(currentAdmission: Admission | null = makeAdmission()) {
+    return makeUpdateServiceWith(currentAdmission ? [currentAdmission] : []);
+  }
+
+  function makeUpdateServiceWith(admissions: Admission[]) {
     const resident = makeResident();
     const residentFindOne = jest.fn().mockResolvedValue(resident);
     const residentUpdate = jest.fn().mockResolvedValue({ affected: 1 });
-    const admissionFindOne = jest.fn().mockResolvedValue(currentAdmission);
     const admissionUpdate = jest.fn().mockResolvedValue({ affected: 1 });
+    const { repo, qb } = makeAdmissionRepo(admissions, { update: admissionUpdate });
 
     const service = makeService(
       { findOne: residentFindOne, update: residentUpdate },
-      { findOne: admissionFindOne, update: admissionUpdate },
+      repo as never,
     );
 
-    return { service, residentUpdate, admissionFindOne, admissionUpdate };
+    return { service, residentUpdate, admissionQb: qb, admissionUpdate };
   }
 
   it('updates admission when ADMISSION_FIELDS are present in dto', async () => {
@@ -551,17 +627,72 @@ describe('ResidentService.update', () => {
     expect(admissionUpdate).not.toHaveBeenCalled();
   });
 
-  it('queries latest admission by createdAt DESC', async () => {
-    const { service, admissionFindOne } = makeUpdateService();
+  // ── story 164: qual é o "acolhimento atual" ────────────────────────────────
+
+  it('escreve na admissão de MAIOR entry_date mesmo sendo a de created_at mais antigo', async () => {
+    // Retrato da ficha importada: o acolhimento antigo é gravado DEPOIS do atual,
+    // então `created_at DESC` (o comportamento anterior) devolvia o errado.
+    const atual = makeAdmission({
+      id: 'adm-atual',
+      entryDate: new Date('2026-07-17') as unknown as Date,
+      createdAt: new Date('2026-07-10T00:00:00Z'),
+    });
+    const antigo = makeAdmission({
+      id: 'adm-antigo',
+      entryDate: new Date('2025-08-01') as unknown as Date,
+      createdAt: new Date('2026-07-20T00:00:00Z'),
+    });
+    const { service, admissionUpdate } = makeUpdateServiceWith([atual, antigo]);
 
     await service.update(RESIDENT_ID, { houseId: 'new-house' });
 
-    expect(admissionFindOne).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { residentId: RESIDENT_ID },
-        order: { createdAt: 'DESC' },
-      }),
-    );
+    expect(admissionUpdate).toHaveBeenCalledWith('adm-atual', expect.objectContaining({ houseId: 'new-house' }));
+  });
+
+  it('admissão sem entry_date não ganha da que tem (NULLS LAST)', async () => {
+    const semData = makeAdmission({
+      id: 'adm-sem-data',
+      entryDate: null,
+      createdAt: new Date('2026-08-01T00:00:00Z'),
+    });
+    const comData = makeAdmission({
+      id: 'adm-com-data',
+      entryDate: new Date('2024-01-01') as unknown as Date,
+      createdAt: new Date('2020-01-01T00:00:00Z'),
+    });
+    const { service, admissionUpdate } = makeUpdateServiceWith([semData, comData]);
+
+    await service.update(RESIDENT_ID, { houseId: 'new-house' });
+
+    expect(admissionUpdate).toHaveBeenCalledWith('adm-com-data', expect.anything());
+  });
+
+  it('empate de entry_date desempata por created_at DESC', async () => {
+    const antiga = makeAdmission({
+      id: 'adm-antiga',
+      entryDate: new Date('2026-01-01') as unknown as Date,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+    });
+    const recente = makeAdmission({
+      id: 'adm-recente',
+      entryDate: new Date('2026-01-01') as unknown as Date,
+      createdAt: new Date('2026-05-01T00:00:00Z'),
+    });
+    const { service, admissionUpdate } = makeUpdateServiceWith([antiga, recente]);
+
+    await service.update(RESIDENT_ID, { houseId: 'new-house' });
+
+    expect(admissionUpdate).toHaveBeenCalledWith('adm-recente', expect.anything());
+  });
+
+  it('consulta a admissão atual por entry_date DESC NULLS LAST + created_at DESC', async () => {
+    const { service, admissionQb } = makeUpdateService();
+
+    await service.update(RESIDENT_ID, { houseId: 'new-house' });
+
+    expect(admissionQb.orderBy).toHaveBeenCalledWith('adm.entry_date', 'DESC', 'NULLS LAST');
+    expect(admissionQb.addOrderBy).toHaveBeenCalledWith('adm.created_at', 'DESC');
+    expect(admissionQb.limit).toHaveBeenCalledWith(1);
   });
 });
 
@@ -814,6 +945,26 @@ describe('ResidentService.readmit', () => {
     const resetCall = residentUpdate.mock.calls.find(([, update]) => update.status === ResidentStatus.ACTIVE);
     expect(resetCall![1]).not.toHaveProperty('contributionDueDay');
   });
+
+  // Story 164, decisão 10: travar a readmissão de quem ainda não negociou o plano
+  // é pior que sinalizar na aba Contribuições. O contrato do readmit não muda —
+  // a admissão nasce sem plano e o carnê fica vazio até o plano ser definido.
+  it('readmissão SEM familyInvestment continua permitida e grava plano nulo', async () => {
+    const semPlano: ReadmitResidentDto = { houseId: 'new-house-uuid', entryDate: '2026-07-17' };
+    const { service, admissionCreate, residentUpdate, generateSchedule } = makeReadmitService({
+      status: ResidentStatus.DISCHARGED,
+    });
+
+    await service.readmit(RESIDENT_ID, semPlano);
+
+    expect(admissionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ familyInvestment: null, familyInvestmentAmount: null }),
+    );
+    const resetCall = residentUpdate.mock.calls.find(([, update]) => update.status === ResidentStatus.ACTIVE);
+    expect(resetCall![1]).toMatchObject({ familyInvestment: null });
+    // O carnê é pedido, mas sem plano `generateSchedule` não materializa parcela.
+    expect(generateSchedule).toHaveBeenCalledWith(RESIDENT_ID);
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -821,51 +972,46 @@ describe('ResidentService.readmit', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('ResidentService.findAdmissions', () => {
-  it('returns admissions ordered by createdAt DESC', async () => {
-    const resident = makeResident();
-    const admissions = [makeAdmission(), makeAdmission({ id: 'admission-2' })];
+  // Story 164: a ordem é contrato — o adm.fonte numera os acolhimentos e abre a
+  // aba Contribuições no índice 0.
+  it('devolve do acolhimento mais recente ao mais antigo por entry_date', async () => {
+    const antigo = makeAdmission({
+      id: 'adm-antigo',
+      entryDate: new Date('2025-08-01') as unknown as Date,
+      createdAt: new Date('2026-07-20T00:00:00Z'),
+    });
+    const atual = makeAdmission({
+      id: 'adm-atual',
+      entryDate: new Date('2026-07-17') as unknown as Date,
+      createdAt: new Date('2026-07-10T00:00:00Z'),
+    });
+    const { repo } = makeAdmissionRepo([antigo, atual]);
 
-    const residentFindOne = jest.fn().mockResolvedValue(resident);
-    const admissionFind = jest.fn().mockResolvedValue(admissions);
-
-    const service = makeService(
-      { findOne: residentFindOne },
-      { find: admissionFind },
-    );
+    const service = makeService({ findOne: jest.fn().mockResolvedValue(makeResident()) }, repo as never);
 
     const result = await service.findAdmissions(RESIDENT_ID);
 
-    expect(admissionFind).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { residentId: RESIDENT_ID },
-        order: { createdAt: 'DESC' },
-      }),
-    );
-    expect(result).toBe(admissions);
+    expect(result.map((a) => a.id)).toEqual(['adm-atual', 'adm-antigo']);
   });
 
   it('throws NotFoundException when resident does not exist', async () => {
     const residentFindOne = jest.fn().mockRejectedValue(new Error('Resident not found'));
+    const { repo } = makeAdmissionRepo([]);
 
-    const service = makeService({ findOne: residentFindOne }, { find: jest.fn() });
+    const service = makeService({ findOne: residentFindOne }, repo as never);
 
     await expect(service.findAdmissions('non-existent')).rejects.toThrow();
   });
 
   it('includes house relation in admission query', async () => {
-    const resident = makeResident();
-    const admissionFind = jest.fn().mockResolvedValue([]);
+    const { repo, qb } = makeAdmissionRepo([]);
 
-    const service = makeService(
-      { findOne: jest.fn().mockResolvedValue(resident) },
-      { find: admissionFind },
-    );
+    const service = makeService({ findOne: jest.fn().mockResolvedValue(makeResident()) }, repo as never);
 
     await service.findAdmissions(RESIDENT_ID);
 
-    expect(admissionFind).toHaveBeenCalledWith(
-      expect.objectContaining({ relations: ['house'] }),
-    );
+    expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('adm.house', 'house');
+    expect(qb.andWhere).toHaveBeenCalledWith('adm.deleted_at IS NULL');
   });
 });
 
@@ -989,15 +1135,14 @@ describe('ResidentService.update exit events', () => {
       findOne: jest.fn().mockResolvedValue(before),
       update: residentUpdate,
     } as unknown as Partial<Repository<Resident>>;
-    const admissionRepo = {
-      findOne: jest.fn().mockResolvedValue(makeAdmission()),
+    const { repo: admissionRepo } = makeAdmissionRepo([makeAdmission()], {
       update: jest.fn().mockResolvedValue(undefined),
-    } as unknown as Partial<Repository<Admission>>;
+    });
     const createAuto = jest.fn().mockResolvedValue(undefined);
     const cancelAfterExit = jest.fn().mockResolvedValue(undefined);
     const service = makeService(
       residentRepo,
-      admissionRepo,
+      admissionRepo as never,
       {},
       undefined,
       { createAuto, getLastContributionDates: jest.fn().mockResolvedValue(new Map()) },

@@ -38,4 +38,21 @@ describe('AdmissionsTab', () => {
     expect(screen.getByText('80 kg')).toBeInTheDocument();
     expect(screen.getByText('175 cm')).toBeInTheDocument();
   });
+
+  // Story 164: a ordem vem do backend por entry_date DESC. Numerar pelo índice só
+  // fica certo se o mais RECENTE for o primeiro card e receber o maior número.
+  it('"Acolhimento 2" é o mais recente e "Acolhimento 1" o mais antigo', () => {
+    state.data = [
+      { id: 'ad-atual', status: ResidentStatus.ACTIVE, house: { name: 'Casa Belém' }, entryDate: '2026-07-17', exitDate: null },
+      { id: 'ad-antigo', status: ResidentStatus.EVADED, house: { name: 'Casa Nazaré' }, entryDate: '2025-08-01', exitDate: '2025-02-10' },
+    ];
+    render(<AdmissionsTab residentId="r1" />);
+
+    const titulos = screen.getAllByRole('heading', { level: 4 }).map((h) => h.textContent);
+    expect(titulos).toEqual(['Acolhimento 2', 'Acolhimento 1']);
+
+    const cards = screen.getAllByRole('heading', { level: 4 }).map((h) => h.closest('div')!.parentElement!);
+    expect(cards[0].textContent).toContain('17/07/2026');
+    expect(cards[1].textContent).toContain('01/08/2025');
+  });
 });

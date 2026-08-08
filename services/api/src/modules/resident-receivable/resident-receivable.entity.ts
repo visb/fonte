@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { FamilyInvestment, PaymentMethod, ReceivableStatus } from '@fonte/types';
+import { Admission } from '../resident/admission.entity';
 import { Resident } from '../resident/resident.entity';
 import { Staff } from '../staff/staff.entity';
 
@@ -23,6 +24,16 @@ export class ResidentReceivable {
 
   @Column({ name: 'resident_id' })
   residentId: string;
+
+  // Acolhimento dono da parcela (story 164). Nullable: parcela de filho sem
+  // nenhuma admissão viva (dado legado do import) fica órfã em vez de bloquear a
+  // migration; `SET NULL` no delete preserva o histórico financeiro.
+  @ManyToOne(() => Admission, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'admission_id' })
+  admission: Admission | null;
+
+  @Column({ name: 'admission_id', type: 'uuid', nullable: true })
+  admissionId: string | null;
 
   // First day of the competence month (YYYY-MM-01).
   @Column({ name: 'reference_month', type: 'date' })

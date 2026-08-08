@@ -1477,7 +1477,7 @@
                 "admissions"
               ]
             },
-            "description": "Retorna histórico de todos os acolhimentos do residente, com nome da casa. Ordem: mais recente primeiro. Roles: ADMIN, COORDINATOR, SERVANT."
+            "description": "Retorna histórico de todos os acolhimentos do residente, com nome da casa. Ordem (story 164): `entry_date DESC NULLS LAST`, desempate `created_at DESC` — o índice 0 é SEMPRE o acolhimento atual, inclusive em ficha importada (onde os acolhimentos antigos foram gravados depois do atual). `houseId` é anulável. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {
@@ -1570,7 +1570,7 @@
                 "receivables"
               ]
             },
-            "description": "Lista o carnê de contribuição do acolhido (parcelas mensais). Gera 6 parcelas obrigatórias a partir da entrada e rola garantindo ≥1 mês futuro aberto enquanto ativo. Plano SOCIAL ou acolhido isento não geram parcelas. Roles: ADMIN, COORDINATOR."
+            "description": "Lista o carnê de contribuição do acolhido (parcelas mensais). Gera 6 parcelas obrigatórias a partir da entrada e rola garantindo ≥1 mês futuro aberto enquanto ativo. Plano SOCIAL ou acolhido isento não geram parcelas. Ordenado por `referenceMonth` ASC.\n\nStory 164 — cada parcela traz `admissionId`: o acolhimento dono da competência (`null` em parcela órfã, de filho sem acolhimento vivo). O endpoint devolve TODAS as parcelas do filho, sem filtro nem query param; o agrupamento por acolhimento é do cliente, cruzando com `GET /residents/:id/admissions`.\n\nResponse (item): `{ id, residentId, admissionId, referenceMonth, dueDate, amount, familyInvestment, paidAmount, paidFamilyInvestment, mandatory, status, paidAt, paymentMethod, attachmentUrl, notes, createdByName, createdAt, productContributions[] }`.\n\nRoles: ADMIN, COORDINATOR."
           }
         },
         {

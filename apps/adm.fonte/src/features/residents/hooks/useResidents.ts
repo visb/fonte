@@ -252,11 +252,12 @@ export function useResetRelativePassword(relativeId: string) {
   });
 }
 
-export function useResidentAdmissions(residentId: string) {
+/** Acolhimentos do mais recente ao mais antigo — índice 0 é o atual (story 164). */
+export function useResidentAdmissions(residentId: string, options?: { enabled?: boolean }) {
   return useQuery<Admission[]>({
     queryKey: queryKeys.residents.admissions(residentId),
     queryFn: () => api.residents.getAdmissions(residentId),
-    enabled: !!residentId,
+    enabled: (options?.enabled ?? true) && !!residentId,
   });
 }
 

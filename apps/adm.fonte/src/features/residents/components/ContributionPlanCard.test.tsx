@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { FamilyInvestment } from '@fonte/types';
-import type { Resident } from '@fonte/api-client';
+import type { Admission, Resident } from '@fonte/api-client';
 
 const exemptMutation = { mutate: vi.fn(), isPending: false };
 vi.mock('../hooks/useResidentReceivables', () => ({
@@ -62,6 +62,69 @@ describe('ContributionPlanCard', () => {
 
   it('sem canManage não mostra ações de isenção', () => {
     render(<ContributionPlanCard resident={res()} canManage={false} onChangePlan={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /Isentar/ })).not.toBeInTheDocument();
+  });
+
+  // ── story 164: o plano é do acolhimento selecionado ───────────────────────
+
+  function adm(over: Partial<Admission> = {}): Admission {
+    return {
+      id: 'ad1',
+      residentId: 'r1',
+      familyInvestment: null,
+      familyInvestmentAmount: null,
+      ...over,
+    } as unknown as Admission;
+  }
+
+  it('lê plano e valor da admissão selecionada, não do resident', () => {
+    render(
+      <ContributionPlanCard
+        resident={res({ familyInvestment: FamilyInvestment.BASKET_500 })}
+        admission={adm({ familyInvestment: FamilyInvestment.NEGOTIATED, familyInvestmentAmount: 420 })}
+        canManage={false}
+        onChangePlan={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Negociado/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$ 420/)).toBeInTheDocument();
+  });
+
+  it('admissão sem plano gravado (histórico importado) cai no plano do resident', () => {
+    render(
+      <ContributionPlanCard
+        resident={res({ familyInvestment: FamilyInvestment.NEGOTIATED, familyInvestmentAmount: 350 })}
+        admission={adm({ familyInvestment: null, familyInvestmentAmount: null })}
+        canManage={false}
+        onChangePlan={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/R\$ 350/)).toBeInTheDocument();
+  });
+
+  it('SOCIAL na admissão selecionada esconde o vencimento mesmo com outro plano no resident', () => {
+    render(
+      <ContributionPlanCard
+        resident={res({ familyInvestment: FamilyInvestment.BASKET_500 })}
+        admission={adm({ familyInvestment: FamilyInvestment.SOCIAL })}
+        canManage
+        onChangePlan={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Isento de contribuição')).toBeInTheDocument();
+    expect(screen.queryByText(/Vencimento:/)).not.toBeInTheDocument();
+  });
+
+  it('fora do acolhimento atual (canManage false) não mostra nenhuma ação', () => {
+    render(
+      <ContributionPlanCard
+        resident={res()}
+        admission={adm({ familyInvestment: FamilyInvestment.BASKET_500 })}
+        canManage={false}
+        onChangePlan={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /Alterar plano/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Isentar/ })).not.toBeInTheDocument();
   });
 });

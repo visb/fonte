@@ -156,6 +156,57 @@ async function seed() {
     );
   }
 
+  // ── Filho com DOIS acolhimentos (story 164) ────────────────────────────────
+  // Replica o formato do caso base conferido em produção: um acolhimento antigo
+  // com carnê próprio e o acolhimento atual em aberto. Datas RELATIVAS ao "agora"
+  // (o antigo 3 anos atrás) para nunca colidirem com as competências que o carnê
+  // do acolhimento atual materializa sozinho — seed com data fixa vira mina.
+  const PREVIOUS_ENTRY = `date_trunc('month', CURRENT_DATE - INTERVAL '3 years')`;
+
+  const [reacolhido] = await ds.query<{ id: string }[]>(
+    `INSERT INTO residents
+       (id, name, house_id, status, entry_date, family_investment, family_investment_amount, contribution_due_day)
+     VALUES (gen_random_uuid(), $1, $2, $3, CURRENT_DATE, 'BASKET_500', 500, 10) RETURNING id`,
+    ['Marcelo Reacolhido', house.id, ResidentStatus.ACTIVE],
+  );
+
+  // O acolhimento ATUAL entra primeiro de propósito: no import em lote os
+  // anteriores são gravados depois, então `created_at DESC` devolveria o antigo.
+  // O seed reproduz essa inversão para a ordenação por entry_date ser exercitada.
+  await ds.query(
+    `INSERT INTO admissions (id, resident_id, house_id, entry_date, exit_date, status, family_investment, family_investment_amount)
+     VALUES (gen_random_uuid(), $1, $2, CURRENT_DATE, NULL, $3, 'BASKET_500', 500)`,
+    [reacolhido.id, house.id, ResidentStatus.ACTIVE],
+  );
+
+  // Saída ANTERIOR à entrada: dado ruim de planilha que existe em produção. O
+  // resolver trata a janela como aberta em vez de jogar as parcelas no lugar errado.
+  const [previousAdmission] = await ds.query<{ id: string }[]>(
+    `INSERT INTO admissions (id, resident_id, house_id, entry_date, exit_date, status, family_investment, family_investment_amount)
+     VALUES (
+       gen_random_uuid(), $1, $2,
+       ${PREVIOUS_ENTRY}::date,
+       (${PREVIOUS_ENTRY} - INTERVAL '6 months')::date,
+       $3, 'BASKET_500', 500
+     ) RETURNING id`,
+    [reacolhido.id, house.id, ResidentStatus.EVADED],
+  );
+
+  // Carnê do acolhimento ANTIGO: 6 competências obrigatórias, todas pagas.
+  await ds.query(
+    `INSERT INTO resident_receivables
+       (id, resident_id, admission_id, reference_month, due_date, amount, family_investment,
+        mandatory, status, paid_at, paid_amount, paid_family_investment)
+     SELECT
+       gen_random_uuid(), $1, $2,
+       (${PREVIOUS_ENTRY} + (n || ' months')::interval)::date,
+       (${PREVIOUS_ENTRY} + (n || ' months')::interval + INTERVAL '9 days')::date,
+       500, 'BASKET_500', true, 'PAID',
+       (${PREVIOUS_ENTRY} + (n || ' months')::interval + INTERVAL '9 days')::date, 500, 'BASKET_500'
+     FROM generate_series(0, 5) AS n`,
+    [reacolhido.id, previousAdmission.id],
+  );
+
   // Relative linked to resident, with userId + mustChangePassword false
   // (com telefone — login por telefone)
   const [relative] = await ds.query<{ id: string }[]>(
@@ -230,6 +281,7 @@ async function seed() {
   console.log('  Casa:         Casa Teste');
   console.log('  Acolhido:     João Testador (com acesso gerado)');
   console.log('  Elegíveis:    Lucas/Marcos/Tiago Elegível (curso bíblico, 6/5/4 meses)');
+  console.log('  2 acolhimentos: Marcelo Reacolhido (antigo há 3 anos, 6 parcelas pagas)');
   console.log('  Familiar:     Maria Testadora (com acesso gerado)');
   console.log('  Ministério:   Cozinha');
   console.log('  Dispensa:     Arroz (10 kg)');

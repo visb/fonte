@@ -11,6 +11,11 @@ import {
   Role,
 } from '@fonte/types';
 import { ResidentReceivable } from './resident-receivable.entity';
+import { Admission } from '../resident/admission.entity';
+import {
+  resolveAdmissionIdForMonth,
+  resolveCurrentAdmissionId,
+} from '../resident/admission-resolution';
 import { Resident } from '../resident/resident.entity';
 import { Staff } from '../staff/staff.entity';
 import { RegisterPaymentDto } from './dto/register-payment.dto';
@@ -36,6 +41,8 @@ const ACTIVE_STATUSES: ResidentStatus[] = ACTIVE_RESIDENT_STATUSES;
 export interface ResidentReceivableView {
   id: string;
   residentId: string;
+  // Acolhimento dono da parcela (story 164); null em parcela órfã (dado legado).
+  admissionId: string | null;
   referenceMonth: string;
   dueDate: string;
   amount: number;
@@ -94,6 +101,8 @@ export class ResidentReceivableService {
     private repo: Repository<ResidentReceivable>,
     @InjectRepository(Resident)
     private residentRepo: Repository<Resident>,
+    @InjectRepository(Admission)
+    private admissionRepo: Repository<Admission>,
     @InjectRepository(Staff)
     private staffRepo: Repository<Staff>,
     private storageService: StorageService,
@@ -141,6 +150,45 @@ export class ResidentReceivableService {
     return new Map(rows.map((r) => [r.residentId, String(r.lastMonth).slice(0, 10)]));
   }
 
+  // ── vínculo parcela → acolhimento (story 164) ────────────────────────────
+
+  /** Admissões vivas do filho; uma consulta só serve o lote inteiro de competências. */
+  private async loadAdmissions(residentId: string, manager?: EntityManager): Promise<Admission[]> {
+    const repo = manager ? manager.getRepository(Admission) : this.admissionRepo;
+    return repo.find({ where: { residentId } });
+  }
+
+  /**
+   * Acolhimento dono da competência (decisão 9 da story 164). A regra mora em
+   * `admission-resolution.ts` e é a mesma do backfill da migration.
+   */
+  async resolveAdmissionId(
+    residentId: string,
+    referenceMonth: string,
+    manager?: EntityManager,
+  ): Promise<string | null> {
+    const admissions = await this.loadAdmissions(residentId, manager);
+    return resolveAdmissionIdForMonth(admissions, referenceMonth);
+  }
+
+  /** Id do acolhimento atual do filho (entrada mais recente), ou null. */
+  async getCurrentAdmissionId(residentId: string, manager?: EntityManager): Promise<string | null> {
+    const admissions = await this.loadAdmissions(residentId, manager);
+    return resolveCurrentAdmissionId(admissions);
+  }
+
+  /**
+   * Parcelas em que os ajustes automáticos do carnê podem mexer: as do
+   * acolhimento atual e as órfãs. Parcela de acolhimento **encerrado** é
+   * histórico — recalcular ou cancelar ali reescreveria o passado.
+   */
+  private belongsToCurrentAdmission(
+    receivable: Pick<ResidentReceivable, 'admissionId'>,
+    currentAdmissionId: string | null,
+  ): boolean {
+    return receivable.admissionId == null || receivable.admissionId === currentAdmissionId;
+  }
+
   /**
    * Generates the 6 mandatory installments from entry_date (idempotent).
    * `manager` opcional: roda dentro de uma transação externa (commit do import).
@@ -184,11 +232,14 @@ export class ResidentReceivableService {
     const dueDay = this.dueDay(resident);
     const firstFutureMonth = refMonthStr(new Date().getFullYear(), new Date().getMonth());
 
+    const currentAdmissionId = await this.getCurrentAdmissionId(residentId);
     const future = await this.repo.find({
       where: { residentId, status: ReceivableStatus.PENDING },
     });
     const toUpdate = future.filter(
-      (r) => String(r.referenceMonth).slice(0, 10) >= firstFutureMonth,
+      (r) =>
+        String(r.referenceMonth).slice(0, 10) >= firstFutureMonth &&
+        this.belongsToCurrentAdmission(r, currentAdmissionId),
     );
     for (const r of toUpdate) {
       const { year, month0 } = parseYearMonth(String(r.referenceMonth));
@@ -202,11 +253,16 @@ export class ResidentReceivableService {
   /** Cancels future PENDING mandatory installments (used when marking exempt). */
   async cancelFuturePending(residentId: string): Promise<void> {
     const firstFutureMonth = refMonthStr(new Date().getFullYear(), new Date().getMonth());
+    const currentAdmissionId = await this.getCurrentAdmissionId(residentId);
     const pending = await this.repo.find({
       where: { residentId, status: ReceivableStatus.PENDING },
     });
     const ids = pending
-      .filter((r) => String(r.referenceMonth).slice(0, 10) >= firstFutureMonth)
+      .filter(
+        (r) =>
+          String(r.referenceMonth).slice(0, 10) >= firstFutureMonth &&
+          this.belongsToCurrentAdmission(r, currentAdmissionId),
+      )
       .map((r) => r.id);
     if (ids.length > 0) {
       await this.repo.update({ id: In(ids) }, { status: ReceivableStatus.CANCELED });
@@ -217,11 +273,16 @@ export class ResidentReceivableService {
   async cancelAfterExit(residentId: string, exitDate: string): Promise<void> {
     const { year, month0 } = parseYearMonth(exitDate);
     const exitMonth = refMonthStr(year, month0);
+    const currentAdmissionId = await this.getCurrentAdmissionId(residentId);
     const pending = await this.repo.find({
       where: { residentId, status: ReceivableStatus.PENDING },
     });
     const ids = pending
-      .filter((r) => String(r.referenceMonth).slice(0, 10) > exitMonth)
+      .filter(
+        (r) =>
+          String(r.referenceMonth).slice(0, 10) > exitMonth &&
+          this.belongsToCurrentAdmission(r, currentAdmissionId),
+      )
       .map((r) => r.id);
     if (ids.length > 0) {
       await this.repo.update({ id: In(ids) }, { status: ReceivableStatus.CANCELED });
@@ -253,6 +314,8 @@ export class ResidentReceivableService {
     const existing = await repo.find({ where: { residentId } });
     const byMonth = new Map(existing.map((r) => [String(r.referenceMonth).slice(0, 7), r]));
     const notes = 'Importado da planilha (histórico de contribuição)';
+    // N competências, uma consulta de admissões: a resolução roda em memória.
+    const admissions = await this.loadAdmissions(residentId, manager);
 
     let paid = 0;
     let skipped = 0;
@@ -264,6 +327,7 @@ export class ResidentReceivableService {
         continue;
       }
       const dueDate = dueDateStr(year, month0, dueDay);
+      const admissionId = resolveAdmissionIdForMonth(admissions, refMonthStr(year, month0));
       if (current) {
         await repo.update(current.id, {
           status: ReceivableStatus.PAID,
@@ -271,12 +335,15 @@ export class ResidentReceivableService {
           paidAmount: current.amount,
           paidFamilyInvestment: current.familyInvestment,
           notes,
+          // Vínculo já existente é preservado: quem importa não reescreve o passado.
+          ...(current.admissionId == null ? { admissionId } : {}),
         });
       } else {
         const idx = monthIndex(year, month0);
         await repo.save(
           repo.create({
             residentId,
+            admissionId,
             referenceMonth: refMonthStr(year, month0) as unknown as Date,
             dueDate: dueDate as unknown as Date,
             amount,
@@ -415,6 +482,10 @@ export class ResidentReceivableService {
     });
     const existingKeys = new Set(existing.map((e) => String(e.referenceMonth).slice(0, 7)));
 
+    // Na prática toda parcela nova cai no acolhimento atual, mas resolvemos pela
+    // competência (mesmo resolver do backfill) para escrita e leitura não divergirem.
+    const admissions = await this.loadAdmissions(resident.id, manager);
+
     const toCreate: ResidentReceivable[] = [];
     for (let idx = startIdx; idx <= untilIdx; idx++) {
       const year = Math.floor(idx / 12);
@@ -424,6 +495,7 @@ export class ResidentReceivableService {
       toCreate.push(
         repo.create({
           residentId: resident.id,
+          admissionId: resolveAdmissionIdForMonth(admissions, refMonthStr(year, month0)),
           referenceMonth: refMonthStr(year, month0) as unknown as Date,
           dueDate: dueDateStr(year, month0, dueDay) as unknown as Date,
           amount,
@@ -443,6 +515,7 @@ export class ResidentReceivableService {
     return {
       id: item.id,
       residentId: item.residentId,
+      admissionId: item.admissionId ?? null,
       referenceMonth: String(item.referenceMonth).slice(0, 10),
       dueDate: String(item.dueDate).slice(0, 10),
       amount: item.amount,

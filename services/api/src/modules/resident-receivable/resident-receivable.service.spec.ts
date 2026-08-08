@@ -27,6 +27,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { ResidentReceivableService } from './resident-receivable.service';
 import { ResidentReceivable } from './resident-receivable.entity';
+import { Admission } from '../resident/admission.entity';
 import { Resident } from '../resident/resident.entity';
 import { Staff } from '../staff/staff.entity';
 
@@ -64,10 +65,21 @@ function makeResident(overrides: Partial<Resident> = {}): Resident {
   } as Resident;
 }
 
-function makeService(repo: MockRepo, residentRepo: Partial<Repository<Resident>>) {
+// Story 164: o service resolve o acolhimento dono de cada competência. Sem
+// admissão cadastrada o vínculo é `null` — que é o default aqui.
+function makeAdmissionRepo(admissions: Partial<Admission>[] = []): { find: jest.Mock } {
+  return { find: jest.fn().mockResolvedValue(admissions) };
+}
+
+function makeService(
+  repo: MockRepo,
+  residentRepo: Partial<Repository<Resident>>,
+  admissionRepo: { find: jest.Mock } = makeAdmissionRepo(),
+) {
   return new ResidentReceivableService(
     repo as unknown as Repository<ResidentReceivable>,
     residentRepo as Repository<Resident>,
+    admissionRepo as unknown as Repository<Admission>,
     {} as Repository<Staff>,
     {} as never, // StorageService
     { create: jest.fn().mockResolvedValue(undefined) } as never, // NotificationService
@@ -90,6 +102,7 @@ function makeFullService(
   return new ResidentReceivableService(
     repo as unknown as Repository<ResidentReceivable>,
     residentRepoWithFind as Repository<Resident>,
+    makeAdmissionRepo() as unknown as Repository<Admission>,
     staffRepo as Repository<Staff>,
     storage as never,
     { create: jest.fn().mockResolvedValue(undefined) } as never, // NotificationService
@@ -512,5 +525,303 @@ describe('ResidentReceivableService.markImportedPayments', () => {
 
     expect(result).toEqual({ paid: 1, skipped: 0 });
     expect(repo.save).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Story 164 — vínculo parcela → acolhimento
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Retrato do caso base (Marcelo, conferido em produção): acolhimento 1 entrou em
+// ago/2025 com saída gravada ANTES da entrada (dado ruim da planilha) e o
+// acolhimento 2, atual, entrou em jul/2026.
+const ADMISSION_OLD = {
+  id: 'adm-1',
+  entryDate: '2025-08-01',
+  exitDate: '2025-02-10',
+  createdAt: new Date('2026-07-10T00:00:00Z'),
+};
+const ADMISSION_CURRENT = {
+  id: 'adm-2',
+  entryDate: '2026-07-17',
+  exitDate: null,
+  createdAt: new Date('2026-07-20T00:00:00Z'),
+};
+
+describe('ResidentReceivableService.resolveAdmissionId', () => {
+  it('resolve a competência pelo acolhimento dono da janela', async () => {
+    const admissionRepo = makeAdmissionRepo([ADMISSION_OLD, ADMISSION_CURRENT] as never);
+    const service = makeService(makeRepo(), {}, admissionRepo);
+
+    await expect(service.resolveAdmissionId('res-1', '2025-09-01')).resolves.toBe('adm-1');
+    await expect(service.resolveAdmissionId('res-1', '2026-08-01')).resolves.toBe('adm-2');
+  });
+
+  it('filho sem acolhimento → null (parcela órfã, decisão 7)', async () => {
+    const service = makeService(makeRepo(), {}, makeAdmissionRepo([]));
+    await expect(service.resolveAdmissionId('res-1', '2026-08-01')).resolves.toBeNull();
+  });
+
+  it('consulta apenas as admissões do filho (soft delete filtrado pelo TypeORM)', async () => {
+    const admissionRepo = makeAdmissionRepo([ADMISSION_CURRENT] as never);
+    const service = makeService(makeRepo(), {}, admissionRepo);
+
+    await service.resolveAdmissionId('res-1', '2026-08-01');
+
+    expect(admissionRepo.find).toHaveBeenCalledWith({ where: { residentId: 'res-1' } });
+  });
+});
+
+describe('ResidentReceivableService — parcela nova nasce vinculada', () => {
+  it('generateSchedule vincula as parcelas ao acolhimento atual', async () => {
+    const repo = makeRepo();
+    const residentRepo = {
+      findOne: jest.fn().mockResolvedValue(makeResident({ entryDate: '2026-07-17' as never })),
+    };
+    const service = makeService(
+      repo,
+      residentRepo,
+      makeAdmissionRepo([ADMISSION_OLD, ADMISSION_CURRENT] as never),
+    );
+
+    await service.generateSchedule('res-1');
+
+    const saved = repo.save.mock.calls[0][0] as ResidentReceivable[];
+    expect(saved).toHaveLength(6);
+    expect(saved.every((r) => r.admissionId === 'adm-2')).toBe(true);
+  });
+
+  it('parcela de filho sem acolhimento nasce com admissionId null', async () => {
+    const repo = makeRepo();
+    const residentRepo = { findOne: jest.fn().mockResolvedValue(makeResident()) };
+    const service = makeService(repo, residentRepo, makeAdmissionRepo([]));
+
+    await service.generateSchedule('res-1');
+
+    const saved = repo.save.mock.calls[0][0] as ResidentReceivable[];
+    expect(saved.every((r) => r.admissionId === null)).toBe(true);
+  });
+});
+
+describe('ResidentReceivableService.markImportedPayments — vínculo por competência', () => {
+  it('competência antiga vai para o primeiro acolhimento e a recente para o atual', async () => {
+    const repo = makeRepo();
+    const residentRepo = {
+      findOne: jest.fn().mockResolvedValue(makeResident({ entryDate: '2026-07-17' as never })),
+    };
+    const service = makeService(
+      repo,
+      residentRepo,
+      makeAdmissionRepo([ADMISSION_OLD, ADMISSION_CURRENT] as never),
+    );
+
+    await service.markImportedPayments('res-1', ['2025-09-01', '2026-08-01']);
+
+    const created = repo.save.mock.calls.map((c) => c[0] as ResidentReceivable);
+    expect(created.find((r) => String(r.referenceMonth) === '2025-09-01')!.admissionId).toBe('adm-1');
+    expect(created.find((r) => String(r.referenceMonth) === '2026-08-01')!.admissionId).toBe('adm-2');
+  });
+
+  it('carrega as admissões uma única vez para o lote de competências', async () => {
+    const repo = makeRepo();
+    const residentRepo = { findOne: jest.fn().mockResolvedValue(makeResident()) };
+    const admissionRepo = makeAdmissionRepo([ADMISSION_OLD, ADMISSION_CURRENT] as never);
+    const service = makeService(repo, residentRepo, admissionRepo);
+
+    await service.markImportedPayments('res-1', ['2025-09-01', '2025-10-01', '2026-08-01']);
+
+    expect(admissionRepo.find).toHaveBeenCalledTimes(1);
+  });
+
+  it('parcela existente sem vínculo recebe o acolhimento da competência', async () => {
+    const repo = makeRepo({
+      find: jest.fn().mockResolvedValue([
+        { id: 'rcv-1', referenceMonth: '2025-09-01', status: 'PENDING', amount: 500, familyInvestment: 'BASKET_500', admissionId: null },
+      ]),
+    });
+    const residentRepo = { findOne: jest.fn().mockResolvedValue(makeResident()) };
+    const service = makeService(
+      repo,
+      residentRepo,
+      makeAdmissionRepo([ADMISSION_OLD, ADMISSION_CURRENT] as never),
+    );
+
+    await service.markImportedPayments('res-1', ['2025-09-01']);
+
+    expect(repo.update).toHaveBeenCalledWith('rcv-1', expect.objectContaining({ admissionId: 'adm-1' }));
+  });
+
+  it('parcela existente que JÁ tem vínculo não é sobrescrita', async () => {
+    const repo = makeRepo({
+      find: jest.fn().mockResolvedValue([
+        { id: 'rcv-1', referenceMonth: '2025-09-01', status: 'PENDING', amount: 500, familyInvestment: 'BASKET_500', admissionId: 'adm-fixado' },
+      ]),
+    });
+    const residentRepo = { findOne: jest.fn().mockResolvedValue(makeResident()) };
+    const service = makeService(
+      repo,
+      residentRepo,
+      makeAdmissionRepo([ADMISSION_OLD, ADMISSION_CURRENT] as never),
+    );
+
+    await service.markImportedPayments('res-1', ['2025-09-01']);
+
+    expect(repo.update.mock.calls[0][1]).not.toHaveProperty('admissionId');
+  });
+});
+
+describe('ResidentReceivableService — ajustes automáticos não tocam acolhimento encerrado', () => {
+  beforeAll(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-10T12:00:00Z'));
+  });
+  afterAll(() => jest.useRealTimers());
+
+  const pendings = [
+    { id: 'antiga', referenceMonth: '2026-09-01', status: 'PENDING', admissionId: 'adm-1', amount: 500, dueDate: '2026-09-10' },
+    { id: 'atual', referenceMonth: '2026-09-01', status: 'PENDING', admissionId: 'adm-2', amount: 500, dueDate: '2026-09-10' },
+    { id: 'orfa', referenceMonth: '2026-09-01', status: 'PENDING', admissionId: null, amount: 500, dueDate: '2026-09-10' },
+  ];
+
+  function serviceWithPendings(residentOverrides = {}) {
+    const repo = makeRepo({ find: jest.fn().mockResolvedValue(pendings) });
+    const residentRepo = {
+      findOne: jest.fn().mockResolvedValue(makeResident({ entryDate: '2026-07-17' as never, ...residentOverrides })),
+    };
+    const service = makeService(
+      repo,
+      residentRepo,
+      makeAdmissionRepo([ADMISSION_OLD, ADMISSION_CURRENT] as never),
+    );
+    return { repo, service };
+  }
+
+  it('cancelFuturePending poupa a parcela do acolhimento anterior', async () => {
+    const { repo, service } = serviceWithPendings();
+
+    await service.cancelFuturePending('res-1');
+
+    expect(repo.update.mock.calls[0][0].id._value).toEqual(['atual', 'orfa']);
+  });
+
+  it('cancelAfterExit poupa a parcela do acolhimento anterior', async () => {
+    const { repo, service } = serviceWithPendings();
+
+    await service.cancelAfterExit('res-1', '2026-08-20');
+
+    expect(repo.update.mock.calls[0][0].id._value).toEqual(['atual', 'orfa']);
+  });
+
+  it('recalcFuturePending reprecifica só o acolhimento atual e as órfãs', async () => {
+    const { repo, service } = serviceWithPendings({
+      familyInvestment: 'NEGOTIATED' as never,
+      familyInvestmentAmount: 420,
+    });
+
+    await service.recalcFuturePending('res-1');
+
+    const repriced = repo.save.mock.calls.at(-1)![0] as Array<{ id: string }>;
+    expect(repriced.map((r) => r.id)).toEqual(['atual', 'orfa']);
+  });
+});
+
+describe('ResidentReceivableService.getLastPaidDates', () => {
+  it('lista vazia não consulta o banco', async () => {
+    const repo = makeRepo();
+    const service = makeService(repo, {});
+    await expect(service.getLastPaidDates([])).resolves.toEqual(new Map());
+    expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it('devolve a última competência paga por filho', async () => {
+    const qb: Record<string, jest.Mock> = {};
+    ['select', 'addSelect', 'where', 'andWhere', 'groupBy'].forEach((m) => {
+      qb[m] = jest.fn(() => qb);
+    });
+    qb.getRawMany = jest.fn().mockResolvedValue([
+      { residentId: 'res-1', lastMonth: '2026-03-01T00:00:00.000Z' },
+    ]);
+    const service = makeService(makeRepo({ createQueryBuilder: jest.fn(() => qb) }), {});
+
+    const result = await service.getLastPaidDates(['res-1']);
+
+    expect(result.get('res-1')).toBe('2026-03-01');
+  });
+});
+
+describe('ResidentReceivableService.findByResident — story 164', () => {
+  it('filho inexistente → NotFound', async () => {
+    const service = makeService(makeRepo(), { findOne: jest.fn().mockResolvedValue(null) });
+    await expect(service.findByResident('res-1')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('filho ativo rola o carnê antes de listar', async () => {
+    const qb: Record<string, jest.Mock> = {};
+    ['leftJoinAndSelect', 'where', 'andWhere', 'orderBy'].forEach((m) => {
+      qb[m] = jest.fn(() => qb);
+    });
+    qb.getMany = jest.fn().mockResolvedValue([]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn(() => qb) });
+    const residentRepo = {
+      findOne: jest.fn().mockResolvedValue(makeResident({ status: 'ACTIVE' as never })),
+    };
+    const service = makeService(repo, residentRepo);
+    const ensureSpy = jest.spyOn(service, 'ensureFutureOpen').mockResolvedValue(undefined);
+
+    await service.findByResident('res-1');
+
+    expect(ensureSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('a view devolve admissionId', async () => {
+    const items = [
+      { id: 'rcv-1', residentId: 'res-1', admissionId: 'adm-1', referenceMonth: '2025-09-01', dueDate: '2025-09-10', amount: 500, familyInvestment: 'BASKET_500', paidAmount: null, paidFamilyInvestment: null, mandatory: true, status: 'PAID', paidAt: null, paymentMethod: null, attachmentUrl: null, notes: null, createdBy: null, createdAt: new Date() },
+      { id: 'rcv-2', residentId: 'res-1', admissionId: null, referenceMonth: '2026-08-01', dueDate: '2026-08-10', amount: 500, familyInvestment: 'BASKET_500', paidAmount: null, paidFamilyInvestment: null, mandatory: false, status: 'PENDING', paidAt: null, paymentMethod: null, attachmentUrl: null, notes: null, createdBy: null, createdAt: new Date() },
+    ];
+    const qb: Record<string, jest.Mock> = {};
+    ['leftJoinAndSelect', 'where', 'andWhere', 'orderBy'].forEach((m) => {
+      qb[m] = jest.fn(() => qb);
+    });
+    qb.getMany = jest.fn().mockResolvedValue(items);
+    const repo = makeRepo({ createQueryBuilder: jest.fn(() => qb) });
+    // Status inativo evita o ensureFutureOpen e mantém o teste na leitura.
+    const residentRepo = { findOne: jest.fn().mockResolvedValue(makeResident({ status: 'DISCHARGED' as never })) };
+    const service = makeService(repo, residentRepo);
+
+    const view = await service.findByResident('res-1');
+
+    expect(view.map((v) => v.admissionId)).toEqual(['adm-1', null]);
+    expect(qb.orderBy).toHaveBeenCalledWith('rcv.reference_month', 'ASC');
+  });
+});
+
+describe('ResidentReceivableService — cenário Marcelo ponta a ponta', () => {
+  it('as 6 competências de ago/25→jan/26 ficam no acolhimento 1 e nenhuma no atual', async () => {
+    const repo = makeRepo();
+    // Sem plano no acolhimento atual (familyInvestment null no Resident): o carnê
+    // do acolhimento 2 nasce vazio — é exatamente o que a UI precisa sinalizar.
+    const residentRepo = {
+      findOne: jest.fn().mockResolvedValue(
+        makeResident({ entryDate: '2026-07-17' as never, familyInvestment: null }),
+      ),
+    };
+    const service = makeService(
+      repo,
+      residentRepo,
+      makeAdmissionRepo([ADMISSION_OLD, ADMISSION_CURRENT] as never),
+    );
+
+    const months = ['2025-08-01', '2025-09-01', '2025-10-01', '2025-11-01', '2025-12-01', '2026-01-01'];
+    const result = await service.markImportedPayments('res-1', months);
+
+    expect(result).toEqual({ paid: 6, skipped: 0 });
+    const created = repo.save.mock.calls.map((c) => c[0] as ResidentReceivable);
+    expect(created).toHaveLength(6);
+    expect(created.every((r) => r.admissionId === 'adm-1')).toBe(true);
+    expect(created.some((r) => r.admissionId === 'adm-2')).toBe(false);
+
+    // Sem plano, o acolhimento atual não materializa nada.
+    repo.save.mockClear();
+    await service.generateSchedule('res-1');
+    expect(repo.save).not.toHaveBeenCalled();
   });
 });

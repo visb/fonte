@@ -554,4 +554,30 @@ test.describe('Filhos (Residentes)', () => {
     await expect(page.getByText('Arroz').first()).toBeVisible();
     await expect(page.getByText('cesta básica').first()).toBeVisible();
   });
+
+  // Story 164: filho com 2 acolhimentos (Marcelo Reacolhido, do seed).
+  test('aba Contribuição: abre no acolhimento atual e o seletor troca o carnê', async ({ page }) => {
+    await page.getByPlaceholder('Buscar por nome...').fill('Marcelo Reacolhido');
+    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'Marcelo Reacolhido' }).first().click();
+    await expect(page).toHaveURL(/\/residents\/.+/);
+
+    await page.getByRole('button', { name: 'Contribuição' }).click();
+
+    // Com dois acolhimentos o seletor aparece e abre no vigente.
+    const selector = page.getByLabel('Acolhimento');
+    await expect(selector).toBeVisible();
+    await expect(selector.locator('option:checked')).toContainText('(atual)');
+
+    // O carnê do acolhimento atual não traz as competências pagas do antigo.
+    await expect(page.getByRole('button', { name: 'Registrar pagamento' }).first()).toBeVisible();
+    await expect(page.getByText('Acolhimento encerrado — somente leitura')).toHaveCount(0);
+
+    // Troca para o acolhimento anterior: 6 parcelas pagas, tudo somente leitura.
+    await selector.selectOption({ index: 1 });
+    await expect(page.getByText('Acolhimento encerrado — somente leitura')).toBeVisible();
+    await expect(page.getByText(/Pago em/)).toHaveCount(6);
+    await expect(page.getByRole('button', { name: 'Registrar pagamento' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Reabrir' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Alterar plano' })).toHaveCount(0);
+  });
 });

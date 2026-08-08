@@ -1,25 +1,20 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Lock } from 'lucide-react';
 import { Role } from '@fonte/types';
 import type { Resident, ResidentReceivable } from '@fonte/api-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { ContributionAdmissionSelector } from '../ContributionAdmissionSelector';
 import { ContributionPlanCard } from '../ContributionPlanCard';
+import { ContributionsEmptyState } from '../ContributionsEmptyState';
 import { ReceivableRow } from '../ReceivableRow';
 import { RegisterPaymentDialog } from '../RegisterPaymentDialog';
+import { ReopenReceivableDialog } from '../ReopenReceivableDialog';
 import { ChangeContributionPlanDialog } from '../ChangeContributionPlanDialog';
-import { useResidentReceivables, useReopenReceivable } from '../../hooks/useResidentReceivables';
+import { useResidentReceivables } from '../../hooks/useResidentReceivables';
+import { useResidentAdmissions } from '../../hooks/useResidents';
 import { useInventoryCatalog } from '../../hooks/useProductContributions';
 
 interface Props {
@@ -33,16 +28,36 @@ export function ContributionsTab({ resident }: Props) {
   // Sem casa não há carnê nem catálogo de inventário para declarar produtos, então
   // as queries por casa ficam desligadas e a aba mostra um estado vazio coerente.
   const houseId = resident.houseId;
+  const enabled = canManage && !!houseId;
 
-  const { data: receivables, isLoading, isError } = useResidentReceivables(resident.id, {
-    enabled: canManage && !!houseId,
-  });
-  const { data: catalog = [] } = useInventoryCatalog(houseId, { enabled: canManage && !!houseId });
-  const reopenMutation = useReopenReceivable(resident.id);
+  const { data: receivables, isLoading, isError } = useResidentReceivables(resident.id, { enabled });
+  const { data: admissions = [] } = useResidentAdmissions(resident.id, { enabled });
+  const { data: catalog = [] } = useInventoryCatalog(houseId, { enabled });
 
   const [planOpen, setPlanOpen] = useState(false);
   const [payTarget, setPayTarget] = useState<ResidentReceivable | null>(null);
   const [reopenTarget, setReopenTarget] = useState<ResidentReceivable | null>(null);
+  const [pickedAdmissionId, setPickedAdmissionId] = useState<string | null>(null);
+
+  // A ordem vem do backend (entrada DESC): índice 0 é o acolhimento atual, que é
+  // sempre o que abre — o carnê antigo continua consultável, nunca é o default.
+  const currentAdmissionId = admissions[0]?.id ?? null;
+  const oldestAdmissionId = admissions[admissions.length - 1]?.id ?? null;
+  const selectedAdmissionId = pickedAdmissionId ?? currentAdmissionId;
+  const selectedAdmission = admissions.find((a) => a.id === selectedAdmissionId) ?? null;
+  const isCurrent = selectedAdmissionId === currentAdmissionId;
+
+  // Parcela órfã (`admissionId` nulo, dado legado) é exibida junto ao acolhimento
+  // mais antigo — sem grupo extra na UI (decisão 7).
+  const visibleReceivables = useMemo(
+    () =>
+      (receivables ?? []).filter(
+        (r) =>
+          r.admissionId === selectedAdmissionId ||
+          (r.admissionId == null && selectedAdmissionId === oldestAdmissionId),
+      ),
+    [receivables, selectedAdmissionId, oldestAdmissionId],
+  );
 
   if (!canManage) {
     return <EmptyState title="Sem permissão para ver a contribuição." />;
@@ -57,23 +72,52 @@ export function ContributionsTab({ resident }: Props) {
     );
   }
 
+  // Acolhimento encerrado é somente leitura: pagar/reabrir/declarar produto ali
+  // foi como parcelas de um acolhimento antigo acabaram quitadas por engano.
+  const canManageSelected = canManage && isCurrent;
+  const planUndefined =
+    (selectedAdmission?.familyInvestment ?? resident.familyInvestment) == null &&
+    !resident.contributionExempt;
+
   return (
     <div className="space-y-4">
-      <ContributionPlanCard resident={resident} canManage={canManage} onChangePlan={() => setPlanOpen(true)} />
+      <ContributionAdmissionSelector
+        admissions={admissions}
+        selectedAdmissionId={selectedAdmissionId}
+        onChange={setPickedAdmissionId}
+      />
+
+      <ContributionPlanCard
+        resident={resident}
+        admission={selectedAdmission}
+        canManage={canManageSelected}
+        onChangePlan={() => setPlanOpen(true)}
+      />
+
+      {!isCurrent && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Lock size={12} />
+          Acolhimento encerrado — somente leitura
+        </p>
+      )}
 
       {isLoading ? (
         <LoadingState />
       ) : isError ? (
         <ErrorState message="Erro ao carregar o carnê." />
-      ) : !receivables?.length ? (
-        <EmptyState title="Nenhuma parcela gerada." description="Plano social ou acolhido isento não geram parcelas." />
+      ) : !visibleReceivables.length ? (
+        <ContributionsEmptyState
+          isCurrent={isCurrent}
+          planUndefined={planUndefined}
+          onChangePlan={() => setPlanOpen(true)}
+        />
       ) : (
         <div className="space-y-2">
-          {receivables.map((r) => (
+          {visibleReceivables.map((r) => (
             <ReceivableRow
               key={r.id}
               receivable={r}
-              canManage={canManage}
+              canManage={canManageSelected}
               catalog={catalog}
               onPayClick={setPayTarget}
               onReopenClick={setReopenTarget}
@@ -93,30 +137,11 @@ export function ContributionsTab({ resident }: Props) {
         receivable={payTarget}
       />
 
-      <AlertDialog open={!!reopenTarget} onOpenChange={(o) => !o && setReopenTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reabrir parcela?</AlertDialogTitle>
-            <AlertDialogDescription>
-              O pagamento será desfeito e o comprovante anexado removido. A parcela volta a ficar pendente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={reopenMutation.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                if (reopenTarget) {
-                  reopenMutation.mutate(reopenTarget.id, { onSuccess: () => setReopenTarget(null) });
-                }
-              }}
-              disabled={reopenMutation.isPending}
-            >
-              Reabrir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ReopenReceivableDialog
+        residentId={resident.id}
+        receivable={reopenTarget}
+        onClose={() => setReopenTarget(null)}
+      />
     </div>
   );
 }

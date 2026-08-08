@@ -570,10 +570,13 @@ export interface ResidentAttachment {
   createdAt: string;
 }
 
+// Ordem devolvida por `GET /residents/:id/admissions`: entrada DESC (NULLS LAST),
+// desempate por criação DESC — índice 0 é o acolhimento ATUAL (story 164).
 export interface Admission {
   id: string;
   residentId: string;
-  houseId: string;
+  // Nullable desde a migration `AllowNullResidentHouse` (filho ARCHIVED sem casa).
+  houseId: string | null;
   house: { id: string; name: string } | null;
   ministryId: string | null;
   entryDate: string | null;

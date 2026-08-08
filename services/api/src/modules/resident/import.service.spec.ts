@@ -459,6 +459,45 @@ describe('ImportService', () => {
         expect(admissionSave).not.toHaveBeenCalled();
       });
 
+      // Story 164: o carnê resolve o acolhimento dono de cada competência pelas
+      // admissões existentes NO BANCO. Se as anteriores fossem gravadas depois de
+      // `markImportedPayments`, todo o histórico de contribuição cairia no
+      // acolhimento atual — a mistura que a story conserta.
+      it('grava os acolhimentos anteriores ANTES de marcar as competências pagas', async () => {
+        const order: string[] = [];
+        admissionSave.mockImplementation(async (x) => {
+          order.push('admission');
+          return x;
+        });
+        markImportedPayments.mockImplementation(async () => {
+          order.push('payments');
+          return { paid: 2, skipped: 0 };
+        });
+
+        await service.commit(
+          {
+            ...withAdmissions(
+              [
+                { entryDate: '2022-01-10', exitDate: '2022-09-10' },
+                { entryDate: '2023-03-01', exitDate: null },
+              ],
+              { entryDate: '2023-03-01', exitDate: null },
+            ),
+            contributionMonths: ['2022-02-01', '2023-04-01'],
+          },
+          'user-1',
+        );
+
+        expect(order).toEqual(['admission', 'payments']);
+        // As duas competências vão juntas: quem distribui entre os acolhimentos é
+        // o resolver do carnê (coberto em resident-receivable.service.spec).
+        expect(markImportedPayments).toHaveBeenCalledWith(
+          'new-1',
+          ['2022-02-01', '2023-04-01'],
+          managerMock,
+        );
+      });
+
       it('falha ao salvar o Admission extra → propaga o erro (transação atômica, sem órfã)', async () => {
         admissionSave.mockRejectedValueOnce(new Error('db down'));
         await expect(

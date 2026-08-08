@@ -294,10 +294,7 @@ export class ResidentService {
       Object.entries(dto).filter(([key]) => ResidentService.ADMISSION_FIELDS.has(key)),
     );
     if (Object.keys(admissionUpdate).length > 0) {
-      const currentAdmission = await this.admissionRepository.findOne({
-        where: { residentId: id },
-        order: { createdAt: 'DESC' },
-      });
+      const currentAdmission = await this.findCurrentAdmission(id);
       if (currentAdmission) {
         await this.admissionRepository.update(currentAdmission.id, admissionUpdate);
       }
@@ -490,13 +487,33 @@ export class ResidentService {
     return this.findOne(id);
   }
 
+  /**
+   * Acolhimento atual do filho (story 164, decisão 6): o de **maior entrada**,
+   * `NULLS LAST`, desempatando por `created_at DESC`.
+   *
+   * Ordenar só por `created_at` era o bug: no import em lote os acolhimentos
+   * antigos são gravados DEPOIS do atual, então `created_at DESC` devolvia o
+   * mais ANTIGO — e editar a ficha escrevia na admissão errada.
+   */
+  async findCurrentAdmission(residentId: string): Promise<Admission | null> {
+    return this.orderedAdmissionsQuery(residentId).limit(1).getOne();
+  }
+
   async findAdmissions(residentId: string): Promise<Admission[]> {
     await this.findOne(residentId);
-    return this.admissionRepository.find({
-      where: { residentId },
-      relations: ['house'],
-      order: { createdAt: 'DESC' },
-    });
+    // A ordem é contrato: o adm.fonte numera os acolhimentos e abre a aba
+    // Contribuições no índice 0 (o atual).
+    return this.orderedAdmissionsQuery(residentId).leftJoinAndSelect('adm.house', 'house').getMany();
+  }
+
+  // `NULLS LAST` não é expressável no `order` do TypeORM de forma portátil.
+  private orderedAdmissionsQuery(residentId: string) {
+    return this.admissionRepository
+      .createQueryBuilder('adm')
+      .where('adm.resident_id = :residentId', { residentId })
+      .andWhere('adm.deleted_at IS NULL')
+      .orderBy('adm.entry_date', 'DESC', 'NULLS LAST')
+      .addOrderBy('adm.created_at', 'DESC');
   }
 
   async remove(id: string): Promise<void> {

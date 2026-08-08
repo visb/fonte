@@ -4,6 +4,7 @@ import { ResidentReceivable } from './resident-receivable.entity';
 import { ReceivableProductContribution } from './receivable-product-contribution.entity';
 import { ResidentReceivableService } from './resident-receivable.service';
 import { ReceivableProductContributionService } from './receivable-product-contribution.service';
+import { Admission } from '../resident/admission.entity';
 import { Resident } from '../resident/resident.entity';
 import { Staff } from '../staff/staff.entity';
 import { InventoryItem } from '../inventory/inventory-item.entity';
@@ -16,6 +17,8 @@ import { NotificationModule } from '../notification/notification.module';
       ResidentReceivable,
       ReceivableProductContribution,
       Resident,
+      // Story 164: o carnê resolve o acolhimento dono de cada competência.
+      Admission,
       Staff,
       InventoryItem,
       InventoryMovement,

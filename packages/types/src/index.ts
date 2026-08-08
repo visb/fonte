@@ -464,6 +464,9 @@ export enum PaymentMethod {
 export interface ResidentReceivable {
   id: string;
   residentId: string;
+  // Acolhimento dono da parcela (story 164). `null` em parcela órfã — filho sem
+  // nenhum acolhimento vivo (dado legado do import em lote).
+  admissionId: string | null;
   referenceMonth: string; // YYYY-MM-01
   dueDate: string; // YYYY-MM-DD
   amount: number;

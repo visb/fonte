@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pencil, ShieldOff, ShieldCheck } from 'lucide-react';
 import { FamilyInvestment } from '@fonte/types';
-import type { Resident } from '@fonte/api-client';
+import type { Admission, Resident } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,21 +19,30 @@ import { useSetContributionExempt } from '../hooks/useResidentReceivables';
 
 interface Props {
   resident: Resident;
+  /**
+   * Acolhimento selecionado na aba (story 164). O plano é do acolhimento; o
+   * histórico importado não o tem gravado e cai no plano do `resident`.
+   */
+  admission?: Admission | null;
   canManage: boolean;
   onChangePlan: () => void;
 }
 
-export function ContributionPlanCard({ resident, canManage, onChangePlan }: Props) {
+export function ContributionPlanCard({ resident, admission, canManage, onChangePlan }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const exemptMutation = useSetContributionExempt(resident.id);
 
+  const plan = admission?.familyInvestment ?? resident.familyInvestment;
+  const planAmount =
+    admission?.familyInvestment != null
+      ? admission.familyInvestmentAmount
+      : resident.familyInvestmentAmount;
+
   const exempt = resident.contributionExempt;
-  const isSocial = resident.familyInvestment === FamilyInvestment.SOCIAL;
-  const planLabel = resident.familyInvestment ? FAMILY_INVESTMENT_LABELS[resident.familyInvestment] : '—';
+  const isSocial = plan === FamilyInvestment.SOCIAL;
+  const planLabel = plan ? FAMILY_INVESTMENT_LABELS[plan] : '—';
   const amount =
-    resident.familyInvestment === FamilyInvestment.NEGOTIATED && resident.familyInvestmentAmount != null
-      ? ` — R$ ${resident.familyInvestmentAmount}`
-      : '';
+    plan === FamilyInvestment.NEGOTIATED && planAmount != null ? ` — R$ ${planAmount}` : '';
   const dueDay = resident.contributionDueDay ? `Dia ${resident.contributionDueDay}` : 'Mesmo dia do acolhimento';
 
   const toggleExempt = () => {

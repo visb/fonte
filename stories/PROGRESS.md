@@ -28,12 +28,15 @@ Rodada aberta por `/autorun`. Protocolo: `stories/AUTORUN.md`. Ao encerrar, arqu
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 163 — enviar imagem como assinatura (upload) no perfil | [ ] | — | — | — |
+| 1 | 163 — enviar imagem como assinatura (upload) no perfil | [OK] | unit 1583/1583, e2e 172/172 | 553c2dd | a16e793 |
 | 2 | 164 — carnê de contribuição por acolhimento | [ ] | — | — | — |
 
 ## Log
 
-<vazio>
+```
+[OK] 163 — testes: adm unit 1583/1583 (features/auth 98.78% stmts), e2e adm 172/172 — commit: 553c2dd — merge: a16e793 — 2026-08-08
+     nota: decodeImageFile precisou de fallback createImageBitmap → <img> (Chromium recusa PNG válido com InvalidStateError).
+```
 
 ## Resumo final
 

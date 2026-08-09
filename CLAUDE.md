@@ -306,6 +306,31 @@ SEMPRE extrair o item como componente separado (ex: `ResidentRow`, `HouseCard`).
 
 ---
 
+## `ops.fonte` é offline-first (invariante)
+
+O `ops.fonte` roda **dentro das casas, sem sinal confiável**. Offline-first é requisito permanente
+do app, não feature de uma story. Toda mudança nele preserva isso.
+
+- SEMPRE persistir leitura nova consumida em campo (allowlist de query keys em
+  `lib/offline/constants.ts` — allowlist por LGPD, nunca virar denylist).
+- NUNCA escrever mutation de fluxo de campo (censo, ocorrências, almoxarifado, despensa, venda de
+  rua, atividades) com `mutationFn` inline. SEMPRE `mutationKey` + `setMutationDefaults` +
+  `networkMode: 'offlineFirst'` — `mutationFn` inline não é serializável e o lançamento feito sem
+  sinal se perde no restart.
+- NUNCA descartar item de fila em silêncio: rejeição do servidor vai para a tela de pendências
+  (`/sync`) com o erro; erro de rede não é falha, o item continua na fila.
+- NUNCA tratar erro de rede como sessão expirada (401 só dispara logout em 401 real).
+- Fluxo que exige rede (mensagens, wishlist, grupos de apoio, curso bíblico) desabilita a ação com
+  aviso — nada de erro genérico de axios na tela.
+- Teste de offline vai no Playwright web (`e2e-web/`, `context.setOffline`); Maestro não controla
+  rede.
+
+Detalhes na skill `fonte-frontend`. Desenho e estado da infra: `stories/167-ops-offline-first-epic.md`
+(filhas 168–171) — se `apps/ops.fonte/lib/offline/` ainda não existir, a infra é a story 168; não
+improvise solução paralela.
+
+---
+
 ## Regras arquiteturais — backend
 
 - NUNCA acessar banco fora da camada de persistência do módulo (repository/entity).

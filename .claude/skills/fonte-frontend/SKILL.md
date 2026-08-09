@@ -155,6 +155,41 @@ Residents (role `RESIDENT`) fazem login no ops.fonte com acesso restrito:
 - `components/TimeLimitedScreen.tsx` consome `useUsageTimerContext()` (não cria timer próprio): banner de countdown + bloqueio ao atingir o limite.
 - Mensagens e Pedidos envolvem o conteúdo em `TimeLimitedScreen` quando `isResident`; Início (`resident-home`) fica fora — navegar para ela pausa o timer.
 
+### Offline-first no ops.fonte (invariante do app)
+
+O `ops.fonte` é usado **dentro das casas, sem sinal confiável**. Offline-first não é feature
+opcional dele: é requisito permanente. Toda mudança no app preserva isso.
+
+> **Estado:** a infraestrutura está planejada no epic `stories/167-ops-offline-first-epic.md`
+> (filhas 168–171) e **pode ainda não estar implementada**. Antes de aplicar as regras abaixo,
+> confira se `apps/ops.fonte/lib/offline/` existe. Se não existir, a infra é a story 168 —
+> não improvise uma solução paralela; implemente/estenda o que o epic desenhou.
+
+Regras ao tocar `apps/ops.fonte`:
+
+- **Leitura**: cache do React Query é persistido em AsyncStorage (`PersistQueryClientProvider`).
+  Query key nova que o operador consome em campo entra na allowlist de
+  `lib/offline/constants.ts` — o que fica fora **não** vai para o disco. A allowlist é decisão de
+  LGPD (dado pessoal de filho no dispositivo), não detalhe técnico: não transformar em denylist.
+- **Escrita de campo** (censo, ocorrências, almoxarifado, despensa, venda de rua, atividades):
+  mutation **nunca** com `mutationFn` inline. Declare `mutationKey` de `OUTBOX_MUTATION_KEYS` e
+  registre `mutationFn` + invalidação em `lib/offline/mutationDefaults.ts` com
+  `networkMode: 'offlineFirst'`. `mutationFn` inline não é serializável ⇒ o lançamento feito em
+  campo se perde no restart. Chave nova também precisa de rótulo em `features/sync/constants.ts`
+  (há teste de catálogo que quebra sem isso).
+- **Escrita fora dos fluxos de campo** (mensagens/socket.io, wishlist, grupos de apoio, curso
+  bíblico, ministérios, house-settings): continua exigindo rede — desabilite a ação com aviso via
+  `useIsOnline()`, nunca deixe estourar erro genérico de axios na cara do operador.
+- **Falha no replay**: rejeição do servidor (4xx de negócio) vai para a dead-letter e aparece na
+  tela de pendências (`/sync`) com a mensagem do backend. Erro de rede **não** é falha — o item
+  continua na fila. Nunca descartar item de fila em silêncio.
+- **Sem rede ≠ sessão expirada.** O handler de 401 (`lib/api.ts`) só dispara em 401 real; erro sem
+  `response` jamais pode derrubar a sessão (story 165).
+- **Anexo em mutation enfileirada** guarda o arquivo copiado em `documentDirectory/outbox/`, não o
+  URI do picker (o SO evict o temporário antes do replay).
+- **Teste de offline mora no Playwright web** (`apps/ops.fonte/e2e-web/`, `context.setOffline`) —
+  o Maestro não controla rede. Fluxo de campo novo ganha caso offline lá.
+
 ---
 
 ## Tipos compartilhados (Model)

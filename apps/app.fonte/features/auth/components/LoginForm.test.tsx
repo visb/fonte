@@ -1,18 +1,22 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 
 const mockLogin = jest.fn();
+let mockSessionExpired = false;
 jest.mock('@/lib/auth', () => {
   const actual = jest.requireActual('@/lib/auth');
   return {
     ...actual,
-    useAuth: () => ({ login: mockLogin }),
+    useAuth: () => ({ login: mockLogin, sessionExpired: mockSessionExpired }),
   };
 });
 
 import { MustChangePasswordError } from '@/lib/auth';
 import { LoginForm } from './LoginForm';
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockSessionExpired = false;
+});
 
 describe('LoginForm', () => {
   it('bloqueia o submit quando a senha está vazia (não chama login)', async () => {
@@ -75,6 +79,30 @@ describe('LoginForm', () => {
       expect(mockLogin).toHaveBeenCalledWith('familiar@fonte.com', 'familiar123'),
     );
     expect(onSuccess).toHaveBeenCalled();
+  });
+
+  it('não mostra o aviso de sessão expirada no estado normal', () => {
+    render(<LoginForm onSuccess={jest.fn()} onMustChangePassword={jest.fn()} />);
+    expect(screen.queryByLabelText('aviso-sessao-expirada')).toBeNull();
+  });
+
+  it('mostra o aviso de sessão expirada quando sessionExpired', () => {
+    mockSessionExpired = true;
+    render(<LoginForm onSuccess={jest.fn()} onMustChangePassword={jest.fn()} />);
+    expect(screen.getByLabelText('aviso-sessao-expirada')).toBeOnTheScreen();
+    expect(screen.getByText('Sua sessão expirou. Entre novamente.')).toBeOnTheScreen();
+  });
+
+  it('esconde o aviso de sessão expirada ao submeter o formulário', async () => {
+    mockSessionExpired = true;
+    mockLogin.mockResolvedValue(undefined);
+    render(<LoginForm onSuccess={jest.fn()} onMustChangePassword={jest.fn()} />);
+
+    fireEvent.changeText(screen.getByLabelText('input-email'), 'a@b.com');
+    fireEvent.changeText(screen.getByLabelText('input-senha'), 'segredo');
+    fireEvent.press(screen.getByText('Entrar'));
+
+    await waitFor(() => expect(screen.queryByLabelText('aviso-sessao-expirada')).toBeNull());
   });
 
   it('preenche credenciais de teste inválidas (__DEV__)', async () => {

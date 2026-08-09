@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ResidentMe, StaffMe } from '@fonte/api-client';
 import { ProfileType, StaffPermissionType } from '@fonte/types';
-import { api } from './api';
+import { api, setUnauthorizedHandler } from './api';
+
+const STORAGE_KEYS = ['token', 'staff', 'resident'];
 
 export class MustChangePasswordError extends Error {
   constructor() {
@@ -16,6 +18,8 @@ interface AuthState {
   staff: StaffMe | null;
   resident: ResidentMe | null;
   isLoading: boolean;
+  /** true quando a sessão caiu por 401 do backend (não por logout manual). */
+  sessionExpired: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -37,7 +41,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     staff: null,
     resident: null,
     isLoading: true,
+    sessionExpired: false,
   });
+
+  // Espelha o sessionExpired fora do ciclo de render: 401 concorrentes chegam antes
+  // de qualquer re-render, então a idempotência precisa de uma ref.
+  const sessionExpiredRef = useRef(false);
 
   useEffect(() => {
     Promise.all([
@@ -51,28 +60,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           staff: staffJson ? (JSON.parse(staffJson) as StaffMe) : null,
           resident: residentJson ? (JSON.parse(residentJson) as ResidentMe) : null,
           isLoading: false,
+          sessionExpired: false,
         });
       })
       .catch(() => {
-        setState({ token: null, staff: null, resident: null, isLoading: false });
+        setState({
+          token: null,
+          staff: null,
+          resident: null,
+          isLoading: false,
+          sessionExpired: false,
+        });
       });
+  }, []);
+
+  // 401 fora das rotas de auth = sessão morta: limpa storage + estado e marca a
+  // expiração para o login exibir o aviso. O guard de (app) reage a token === null.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      if (sessionExpiredRef.current) return;
+      sessionExpiredRef.current = true;
+      void AsyncStorage.multiRemove(STORAGE_KEYS);
+      setState({
+        token: null,
+        staff: null,
+        resident: null,
+        isLoading: false,
+        sessionExpired: true,
+      });
+    });
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   async function login(identifier: string, password: string) {
     const { accessToken, profileType } = await api.auth.login({ identifier, password });
     await AsyncStorage.setItem('token', accessToken);
+    sessionExpiredRef.current = false;
 
     try {
       if (profileType === ProfileType.RESIDENT) {
         const resident = await api.residents.me();
         await AsyncStorage.setItem('resident', JSON.stringify(resident));
         await AsyncStorage.removeItem('staff');
-        setState({ token: accessToken, staff: null, resident, isLoading: false });
+        setState({
+          token: accessToken,
+          staff: null,
+          resident,
+          isLoading: false,
+          sessionExpired: false,
+        });
       } else {
         const staff = await api.staff.me();
         await AsyncStorage.setItem('staff', JSON.stringify(staff));
         await AsyncStorage.removeItem('resident');
-        setState({ token: accessToken, staff, resident: null, isLoading: false });
+        setState({
+          token: accessToken,
+          staff,
+          resident: null,
+          isLoading: false,
+          sessionExpired: false,
+        });
       }
     } catch (err: unknown) {
       const anyErr = err as { response?: { data?: { error?: string } } };
@@ -86,15 +133,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function changePassword(newPassword: string) {
     const { accessToken, profileType } = await api.auth.changePassword({ newPassword });
     await AsyncStorage.setItem('token', accessToken);
+    sessionExpiredRef.current = false;
 
     if (profileType === ProfileType.RESIDENT) {
       const resident = await api.residents.me();
       await AsyncStorage.setItem('resident', JSON.stringify(resident));
-      setState((s) => ({ ...s, token: accessToken, resident, isLoading: false }));
+      setState((s) => ({
+        ...s,
+        token: accessToken,
+        resident,
+        isLoading: false,
+        sessionExpired: false,
+      }));
     } else {
       const staff = await api.staff.me();
       await AsyncStorage.setItem('staff', JSON.stringify(staff));
-      setState((s) => ({ ...s, token: accessToken, staff, isLoading: false }));
+      setState((s) => ({
+        ...s,
+        token: accessToken,
+        staff,
+        isLoading: false,
+        sessionExpired: false,
+      }));
     }
   }
 
@@ -110,9 +170,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, resident: updated }));
   }
 
+  // Sair por vontade própria não é expiração: sessionExpired continua false.
   async function logout() {
-    await AsyncStorage.multiRemove(['token', 'staff', 'resident']);
-    setState({ token: null, staff: null, resident: null, isLoading: false });
+    sessionExpiredRef.current = false;
+    await AsyncStorage.multiRemove(STORAGE_KEYS);
+    setState({
+      token: null,
+      staff: null,
+      resident: null,
+      isLoading: false,
+      sessionExpired: false,
+    });
   }
 
   return (

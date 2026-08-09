@@ -78,6 +78,26 @@ describe('createApiClient (superfície)', () => {
     expect(httpStub.interceptors.request.use).toHaveBeenCalledTimes(1);
   });
 
+  it('o interceptor de request injeta o Bearer quando há token', async () => {
+    createApiClient({ baseURL: 'http://x/api/v1', getToken: () => 'jwt-123' });
+    const onRequest = httpStub.interceptors.request.use.mock.calls[0][0] as (
+      req: { headers: Record<string, string> },
+    ) => Promise<{ headers: Record<string, string> }>;
+
+    const req = await onRequest({ headers: {} });
+    expect(req.headers.Authorization).toBe('Bearer jwt-123');
+  });
+
+  it('o interceptor de request não injeta header sem token', async () => {
+    build();
+    const onRequest = httpStub.interceptors.request.use.mock.calls[0][0] as (
+      req: { headers: Record<string, string> },
+    ) => Promise<{ headers: Record<string, string> }>;
+
+    const req = await onRequest({ headers: {} });
+    expect(req.headers.Authorization).toBeUndefined();
+  });
+
   it('registra interceptor de response apenas quando onUnauthorized é fornecido', () => {
     build();
     expect(httpStub.interceptors.response.use).not.toHaveBeenCalled();
@@ -89,6 +109,100 @@ describe('createApiClient (superfície)', () => {
       onUnauthorized: () => undefined,
     });
     expect(httpStub.interceptors.response.use).toHaveBeenCalledTimes(1);
+  });
+
+  describe('interceptor de 401 (story 165)', () => {
+    /** Monta o client com handler e devolve o rejeitador registrado no interceptor. */
+    function buildWithHandler() {
+      const onUnauthorized = vi.fn();
+      createApiClient({
+        baseURL: 'http://x/api/v1',
+        getToken: () => null,
+        onUnauthorized,
+      });
+      const onRejected = httpStub.interceptors.response.use.mock.calls[0][1] as (
+        err: unknown,
+      ) => Promise<never>;
+      return { onUnauthorized, onRejected };
+    }
+
+    function reject(
+      onRejected: (err: unknown) => Promise<never>,
+      err: unknown,
+    ): Promise<unknown> {
+      return onRejected(err).catch((e) => e);
+    }
+
+    it('chama onUnauthorized em 401 de rota comum, com url e método', async () => {
+      const { onUnauthorized, onRejected } = buildWithHandler();
+      const err = { response: { status: 401 }, config: { url: '/residents', method: 'get' } };
+
+      await expect(reject(onRejected, err)).resolves.toBe(err);
+      expect(onUnauthorized).toHaveBeenCalledWith({ url: '/residents', method: 'get' });
+    });
+
+    it('não chama onUnauthorized em 401 de /auth/login (credencial inválida)', async () => {
+      const { onUnauthorized, onRejected } = buildWithHandler();
+      const err = { response: { status: 401 }, config: { url: '/auth/login', method: 'post' } };
+
+      await expect(reject(onRejected, err)).resolves.toBe(err);
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('não chama onUnauthorized em 401 de /auth/change-password', async () => {
+      const { onUnauthorized, onRejected } = buildWithHandler();
+      const err = {
+        response: { status: 401 },
+        config: { url: '/auth/change-password', method: 'post' },
+      };
+
+      await reject(onRejected, err);
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('ignora querystring e barra final ao identificar rota de auth', async () => {
+      const { onUnauthorized, onRejected } = buildWithHandler();
+
+      await reject(onRejected, {
+        response: { status: 401 },
+        config: { url: '/auth/login/?redirect=1', method: 'post' },
+      });
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('chama onUnauthorized quando o erro 401 não traz config (url desconhecida)', async () => {
+      const { onUnauthorized, onRejected } = buildWithHandler();
+
+      await reject(onRejected, { response: { status: 401 } });
+      expect(onUnauthorized).toHaveBeenCalledWith({ url: undefined, method: undefined });
+    });
+
+    it('nunca chama onUnauthorized em erro não-401', async () => {
+      const { onUnauthorized, onRejected } = buildWithHandler();
+
+      await reject(onRejected, {
+        response: { status: 403 },
+        config: { url: '/residents', method: 'get' },
+      });
+      await reject(onRejected, {
+        response: { status: 500 },
+        config: { url: '/residents', method: 'get' },
+      });
+      await reject(onRejected, { message: 'Network Error' });
+
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('repassa respostas de sucesso sem tocar no handler', () => {
+      const { onUnauthorized } = buildWithHandler();
+      const onFulfilled = httpStub.interceptors.response.use.mock.calls[0][0] as (
+        res: unknown,
+      ) => unknown;
+      const res = { data: 'ok' };
+
+      expect(onFulfilled(res)).toBe(res);
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
   });
 
   describe('photoUrl', () => {

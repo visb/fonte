@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,11 +19,15 @@ interface Props {
 }
 
 export function LoginForm({ onSuccess, onMustChangePassword }: Props) {
-  const { login } = useAuth();
+  const { login, sessionExpired } = useAuth();
+  const [expiredNoticeDismissed, setExpiredNoticeDismissed] = useState(false);
   const { control, handleSubmit, setError, setValue, formState: { errors, isSubmitting } } =
     useForm<FormData>({ resolver: zodResolver(schema) });
 
+  const showSessionExpired = sessionExpired && !expiredNoticeDismissed;
+
   async function onSubmit(data: FormData) {
+    setExpiredNoticeDismissed(true);
     try {
       await login(data.identifier, data.password);
       onSuccess();
@@ -37,6 +42,15 @@ export function LoginForm({ onSuccess, onMustChangePassword }: Props) {
 
   return (
     <View className="space-y-4">
+      {showSessionExpired && (
+        <View
+          accessibilityLabel="aviso-sessao-expirada"
+          className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-2"
+        >
+          <Text className="text-sm text-amber-800">Sua sessão expirou. Entre novamente.</Text>
+        </View>
+      )}
+
       <View>
         <Text className="text-sm font-medium text-gray-700 mb-1.5">E-mail ou telefone</Text>
         <Controller

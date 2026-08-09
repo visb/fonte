@@ -12,17 +12,21 @@ import { router } from "expo-router";
 import { useAuth, MustChangePasswordError } from "@/lib/auth";
 
 export default function LoginScreen() {
-  const { login, token } = useAuth();
+  const { login, token, sessionExpired } = useAuth();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [expiredNoticeDismissed, setExpiredNoticeDismissed] = useState(false);
+
+  const showSessionExpired = sessionExpired && !expiredNoticeDismissed;
 
   useEffect(() => {
     if (token) router.replace("/(app)");
   }, [token]);
 
   async function handleLogin() {
+    setExpiredNoticeDismissed(true);
     if (!identifier || !password) {
       setError("Preencha WhatsApp ou e-mail e senha.");
       return;
@@ -52,6 +56,17 @@ export default function LoginScreen() {
         <Text className="text-base text-gray-500 mb-10">
           Plataforma operacional
         </Text>
+
+        {showSessionExpired ? (
+          <View
+            accessibilityLabel="aviso-sessao-expirada"
+            className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4"
+          >
+            <Text className="text-sm text-amber-800">
+              Sua sessão expirou. Entre novamente.
+            </Text>
+          </View>
+        ) : null}
 
         <View className="space-y-4">
           <View>

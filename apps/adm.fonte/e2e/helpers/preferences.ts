@@ -1,10 +1,7 @@
 import { request as playwrightRequest } from '@playwright/test';
 import { TEST_ADMIN } from './auth';
-
-// Base da API de teste (não a URL do front). Absoluta de propósito: com `baseURL`
-// + path iniciado em '/', o Playwright resolveria contra a raiz do domínio e
-// descartaria o prefixo `/api/v1` (→ 404).
-const API_URL = process.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+// Base da API de teste (não a URL do front) — constante única em `helpers/api.ts`.
+import { API_URL } from './api';
 
 /** Chave da preferência dos filtros da lista de Filhos (story 130). */
 export const RESIDENTS_FILTERS_KEY = 'residents.filters';

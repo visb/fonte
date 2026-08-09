@@ -27,10 +27,31 @@ import { createConsentsModule } from './modules/consents.js';
 import { createAuditModule } from './modules/audit.js';
 import { createPreferencesModule } from './modules/preferences.js';
 
+/** Contexto do 401 entregue ao `onUnauthorized` (opcional: handlers sem parâmetro continuam válidos). */
+export interface UnauthorizedContext {
+  /** URL da requisição que recebeu 401, como configurada no axios (ex.: `/residents`). */
+  url?: string;
+  /** Método HTTP da requisição que recebeu 401. */
+  method?: string;
+}
+
 export interface ApiClientConfig {
   baseURL: string;
   getToken: () => string | null | Promise<string | null>;
-  onUnauthorized?: () => void;
+  onUnauthorized?: (context: UnauthorizedContext) => void;
+}
+
+/**
+ * Rotas em que 401 significa "credencial inválida", não "sessão expirada".
+ * Dispará-las no handler global transformaria "senha incorreta" em logout/limpeza
+ * de estado à toa (decisão travada da story 165).
+ */
+const AUTH_ROUTES = ['/auth/login', '/auth/change-password'];
+
+function isAuthRoute(url: string | undefined): boolean {
+  if (!url) return false;
+  const path = url.split('?')[0].replace(/\/+$/, '');
+  return AUTH_ROUTES.some((route) => path.endsWith(route));
 }
 
 export function createApiClient(config: ApiClientConfig) {
@@ -47,7 +68,10 @@ export function createApiClient(config: ApiClientConfig) {
     http.interceptors.response.use(
       (res) => res,
       (err) => {
-        if (err.response?.status === 401) handler();
+        const url: string | undefined = err.config?.url;
+        if (err.response?.status === 401 && !isAuthRoute(url)) {
+          handler({ url, method: err.config?.method });
+        }
         return Promise.reject(err);
       },
     );

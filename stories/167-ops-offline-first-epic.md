@@ -49,14 +49,17 @@ Estado verificado (2026-08-09):
 6. **Sem mudança de backend neste epic.** Nenhum endpoint, entity, migration ou DTO é alterado ⇒
    **sem** atualizar `fonte-api.postman_collection.json`, sem `build:types` / `build:api-client`.
 
-### Risco residual aceito (documentado, não resolvido aqui)
+### Risco residual — resolvido pela story [[172]], fora deste epic
 
 O replay não é idempotente do lado do servidor: se a requisição chega ao backend mas a resposta se
 perde, o item continua na fila e um reenvio **duplica** o lançamento (crítico para movimento de
-estoque, que não tem estorno — `BUSINESS_RULES.md`). Mitigação nesta rodada é só de cliente (item
-só sai da fila com ack). A solução real — chave de idempotência (`clientRequestId`) aceita e
-deduplicada pelo backend nos endpoints de escrita de campo — fica registrada no `BACKLOG.md` como
-item próprio, por ser mudança de backend + contrato.
+estoque, que não tem estorno — `BUSINESS_RULES.md`). Mitigação de cliente (item só sai da fila com
+ack) não cobre esse caso.
+
+A solução é a story [[172]] — header `Idempotency-Key` deduplicado pelo backend nos endpoints de
+escrita de campo. É mudança de backend + contrato, então fica **fora** deste epic, mas
+**precede a [[169]]**: ordem final de implementação **172 → 168 → 169 → 170 → 171** (a 172 é
+independente das demais e pode ser feita em paralelo com a 168).
 
 ## Desenho (visão de epic)
 
@@ -89,7 +92,7 @@ Cada filha traz sua própria Validação com **gate de cobertura**. No fecho do 
 ## Fora de escopo
 
 - Login offline (primeira autenticação sem rede).
-- Idempotência de escrita no backend (`clientRequestId` deduplicado) — vai para o `BACKLOG.md`.
+- Idempotência de escrita no backend (header `Idempotency-Key` deduplicado) — story [[172]], própria.
 - Offline no `app.fonte` (familiares) e no `resident.fonte`.
 - Mensagens em tempo real (socket.io) offline, fotos de turma do curso bíblico, wishlist e grupos
   de apoio em fila.

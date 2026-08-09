@@ -105,7 +105,7 @@ exige `pnpm test:api:cov`, `build:types`, `build:api-client` nem Postman.
 ## Fora de escopo
 
 - Colocar mensagens, wishlist, grupos de apoio, curso bíblico ou ministérios na fila.
-- Idempotência/dedupe no backend (`BACKLOG.md`).
+- Idempotência/dedupe no backend — story [[172]].
 - Offline no `app.fonte` e no `resident.fonte`.
 - Sync em background com o app fechado.
 - Resolução automática de conflito de contagem.

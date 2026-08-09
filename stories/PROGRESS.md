@@ -31,12 +31,15 @@ Rodada aberta via `/autorun 165+166`. Protocolo: `stories/AUTORUN.md`.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 165 — sessão expirada redireciona para login no ops.fonte e app.fonte | [ ] | — | — | — |
+| 1 | 165 — sessão expirada redireciona para login no ops.fonte e app.fonte | [OK] | api-client 276 · ops 604 · app 128 · adm e2e 173 | `02565d0` | `0d302e3` |
 | 2 | 166 — e2e da aba de anexos do filho com fixture de templates via API | [ ] | — | — | — |
 
 ## Log
 
-<vazio>
+[OK] 165 — testes: api-client 276/276, ops:unit 604/604, app:unit 128/128, adm e2e 173/173;
+cobertura ops 92.11 / app 92.47 / `client.ts` 100 — commit: `02565d0` — merge: `0d302e3` — 2026-08-09
+— nota: `test:api-client:cov` já era vermelho na main (threshold 99% linhas vs. baseline 95.01%,
+buraco em `src/modules/residents.ts`, fora do escopo); a story subiu para 95.75%.
 
 ## Resumo final
 

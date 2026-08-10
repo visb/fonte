@@ -14,6 +14,8 @@ jest.mock('./api', () => ({
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, setUnauthorizedHandler } from './api';
 import { AuthProvider, useAuth, MustChangePasswordError } from './auth';
+import { queryClient } from './queryClient';
+import { PERSIST_KEY } from './offline/constants';
 
 const m = api as unknown as {
   auth: Record<string, jest.Mock>;
@@ -145,6 +147,31 @@ describe('AuthProvider', () => {
     expect(auth.sessionExpired).toBe(false);
   });
 
+  it('logout limpa o cache persistido do React Query junto das chaves de auth (LGPD)', async () => {
+    await AsyncStorage.setItem('token', 'jwt');
+    await AsyncStorage.setItem(PERSIST_KEY, JSON.stringify({ clientState: { queries: [] } }));
+    await renderAuth();
+
+    await act(async () => {
+      await auth.logout();
+    });
+
+    expect(await AsyncStorage.getItem(PERSIST_KEY)).toBeNull();
+  });
+
+  it('logout esvazia o cache em memória do React Query', async () => {
+    const clear = jest.spyOn(queryClient, 'clear');
+    await AsyncStorage.setItem('token', 'jwt');
+    await renderAuth();
+
+    await act(async () => {
+      await auth.logout();
+    });
+
+    expect(clear).toHaveBeenCalled();
+    clear.mockRestore();
+  });
+
   it('refreshStaff/refreshResident atualizam do backend', async () => {
     m.staff.me.mockResolvedValue({ id: 's1', name: 'Atualizado', permissions: [] });
     m.residents.me.mockResolvedValue({ id: 'r1', name: 'Filho' });
@@ -220,7 +247,13 @@ describe('AuthProvider — sessão expirada (401 global)', () => {
     await triggerUnauthorized();
     await triggerUnauthorized();
 
-    expect(multiRemove).toHaveBeenCalledTimes(1);
+    // Conta só a remoção das chaves de auth: o mock do AsyncStorage implementa
+    // removeItem sobre multiRemove, e a limpeza do cache persistido (story 168)
+    // também passa por lá.
+    const authRemovals = multiRemove.mock.calls.filter(([keys]) =>
+      (keys as string[]).includes('token'),
+    );
+    expect(authRemovals).toHaveLength(1);
     expect(auth.sessionExpired).toBe(true);
   });
 
@@ -255,6 +288,18 @@ describe('AuthProvider — sessão expirada (401 global)', () => {
     });
 
     expect(auth.sessionExpired).toBe(false);
+  });
+
+  it('401 limpa também o cache persistido do React Query (LGPD)', async () => {
+    await AsyncStorage.setItem('token', 'jwt');
+    await AsyncStorage.setItem(PERSIST_KEY, JSON.stringify({ clientState: { queries: [] } }));
+    await renderAuth();
+
+    await triggerUnauthorized();
+
+    await waitFor(async () => {
+      expect(await AsyncStorage.getItem(PERSIST_KEY)).toBeNull();
+    });
   });
 
   it('logout após expiração rearma o handler para o próximo 401', async () => {

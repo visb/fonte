@@ -1,9 +1,11 @@
 import { Tabs, router } from "expo-router";
 import { useEffect } from "react";
+import { View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
 import { UsageTimerProvider } from "@/lib/UsageTimerContext";
+import { OfflineBanner } from "@/components/OfflineBanner";
 
 export default function AppLayout() {
   const {
@@ -21,8 +23,9 @@ export default function AppLayout() {
   }, [token, isLoading]);
 
   const tabs = (
-    <>
+    <View className="flex-1">
       <StatusBar style="light" backgroundColor="#272950" />
+      <OfflineBanner />
       <Tabs
         screenOptions={{
           headerShown: true,
@@ -246,7 +249,7 @@ export default function AppLayout() {
           }}
         />
       </Tabs>
-    </>
+    </View>
   );
 
   if (isResident) {

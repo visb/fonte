@@ -3,8 +3,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ResidentMe, StaffMe } from '@fonte/api-client';
 import { ProfileType, StaffPermissionType } from '@fonte/types';
 import { api, setUnauthorizedHandler } from './api';
+import { queryClient } from './queryClient';
+import { clearPersistedCache } from './offline/persister';
 
 const STORAGE_KEYS = ['token', 'staff', 'resident'];
+
+/**
+ * Fim de sessão = fim do dado no dispositivo. O cache persistido guarda dado
+ * pessoal de filho (LGPD, epic 167), então sai junto com as chaves de auth.
+ * Limpar o `queryClient` antes garante que uma gravação throttled pendente
+ * escreva um cache vazio, não o antigo.
+ */
+async function clearSessionData(): Promise<void> {
+  await AsyncStorage.multiRemove(STORAGE_KEYS);
+  queryClient.clear();
+  await clearPersistedCache();
+}
 
 export class MustChangePasswordError extends Error {
   constructor() {
@@ -80,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUnauthorizedHandler(() => {
       if (sessionExpiredRef.current) return;
       sessionExpiredRef.current = true;
-      void AsyncStorage.multiRemove(STORAGE_KEYS);
+      void clearSessionData();
       setState({
         token: null,
         staff: null,
@@ -173,7 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Sair por vontade própria não é expiração: sessionExpired continua false.
   async function logout() {
     sessionExpiredRef.current = false;
-    await AsyncStorage.multiRemove(STORAGE_KEYS);
+    await clearSessionData();
     setState({
       token: null,
       staff: null,

@@ -38,7 +38,7 @@ Rodada aberta: **offline-first do ops.fonte (epic 167) + idempotência de escrit
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 172 — idempotência de escrita no backend | [OK] | api 1469 unit / 522 e2e / api-client 286 | df482dc | e8bed67 |
-| 2 | 168 — persistência de cache e estado de rede | [ ] | — | — | — |
+| 2 | 168 — persistência de cache e estado de rede | [OK] | ops 670 unit / 7 e2e web | da0e35b | 75526da |
 | 3 | 169 — outbox e replay de escrita | [ ] | — | — | — |
 | 4 | 170 — tela de pendências de sincronização | [ ] | — | — | — |
 | 5 | 171 — fluxos de campo offline | [ ] | — | — | — |
@@ -48,6 +48,9 @@ Rodada aberta: **offline-first do ops.fonte (epic 167) + idempotência de escrit
 ```
 [OK] 172 — testes: api 1469 unit + 522 e2e + api-client 286, cobertura do escopo 100/90+ — commit: df482dc — merge: e8bed67 — 2026-08-09
      Header `Idempotency-Key` + tabela `idempotency_keys` + `@Idempotent()`/interceptor global. Decisão 9 da 169 já corrigida no plano dela.
+[OK] 168 — testes: ops 670 unit + 7 e2e web, cobertura ops 92.25/82.32/90.97/93.8 — commit: da0e35b — merge: 75526da — 2026-08-09
+     PENDENTE-MANUAL: `@react-native-community/netinfo` é módulo nativo ⇒ próximo APK exige prebuild/rebuild.
+     Maestro (`pnpm test:ops`) não rodou — sem emulador no ambiente; fluxos cobertos pelo e2e web.
 ```
 
 ## Resumo final

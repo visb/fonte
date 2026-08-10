@@ -13,7 +13,7 @@ interface Props {
 
 export function ProfileHeader({ displayName, photoUrl, subtitle, isPhotoUploading, onPickPhoto }: Props) {
   return (
-    <View style={{ backgroundColor: THEME }} className="pt-8 pb-12 items-center">
+    <View style={{ backgroundColor: THEME }} className="pt-4 pb-12 items-center">
       <Pressable onPress={onPickPhoto} className="relative">
         {photoUrl ? (
           <Image

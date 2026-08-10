@@ -39,7 +39,7 @@ export function SupportGroupsPage() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View className="bg-[#272950] px-4 pt-12 pb-4 flex-row items-center justify-between">
+      <View className="bg-[#272950] px-4 pt-4 pb-4 flex-row items-center justify-between">
         <View className="flex-row items-center gap-3">
           {photoUri ? (
             <Image source={{ uri: photoUri }} className="w-11 h-11 rounded-full" />

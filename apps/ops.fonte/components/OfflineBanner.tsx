@@ -1,6 +1,5 @@
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsOnline } from '@/lib/offline/network';
 
 export const OFFLINE_MESSAGE =
@@ -12,7 +11,6 @@ export const OFFLINE_MESSAGE =
  */
 export function OfflineBanner() {
   const isOnline = useIsOnline();
-  const insets = useSafeAreaInsets();
 
   if (isOnline) return null;
 
@@ -25,7 +23,9 @@ export function OfflineBanner() {
         backgroundColor: '#b45309',
         flexDirection: 'row',
         alignItems: 'center',
-        paddingTop: insets.top + 8,
+        // Sem insets.top: o inset já é pago uma única vez pelo wrapper de
+        // app/(app)/_layout.tsx (story 174). Somar aqui = gap duplo offline.
+        paddingTop: 8,
         paddingBottom: 8,
         paddingHorizontal: 16,
       }}

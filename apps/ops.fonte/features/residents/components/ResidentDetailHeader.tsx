@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Image, Modal, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { resolveAssetUrl } from '@/lib/api';
 
 function fmtDate(iso: string | null) {
@@ -61,15 +60,16 @@ export function ResidentDetailHeader({
   photoUrl,
   photoThumbUrl,
 }: Props) {
-  const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const thumbUrl = resolveAssetUrl(photoThumbUrl ?? photoUrl);
   const fullUrl = resolveAssetUrl(photoUrl ?? photoThumbUrl);
   const tempo = timeAcolhido(entryDate);
   const nasc = fmtDate(birthDate);
 
+  // Sem paddingTop de inset: quem paga a safe area é o wrapper de
+  // app/(app)/_layout.tsx (story 174).
   return (
-    <View style={{ paddingTop: insets.top, backgroundColor: '#272950' }}>
+    <View style={{ backgroundColor: '#272950' }}>
       <View className="flex-row items-center px-2 py-3">
         <TouchableOpacity onPress={() => router.back()} className="p-2 mr-1">
           <Ionicons name="arrow-back" size={24} color="#fff" />

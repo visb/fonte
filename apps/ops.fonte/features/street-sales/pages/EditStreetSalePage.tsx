@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import type { StreetSale } from '@fonte/api-client';
 import { useAuth } from '@/lib/auth';
+import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { DatePickerModal } from '@/components/DatePickerModal';
 import { useUpdateStreetSale } from '../hooks/useStreetSales';
 import { StreetSaleFormFields } from '../components/StreetSaleFormFields';
@@ -25,6 +26,7 @@ interface Props {
 export function EditStreetSalePage({ sale }: Props) {
   const { staff } = useAuth();
   const mutation = useUpdateStreetSale(staff?.houseId ?? '');
+  const submit = useFieldSubmit(mutation);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const { control, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
@@ -56,7 +58,7 @@ export function EditStreetSalePage({ sale }: Props) {
   };
 
   const onSubmit = (data: FormData) => {
-    mutation.mutate(
+    submit(
       {
         id: sale.id,
         data: {
@@ -69,11 +71,20 @@ export function EditStreetSalePage({ sale }: Props) {
         },
       },
       {
-        onSuccess: () =>
+        onSent: () =>
           Alert.alert('Sucesso', 'Registro atualizado.', [
             { text: 'OK', onPress: () => router.back() },
           ]),
-        onError: () =>
+        // Sem sinal a edição fica na fila (story 171): a tela volta na hora em
+        // vez de travar esperando um `onSuccess` que só chega com rede.
+        onQueued: () => {
+          router.back();
+          Alert.alert(
+            'Salvo no aparelho',
+            'Sem conexão agora: a alteração será enviada assim que a conexão voltar.',
+          );
+        },
+        onFailed: () =>
           Alert.alert('Erro', 'Não foi possível atualizar o registro.'),
       },
     );

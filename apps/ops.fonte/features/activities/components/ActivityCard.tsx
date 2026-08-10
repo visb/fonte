@@ -1,8 +1,11 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ActivityStatus } from '@fonte/types';
 import type { Activity } from '@fonte/api-client';
+import { isOutboxEntityId } from '@/lib/offline/outbox';
+import { PendingBadge } from '@/components/shared/PendingBadge';
 import { StatusBadge } from './StatusBadge';
 import { ResponsibleBadge } from './ResponsibleBadge';
+import { ActivityCardActions } from './ActivityCardActions';
 
 interface Props {
   item: Activity;
@@ -12,37 +15,37 @@ interface Props {
   /** Abre a tela de detalhes ao tocar no corpo do card. */
   onPress?: (activity: Activity) => void;
   pending?: boolean;
+  /** Sem rede as mudanças de situação ficam desabilitadas (story 171). */
+  isOnline?: boolean;
 }
 
-function ActionButton({
-  label,
-  color,
+export function ActivityCard({
+  item,
+  currentUserId,
+  onChangeStatus,
   onPress,
-  disabled,
-}: {
-  label: string;
-  color: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled}
-      className="rounded-lg px-3 py-1.5"
-      style={{ backgroundColor: `${color}15`, opacity: disabled ? 0.5 : 1 }}
-    >
-      <Text className="text-xs font-semibold" style={{ color }}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-export function ActivityCard({ item, currentUserId, onChangeStatus, onPress, pending }: Props) {
+  pending,
+  isOnline = true,
+}: Props) {
   const isCreator = item.createdByUserId === currentUserId;
   const isResponsible = item.responsible?.userId === currentUserId;
   const { status } = item;
+
+  // Criada sem sinal (story 171): ainda está na fila e não tem id do servidor,
+  // então não abre detalhe nem muda de situação — só avisa que vai subir.
+  if (isOutboxEntityId(item.id)) {
+    return (
+      <View className="bg-white rounded-xl border border-gray-100 px-4 py-3">
+        <View className="flex-row items-center justify-between mb-1">
+          <Text className="text-sm font-semibold text-gray-800 flex-1 pr-2" numberOfLines={2}>
+            {item.title}
+          </Text>
+          <StatusBadge status={status} />
+        </View>
+        <PendingBadge />
+      </View>
+    );
+  }
 
   return (
     <View className="bg-white rounded-xl border border-gray-100 px-4 py-3">
@@ -66,70 +69,14 @@ export function ActivityCard({ item, currentUserId, onChangeStatus, onPress, pen
         </View>
       </TouchableOpacity>
 
-      <View className="flex-row flex-wrap gap-2 mt-2">
-        {status === ActivityStatus.DRAFT && isCreator && (
-          <ActionButton
-            label="Enviar"
-            color="#2563eb"
-            disabled={pending}
-            onPress={() => onChangeStatus(item, ActivityStatus.REQUESTED)}
-          />
-        )}
-
-        {/* Devolver para rascunho (story 75): o criador desfaz o próprio envio.
-            ADMIN não opera pelo ops (segue a story 48). */}
-        {status === ActivityStatus.REQUESTED && isCreator && (
-          <ActionButton
-            label="Devolver para rascunho"
-            color="#6b7280"
-            disabled={pending}
-            onPress={() => onChangeStatus(item, ActivityStatus.DRAFT)}
-          />
-        )}
-
-        {isResponsible && status === ActivityStatus.TODO && (
-          <ActionButton
-            label="Iniciar"
-            color="#b45309"
-            disabled={pending}
-            onPress={() => onChangeStatus(item, ActivityStatus.DOING)}
-          />
-        )}
-
-        {isResponsible && status === ActivityStatus.DOING && (
-          <>
-            <ActionButton
-              label="Impedir"
-              color="#dc2626"
-              disabled={pending}
-              onPress={() => onChangeStatus(item, ActivityStatus.BLOCKED)}
-            />
-            <ActionButton
-              label="Concluir"
-              color="#16a34a"
-              disabled={pending}
-              onPress={() => onChangeStatus(item, ActivityStatus.DONE)}
-            />
-          </>
-        )}
-
-        {isResponsible && status === ActivityStatus.BLOCKED && (
-          <>
-            <ActionButton
-              label="Retomar"
-              color="#b45309"
-              disabled={pending}
-              onPress={() => onChangeStatus(item, ActivityStatus.DOING)}
-            />
-            <ActionButton
-              label="Concluir"
-              color="#16a34a"
-              disabled={pending}
-              onPress={() => onChangeStatus(item, ActivityStatus.DONE)}
-            />
-          </>
-        )}
-      </View>
+      <ActivityCardActions
+        item={item}
+        isCreator={isCreator}
+        isResponsible={isResponsible}
+        onChangeStatus={onChangeStatus}
+        pending={pending}
+        isOnline={isOnline}
+      />
     </View>
   );
 }

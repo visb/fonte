@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/lib/auth';
+import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { useCreateActivity } from '@/features/activities/hooks/useActivities';
 import { ActivityFormFields } from '@/features/activities/components/ActivityFormFields';
 
@@ -23,6 +24,7 @@ type FormData = z.infer<typeof schema>;
 export function NewActivityPage() {
   const { staff } = useAuth();
   const mutation = useCreateActivity();
+  const submit = useFieldSubmit(mutation);
 
   const {
     control,
@@ -35,18 +37,27 @@ export function NewActivityPage() {
 
   const onSubmit = (data: FormData) => {
     // ops cria sempre como rascunho (DRAFT) na própria casa.
-    mutation.mutate(
+    submit(
       {
         title: data.title,
         description: data.description || null,
         houseId: staff?.houseId ?? null,
       },
       {
-        onSuccess: () =>
+        onSent: () =>
           Alert.alert('Sucesso', 'Rascunho criado.', [
             { text: 'OK', onPress: () => router.back() },
           ]),
-        onError: () =>
+        // Sem sinal o rascunho fica na fila e já aparece na lista como
+        // pendente: volta primeiro, avisa depois.
+        onQueued: () => {
+          router.back();
+          Alert.alert(
+            'Salvo no aparelho',
+            'Sem conexão agora: o rascunho será enviado assim que a conexão voltar.',
+          );
+        },
+        onFailed: () =>
           Alert.alert('Erro', 'Não foi possível criar a atividade.'),
       },
     );

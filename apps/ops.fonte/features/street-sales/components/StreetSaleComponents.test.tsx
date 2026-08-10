@@ -98,6 +98,16 @@ describe('StreetSaleRow', () => {
     expect(screen.getByText('PIX R$ 20,00')).toBeTruthy();
   });
 
+  it('venda ainda na fila fica pendente e sem ações (story 171)', () => {
+    const { outboxEntityId } = require('@/lib/offline/outbox');
+    rc(<StreetSaleRow sale={makeSale({ id: outboxEntityId('chave-1') })} houseId="h1" />);
+
+    expect(screen.getByTestId('pending-sync-badge')).toBeTruthy();
+    // Não existe no servidor: editar ou remover não teria o que alcançar.
+    expect(screen.queryByText('icon:pencil-outline')).toBeNull();
+    expect(screen.queryByText('icon:trash-outline')).toBeNull();
+  });
+
   it('dentro da janela mostra editar/remover; editar navega', () => {
     rc(<StreetSaleRow sale={makeSale()} houseId="h1" />);
     fireEvent.press(screen.getByText('icon:pencil-outline'));

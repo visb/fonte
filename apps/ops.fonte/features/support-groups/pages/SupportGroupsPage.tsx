@@ -9,9 +9,12 @@ import { useAllMeetings } from '../hooks/useSupportGroups';
 import { MeetingCard } from '../components/MeetingCard';
 import { CreateMeetingModal } from '../components/CreateMeetingModal';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { OfflineNotice } from '@/components/shared/OfflineNotice';
+import { useIsOnline } from '@/lib/offline/network';
 
 export function SupportGroupsPage() {
   const { staff, logout } = useAuth();
+  const isOnline = useIsOnline();
   const [createOpen, setCreateOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -81,9 +84,19 @@ export function SupportGroupsPage() {
           />
         )}
 
+        {/* Grupo de apoio depende de check-in de terceiros em tempo real: fica
+            fora da fila offline (decisão 1 do epic 167) e avisa (story 171). */}
+        {!isOnline && (
+          <View className="absolute bottom-6 left-4 right-24">
+            <OfflineNotice message="Precisa de conexão para criar uma reunião." />
+          </View>
+        )}
+
         <TouchableOpacity
           className="absolute bottom-6 right-6 w-14 h-14 bg-blue-600 rounded-full items-center justify-center shadow-lg"
           onPress={() => setCreateOpen(true)}
+          disabled={!isOnline}
+          style={{ opacity: isOnline ? 1 : 0.5 }}
           activeOpacity={0.8}
         >
           <Ionicons name="add" size={28} color="#fff" />

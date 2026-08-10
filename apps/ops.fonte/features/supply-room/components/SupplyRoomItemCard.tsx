@@ -2,6 +2,8 @@ import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { SupplyRoomItem } from "@fonte/api-client";
 import { formatQuantity } from "@/features/supply-room/utils";
+import { isLocalId } from "@/lib/offline/localIds";
+import { PendingBadge } from "@/components/shared/PendingBadge";
 import { CategoryBadge } from "./CategoryBadge";
 
 type Props = {
@@ -13,10 +15,15 @@ type Props = {
 
 export function SupplyRoomItemCard({ item, onPress, isPendingSync = false }: Props) {
   const isLowStock = Number(item.currentQuantity) <= 5;
+  // Item cadastrado sem sinal: existe só no aparelho até a fila subir, então não
+  // tem histórico para abrir nem pode ser editado (story 171, decisão 2).
+  const isLocal = isLocalId(item.id);
 
   return (
     <Pressable
       className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex-row items-center"
+      style={{ opacity: isLocal ? 0.7 : 1 }}
+      disabled={isLocal}
       onPress={onPress}
     >
       <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3">
@@ -32,14 +39,10 @@ export function SupplyRoomItemCard({ item, onPress, isPendingSync = false }: Pro
         </View>
       </View>
       <View className="items-end gap-2">
-        {isPendingSync && (
-          // O estoque já mostra o lançamento; o selo diz que ele ainda não
-          // chegou ao servidor — nada é dado como enviado sem ter sido.
-          <View testID="pending-sync-badge" className="bg-amber-50 rounded-full px-2 py-0.5">
-            <Text className="text-xs text-amber-700 font-medium">Pendente</Text>
-          </View>
-        )}
-        {isLowStock && (
+        {/* O estoque já mostra o lançamento; o selo diz que ele ainda não chegou
+            ao servidor — nada é dado como enviado sem ter sido. */}
+        {(isPendingSync || isLocal) && <PendingBadge />}
+        {isLowStock && !isLocal && (
           <View className="bg-orange-50 rounded-full px-2 py-0.5">
             <Text className="text-xs text-orange-600 font-medium">Baixo</Text>
           </View>

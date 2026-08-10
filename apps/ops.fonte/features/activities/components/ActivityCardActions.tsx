@@ -1,0 +1,111 @@
+import { View, Text, TouchableOpacity } from 'react-native';
+import { ActivityStatus } from '@fonte/types';
+import type { Activity } from '@fonte/api-client';
+
+/**
+ * Ações de mudança de status do card de atividade.
+ *
+ * Mudar status **exige rede**: o endpoint não aceita `Idempotency-Key`, então a
+ * ação não entra na outbox (story 171, decisão 4) — sem sinal ela fica
+ * desabilitada com o motivo escrito, nunca com erro de axios na tela.
+ */
+interface Props {
+  item: Activity;
+  isCreator: boolean;
+  isResponsible: boolean;
+  onChangeStatus: (activity: Activity, status: ActivityStatus) => void;
+  /** Já há uma mudança de status em voo. */
+  pending?: boolean;
+  isOnline?: boolean;
+}
+
+function ActionButton({
+  label,
+  color,
+  onPress,
+  disabled,
+}: {
+  label: string;
+  color: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      className="rounded-lg px-3 py-1.5"
+      style={{ backgroundColor: `${color}15`, opacity: disabled ? 0.5 : 1 }}
+    >
+      <Text className="text-xs font-semibold" style={{ color }}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+/** Transições que o ops oferece, por situação e papel de quem está olhando. */
+function transitionsFor(
+  status: ActivityStatus,
+  isCreator: boolean,
+  isResponsible: boolean,
+): { label: string; color: string; to: ActivityStatus }[] {
+  if (isCreator && status === ActivityStatus.DRAFT) {
+    return [{ label: 'Enviar', color: '#2563eb', to: ActivityStatus.REQUESTED }];
+  }
+  // Devolver para rascunho (story 75): o criador desfaz o próprio envio.
+  // ADMIN não opera pelo ops (segue a story 48).
+  if (isCreator && status === ActivityStatus.REQUESTED) {
+    return [{ label: 'Devolver para rascunho', color: '#6b7280', to: ActivityStatus.DRAFT }];
+  }
+  if (!isResponsible) return [];
+  if (status === ActivityStatus.TODO) {
+    return [{ label: 'Iniciar', color: '#b45309', to: ActivityStatus.DOING }];
+  }
+  if (status === ActivityStatus.DOING) {
+    return [
+      { label: 'Impedir', color: '#dc2626', to: ActivityStatus.BLOCKED },
+      { label: 'Concluir', color: '#16a34a', to: ActivityStatus.DONE },
+    ];
+  }
+  if (status === ActivityStatus.BLOCKED) {
+    return [
+      { label: 'Retomar', color: '#b45309', to: ActivityStatus.DOING },
+      { label: 'Concluir', color: '#16a34a', to: ActivityStatus.DONE },
+    ];
+  }
+  return [];
+}
+
+export function ActivityCardActions({
+  item,
+  isCreator,
+  isResponsible,
+  onChangeStatus,
+  pending,
+  isOnline = true,
+}: Props) {
+  const transitions = transitionsFor(item.status, isCreator, isResponsible);
+  if (transitions.length === 0) return null;
+
+  return (
+    <View>
+      <View className="flex-row flex-wrap gap-2 mt-2">
+        {transitions.map((transition) => (
+          <ActionButton
+            key={transition.to}
+            label={transition.label}
+            color={transition.color}
+            disabled={pending || !isOnline}
+            onPress={() => onChangeStatus(item, transition.to)}
+          />
+        ))}
+      </View>
+      {!isOnline && (
+        <Text className="text-xs text-gray-400 mt-1.5">
+          Precisa de conexão para mudar a situação.
+        </Text>
+      )}
+    </View>
+  );
+}

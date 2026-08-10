@@ -22,6 +22,7 @@ jest.mock('./attachments', () => ({
 
 import { api } from '@/lib/api';
 import { buildFormDataFromOutboxFile, discardOutboxFile, persistOutboxFile } from './attachments';
+import { clearLocalIds, createLocalId, resolveLocalId } from './localIds';
 import {
   OUTBOX_MUTATION_KEYS,
   OUTBOX_MUTATION_KEY_LIST,
@@ -64,13 +65,14 @@ function run(queryClient: QueryClient, key: OutboxMutationKey, variables: unknow
   return mutation.execute(variables as never);
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
   Object.values(m).forEach((module) =>
     Object.values(module).forEach((fn) => fn.mockResolvedValue({ id: 'created' })),
   );
   attachments.persist.mockResolvedValue('file:///doc/outbox/foto.jpg');
   attachments.build.mockResolvedValue('form-data');
+  await clearLocalIds();
 });
 
 describe('catálogo de defaults', () => {
@@ -414,6 +416,240 @@ describe('update otimista — despensa e ocorrência', () => {
     });
 
     expect(pending?.[0].resident).toBeNull();
+  });
+});
+
+describe('item de estoque criado offline (story 171, decisão 2)', () => {
+  it('entra na lista com o id local para poder ser movimentado na hora', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.storeroom.items('h1'), []);
+    const localId = createLocalId();
+    let visible: Array<{ id: string; name: string; currentQuantity: number }> | undefined;
+    m.storeroom.createItem.mockImplementation(() => {
+      visible = queryClient.getQueryData(queryKeys.storeroom.items('h1'));
+      return Promise.resolve({ id: 'item-real' });
+    });
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.storeroomCreateItem, {
+      data: { name: 'Arroz', unit: 'kg', houseId: 'h1' },
+      localId,
+    });
+
+    expect(visible).toEqual([
+      expect.objectContaining({ id: localId, name: 'Arroz', currentQuantity: 0 }),
+    ]);
+  });
+
+  it('depois de subir, a movimentação enfileirada sai com o id real', async () => {
+    const queryClient = createClient();
+    const localId = createLocalId();
+    m.storeroom.createItem.mockResolvedValue({ id: 'item-real' });
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.storeroomCreateItem, {
+      data: { name: 'Arroz', unit: 'kg', houseId: 'h1' },
+      localId,
+    });
+    await run(queryClient, OUTBOX_MUTATION_KEYS.storeroomCreateMovement, {
+      data: { itemId: localId, type: MovementType.IN, quantity: 2 },
+    });
+
+    expect(m.storeroom.createMovement).toHaveBeenCalledWith(
+      { itemId: 'item-real', type: MovementType.IN, quantity: 2 },
+      idempotent,
+    );
+  });
+
+  it('o mesmo vale para a despensa', async () => {
+    const queryClient = createClient();
+    const localId = createLocalId();
+    m.supplyRoom.createItem.mockResolvedValue({ id: 'item-real' });
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.supplyRoomCreateItem, {
+      data: {
+        name: 'Sabão',
+        unit: 'un',
+        category: SupplyRoomCategory.CLEANING,
+        houseId: 'h1',
+      },
+      localId,
+    });
+    await run(queryClient, OUTBOX_MUTATION_KEYS.supplyRoomCreateMovement, {
+      data: { itemId: localId, type: MovementType.OUT, quantity: 1 },
+    });
+
+    expect(m.supplyRoom.createMovement).toHaveBeenCalledWith(
+      { itemId: 'item-real', type: MovementType.OUT, quantity: 1 },
+      idempotent,
+    );
+  });
+
+  it('cadastro recusado tira o item da lista e desfaz o mapeamento', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.storeroom.items('h1'), []);
+    const localId = createLocalId();
+    m.storeroom.createItem.mockRejectedValue({ response: { status: 409 } });
+
+    await expect(
+      run(queryClient, OUTBOX_MUTATION_KEYS.storeroomCreateItem, {
+        data: { name: 'Arroz', unit: 'kg', houseId: 'h1' },
+        localId,
+      }),
+    ).rejects.toBeDefined();
+
+    expect(queryClient.getQueryData(queryKeys.storeroom.items('h1'))).toEqual([]);
+    await expect(resolveLocalId(localId)).rejects.toBeDefined();
+  });
+
+  it('cadastro de despensa recusado também tira o item local da lista', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.supplyRoom.items('h1'), []);
+    const localId = createLocalId();
+    m.supplyRoom.createItem.mockRejectedValue({ response: { status: 400 } });
+
+    await expect(
+      run(queryClient, OUTBOX_MUTATION_KEYS.supplyRoomCreateItem, {
+        data: {
+          name: 'Sabão',
+          unit: 'un',
+          category: SupplyRoomCategory.CLEANING,
+          houseId: 'h1',
+        },
+        localId,
+      }),
+    ).rejects.toBeDefined();
+
+    expect(queryClient.getQueryData(queryKeys.supplyRoom.items('h1'))).toEqual([]);
+    await expect(resolveLocalId(localId)).rejects.toBeDefined();
+  });
+
+  it('movimentação de item que nunca subiu falha com motivo, sem mandar `local:` ao backend', async () => {
+    const queryClient = createClient();
+
+    await expect(
+      run(queryClient, OUTBOX_MUTATION_KEYS.storeroomCreateMovement, {
+        data: { itemId: createLocalId(), type: MovementType.IN, quantity: 2 },
+      }),
+    ).rejects.toMatchObject({ name: 'UnresolvedLocalIdError' });
+
+    expect(m.storeroom.createMovement).not.toHaveBeenCalled();
+  });
+
+  it('cadastro sem id local segue igual (fluxo online de sempre)', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.storeroom.items('h1'), []);
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.storeroomCreateItem, {
+      data: { name: 'Arroz', unit: 'kg', houseId: 'h1' },
+    });
+
+    expect(queryClient.getQueryData(queryKeys.storeroom.items('h1'))).toEqual([]);
+  });
+
+  it('cadastro e movimentação do mesmo recurso sobem em série (o item antes do movimento)', () => {
+    const queryClient = createClient();
+
+    const item = queryClient.getMutationDefaults(OUTBOX_MUTATION_KEYS.storeroomCreateItem);
+    const movement = queryClient.getMutationDefaults(
+      OUTBOX_MUTATION_KEYS.storeroomCreateMovement,
+    );
+
+    expect(item.scope?.id).toBe('storeroom');
+    expect(movement.scope?.id).toBe(item.scope?.id);
+  });
+});
+
+describe('update otimista — venda de rua e atividade (decisão 5)', () => {
+  const sale = {
+    data: {
+      houseId: 'h1',
+      date: '2026-08-10',
+      type: 'BREAD',
+      quantity: 10,
+      amountPix: 1000,
+      amountCash: 500,
+      amountCard: 0,
+    },
+  };
+
+  it('venda aparece na lista da casa com o total somado', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.streetSales.byHouse('h1'), []);
+    let visible: Array<{ id: string; totalAmount: number }> | undefined;
+    m.streetSales.create.mockImplementation(() => {
+      visible = queryClient.getQueryData(queryKeys.streetSales.byHouse('h1'));
+      return Promise.resolve({ id: 'sale-1' });
+    });
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.streetSaleCreate, { ...sale });
+
+    expect(visible?.[0]).toMatchObject({ quantity: 10, totalAmount: 1500 });
+    expect(visible?.[0].id.startsWith(outboxEntityId(''))).toBe(true);
+  });
+
+  it('venda recusada some da lista', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.streetSales.byHouse('h1'), []);
+    m.streetSales.create.mockRejectedValue({ response: { status: 400 } });
+
+    await expect(
+      run(queryClient, OUTBOX_MUTATION_KEYS.streetSaleCreate, { ...sale }),
+    ).rejects.toBeDefined();
+
+    expect(queryClient.getQueryData(queryKeys.streetSales.byHouse('h1'))).toEqual([]);
+  });
+
+  it('atividade aparece na lista da casa e some no erro definitivo', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.activities.byHouse('h1'), []);
+    let visible: Array<{ id: string; title: string }> | undefined;
+    m.activities.create.mockImplementation(() => {
+      visible = queryClient.getQueryData(queryKeys.activities.byHouse('h1'));
+      return Promise.reject({ response: { status: 403 } });
+    });
+
+    await expect(
+      run(queryClient, OUTBOX_MUTATION_KEYS.activityCreate, {
+        data: { title: 'Mutirão', houseId: 'h1' },
+      }),
+    ).rejects.toBeDefined();
+
+    expect(visible?.[0]).toMatchObject({ title: 'Mutirão' });
+    expect(queryClient.getQueryData(queryKeys.activities.byHouse('h1'))).toEqual([]);
+  });
+
+  it('atividade sem casa não inventa entrada em lista nenhuma', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.activities.byHouse('h1'), []);
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.activityCreate, {
+      data: { title: 'Sem casa', houseId: null },
+    });
+
+    expect(queryClient.getQueryData(queryKeys.activities.byHouse('h1'))).toEqual([]);
+  });
+
+  it('a entrada otimista não vaza para o detalhe nem para os comentários', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.activities.byHouse('h1'), []);
+    queryClient.setQueryData(queryKeys.activities.detail('a1'), { id: 'a1' });
+    queryClient.setQueryData(queryKeys.activities.comments('a1'), []);
+    let untouched: { detail: unknown; comments: unknown } | undefined;
+    m.activities.create.mockImplementation(() => {
+      untouched = {
+        detail: queryClient.getQueryData(queryKeys.activities.detail('a1')),
+        comments: queryClient.getQueryData(queryKeys.activities.comments('a1')),
+      };
+      return Promise.resolve({ id: 'a2' });
+    });
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.activityCreate, {
+      data: { title: 'Mutirão', houseId: 'h1' },
+    });
+
+    // `activities.all` é prefixo de detail/comments: casar por prefixo teria
+    // trocado o objeto do detalhe por uma lista.
+    expect(untouched?.detail).toEqual({ id: 'a1' });
+    expect(untouched?.comments).toEqual([]);
   });
 });
 

@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
+import { useIsOnline } from '@/lib/offline/network';
+import { OfflineNotice } from '@/components/shared/OfflineNotice';
 import { AttachmentPreviews } from './AttachmentPreviews';
 import { AttachmentMenuSheet } from './AttachmentMenuSheet';
 
@@ -32,7 +34,12 @@ function formatDuration(seconds: number) {
   return `${m}:${s}`;
 }
 
-export function MessageInput({ onSend, disabled }: Props) {
+export function MessageInput({ onSend, disabled: disabledProp }: Props) {
+  // Mensagem é tempo real (socket.io) e fica **fora** da fila offline (decisão 1
+  // do epic 167): sem sinal a composição inteira desliga com o motivo escrito,
+  // em vez de enfileirar uma conversa que o outro lado não vai receber.
+  const isOnline = useIsOnline();
+  const disabled = disabledProp || !isOnline;
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
   const [showMenu, setShowMenu] = useState(false);
@@ -148,6 +155,12 @@ export function MessageInput({ onSend, disabled }: Props) {
 
   return (
     <View style={{ backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
+      {!isOnline && (
+        <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+          <OfflineNotice message="Precisa de conexão para enviar mensagens." />
+        </View>
+      )}
+
       <AttachmentPreviews attachments={attachments} onRemove={removeAttachment} />
 
       {/* Input row */}

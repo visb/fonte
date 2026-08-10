@@ -30,6 +30,12 @@ interface CreateItemInput {
   name: string;
   unit: string;
   houseId: string;
+  /**
+   * Id `local:<uuid>` gerado pela tela quando o cadastro pode acontecer sem
+   * sinal (story 171): é por ele que a movimentação seguinte referencia o item
+   * enquanto o cadastro não sobe.
+   */
+  localId?: string;
 }
 
 export function useStoreroomItems(houseId: string | null | undefined) {
@@ -63,7 +69,7 @@ export function useCreateMovement() {
 export function useCreateStoreroomItem() {
   return useOutboxMutation<CreateItemInput, StoreroomItemVariables, StoreroomItem>(
     OUTBOX_MUTATION_KEYS.storeroomCreateItem,
-    (data) => ({ data }),
+    ({ localId, ...data }) => ({ data, localId }),
   );
 }
 

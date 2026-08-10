@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
 import { UsageTimerProvider } from "@/lib/UsageTimerContext";
+import { useWarmHouseCache } from "@/lib/offline/prefetch";
 import { OfflineBanner } from "@/components/OfflineBanner";
 
 export default function AppLayout() {
@@ -21,6 +22,10 @@ export default function AppLayout() {
   useEffect(() => {
     if (!isLoading && !token) router.replace("/(auth)/login");
   }, [token, isLoading]);
+
+  // Pacote da casa em cache na abertura e a cada volta do background: é o que
+  // permite abrir contagem/estoque já dentro da casa, sem sinal (story 171).
+  useWarmHouseCache(token ? staff?.houseId : null);
 
   const tabs = (
     <View className="flex-1">

@@ -5,6 +5,7 @@ import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } fr
 import { router } from 'expo-router';
 import { IncidentSeverity } from '@fonte/types';
 import { useAuth } from '@/lib/auth';
+import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { useCreateIncident } from '@/features/incidents/hooks/useIncidents';
 import { useResidentsByHouse } from '@/features/residents/hooks/useResidents';
 import { IncidentFormFields } from '@/features/incidents/components/IncidentFormFields';
@@ -23,6 +24,7 @@ export function NewIncidentPage() {
   const { staff } = useAuth();
   const { data: residents = [] } = useResidentsByHouse(staff?.houseId);
   const mutation = useCreateIncident();
+  const submit = useFieldSubmit(mutation);
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -30,7 +32,9 @@ export function NewIncidentPage() {
   });
 
   const onSubmit = (data: FormData) => {
-    mutation.mutate(
+    // Ocorrência é lançada no momento em que acontece, muitas vezes sem sinal:
+    // offline ela entra na fila e a tela volta na hora (story 171).
+    submit(
       {
         date: data.date,
         severity: data.severity,
@@ -38,11 +42,22 @@ export function NewIncidentPage() {
         houseId: staff!.houseId!,
         responsibleId: staff!.id,
         residentId: data.residentId || null,
+        responsibleName: staff?.name,
+        residentName: residents.find((r) => r.id === data.residentId)?.name,
       },
       {
-        onSuccess: () =>
+        onSent: () =>
           Alert.alert('Sucesso', 'Ocorrência registrada.', [{ text: 'OK', onPress: () => router.back() }]),
-        onError: () =>
+        // Volta primeiro e avisa depois: preso no aviso, o operador ficaria
+        // olhando um botão girando por um envio que só acontece com rede.
+        onQueued: () => {
+          router.back();
+          Alert.alert(
+            'Salvo no aparelho',
+            'Sem conexão agora: a ocorrência será enviada assim que a conexão voltar.',
+          );
+        },
+        onFailed: () =>
           Alert.alert('Erro', 'Não foi possível registrar a ocorrência.'),
       },
     );

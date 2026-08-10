@@ -3,6 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StreetSaleType } from '@fonte/types';
 import type { StreetSale } from '@fonte/api-client';
+import { isOutboxEntityId } from '@/lib/offline/outbox';
+import { PendingBadge } from '@/components/shared/PendingBadge';
 import { useDeleteStreetSale } from '../hooks/useStreetSales';
 
 const EDIT_WINDOW_MS = 60 * 60 * 1000;
@@ -27,7 +29,10 @@ interface Props {
 
 export function StreetSaleRow({ sale, houseId }: Props) {
   const deleteMutation = useDeleteStreetSale(houseId);
-  const editable = isWithinWindow(sale.createdAt);
+  // Venda ainda na fila: não existe no servidor, então editar/remover não tem o
+  // que alcançar — some a ação e entra o selo de pendente (story 171).
+  const isPending = isOutboxEntityId(sale.id);
+  const editable = !isPending && isWithinWindow(sale.createdAt);
   const isBread = sale.type === StreetSaleType.BREAD;
 
   const handleDelete = () => {
@@ -76,6 +81,7 @@ export function StreetSaleRow({ sale, houseId }: Props) {
                 </Text>
               </View>
               <Text className="text-xs text-gray-400">{formatDate(sale.date)}</Text>
+              {isPending && <PendingBadge />}
             </View>
             <View className="flex-row items-center gap-3 mt-1">
               <Text className="text-xs text-gray-500">{sale.quantity} un.</Text>

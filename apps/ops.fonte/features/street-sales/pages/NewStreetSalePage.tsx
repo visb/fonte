@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { router } from 'expo-router';
 import { StreetSaleType } from '@fonte/types';
 import { useAuth } from '@/lib/auth';
+import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { DatePickerModal } from '@/components/DatePickerModal';
 import { useCreateStreetSale } from '../hooks/useStreetSales';
 import { StreetSaleFormFields } from '../components/StreetSaleFormFields';
@@ -37,6 +38,7 @@ const today = new Date().toISOString().slice(0, 10);
 export function NewStreetSalePage() {
   const { staff } = useAuth();
   const mutation = useCreateStreetSale();
+  const submit = useFieldSubmit(mutation);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const { control, handleSubmit, setValue, formState: { errors } } = useForm<StreetSaleFormData>({
@@ -70,7 +72,15 @@ export function NewStreetSalePage() {
   const onSubmit = (data: StreetSaleFormData) => {
     if (!staff?.houseId) return;
 
-    mutation.mutate(
+    // Venda de rua acontece fora da casa, quase sempre sem sinal: offline entra
+    // na fila e a tela volta na hora, com o registro já visível (story 171).
+    const backToList = (successMsg: string) =>
+      router.replace({
+        pathname: '/(app)/street-sales',
+        params: { successMsg },
+      } as never);
+
+    submit(
       {
         houseId: staff.houseId,
         date: data.date,
@@ -81,12 +91,10 @@ export function NewStreetSalePage() {
         amountCard: parseAmount(data.amountCard),
       },
       {
-        onSuccess: () =>
-          router.replace({
-            pathname: '/(app)/street-sales',
-            params: { successMsg: 'Faturamento registrado com sucesso.' },
-          } as never),
-        onError: () =>
+        onSent: () => backToList('Faturamento registrado com sucesso.'),
+        onQueued: () =>
+          backToList('Faturamento salvo. Será enviado quando a conexão voltar.'),
+        onFailed: () =>
           Alert.alert('Erro', 'Não foi possível registrar o faturamento.'),
       },
     );

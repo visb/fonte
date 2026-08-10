@@ -39,7 +39,7 @@ Rodada aberta: **offline-first do ops.fonte (epic 167) + idempotência de escrit
 | --- | --- | --- | --- | --- | --- |
 | 1 | 172 — idempotência de escrita no backend | [OK] | api 1469 unit / 522 e2e / api-client 286 | df482dc | e8bed67 |
 | 2 | 168 — persistência de cache e estado de rede | [OK] | ops 670 unit / 7 e2e web | da0e35b | 75526da |
-| 3 | 169 — outbox e replay de escrita | [ ] | — | — | — |
+| 3 | 169 — outbox e replay de escrita | [OK] | ops 772 unit / 8 e2e web | 727d399 | da8130f |
 | 4 | 170 — tela de pendências de sincronização | [ ] | — | — | — |
 | 5 | 171 — fluxos de campo offline | [ ] | — | — | — |
 
@@ -51,6 +51,9 @@ Rodada aberta: **offline-first do ops.fonte (epic 167) + idempotência de escrit
 [OK] 168 — testes: ops 670 unit + 7 e2e web, cobertura ops 92.25/82.32/90.97/93.8 — commit: da0e35b — merge: 75526da — 2026-08-09
      PENDENTE-MANUAL: `@react-native-community/netinfo` é módulo nativo ⇒ próximo APK exige prebuild/rebuild.
      Maestro (`pnpm test:ops`) não rodou — sem emulador no ambiente; fluxos cobertos pelo e2e web.
+[OK] 169 — testes: ops 772 unit + 8 e2e web, cobertura ops 92.9/82.55/91.65/94.34 — commit: 727d399 — merge: da8130f — 2026-08-10
+     Chave de idempotência vive nas variáveis da mutation (context não chega na mutationFn). Logout descarta fila pendente (LGPD) — avisar na tela 170.
+     Item criado offline ainda não encadeia com a movimentação; nomes: `storeroom`=Dispensa, `supply-room`=Almoxarifado na UI (epic troca os termos). Restante de tela é a 171.
 ```
 
 ## Resumo final

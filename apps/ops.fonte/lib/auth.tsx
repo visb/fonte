@@ -6,6 +6,8 @@ import { api, setUnauthorizedHandler } from './api';
 import { queryClient } from './queryClient';
 import { clearPersistedCache } from './offline/persister';
 import { clearDeadLetter } from './offline/deadLetter';
+import { clearLocalIds } from './offline/localIds';
+import { warmHouseCache } from './offline/prefetch';
 
 const STORAGE_KEYS = ['token', 'staff', 'resident'];
 
@@ -20,6 +22,8 @@ async function clearSessionData(): Promise<void> {
   queryClient.clear();
   await clearPersistedCache();
   await clearDeadLetter();
+  // Mapa de ids locais (story 171): sem a fila que o usava, é lixo.
+  await clearLocalIds();
 }
 
 export class MustChangePasswordError extends Error {
@@ -136,6 +140,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isLoading: false,
           sessionExpired: false,
         });
+        // Login é o último momento garantido com rede (decisão 5 do epic 167):
+        // o pacote da casa entra no cache agora para o app funcionar quando o
+        // operador chegar na casa sem sinal (story 171). Não bloqueia o login.
+        void warmHouseCache(queryClient, staff.houseId);
       }
     } catch (err: unknown) {
       const anyErr = err as { response?: { data?: { error?: string } } };

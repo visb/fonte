@@ -4,7 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { OfflineNotice } from '@/components/shared/OfflineNotice';
 import { getErrorMessage } from '@/lib/errors';
+import { useIsOnline } from '@/lib/offline/network';
 import {
   useBibleCourseClassPhotos,
   useUploadBibleCourseClassPhoto,
@@ -27,6 +29,7 @@ export function BibleCourseClassPhotoGallery({ classId }: Props) {
     useBibleCourseClassPhotos(classId);
   const uploadMutation = useUploadBibleCourseClassPhoto(classId);
   const deleteMutation = useDeleteBibleCourseClassPhoto(classId);
+  const isOnline = useIsOnline();
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.85 });
@@ -46,11 +49,11 @@ export function BibleCourseClassPhotoGallery({ classId }: Props) {
         <Text className="text-base font-semibold text-gray-800">Fotos da turma</Text>
         <TouchableOpacity
           onPress={pickImage}
-          disabled={uploadMutation.isPending}
+          disabled={uploadMutation.isPending || !isOnline}
           accessibilityRole="button"
           accessibilityLabel="Adicionar foto"
           className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2"
-          style={{ opacity: uploadMutation.isPending ? 0.5 : 1 }}
+          style={{ opacity: uploadMutation.isPending || !isOnline ? 0.5 : 1 }}
         >
           <Ionicons name="image" size={16} color="#374151" />
           <Text className="text-sm font-medium text-gray-700 ml-1.5">
@@ -58,6 +61,14 @@ export function BibleCourseClassPhotoGallery({ classId }: Props) {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Foto de turma fica fora da fila offline (decisão 1 do epic 167): o
+          upload é pesado e não sobrevive bem à espera (story 171). */}
+      {!isOnline && (
+        <View className="mb-2">
+          <OfflineNotice message="Precisa de conexão para enviar fotos da turma." />
+        </View>
+      )}
 
       {uploadMutation.isError && (
         <Text className="text-xs text-red-600 mb-1">

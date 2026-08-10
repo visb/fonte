@@ -3,6 +3,8 @@ import { FlatList, RefreshControl, Text, TouchableOpacity, View } from 'react-na
 import { Ionicons } from '@expo/vector-icons';
 import { WishlistStatus } from '@fonte/types';
 import { useAuth } from '@/lib/auth';
+import { useIsOnline } from '@/lib/offline/network';
+import { OfflineNotice } from '@/components/shared/OfflineNotice';
 import {
   useApproveWishlistItem,
   usePendingWishlistItems,
@@ -34,6 +36,7 @@ function ResidentWishlistPage({ residentId }: { residentId: string }) {
   const [activeTab, setActiveTab] = useState<ResidentTab>('Aprovados');
   const [addOpen, setAddOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const isOnline = useIsOnline();
 
   const { data: items = [], refetch } = useWishlistItems(residentId);
   const removeMutation = useRemoveWishlistItem(residentId);
@@ -92,9 +95,19 @@ function ResidentWishlistPage({ residentId }: { residentId: string }) {
         }
       />
 
+      {/* Pedido depende da família responder: fica fora da fila offline
+          (decisão 1 do epic 167) e avisa em vez de falhar (story 171). */}
+      {!isOnline && (
+        <View className="absolute bottom-6 left-4 right-24">
+          <OfflineNotice message="Precisa de conexão para pedir um item." />
+        </View>
+      )}
+
       <TouchableOpacity
         accessibilityLabel="Adicionar item"
         onPress={() => setAddOpen(true)}
+        disabled={!isOnline}
+        style={{ opacity: isOnline ? 1 : 0.5 }}
         className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-[#272950] items-center justify-center shadow-lg"
       >
         <Ionicons name="add" size={28} color="#fff" />

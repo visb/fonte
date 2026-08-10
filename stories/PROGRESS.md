@@ -37,7 +37,7 @@ Rodada aberta: **offline-first do ops.fonte (epic 167) + idempotência de escrit
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 172 — idempotência de escrita no backend | [ ] | — | — | — |
+| 1 | 172 — idempotência de escrita no backend | [OK] | api 1469 unit / 522 e2e / api-client 286 | df482dc | e8bed67 |
 | 2 | 168 — persistência de cache e estado de rede | [ ] | — | — | — |
 | 3 | 169 — outbox e replay de escrita | [ ] | — | — | — |
 | 4 | 170 — tela de pendências de sincronização | [ ] | — | — | — |
@@ -45,7 +45,10 @@ Rodada aberta: **offline-first do ops.fonte (epic 167) + idempotência de escrit
 
 ## Log
 
-<vazio>
+```
+[OK] 172 — testes: api 1469 unit + 522 e2e + api-client 286, cobertura do escopo 100/90+ — commit: df482dc — merge: e8bed67 — 2026-08-09
+     Header `Idempotency-Key` + tabela `idempotency_keys` + `@Idempotent()`/interceptor global. Decisão 9 da 169 já corrigida no plano dela.
+```
 
 ## Resumo final
 

@@ -15,6 +15,7 @@
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Idempotent } from '../../common/decorators/idempotent.decorator';
 import { Role } from '@fonte/types';
 import { SupplyRoomService } from './supply-room.service';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -36,6 +37,7 @@ export class SupplyRoomController {
 
   @Post('items')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  @Idempotent()
   createItem(@Body() dto: CreateItemDto) {
     return this.service.createItem(dto);
   }
@@ -67,8 +69,10 @@ export class SupplyRoomController {
     return this.service.findMovements(houseId, itemId);
   }
 
+  // Despensa também não tem estorno — mesma razão do almoxarifado (story 172).
   @Post('movements')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  @Idempotent()
   createMovement(@Body() dto: CreateMovementDto) {
     return this.service.createMovement(dto);
   }

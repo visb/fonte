@@ -15,6 +15,7 @@
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Idempotent } from '../../common/decorators/idempotent.decorator';
 import { Role } from '@fonte/types';
 import { StoreroomService } from './storeroom.service';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -36,6 +37,7 @@ export class StoreroomController {
 
   @Post('items')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  @Idempotent()
   createItem(@Body() dto: CreateItemDto) {
     return this.service.createItem(dto);
   }
@@ -67,8 +69,12 @@ export class StoreroomController {
     return this.service.findMovements(houseId, itemId);
   }
 
+  // Almoxarifado não tem estorno (BUSINESS_RULES): um IN duplicado pelo replay
+  // da outbox vira divergência de inventário que ninguém desfaz. É o caso que
+  // motiva a story 172.
   @Post('movements')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  @Idempotent()
   createMovement(@Body() dto: CreateMovementDto) {
     return this.service.createMovement(dto);
   }

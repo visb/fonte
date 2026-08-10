@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { getErrorMessage } from '@/lib/errors';
 import { useAuth } from '@/lib/auth';
+import { PasswordInput } from '@/components/shared/PasswordInput';
 
 const schema = z
   .object({
@@ -54,12 +55,11 @@ export function PasswordChangeForm() {
             control={control}
             name="password"
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
+              <PasswordInput
                 className={INPUT_CLASS}
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
-                secureTextEntry
                 placeholder="••••••••"
               />
             )}
@@ -75,12 +75,11 @@ export function PasswordChangeForm() {
             control={control}
             name="confirm"
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
+              <PasswordInput
                 className={INPUT_CLASS}
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
-                secureTextEntry
                 placeholder="••••••••"
               />
             )}

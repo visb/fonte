@@ -1,5 +1,12 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 
+// @expo/vector-icons depende de fontes nativas (indisponível no jest-expo): stub.
+// O PasswordInput (story 173) usa Ionicons no botão de "ver senha".
+jest.mock('@expo/vector-icons', () => {
+  const { Text } = require('react-native');
+  return { Ionicons: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
+});
+
 const mockLogin = jest.fn();
 let mockSessionExpired = false;
 jest.mock('@/lib/auth', () => {
@@ -103,6 +110,24 @@ describe('LoginForm', () => {
     fireEvent.press(screen.getByText('Entrar'));
 
     await waitFor(() => expect(screen.queryByLabelText('aviso-sessao-expirada')).toBeNull());
+  });
+
+  // Story 173 — o campo de senha ganhou o botão "ver senha"; o valor digitado
+  // (fonte de verdade do form) sobrevive ao toggle.
+  it('alterna a visibilidade da senha sem perder o valor digitado', () => {
+    render(<LoginForm onSuccess={jest.fn()} onMustChangePassword={jest.fn()} />);
+
+    fireEvent.changeText(screen.getByLabelText('input-senha'), 'segredo');
+    expect(screen.getByLabelText('input-senha').props.secureTextEntry).toBe(true);
+
+    fireEvent.press(screen.getByLabelText('mostrar-senha'));
+
+    const input = screen.getByLabelText('input-senha');
+    expect(input.props.secureTextEntry).toBe(false);
+    expect(input.props.value).toBe('segredo');
+
+    fireEvent.press(screen.getByLabelText('ocultar-senha'));
+    expect(screen.getByLabelText('input-senha').props.secureTextEntry).toBe(true);
   });
 
   it('preenche credenciais de teste inválidas (__DEV__)', async () => {

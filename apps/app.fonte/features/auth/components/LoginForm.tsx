@@ -4,6 +4,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth, MustChangePasswordError } from '@/lib/auth';
+import { PasswordInput } from '@/components/shared/PasswordInput';
 
 const schema = z.object({
   identifier: z.string().min(1, 'Informe e-mail ou telefone'),
@@ -78,11 +79,10 @@ export function LoginForm({ onSuccess, onMustChangePassword }: Props) {
           control={control}
           name="password"
           render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
+            <PasswordInput
               accessibilityLabel="input-senha"
               className={INPUT_CLASS}
               placeholder="••••••••"
-              secureTextEntry
               value={value}
               onChangeText={onChange}
               onBlur={onBlur}

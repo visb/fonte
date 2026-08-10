@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PasswordInput } from '@/components/shared/PasswordInput';
 
 // O servo entra com WhatsApp (identificador primário — story 97) ou e-mail.
 const loginSchema = z.object({
@@ -67,7 +68,7 @@ export function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
-              <Input id="password" type="password" {...register('password')} />
+              <PasswordInput id="password" {...register('password')} />
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password.message}</p>
               )}

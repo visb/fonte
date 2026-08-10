@@ -10,6 +10,7 @@ import type {
   ActivityEvent,
   ActivityAttachment,
 } from '../types.js';
+import { requestConfig, type RequestOptions } from '../request-options.js';
 
 export function createActivitiesModule(http: AxiosInstance) {
   return {
@@ -19,8 +20,8 @@ export function createActivitiesModule(http: AxiosInstance) {
     getById: (id: string) =>
       http.get<Activity>(`/activities/${id}`).then((r) => r.data),
 
-    create: (data: CreateActivityInput) =>
-      http.post<Activity>('/activities', data).then((r) => r.data),
+    create: (data: CreateActivityInput, options?: RequestOptions) =>
+      http.post<Activity>('/activities', data, ...requestConfig(options)).then((r) => r.data),
 
     update: (id: string, data: UpdateActivityInput) =>
       http.patch<Activity>(`/activities/${id}`, data).then((r) => r.data),
@@ -37,9 +38,17 @@ export function createActivitiesModule(http: AxiosInstance) {
         .get<ActivityComment[]>(`/activities/${activityId}/comments`)
         .then((r) => r.data),
 
-    addComment: (activityId: string, data: CreateActivityCommentInput) =>
+    addComment: (
+      activityId: string,
+      data: CreateActivityCommentInput,
+      options?: RequestOptions,
+    ) =>
       http
-        .post<ActivityComment>(`/activities/${activityId}/comments`, data)
+        .post<ActivityComment>(
+          `/activities/${activityId}/comments`,
+          data,
+          ...requestConfig(options),
+        )
         .then((r) => r.data),
 
     deleteComment: (activityId: string, commentId: string) =>

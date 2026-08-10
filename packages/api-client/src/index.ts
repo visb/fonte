@@ -1,5 +1,6 @@
 export { createApiClient } from './client.js';
 export type { ApiClientConfig, ApiClient, UnauthorizedContext } from './client.js';
+export type { RequestOptions } from './request-options.js';
 export type {
   LoginInput,
   LoginResponse,

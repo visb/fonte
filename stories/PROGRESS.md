@@ -29,12 +29,16 @@ Rodada aberta: **173 + 174** (UX de senha e safe area dos apps mobile).
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 173 — botão "ver senha" em todos os campos de senha | [ ] | — | — | — |
+| 1 | 173 — botão "ver senha" em todos os campos de senha | [OK] | adm 1610 / ops 948 / app 137 · e2e-web 14+4 | ba1e9cf | 98bf58c |
 | 2 | 174 — header do ops.fonte cortado pela status bar | [ ] | — | — | — |
 
 ## Log
 
-<vazio>
+[OK] 173 — testes: adm:unit 1610 ✓, ops:unit 948 ✓, app:unit 137 ✓, e2e-web ops 14/14 e app 4/4 sem
+edição; cobertura 93.19/93.43/92.56 (PasswordInput 100% nos 3 apps). Playwright adm 176 pass / 3 fail
+pré-existentes (`resident-attachments.spec.ts`, falha 4 na main limpa). — commit: ba1e9cf —
+merge: 98bf58c — 2026-08-10 — PENDENTE-MANUAL: Maestro (`adb devices` vazio, sem emulador) e
+verificação visual do toggle em device Android.
 
 ## Resumo final
 

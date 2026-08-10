@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ActivityStatus } from '@fonte/types';
 import type { Activity } from '@fonte/api-client';
 import { useAuth } from '@/lib/auth';
+import { useIsOnline } from '@/lib/offline/network';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
@@ -34,6 +35,7 @@ export function ActivitiesPage() {
     staff?.houseId,
   );
   const changeStatus = useChangeActivityStatus();
+  const isOnline = useIsOnline();
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -84,6 +86,7 @@ export function ActivitiesPage() {
               router.push(`/(app)/activities/${activity.id}`)
             }
             pending={changeStatus.isPending}
+            isOnline={isOnline}
           />
         )}
         renderSectionFooter={({ section }) =>

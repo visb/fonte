@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import type { ActivityStatus } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
+import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { useCreateActivity } from '@/features/activities/hooks/useActivities';
 
 const quickAddSchema = z.object({
@@ -25,6 +26,7 @@ interface Props {
  */
 export function QuickAddCard({ status, houseId }: Props) {
   const mutation = useCreateActivity();
+  const submit = useFieldSubmit(mutation);
   const {
     control,
     handleSubmit,
@@ -36,10 +38,13 @@ export function QuickAddCard({ status, houseId }: Props) {
   });
 
   const onSubmit = (data: QuickAddData) => {
-    mutation.mutate(
-      { title: data.title, status, houseId: houseId ?? null },
-      { onSuccess: () => reset({ title: '' }) },
-    );
+    // Offline o card já aparece na lista como pendente e o campo limpa na hora:
+    // esperar o `onSuccess` deixaria o operador sem saber se salvou (story 171).
+    const clear = () => reset({ title: '' });
+    submit({ title: data.title, status, houseId: houseId ?? null }, {
+      onSent: clear,
+      onQueued: clear,
+    });
   };
 
   return (

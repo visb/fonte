@@ -31,6 +31,12 @@ interface CreateSupplyItemInput {
   unit: string;
   category: SupplyRoomCategory;
   houseId: string;
+  /**
+   * Id `local:<uuid>` gerado pela tela quando o cadastro pode acontecer sem
+   * sinal (story 171): é por ele que a movimentação seguinte referencia o item
+   * enquanto o cadastro não sobe.
+   */
+  localId?: string;
 }
 
 export function useSupplyRoomItems(houseId: string | null | undefined) {
@@ -60,7 +66,7 @@ export function useCreateSupplyMovement() {
 export function useCreateSupplyItem() {
   return useOutboxMutation<CreateSupplyItemInput, SupplyItemVariables, SupplyRoomItem>(
     OUTBOX_MUTATION_KEYS.supplyRoomCreateItem,
-    (data) => ({ data }),
+    ({ localId, ...data }) => ({ data, localId }),
   );
 }
 

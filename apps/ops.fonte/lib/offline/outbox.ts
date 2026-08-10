@@ -21,6 +21,8 @@ import {
 } from '@tanstack/react-query';
 import { getErrorMessage } from '@/lib/errors';
 import { appendDeadLetter } from './deadLetter';
+import { isUnresolvedLocalIdError } from './localIds';
+import { createUuid } from './uuid';
 
 /** Chave de mutation da outbox: sempre `[recurso, ação]`. */
 export type OutboxMutationKey = readonly [string, string];
@@ -101,21 +103,9 @@ export interface OutboxVariables {
   idempotencyKey?: string;
 }
 
-/**
- * UUID v4. O Hermes (RN) não tem WebCrypto, e o backend rejeita com 400 chave
- * fora do formato UUID (`IdempotencyInterceptor`), então há fallback próprio.
- * Aleatoriedade fraca não é problema aqui: a chave só precisa ser única por
- * lançamento, não imprevisível.
- */
+/** UUID v4 (implementação em `uuid.ts`, compartilhada com os ids locais). */
 export function createIdempotencyKey(): string {
-  const webCrypto = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
-  if (typeof webCrypto?.randomUUID === 'function') return webCrypto.randomUUID();
-
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
-    const random = Math.floor(Math.random() * 16);
-    const value = char === 'x' ? random : (random % 4) + 8;
-    return value.toString(16);
-  });
+  return createUuid();
 }
 
 /**
@@ -180,6 +170,9 @@ export function isDefinitiveFailure(error: unknown): boolean {
 export const MAX_SERVER_ERROR_RETRIES = 3;
 
 export function outboxRetry(failureCount: number, error: unknown): boolean {
+  // Item local que nunca subiu (story 171): não saiu do dispositivo, então não
+  // tem `response` — sem esta linha cairia em "erro de rede" e giraria eterno.
+  if (isUnresolvedLocalIdError(error)) return false;
   if (isDefinitiveFailure(error)) return false;
   if (isNetworkError(error)) return true;
   return failureCount < MAX_SERVER_ERROR_RETRIES;

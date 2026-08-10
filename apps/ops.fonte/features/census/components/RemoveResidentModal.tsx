@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import type { House } from '@fonte/api-client';
 import { getErrorMessage } from '@/lib/errors';
+import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { DatePickerModal } from '@/components/DatePickerModal';
 import {
   useDischargeResident,
@@ -52,6 +53,9 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
   const dischargeMutation = useDischargeResident(houseId);
   const evadeMutation = useEvadeResident(houseId);
   const transferMutation = useTransferResident(houseId);
+  const submitDischarge = useFieldSubmit(dischargeMutation);
+  const submitEvade = useFieldSubmit(evadeMutation);
+  const submitTransfer = useFieldSubmit(transferMutation);
 
   const isPending = dischargeMutation.isPending || evadeMutation.isPending || transferMutation.isPending;
   const otherHouses = houses.filter((h: House) => h.id !== houseId);
@@ -67,18 +71,33 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
     onClose();
   }
 
-  function onError(error: unknown) {
-    Alert.alert('Erro', getErrorMessage(error, 'Não foi possível concluir a ação.'));
-  }
+  /**
+   * Sem sinal a mudança de situação entra na fila (story 171) e o modal fecha na
+   * hora. Se o backend recusar a transição no replay (regra de status é do
+   * service — `BUSINESS_RULES.md`), o item aparece em "Não enviadas" com o
+   * motivo, nunca some em silêncio.
+   */
+  const handlers = {
+    onSent: done,
+    onQueued: () => {
+      done();
+      Alert.alert(
+        'Salvo no aparelho',
+        'Sem conexão agora: a mudança será enviada assim que a conexão voltar.',
+      );
+    },
+    onFailed: (error: unknown) =>
+      Alert.alert('Erro', getErrorMessage(error, 'Não foi possível concluir a ação.')),
+  };
 
   function handleConfirm() {
     if (!resident || !selectedAction) return;
     if (selectedAction === 'discharge') {
-      dischargeMutation.mutate({ residentId: resident.id, exitDate }, { onSuccess: done, onError });
+      submitDischarge({ residentId: resident.id, exitDate }, handlers);
     } else if (selectedAction === 'evade') {
-      evadeMutation.mutate({ residentId: resident.id, exitDate }, { onSuccess: done, onError });
+      submitEvade({ residentId: resident.id, exitDate }, handlers);
     } else if (selectedAction === 'transfer' && targetHouseId) {
-      transferMutation.mutate({ residentId: resident.id, targetHouseId }, { onSuccess: done, onError });
+      submitTransfer({ residentId: resident.id, targetHouseId }, handlers);
     }
   }
 

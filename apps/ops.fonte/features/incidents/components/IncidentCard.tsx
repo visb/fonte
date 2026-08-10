@@ -1,5 +1,7 @@
 import { View, Text } from "react-native";
 import { SEVERITY_CONFIG } from "@/lib/constants";
+import { isOutboxEntityId } from "@/lib/offline/outbox";
+import { PendingBadge } from "@/components/shared/PendingBadge";
 
 function fmt(iso: string) {
   const [y, m, d] = iso.split("-");
@@ -43,6 +45,12 @@ export function IncidentCard({ item }: Props) {
         <Text className="text-xs text-blue-600 mt-0.5">
           Filho: {item.resident.name}
         </Text>
+      )}
+      {/* Registrada sem sinal: está na fila, ainda não chegou ao servidor. */}
+      {isOutboxEntityId(item.id) && (
+        <View className="mt-2">
+          <PendingBadge />
+        </View>
       )}
     </View>
   );

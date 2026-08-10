@@ -12,7 +12,10 @@ import { useAuth } from '@/lib/auth';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { OfflineNotice } from '@/components/shared/OfflineNotice';
 import { getErrorMessage } from '@/lib/errors';
+import { useIsOnline } from '@/lib/offline/network';
+import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import {
   useActivityComments,
   useAddComment,
@@ -37,6 +40,8 @@ export function ActivityComments({ activityId }: { activityId: string }) {
 
   const { data: comments, isLoading, error, refetch } = useActivityComments(activityId);
   const addMutation = useAddComment(activityId);
+  const submitComment = useFieldSubmit(addMutation);
+  const isOnline = useIsOnline();
   const deleteMutation = useDeleteComment(activityId);
   const uploadAttachment = useUploadCommentAttachment(activityId);
   const deleteAttachment = useDeleteAttachment(activityId);
@@ -52,10 +57,10 @@ export function ActivityComments({ activityId }: { activityId: string }) {
   });
 
   const onSubmit = (data: FormData) => {
-    addMutation.mutate(
-      { body: data.body.trim() },
-      { onSuccess: () => reset({ body: '' }) },
-    );
+    // Comentário é fluxo de campo: offline entra na fila e o campo limpa na
+    // hora (story 171). Áudio não — depende de upload, que exige rede.
+    const clear = () => reset({ body: '' });
+    submitComment({ body: data.body.trim() }, { onSent: clear, onQueued: clear });
   };
 
   // Comentário só de áudio (story 74): cria o comentário com body vazio e anexa
@@ -131,11 +136,18 @@ export function ActivityComments({ activityId }: { activityId: string }) {
         </Text>
       )}
 
-      {/* Comentário só de áudio (story 74). */}
-      <AudioRecorder
-        onRecorded={onRecordAudioComment}
-        uploading={addMutation.isPending || uploadAttachment.isPending}
-      />
+      {/* Comentário só de áudio (story 74): o upload do arquivo precisa de rede,
+          então sem sinal a gravação sai de cena com o motivo (story 171). */}
+      {isOnline ? (
+        <AudioRecorder
+          onRecorded={onRecordAudioComment}
+          uploading={addMutation.isPending || uploadAttachment.isPending}
+        />
+      ) : (
+        <View className="mt-3">
+          <OfflineNotice message="Precisa de conexão para gravar um áudio." />
+        </View>
+      )}
 
       <TouchableOpacity
         className="bg-indigo-600 rounded-lg py-3 items-center mt-3"

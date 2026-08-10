@@ -5,6 +5,7 @@ import { ResidentStatus } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { useAuth } from '@/lib/auth';
 import { getErrorMessage } from '@/lib/errors';
+import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
@@ -26,6 +27,7 @@ export function CensusPage() {
   const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
   const [concludeOpen, setConcludeOpen] = useState(false);
   const concludeMutation = useConcludeCensus(houseId ?? '');
+  const submitConclude = useFieldSubmit(concludeMutation);
 
   if (!houseId) return <EmptyState message="Você não está vinculado a uma casa." />;
   if (isLoading) return <LoadingState />;
@@ -47,14 +49,23 @@ export function CensusPage() {
   const allConfirmed = total > 0 && confirmedCount === total;
 
   function handleConclude() {
-    concludeMutation.mutate(
+    submitConclude(
       { houseId: houseId!, confirmedCount, total },
       {
-        onSuccess: () => {
+        onSent: () => {
           setConcludeOpen(false);
           Alert.alert('Contagem concluída', 'O ADM foi notificado.');
         },
-        onError: (err) =>
+        // A contagem acontece no pátio, onde quase nunca há sinal: offline ela
+        // entra na fila e o ADM é notificado quando subir (story 171).
+        onQueued: () => {
+          setConcludeOpen(false);
+          Alert.alert(
+            'Contagem salva',
+            'Sem conexão agora: será enviada assim que a conexão voltar.',
+          );
+        },
+        onFailed: (err) =>
           Alert.alert('Erro', getErrorMessage(err, 'Não foi possível concluir a contagem.')),
       },
     );

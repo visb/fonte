@@ -8,7 +8,8 @@ import { MovementType } from "@fonte/types";
 import type { StoreroomItem } from "@fonte/api-client";
 import { useAuth } from "@/lib/auth";
 import { getErrorMessage } from "@/lib/errors";
-import { useIsOnline } from "@/lib/offline/network";
+import { useFieldSubmit } from "@/lib/offline/fieldSubmit";
+import { createLocalId } from "@/lib/offline/localIds";
 import {
   useStoreroomItems,
   useCreateMovement,
@@ -46,7 +47,8 @@ export function MovementPage() {
   const { data: items = [] } = useStoreroomItems(staff?.houseId);
   const createItemMutation = useCreateStoreroomItem();
   const mutation = useCreateMovement();
-  const isOnline = useIsOnline();
+  const submitItem = useFieldSubmit(createItemMutation);
+  const submitMovement = useFieldSubmit(mutation);
 
   const {
     control,
@@ -70,8 +72,7 @@ export function MovementPage() {
   const selectedItem = items.find((i) => i.id === currentItemId);
 
   function handleSelectItem(item: StoreroomItem) {
-    setValue("itemId", item.id);
-    setSearch(item.name);
+    selectItem(item.id, item.name);
   }
 
   function handleSearchChange(text: string) {
@@ -79,15 +80,23 @@ export function MovementPage() {
     setValue("itemId", "");
   }
 
+  function selectItem(id: string, name: string) {
+    setValue("itemId", id);
+    setSearch(name);
+  }
+
   function handleCreateNewItem(unit: string) {
-    createItemMutation.mutate(
-      { name: search.trim(), unit, houseId: staff!.houseId! },
+    const name = search.trim();
+    // Sem sinal o cadastro fica na fila e o id real só chega quando subir: o id
+    // local é o que permite lançar a movimentação agora (story 171, decisão 2).
+    const localId = createLocalId();
+
+    submitItem(
+      { name, unit, houseId: staff!.houseId!, localId },
       {
-        onSuccess: (newItem) => {
-          setValue("itemId", newItem.id);
-          setSearch(newItem.name);
-        },
-        onError: (err) =>
+        onSent: (newItem) => selectItem(newItem.id, newItem.name),
+        onQueued: () => selectItem(localId, name),
+        onFailed: (err) =>
           Alert.alert(
             "Erro",
             getErrorMessage(err, "Não foi possível cadastrar o item."),
@@ -103,9 +112,7 @@ export function MovementPage() {
   const onSubmit = (data: FormData) => {
     // Sem sinal o lançamento entra na fila e o envio só acontece depois: esperar
     // o `onSuccess` deixaria o operador travado no botão girando (story 169).
-    const queuedOffline = !isOnline;
-
-    mutation.mutate(
+    submitMovement(
       {
         itemId: data.itemId,
         type: data.type,
@@ -116,22 +123,16 @@ export function MovementPage() {
         responsibleName: staff?.name,
       },
       {
-        onSuccess: () => {
-          if (!queuedOffline) backToList("Movimentação registrada com sucesso.");
-        },
-        onError: (err) => {
-          if (queuedOffline) return;
+        onSent: () => backToList("Movimentação registrada com sucesso."),
+        onQueued: () =>
+          backToList("Movimentação salva. Será enviada quando a conexão voltar."),
+        onFailed: (err) =>
           Alert.alert(
             "Erro",
             getErrorMessage(err, "Não foi possível registrar a movimentação."),
-          );
-        },
+          ),
       },
     );
-
-    if (queuedOffline) {
-      backToList("Movimentação salva. Será enviada quando a conexão voltar.");
-    }
   };
 
   return (

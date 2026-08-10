@@ -18,6 +18,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Gender } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
+import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { DatePickerModal } from '@/components/DatePickerModal';
 import { useCensusAddResident } from '../hooks/useCensus';
 
@@ -62,6 +63,7 @@ export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props
   const [photo, setPhoto] = useState<{ uri: string; type: string } | null>(null);
   const [activeDatePicker, setActiveDatePicker] = useState<'entry' | 'birth' | null>(null);
   const createMutation = useCensusAddResident(houseId);
+  const submit = useFieldSubmit(createMutation);
 
   const {
     control,
@@ -96,7 +98,12 @@ export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props
   }
 
   function onSubmit(values: FormValues) {
-    createMutation.mutate(
+    function done() {
+      onSuccess();
+      onClose();
+    }
+
+    submit(
       {
         data: {
           name: values.name.trim(),
@@ -111,11 +118,19 @@ export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props
         photo: photo ?? undefined,
       },
       {
-        onSuccess: () => {
-          onSuccess();
-          onClose();
+        onSent: done,
+        // Contagem no pátio, sem sinal: o filho entra na fila (com a foto
+        // encadeada, story 169) e o modal fecha na hora — segurar o operador
+        // aqui é o que faria o lançamento se perder (story 171).
+        onQueued: () => {
+          done();
+          Alert.alert(
+            'Salvo no aparelho',
+            'Sem conexão agora: o filho será enviado assim que a conexão voltar.',
+          );
         },
-        onError: (error) => Alert.alert('Erro', getErrorMessage(error, 'Não foi possível adicionar o filho.')),
+        onFailed: (error) =>
+          Alert.alert('Erro', getErrorMessage(error, 'Não foi possível adicionar o filho.')),
       },
     );
   }

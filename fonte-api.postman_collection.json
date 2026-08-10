@@ -55,6 +55,10 @@
     {
       "key": "notificationId",
       "value": ""
+    },
+    {
+      "key": "idempotencyKey",
+      "value": ""
     }
   ],
   "auth": {
@@ -1058,6 +1062,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {
@@ -2512,6 +2522,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {
@@ -2774,6 +2790,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {
@@ -2800,6 +2822,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {
@@ -3023,6 +3051,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {
@@ -3120,6 +3154,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {
@@ -3173,6 +3213,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {
@@ -3270,6 +3316,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {
@@ -4540,6 +4592,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {
@@ -4639,6 +4697,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {
@@ -5496,6 +5560,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {
@@ -5612,6 +5682,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Story 172 — opcional. UUID por lançamento: o reenvio com a MESMA chave devolve a resposta original sem duplicar o registro. Sem o header, comportamento de sempre.",
+                "disabled": true
               }
             ],
             "body": {

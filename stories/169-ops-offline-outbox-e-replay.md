@@ -47,13 +47,13 @@ Estado verificado:
    existe.
 8. **Update otimista** com `onMutate` gravando no cache (o lançamento aparece na hora, marcado como
    pendente) e rollback no erro definitivo. É o que faz o app **parecer** offline-first.
-9. **Chave de idempotência no header `Idempotency-Key`** (UUID), não no corpo da requisição.
-   `services/api/src/main.ts:27-31` usa `ValidationPipe({ whitelist: true, forbidNonWhitelisted:
-   true })` ⇒ campo extra no body é **400**, não é descartado em silêncio. A chave é gerada **uma
-   vez** no `onMutate`, guardada junto do item na fila e **reusada em todo reenvio** do mesmo item —
-   gerar chave nova a cada retry anula a idempotência. O backend que consome esse header é a
-   story [[172]], que **precede** esta; enquanto ela não estiver implementada, o header é ignorado
-   pelo servidor e não atrapalha nada.
+9. **Chave de idempotência no header `Idempotency-Key`** (UUID), nunca em campo do corpo — o
+   contrato de negócio não carrega metadado de transporte (decisão travada da [[172]], já
+   implementada). Na prática: `options.idempotencyKey` do `@fonte/api-client` (`RequestOptions`)
+   nas escritas do escopo. A chave é gerada **uma vez** no `onMutate`, guardada junto do item na
+   fila e **reusada em todo reenvio** do mesmo item — gerar chave nova a cada retry anula a
+   idempotência. O servidor devolve a resposta original da primeira tentativa, sem duplicar o
+   lançamento; header ausente mantém o comportamento de sempre.
 
 ## Desenho
 
@@ -138,5 +138,6 @@ nenhum código novo entra sem teste. Rodar `pnpm test:ops:unit:cov`; **não redu
 
 - UI de pendências e ações de reenviar/descartar ([[170]]).
 - Migrar as telas para as novas mutations e o prefetch da casa ([[171]]).
-- Dedupe/idempotência no backend — story [[172]], que precede esta.
+- Dedupe/idempotência no backend — story [[172]], já implementada (tabela `idempotency_keys` +
+  `@Idempotent()`); aqui só se **usa** o header.
 - Sync em background com o app fechado.

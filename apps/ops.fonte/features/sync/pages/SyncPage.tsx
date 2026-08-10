@@ -10,6 +10,13 @@ import { DiscardItemDialog } from '../components/DiscardItemDialog';
 import { SYNC_SECTION_DESCRIPTIONS, SYNC_SECTION_TITLES } from '../constants';
 import { useRetryFailed, useSyncQueue, type SyncQueueItem } from '../hooks/useSyncQueue';
 
+interface SyncSectionData {
+  title: string;
+  description: string;
+  /** As duas origens convivem numa `SectionList` só (sem lista aninhada). */
+  data: SyncQueueItem[];
+}
+
 /**
  * Pendências de sincronização (story 170). Só orquestra: as duas seções vêm do
  * `useSyncQueue`, o descarte mora no dialog e o banner de offline vem do layout
@@ -24,15 +31,13 @@ export function SyncPage() {
   if (error) return <ErrorState message="Não foi possível ler a fila de sincronização." />;
 
   // Seção sem item não aparece: lista vazia com cabeçalho só faz ruído.
-  const sections = [
+  const sections: SyncSectionData[] = [
     {
-      key: 'failed' as const,
       title: SYNC_SECTION_TITLES.failed,
       description: SYNC_SECTION_DESCRIPTIONS.failed,
       data: failed,
     },
     {
-      key: 'pending' as const,
       title: SYNC_SECTION_TITLES.pending,
       description: SYNC_SECTION_DESCRIPTIONS.pending,
       data: pending,
@@ -58,14 +63,18 @@ export function SyncPage() {
             count={section.data.length}
           />
         )}
-        renderItem={({ item }) => (
-          <SyncItemCard
-            item={item}
-            onRetry={item.status === 'failed' ? (target) => retry.mutate(target) : undefined}
-            onDiscard={setItemToDiscard}
-            isRetrying={retry.isPending}
-          />
-        )}
+        renderItem={({ item }) => {
+          // Const narrowing: só item recusado tem o que reenviar (decisão 3).
+          const failed = item.status === 'failed' ? item : null;
+          return (
+            <SyncItemCard
+              item={item}
+              onRetry={failed ? () => retry.mutate(failed) : undefined}
+              onDiscard={setItemToDiscard}
+              isRetrying={retry.isPending}
+            />
+          );
+        }}
       />
 
       <DiscardItemDialog item={itemToDiscard} onClose={() => setItemToDiscard(null)} />

@@ -17,14 +17,13 @@ interface Props {
 export function DiscardItemDialog({ item, onClose }: Props) {
   const discard = useDiscardItem();
 
-  const handleConfirm = () => {
-    if (!item) return;
-    discard.mutate(item, { onSettled: onClose });
-  };
+  if (!item) return null;
+
+  const handleConfirm = () => discard.mutate(item, { onSettled: onClose });
 
   return (
     <Modal
-      visible={!!item}
+      visible
       transparent
       animationType="fade"
       onRequestClose={onClose}
@@ -34,8 +33,8 @@ export function DiscardItemDialog({ item, onClose }: Props) {
         <View className="bg-white rounded-2xl w-full px-5 py-5">
           <Text className="text-base font-semibold text-gray-900">Descartar lançamento?</Text>
           <Text className="text-sm text-gray-600 mt-2">
-            {item?.label ?? ''}
-            {item?.detail ? ` — ${item.detail}` : ''}
+            {item.label}
+            {item.detail ? ` — ${item.detail}` : ''}
           </Text>
           <Text className="text-sm text-gray-600 mt-2">
             Este lançamento nunca chegou ao servidor. Descartar apaga o registro do aparelho e

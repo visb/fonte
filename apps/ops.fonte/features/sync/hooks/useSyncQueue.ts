@@ -30,24 +30,40 @@ import { syncItemDetail, syncItemLabel } from '../constants';
 
 export type SyncItemStatus = 'pending' | 'failed';
 
-export interface SyncQueueItem {
+interface SyncQueueItemBase {
   /** Único na tela: a origem entra no id porque os dois espaços de id são distintos. */
   id: string;
-  status: SyncItemStatus;
   mutationKey: string;
   label: string;
   detail: string | null;
-  /** Mensagem do backend — só existe em item recusado. */
-  error?: string;
   createdAt: number;
   variables: unknown;
-  /** `mutationId` do React Query, quando o item ainda está na fila. */
-  mutationId?: number;
-  /** Chave de idempotência, quando o item veio da dead-letter. */
-  entryId?: string;
 }
 
-function toPendingSyncItem(item: PendingOutboxItem): SyncQueueItem {
+/** Ainda em voo: sobe sozinho quando a rede voltar. */
+export interface PendingSyncItem extends SyncQueueItemBase {
+  status: 'pending';
+  /** `mutationId` do React Query — estável enquanto o item está na fila. */
+  mutationId: number;
+}
+
+/** Recusado pelo servidor: só sai da tela por ação do operador. */
+export interface FailedSyncItem extends SyncQueueItemBase {
+  status: 'failed';
+  /** Chave de idempotência: id do item na dead-letter e no reenvio (story 172). */
+  entryId: string;
+  /** Mensagem do backend — é o que o operador lê para decidir. */
+  error: string;
+}
+
+/**
+ * União discriminada de propósito: item pendente **tem** `mutationId` e item
+ * recusado **tem** `entryId` e erro. Um tipo só, com tudo opcional, obrigaria a
+ * guardas defensivas que escondem a origem real de cada ação.
+ */
+export type SyncQueueItem = PendingSyncItem | FailedSyncItem;
+
+function toPendingSyncItem(item: PendingOutboxItem): PendingSyncItem {
   return {
     id: `pending:${item.id}`,
     status: 'pending',
@@ -60,7 +76,7 @@ function toPendingSyncItem(item: PendingOutboxItem): SyncQueueItem {
   };
 }
 
-function toFailedSyncItem(entry: DeadLetterEntry): SyncQueueItem {
+function toFailedSyncItem(entry: DeadLetterEntry): FailedSyncItem {
   return {
     id: `failed:${entry.id}`,
     status: 'failed',
@@ -123,9 +139,9 @@ function useDeadLetterEntries(): DeadLetterState {
 
 export interface SyncQueue {
   /** Esperando rede (ou tentando agora): sobem sozinhas. */
-  pending: SyncQueueItem[];
+  pending: PendingSyncItem[];
   /** Recusadas pelo servidor: só saem por ação do operador. */
-  failed: SyncQueueItem[];
+  failed: FailedSyncItem[];
   items: SyncQueueItem[];
   total: number;
   isLoading: boolean;
@@ -180,8 +196,8 @@ export function useRetryFailed() {
   return useMutation({
     // Ação local do operador: não depende de rede para acontecer.
     networkMode: 'always',
-    mutationFn: async (item: SyncQueueItem) => {
-      if (item.entryId) await removeDeadLetter(item.entryId);
+    mutationFn: async (item: FailedSyncItem) => {
+      await removeDeadLetter(item.entryId);
       enqueueOutboxMutation(
         queryClient,
         item.mutationKey.split('/') as unknown as OutboxMutationKey,
@@ -206,7 +222,7 @@ export function useDiscardItem() {
       await discardOutboxFile(attachmentPathOf(item.variables));
 
       if (item.status === 'failed') {
-        if (item.entryId) await removeDeadLetter(item.entryId);
+        await removeDeadLetter(item.entryId);
         return;
       }
 

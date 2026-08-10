@@ -7,7 +7,7 @@ import type { SyncQueueItem } from '../hooks/useSyncQueue';
 interface Props {
   item: SyncQueueItem;
   /** Só existe em item recusado — pendente não se reenvia à mão (decisão 3). */
-  onRetry?: (item: SyncQueueItem) => void;
+  onRetry?: () => void;
   onDiscard: (item: SyncQueueItem) => void;
   isRetrying?: boolean;
 }
@@ -19,7 +19,8 @@ interface Props {
  */
 export function SyncItemCard({ item, onRetry, onDiscard, isRetrying = false }: Props) {
   const presentation = syncItemPresentation(item.mutationKey);
-  const isFailed = item.status === 'failed';
+  const failed = item.status === 'failed' ? item : null;
+  const isFailed = !!failed;
 
   return (
     <View
@@ -52,18 +53,18 @@ export function SyncItemCard({ item, onRetry, onDiscard, isRetrying = false }: P
         </View>
       </View>
 
-      {isFailed && item.error ? (
+      {failed ? (
         <View className="bg-red-50 rounded-lg px-3 py-2 mt-3">
-          <Text className="text-xs text-red-700">{item.error}</Text>
+          <Text className="text-xs text-red-700">{failed.error}</Text>
         </View>
       ) : null}
 
       <View className="flex-row justify-end gap-2 mt-3">
-        {isFailed && onRetry ? (
+        {onRetry ? (
           <Pressable
             accessibilityLabel="Reenviar lançamento"
             disabled={isRetrying}
-            onPress={() => onRetry(item)}
+            onPress={onRetry}
             className={`rounded-lg px-3 py-2 ${isRetrying ? 'bg-blue-50' : 'bg-blue-600'}`}
           >
             <Text

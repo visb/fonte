@@ -34,10 +34,13 @@ import type {
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
-/** Status de um item da fila na tela. */
+/**
+ * Selo de status no card. Curto de propósito e diferente do título da seção —
+ * "Pendente" é o mesmo termo dos cards de dispensa/almoxarifado (story 169).
+ */
 export const SYNC_STATUS_LABELS = {
-  pending: 'Aguardando envio',
-  failed: 'Não enviada',
+  pending: 'Pendente',
+  failed: 'Recusada',
 } as const;
 
 export const SYNC_SECTION_TITLES = {

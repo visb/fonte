@@ -77,12 +77,13 @@ export function EditStreetSalePage({ sale }: Props) {
           ]),
         // Sem sinal a edição fica na fila (story 171): a tela volta na hora em
         // vez de travar esperando um `onSuccess` que só chega com rede.
-        onQueued: () =>
+        onQueued: () => {
+          router.back();
           Alert.alert(
             'Salvo no aparelho',
             'Sem conexão agora: a alteração será enviada assim que a conexão voltar.',
-            [{ text: 'OK', onPress: () => router.back() }],
-          ),
+          );
+        },
         onFailed: () =>
           Alert.alert('Erro', 'Não foi possível atualizar o registro.'),
       },

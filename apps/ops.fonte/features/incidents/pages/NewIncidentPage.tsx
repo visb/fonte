@@ -48,12 +48,15 @@ export function NewIncidentPage() {
       {
         onSent: () =>
           Alert.alert('Sucesso', 'Ocorrência registrada.', [{ text: 'OK', onPress: () => router.back() }]),
-        onQueued: () =>
+        // Volta primeiro e avisa depois: preso no aviso, o operador ficaria
+        // olhando um botão girando por um envio que só acontece com rede.
+        onQueued: () => {
+          router.back();
           Alert.alert(
             'Salvo no aparelho',
             'Sem conexão agora: a ocorrência será enviada assim que a conexão voltar.',
-            [{ text: 'OK', onPress: () => router.back() }],
-          ),
+          );
+        },
         onFailed: () =>
           Alert.alert('Erro', 'Não foi possível registrar a ocorrência.'),
       },

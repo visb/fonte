@@ -48,13 +48,15 @@ export function NewActivityPage() {
           Alert.alert('Sucesso', 'Rascunho criado.', [
             { text: 'OK', onPress: () => router.back() },
           ]),
-        // Sem sinal o rascunho fica na fila e já aparece na lista como pendente.
-        onQueued: () =>
+        // Sem sinal o rascunho fica na fila e já aparece na lista como
+        // pendente: volta primeiro, avisa depois.
+        onQueued: () => {
+          router.back();
           Alert.alert(
             'Salvo no aparelho',
             'Sem conexão agora: o rascunho será enviado assim que a conexão voltar.',
-            [{ text: 'OK', onPress: () => router.back() }],
-          ),
+          );
+        },
         onFailed: () =>
           Alert.alert('Erro', 'Não foi possível criar a atividade.'),
       },

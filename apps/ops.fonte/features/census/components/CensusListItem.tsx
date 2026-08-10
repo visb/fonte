@@ -53,6 +53,7 @@ export function CensusListItem({ resident, confirmed, pending, onConfirm, onRemo
         </TouchableOpacity>
       )}
       <TouchableOpacity
+        accessibilityLabel={`Remover ${resident.name}`}
         className="w-10 h-10 rounded-full items-center justify-center bg-red-50"
         onPress={onRemove}
       >

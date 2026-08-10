@@ -235,6 +235,17 @@ export default function AppLayout() {
           }}
         />
         <Tabs.Screen
+          name="sync"
+          options={{
+            title: "Pendências de envio",
+            href: null,
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="cloud-upload-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="profile"
           options={{
             title: "Perfil",

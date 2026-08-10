@@ -8,6 +8,7 @@ import { useHouseById } from "@/features/house-settings/hooks/useHouseSettings";
 import { WelcomeHeader } from "@/features/dashboard/components/WelcomeHeader";
 import { StatCards } from "@/features/dashboard/components/StatCards";
 import { QuickActions } from "@/features/dashboard/components/QuickActions";
+import { SyncQueueBadge } from "@/features/sync/components/SyncQueueBadge";
 
 export function DashboardPage() {
   const { staff } = useAuth();
@@ -51,6 +52,8 @@ export function DashboardPage() {
     >
       <WelcomeHeader name={staff?.name ?? "—"} houseName={staff?.house?.name} photoUrl={staff?.photoUrl} />
       <View className="px-4 py-4">
+        {/* Fila de sincronização (story 170): só aparece quando há algo por subir. */}
+        <SyncQueueBadge />
         <StatCards
           residentCount={presentResidentsCount}
           incidentCount={todayIncidentsCount}

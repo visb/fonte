@@ -5,15 +5,18 @@ import type {
   CensusConcludeInput,
   CensusPendingResident,
 } from '../types.js';
+import { requestConfig, type RequestOptions } from '../request-options.js';
 
 export function createCensusModule(http: AxiosInstance) {
   return {
     // Coordenador adiciona um filho na contagem (status CENSUS_ADDED + aviso ao ADM).
-    addResident: (data: CreateResidentInput) =>
-      http.post<Resident>('/census/residents', data).then((r) => r.data),
+    addResident: (data: CreateResidentInput, options?: RequestOptions) =>
+      http.post<Resident>('/census/residents', data, ...requestConfig(options)).then((r) => r.data),
     // Coordenador conclui a contagem (gera notificação ao ADM).
-    conclude: (data: CensusConcludeInput) =>
-      http.post<{ addedCount: number }>('/census/conclude', data).then((r) => r.data),
+    conclude: (data: CensusConcludeInput, options?: RequestOptions) =>
+      http
+        .post<{ addedCount: number }>('/census/conclude', data, ...requestConfig(options))
+        .then((r) => r.data),
     // ADM lista os filhos adicionados aguardando revisão.
     listPending: (houseId: string) =>
       http

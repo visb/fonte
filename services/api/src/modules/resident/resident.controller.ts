@@ -26,6 +26,7 @@ import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RevealSensitive } from '../../common/decorators/reveal-sensitive.decorator';
 import { Audit } from '../../common/decorators/audit.decorator';
+import { Idempotent } from '../../common/decorators/idempotent.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { DocumentTemplateService } from '../document-template/document-template.service';
@@ -287,10 +288,14 @@ export class ResidentController {
     return this.residentService.create(dto);
   }
 
+  // `@Idempotent` por causa do censo do ops (story 172): alta, evasão e
+  // transferência saem daqui e passam pela outbox offline — o reenvio não pode
+  // reaplicar a mudança de status/casa.
   @Patch(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR)
   @RevealSensitive()
   @Audit('resident.update', 'resident')
+  @Idempotent()
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateResidentDto,

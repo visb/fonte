@@ -42,6 +42,7 @@ import { ActivityModule } from './modules/activity/activity.module';
 import { EventModule } from './modules/event/event.module';
 import { CacheModule } from './modules/cache/cache.module';
 import { PreferenceModule } from './modules/preference/preference.module';
+import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 
 @Module({
   imports: [
@@ -91,6 +92,7 @@ import { PreferenceModule } from './modules/preference/preference.module';
     ActivityModule,
     EventModule,
     PreferenceModule,
+    IdempotencyModule,
   ],
   providers: [
     // Captura exceptions não tratadas para o Sentry preservando o tratamento do Nest.

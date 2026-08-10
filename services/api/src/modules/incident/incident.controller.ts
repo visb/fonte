@@ -11,6 +11,7 @@
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Idempotent } from '../../common/decorators/idempotent.decorator';
 import { Role } from '@fonte/types';
 import { IncidentService } from './incident.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
@@ -35,8 +36,11 @@ export class IncidentController {
     return this.service.findOne(id);
   }
 
+  // Ocorrência não pode ser deletada (BUSINESS_RULES): duplicata do replay ficaria
+  // no histórico do filho para sempre.
   @Post()
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  @Idempotent()
   create(@Body() dto: CreateIncidentDto) {
     return this.service.create(dto);
   }

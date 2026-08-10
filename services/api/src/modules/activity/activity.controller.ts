@@ -14,6 +14,7 @@ import {
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Idempotent } from '../../common/decorators/idempotent.decorator';
 import {
   CurrentUser,
   AuthenticatedUser,
@@ -56,6 +57,7 @@ export class ActivityController {
   }
 
   @Post()
+  @Idempotent()
   create(
     @Body() dto: CreateActivityDto,
     @CurrentUser() user: AuthenticatedUser,

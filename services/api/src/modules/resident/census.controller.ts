@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Idempotent } from '../../common/decorators/idempotent.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import {
@@ -27,6 +28,7 @@ export class CensusController {
 
   @Post('residents')
   @Roles(Role.COORDINATOR)
+  @Idempotent()
   addResident(
     @Body() dto: CreateResidentDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -36,6 +38,7 @@ export class CensusController {
 
   @Post('conclude')
   @Roles(Role.COORDINATOR)
+  @Idempotent()
   conclude(
     @Body() dto: ConcludeCensusDto,
     @CurrentUser() user: AuthenticatedUser,

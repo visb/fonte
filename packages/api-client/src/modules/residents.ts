@@ -33,6 +33,7 @@ import type {
   ReceivableProductContribution,
   DeclareProductContributionInput,
 } from '../types.js';
+import { requestConfig, type RequestOptions } from '../request-options.js';
 
 export function createResidentsModule(http: AxiosInstance) {
   return {
@@ -43,8 +44,10 @@ export function createResidentsModule(http: AxiosInstance) {
     getById: (id: string) => http.get<Resident>(`/residents/${id}`).then((r) => r.data),
     create: (data: CreateResidentInput) =>
       http.post<Resident>('/residents', data).then((r) => r.data),
-    update: (id: string, data: UpdateResidentInput) =>
-      http.patch<Resident>(`/residents/${id}`, data).then((r) => r.data),
+    // `options.idempotencyKey` serve o censo do ops (alta, evasão, transferência),
+    // que reenvia a mudança de status/casa pela outbox offline.
+    update: (id: string, data: UpdateResidentInput, options?: RequestOptions) =>
+      http.patch<Resident>(`/residents/${id}`, data, ...requestConfig(options)).then((r) => r.data),
     // Correção dos dados de identidade na reintrodução (story 147). ADMIN-only no
     // backend; devolve o resident com CPF/RG completos (RevealSensitive).
     updateIdentity: (id: string, data: UpdateResidentIdentityInput) =>

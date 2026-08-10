@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } f
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Idempotent } from '../../common/decorators/idempotent.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { Role, StreetSaleType } from '@fonte/types';
 import { StreetSaleService } from './street-sale.service';
@@ -16,6 +17,7 @@ export class StreetSaleController {
 
   @Post()
   @Roles(Role.ADMIN, Role.COORDINATOR)
+  @Idempotent()
   create(
     @Body() dto: CreateStreetSaleDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -46,6 +48,7 @@ export class StreetSaleController {
 
   @Patch(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR)
+  @Idempotent()
   update(@Param('id') id: string, @Body() dto: UpdateStreetSaleDto) {
     return this.service.update(id, dto);
   }

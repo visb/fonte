@@ -124,6 +124,32 @@ describe('BibleCourseClassPhotoGallery', () => {
   });
 });
 
+describe('sem rede (story 171)', () => {
+  const { onlineManager } = require('@tanstack/react-query');
+  afterEach(() => onlineManager.setOnline(true));
+
+  it('desabilita o envio e diz o motivo', () => {
+    onlineManager.setOnline(false);
+    render(<BibleCourseClassPhotoGallery classId="c1" />);
+
+    expect(screen.getByTestId('offline-notice')).toBeTruthy();
+    expect(screen.getByText('Precisa de conexão para enviar fotos da turma.')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Adicionar foto').props.accessibilityState?.disabled,
+    ).toBe(true);
+  });
+
+  it('com rede o envio continua normal', () => {
+    onlineManager.setOnline(true);
+    render(<BibleCourseClassPhotoGallery classId="c1" />);
+
+    expect(screen.queryByTestId('offline-notice')).toBeNull();
+    expect(
+      screen.getByLabelText('Adicionar foto').props.accessibilityState?.disabled,
+    ).toBe(false);
+  });
+});
+
 describe('ClassPhotoThumb', () => {
   it('confirma e exclui pelo Alert', () => {
     const onDelete = jest.fn();

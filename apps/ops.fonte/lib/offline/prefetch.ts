@@ -69,11 +69,11 @@ export async function warmHouseCache(
 ): Promise<void> {
   if (!houseId) return;
 
+  // `prefetchQuery` nunca rejeita (engole o erro da query, por contrato do React
+  // Query): é exatamente o comportamento que se quer aqui.
   await Promise.all(
     houseQueries(houseId).map((query) =>
-      queryClient
-        .prefetchQuery({ ...query, staleTime: WARM_STALE_TIME })
-        .catch(() => undefined),
+      queryClient.prefetchQuery({ ...query, staleTime: WARM_STALE_TIME }),
     ),
   );
 }

@@ -52,7 +52,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View className="flex-1 justify-center px-6">
-        <Text className="text-3xl font-bold text-gray-900 mb-1">ops.fonte</Text>
+        <Text className="text-3xl font-bold text-gray-900 mb-1">OPS Fonte</Text>
         <Text className="text-base text-gray-500 mb-10">
           Plataforma operacional
         </Text>

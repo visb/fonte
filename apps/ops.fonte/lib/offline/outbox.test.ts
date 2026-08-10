@@ -63,15 +63,14 @@ describe('chave de idempotência', () => {
 
   it('gera UUID válido também sem WebCrypto (Hermes)', () => {
     const original = globalThis.crypto;
-    // @ts-expect-error simula o runtime do RN sem WebCrypto
-    delete globalThis.crypto;
+    const globalWithCrypto = globalThis as { crypto?: Crypto };
+    delete globalWithCrypto.crypto;
 
     expect(createIdempotencyKey()).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     );
 
-    // @ts-expect-error restaura
-    globalThis.crypto = original;
+    globalWithCrypto.crypto = original;
   });
 
   it('é gerada uma vez e reusada em todo reenvio do mesmo item', () => {

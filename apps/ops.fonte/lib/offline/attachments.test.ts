@@ -29,18 +29,18 @@ const originalOS = Platform.OS;
 beforeEach(() => {
   jest.clearAllMocks();
   fs.documentDirectory = 'file:///doc/';
-  // @ts-expect-error restaura a plataforma entre os testes
-  Platform.OS = originalOS;
+  setPlatform(originalOS);
 });
 
-afterAll(() => {
-  // @ts-expect-error restaura a plataforma
-  Platform.OS = originalOS;
-});
+afterAll(() => setPlatform(originalOS));
+
+/** `Platform.OS` é somente leitura no tipo, mas é o único jeito de cobrir o web. */
+function setPlatform(os: typeof Platform.OS) {
+  (Platform as { OS: string }).OS = os;
+}
 
 function forceWeb() {
-  // @ts-expect-error força o ramo web
-  Platform.OS = 'web';
+  setPlatform('web');
 }
 
 describe('persistOutboxFile (nativo)', () => {
@@ -139,8 +139,7 @@ describe('discardOutboxFile', () => {
   it('ignora caminho vazio, data URL e web (não há o que apagar)', async () => {
     forceWeb();
     await discardOutboxFile('file:///doc/outbox/foto.jpg');
-    // @ts-expect-error volta ao nativo
-    Platform.OS = originalOS;
+    setPlatform(originalOS);
     await discardOutboxFile(null);
     await discardOutboxFile('data:image/jpeg;base64,eA==');
 

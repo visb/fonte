@@ -15,7 +15,6 @@ import {
   useMutation,
   useQueryClient,
   type MutateOptions,
-  type Mutation,
   type MutationKey,
   type QueryClient,
   type UseMutationResult,
@@ -183,6 +182,15 @@ export function outboxRetry(failureCount: number, error: unknown): boolean {
 // ── dead-letter (decisão 5) ───────────────────────────────────────────────────
 
 /**
+ * Recorte estrutural da `Mutation`: o `MutationCache` e o `getAll()` a tipam com
+ * genéricos diferentes, e nada aqui depende do tipo do dado/erro.
+ */
+export interface OutboxMutationLike {
+  options: { mutationKey?: MutationKey };
+  state: { variables?: unknown };
+}
+
+/**
  * Ponte `MutationCache.onError` → dead-letter. Chegar aqui significa que o
  * React Query **desistiu** do item (4xx definitivo ou transitório esgotado) e o
  * vai descartar do cache: sem gravar agora, o lançamento sumiria da tela e da
@@ -190,7 +198,7 @@ export function outboxRetry(failureCount: number, error: unknown): boolean {
  */
 export async function recordOutboxFailure(
   error: unknown,
-  mutation: Mutation<unknown, unknown, unknown, unknown>,
+  mutation: OutboxMutationLike,
 ): Promise<void> {
   const mutationKey = mutation.options.mutationKey;
   if (!isOutboxMutationKey(mutationKey)) return;
@@ -232,7 +240,18 @@ export interface PendingOutboxItem {
   failureCount: number;
 }
 
-function toPendingItem(mutation: Mutation<unknown, unknown, unknown, unknown>): PendingOutboxItem {
+interface PendingMutationLike extends OutboxMutationLike {
+  mutationId: number;
+  state: {
+    variables?: unknown;
+    isPaused: boolean;
+    submittedAt: number;
+    failureCount: number;
+    status: string;
+  };
+}
+
+function toPendingItem(mutation: PendingMutationLike): PendingOutboxItem {
   return {
     id: mutation.mutationId,
     mutationKey: serializeMutationKey(mutation.options.mutationKey),

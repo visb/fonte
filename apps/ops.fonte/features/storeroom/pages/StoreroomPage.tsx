@@ -10,7 +10,10 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import type { StoreroomItem } from "@fonte/api-client";
 import { useAuth } from "@/lib/auth";
-import { useStoreroomItems } from "@/features/storeroom/hooks/useStoreroom";
+import {
+  usePendingMovementItemIds,
+  useStoreroomItems,
+} from "@/features/storeroom/hooks/useStoreroom";
 import { ItemDetailsModal } from "@/features/storeroom/components/ItemDetailsModal";
 import { SuccessBanner } from "@/components/shared/SuccessBanner";
 import { LowStockAlert } from "@/features/storeroom/components/LowStockAlert";
@@ -26,6 +29,7 @@ export function StoreroomPage() {
   const { data: items = [], isLoading, refetch } = useStoreroomItems(
     staff?.houseId,
   );
+  const pendingItemIds = usePendingMovementItemIds();
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -64,6 +68,7 @@ export function StoreroomPage() {
           renderItem={({ item }) => (
             <StoreroomItemCard
               item={item}
+              isPendingSync={pendingItemIds.has(item.id)}
               onPress={() => {
                 setSelectedItem(item);
                 setIsDetailsModalVisible(true);

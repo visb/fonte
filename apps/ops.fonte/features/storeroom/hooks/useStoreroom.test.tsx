@@ -13,12 +13,17 @@ jest.mock('@/lib/api', () => ({
 }));
 
 import { api } from '@/lib/api';
-import { expectIdempotencyKey, renderHookWithClient } from '@/lib/test/utils';
+import {
+  createTestQueryClient,
+  expectIdempotencyKey,
+  renderHookWithClient,
+} from '@/lib/test/utils';
 import {
   useStoreroomItems,
   useStoreroomMovements,
   useCreateMovement,
   useCreateStoreroomItem,
+  usePendingMovementItemIds,
 } from './useStoreroom';
 
 const m = api as unknown as { storeroom: Record<string, jest.Mock> };
@@ -73,5 +78,34 @@ describe('useStoreroom', () => {
     result.current.mutate(input);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(m.storeroom.createItem).toHaveBeenCalledWith(input, expectIdempotencyKey);
+  });
+});
+
+describe('usePendingMovementItemIds', () => {
+  it('marca os itens com movimentação ainda na fila (story 169)', async () => {
+    const client = createTestQueryClient();
+    // Trava o envio para o item ficar pendente durante a asserção.
+    m.storeroom.createMovement.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHookWithClient(
+      () => ({
+        create: useCreateMovement(),
+        pending: usePendingMovementItemIds(),
+      }),
+      client,
+    );
+
+    expect(result.current.pending.size).toBe(0);
+
+    result.current.create.mutate({
+      itemId: 'i1',
+      type: MovementType.OUT,
+      quantity: 1,
+      responsibleId: 'staff-1',
+      date: '2026-08-10',
+      notes: null,
+    });
+
+    await waitFor(() => expect(result.current.pending.has('i1')).toBe(true));
+    expect(result.current.pending.has('i2')).toBe(false);
   });
 });

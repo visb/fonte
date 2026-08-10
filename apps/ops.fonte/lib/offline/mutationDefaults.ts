@@ -299,10 +299,12 @@ interface OutboxDefinition<TVariables extends OutboxVariables, TData> {
   settled: (queryClient: QueryClient, variables: TVariables, data?: TData) => void;
 }
 
+type AnyMutationOptions = MutationOptions<unknown, unknown, unknown, unknown>;
+
 export interface RegisterMutationDefaultsOptions {
   /** Override para testes: a política real repete rede para sempre. */
-  retry?: MutationOptions['retry'];
-  retryDelay?: MutationOptions['retryDelay'];
+  retry?: AnyMutationOptions['retry'];
+  retryDelay?: AnyMutationOptions['retryDelay'];
 }
 
 function defineOutboxMutation<TVariables extends OutboxVariables, TData>(

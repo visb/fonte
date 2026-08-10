@@ -119,9 +119,9 @@ describe('sem rede', () => {
     );
 
     // Round-trip pelo disco: só sobrevive o que for serializável.
-    const dehydrated = JSON.parse(
-      JSON.stringify(dehydrate(queryClient, dehydrateOptions)),
-    ) as ReturnType<typeof dehydrate>;
+    const dehydrated = JSON.parse(JSON.stringify(dehydrate(queryClient, dehydrateOptions))) as {
+      mutations: Array<{ state: { variables: { idempotencyKey: string } } }>;
+    };
     expect(dehydrated.mutations).toHaveLength(1);
     expect(dehydrated.mutations[0].state.variables).toMatchObject({
       data: { itemId: 'i1' },
@@ -129,7 +129,7 @@ describe('sem rede', () => {
     });
 
     queryClient.getMutationCache().clear();
-    hydrate(queryClient, dehydrated);
+    hydrate(queryClient, dehydrated as never);
 
     const restored = queryClient.getMutationCache().getAll();
     expect(restored).toHaveLength(1);

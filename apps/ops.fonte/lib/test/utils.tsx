@@ -16,7 +16,9 @@ export function createTestQueryClient(): QueryClient {
   const client = new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0, staleTime: 0 },
-      mutations: { retry: false },
+      // `gcTime: Infinity` nas mutations não guarda nada: só evita o timer de
+      // coleta (5 min por padrão) segurar o processo do jest no fim do arquivo.
+      mutations: { retry: false, gcTime: Infinity },
     },
   });
   // As mutations de campo têm `mutationFn` em `setMutationDefaults` (story 169):

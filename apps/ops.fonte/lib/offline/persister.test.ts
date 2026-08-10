@@ -1,8 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Query } from '@tanstack/react-query';
+import type { Mutation, Query } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
+import { OUTBOX_MUTATION_KEYS } from './outbox';
 import { PERSIST_BUSTER, PERSIST_KEY, PERSIST_MAX_AGE, QUERY_GC_TIME } from './constants';
-import { clearPersistedCache, dehydrateOptions, shouldDehydrateQuery } from './persister';
+import {
+  clearPersistedCache,
+  dehydrateOptions,
+  shouldDehydrateMutation,
+  shouldDehydrateQuery,
+} from './persister';
 
 /** Query mínima para a decisão de desidratação (chave + status). */
 function query(queryKey: readonly unknown[], status: 'success' | 'pending' | 'error' = 'success'): Query {
@@ -69,6 +75,31 @@ describe('shouldDehydrateQuery — allowlist (LGPD)', () => {
 
   it('dehydrateOptions expõe o mesmo filtro para o PersistQueryClientProvider', () => {
     expect(dehydrateOptions.shouldDehydrateQuery).toBe(shouldDehydrateQuery);
+  });
+});
+
+describe('shouldDehydrateMutation — outbox (story 169)', () => {
+  function mutation(mutationKey: readonly string[] | undefined, isPaused: boolean): Mutation {
+    return { options: { mutationKey }, state: { isPaused } } as unknown as Mutation;
+  }
+
+  it('persiste o lançamento de campo pausado esperando rede', () => {
+    expect(shouldDehydrateMutation(mutation(OUTBOX_MUTATION_KEYS.incidentCreate, true))).toBe(true);
+  });
+
+  it('não persiste mutation em voo (só o que está pausado precisa sobreviver)', () => {
+    expect(shouldDehydrateMutation(mutation(OUTBOX_MUTATION_KEYS.incidentCreate, false))).toBe(
+      false,
+    );
+  });
+
+  it('não persiste chave fora do catálogo, mesmo pausada (LGPD)', () => {
+    expect(shouldDehydrateMutation(mutation(['messages', 'send'], true))).toBe(false);
+    expect(shouldDehydrateMutation(mutation(undefined, true))).toBe(false);
+  });
+
+  it('dehydrateOptions expõe os dois filtros para o PersistQueryClientProvider', () => {
+    expect(dehydrateOptions.shouldDehydrateMutation).toBe(shouldDehydrateMutation);
   });
 });
 

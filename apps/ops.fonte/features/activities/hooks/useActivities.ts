@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Platform } from 'react-native';
 import type {
+  Activity,
+  ActivityComment,
   ChangeActivityStatusInput,
   CreateActivityCommentInput,
   CreateActivityInput,
@@ -8,6 +10,11 @@ import type {
 } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
+import { OUTBOX_MUTATION_KEYS, useOutboxMutation } from '@/lib/offline/outbox';
+import type {
+  ActivityCommentVariables,
+  ActivityCreateVariables,
+} from '@/lib/offline/mutationDefaults';
 
 /**
  * Anexo escolhido pelo picker ou gravado (story 73 + áudio 74): uri local +
@@ -78,14 +85,12 @@ export function useUpdateActivity() {
   });
 }
 
+/** Atividade é fluxo de campo: outbox (story 169). */
 export function useCreateActivity() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateActivityInput) => api.activities.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
-    },
-  });
+  return useOutboxMutation<CreateActivityInput, ActivityCreateVariables, Activity>(
+    OUTBOX_MUTATION_KEYS.activityCreate,
+    (data) => ({ data }),
+  );
 }
 
 export function useChangeActivityStatus() {
@@ -110,16 +115,10 @@ export function useActivityComments(activityId: string | null | undefined) {
 }
 
 export function useAddComment(activityId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateActivityCommentInput) =>
-      api.activities.addComment(activityId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.activities.comments(activityId),
-      });
-    },
-  });
+  return useOutboxMutation<CreateActivityCommentInput, ActivityCommentVariables, ActivityComment>(
+    OUTBOX_MUTATION_KEYS.activityComment,
+    (data) => ({ activityId, data }),
+  );
 }
 
 export function useDeleteComment(activityId: string) {

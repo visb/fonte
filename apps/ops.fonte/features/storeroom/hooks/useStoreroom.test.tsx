@@ -13,7 +13,7 @@ jest.mock('@/lib/api', () => ({
 }));
 
 import { api } from '@/lib/api';
-import { renderHookWithClient } from '@/lib/test/utils';
+import { expectIdempotencyKey, renderHookWithClient } from '@/lib/test/utils';
 import {
   useStoreroomItems,
   useStoreroomMovements,
@@ -63,7 +63,7 @@ describe('useStoreroom', () => {
     };
     result.current.mutate(input);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.storeroom.createMovement).toHaveBeenCalledWith(input);
+    expect(m.storeroom.createMovement).toHaveBeenCalledWith(input, expectIdempotencyKey);
   });
 
   it('useCreateStoreroomItem repassa o payload', async () => {
@@ -72,6 +72,6 @@ describe('useStoreroom', () => {
     const input = { name: 'Arroz', unit: 'kg', houseId: 'h1' };
     result.current.mutate(input);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.storeroom.createItem).toHaveBeenCalledWith(input);
+    expect(m.storeroom.createItem).toHaveBeenCalledWith(input, expectIdempotencyKey);
   });
 });

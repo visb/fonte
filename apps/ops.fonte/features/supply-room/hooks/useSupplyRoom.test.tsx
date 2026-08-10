@@ -1,7 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MovementType, SupplyRoomCategory } from '@fonte/types';
-import type { ReactNode } from 'react';
 
 // api-client mockado: nenhuma chamada HTTP real é feita.
 jest.mock('@/lib/api', () => ({
@@ -16,6 +14,7 @@ jest.mock('@/lib/api', () => ({
 }));
 
 import { api } from '@/lib/api';
+import { createWrapper, expectIdempotencyKey } from '@/lib/test/utils';
 import {
   useSupplyRoomItems,
   useSupplyRoomMovements,
@@ -31,17 +30,6 @@ const mockApi = api as unknown as {
     createItem: jest.Mock;
   };
 };
-
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
-  };
-}
 
 describe('useSupplyRoom', () => {
   beforeEach(() => {
@@ -102,7 +90,7 @@ describe('useSupplyRoom', () => {
       };
       result.current.mutate(input);
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(mockApi.supplyRoom.createMovement).toHaveBeenCalledWith(input);
+      expect(mockApi.supplyRoom.createMovement).toHaveBeenCalledWith(input, expectIdempotencyKey);
     });
   });
 
@@ -123,7 +111,7 @@ describe('useSupplyRoom', () => {
       result.current.mutate(input);
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(mockApi.supplyRoom.createItem).toHaveBeenCalledWith(input);
+      expect(mockApi.supplyRoom.createItem).toHaveBeenCalledWith(input, expectIdempotencyKey);
     });
   });
 });

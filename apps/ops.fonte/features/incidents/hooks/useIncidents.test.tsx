@@ -11,7 +11,7 @@ jest.mock('@/lib/api', () => ({
 }));
 
 import { api } from '@/lib/api';
-import { renderHookWithClient } from '@/lib/test/utils';
+import { expectIdempotencyKey, renderHookWithClient } from '@/lib/test/utils';
 import * as incidentHooks from './useIncidents';
 import {
   useIncidents,
@@ -56,7 +56,7 @@ describe('useIncidents', () => {
     };
     result.current.mutate(input);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.incidents.create).toHaveBeenCalledWith(input);
+    expect(m.incidents.create).toHaveBeenCalledWith(input, expectIdempotencyKey);
   });
 
   it('não expõe mutation de delete (incidente não pode ser deletado — BUSINESS_RULES)', () => {

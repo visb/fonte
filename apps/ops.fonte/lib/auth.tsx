@@ -5,19 +5,21 @@ import { ProfileType, StaffPermissionType } from '@fonte/types';
 import { api, setUnauthorizedHandler } from './api';
 import { queryClient } from './queryClient';
 import { clearPersistedCache } from './offline/persister';
+import { clearDeadLetter } from './offline/deadLetter';
 
 const STORAGE_KEYS = ['token', 'staff', 'resident'];
 
 /**
- * Fim de sessão = fim do dado no dispositivo. O cache persistido guarda dado
- * pessoal de filho (LGPD, epic 167), então sai junto com as chaves de auth.
- * Limpar o `queryClient` antes garante que uma gravação throttled pendente
- * escreva um cache vazio, não o antigo.
+ * Fim de sessão = fim do dado no dispositivo. O cache persistido e a dead-letter
+ * da outbox guardam dado pessoal de filho (LGPD, epic 167), então saem junto com
+ * as chaves de auth. Limpar o `queryClient` antes garante que uma gravação
+ * throttled pendente escreva um cache vazio, não o antigo.
  */
 async function clearSessionData(): Promise<void> {
   await AsyncStorage.multiRemove(STORAGE_KEYS);
   queryClient.clear();
   await clearPersistedCache();
+  await clearDeadLetter();
 }
 
 export class MustChangePasswordError extends Error {

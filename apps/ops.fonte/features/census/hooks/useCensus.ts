@@ -1,9 +1,15 @@
-import { Platform } from 'react-native';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ResidentStatus } from '@fonte/types';
 import type { CreateResidentInput, Resident, CensusConcludeInput } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
+import { OUTBOX_MUTATION_KEYS, useOutboxMutation } from '@/lib/offline/outbox';
+import type {
+  CensusAddResidentVariables,
+  CensusConcludeVariables,
+  PickedPhoto,
+  ResidentUpdateStatusVariables,
+} from '@/lib/offline/mutationDefaults';
 
 // Census ("Contagem") is a rollout-only tool: it lists the active residents of a
 // house so a coordinator can confirm who is really present, remove who isn't, and
@@ -33,91 +39,58 @@ export function useHouses() {
   });
 }
 
-function invalidateHouseResidents(
-  queryClient: ReturnType<typeof useQueryClient>,
-  houseId: string,
-) {
-  queryClient.invalidateQueries({ queryKey: queryKeys.residents.byHouse(houseId) });
-  queryClient.invalidateQueries({ queryKey: queryKeys.residents.countByHouse(houseId) });
-}
-
-interface PhotoInput {
-  uri: string;
-  type: string;
-}
-
-async function buildPhotoFormData({ uri, type }: PhotoInput): Promise<FormData> {
-  const fd = new FormData();
-  if (Platform.OS === 'web') {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    fd.append('file', blob, 'photo.jpg');
-  } else {
-    fd.append('file', { uri, name: 'photo.jpg', type } as unknown as Blob);
-  }
-  return fd;
-}
-
 // Adds a resident during the census: created as CENSUS_ADDED (pending ADM approval)
-// and the ADM is notified. Uploads the photo right after — the photo endpoint needs
-// the resident id.
+// and the ADM is notified. A foto vai numa segunda mutation encadeada (story 169,
+// decisão 7): o endpoint de foto precisa do id, que só existe depois do envio.
 export function useCensusAddResident(houseId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ data, photo }: { data: CreateResidentInput; photo?: PhotoInput }) => {
-      const resident = await api.census.addResident(data);
-      if (photo) {
-        const fd = await buildPhotoFormData(photo);
-        await api.residents.uploadPhoto(resident.id, fd as unknown as globalThis.FormData);
-      }
-      return resident;
-    },
-    onSuccess: () => invalidateHouseResidents(queryClient, houseId),
-  });
+  return useOutboxMutation<
+    { data: CreateResidentInput; photo?: PickedPhoto },
+    CensusAddResidentVariables,
+    Resident
+  >(OUTBOX_MUTATION_KEYS.censusAddResident, ({ data, photo }) => ({ houseId, data, photo }));
 }
 
 // Concludes the census ("chamada"): notifies the ADM. When residents were added
 // during the count, the ADM notification offers a review action.
 export function useConcludeCensus(houseId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CensusConcludeInput) => api.census.conclude(data),
-    onSuccess: () => invalidateHouseResidents(queryClient, houseId),
-  });
+  return useOutboxMutation<CensusConcludeInput, CensusConcludeVariables>(
+    OUTBOX_MUTATION_KEYS.censusConclude,
+    (data) => ({ houseId, data }),
+  );
 }
 
 // Discharge ("alta"): status DISCHARGED + exit date = event date.
 export function useDischargeResident(houseId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ residentId, exitDate }: { residentId: string; exitDate: string }) =>
-      api.residents.update(residentId, {
-        status: ResidentStatus.DISCHARGED,
-        exitDate,
-      }),
-    onSuccess: () => invalidateHouseResidents(queryClient, houseId),
-  });
+  return useOutboxMutation<
+    { residentId: string; exitDate: string },
+    ResidentUpdateStatusVariables
+  >(OUTBOX_MUTATION_KEYS.residentUpdateStatus, ({ residentId, exitDate }) => ({
+    houseId,
+    residentId,
+    data: { status: ResidentStatus.DISCHARGED, exitDate },
+  }));
 }
 
 // Evasion ("evasão"): status EVADED + exit date = event date.
 export function useEvadeResident(houseId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ residentId, exitDate }: { residentId: string; exitDate: string }) =>
-      api.residents.update(residentId, {
-        status: ResidentStatus.EVADED,
-        exitDate,
-      }),
-    onSuccess: () => invalidateHouseResidents(queryClient, houseId),
-  });
+  return useOutboxMutation<
+    { residentId: string; exitDate: string },
+    ResidentUpdateStatusVariables
+  >(OUTBOX_MUTATION_KEYS.residentUpdateStatus, ({ residentId, exitDate }) => ({
+    houseId,
+    residentId,
+    data: { status: ResidentStatus.EVADED, exitDate },
+  }));
 }
 
 // Transfer: move the resident to another house, keeping the ACTIVE status.
 export function useTransferResident(houseId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ residentId, targetHouseId }: { residentId: string; targetHouseId: string }) =>
-      api.residents.update(residentId, { houseId: targetHouseId }),
-    onSuccess: () => invalidateHouseResidents(queryClient, houseId),
-  });
+  return useOutboxMutation<
+    { residentId: string; targetHouseId: string },
+    ResidentUpdateStatusVariables
+  >(OUTBOX_MUTATION_KEYS.residentUpdateStatus, ({ residentId, targetHouseId }) => ({
+    houseId,
+    residentId,
+    data: { houseId: targetHouseId },
+  }));
 }

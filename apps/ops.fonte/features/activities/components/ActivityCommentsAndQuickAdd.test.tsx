@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { createTestQueryClient } from '@/lib/test/utils';
+import { createTestQueryClient, expectIdempotencyKey } from '@/lib/test/utils';
 
 jest.mock('@expo/vector-icons', () => {
   const { Text } = require('react-native');
@@ -70,11 +70,14 @@ describe('QuickAddCard', () => {
     fireEvent.changeText(input, 'Trocar lâmpada');
     fireEvent.press(screen.getByText('Adicionar'));
     await waitFor(() =>
-      expect(m.activities.create).toHaveBeenCalledWith({
-        title: 'Trocar lâmpada',
-        status: ActivityStatus.DRAFT,
-        houseId: 'h1',
-      }),
+      expect(m.activities.create).toHaveBeenCalledWith(
+        {
+          title: 'Trocar lâmpada',
+          status: ActivityStatus.DRAFT,
+          houseId: 'h1',
+        },
+        expectIdempotencyKey,
+      ),
     );
     await waitFor(() => expect(input.props.value).toBe(''));
   });
@@ -127,7 +130,11 @@ describe('ActivityComments', () => {
     fireEvent.changeText(screen.getByLabelText('Novo comentário'), '  meu comentário  ');
     fireEvent.press(screen.getByLabelText('Comentar'));
     await waitFor(() =>
-      expect(m.activities.addComment).toHaveBeenCalledWith('a1', { body: 'meu comentário' }),
+      expect(m.activities.addComment).toHaveBeenCalledWith(
+        'a1',
+        { body: 'meu comentário' },
+        expectIdempotencyKey,
+      ),
     );
   });
 });

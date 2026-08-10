@@ -40,7 +40,7 @@ Rodada aberta: **offline-first do ops.fonte (epic 167) + idempotência de escrit
 | 1 | 172 — idempotência de escrita no backend | [OK] | api 1469 unit / 522 e2e / api-client 286 | df482dc | e8bed67 |
 | 2 | 168 — persistência de cache e estado de rede | [OK] | ops 670 unit / 7 e2e web | da0e35b | 75526da |
 | 3 | 169 — outbox e replay de escrita | [OK] | ops 772 unit / 8 e2e web | 727d399 | da8130f |
-| 4 | 170 — tela de pendências de sincronização | [ ] | — | — | — |
+| 4 | 170 — tela de pendências de sincronização | [OK] | ops 847 unit / 10 e2e web | 52901a5 | a32836b |
 | 5 | 171 — fluxos de campo offline | [ ] | — | — | — |
 
 ## Log
@@ -54,6 +54,8 @@ Rodada aberta: **offline-first do ops.fonte (epic 167) + idempotência de escrit
 [OK] 169 — testes: ops 772 unit + 8 e2e web, cobertura ops 92.9/82.55/91.65/94.34 — commit: 727d399 — merge: da8130f — 2026-08-10
      Chave de idempotência vive nas variáveis da mutation (context não chega na mutationFn). Logout descarta fila pendente (LGPD) — avisar na tela 170.
      Item criado offline ainda não encadeia com a movimentação; nomes: `storeroom`=Dispensa, `supply-room`=Almoxarifado na UI (epic troca os termos). Restante de tela é a 171.
+[OK] 170 — testes: ops 847 unit + 10 e2e web, cobertura ops 93.27/83.02/92.11/94.59 — commit: 52901a5 — merge: a32836b — 2026-08-10
+     Corrigido laço de render em `usePendingMutations` (novo array a cada notificação do MutationCache). Fila virou união `PendingSyncItem | FailedSyncItem` — a 171 herda o tipo.
 ```
 
 ## Resumo final

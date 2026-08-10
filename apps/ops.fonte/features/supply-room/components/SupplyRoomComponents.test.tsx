@@ -84,6 +84,19 @@ describe('SupplyRoomItemCard', () => {
     fireEvent.press(screen.getByText('Detergente'));
     expect(onPress).toHaveBeenCalled();
   });
+
+  // Story 169: o estoque já mostra o lançamento feito offline, mas o operador
+  // precisa saber que ele ainda não chegou ao servidor.
+  it('marca "Pendente" quando há movimentação na fila de envio', () => {
+    render(<SupplyRoomItemCard item={makeItem()} onPress={jest.fn()} isPendingSync />);
+    expect(screen.getByTestId('pending-sync-badge')).toBeTruthy();
+    expect(screen.getByText('Pendente')).toBeTruthy();
+  });
+
+  it('sem item na fila não mostra o selo', () => {
+    render(<SupplyRoomItemCard item={makeItem()} onPress={jest.fn()} />);
+    expect(screen.queryByTestId('pending-sync-badge')).toBeNull();
+  });
 });
 
 describe('NewItemForm (supply-room exige categoria)', () => {

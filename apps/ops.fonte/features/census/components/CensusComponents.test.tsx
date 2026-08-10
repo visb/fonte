@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { createTestQueryClient } from '@/lib/test/utils';
+import { createTestQueryClient, expectIdempotencyKey } from '@/lib/test/utils';
 
 jest.mock('@expo/vector-icons', () => {
   const { Text } = require('react-native');
@@ -89,6 +89,7 @@ describe('AddResidentModal', () => {
     await waitFor(() =>
       expect(m.census.addResident).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Novo Filho', houseId: 'h1', gender: 'MALE' }),
+        expectIdempotencyKey,
       ),
     );
   });
@@ -107,7 +108,10 @@ describe('AddResidentModal', () => {
     fireEvent.press(screen.getByText('Feminino'));
     fireEvent.press(screen.getByText('Adicionar'));
     await waitFor(() =>
-      expect(m.census.addResident).toHaveBeenCalledWith(expect.objectContaining({ gender: 'FEMALE' })),
+      expect(m.census.addResident).toHaveBeenCalledWith(
+        expect.objectContaining({ gender: 'FEMALE' }),
+        expectIdempotencyKey,
+      ),
     );
   });
 
@@ -136,6 +140,7 @@ describe('AddResidentModal', () => {
     await waitFor(() =>
       expect(m.census.addResident).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Carlos', cpf: '11122233344', rg: 'MG123', nationality: 'Boliviana' }),
+        expectIdempotencyKey,
       ),
     );
     // foto selecionada → upload separado
@@ -222,6 +227,7 @@ describe('RemoveResidentModal', () => {
       expect(m.residents.update).toHaveBeenCalledWith(
         'r1',
         expect.objectContaining({ status: 'DISCHARGED', exitDate: expect.any(String) }),
+        expectIdempotencyKey,
       ),
     );
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
@@ -235,7 +241,11 @@ describe('RemoveResidentModal', () => {
     fireEvent.press(screen.getByText('Evasão'));
     fireEvent.press(screen.getByText('Confirmar'));
     await waitFor(() =>
-      expect(m.residents.update).toHaveBeenCalledWith('r1', expect.objectContaining({ status: 'EVADED' })),
+      expect(m.residents.update).toHaveBeenCalledWith(
+        'r1',
+        expect.objectContaining({ status: 'EVADED' }),
+        expectIdempotencyKey,
+      ),
     );
   });
 
@@ -251,7 +261,7 @@ describe('RemoveResidentModal', () => {
     fireEvent.press(screen.getByText('Casa Bethel'));
     fireEvent.press(screen.getByText('Confirmar'));
     await waitFor(() =>
-      expect(m.residents.update).toHaveBeenCalledWith('r1', { houseId: 'h2' }),
+      expect(m.residents.update).toHaveBeenCalledWith('r1', { houseId: 'h2' }, expectIdempotencyKey),
     );
   });
 

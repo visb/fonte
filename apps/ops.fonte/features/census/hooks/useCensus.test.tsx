@@ -11,7 +11,7 @@ jest.mock('@/lib/api', () => ({
 }));
 
 import { api } from '@/lib/api';
-import { renderHookWithClient } from '@/lib/test/utils';
+import { expectIdempotencyKey, renderHookWithClient } from '@/lib/test/utils';
 import {
   useActiveResidentsByHouse,
   useHouses,
@@ -69,11 +69,13 @@ describe('useCensusAddResident', () => {
     const { result } = renderHookWithClient(() => useCensusAddResident('h1'));
     result.current.mutate({ data: { name: 'Novo' } as never });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.census.addResident).toHaveBeenCalledWith({ name: 'Novo' });
+    expect(m.census.addResident).toHaveBeenCalledWith({ name: 'Novo' }, expectIdempotencyKey);
     expect(m.residents.uploadPhoto).not.toHaveBeenCalled();
   });
 
-  it('adiciona com foto (web: monta FormData via fetch().blob())', async () => {
+  // Story 169, decisão 7: a foto vira uma segunda mutation, enfileirada só depois
+  // de o filho existir — um FormData não pode depender de um id que ainda não há.
+  it('adiciona com foto e encadeia o upload com o id criado', async () => {
     // @ts-expect-error força ramo web
     Platform.OS = 'web';
     global.fetch = jest.fn().mockResolvedValue({ blob: () => Promise.resolve(new Blob(['x'])) }) as never;
@@ -82,7 +84,9 @@ describe('useCensusAddResident', () => {
     const { result } = renderHookWithClient(() => useCensusAddResident('h1'));
     result.current.mutate({ data: { name: 'Novo' } as never, photo: { uri: 'blob:x', type: 'image/jpeg' } });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.residents.uploadPhoto).toHaveBeenCalledWith('r1', expect.any(FormData));
+    await waitFor(() =>
+      expect(m.residents.uploadPhoto).toHaveBeenCalledWith('r1', expect.any(FormData)),
+    );
   });
 });
 
@@ -92,7 +96,7 @@ describe('mutations de transição de status', () => {
     const { result } = renderHookWithClient(() => useConcludeCensus('h1'));
     result.current.mutate({ houseId: 'h1' } as never);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.census.conclude).toHaveBeenCalledWith({ houseId: 'h1' });
+    expect(m.census.conclude).toHaveBeenCalledWith({ houseId: 'h1' }, expectIdempotencyKey);
   });
 
   it('useDischargeResident atualiza para DISCHARGED + exitDate', async () => {
@@ -100,10 +104,11 @@ describe('mutations de transição de status', () => {
     const { result } = renderHookWithClient(() => useDischargeResident('h1'));
     result.current.mutate({ residentId: 'r1', exitDate: '2026-06-23' });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.residents.update).toHaveBeenCalledWith('r1', {
-      status: ResidentStatus.DISCHARGED,
-      exitDate: '2026-06-23',
-    });
+    expect(m.residents.update).toHaveBeenCalledWith(
+      'r1',
+      { status: ResidentStatus.DISCHARGED, exitDate: '2026-06-23' },
+      expectIdempotencyKey,
+    );
   });
 
   it('useEvadeResident atualiza para EVADED + exitDate', async () => {
@@ -111,10 +116,11 @@ describe('mutations de transição de status', () => {
     const { result } = renderHookWithClient(() => useEvadeResident('h1'));
     result.current.mutate({ residentId: 'r1', exitDate: '2026-06-23' });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.residents.update).toHaveBeenCalledWith('r1', {
-      status: ResidentStatus.EVADED,
-      exitDate: '2026-06-23',
-    });
+    expect(m.residents.update).toHaveBeenCalledWith(
+      'r1',
+      { status: ResidentStatus.EVADED, exitDate: '2026-06-23' },
+      expectIdempotencyKey,
+    );
   });
 
   it('useTransferResident move para outra casa mantendo ACTIVE', async () => {
@@ -122,6 +128,6 @@ describe('mutations de transição de status', () => {
     const { result } = renderHookWithClient(() => useTransferResident('h1'));
     result.current.mutate({ residentId: 'r1', targetHouseId: 'h2' });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.residents.update).toHaveBeenCalledWith('r1', { houseId: 'h2' });
+    expect(m.residents.update).toHaveBeenCalledWith('r1', { houseId: 'h2' }, expectIdempotencyKey);
   });
 });

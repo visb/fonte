@@ -12,7 +12,7 @@ jest.mock('@/lib/api', () => ({
 }));
 
 import { api } from '@/lib/api';
-import { renderHookWithClient } from '@/lib/test/utils';
+import { expectIdempotencyKey, renderHookWithClient } from '@/lib/test/utils';
 import {
   useStreetSales,
   useCreateStreetSale,
@@ -42,7 +42,10 @@ describe('useStreetSales', () => {
     const { result } = renderHookWithClient(() => useCreateStreetSale());
     result.current.mutate({ houseId: 'h1', amountCents: 1000 } as never);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.streetSales.create).toHaveBeenCalledWith({ houseId: 'h1', amountCents: 1000 });
+    expect(m.streetSales.create).toHaveBeenCalledWith(
+      { houseId: 'h1', amountCents: 1000 },
+      expectIdempotencyKey,
+    );
   });
 
   it('useUpdateStreetSale atualiza por id', async () => {
@@ -50,7 +53,11 @@ describe('useStreetSales', () => {
     const { result } = renderHookWithClient(() => useUpdateStreetSale('h1'));
     result.current.mutate({ id: 's1', data: { amountCents: 2000 } as never });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.streetSales.update).toHaveBeenCalledWith('s1', { amountCents: 2000 });
+    expect(m.streetSales.update).toHaveBeenCalledWith(
+      's1',
+      { amountCents: 2000 },
+      expectIdempotencyKey,
+    );
   });
 
   it('useDeleteStreetSale remove por id', async () => {

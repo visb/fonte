@@ -21,7 +21,7 @@ jest.mock('@/lib/api', () => ({
 
 import { Platform } from 'react-native';
 import { api } from '@/lib/api';
-import { renderHookWithClient } from '@/lib/test/utils';
+import { expectIdempotencyKey, renderHookWithClient } from '@/lib/test/utils';
 import {
   useActivities,
   useActivity,
@@ -88,7 +88,10 @@ describe('useActivities (mutations)', () => {
     const { result } = renderHookWithClient(() => useCreateActivity());
     result.current.mutate({ title: 'X', houseId: 'h1' } as never);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockApi.activities.create).toHaveBeenCalledWith({ title: 'X', houseId: 'h1' });
+    expect(mockApi.activities.create).toHaveBeenCalledWith(
+      { title: 'X', houseId: 'h1' },
+      expectIdempotencyKey,
+    );
   });
 
   it('useUpdateActivity chama update com id e data', async () => {
@@ -112,7 +115,11 @@ describe('useActivities (mutations)', () => {
     const { result } = renderHookWithClient(() => useAddComment('a1'));
     result.current.mutate({ body: 'oi' } as never);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockApi.activities.addComment).toHaveBeenCalledWith('a1', { body: 'oi' });
+    expect(mockApi.activities.addComment).toHaveBeenCalledWith(
+      'a1',
+      { body: 'oi' },
+      expectIdempotencyKey,
+    );
   });
 
   it('useDeleteComment chama deleteComment com os dois ids', async () => {

@@ -1,6 +1,7 @@
 import React, { type ReactElement, type ReactNode } from 'react';
 import { render, renderHook } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { registerMutationDefaults } from '@/lib/offline/mutationDefaults';
 
 /**
  * Helper central de testes do ops.fonte (RN / jest-expo).
@@ -12,12 +13,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
  */
 
 export function createTestQueryClient(): QueryClient {
-  return new QueryClient({
+  const client = new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0, staleTime: 0 },
-      mutations: { retry: false },
+      // `gcTime: Infinity` nas mutations não guarda nada: só evita o timer de
+      // coleta (5 min por padrão) segurar o processo do jest no fim do arquivo.
+      mutations: { retry: false, gcTime: Infinity },
     },
   });
+  // As mutations de campo têm `mutationFn` em `setMutationDefaults` (story 169):
+  // sem registrar, todo hook de escrita quebraria com "No mutationFn found".
+  // `retry: false` porque aqui a política real (repetir rede para sempre)
+  // deixaria o teste girando.
+  registerMutationDefaults(client, { retry: false });
+  return client;
 }
 
 export function createWrapper(client: QueryClient = createTestQueryClient()) {
@@ -25,6 +34,15 @@ export function createWrapper(client: QueryClient = createTestQueryClient()) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   };
 }
+
+/**
+ * Terceiro argumento das escritas de campo: `RequestOptions` com a chave de
+ * idempotência gerada pela outbox (story 169 sobre o contrato da 172). Toda
+ * asserção de payload dessas mutations passa a esperar isto.
+ */
+export const expectIdempotencyKey = expect.objectContaining({
+  idempotencyKey: expect.any(String),
+});
 
 /** Renderiza uma árvore RN com QueryClientProvider. */
 export function renderWithClient(

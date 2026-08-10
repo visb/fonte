@@ -1,7 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MovementType, SupplyRoomCategory } from '@fonte/types';
-import type { ReactNode } from 'react';
 
 // api-client mockado: nenhuma chamada HTTP real é feita.
 jest.mock('@/lib/api', () => ({
@@ -17,10 +15,16 @@ jest.mock('@/lib/api', () => ({
 
 import { api } from '@/lib/api';
 import {
+  createTestQueryClient,
+  createWrapper,
+  expectIdempotencyKey,
+} from '@/lib/test/utils';
+import {
   useSupplyRoomItems,
   useSupplyRoomMovements,
   useCreateSupplyMovement,
   useCreateSupplyItem,
+  usePendingSupplyMovementItemIds,
 } from './useSupplyRoom';
 
 const mockApi = api as unknown as {
@@ -31,17 +35,6 @@ const mockApi = api as unknown as {
     createItem: jest.Mock;
   };
 };
-
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
-  };
-}
 
 describe('useSupplyRoom', () => {
   beforeEach(() => {
@@ -102,7 +95,7 @@ describe('useSupplyRoom', () => {
       };
       result.current.mutate(input);
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(mockApi.supplyRoom.createMovement).toHaveBeenCalledWith(input);
+      expect(mockApi.supplyRoom.createMovement).toHaveBeenCalledWith(input, expectIdempotencyKey);
     });
   });
 
@@ -123,8 +116,36 @@ describe('useSupplyRoom', () => {
       result.current.mutate(input);
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(mockApi.supplyRoom.createItem).toHaveBeenCalledWith(input);
+      expect(mockApi.supplyRoom.createItem).toHaveBeenCalledWith(input, expectIdempotencyKey);
     });
+  });
+});
+
+describe('usePendingSupplyMovementItemIds', () => {
+  it('marca os itens com movimentação ainda na fila (story 169)', async () => {
+    // Trava o envio para o item ficar pendente durante a asserção.
+    mockApi.supplyRoom.createMovement.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(
+      () => ({
+        create: useCreateSupplyMovement(),
+        pending: usePendingSupplyMovementItemIds(),
+      }),
+      { wrapper: createWrapper(createTestQueryClient()) },
+    );
+
+    expect(result.current.pending.size).toBe(0);
+
+    result.current.create.mutate({
+      itemId: 'item-1',
+      type: MovementType.OUT,
+      quantity: 1,
+      responsibleId: 'staff-1',
+      date: '2026-08-10',
+      notes: null,
+    });
+
+    await waitFor(() => expect(result.current.pending.has('item-1')).toBe(true));
+    expect(result.current.pending.has('item-2')).toBe(false);
   });
 });
 

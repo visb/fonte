@@ -8,6 +8,7 @@ import { MovementType, SupplyRoomCategory } from "@fonte/types";
 import type { SupplyRoomItem } from "@fonte/api-client";
 import { useAuth } from "@/lib/auth";
 import { getErrorMessage } from "@/lib/errors";
+import { useIsOnline } from "@/lib/offline/network";
 import {
   useSupplyRoomItems,
   useCreateSupplyMovement,
@@ -45,6 +46,7 @@ export function MovementPage() {
   const { data: items = [] } = useSupplyRoomItems(staff?.houseId);
   const createItemMutation = useCreateSupplyItem();
   const mutation = useCreateSupplyMovement();
+  const isOnline = useIsOnline();
 
   const {
     control,
@@ -94,7 +96,15 @@ export function MovementPage() {
     );
   }
 
+  function backToList(successMsg: string) {
+    router.replace({ pathname: "/(app)/supply-room", params: { successMsg } });
+  }
+
   const onSubmit = (data: FormData) => {
+    // Sem sinal o lançamento entra na fila e o envio só acontece depois: esperar
+    // o `onSuccess` deixaria o operador travado no botão girando (story 169).
+    const queuedOffline = !isOnline;
+
     mutation.mutate(
       {
         itemId: data.itemId,
@@ -103,20 +113,25 @@ export function MovementPage() {
         responsibleId: staff!.id,
         date: data.date,
         notes: data.notes || null,
+        responsibleName: staff?.name,
       },
       {
-        onSuccess: () =>
-          router.replace({
-            pathname: "/(app)/supply-room",
-            params: { successMsg: "Movimentação registrada com sucesso." },
-          }),
-        onError: (err) =>
+        onSuccess: () => {
+          if (!queuedOffline) backToList("Movimentação registrada com sucesso.");
+        },
+        onError: (err) => {
+          if (queuedOffline) return;
           Alert.alert(
             "Erro",
             getErrorMessage(err, "Não foi possível registrar a movimentação."),
-          ),
+          );
+        },
       },
     );
+
+    if (queuedOffline) {
+      backToList("Movimentação salva. Será enviada quando a conexão voltar.");
+    }
   };
 
   return (

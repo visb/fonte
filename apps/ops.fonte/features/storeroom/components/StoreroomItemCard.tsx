@@ -10,9 +10,11 @@ import {
 type Props = {
   item: StoreroomItem;
   onPress: () => void;
+  /** Há movimentação deste item ainda na fila de envio (story 169). */
+  isPendingSync?: boolean;
 };
 
-export function StoreroomItemCard({ item, onPress }: Props) {
+export function StoreroomItemCard({ item, onPress, isPendingSync = false }: Props) {
   const weeklyAverage = getWeeklyAverage(item);
   const isLowStock = Number(item.currentQuantity) <= 5;
 
@@ -40,6 +42,13 @@ export function StoreroomItemCard({ item, onPress }: Props) {
         </Text>
       </View>
       <View className="items-end gap-2">
+        {isPendingSync && (
+          // O estoque já mostra o lançamento; o selo diz que ele ainda não
+          // chegou ao servidor — nada é dado como enviado sem ter sido.
+          <View testID="pending-sync-badge" className="bg-amber-50 rounded-full px-2 py-0.5">
+            <Text className="text-xs text-amber-700 font-medium">Pendente</Text>
+          </View>
+        )}
         {isLowStock && (
           <View className="bg-orange-50 rounded-full px-2 py-0.5">
             <Text className="text-xs text-orange-600 font-medium">Baixo</Text>

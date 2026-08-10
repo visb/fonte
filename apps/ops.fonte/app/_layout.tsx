@@ -12,8 +12,15 @@ import { queryClient } from "@/lib/queryClient";
 import { PERSIST_BUSTER, PERSIST_MAX_AGE } from "@/lib/offline/constants";
 import { dehydrateOptions, queryCachePersister } from "@/lib/offline/persister";
 import { startFocusWatcher, startNetworkWatcher } from "@/lib/offline/network";
+import { registerMutationDefaults } from "@/lib/offline/mutationDefaults";
+import { startOutboxReplay } from "@/lib/offline/outbox";
 
 initSentry();
+
+// Antes de qualquer reidratação: mutation pausada volta do disco sem a
+// `mutationFn` (função não é serializável) e só é retomável se o default da sua
+// `mutationKey` já estiver registrado (story 169).
+registerMutationDefaults(queryClient);
 
 if (Platform.OS !== "web") {
   SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -36,9 +43,12 @@ function RootLayout() {
   useEffect(() => {
     const stopNetworkWatcher = startNetworkWatcher();
     const stopFocusWatcher = startFocusWatcher();
+    // Replay da outbox na volta da rede (o outro gatilho é a reidratação).
+    const stopOutboxReplay = startOutboxReplay(queryClient);
     return () => {
       stopNetworkWatcher();
       stopFocusWatcher();
+      stopOutboxReplay();
     };
   }, []);
 
@@ -46,6 +56,11 @@ function RootLayout() {
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={persistOptions}
+      onSuccess={() => {
+        // Cache reidratado: os lançamentos que ficaram pausados no disco voltam
+        // para a fila e são enviados em ordem de entrada (FIFO).
+        void queryClient.resumePausedMutations();
+      }}
     >
       <Head>
         <title>Fonte de Misericórdia</title>

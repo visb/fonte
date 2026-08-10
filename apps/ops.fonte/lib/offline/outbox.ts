@@ -285,6 +285,25 @@ export function listPendingMutations(queryClient: QueryClient): PendingOutboxIte
     .sort((a, b) => a.submittedAt - b.submittedAt);
 }
 
+/**
+ * Duas leituras equivalentes da fila. Necessário porque montar um `useMutation`
+ * faz o `MutationCache` notificar: sem comparar conteúdo, o array novo a cada
+ * notificação re-renderiza a tela, que notifica de novo — laço infinito em
+ * qualquer tela que leia a fila **e** tenha mutation (a de pendências, story 170).
+ */
+function isSamePendingList(a: PendingOutboxItem[], b: PendingOutboxItem[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((item, index) => {
+    const other = b[index];
+    return (
+      item.id === other.id &&
+      item.isPaused === other.isPaused &&
+      item.failureCount === other.failureCount &&
+      item.variables === other.variables
+    );
+  });
+}
+
 /** Fila pendente reativa, para a UI (badge da home e tela de pendências — 170). */
 export function usePendingMutations(): PendingOutboxItem[] {
   const queryClient = useQueryClient();
@@ -292,8 +311,14 @@ export function usePendingMutations(): PendingOutboxItem[] {
 
   useEffect(() => {
     const cache = queryClient.getMutationCache();
-    setItems(listPendingMutations(queryClient));
-    return cache.subscribe(() => setItems(listPendingMutations(queryClient)));
+    const sync = () =>
+      setItems((current) => {
+        const next = listPendingMutations(queryClient);
+        return isSamePendingList(current, next) ? current : next;
+      });
+
+    sync();
+    return cache.subscribe(sync);
   }, [queryClient]);
 
   return items;

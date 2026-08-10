@@ -2,6 +2,7 @@ import { Tabs, router } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
 import { UsageTimerProvider } from "@/lib/UsageTimerContext";
@@ -18,6 +19,11 @@ export default function AppLayout() {
     canModerateMessages,
   } = useAuth();
   const isSupportGroupServant = !!staff && !staff.houseId;
+  // Ponto ÚNICO de safe area do app autenticado (story 174): o wrapper paga o
+  // inset do topo por todas as telas do grupo. Header nenhum — nem o
+  // OfflineBanner — pode somar insets.top de novo, senão o app ganha gap duplo
+  // quando está offline, que aqui é o estado esperado e não a exceção.
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!isLoading && !token) router.replace("/(auth)/login");
@@ -28,8 +34,15 @@ export default function AppLayout() {
   useWarmHouseCache(token ? staff?.houseId : null);
 
   const tabs = (
-    <View className="flex-1">
-      <StatusBar style="light" backgroundColor="#272950" />
+    <View
+      testID="app-safe-area"
+      className="flex-1"
+      // A faixa da status bar fica na cor do header para não abrir uma tira
+      // branca acima dele. insets.bottom fica de fora de propósito: a tab bar
+      // do expo-router já trata o inset inferior.
+      style={{ paddingTop: insets.top, backgroundColor: "#272950" }}
+    >
+      <StatusBar style="light" />
       <OfflineBanner />
       <Tabs
         screenOptions={{

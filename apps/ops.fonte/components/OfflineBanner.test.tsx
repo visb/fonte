@@ -48,4 +48,15 @@ describe('OfflineBanner', () => {
 
     expect(OFFLINE_MESSAGE).toContain('você continua trabalhando');
   });
+
+  // Regressão do gap duplo (story 174): o inset do topo é pago uma única vez
+  // pelo wrapper de app/(app)/_layout.tsx. Se alguém reintroduzir insets.top
+  // aqui, o paddingTop deixa de ser 8 (o mock devolve top: 20) e este caso cai.
+  it('não soma o inset de safe area — o wrapper do layout já paga', () => {
+    onlineManager.setOnline(false);
+    render(<OfflineBanner />);
+
+    const style = screen.getByTestId('offline-banner').props.style;
+    expect(style).toEqual(expect.objectContaining({ paddingTop: 8, paddingBottom: 8 }));
+  });
 });

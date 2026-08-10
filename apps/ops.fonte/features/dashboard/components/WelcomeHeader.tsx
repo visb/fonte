@@ -15,7 +15,7 @@ export function WelcomeHeader({ name, houseName, photoUrl }: Props) {
   const photoUri = resolveAssetUrl(photoUrl);
 
   return (
-    <View className="bg-[#272950] px-4 pt-6 pb-4 border-b border-gray-100">
+    <View className="bg-[#272950] px-4 pt-4 pb-4 border-b border-gray-100">
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center gap-3 flex-1">
           {photoUri ? (

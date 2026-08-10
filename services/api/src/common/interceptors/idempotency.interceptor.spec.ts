@@ -206,6 +206,33 @@ describe('IdempotencyInterceptor', () => {
     await expect(run({ service })).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('replay sem status memorizado cai para 200', async () => {
+    const service = makeIdempotencyService();
+    service.reserve.mockResolvedValueOnce(null);
+    service.findByScope.mockResolvedValueOnce({
+      id: 'x',
+      key: KEY,
+      userId: 'u1',
+      httpMethod: 'POST',
+      path: PATH,
+      status: IdempotencyStatus.COMPLETED,
+      responseStatus: null,
+      responseBody: { id: 'mov-9' },
+    });
+
+    const { result$, res } = await run({ service });
+
+    await expect(firstValueFrom(result$)).resolves.toEqual({ id: 'mov-9' });
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('escopa com método vazio quando o request não informa o verbo', async () => {
+    const { service, result$ } = await run({ req: baseRequest({ method: undefined }) });
+
+    await firstValueFrom(result$);
+    expect(service.reserve).toHaveBeenCalledWith(expect.objectContaining({ httpMethod: '' }));
+  });
+
   it('devolve 409 quando a reserva some entre o insert e a leitura', async () => {
     const service = makeIdempotencyService();
     service.reserve.mockResolvedValueOnce(null);

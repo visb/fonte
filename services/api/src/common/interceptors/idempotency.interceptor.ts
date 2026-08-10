@@ -97,8 +97,8 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
     // O Nest reaplica o status do handler ao enviar; setar aqui preserva o status
     // memorizado para handlers que definem o código dinamicamente.
-    const res = context.switchToHttp().getResponse();
-    res?.status?.(existing.responseStatus ?? HttpStatus.OK);
+    const res = context.switchToHttp().getResponse<{ status(code: number): unknown }>();
+    res.status(existing.responseStatus ?? HttpStatus.OK);
     return of(existing.responseBody);
   }
 }

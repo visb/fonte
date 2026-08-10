@@ -31,7 +31,7 @@ test.describe('ops.fonte — dashboard web', () => {
     await loginAsOperator(page);
 
     await page.getByText('Sair', { exact: true }).click();
-    await expect(page.getByText('ops.fonte')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('OPS Fonte')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('Plataforma operacional')).toBeVisible();
   });
 });

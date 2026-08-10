@@ -37,4 +37,4 @@ appId: org.fonte.ops
 - tapOn: "Entrar"
 - assertVisible: "Bem-vindo,"
 - tapOn: "Sair"
-- assertVisible: "ops.fonte"
+- assertVisible: "OPS Fonte"

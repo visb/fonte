@@ -104,7 +104,7 @@ describe('sem rede', () => {
     await waitFor(() => expect(result.current).toHaveLength(1));
     expect(result.current[0]).toMatchObject({
       mutationKey: 'storeroom/createMovement',
-      label: 'Movimentação do almoxarifado',
+      label: 'Movimentação da dispensa',
     });
     await waitFor(() => expect(result.current[0].isPaused).toBe(true));
     expect(await listDeadLetter()).toEqual([]);
@@ -193,7 +193,7 @@ describe('rejeição do servidor', () => {
     const [entry] = await listDeadLetter();
     expect(entry).toMatchObject({
       mutationKey: 'storeroom/createMovement',
-      label: 'Movimentação do almoxarifado',
+      label: 'Movimentação da dispensa',
       error: 'Quantidade indisponível em estoque.',
     });
     // Uma tentativa só: 4xx de regra não se resolve repetindo.

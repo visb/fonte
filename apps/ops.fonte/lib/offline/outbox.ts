@@ -51,17 +51,23 @@ export const OUTBOX_MUTATION_KEYS = {
 export const OUTBOX_MUTATION_KEY_LIST: readonly OutboxMutationKey[] =
   Object.values(OUTBOX_MUTATION_KEYS);
 
-/** Rótulo humano por chave — usado na dead-letter e na tela de pendências (170). */
+/**
+ * Rótulo humano por chave — usado na dead-letter e na tela de pendências (170).
+ *
+ * Atenção ao nome interno: `storeroom` é a **Dispensa** e `supplyRoom` é o
+ * **Almoxarifado** na UI (ver os `_layout.tsx` das rotas). O rótulo segue o que
+ * o operador vê na tela, não o nome do módulo.
+ */
 const OUTBOX_LABELS: Record<string, string> = {
   'census/addResident': 'Filho adicionado na contagem',
   'census/conclude': 'Conclusão da contagem',
   'residents/uploadPhoto': 'Foto do filho',
   'residents/updateStatus': 'Mudança de situação do filho',
   'incidents/create': 'Ocorrência',
-  'storeroom/createMovement': 'Movimentação do almoxarifado',
-  'storeroom/createItem': 'Novo item do almoxarifado',
-  'supplyRoom/createMovement': 'Movimentação da despensa',
-  'supplyRoom/createItem': 'Novo item da despensa',
+  'storeroom/createMovement': 'Movimentação da dispensa',
+  'storeroom/createItem': 'Novo item da dispensa',
+  'supplyRoom/createMovement': 'Movimentação do almoxarifado',
+  'supplyRoom/createItem': 'Novo item do almoxarifado',
   'streetSales/create': 'Venda de rua',
   'streetSales/update': 'Edição de venda de rua',
   'activities/create': 'Atividade',

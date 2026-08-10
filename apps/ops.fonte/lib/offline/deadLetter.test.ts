@@ -15,7 +15,7 @@ function entry(overrides: Partial<DeadLetterEntry> = {}): DeadLetterEntry {
   return {
     id: 'key-1',
     mutationKey: 'storeroom/createMovement',
-    label: 'Movimentação do almoxarifado',
+    label: 'Movimentação da dispensa',
     variables: { data: { itemId: 'i1' } },
     error: 'Quantidade indisponível.',
     failedAt: 1_700_000_000_000,

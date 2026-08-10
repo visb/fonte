@@ -149,7 +149,7 @@ describe('recordOutboxFailure', () => {
     expect(entries[0]).toMatchObject({
       id: 'key-1',
       mutationKey: 'storeroom/createMovement',
-      label: 'Movimentação do almoxarifado',
+      label: 'Movimentação da dispensa',
       error: 'Quantidade indisponível.',
     });
   });

@@ -10,7 +10,10 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import type { SupplyRoomItem } from "@fonte/api-client";
 import { useAuth } from "@/lib/auth";
-import { useSupplyRoomItems } from "@/features/supply-room/hooks/useSupplyRoom";
+import {
+  usePendingSupplyMovementItemIds,
+  useSupplyRoomItems,
+} from "@/features/supply-room/hooks/useSupplyRoom";
 import { ItemDetailsModal } from "@/features/supply-room/components/ItemDetailsModal";
 import { SupplyRoomItemCard } from "@/features/supply-room/components/SupplyRoomItemCard";
 import { SuccessBanner } from "@/components/shared/SuccessBanner";
@@ -23,6 +26,7 @@ export function SupplyRoomPage() {
   const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
 
   const { data: items = [], isLoading, refetch } = useSupplyRoomItems(staff?.houseId);
+  const pendingItemIds = usePendingSupplyMovementItemIds();
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -58,6 +62,7 @@ export function SupplyRoomPage() {
           renderItem={({ item }) => (
             <SupplyRoomItemCard
               item={item}
+              isPendingSync={pendingItemIds.has(item.id)}
               onPress={() => {
                 setSelectedItem(item);
                 setIsDetailsModalVisible(true);

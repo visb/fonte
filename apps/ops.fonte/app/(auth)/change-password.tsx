@@ -1,48 +1,43 @@
-import { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { useAuth } from '@/lib/auth';
+import { passwordSchema, type PasswordForm } from '@/lib/passwordSchema';
+import { PasswordInput } from '@/components/shared/PasswordInput';
+
+const INPUT_CLASS = 'border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50';
 
 export default function ChangePasswordScreen() {
   const { changePassword } = useAuth();
-  const [newPassword, setNewPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit() {
-    if (!newPassword || !confirm) {
-      setError('Preencha os dois campos.');
-      return;
-    }
-    if (newPassword.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.');
-      return;
-    }
-    if (newPassword !== confirm) {
-      setError('As senhas não coincidem.');
-      return;
-    }
+  const {
+    control,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<PasswordForm>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: { password: '', confirm: '' },
+  });
 
-    setError('');
-    setLoading(true);
+  async function onSubmit(data: PasswordForm) {
     try {
-      await changePassword(newPassword);
+      await changePassword(data.password);
       router.replace('/(app)');
     } catch {
-      setError('Não foi possível alterar a senha. Tente novamente.');
-    } finally {
-      setLoading(false);
+      setError('root', { message: 'Não foi possível alterar a senha. Tente novamente.' });
     }
   }
+
+  const submit = handleSubmit(onSubmit);
 
   return (
     <KeyboardAvoidingView
@@ -58,37 +53,55 @@ export default function ChangePasswordScreen() {
         <View className="space-y-4">
           <View>
             <Text className="text-sm font-medium text-gray-700 mb-1.5">Nova senha</Text>
-            <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
-              placeholder="••••••••"
-              secureTextEntry
-              value={newPassword}
-              onChangeText={setNewPassword}
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <PasswordInput
+                  accessibilityLabel="input-nova-senha"
+                  className={INPUT_CLASS}
+                  placeholder="••••••••"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                />
+              )}
             />
+            {errors.password && (
+              <Text className="text-sm text-red-600 mt-1">{errors.password.message}</Text>
+            )}
           </View>
 
           <View>
             <Text className="text-sm font-medium text-gray-700 mb-1.5">Confirmar senha</Text>
-            <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
-              placeholder="••••••••"
-              secureTextEntry
-              value={confirm}
-              onChangeText={setConfirm}
-              onSubmitEditing={handleSubmit}
+            <Controller
+              control={control}
+              name="confirm"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <PasswordInput
+                  accessibilityLabel="input-confirmar-senha"
+                  className={INPUT_CLASS}
+                  placeholder="••••••••"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  onSubmitEditing={submit}
+                />
+              )}
             />
+            {errors.confirm && (
+              <Text className="text-sm text-red-600 mt-1">{errors.confirm.message}</Text>
+            )}
           </View>
 
-          {error ? (
-            <Text className="text-sm text-red-600">{error}</Text>
-          ) : null}
+          {errors.root && <Text className="text-sm text-red-600">{errors.root.message}</Text>}
 
           <TouchableOpacity
             className="bg-blue-600 rounded-lg py-3.5 items-center mt-2"
-            onPress={handleSubmit}
-            disabled={loading}
+            onPress={submit}
+            disabled={isSubmitting}
           >
-            {loading ? (
+            {isSubmitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text className="text-white font-semibold text-base">Salvar senha</Text>

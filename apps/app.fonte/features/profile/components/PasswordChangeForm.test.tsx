@@ -1,5 +1,11 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 
+// @expo/vector-icons depende de fontes nativas (indisponível no jest-expo): stub.
+jest.mock('@expo/vector-icons', () => {
+  const { Text } = require('react-native');
+  return { Ionicons: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
+});
+
 const mockChangePassword = jest.fn();
 jest.mock('@/lib/auth', () => ({
   useAuth: () => ({ changePassword: mockChangePassword }),
@@ -58,5 +64,18 @@ describe('PasswordChangeForm', () => {
     pressSubmit();
 
     expect(await screen.findByText('Senha fraca')).toBeOnTheScreen();
+  });
+
+  // Story 173 — toggle por instância, sem perder o valor do formulário.
+  it('alterna a visibilidade de cada campo de forma independente', () => {
+    render(<PasswordChangeForm />);
+    fillPasswords('segredo1', 'segredo1');
+
+    fireEvent.press(screen.getAllByLabelText('mostrar-senha')[0]);
+
+    const [nova, confirmar] = screen.getAllByPlaceholderText('••••••••');
+    expect(nova.props.secureTextEntry).toBe(false);
+    expect(nova.props.value).toBe('segredo1');
+    expect(confirmar.props.secureTextEntry).toBe(true);
   });
 });

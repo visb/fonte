@@ -8,16 +8,36 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { router } from "expo-router";
 import { useAuth, MustChangePasswordError } from "@/lib/auth";
+import { PasswordInput } from "@/components/shared/PasswordInput";
+
+// O operador entra com WhatsApp (identificador primário) ou e-mail.
+const loginSchema = z.object({
+  identifier: z.string().min(1, "Informe WhatsApp ou e-mail."),
+  password: z.string().min(1, "Informe sua senha."),
+});
+type LoginForm = z.infer<typeof loginSchema>;
+
+const INPUT_CLASS =
+  "border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50";
 
 export default function LoginScreen() {
   const { login, token, sessionExpired } = useAuth();
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [expiredNoticeDismissed, setExpiredNoticeDismissed] = useState(false);
+
+  const {
+    control,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { identifier: "", password: "" },
+  });
 
   const showSessionExpired = sessionExpired && !expiredNoticeDismissed;
 
@@ -25,26 +45,24 @@ export default function LoginScreen() {
     if (token) router.replace("/(app)");
   }, [token]);
 
-  async function handleLogin() {
-    setExpiredNoticeDismissed(true);
-    if (!identifier || !password) {
-      setError("Preencha WhatsApp ou e-mail e senha.");
-      return;
-    }
-    setError("");
-    setLoading(true);
+  async function onSubmit(data: LoginForm) {
     try {
-      await login(identifier, password);
+      await login(data.identifier, data.password);
     } catch (err) {
       if (err instanceof MustChangePasswordError) {
         router.replace("/(auth)/change-password");
       } else {
-        setError("WhatsApp/e-mail ou senha incorretos.");
+        setError("root", { message: "WhatsApp/e-mail ou senha incorretos." });
       }
-    } finally {
-      setLoading(false);
     }
   }
+
+  // O aviso de sessão expirada some assim que o operador tenta entrar de novo,
+  // mesmo que o submit seja barrado pela validação (regressão da story 165).
+  const submit = () => {
+    setExpiredNoticeDismissed(true);
+    return handleSubmit(onSubmit)();
+  };
 
   return (
     <KeyboardAvoidingView
@@ -73,40 +91,65 @@ export default function LoginScreen() {
             <Text className="text-sm font-medium text-gray-700 mb-1.5">
               WhatsApp ou e-mail
             </Text>
-            <TextInput
-              accessibilityLabel="input-email"
-              className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
-              placeholder="WhatsApp ou seu@email.com"
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={identifier}
-              onChangeText={setIdentifier}
+            <Controller
+              control={control}
+              name="identifier"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  accessibilityLabel="input-email"
+                  className={INPUT_CLASS}
+                  placeholder="WhatsApp ou seu@email.com"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                />
+              )}
             />
+            {errors.identifier && (
+              <Text className="text-sm text-red-600 mt-1">
+                {errors.identifier.message}
+              </Text>
+            )}
           </View>
 
           <View>
             <Text className="text-sm font-medium text-gray-700 mb-1.5">
               Senha
             </Text>
-            <TextInput
-              accessibilityLabel="input-senha"
-              className="border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50"
-              placeholder="••••••••"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              onSubmitEditing={handleLogin}
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <PasswordInput
+                  accessibilityLabel="input-senha"
+                  className={INPUT_CLASS}
+                  placeholder="••••••••"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  onSubmitEditing={submit}
+                />
+              )}
             />
+            {errors.password && (
+              <Text className="text-sm text-red-600 mt-1">
+                {errors.password.message}
+              </Text>
+            )}
           </View>
 
-          {error ? <Text className="text-sm text-red-600">{error}</Text> : null}
+          {errors.root && (
+            <Text className="text-sm text-red-600">{errors.root.message}</Text>
+          )}
 
           <TouchableOpacity
             className="bg-blue-600 rounded-lg py-3.5 items-center mt-2"
-            onPress={handleLogin}
-            disabled={loading}
+            onPress={submit}
+            disabled={isSubmitting}
           >
-            {loading ? (
+            {isSubmitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text className="text-white font-semibold text-base">Entrar</Text>

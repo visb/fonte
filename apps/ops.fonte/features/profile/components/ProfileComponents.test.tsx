@@ -51,6 +51,20 @@ describe('ChangePasswordSection', () => {
     await waitFor(() => expect(mockChangePassword).toHaveBeenCalledWith('senha123'));
     await waitFor(() => expect(screen.getByText('Senha alterada com sucesso!')).toBeTruthy());
   });
+
+  // Story 173 — cada campo tem seu próprio "ver senha"; revelar um não revela o outro.
+  it('alterna a visibilidade de cada campo de forma independente', () => {
+    rc(<ChangePasswordSection />);
+    const inputs = screen.getAllByPlaceholderText('••••••••');
+    fireEvent.changeText(inputs[0], 'senha123');
+
+    fireEvent.press(screen.getAllByLabelText('mostrar-senha')[0]);
+
+    const [novaSenha, confirmar] = screen.getAllByPlaceholderText('••••••••');
+    expect(novaSenha.props.secureTextEntry).toBe(false);
+    expect(novaSenha.props.value).toBe('senha123');
+    expect(confirmar.props.secureTextEntry).toBe(true);
+  });
 });
 
 describe('ProfileDataSection', () => {

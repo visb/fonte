@@ -19,7 +19,7 @@ test.describe('Autenticação', () => {
   test('whatsapp desconhecido exibe mensagem de erro', async ({ page }) => {
     await page.goto('/login');
     await page.getByLabel('WhatsApp ou e-mail').fill('11900000000');
-    await page.getByLabel('Senha').fill('coord123');
+    await page.getByLabel('Senha', { exact: true }).fill('coord123');
     await page.getByRole('button', { name: 'Entrar' }).click();
     await expect(page.getByText('Credenciais inválidas')).toBeVisible();
     await expect(page).toHaveURL('/login');
@@ -28,15 +28,31 @@ test.describe('Autenticação', () => {
   test('login inválido exibe mensagem de erro', async ({ page }) => {
     await page.goto('/login');
     await page.getByLabel('WhatsApp ou e-mail').fill('admin@fonte.com');
-    await page.getByLabel('Senha').fill('senha_errada');
+    await page.getByLabel('Senha', { exact: true }).fill('senha_errada');
     await page.getByRole('button', { name: 'Entrar' }).click();
     await expect(page.getByText('Credenciais inválidas')).toBeVisible();
     await expect(page).toHaveURL('/login');
   });
 
+  // Story 173 — o campo de senha do login ganhou o botão "ver senha".
+  test('botão "ver senha" revela e volta a ocultar a senha digitada', async ({ page }) => {
+    await page.goto('/login');
+    const password = page.getByLabel('Senha', { exact: true });
+    await password.fill('admin123');
+    await expect(password).toHaveAttribute('type', 'password');
+
+    await page.getByRole('button', { name: 'Mostrar senha' }).click();
+    await expect(password).toHaveAttribute('type', 'text');
+    await expect(password).toHaveValue('admin123');
+
+    await page.getByRole('button', { name: 'Ocultar senha' }).click();
+    await expect(password).toHaveAttribute('type', 'password');
+    await expect(password).toHaveValue('admin123');
+  });
+
   test('identificador vazio exibe validação do formulário', async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel('Senha').fill('123456');
+    await page.getByLabel('Senha', { exact: true }).fill('123456');
     await page.getByRole('button', { name: 'Entrar' }).click();
     await expect(page.getByText('Informe WhatsApp ou e-mail')).toBeVisible();
   });

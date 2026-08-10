@@ -1,5 +1,11 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 
+// @expo/vector-icons depende de fontes nativas (indisponível no jest-expo): stub.
+jest.mock('@expo/vector-icons', () => {
+  const { Text } = require('react-native');
+  return { Ionicons: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
+});
+
 const mockChangePassword = jest.fn();
 jest.mock('@/lib/auth', () => ({
   useAuth: () => ({ changePassword: mockChangePassword }),
@@ -54,5 +60,17 @@ describe('ChangePasswordForm', () => {
     fireEvent.press(screen.getByText('Salvar senha'));
 
     expect(await screen.findByText('Erro ao alterar senha. Tente novamente.')).toBeOnTheScreen();
+  });
+
+  // Story 173 — revelar "nova senha" não revela "confirmar senha".
+  it('cada campo tem seu próprio toggle de visibilidade', () => {
+    render(<ChangePasswordForm onSuccess={jest.fn()} />);
+
+    fireEvent.changeText(screen.getByLabelText('input-nova-senha'), 'segredo1');
+    fireEvent.press(screen.getAllByLabelText('mostrar-senha')[0]);
+
+    expect(screen.getByLabelText('input-nova-senha').props.secureTextEntry).toBe(false);
+    expect(screen.getByLabelText('input-nova-senha').props.value).toBe('segredo1');
+    expect(screen.getByLabelText('input-confirmar-senha').props.secureTextEntry).toBe(true);
   });
 });

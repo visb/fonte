@@ -1,24 +1,14 @@
 import { useState } from 'react';
-import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useAuth } from '@/lib/auth';
 import { getErrorMessage } from '@/lib/errors';
+import { passwordSchema, type PasswordForm } from '@/lib/passwordSchema';
+import { PasswordInput } from '@/components/shared/PasswordInput';
 
 const THEME = '#272950';
 const INPUT_CLASS = 'border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 bg-gray-50';
-
-const passwordSchema = z
-  .object({
-    password: z.string().min(6, 'Mínimo 6 caracteres'),
-    confirm: z.string(),
-  })
-  .refine((d) => d.password === d.confirm, {
-    message: 'As senhas não coincidem',
-    path: ['confirm'],
-  });
-type PasswordForm = z.infer<typeof passwordSchema>;
 
 export function ChangePasswordSection() {
   const { changePassword } = useAuth();
@@ -55,7 +45,7 @@ export function ChangePasswordSection() {
             control={control}
             name="password"
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput className={INPUT_CLASS} value={value} onChangeText={onChange} onBlur={onBlur} secureTextEntry placeholder="••••••••" />
+              <PasswordInput className={INPUT_CLASS} value={value} onChangeText={onChange} onBlur={onBlur} placeholder="••••••••" />
             )}
           />
           {errors.password && <Text className="text-sm text-red-600 mt-1">{errors.password.message}</Text>}
@@ -67,7 +57,7 @@ export function ChangePasswordSection() {
             control={control}
             name="confirm"
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput className={INPUT_CLASS} value={value} onChangeText={onChange} onBlur={onBlur} secureTextEntry placeholder="••••••••" />
+              <PasswordInput className={INPUT_CLASS} value={value} onChangeText={onChange} onBlur={onBlur} placeholder="••••••••" />
             )}
           />
           {errors.confirm && <Text className="text-sm text-red-600 mt-1">{errors.confirm.message}</Text>}

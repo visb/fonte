@@ -2,6 +2,8 @@
 
 > Sucessora de [[167]] / [[168]] / [[171]]. Substitui o cache de filhos por um **store local de
 > verdade**; não desmonta a outbox ([[169]]) nem a tela de pendências ([[170]]).
+>
+> **Depende de [[177]]** (snapshot agregado + delta da casa), que entra antes.
 
 ## Context
 
@@ -34,8 +36,12 @@ persistente, sem conexão.**
    anexos/consentimentos/financeiro (`resident-attachments`, `resident-consents`,
    `resident-receivables`) — os três últimos estavam **fora** da allowlist de [[167]] por decisão
    LGPD e entram agora por decisão explícita do usuário (ver "Consequência LGPD").
-4. **Aquecimento puxa a ficha de todos os filhos ativos da casa** no login e ao voltar do foreground —
-   sem endpoint em lote novo no backend. N requests com **concorrência limitada**, não uma rajada.
+4. **Aquecimento puxa a ficha de todos os filhos presentes da casa** no login e ao voltar do
+   foreground, via o **snapshot agregado da [[177]]** (`GET /houses/:id/offline-snapshot?since=`):
+   **1 request** com só o que mudou, no lugar do fan-out de `1 + N×4`. Decisão revista: a versão
+   inicial desta story previa o fan-out com pool de concorrência, o que em casa de 40 filhos dava
+   ~200 requests **a cada volta do foreground** — insustentável na rede que o app assume ter.
+   Backend entra primeiro para o prefetch já nascer certo, em vez de ser reescrito depois.
 
 ### Trade-offs aceitos / consequências
 
@@ -58,7 +64,11 @@ persistente, sem conexão.**
   (senão o mesmo dado é gravado em dois lugares com prazos diferentes). O blob continua existindo
   para o resto da allowlist (estoque, despensa, ocorrências, atividades, venda de rua) — mexer
   nesses fluxos não é escopo desta story.
-- **Sem mudança de backend, contrato ou Postman.** Story frontend-only, um app só.
+- **Escopo do store segue os filhos _presentes_ da casa**, porque é o que a [[177]] devolve
+  (`PRESENT_RESIDENT_STATUSES`). Filho arquivado/desligado não fica no aparelho — o snapshot avisa
+  quem saiu, e a purga desse filho no store é obrigação desta story.
+- **Sem mudança de backend nesta story**: o endpoint vem pronto da [[177]]. Aqui muda contrato só
+  no consumo (`@fonte/api-client` já expõe `offlineSync.houseSnapshot`). Postman é da [[177]].
 
 ## Desenho
 
@@ -94,13 +104,21 @@ persistente, sem conexão.**
   (passam a viver no store) e ganham um teste que trava a não-duplicação.
 - `lib/queryClient.ts`: `gcTime` do domínio de filho deixa de depender de `PERSIST_MAX_AGE`.
 
-### 3. Aquecimento (`lib/offline/prefetch.ts`)
+### 3. Aquecimento / sincronização (`lib/offline/prefetch.ts` + `lib/offline/sync/`)
 
-- `warmHouseCache` passa a: buscar `residents.byHouse` → para cada filho, buscar ficha + os quatro
-  detalhes, com **pool de concorrência** (constante exportada, default 4) e falha individual
-  tolerada (aquecimento é oportunista, como hoje).
-- Resultado do aquecimento é escrito no store, não só no cache em memória.
-- `WARM_STALE_TIME` continua evitando rajada a cada foreground.
+- `syncHouseSnapshot(houseId)` (novo): lê o `syncedAt` guardado em `meta`, chama
+  `api.offlineSync.houseSnapshot(houseId, since)` e aplica o resultado:
+  - `full: true` → **substitui** o conteúdo do store da casa (é o reconciliador da [[177]]);
+  - `full: false` → **merge** por id de cada bloco;
+  - `deleted` → remove os ids do store (inclui filho que deixou de ser presente);
+  - grava o `syncedAt` **do servidor** como próximo `since` — nunca o relógio do aparelho;
+  - semeia o cache do React Query (`setQueryData`) com o que veio, para a tela montada refletir
+    na hora.
+- `warmHouseCache` passa a chamar `syncHouseSnapshot` no lugar do fan-out por filho; o resto do
+  pacote de campo ([[171]]: estoque, despensa, ocorrências de hoje, atividades) continua como está.
+- Falha de rede segue sendo **não-erro**: o store continua servindo o que já tem e o `since` não
+  avança (nada é marcado como sincronizado sem resposta).
+- `WARM_STALE_TIME` continua evitando repetição a cada foreground.
 
 ### 4. Frescor visível
 
@@ -117,7 +135,8 @@ persistente, sem conexão.**
 
 ## Validação
 
-Frontend-only, um app (`ops.fonte`). Backend, contratos e Postman não mudam.
+Frontend-only, um app (`ops.fonte`). Backend, contratos e Postman não mudam **aqui** — vêm prontos
+da [[177]], que precisa estar mergeada antes desta story começar.
 
 ### Testes obrigatórios
 
@@ -134,9 +153,14 @@ Frontend-only, um app (`ops.fonte`). Backend, contratos e Postman não mudam.
 - `constants`: prefixos de filho **não** estão mais em `PERSISTED_QUERY_PREFIXES` (trava
   duplicidade) e o restante da allowlist continua intacto; `isPersistableQueryKey` segue por
   igualdade de primeiro segmento.
-- `prefetch`: aquece a ficha e os quatro detalhes de **cada** filho retornado; respeita o pool de
-  concorrência (nunca mais que N requests em voo); falha de um filho não aborta os demais;
-  `houseId` nulo não dispara nada; tudo que é aquecido é gravado no store.
+- `syncHouseSnapshot`: primeira execução chama sem `since`; execuções seguintes mandam o `syncedAt`
+  guardado; `full: true` substitui o conteúdo da casa; `full: false` faz merge sem apagar o que não
+  veio; ids de `deleted` somem do store; filho que saiu de "presente" some do store; `syncedAt`
+  gravado é o do **servidor** (relógio do aparelho adulterado no teste não muda o `since`); erro de
+  rede **não** avança o `since` e **não** limpa o store; o resultado alimenta o `queryClient`
+  (`setQueryData`) além do store.
+- `prefetch`: `warmHouseCache` chama `syncHouseSnapshot` uma vez (não N vezes); `houseId` nulo não
+  dispara nada; falha do snapshot não derruba o aquecimento do pacote de campo da [[171]].
 - Hooks de residents: com store populado e rede caída, o hook devolve dado (`initialData`) e não
   erro; sucesso de rede faz write-through; `initialDataUpdatedAt` alimenta o "atualizado em".
 - `auth`: logout chama `purgeAll` **e** `clearPersistedCache`.
@@ -165,8 +189,8 @@ fechar: abrir a casa online, ativar modo avião, matar e reabrir o app, abrir a 
 ## Fora de escopo
 
 - Download dos **binários** de anexos para o dispositivo (só metadados).
-- Endpoint em lote no backend (`/residents/by-house/:id/details`) — decisão travada: N requests com
-  concorrência limitada.
+- O endpoint de snapshot em si (`GET /houses/:id/offline-snapshot`), índices e migration — é a
+  [[177]].
 - Migrar os demais domínios da allowlist (estoque, despensa, ocorrências, atividades, venda de rua)
   do blob para o store — continuam no persister atual.
 - Mudanças na outbox/replay ([[169]]) e na tela de pendências ([[170]]).

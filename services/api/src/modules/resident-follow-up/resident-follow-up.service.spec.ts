@@ -29,6 +29,7 @@ function makeQb(rows: unknown[]) {
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
+    withDeleted: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockResolvedValue(rows),
     getRawMany: jest.fn().mockResolvedValue(rows),
   };
@@ -174,5 +175,74 @@ describe('ResidentFollowUpService.uploadAttachment', () => {
 
     expect(storage.delete).toHaveBeenCalledWith('old.pdf');
     expect(repo.update).toHaveBeenCalledWith('fu-1', { attachmentUrl: 'https://cdn/new.pdf' });
+  });
+});
+
+// ─── Lote para o snapshot offline da casa (story 177) ────────────────────────
+
+describe('ResidentFollowUpService.findByResidents (story 177)', () => {
+  it('não vai ao banco com lista vazia', async () => {
+    const repo = makeRepo();
+    const service = makeService(repo);
+    await expect(service.findByResidents([], 'SERVANT')).resolves.toEqual([]);
+    expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it('busca N filhos numa consulta só', async () => {
+    const qb = makeQb([]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo);
+
+    await service.findByResidents(['r1', 'r2', 'r3'], 'COORDINATOR');
+
+    expect(repo.createQueryBuilder).toHaveBeenCalledTimes(1);
+    expect(qb.where).toHaveBeenCalledWith('f.resident_id IN (:...residentIds)', {
+      residentIds: ['r1', 'r2', 'r3'],
+    });
+  });
+
+  it('mantém o recorte de access_level do SERVANT — snapshot não é atalho', async () => {
+    const qb = makeQb([]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo);
+
+    await service.findByResidents(['r1'], 'SERVANT');
+
+    expect(qb.andWhere).toHaveBeenCalledWith('f.access_level = :level', { level: 'ALL' });
+  });
+
+  it('recorta o delta por updated_at', async () => {
+    const qb = makeQb([]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo);
+    const since = new Date('2026-08-01T00:00:00.000Z');
+
+    await service.findByResidents(['r1'], 'COORDINATOR', since);
+
+    expect(qb.andWhere).toHaveBeenCalledWith('f.updated_at > :since', {
+      since: '2026-08-01 00:00:00.000',
+    });
+  });
+});
+
+describe('ResidentFollowUpService.findDeletedIdsSince (story 177)', () => {
+  it('devolve os ids apagados desde since', async () => {
+    const qb = makeQb([{ id: 'fu-morto' }]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo);
+    const since = new Date('2026-08-01T00:00:00.000Z');
+
+    await expect(service.findDeletedIdsSince(['r1'], since)).resolves.toEqual(['fu-morto']);
+    expect(qb.withDeleted).toHaveBeenCalled();
+    expect(qb.andWhere).toHaveBeenCalledWith('f.deleted_at > :since', {
+      since: '2026-08-01 00:00:00.000',
+    });
+  });
+
+  it('não vai ao banco com lista vazia', async () => {
+    const repo = makeRepo();
+    const service = makeService(repo);
+    await expect(service.findDeletedIdsSince([], new Date())).resolves.toEqual([]);
+    expect(repo.createQueryBuilder).not.toHaveBeenCalled();
   });
 });

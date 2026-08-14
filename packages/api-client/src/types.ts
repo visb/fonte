@@ -98,8 +98,11 @@ import type {
   UserPreferences,
   ResidentsFiltersPreference,
   TemplateAvailability,
+  HouseOfflineSnapshot,
+  OfflineSnapshotDeleted,
 } from '@fonte/types';
 import {
+  SNAPSHOT_MAX_DELTA_AGE_DAYS,
   NotificationType,
   HouseCapacityRequestStatus,
   PayableStatus,
@@ -1422,3 +1425,25 @@ export interface BackupSummary {
   filesTotal?: number;
   prunedDumps?: string[];
 }
+
+// ─── Offline snapshot da casa (story 177) ─────────────────────────────────────
+
+export type { OfflineSnapshotDeleted };
+export { SNAPSHOT_MAX_DELTA_AGE_DAYS };
+
+/**
+ * Pacote offline de uma casa: resposta de
+ * `GET /houses/:houseId/offline-snapshot?since=<ISO>`.
+ *
+ * Substitui o fan-out de `1 + N×4` requests que o `ops.fonte` fazia para aquecer
+ * a casa. `syncedAt` é o relógio do servidor e é o que o cliente guarda para o
+ * próximo `since`; `full: true` manda substituir o store em vez de mesclar.
+ */
+export type HouseOfflineSnapshotResponse = HouseOfflineSnapshot<{
+  resident: Resident;
+  followUp: ResidentFollowUp;
+  consent: ConsentRecord;
+  receivable: ResidentReceivable;
+  attachment: ResidentAttachment;
+  ministry: HouseMinistry;
+}>;

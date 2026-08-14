@@ -8,6 +8,7 @@ import { Resident } from '../resident/resident.entity';
 import { CreateFollowUpDto } from './dto/create-follow-up.dto';
 import { BulkCreateContributionsDto } from './dto/bulk-create-contributions.dto';
 import { StorageService } from '../storage/storage.service';
+import { toDbTimestamp } from '../../common/lib/db-timestamp';
 
 const STATUS_BY_TYPE: Partial<Record<FollowUpType, ResidentStatus>> = {
   [FollowUpType.DISCHARGE]: ResidentStatus.DISCHARGED,
@@ -55,6 +56,52 @@ export class ResidentFollowUpService {
 
     const items = await qb.getMany();
     return items.map((item) => this.toView(item));
+  }
+
+  /**
+   * Lote (story 177): follow-ups de N filhos numa consulta só, para o snapshot
+   * offline da casa. `since` recorta o delta por `updated_at`. O filtro de
+   * `access_level` para SERVANT é o MESMO de `findByResident` — o pacote offline
+   * não pode ser um atalho para o servo ver evento de administração.
+   */
+  async findByResidents(
+    residentIds: string[],
+    role: string,
+    since?: Date,
+  ): Promise<ResidentFollowUpView[]> {
+    if (residentIds.length === 0) return [];
+
+    const qb = this.repo
+      .createQueryBuilder('f')
+      .leftJoinAndSelect('f.createdBy', 'staff')
+      .where('f.resident_id IN (:...residentIds)', { residentIds })
+      .andWhere('f.deleted_at IS NULL');
+
+    if (role === Role.SERVANT) {
+      qb.andWhere('f.access_level = :level', { level: FollowUpAccessLevel.ALL });
+    }
+
+    if (since) {
+      qb.andWhere('f.updated_at > :since', { since: toDbTimestamp(since) });
+    }
+
+    qb.orderBy('f.date', 'DESC').addOrderBy('f.created_at', 'DESC');
+
+    const items = await qb.getMany();
+    return items.map((item) => this.toView(item));
+  }
+
+  /** Ids apagados desde `since` (story 177) — o app remove do store local. */
+  async findDeletedIdsSince(residentIds: string[], since: Date): Promise<string[]> {
+    if (residentIds.length === 0) return [];
+    const rows = await this.repo
+      .createQueryBuilder('f')
+      .select('f.id', 'id')
+      .withDeleted()
+      .where('f.resident_id IN (:...residentIds)', { residentIds })
+      .andWhere('f.deleted_at > :since', { since: toDbTimestamp(since) })
+      .getRawMany<{ id: string }>();
+    return rows.map((row) => row.id);
   }
 
   async create(residentId: string, dto: CreateFollowUpDto, staffUserId: string): Promise<ResidentFollowUpView> {

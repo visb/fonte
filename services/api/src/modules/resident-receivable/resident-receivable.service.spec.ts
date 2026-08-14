@@ -825,3 +825,83 @@ describe('ResidentReceivableService — cenário Marcelo ponta a ponta', () => {
     expect(repo.save).not.toHaveBeenCalled();
   });
 });
+
+// ─── Lote para o snapshot offline da casa (story 177) ────────────────────────
+
+function makeSnapshotQb(rows: unknown[] = []) {
+  const qb: Record<string, jest.Mock> = {
+    select: jest.fn().mockReturnThis(),
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    withDeleted: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue(rows),
+    getRawMany: jest.fn().mockResolvedValue(rows),
+  };
+  return qb;
+}
+
+describe('ResidentReceivableService.findByResidents (story 177)', () => {
+  it('não vai ao banco com lista vazia', async () => {
+    const repo = makeRepo();
+    const service = makeService(repo, {});
+    await expect(service.findByResidents([])).resolves.toEqual([]);
+    expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it('busca N filhos numa consulta só e NÃO materializa carnê (GET não escreve)', async () => {
+    const qb = makeSnapshotQb([
+      { id: 'rcv-1', residentId: 'r1', referenceMonth: '2026-08-01', productContributions: [] },
+    ]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const residentRepo = { findOne: jest.fn() };
+    const service = makeService(repo, residentRepo);
+
+    const result = await service.findByResidents(['r1', 'r2']);
+
+    expect(result).toHaveLength(1);
+    expect(repo.createQueryBuilder).toHaveBeenCalledTimes(1);
+    expect(qb.where).toHaveBeenCalledWith('rcv.resident_id IN (:...residentIds)', {
+      residentIds: ['r1', 'r2'],
+    });
+    // ensureFutureOpen depende de carregar o filho: nada disso no snapshot.
+    expect(residentRepo.findOne).not.toHaveBeenCalled();
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('recorta o delta por updated_at', async () => {
+    const qb = makeSnapshotQb();
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo, {});
+    const since = new Date('2026-08-01T00:00:00.000Z');
+
+    await service.findByResidents(['r1'], since);
+
+    expect(qb.andWhere).toHaveBeenCalledWith('rcv.updated_at > :since', {
+      since: '2026-08-01 00:00:00.000',
+    });
+  });
+});
+
+describe('ResidentReceivableService.findDeletedIdsSince (story 177)', () => {
+  it('devolve os ids apagados desde since', async () => {
+    const qb = makeSnapshotQb([{ id: 'rcv-morto' }]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo, {});
+    const since = new Date('2026-08-01T00:00:00.000Z');
+
+    await expect(service.findDeletedIdsSince(['r1'], since)).resolves.toEqual(['rcv-morto']);
+    expect(qb.withDeleted).toHaveBeenCalled();
+    expect(qb.andWhere).toHaveBeenCalledWith('rcv.deleted_at > :since', {
+      since: '2026-08-01 00:00:00.000',
+    });
+  });
+
+  it('não vai ao banco com lista vazia', async () => {
+    const repo = makeRepo();
+    const service = makeService(repo, {});
+    await expect(service.findDeletedIdsSince([], new Date())).resolves.toEqual([]);
+    expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+  });
+});

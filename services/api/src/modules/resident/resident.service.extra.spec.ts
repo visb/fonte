@@ -392,3 +392,117 @@ describe('ResidentService.attachments', () => {
     expect(mocks.attachment.find).toHaveBeenCalledWith({ where: { residentId: 'r1' }, order: { createdAt: 'DESC' } });
   });
 });
+
+// ─── Snapshot offline da casa (story 177) ────────────────────────────────────
+
+function makeQb(rows: unknown[] = []) {
+  const qb: Record<string, jest.Mock> = {
+    select: jest.fn().mockReturnThis(),
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    withDeleted: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue(rows),
+    getRawMany: jest.fn().mockResolvedValue(rows),
+  };
+  return qb;
+}
+
+const PRESENT = [ResidentStatus.ACTIVE, ResidentStatus.DISCIPLINE, ResidentStatus.TEMP_LEAVE];
+
+describe('ResidentService.findPresentByHouse (story 177)', () => {
+  it('restringe aos status presentes e à casa, sem filtro de data quando full', async () => {
+    const qb = makeQb([{ id: 'r1' }]);
+    const { service } = build({ resident: { createQueryBuilder: jest.fn().mockReturnValue(qb) } });
+
+    const result = await service.findPresentByHouse('house-1');
+
+    expect(result).toEqual([{ id: 'r1' }]);
+    expect(qb.where).toHaveBeenCalledWith('resident.house_id = :houseId', { houseId: 'house-1' });
+    expect(qb.andWhere).toHaveBeenCalledWith('resident.status IN (:...statuses)', {
+      statuses: PRESENT,
+    });
+    // Filho fora de PRESENT_RESIDENT_STATUSES (alta/evasão/arquivado) não desce.
+    expect(qb.andWhere).not.toHaveBeenCalledWith(
+      'resident.updated_at > :since',
+      expect.anything(),
+    );
+  });
+
+  it('recorta por updated_at quando o delta traz since', async () => {
+    const qb = makeQb();
+    const { service } = build({ resident: { createQueryBuilder: jest.fn().mockReturnValue(qb) } });
+    const since = new Date('2026-08-01T00:00:00.000Z');
+
+    await service.findPresentByHouse('house-1', since);
+
+    // Literal em UTC: a coluna é `timestamp` sem fuso (ver toDbTimestamp).
+    expect(qb.andWhere).toHaveBeenCalledWith('resident.updated_at > :since', {
+      since: '2026-08-01 00:00:00.000',
+    });
+    // O filtro de status vale no delta também.
+    expect(qb.andWhere).toHaveBeenCalledWith('resident.status IN (:...statuses)', {
+      statuses: PRESENT,
+    });
+  });
+
+  it('não traz a conta de acesso do filho (sem relação user)', async () => {
+    const qb = makeQb();
+    const { service } = build({ resident: { createQueryBuilder: jest.fn().mockReturnValue(qb) } });
+
+    await service.findPresentByHouse('house-1');
+
+    const joined = qb.leftJoinAndSelect.mock.calls.map((call) => call[0]);
+    expect(joined).toEqual(['resident.house', 'resident.ministry']);
+  });
+});
+
+describe('ResidentService.findPresentIdsByHouse (story 177)', () => {
+  it('devolve só os ids dos presentes da casa', async () => {
+    const qb = makeQb([{ id: 'r1' }, { id: 'r2' }]);
+    const { service } = build({ resident: { createQueryBuilder: jest.fn().mockReturnValue(qb) } });
+
+    expect(await service.findPresentIdsByHouse('house-1')).toEqual(['r1', 'r2']);
+    expect(qb.select).toHaveBeenCalledWith('resident.id', 'id');
+    expect(qb.andWhere).toHaveBeenCalledWith('resident.status IN (:...statuses)', {
+      statuses: PRESENT,
+    });
+  });
+});
+
+describe('ResidentService.findDepartedIdsSince (story 177)', () => {
+  it('inclui excluídos e quem deixou os status presentes', async () => {
+    const qb = makeQb([{ id: 'saiu' }]);
+    const { service } = build({ resident: { createQueryBuilder: jest.fn().mockReturnValue(qb) } });
+    const since = new Date('2026-08-01T00:00:00.000Z');
+
+    expect(await service.findDepartedIdsSince('house-1', since)).toEqual(['saiu']);
+    expect(qb.withDeleted).toHaveBeenCalled();
+    const [sql, params] = qb.andWhere.mock.calls[0];
+    expect(sql).toContain('resident.deleted_at > :since');
+    expect(sql).toContain('resident.status NOT IN (:...statuses)');
+    expect(params).toEqual({ since: '2026-08-01 00:00:00.000', statuses: PRESENT });
+  });
+});
+
+describe('ResidentService.findAttachmentsByResidents (story 177)', () => {
+  it('não vai ao banco com lista vazia', async () => {
+    const { service, mocks } = build();
+    expect(await service.findAttachmentsByResidents([])).toEqual([]);
+    expect(mocks.attachment.find).not.toHaveBeenCalled();
+  });
+
+  it('busca os anexos de N filhos numa consulta só', async () => {
+    const { service, mocks } = build({
+      attachment: { find: jest.fn().mockResolvedValue([{ id: 'a1', residentId: 'r1' }]) },
+    });
+
+    const result = await service.findAttachmentsByResidents(['r1', 'r2']);
+
+    expect(result).toEqual([{ id: 'a1', residentId: 'r1' }]);
+    expect(mocks.attachment.find).toHaveBeenCalledTimes(1);
+    const where = mocks.attachment.find.mock.calls[0][0].where.residentId;
+    expect(where._value).toEqual(['r1', 'r2']);
+  });
+});

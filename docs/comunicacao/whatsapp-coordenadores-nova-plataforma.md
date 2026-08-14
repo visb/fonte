@@ -19,7 +19,7 @@ _Duas formas de usar:_
 
 📱 _App no celular — Android (recomendado)_
 O app _Fonte Ops_ funciona mesmo sem sinal. Você registra na hora e, quando o celular pega rede, tudo é enviado sozinho.
-Link para baixar: [LINK DO APK]
+Link para baixar: https://drive.google.com/file/d/1BTxo4h68UE7CVNJ_H1X8AiPiGUQbM_hJ/view?usp=drive_link
 
 💻 _Pelo navegador — computador, Android ou iPhone_
 https://ops.fontedemisericordia.com.br/
@@ -31,7 +31,7 @@ Precisa de internet. _No iPhone, por enquanto o acesso é só por aqui — o app
 
 🤖 _Android — instalar o app_
 
-1️⃣ Abra este link no celular: [LINK DO APK]
+1️⃣ Abra este link no celular: https://drive.google.com/file/d/1BTxo4h68UE7CVNJ_H1X8AiPiGUQbM_hJ/view?usp=drive_link
 2️⃣ Baixe o arquivo e toque nele.
 3️⃣ O Android vai avisar que o app não veio da Play Store. Toque em _Configurações_ e libere _"Instalar apps desconhecidos"_. Pode confiar — o app é da própria Fonte.
 4️⃣ Termine a instalação e abra o _Fonte Ops_.
@@ -44,14 +44,14 @@ O app para iPhone ainda está em preparação. Até lá, use pelo Safari:
 1️⃣ Abra no Safari: https://ops.fontedemisericordia.com.br/
 2️⃣ Entre com o e-mail e a senha que o escritório enviar.
 
-⚠️ *Atenção, quem usa iPhone:* pelo navegador é preciso estar com internet. Faça os registros num lugar da casa que pegue sinal — no pátio, sem rede, a página não abre e o que for digitado se perde. Quem tem Android pode registrar em qualquer lugar, porque o app guarda no aparelho e envia sozinho depois.
+⚠️ _Atenção, quem usa iPhone:_ pelo navegador é preciso estar com internet. Faça os registros num lugar da casa que pegue sinal — no pátio, sem rede, a página não abre e o que for digitado se perde. Quem tem Android pode registrar em qualquer lugar, porque o app guarda no aparelho e envia sozinho depois.
 
 📌 _Deixe um atalho na tela de início_ (vale para os dois)
 
 Assim você abre com um toque, sem digitar o endereço:
 
-• *iPhone (Safari):* toque no botão de compartilhar (quadradinho com a seta para cima, embaixo) → role e toque em *"Adicionar à Tela de Início"* → *Adicionar*.
-• *Android (Chrome):* toque nos três pontinhos no canto de cima → *"Adicionar à tela inicial"* → *Adicionar*.
+• _iPhone (Safari):_ toque no botão de compartilhar (quadradinho com a seta para cima, embaixo) → role e toque em _"Adicionar à Tela de Início"_ → _Adicionar_.
+• _Android (Chrome):_ toque nos três pontinhos no canto de cima → _"Adicionar à tela inicial"_ → _Adicionar_.
 
 O ícone fica junto com os outros aplicativos, igualzinho a um app.
 

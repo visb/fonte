@@ -47,8 +47,8 @@ Rodada de autorun **175–180** — aberta em 2026-08-14.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 177 — backend: snapshot offline da casa (agregado + delta) | [ ] | | | |
-| 2 | 175 — ops: ficha dos filhos persistente em SQLite | [ ] | | | |
+| 1 | 177 — backend: snapshot offline da casa (agregado + delta) | [OK] | api 1516 · e2e 541 · api-client 290 | ff28960 | 6dad0c0 |
+| 2 | 175 — ops: ficha dos filhos persistente em SQLite | in_progress | | | |
 | 3 | 176 — ops: tab "Menu" no lugar de "Perfil" | [ ] | | | |
 | 4 | 179 — ops: modal de detalhes do filho na contagem + foto em tela cheia | [ ] | | | |
 | 5 | 178 — templates de recibo: estrutura genérica + contribuição mensal | [ ] | | | |
@@ -56,7 +56,12 @@ Rodada de autorun **175–180** — aberta em 2026-08-14.
 
 ## Log
 
-<vazio>
+```
+[OK] 177 — testes: api 1516/1516 · e2e 541/541 (offline-snapshot 19/19) · api-client 290/290;
+     cobertura offline-sync 100%, global api 92.3% — commit: ff28960 — merge: 6dad0c0 — 2026-08-14
+     Nota: delta comparava timestamp em hora local (driver pg vs. coluna sem timezone) — corrigido
+     com `common/lib/db-timestamp.ts`; carnê (`receivables`) não desce para SERVANT.
+```
 
 ## Resumo final
 

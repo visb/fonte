@@ -61,6 +61,27 @@ explicando o que faltou.
 11. **Não mergeia na main** — isso é do orquestrador. Não deletar branch, não arquivar story salvo se
     o prompt pedir explicitamente.
 
+## Disciplina de ferramentas (crítico para a autonomia)
+
+**NUNCA criar ou editar arquivo via shell com conteúdo inline.** Nada de `cat <<EOF > arquivo`,
+`echo "..." >> arquivo`, `Set-Content`/`Out-File` com corpo grande, `printf` com o arquivo inteiro.
+Use **sempre** as tools `Write` (arquivo novo / reescrita completa) e `Edit` (mudança pontual).
+
+Motivo: comando Bash muito longo estoura o limite do classificador de segurança do harness e falha
+com `Command exceeds the maximum analyzable length; its full text cannot be security-scanned and
+requires human review` — o comando trava esperando aprovação manual e **mata a execução autônoma do
+AUTORUN**.
+
+Mesma regra para:
+
+- **Ler/buscar:** `Read` / `Grep` / `Glob` — não `cat`, `grep`, `type`, `Get-Content`,
+  `Select-String` no shell.
+- **Payload grande** (ex.: bloco novo do `fonte-api.postman_collection.json`, body de `curl -d`):
+  escrever o payload num arquivo com `Write` e referenciar (`curl -d @arquivo.json`).
+- **Mensagem de commit:** heredoc curto é aceitável; se o corpo ficar longo, criar o arquivo com
+  `Write` e usar `git commit -F <arquivo>`.
+- **Evitar cadeias enormes de `&&`** num comando só — quebrar em chamadas separadas.
+
 ## Recibo (devolver ao orquestrador, comprimido)
 
 ```
@@ -77,4 +98,4 @@ bloqueios/PENDENTE-MANUAL: <motivo ou "nenhum">
 Push · PR · merge na main · deletar trabalho não criado por você · pular testes sem justificativa ·
 inventar chave/segredo · chamar API externa real · perguntar ao usuário · commitar com a suíte tocada
 vermelha ou cobertura < 90 · editar migration aplicada · pôr regra em controller · expandir escopo
-além do plano.
+além do plano · escrever arquivo por heredoc/redirecionamento no shell em vez de `Write`/`Edit`.

@@ -33,6 +33,20 @@ motivo — só o afetado.
 Infra de teste usa o Postgres do docker + API teste (porta 3001). Se healthcheck falhar apesar do
 container up → reportar (o chamador resolve); não tentar consertar ambiente.
 
+## Disciplina de ferramentas (crítico para a autonomia)
+
+**Inspeção de arquivo é com `Read` / `Grep` / `Glob`** — não `cat`, `grep`, `type`, `Get-Content`,
+`Select-String` no shell. O Bash aqui serve para **rodar os gates**, não para ler código.
+
+**Manter os comandos curtos.** Nada de cadeia enorme de `&&` num comando só, nem heredoc/`printf`
+com corpo grande (ex.: conferência do Postman colando JSON no shell — use `Grep`/`Read` no
+`fonte-api.postman_collection.json`).
+
+Motivo: comando Bash muito longo estoura o limite do classificador de segurança do harness e falha
+com `Command exceeds the maximum analyzable length; its full text cannot be security-scanned and
+requires human review` — o comando trava esperando aprovação manual e **mata a execução autônoma do
+AUTORUN**.
+
 ## Saída (comprimida)
 
 ```
@@ -46,4 +60,5 @@ FALHAS (se houver):
 
 Em FAIL: citar o erro **exato** (mensagem + `arquivo:linha`), enxuto — só o suficiente pro chamador
 corrigir. Não despejar log inteiro. Não sugerir fix além de apontar a causa óbvia. **Nunca** editar
-nem commitar para "deixar verde".
+nem commitar para "deixar verde", nem ler arquivo por `cat`/`grep` no shell (ver "Disciplina de
+ferramentas").

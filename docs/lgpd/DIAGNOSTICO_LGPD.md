@@ -50,6 +50,23 @@ Categorias: **P** = dado pessoal; **S** = dado pessoal sensível (art. 11).
   - **Eliminação sob demanda pelo titular já existe:** `DELETE /staff/me/signature` (story 138) — botão "Redefinir" no perfil, **idempotente**, apaga o arquivo do bucket e zera `signature_url`.
   - **Gap remanescente:** não há eliminação **automática** no **desligamento/offboarding** do colaborador — o titular consegue remover manualmente, mas nenhuma rotina apaga a assinatura ao encerrar o vínculo. Ver `ROADMAP_LGPD.md` (Fase 4).
 
+### 2.2 Ficha do filho armazenada no dispositivo do operador (`ops.fonte`)
+
+> Origem: story 175 (store local em SQLite/AsyncStorage), sobre o snapshot da casa da story 177. Decisão de escopo tomada explicitamente pelo responsável pelo produto.
+
+- **Dado:** cópia local da ficha dos filhos **presentes na casa do operador** — ficha básica (`Resident`), acompanhamentos (`ResidentFollowUp`), **consentimentos** (`ConsentRecord` consolidado por finalidade), **carnê/financeiro** (`ResidentReceivable`, apenas para `ADMIN`/`COORDINATOR`), **metadados** de anexos (nome, tipo, data, id) e ministérios da casa.
+- **Titular:** interno (**Resident**).
+- **Categoria:** dado pessoal (**P**) e **sensível** (**S**) — a ficha básica carrega `healthIssues`, `continuousMedication`, `religion`, `addiction`.
+- **Onde:** aparelho do operador. Banco **SQLite** local (`ops-fonte-resident-store.db`) no Android/iOS; `AsyncStorage` (uma chave por registro, prefixo `ops-fonte-resident-store:`) no web. **Binário de anexo não é baixado** — só a lista; abrir o arquivo continua exigindo conexão.
+- **Finalidade:** o `ops.fonte` é usado **dentro das casas, sem sinal confiável**. Sem cópia local o operador não acessa a ficha de quem ele acompanha — o que inclui medicação em uso e restrições de saúde. Base legal acompanha a do processo de origem (§5): **tutela da saúde / proteção da vida** para o prontuário e acompanhamento; **execução de contrato / obrigação legal** para o financeiro.
+- **Retenção:** **não há expiração por tempo** (o limite anterior de 24h do cache foi removido de propósito: casa sem sinal por um fim de semana abria vazia). O dado vive **até o logout ou a expiração da sessão**, quando é purgado.
+- **Mitigações implementadas (story 175):**
+  - **Purga verificada** no logout e na sessão expirada (`purgeAll()` junto de `clearPersistedCache()`); falha na purga **propaga** o erro (registrada no console/Sentry) em vez de falhar em silêncio.
+  - **Allowlist, nunca denylist**: só as chaves declaradas em `lib/offline/store/` e `lib/offline/constants.ts` vão para o disco — dado novo não entra por omissão.
+  - **Escopo por casa**: o aparelho só baixa o pacote da **própria casa** do operador (`GET /houses/:id/offline-snapshot`, story 177); o snapshot também **remove** do aparelho quem deixou de ser presente na casa (transferência, alta, evasão).
+  - **Carnê só para quem pode ver**: para `SERVANT` o bloco financeiro vem vazio do backend e nada é gravado.
+- **Gaps remanescentes:** (1) **sem criptografia em repouso** do banco local (SQLCipher) — aparelho comprometido/roubado expõe a ficha até o logout; (2) não há **purga remota** ou por inatividade se o aparelho nunca mais abrir o app. Ver `ROADMAP_LGPD.md`.
+
 ## 3. Mapa de gaps
 
 | Gap | Risco | Artigo LGPD | Arquivo(s) | Pilar |
@@ -66,6 +83,7 @@ Categorias: **P** = dado pessoal; **S** = dado pessoal sensível (art. 11).
 | Arquivos órfãos no bucket após exclusão | Médio | art. 16 | `resident.service.ts` (attachments não removidos) | Retenção |
 | Backups com PII completa sem anonimização | Médio | art. 6 | `backup.service.ts`, `database/backup-export.ts` | Retenção |
 | Planilha de filhos com PII real versionada no git (story 106) | Alto | art. 6 | `stories/lista-filhos.xlsx` — removida do working tree; **purga do histórico + force-push pendente (manual)** | Retenção |
+| Ficha do filho no dispositivo do operador sem criptografia em repouso (§2.2) | Médio | art. 46 | `apps/ops.fonte/lib/offline/store/` — purga no logout implementada; SQLCipher pendente | Segurança |
 
 > Nota: o módulo de mensagens (`message.service.ts`) é o **único** que já força escopo por casa no service — serve de referência para corrigir os demais.
 

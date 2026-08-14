@@ -33,6 +33,30 @@ export const QUERY_GC_TIME = TWENTY_FOUR_HOURS;
 export const PERSIST_THROTTLE_TIME = 1_000;
 
 /**
+ * Domínio de filho: sai do blob e passa a viver no **store local** (story 175,
+ * `lib/offline/store/`), sem prazo de validade e com purga no logout.
+ *
+ * Estes prefixos são allowlist do store, não do persister: manter os dois
+ * gravando o mesmo dado deixaria a ficha em dois lugares com prazos diferentes
+ * — o blob apagaria em 24h o que o store promete guardar até o logout.
+ */
+export const RESIDENT_STORE_QUERY_PREFIXES = [
+  // residents.all / residents.byHouse
+  'residents',
+  // residents.countByHouse (home)
+  'residents-count',
+  // residents.detail
+  'resident',
+  // ficha ampliada (decisão 3 da story 175)
+  'resident-follow-ups',
+  'resident-attachments',
+  'resident-consents',
+  'resident-receivables',
+  // houses.ministries (ministério do filho)
+  'house-ministries',
+] as const;
+
+/**
  * **Allowlist** (nunca denylist) dos primeiros segmentos de `queryKeys` que
  * podem ir para o disco.
  *
@@ -42,16 +66,11 @@ export const PERSIST_THROTTLE_TIME = 1_000;
  * inverter isso para uma denylist vaza dado novo por omissão.
  *
  * Fora da lista de propósito: mensagens, notificações, wishlist, grupos de
- * apoio, curso bíblico, anexos/consentimentos/financeiro do filho, ministérios,
- * parentes e eventos.
+ * apoio, curso bíblico, parentes e eventos. O domínio de filho também está
+ * fora, mas por outro motivo: ele migrou para o store local da story 175
+ * (`RESIDENT_STORE_QUERY_PREFIXES`).
  */
 export const PERSISTED_QUERY_PREFIXES = [
-  // residents.all / residents.byHouse
-  'residents',
-  // residents.countByHouse (home)
-  'residents-count',
-  // residents.detail
-  'resident',
   // houses.all
   'houses',
   // inventory.catalog
@@ -81,4 +100,11 @@ export function isPersistableQueryKey(queryKey: readonly unknown[]): boolean {
   const resource = queryKey[0];
   if (typeof resource !== 'string') return false;
   return (PERSISTED_QUERY_PREFIXES as readonly string[]).includes(resource);
+}
+
+/** Chave cujo dado mora no store local dos filhos (story 175), não no blob. */
+export function isResidentStoreQueryKey(queryKey: readonly unknown[]): boolean {
+  const resource = queryKey[0];
+  if (typeof resource !== 'string') return false;
+  return (RESIDENT_STORE_QUERY_PREFIXES as readonly string[]).includes(resource);
 }

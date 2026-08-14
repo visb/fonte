@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { queryClient as defaultQueryClient } from '@/lib/queryClient';
 import { isPersistableQueryKey } from './constants';
+import { syncHouseSnapshot } from './sync/houseSnapshot';
 
 /**
  * Janela em que um aquecimento recente é considerado suficiente. Voltar do
@@ -30,13 +31,14 @@ interface WarmQuery {
   queryFn: () => Promise<unknown>;
 }
 
-/** Pacote de campo: o que o operador consome dentro da casa, sem sinal. */
+/**
+ * Pacote de campo: o que o operador consome dentro da casa, sem sinal.
+ *
+ * A lista de filhos **não** está aqui desde a story 175: ela (e a ficha inteira
+ * de cada filho) vem do snapshot da casa, num request só, para o store local.
+ */
 function houseQueries(houseId: string): WarmQuery[] {
   return [
-    {
-      queryKey: queryKeys.residents.byHouse(houseId),
-      queryFn: () => api.residents.listByHouse(houseId),
-    },
     {
       queryKey: queryKeys.storeroom.items(houseId),
       queryFn: () => api.storeroom.listItems({ houseId }),
@@ -71,11 +73,29 @@ export async function warmHouseCache(
 
   // `prefetchQuery` nunca rejeita (engole o erro da query, por contrato do React
   // Query): é exatamente o comportamento que se quer aqui.
-  await Promise.all(
-    houseQueries(houseId).map((query) =>
+  await Promise.all([
+    warmHouseSnapshot(queryClient, houseId),
+    ...houseQueries(houseId).map((query) =>
       queryClient.prefetchQuery({ ...query, staleTime: WARM_STALE_TIME }),
     ),
-  );
+  ]);
+}
+
+/**
+ * Ficha dos filhos (story 175): **um** request agregado, não `1 + N×4`.
+ *
+ * A deduplicação usa o próprio React Query (`staleTime`), guardando só o recibo
+ * `{ syncedAt, full }` — voltar do background dez vezes seguidas continua sendo
+ * uma sincronização só. A falha já vem tratada de `syncHouseSnapshot` (devolve
+ * `null` sem avançar o `since`), então ela não derruba o resto do aquecimento.
+ */
+function warmHouseSnapshot(queryClient: QueryClient, houseId: string): Promise<unknown> {
+  return queryClient.prefetchQuery({
+    queryKey: queryKeys.offline.houseSnapshot(houseId),
+    queryFn: () => syncHouseSnapshot(queryClient, houseId),
+    staleTime: WARM_STALE_TIME,
+    gcTime: WARM_STALE_TIME,
+  });
 }
 
 /** Chaves aquecidas — usado pelo teste que amarra aquecimento e allowlist LGPD. */

@@ -85,4 +85,12 @@ export const queryKeys = {
   events: {
     internal: ['events', 'internal'] as const,
   },
+  /**
+   * Infra offline (story 175). Guarda só o recibo da sincronização
+   * (`{ syncedAt, full }`) — é o que dá janela de deduplicação ao aquecimento
+   * sem inventar estado global paralelo. Nada de dado pessoal aqui.
+   */
+  offline: {
+    houseSnapshot: (houseId: string) => ['offline-house-snapshot', houseId] as const,
+  },
 } as const;

@@ -14,6 +14,8 @@ import { dehydrateOptions, queryCachePersister } from "@/lib/offline/persister";
 import { startFocusWatcher, startNetworkWatcher } from "@/lib/offline/network";
 import { registerMutationDefaults } from "@/lib/offline/mutationDefaults";
 import { startOutboxReplay } from "@/lib/offline/outbox";
+import { hydrateResidentQueries } from "@/lib/offline/store/hydrate";
+import { attachResidentStoreWriteThrough } from "@/lib/offline/store/writeThrough";
 
 initSentry();
 
@@ -45,10 +47,16 @@ function RootLayout() {
     const stopFocusWatcher = startFocusWatcher();
     // Replay da outbox na volta da rede (o outro gatilho é a reidratação).
     const stopOutboxReplay = startOutboxReplay(queryClient);
+    // Store local dos filhos (story 175): o que já está no aparelho vai para o
+    // cache antes de qualquer rede, e toda query do domínio que voltar da rede
+    // é gravada de volta no store.
+    const stopWriteThrough = attachResidentStoreWriteThrough(queryClient);
+    void hydrateResidentQueries(queryClient);
     return () => {
       stopNetworkWatcher();
       stopFocusWatcher();
       stopOutboxReplay();
+      stopWriteThrough();
     };
   }, []);
 

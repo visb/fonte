@@ -18,6 +18,8 @@ import { ResidentPrivacyTab } from '../components/ResidentPrivacyTab';
 import { ResidentTrackingTab } from '../components/ResidentTrackingTab';
 import { ResidentDetailHeader } from '../components/ResidentDetailHeader';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { LastSyncedAt } from '@/components/shared/LastSyncedAt';
+import { useLastSyncedAt } from '@/lib/offline/store/useLastSyncedAt';
 
 const TABS = ['Visão Geral', 'Acompanhamento', 'Familiares', 'Anexos', 'Privacidade'] as const;
 type Tab = (typeof TABS)[number];
@@ -30,6 +32,9 @@ export function ResidentDetailPage() {
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
 
   const { data: resident, isLoading, refetch } = useResidentById(id);
+  // Story 175: a ficha vem do store local, que não expira — o frescor é dito,
+  // não imposto.
+  const syncedAt = useLastSyncedAt(resident?.houseId);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -94,6 +99,8 @@ export function ResidentDetailPage() {
           className="flex-1"
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
         >
+          <LastSyncedAt syncedAt={syncedAt} />
+
           {activeTab === 'Visão Geral' && (
             <ResidentOverviewTab
               resident={resident}

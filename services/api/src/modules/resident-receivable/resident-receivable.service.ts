@@ -21,6 +21,7 @@ import { Staff } from '../staff/staff.entity';
 import { RegisterPaymentDto } from './dto/register-payment.dto';
 import { StorageService } from '../storage/storage.service';
 import { NotificationService } from '../notification/notification.service';
+import { toDbTimestamp } from '../../common/lib/db-timestamp';
 import {
   ProductContributionView,
   ReceivableProductContributionService,
@@ -133,6 +134,52 @@ export class ResidentReceivableService {
     return items.map((item) =>
       this.toView(item, contributionsByReceivable.get(item.id) ?? []),
     );
+  }
+
+  /**
+   * Lote (story 177): parcelas de N filhos em DUAS consultas (carnês + suas
+   * contribuições em produto), para o snapshot offline da casa. `since` recorta
+   * o delta por `updated_at`.
+   *
+   * Diferente de `findByResident`, **não** roda `ensureFutureOpen`: snapshot é
+   * leitura, e materializar carnê a cada volta do foreground de cada aparelho
+   * seria escrita disparada por GET.
+   */
+  async findByResidents(residentIds: string[], since?: Date): Promise<ResidentReceivableView[]> {
+    if (residentIds.length === 0) return [];
+
+    const qb = this.repo
+      .createQueryBuilder('rcv')
+      .leftJoinAndSelect('rcv.createdBy', 'staff')
+      .where('rcv.resident_id IN (:...residentIds)', { residentIds })
+      .andWhere('rcv.deleted_at IS NULL');
+
+    if (since) {
+      qb.andWhere('rcv.updated_at > :since', { since: toDbTimestamp(since) });
+    }
+
+    const items = await qb.orderBy('rcv.reference_month', 'ASC').getMany();
+
+    const contributionsByReceivable = await this.productContributions.mapByReceivables(
+      items.map((item) => item.id),
+    );
+
+    return items.map((item) =>
+      this.toView(item, contributionsByReceivable.get(item.id) ?? []),
+    );
+  }
+
+  /** Ids apagados desde `since` (story 177) — o app remove do store local. */
+  async findDeletedIdsSince(residentIds: string[], since: Date): Promise<string[]> {
+    if (residentIds.length === 0) return [];
+    const rows = await this.repo
+      .createQueryBuilder('rcv')
+      .select('rcv.id', 'id')
+      .withDeleted()
+      .where('rcv.resident_id IN (:...residentIds)', { residentIds })
+      .andWhere('rcv.deleted_at > :since', { since: toDbTimestamp(since) })
+      .getRawMany<{ id: string }>();
+    return rows.map((row) => row.id);
   }
 
   /** Latest paid reference month per resident — feeds the list "next due" badge. */

@@ -552,6 +552,49 @@
           }
         },
         {
+          "name": "Offline Snapshot da Casa (completo)",
+          "request": {
+            "method": "GET",
+            "description": "Story 177 — pacote offline da casa num request só (substitui o fan-out de 1 + N×4 do ops.fonte). Sem `since`, devolve tudo com `full: true`: filhos PRESENTES (ACTIVE | DISCIPLINE | TEMP_LEAVE), followUps, consents, receivables, attachments (indexados por residentId) e os ministérios da casa. `syncedAt` é o relógio do SERVIDOR e é o que o cliente guarda para o próximo `since`. Acesso: ADMIN, ou staff (COORDINATOR/SERVANT) DA PRÓPRIA casa — staff de outra casa, servo sem casa, RELATIVE e RESIDENT recebem 403. O carnê (`receivables`) só desce para ADMIN/COORDINATOR, igual à rota individual.",
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/offline-snapshot",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "offline-snapshot"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Offline Snapshot da Casa (delta)",
+          "request": {
+            "method": "GET",
+            "description": "Story 177 — mesma rota com `since` = o `syncedAt` da sincronização anterior: devolve só o que mudou, com `full: false` e `deleted` (residents | followUps | receivables) para o app remover do store local. `since` mais velho que 30 dias (SNAPSHOT_MAX_DELTA_AGE_DAYS) volta como sincronização completa — é o reconciliador dos buracos que o delta não detecta (consent é append-only, anexo não tem deleted_at). `since` malformado → 400.",
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/offline-snapshot?since=2026-08-11T09:12:03.000Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "houses",
+                "{{houseId}}",
+                "offline-snapshot"
+              ],
+              "query": [
+                {
+                  "key": "since",
+                  "value": "2026-08-11T09:12:03.000Z",
+                  "description": "ISO 8601. Sempre o `syncedAt` devolvido pelo servidor, nunca o relógio do aparelho."
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "Create House",
           "request": {
             "method": "POST",

@@ -1376,3 +1376,71 @@ export interface ResidentsFiltersPreference {
 
 /** Chave canônica da preferência de filtros da listagem de filhos. */
 export const RESIDENTS_FILTERS_PREFERENCE_KEY = 'residents.filters';
+
+// ─── Offline snapshot da casa (story 177) ────────────────────────────────────
+
+/**
+ * Janela máxima de delta aceita pelo `GET /houses/:houseId/offline-snapshot`.
+ * `since` mais velho que isso é tratado como sincronização completa
+ * (`full: true`) — é o reconciliador que fecha os buracos que o delta não
+ * detecta (consentimento é append-only, anexo não tem `deleted_at`).
+ */
+export const SNAPSHOT_MAX_DELTA_AGE_DAYS = 30;
+
+/**
+ * Ids removidos do aparelho desde o `since` (story 177). Consentimento **não**
+ * entra aqui: `consent_records` é append-only por desenho (revogação é linha
+ * nova com `granted: false`), então nunca há o que apagar.
+ */
+export interface OfflineSnapshotDeleted {
+  residents: string[];
+  followUps: string[];
+  receivables: string[];
+}
+
+/**
+ * Formas concretas de cada bloco do snapshot. Os tipos de payload (`Resident`,
+ * `ResidentAttachment`, `ConsentRecord`, `HouseMinistry`…) moram no
+ * `@fonte/api-client`, que é quem descreve a serialização HTTP; aqui fica o
+ * **envelope**, que é o contrato que o store offline do `ops.fonte` consome.
+ */
+export interface OfflineSnapshotShapes {
+  resident: unknown;
+  followUp: unknown;
+  consent: unknown;
+  receivable: unknown;
+  attachment: unknown;
+  ministry: unknown;
+}
+
+/**
+ * Pacote offline de uma casa (story 177) — resposta de
+ * `GET /houses/:houseId/offline-snapshot?since=<ISO>`.
+ *
+ * Só filhos **presentes** (`PRESENT_RESIDENT_STATUSES`) entram: quem saiu ou foi
+ * arquivado não desce para o aparelho.
+ *
+ * - `syncedAt` é o relógio do **servidor** (com folga de 1s) e é o que o cliente
+ *   guarda para o próximo `since`; nunca o relógio do aparelho.
+ * - `full: true` → o cliente **substitui** o conteúdo do store; `false` → faz
+ *   merge e aplica `deleted`.
+ * - Os blocos de detalhe são indexados por `residentId`. No delta eles cobrem
+ *   **todos** os filhos presentes da casa, não só os que aparecem em
+ *   `residents`: registrar um evento na timeline não muda a linha do filho, e
+ *   recortar o detalhe pela lista de filhos alterados esconderia o lançamento
+ *   até a próxima sincronização completa.
+ * - Exceção: `attachments` não tem como ser recortado por data (a tabela não tem
+ *   `updated_at`), então vem completo **apenas** para os filhos que aparecem em
+ *   `residents` — anexo novo de filho intocado espera o próximo `full`.
+ */
+export interface HouseOfflineSnapshot<S extends OfflineSnapshotShapes = OfflineSnapshotShapes> {
+  syncedAt: string;
+  full: boolean;
+  residents: S['resident'][];
+  followUps: Record<string, S['followUp'][]>;
+  consents: Record<string, S['consent'][]>;
+  receivables: Record<string, S['receivable'][]>;
+  attachments: Record<string, S['attachment'][]>;
+  ministries: S['ministry'][];
+  deleted: OfflineSnapshotDeleted;
+}

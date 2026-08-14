@@ -1,13 +1,13 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { RESIDENT_COUNTS_CHANGED_EVENT } from '../../common/events/resident-counts.event';
 import * as bcrypt from 'bcrypt';
 // require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
 // emits an undefined default for sharp's CommonJS module.
 const sharp = require('sharp') as typeof import('sharp');
-import { ACTIVE_RESIDENT_STATUSES, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isTemplateAvailableForStatus, NotificationType, ResidentStatus, Role, ServantRank, TemplateAvailability } from '@fonte/types';
+import { ACTIVE_RESIDENT_STATUSES, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isTemplateAvailableForStatus, NotificationType, PRESENT_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability } from '@fonte/types';
 import { Logger } from '@nestjs/common';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
@@ -58,6 +58,7 @@ import { ReadmitResidentDto } from './dto/readmit-resident.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
 import { UpdateResidentIdentityDto } from './dto/update-resident-identity.dto';
 import { StorageService } from '../storage/storage.service';
+import { toDbTimestamp } from '../../common/lib/db-timestamp';
 
 export interface ResidentMeView {
   id: string;
@@ -188,6 +189,93 @@ export class ResidentService {
       for (const r of data) r.lastContributionDate = map.get(r.id) ?? null;
     }
     return { data, total, page, limit };
+  }
+
+  /**
+   * Filhos **presentes** da casa para o snapshot offline (story 177).
+   *
+   * `since` recorta o delta por `updated_at` — quem não mudou não desce de novo.
+   * Sem `since`, devolve o conjunto completo. Só `PRESENT_RESIDENT_STATUSES`
+   * entra: quem saiu ou foi arquivado não vai para o aparelho (LGPD art. 6 —
+   * minimização; menos dado pessoal parado no dispositivo do operador).
+   *
+   * A relação `user` fica **fora** de propósito: o snapshot não precisa da conta
+   * de acesso do filho e o hash de senha não tem por que trafegar num payload
+   * que é gravado em disco no celular.
+   */
+  async findPresentByHouse(houseId: string, since?: Date): Promise<Resident[]> {
+    const qb = this.residentRepository
+      .createQueryBuilder('resident')
+      .leftJoinAndSelect('resident.house', 'house')
+      .leftJoinAndSelect('resident.ministry', 'ministry')
+      .where('resident.house_id = :houseId', { houseId })
+      .andWhere('resident.status IN (:...statuses)', {
+        statuses: [...PRESENT_RESIDENT_STATUSES],
+      })
+      .andWhere('resident.deleted_at IS NULL')
+      .orderBy('resident.name', 'ASC');
+
+    if (since) qb.andWhere('resident.updated_at > :since', { since: toDbTimestamp(since) });
+
+    return qb.getMany();
+  }
+
+  /**
+   * Só os ids dos filhos presentes da casa (story 177). O delta usa isto para
+   * buscar os blocos de detalhe: um evento novo na timeline **não** altera a
+   * linha do filho, então recortar o detalhe pela lista de filhos alterados
+   * esconderia o lançamento até a próxima sincronização completa.
+   */
+  async findPresentIdsByHouse(houseId: string): Promise<string[]> {
+    const rows = await this.residentRepository
+      .createQueryBuilder('resident')
+      .select('resident.id', 'id')
+      .where('resident.house_id = :houseId', { houseId })
+      .andWhere('resident.status IN (:...statuses)', {
+        statuses: [...PRESENT_RESIDENT_STATUSES],
+      })
+      .andWhere('resident.deleted_at IS NULL')
+      .getRawMany<{ id: string }>();
+    return rows.map((row) => row.id);
+  }
+
+  /**
+   * Filhos que o aparelho precisa **apagar** desde `since` (story 177): os
+   * excluídos (soft delete) e os que deixaram `PRESENT_RESIDENT_STATUSES` (alta,
+   * evasão, arquivamento). Sem isso a ficha sobrevive no celular para sempre.
+   *
+   * Transferência para outra casa não é detectável aqui (a linha já aponta para
+   * a casa nova e o `house_id` anterior não é guardado) — é um dos buracos que
+   * a sincronização completa periódica fecha.
+   */
+  async findDepartedIdsSince(houseId: string, since: Date): Promise<string[]> {
+    const rows = await this.residentRepository
+      .createQueryBuilder('resident')
+      .select('resident.id', 'id')
+      .withDeleted()
+      .where('resident.house_id = :houseId', { houseId })
+      .andWhere(
+        `(resident.deleted_at > :since
+          OR (resident.deleted_at IS NULL
+              AND resident.updated_at > :since
+              AND resident.status NOT IN (:...statuses)))`,
+        { since: toDbTimestamp(since), statuses: [...PRESENT_RESIDENT_STATUSES] },
+      )
+      .getRawMany<{ id: string }>();
+    return rows.map((row) => row.id);
+  }
+
+  /**
+   * Anexos de N filhos numa consulta só (story 177). `resident_attachments` não
+   * tem `updated_at` nem `deleted_at`, então não há delta possível: o snapshot
+   * manda o conjunto completo de cada filho que aparece no payload.
+   */
+  async findAttachmentsByResidents(residentIds: string[]): Promise<ResidentAttachment[]> {
+    if (residentIds.length === 0) return [];
+    return this.attachmentRepository.find({
+      where: { residentId: In(residentIds) },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<Resident> {

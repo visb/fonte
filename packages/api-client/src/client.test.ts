@@ -49,6 +49,7 @@ const EXPECTED_RESOURCES = [
   'backup',
   'consents',
   'audit',
+  'offlineSync',
 ] as const;
 
 describe('createApiClient (superfície)', () => {

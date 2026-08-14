@@ -112,3 +112,54 @@ describe('ConsentService.resolveSubjectForUser', () => {
     );
   });
 });
+
+// ─── Lote para o snapshot offline (story 177) ────────────────────────────────
+
+describe('ConsentService.findForSubjects (story 177)', () => {
+  function makeQb(rows: unknown[] = []) {
+    const qb: Record<string, jest.Mock> = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue(rows),
+    };
+    return qb;
+  }
+
+  it('não vai ao banco com lista de titulares vazia', async () => {
+    const createQueryBuilder = jest.fn();
+    const service = makeService({ createQueryBuilder: createQueryBuilder as never });
+
+    await expect(service.findForSubjects('RESIDENT', [])).resolves.toEqual([]);
+    expect(createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it('busca N titulares numa consulta só, sem recorte quando full', async () => {
+    const qb = makeQb([{ id: 'c1' }]);
+    const service = makeService({ createQueryBuilder: jest.fn().mockReturnValue(qb) as never });
+
+    await expect(service.findForSubjects('RESIDENT', ['r1', 'r2'])).resolves.toEqual([{ id: 'c1' }]);
+    expect(qb.andWhere).toHaveBeenCalledWith('c.subject_id IN (:...subjectIds)', {
+      subjectIds: ['r1', 'r2'],
+    });
+    expect(qb.andWhere).not.toHaveBeenCalledWith('c.created_at > :since', expect.anything());
+  });
+
+  it('recorta o delta por created_at — a tabela é append-only', async () => {
+    const qb = makeQb();
+    const service = makeService({ createQueryBuilder: jest.fn().mockReturnValue(qb) as never });
+    const since = new Date('2026-08-01T00:00:00.000Z');
+
+    await service.findForSubjects('RESIDENT', ['r1'], since);
+
+    // Revogação é linha NOVA (granted: false), então created_at basta para pegá-la.
+    // O literal vai em UTC: a coluna é `timestamp` sem fuso (ver toDbTimestamp).
+    expect(qb.andWhere).toHaveBeenCalledWith('c.created_at > :since', {
+      since: '2026-08-01 00:00:00.000',
+    });
+    expect(qb.andWhere).not.toHaveBeenCalledWith(
+      expect.stringContaining('updated_at'),
+      expect.anything(),
+    );
+  });
+});

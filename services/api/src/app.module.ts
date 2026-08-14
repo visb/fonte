@@ -43,6 +43,7 @@ import { EventModule } from './modules/event/event.module';
 import { CacheModule } from './modules/cache/cache.module';
 import { PreferenceModule } from './modules/preference/preference.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
+import { OfflineSyncModule } from './modules/offline-sync/offline-sync.module';
 
 @Module({
   imports: [
@@ -93,6 +94,7 @@ import { IdempotencyModule } from './modules/idempotency/idempotency.module';
     EventModule,
     PreferenceModule,
     IdempotencyModule,
+    OfflineSyncModule,
   ],
   providers: [
     // Captura exceptions não tratadas para o Sentry preservando o tratamento do Nest.

@@ -225,5 +225,7 @@ export type {
   EventInviteSkipReason,
   UserPreferences,
   ResidentsFiltersPreference,
+  HouseOfflineSnapshotResponse,
+  OfflineSnapshotDeleted,
 } from './types.js';
-export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus, ActivityEventType, REGISTRATION_FIELD_TYPES, EventPaymentStatus, EventAudience } from './types.js';
+export { NotificationType, HouseCapacityRequestStatus, PayableStatus, PayableCategory, ActivityStatus, ActivityEventType, REGISTRATION_FIELD_TYPES, EventPaymentStatus, EventAudience, SNAPSHOT_MAX_DELTA_AGE_DAYS } from './types.js';

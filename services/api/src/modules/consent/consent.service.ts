@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProfileType } from '@fonte/types';
+import { toDbTimestamp } from '../../common/lib/db-timestamp';
 import { Relative } from '../relative/relative.entity';
 import { Resident } from '../resident/resident.entity';
 import {
@@ -123,6 +124,32 @@ export class ConsentService {
       });
     }
     return result;
+  }
+
+  /**
+   * Lote (story 177): registros de N titulares numa consulta só, para o snapshot
+   * offline da casa.
+   *
+   * O recorte do delta é por `created_at` porque a tabela é **append-only**: uma
+   * revogação é uma linha nova com `granted: false`, nunca um UPDATE. Por isso
+   * também não existe "consentimento apagado" — consent nunca entra em `deleted`.
+   */
+  async findForSubjects(
+    subjectType: ConsentSubjectType,
+    subjectIds: string[],
+    since?: Date,
+  ): Promise<ConsentRecord[]> {
+    if (subjectIds.length === 0) return [];
+
+    const qb = this.repo
+      .createQueryBuilder('c')
+      .where('c.subject_type = :subjectType', { subjectType })
+      .andWhere('c.subject_id IN (:...subjectIds)', { subjectIds })
+      .orderBy('c.created_at', 'DESC');
+
+    if (since) qb.andWhere('c.created_at > :since', { since: toDbTimestamp(since) });
+
+    return qb.getMany();
   }
 
   history(subjectType: ConsentSubjectType, subjectId: string): Promise<ConsentRecord[]> {

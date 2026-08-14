@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { View, ScrollView, RefreshControl } from "react-native";
-import { Role, PRESENT_RESIDENT_STATUSES } from "@fonte/types";
+import { PRESENT_RESIDENT_STATUSES } from "@fonte/types";
 import { useAuth } from "@/lib/auth";
 import { useResidentCountByHouse } from "@/features/residents/hooks/useResidents";
 import { useIncidentsToday } from "@/features/incidents/hooks/useIncidents";
-import { useHouseById } from "@/features/house-settings/hooks/useHouseSettings";
+import { useMenuAccess } from "@/features/menu/hooks/useMenuAccess";
 import { WelcomeHeader } from "@/features/dashboard/components/WelcomeHeader";
 import { StatCards } from "@/features/dashboard/components/StatCards";
 import { QuickActions } from "@/features/dashboard/components/QuickActions";
@@ -18,14 +18,9 @@ export function DashboardPage() {
     useResidentCountByHouse(staff?.houseId);
   const { data: incidents = [], refetch: refetchIncidents } =
     useIncidentsToday(staff?.houseId);
-  const isCoordinator = staff?.user.role === Role.COORDINATOR;
-
-  const { data: house } = useHouseById(staff?.houseId, {
-    enabled: isCoordinator,
-  });
-
-  const isHouseCoordinator =
-    isCoordinator && !!house && house.coordinatorId === staff.id;
+  // Contagem e configurações da casa deixaram de ser recalculadas aqui: quem
+  // decide o que o usuário alcança é o catálogo do menu (story 176).
+  const { quickActions } = useMenuAccess();
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -58,10 +53,7 @@ export function DashboardPage() {
           residentCount={presentResidentsCount}
           incidentCount={todayIncidentsCount}
         />
-        <QuickActions
-          showCensus={isCoordinator}
-          showHouseSettings={isHouseCoordinator}
-        />
+        <QuickActions items={quickActions} />
       </View>
     </ScrollView>
   );

@@ -1,100 +1,19 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-
-const ACTIONS = [
-  {
-    label: "Nova ocorrência",
-    icon: "warning-outline" as const,
-    color: "#dc2626",
-    bg: "#fef2f2",
-    route: "/(app)/incidents/new",
-  },
-  {
-    label: "Atividades",
-    icon: "checkbox-outline" as const,
-    color: "#4f46e5",
-    bg: "#eef2ff",
-    route: "/(app)/activities",
-  },
-  {
-    label: "Ver filhos",
-    icon: "people-outline" as const,
-    color: "#9333ea",
-    bg: "#faf5ff",
-    route: "/(app)/residents",
-  },
-  {
-    label: "Ministérios",
-    icon: "people-circle-outline" as const,
-    color: "#0369a1",
-    bg: "#f0f9ff",
-    route: "/(app)/ministries",
-  },
-  {
-    label: "Dispensa",
-    icon: "cube-outline" as const,
-    color: "#16a34a",
-    bg: "#f0fdf4",
-    route: "/(app)/storeroom",
-  },
-  {
-    label: "Almoxarifado",
-    icon: "sparkles-outline" as const,
-    color: "#2563eb",
-    bg: "#eff6ff",
-    route: "/(app)/supply-room",
-  },
-  {
-    label: "Faturamento",
-    icon: "storefront-outline" as const,
-    color: "#b45309",
-    bg: "#fffbeb",
-    route: "/(app)/street-sales",
-  },
-  {
-    label: "Eventos internos",
-    icon: "calendar-outline" as const,
-    color: "#7c3aed",
-    bg: "#f5f3ff",
-    route: "/(app)/events",
-  },
-];
-
-const CENSUS_ACTIONS = [
-  {
-    label: "Contagem",
-    icon: "checkbox-outline" as const,
-    color: "#0d9488",
-    bg: "#f0fdfa",
-    route: "/(app)/census",
-  },
-];
-
-const HOUSE_SETTINGS_ACTIONS = [
-  {
-    label: "Configurações da casa",
-    icon: "settings-outline" as const,
-    color: "#475569",
-    bg: "#f1f5f9",
-    route: "/(app)/house-settings",
-  },
-];
+import type { QuickActionItem } from "@/features/menu/constants";
 
 interface Props {
-  showCensus?: boolean;
-  showHouseSettings?: boolean;
+  /**
+   * Atalhos já filtrados pelo acesso do usuário. Vêm do catálogo único
+   * (`features/menu/constants.ts`, story 176) — a lista local que existia aqui
+   * era a segunda fonte de verdade de rotas do app.
+   */
+  items: QuickActionItem[];
 }
 
-export function QuickActions({
-  showCensus = false,
-  showHouseSettings = false,
-}: Props) {
-  const actions = [
-    ...ACTIONS,
-    ...(showCensus ? CENSUS_ACTIONS : []),
-    ...(showHouseSettings ? HOUSE_SETTINGS_ACTIONS : []),
-  ];
+export function QuickActions({ items }: Props) {
+  if (items.length === 0) return null;
 
   return (
     <View>
@@ -102,9 +21,9 @@ export function QuickActions({
         Ações rápidas
       </Text>
       <View className="flex-row flex-wrap gap-3">
-        {actions.map((a) => (
+        {items.map((a) => (
           <TouchableOpacity
-            key={a.label}
+            key={a.key}
             onPress={() => router.push(a.route as never)}
             className="w-[47%] bg-white rounded-xl border border-gray-100 p-4 items-center"
           >

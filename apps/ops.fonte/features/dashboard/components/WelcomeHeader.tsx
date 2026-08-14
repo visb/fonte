@@ -1,6 +1,5 @@
-import { View, Text, Image, TouchableOpacity } from "react-native";
+import { View, Text, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@/lib/auth";
 import { resolveAssetUrl } from "@/lib/api";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 
@@ -10,8 +9,11 @@ type Props = {
   photoUrl?: string | null;
 };
 
+/**
+ * "Sair" saiu daqui na story 176: virou o último item da tab Menu, junto com o
+ * aviso de que sair descarta a fila de envio.
+ */
 export function WelcomeHeader({ name, houseName, photoUrl }: Props) {
-  const { logout } = useAuth();
   const photoUri = resolveAssetUrl(photoUrl);
 
   return (
@@ -35,12 +37,6 @@ export function WelcomeHeader({ name, houseName, photoUrl }: Props) {
         </View>
         <View className="flex-row items-center gap-2">
           <NotificationBell />
-          <TouchableOpacity
-            onPress={logout}
-            className="px-3 py-1.5 rounded-lg border border-white/30 bg-white/10"
-          >
-            <Text className="text-white text-sm font-medium">Sair</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </View>

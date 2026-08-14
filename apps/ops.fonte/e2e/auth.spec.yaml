@@ -25,7 +25,7 @@ appId: org.fonte.ops
 - tapOn: "Entrar"
 - assertVisible: "WhatsApp/e-mail ou senha incorretos."
 
-# --- Cenário 3: logout ---
+# --- Cenário 3: logout pela tab Menu (story 176) ---
 - launchApp:
     clearState: true
 - tapOn:
@@ -36,5 +36,8 @@ appId: org.fonte.ops
 - inputText: "operator123"
 - tapOn: "Entrar"
 - assertVisible: "Bem-vindo,"
+# "Sair" saiu do cabeçalho do dashboard: agora é o último item do menu.
+- tapOn: "Menu"
+- assertVisible: "Editar perfil"
 - tapOn: "Sair"
 - assertVisible: "OPS Fonte"

@@ -49,8 +49,8 @@ Rodada de autorun **175–180** — aberta em 2026-08-14.
 | --- | --- | --- | --- | --- | --- |
 | 1 | 177 — backend: snapshot offline da casa (agregado + delta) | [OK] | api 1516 · e2e 541 · api-client 290 | ff28960 | 6dad0c0 |
 | 2 | 175 — ops: ficha dos filhos persistente em SQLite | [OK] | ops unit 1093 · e2e-web 17 | 61e3422 | 14cb6ec |
-| 3 | 176 — ops: tab "Menu" no lugar de "Perfil" | in_progress | | | |
-| 4 | 179 — ops: modal de detalhes do filho na contagem + foto em tela cheia | [ ] | | | |
+| 3 | 176 — ops: tab "Menu" no lugar de "Perfil" | [OK] | ops unit 1146 · e2e-web 19 | ec5f8b7 d72f9f3 | e10a321 |
+| 4 | 179 — ops: modal de detalhes do filho na contagem + foto em tela cheia | in_progress | | | |
 | 5 | 178 — templates de recibo: estrutura genérica + contribuição mensal | [ ] | | | |
 | 6 | 180 — adm: foto e acesso ao perfil na listagem de matriculados | [ ] | | | |
 
@@ -67,6 +67,12 @@ Rodada de autorun **175–180** — aberta em 2026-08-14.
      PENDENTE-MANUAL: Maestro e roteiro manual (modo avião + restart) sem emulador nesta máquina.
      Nota: `driver.web.ts` colidia com extensão de plataforma do Metro (quebrava só no bundle web);
      hidratação de `residents.byHouse` marca lista/contagem como pendentes para não furar o censo.
+
+[OK] 176 — testes: ops unit 1146/1146 · e2e-web 19/19; cobertura features/menu 100%, global 94.4%
+     — commit: ec5f8b7 + d72f9f3 — merge: e10a321 — 2026-08-14
+     PENDENTE-MANUAL: Maestro (`e2e/auth.spec.yaml` já ajustado, falta rodar em aparelho).
+     Nota: `canAccessMenuItem` virou fonte única (tabs + menu + atalhos); paridade com as regras
+     antigas travada por teste-oráculo — diff de acesso revisado pelo orquestrador antes do merge.
 ```
 
 ## Resumo final

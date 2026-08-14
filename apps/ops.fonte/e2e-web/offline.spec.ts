@@ -42,6 +42,22 @@ async function readPersistedCache(page: Page): Promise<string | null> {
   });
 }
 
+/**
+ * Espera um registro do **store local dos filhos** (story 175) cair no disco. O
+ * domínio de filho saiu do blob e passou a viver em uma chave por registro, sem
+ * prazo de validade — a prova completa dele está em `offline-resident-store.spec.ts`.
+ */
+async function waitForResidentStore(page: Page) {
+  await page.waitForFunction(
+    () =>
+      Object.keys(window.localStorage).some((key) =>
+        key.includes('ops-fonte-resident-store:residents:'),
+      ),
+    undefined,
+    { timeout: 30_000 },
+  );
+}
+
 /** Espera a chave de fluxo de campo cair no disco (não basta o cache existir). */
 async function waitForPersistedCache(page: Page, expectedQueryKey: string) {
   await page.waitForFunction(
@@ -77,7 +93,10 @@ test.describe('ops.fonte — offline', () => {
   }) => {
     await loginAsOperator(page);
     const residentsOnline = await readStat(page, 'Filhos na casa');
-    await waitForPersistedCache(page, 'residents-count');
+    // A contagem da home vem do store local (story 175); o pacote de campo do
+    // blob (almoxarifado) é o que ainda depende do persister.
+    await waitForResidentStore(page);
+    await waitForPersistedCache(page, 'supply-room-items');
 
     // Restart sem sinal. `context.setOffline(true)` também derrubaria o fetch do
     // próprio documento (o export web do Expo não tem service worker), e aí o
@@ -102,7 +121,7 @@ test.describe('ops.fonte — offline', () => {
 
   test('só as query keys da allowlist vão para o disco (LGPD)', async ({ page }) => {
     await loginAsOperator(page);
-    await waitForPersistedCache(page, 'residents-count');
+    await waitForPersistedCache(page, 'supply-room-items');
 
     const persisted = await readPersistedCache(page);
     expect(persisted).toBeTruthy();
@@ -111,5 +130,11 @@ test.describe('ops.fonte — offline', () => {
     expect(persisted).not.toContain('notifications');
     expect(persisted).not.toContain('messages-');
     expect(persisted).not.toContain('wishlist');
+
+    // Domínio de filho saiu do blob na story 175: gravar nos dois lugares
+    // deixaria a ficha com dois prazos diferentes (o blob apagaria em 24h o que
+    // o store promete guardar até o logout).
+    expect(persisted).not.toContain('residents-count');
+    expect(persisted).not.toContain('resident-follow-ups');
   });
 });

@@ -2,7 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Mutation, Query } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { OUTBOX_MUTATION_KEYS } from './outbox';
-import { PERSIST_BUSTER, PERSIST_KEY, PERSIST_MAX_AGE, QUERY_GC_TIME } from './constants';
+import {
+  isResidentStoreQueryKey,
+  PERSIST_BUSTER,
+  PERSIST_KEY,
+  PERSIST_MAX_AGE,
+  PERSISTED_QUERY_PREFIXES,
+  QUERY_GC_TIME,
+  RESIDENT_STORE_QUERY_PREFIXES,
+} from './constants';
 import {
   clearPersistedCache,
   dehydrateOptions,
@@ -21,10 +29,6 @@ beforeEach(async () => {
 
 describe('shouldDehydrateQuery — allowlist (LGPD)', () => {
   it.each([
-    ['residents.all', queryKeys.residents.all],
-    ['residents.byHouse', queryKeys.residents.byHouse('h1')],
-    ['residents.countByHouse', queryKeys.residents.countByHouse('h1')],
-    ['residents.detail', queryKeys.residents.detail('r1')],
     ['houses.all', queryKeys.houses.all],
     ['inventory.catalog', queryKeys.inventory.catalog('h1')],
     ['storeroom.items', queryKeys.storeroom.items('h1')],
@@ -51,6 +55,11 @@ describe('shouldDehydrateQuery — allowlist (LGPD)', () => {
     ['wishlist.pending', queryKeys.wishlist.pending],
     ['supportGroups.all', queryKeys.supportGroups.all],
     ['bibleCourses.photos', queryKeys.bibleCourses.photos('c1')],
+    // Domínio de filho: migrou para o store local da story 175.
+    ['residents.all', queryKeys.residents.all],
+    ['residents.byHouse', queryKeys.residents.byHouse('h1')],
+    ['residents.countByHouse', queryKeys.residents.countByHouse('h1')],
+    ['residents.detail', queryKeys.residents.detail('r1')],
     ['residents.attachments', queryKeys.residents.attachments('r1')],
     ['residents.consents', queryKeys.residents.consents('r1')],
     ['residents.receivables', queryKeys.residents.receivables('r1')],
@@ -64,8 +73,8 @@ describe('shouldDehydrateQuery — allowlist (LGPD)', () => {
   });
 
   it('não persiste query sem sucesso, mesmo em chave da allowlist', () => {
-    expect(shouldDehydrateQuery(query(queryKeys.residents.all, 'pending'))).toBe(false);
-    expect(shouldDehydrateQuery(query(queryKeys.residents.all, 'error'))).toBe(false);
+    expect(shouldDehydrateQuery(query(queryKeys.houses.all, 'pending'))).toBe(false);
+    expect(shouldDehydrateQuery(query(queryKeys.houses.all, 'error'))).toBe(false);
   });
 
   it('não persiste chave cujo primeiro segmento não é string', () => {
@@ -118,6 +127,41 @@ describe('clearPersistedCache', () => {
   it('é idempotente quando não há cache gravado', async () => {
     await expect(clearPersistedCache()).resolves.toBeUndefined();
     expect(await AsyncStorage.getItem(PERSIST_KEY)).toBeNull();
+  });
+});
+
+describe('store local × cache em blob (story 175)', () => {
+  it('nenhum prefixo do domínio de filho está nos dois lugares (sem duplicidade)', () => {
+    const duplicados = RESIDENT_STORE_QUERY_PREFIXES.filter((prefix) =>
+      (PERSISTED_QUERY_PREFIXES as readonly string[]).includes(prefix),
+    );
+
+    // Gravar o mesmo dado nos dois lugares deixaria o blob apagando em 24h o que
+    // o store promete guardar até o logout.
+    expect(duplicados).toEqual([]);
+  });
+
+  it('a allowlist do blob continua com o pacote de campo intacto', () => {
+    expect([...PERSISTED_QUERY_PREFIXES]).toEqual([
+      'houses',
+      'inventory-catalog',
+      'storeroom-items',
+      'storeroom-movements',
+      'supply-room-items',
+      'supply-room-movements',
+      'incidents',
+      'incidents-today',
+      'activities',
+      'street-sales',
+    ]);
+  });
+
+  it('isResidentStoreQueryKey decide por igualdade do primeiro segmento', () => {
+    expect(isResidentStoreQueryKey(queryKeys.residents.detail('r1'))).toBe(true);
+    expect(isResidentStoreQueryKey(queryKeys.residents.attachments('r1'))).toBe(true);
+    expect(isResidentStoreQueryKey(queryKeys.houses.ministries('h1'))).toBe(true);
+    expect(isResidentStoreQueryKey(queryKeys.incidents.byHouse('h1'))).toBe(false);
+    expect(isResidentStoreQueryKey([{ scope: 'resident' }])).toBe(false);
   });
 });
 

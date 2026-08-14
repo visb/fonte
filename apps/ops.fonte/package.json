@@ -42,6 +42,7 @@
     "expo-router": "~4.0.9",
     "expo-sharing": "~13.0.1",
     "expo-splash-screen": "~0.29.13",
+    "expo-sqlite": "~15.0.6",
     "expo-status-bar": "~2.0.0",
     "expo-system-ui": "~4.0.4",
     "nativewind": "^4.1.0",

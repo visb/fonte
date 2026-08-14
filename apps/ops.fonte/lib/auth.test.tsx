@@ -16,6 +16,9 @@ import { api, setUnauthorizedHandler } from './api';
 import { AuthProvider, useAuth, MustChangePasswordError } from './auth';
 import { queryClient } from './queryClient';
 import { PERSIST_KEY } from './offline/constants';
+import { createWebDriver } from './offline/store/driver.asyncStorage';
+import { setResidentStoreDriver, type ResidentStoreDriver } from './offline/store/driver';
+import { readResident, saveResident } from './offline/store/residentStore';
 
 const m = api as unknown as {
   auth: Record<string, jest.Mock>;
@@ -59,7 +62,10 @@ async function renderAuth() {
 beforeEach(async () => {
   jest.clearAllMocks();
   await AsyncStorage.clear();
+  setResidentStoreDriver(createWebDriver());
 });
+
+afterEach(() => setResidentStoreDriver(null));
 
 describe('AuthProvider', () => {
   it('useAuth fora do provider lança erro', () => {
@@ -157,6 +163,32 @@ describe('AuthProvider', () => {
     });
 
     expect(await AsyncStorage.getItem(PERSIST_KEY)).toBeNull();
+  });
+
+  it('logout purga o store local dos filhos (story 175, LGPD)', async () => {
+    await AsyncStorage.setItem('token', 'jwt');
+    await saveResident({ id: 'r1', name: 'Ana', houseId: 'h1' } as never);
+    await renderAuth();
+
+    await act(async () => {
+      await auth.logout();
+    });
+
+    expect(await readResident('r1')).toBeNull();
+  });
+
+  it('purga que falha não é engolida — o erro sobe e a sessão termina mesmo assim', async () => {
+    setResidentStoreDriver({
+      clearAll: jest.fn().mockRejectedValue(new Error('disco cheio')),
+    } as unknown as ResidentStoreDriver);
+    await AsyncStorage.setItem('token', 'jwt');
+    await renderAuth();
+
+    await act(async () => {
+      await expect(auth.logout()).rejects.toThrow('disco cheio');
+    });
+
+    expect(auth.token).toBeNull();
   });
 
   it('logout esvazia o cache em memória do React Query', async () => {
@@ -299,6 +331,18 @@ describe('AuthProvider — sessão expirada (401 global)', () => {
 
     await waitFor(async () => {
       expect(await AsyncStorage.getItem(PERSIST_KEY)).toBeNull();
+    });
+  });
+
+  it('401 purga o store local dos filhos (sessão expirada = fim do dado)', async () => {
+    await AsyncStorage.setItem('token', 'jwt');
+    await saveResident({ id: 'r1', name: 'Ana', houseId: 'h1' } as never);
+    await renderAuth();
+
+    await triggerUnauthorized();
+
+    await waitFor(async () => {
+      expect(await readResident('r1')).toBeNull();
     });
   });
 

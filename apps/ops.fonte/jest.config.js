@@ -7,6 +7,7 @@ module.exports = {
     'features/**/*.{ts,tsx}',
     'lib/**/*.{ts,tsx}',
     '!**/*.test.{ts,tsx}',
+    '!**/__mocks__/**',
     '!**/*.d.ts',
     '!**/_layout.tsx',
     // Rotas Expo Router (app/**) sao orquestracao de navegacao/telas → cobertas por

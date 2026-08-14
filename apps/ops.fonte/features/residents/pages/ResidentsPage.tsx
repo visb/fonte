@@ -7,6 +7,8 @@ import { useResidentsByHouse } from "@/features/residents/hooks/useResidents";
 import { ResidentSearchBar } from "@/features/residents/components/ResidentSearchBar";
 import { ResidentStatusFilterModal } from "@/features/residents/components/ResidentStatusFilterModal";
 import { ResidentListItem } from "@/features/residents/components/ResidentListItem";
+import { LastSyncedAt } from "@/components/shared/LastSyncedAt";
+import { useLastSyncedAt } from "@/lib/offline/store/useLastSyncedAt";
 import {
   DEFAULT_RESIDENT_STATUS_FILTER,
   RESIDENT_STATUS_FILTER_OPTIONS,
@@ -24,6 +26,8 @@ export function ResidentsPage() {
   const { data: residents = [], isLoading, refetch } = useResidentsByHouse(
     staff?.houseId,
   );
+  // Story 175: a lista não some mais por idade — a tela diz de quando ela é.
+  const syncedAt = useLastSyncedAt(staff?.houseId);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -50,6 +54,8 @@ export function ResidentsPage() {
         onPressFilter={() => setFilterOpen(true)}
         filterActive={filterActive}
       />
+
+      <LastSyncedAt syncedAt={syncedAt} />
 
       <ResidentStatusFilterModal
         visible={filterOpen}

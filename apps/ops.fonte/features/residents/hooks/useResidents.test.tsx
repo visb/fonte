@@ -25,8 +25,20 @@ jest.mock('@/lib/api', () => ({
   },
 }));
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { QueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { renderHookWithClient } from '@/lib/test/utils';
+import { createWebDriver } from '@/lib/offline/store/driver.asyncStorage';
+import { setResidentStoreDriver } from '@/lib/offline/store/driver';
+import { hydrateResidentQueries } from '@/lib/offline/store/hydrate';
+import { attachResidentStoreWriteThrough } from '@/lib/offline/store/writeThrough';
+import {
+  readResidentDetail,
+  readResidentList,
+  saveResidentDetail,
+  saveResidentList,
+} from '@/lib/offline/store/residentStore';
 import {
   useAllResidents,
   useResidentsByHouse,
@@ -184,6 +196,91 @@ describe('useResidentConsents (LGPD)', () => {
       purpose: 'IMAGE_USE',
       termVersion: '1.0',
     });
+  });
+});
+
+describe('hooks × store local dos filhos (story 175)', () => {
+  /** Client igual ao do app: offlineFirst e sem coleta por idade no domínio. */
+  function offlineClient(): QueryClient {
+    return new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: Infinity, networkMode: 'offlineFirst' },
+      },
+    });
+  }
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    setResidentStoreDriver(createWebDriver());
+  });
+
+  afterEach(() => setResidentStoreDriver(null));
+
+  it('com store populado e rede caída, a lista abre com dado (e não com erro na cara)', async () => {
+    await saveResidentList('h1', [{ id: 'r1', name: 'Ana', houseId: 'h1' } as never]);
+    m.residents.listByHouse.mockRejectedValue(new Error('Network Error'));
+
+    const client = offlineClient();
+    await hydrateResidentQueries(client);
+    const { result } = renderHookWithClient(() => useResidentsByHouse('h1'), client);
+
+    await waitFor(() => expect(result.current.data).toBeDefined());
+    expect(result.current.data).toEqual([expect.objectContaining({ name: 'Ana' })]);
+  });
+
+  it('sem rede a ficha e os acompanhamentos também abrem do store', async () => {
+    await saveResidentList('h1', [{ id: 'r1', name: 'Ana', houseId: 'h1' } as never]);
+    await saveResidentDetail('r1', 'follow_ups', [{ id: 'f1' }] as never);
+    m.residents.getById.mockRejectedValue(new Error('Network Error'));
+    m.residents.getFollowUps.mockRejectedValue(new Error('Network Error'));
+
+    const client = offlineClient();
+    await hydrateResidentQueries(client);
+
+    const detail = renderHookWithClient(() => useResidentById('r1'), client);
+    const followUps = renderHookWithClient(() => useResidentFollowUps('r1'), client);
+
+    await waitFor(() => expect(detail.result.current.data).toBeDefined());
+    expect(detail.result.current.data).toMatchObject({ name: 'Ana' });
+    expect(followUps.result.current.data).toEqual([{ id: 'f1' }]);
+  });
+
+  it('o dado do store carrega o carimbo do disco (alimenta o "atualizado em")', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    await saveResidentList('h1', [{ id: 'r1', name: 'Ana', houseId: 'h1' } as never]);
+    jest.restoreAllMocks();
+    m.residents.listByHouse.mockRejectedValue(new Error('Network Error'));
+
+    const client = offlineClient();
+    await hydrateResidentQueries(client);
+    const { result } = renderHookWithClient(() => useResidentsByHouse('h1'), client);
+
+    await waitFor(() => expect(result.current.data).toBeDefined());
+    expect(result.current.dataUpdatedAt).toBe(1_700_000_000_000);
+  });
+
+  it('sucesso de rede grava no store (write-through)', async () => {
+    m.residents.listByHouse.mockResolvedValue([{ id: 'r1', name: 'Ana', houseId: 'h1' }]);
+    m.consents.status.mockResolvedValue([{ purpose: 'IMAGE_PUBLICATION', granted: true }]);
+
+    const client = offlineClient();
+    const stop = attachResidentStoreWriteThrough(client);
+    const list = renderHookWithClient(() => useResidentsByHouse('h1'), client);
+    const consents = renderHookWithClient(() => useResidentConsents('r1'), client);
+
+    await waitFor(() => expect(list.result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(consents.result.current.isSuccess).toBe(true));
+    await waitFor(async () => expect(await readResidentList('h1')).not.toBeNull());
+
+    expect((await readResidentList('h1'))?.data).toEqual([
+      expect.objectContaining({ id: 'r1' }),
+    ]);
+    await waitFor(async () =>
+      expect((await readResidentDetail('r1', 'consents'))?.data).toEqual([
+        { purpose: 'IMAGE_PUBLICATION', granted: true },
+      ]),
+    );
+    stop();
   });
 });
 

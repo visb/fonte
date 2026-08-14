@@ -8,14 +8,20 @@ import { clearPersistedCache } from './offline/persister';
 import { clearDeadLetter } from './offline/deadLetter';
 import { clearLocalIds } from './offline/localIds';
 import { warmHouseCache } from './offline/prefetch';
+import { purgeAll as purgeResidentStore } from './offline/store/residentStore';
 
 const STORAGE_KEYS = ['token', 'staff', 'resident'];
 
 /**
- * Fim de sessão = fim do dado no dispositivo. O cache persistido e a dead-letter
- * da outbox guardam dado pessoal de filho (LGPD, epic 167), então saem junto com
- * as chaves de auth. Limpar o `queryClient` antes garante que uma gravação
- * throttled pendente escreva um cache vazio, não o antigo.
+ * Fim de sessão = fim do dado no dispositivo. O cache persistido, a dead-letter
+ * da outbox e o store local dos filhos (story 175) guardam dado pessoal (LGPD,
+ * epic 167), então saem junto com as chaves de auth. Limpar o `queryClient`
+ * antes garante que uma gravação throttled pendente escreva um cache vazio, não
+ * o antigo.
+ *
+ * A purga do store é a mitigação que sustenta "a ficha fica no aparelho sem
+ * prazo": se ela falhar, o erro é **registrado e propagado**. Purga que falha em
+ * silêncio deixaria a ficha completa de uma casa no dispositivo de quem saiu.
  */
 async function clearSessionData(): Promise<void> {
   await AsyncStorage.multiRemove(STORAGE_KEYS);
@@ -24,6 +30,13 @@ async function clearSessionData(): Promise<void> {
   await clearDeadLetter();
   // Mapa de ids locais (story 171): sem a fila que o usava, é lixo.
   await clearLocalIds();
+
+  try {
+    await purgeResidentStore();
+  } catch (error) {
+    console.error('[ops.fonte] falha ao purgar o store local dos filhos', error);
+    throw error;
+  }
 }
 
 export class MustChangePasswordError extends Error {
@@ -100,7 +113,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUnauthorizedHandler(() => {
       if (sessionExpiredRef.current) return;
       sessionExpiredRef.current = true;
-      void clearSessionData();
+      // Erro aqui já foi para o Sentry em `clearSessionData`; engolir a rejeição
+      // evita derrubar o app no meio da expiração de sessão.
+      void clearSessionData().catch(() => {});
       setState({
         token: null,
         staff: null,
@@ -197,14 +212,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Sair por vontade própria não é expiração: sessionExpired continua false.
   async function logout() {
     sessionExpiredRef.current = false;
-    await clearSessionData();
-    setState({
-      token: null,
-      staff: null,
-      resident: null,
-      isLoading: false,
-      sessionExpired: false,
-    });
+    try {
+      await clearSessionData();
+    } finally {
+      // A sessão termina de qualquer jeito: se a purga falhou, o erro sobe para
+      // a tela (e para o Sentry) sem deixar o operador logado por acidente.
+      setState({
+        token: null,
+        staff: null,
+        resident: null,
+        isLoading: false,
+        sessionExpired: false,
+      });
+    }
   }
 
   return (

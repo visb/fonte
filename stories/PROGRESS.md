@@ -1,18 +1,58 @@
-# PROGRESS — ledger ativo (stub)
+# PROGRESS — ledger ativo
 
-_Nenhuma rodada aberta._ Rodadas encerradas são arquivadas em `stories/done/PROGRESS-NN-MM.md`.
-
-Para abrir uma nova rodada de autorun: `/autorun <faixa/tema>` (ver `.claude/skills/autorun` e
-`stories/AUTORUN.md`). O `/autorun` preenche este arquivo com a config + fila da rodada.
+Rodada de autorun **175–180** — aberta em 2026-08-14.
 
 ## Config da rodada
 
-<vazio>
+- **Tema:** offline-first do `ops.fonte` (snapshot da casa + store SQLite + navegação) e melhorias de
+  identificação visual do filho (contagem no ops, matriculados no adm), mais a estrutura genérica de
+  templates de recibo.
+- **Ordem:** 177 → 175 → 176 → 179 → 178 → 180.
+- **Branch base:** `main` (cada branch parte da `main` já com o merge da story anterior).
+- **Deps rígidas:**
+  - **177 → 175** (declarada na 175): sem `GET /houses/:id/offline-snapshot` o aquecimento da 175
+    nasce com `1 + N×4` requests e teria de ser reescrito. Se a 177 bloquear, a 175 bloqueia junto.
+  - **175 → 179** (ordem, não conteúdo): as duas tocam a área de filhos do `ops.fonte`; a 179 abre o
+    modal em cima do dado que a 175 passa a servir do store local.
+- **Escopo técnico por story:**
+  - **177** — backend + contratos: migration nova (índices `updated_at`/FKs), `packages/types`
+    (`HouseOfflineSnapshot`, `OfflineSnapshotDeleted`), `api-client`
+    (`offlineSync.houseSnapshot`), Postman (endpoint novo, 2 variantes).
+  - **175** — frontend-only (`ops.fonte`): `expo-sqlite` + driver web (AsyncStorage), `user_version`
+    para migração do store. Sem backend/contrato/Postman.
+  - **176** — frontend-only (`ops.fonte`), tab "Menu" no lugar de "Perfil". Sem backend/Postman.
+  - **179** — frontend-only (`ops.fonte`), modal do filho na contagem + foto em tela cheia. Sem
+    `test:api`, `build:types`, `build:api-client` ou Postman.
+  - **178** — backend + adm: migration nova (templates genéricos/kind), `packages/types` (enums),
+    `api-client` (`documentTemplates.list({ kind })`), Postman (rota nova + query param + campos).
+  - **180** — adm + response body de `GET /bible-courses/classes/:id` (sem migration);
+    `build:api-client` + Postman (campo novo no exemplo).
+- **Cuidados da rodada:**
+  - **Contratos:** 177, 178 e 180 mudam `packages/types`/`api-client` → `pnpm build:types &&
+    pnpm build:api-client` antes de subir API/adm e antes dos gates; sem `dist/` do api-client a
+    suíte adm inteira quebra.
+  - **Migrations:** 177 e 178 criam migration nova — `pnpm migration:run:test` após cada uma.
+    **Nunca** editar migration existente. Timestamps crescentes na ordem de merge.
+  - **Postman:** 177, 178 e 180 obrigam atualizar `fonte-api.postman_collection.json` (regra do
+    CLAUDE.md).
+  - **Offline-first é invariante do `ops.fonte`** (175/176/179): mutation de fluxo de campo sempre
+    `mutationKey` + `setMutationDefaults` + `networkMode: 'offlineFirst'`; allowlist de query keys em
+    `lib/offline/constants.ts` nunca vira denylist; rejeição do servidor vai para `/sync`, erro de
+    rede não descarta item; 401 só desloga em 401 real.
+  - **Maestro** (`test:ops`/`test:app`) costuma não rodar sem emulador conectado → registrar
+    PENDENTE-MANUAL em vez de bloquear; cobertura de fluxo offline vai no Playwright web (`e2e-web/`).
+  - Gate de cobertura ≥ 90 no escopo tocado; merge só com suíte da área verde.
 
 ## Fila
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
+| 1 | 177 — backend: snapshot offline da casa (agregado + delta) | [ ] | | | |
+| 2 | 175 — ops: ficha dos filhos persistente em SQLite | [ ] | | | |
+| 3 | 176 — ops: tab "Menu" no lugar de "Perfil" | [ ] | | | |
+| 4 | 179 — ops: modal de detalhes do filho na contagem + foto em tela cheia | [ ] | | | |
+| 5 | 178 — templates de recibo: estrutura genérica + contribuição mensal | [ ] | | | |
+| 6 | 180 — adm: foto e acesso ao perfil na listagem de matriculados | [ ] | | | |
 
 ## Log
 

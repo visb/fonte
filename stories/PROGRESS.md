@@ -48,8 +48,8 @@ Rodada de autorun **175–180** — aberta em 2026-08-14.
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 177 — backend: snapshot offline da casa (agregado + delta) | [OK] | api 1516 · e2e 541 · api-client 290 | ff28960 | 6dad0c0 |
-| 2 | 175 — ops: ficha dos filhos persistente em SQLite | in_progress | | | |
-| 3 | 176 — ops: tab "Menu" no lugar de "Perfil" | [ ] | | | |
+| 2 | 175 — ops: ficha dos filhos persistente em SQLite | [OK] | ops unit 1093 · e2e-web 17 | 61e3422 | 14cb6ec |
+| 3 | 176 — ops: tab "Menu" no lugar de "Perfil" | in_progress | | | |
 | 4 | 179 — ops: modal de detalhes do filho na contagem + foto em tela cheia | [ ] | | | |
 | 5 | 178 — templates de recibo: estrutura genérica + contribuição mensal | [ ] | | | |
 | 6 | 180 — adm: foto e acesso ao perfil na listagem de matriculados | [ ] | | | |
@@ -61,6 +61,12 @@ Rodada de autorun **175–180** — aberta em 2026-08-14.
      cobertura offline-sync 100%, global api 92.3% — commit: ff28960 — merge: 6dad0c0 — 2026-08-14
      Nota: delta comparava timestamp em hora local (driver pg vs. coluna sem timezone) — corrigido
      com `common/lib/db-timestamp.ts`; carnê (`receivables`) não desce para SERVANT.
+
+[OK] 175 — testes: ops unit 1093/1093 · e2e-web 17/17; cobertura store/sync 100%, all files 94.3%
+     — commit: 61e3422 — merge: 14cb6ec — 2026-08-14
+     PENDENTE-MANUAL: Maestro e roteiro manual (modo avião + restart) sem emulador nesta máquina.
+     Nota: `driver.web.ts` colidia com extensão de plataforma do Metro (quebrava só no bundle web);
+     hidratação de `residents.byHouse` marca lista/contagem como pendentes para não furar o censo.
 ```
 
 ## Resumo final

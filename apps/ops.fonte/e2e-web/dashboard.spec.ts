@@ -22,9 +22,17 @@ function visible(page: Page, text: string) {
   return page.getByText(text, { exact: true }).filter({ visible: true }).first();
 }
 
+/**
+ * Botão da tab bar. O rótulo da tab e o título do header têm o mesmo texto e a
+ * tela anterior continua montada atrás — a barra é o último match do DOM.
+ */
+function tabButton(page: Page, label: string) {
+  return page.getByText(label, { exact: true }).filter({ visible: true }).last();
+}
+
 /** A tab "Menu" tomou o lugar da "Perfil" (story 176). */
 async function openMenuTab(page: Page) {
-  await visible(page, 'Menu').click();
+  await tabButton(page, 'Menu').click();
   await expect(page.getByTestId('menu-edit-profile')).toBeVisible({ timeout: 15_000 });
 }
 

@@ -8,17 +8,15 @@ import { useAuth } from "@/lib/auth";
 import { UsageTimerProvider } from "@/lib/UsageTimerContext";
 import { useWarmHouseCache } from "@/lib/offline/prefetch";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { useMenuAccess } from "@/features/menu/hooks/useMenuAccess";
+import { canAccessMenuItem } from "@/features/menu/constants";
 
 export default function AppLayout() {
-  const {
-    token,
-    isLoading,
-    staff,
-    isResident,
-    canSendMessagesToFamilies,
-    canModerateMessages,
-  } = useAuth();
-  const isSupportGroupServant = !!staff && !staff.houseId;
+  const { token, isLoading, staff } = useAuth();
+  // Visibilidade das tabs vem do mesmo catálogo do menu (story 176): duas
+  // fontes de verdade aqui viram item que leva a tela proibida.
+  const { access } = useMenuAccess();
+  const { isResident, isSupportGroupServant } = access;
   // Ponto ÚNICO de safe area do app autenticado (story 174): o wrapper paga o
   // inset do topo por todas as telas do grupo. Header nenhum — nem o
   // OfflineBanner — pode somar insets.top de novo, senão o app ganha gap duplo
@@ -86,7 +84,7 @@ export default function AppLayout() {
           options={{
             title: "Filhos",
             headerShown: false,
-            href: isSupportGroupServant || isResident ? null : undefined,
+            href: canAccessMenuItem("residents", access) ? undefined : null,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="people-outline" size={size} color={color} />
             ),
@@ -159,7 +157,7 @@ export default function AppLayout() {
           options={{
             title: "Apoio",
             headerShown: false,
-            href: isSupportGroupServant ? undefined : null,
+            href: canAccessMenuItem("supportGroups", access) ? undefined : null,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="heart-circle-outline" size={size} color={color} />
             ),
@@ -185,13 +183,7 @@ export default function AppLayout() {
           options={{
             title: "Mensagens",
             headerShown: false,
-            href:
-              isSupportGroupServant ||
-              (!isResident &&
-                !canSendMessagesToFamilies &&
-                !canModerateMessages)
-                ? null
-                : undefined,
+            href: canAccessMenuItem("messages", access) ? undefined : null,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="chatbubbles-outline" size={size} color={color} />
             ),
@@ -206,10 +198,7 @@ export default function AppLayout() {
           options={{
             title: "Pedidos",
             headerShown: false,
-            href:
-              isSupportGroupServant || (!isResident && !canModerateMessages)
-                ? null
-                : undefined,
+            href: canAccessMenuItem("wishlist", access) ? undefined : null,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="gift-outline" size={size} color={color} />
             ),
@@ -264,10 +253,22 @@ export default function AppLayout() {
           }}
         />
         <Tabs.Screen
+          name="menu"
+          options={{
+            title: "Menu",
+            href: isSupportGroupServant ? null : undefined,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="menu-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        {/* Perfil perdeu a tab para o Menu (story 176), mas a rota continua:
+            é o "Editar perfil" do cabeçalho do menu que empurra ela. */}
+        <Tabs.Screen
           name="profile"
           options={{
             title: "Perfil",
-            href: isSupportGroupServant ? null : undefined,
+            href: null,
             tabBarIcon: ({ color, size }) => (
               <Ionicons
                 name="person-circle-outline"

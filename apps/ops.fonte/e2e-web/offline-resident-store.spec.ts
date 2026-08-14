@@ -237,7 +237,9 @@ test.describe('ops.fonte — store local dos filhos sem sinal', () => {
     await restartOffline(page);
 
     // Sair não depende de rede: a purga é local e é o que sustenta guardar a
-    // ficha por tempo indeterminado.
+    // ficha por tempo indeterminado. Desde a story 176 a ação mora na tab Menu.
+    // O rótulo da tab é o último match: o título do header repete o texto.
+    await page.getByText('Menu', { exact: true }).filter({ visible: true }).last().click();
     await visible(page, 'Sair').click();
     await expect(page.getByLabel('input-email')).toBeVisible({ timeout: 30_000 });
 

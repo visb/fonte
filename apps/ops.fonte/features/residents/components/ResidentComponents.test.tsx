@@ -16,6 +16,7 @@ import { ResidentSearchBar } from './ResidentSearchBar';
 import { ResidentStatusFilterModal } from './ResidentStatusFilterModal';
 import { TrackingEventItem } from './TrackingEventItem';
 import { ResidentPhoto } from './ResidentPhoto';
+import { ResidentPhotoViewer } from './ResidentPhotoViewer';
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -203,5 +204,58 @@ describe('ResidentPhoto', () => {
     const img = screen.UNSAFE_getAllByType(require('react-native').Image)[0];
     fireEvent.press(img.parent as never);
     expect(screen.getByText('Ana')).toBeTruthy();
+  });
+});
+
+// Story 179: expansor extraído do ResidentPhoto para a contagem reusar a partir
+// de uma thumb de 40px.
+describe('ResidentPhotoViewer', () => {
+  const baseProps = {
+    name: 'João',
+    photoUrl: 'https://x/full.jpg',
+    photoThumbUrl: 'https://x/t.jpg',
+    onClose: jest.fn(),
+  };
+
+  function images() {
+    return screen.UNSAFE_getAllByType(require('react-native').Image);
+  }
+
+  it('fechado não renderiza a imagem', () => {
+    render(<ResidentPhotoViewer {...baseProps} visible={false} />);
+    expect(screen.queryByText('João')).toBeNull();
+  });
+
+  it('aberto mostra a versão cheia e o nome', () => {
+    render(<ResidentPhotoViewer {...baseProps} visible />);
+    expect(screen.getByText('João')).toBeTruthy();
+    expect(images()[0].props.source.uri).toBe('https://x/full.jpg');
+  });
+
+  it('falha ao carregar a versão cheia cai na thumb', () => {
+    render(<ResidentPhotoViewer {...baseProps} visible />);
+    // A cheia pode nunca ter sido baixada no aparelho; a thumb já está no cache
+    // de imagem do SO porque a lista a renderizou.
+    fireEvent(images()[0], 'error');
+    expect(images()[0].props.source.uri).toBe('https://x/t.jpg');
+  });
+
+  it('só com thumb renderiza a thumb', () => {
+    render(<ResidentPhotoViewer {...baseProps} visible photoUrl={null} />);
+    expect(images()[0].props.source.uri).toBe('https://x/t.jpg');
+  });
+
+  it('sem nenhuma URL não renderiza o modal', () => {
+    render(<ResidentPhotoViewer {...baseProps} visible photoUrl={null} photoThumbUrl={null} />);
+    expect(screen.queryByText('João')).toBeNull();
+  });
+
+  it('fecha pelo botão e pelo toque no fundo', () => {
+    const onClose = jest.fn();
+    render(<ResidentPhotoViewer {...baseProps} visible onClose={onClose} />);
+    fireEvent.press(screen.getByLabelText('Fechar foto'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.press(screen.getByText('João'));
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 });

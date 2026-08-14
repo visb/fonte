@@ -37,12 +37,23 @@ function rc(ui: React.ReactElement) {
 beforeEach(() => jest.clearAllMocks());
 
 describe('CensusListItem', () => {
-  const resident = { id: 'r1', name: 'João' };
+  const resident = { id: 'r1', name: 'João', photoThumbUrl: 'https://x/t.jpg' };
+
+  function setup(overrides: Record<string, unknown> = {}) {
+    const handlers = {
+      onConfirm: jest.fn(),
+      onRemove: jest.fn(),
+      onOpenDetails: jest.fn(),
+      onOpenPhoto: jest.fn(),
+    };
+    render(
+      <CensusListItem resident={resident} confirmed={false} {...handlers} {...overrides} />,
+    );
+    return handlers;
+  }
 
   it('confirma e remove disparam os callbacks', () => {
-    const onConfirm = jest.fn();
-    const onRemove = jest.fn();
-    render(<CensusListItem resident={resident} confirmed={false} onConfirm={onConfirm} onRemove={onRemove} />);
+    const { onConfirm, onRemove } = setup();
     expect(screen.getByText('João')).toBeTruthy();
     fireEvent.press(screen.getByText('icon:checkmark'));
     expect(onConfirm).toHaveBeenCalled();
@@ -51,12 +62,50 @@ describe('CensusListItem', () => {
   });
 
   it('pending mostra badge de aprovação e check fixo (sem onConfirm)', () => {
-    const onConfirm = jest.fn();
-    render(<CensusListItem resident={resident} confirmed={false} pending onConfirm={onConfirm} onRemove={jest.fn()} />);
+    const { onConfirm, onOpenDetails } = setup({ pending: true });
     expect(screen.getByText('Aguardando aprovação')).toBeTruthy();
     // o check existe mas é fixo (View, não TouchableOpacity) → onConfirm não dispara
     fireEvent.press(screen.getByText('icon:checkmark'));
     expect(onConfirm).not.toHaveBeenCalled();
+    // detalhes seguem acessíveis para o filho adicionado na contagem
+    fireEvent.press(screen.getByLabelText('Detalhes de João'));
+    expect(onOpenDetails).toHaveBeenCalled();
+  });
+
+  // Story 179: dois alvos de toque, um para cada intenção.
+  it('toque na foto abre só a foto', () => {
+    const { onOpenPhoto, onOpenDetails } = setup();
+    fireEvent.press(screen.getByLabelText('Ver foto de João'));
+    expect(onOpenPhoto).toHaveBeenCalledTimes(1);
+    expect(onOpenDetails).not.toHaveBeenCalled();
+  });
+
+  it('toque no nome abre só os detalhes', () => {
+    const { onOpenPhoto, onOpenDetails } = setup();
+    fireEvent.press(screen.getByLabelText('Detalhes de João'));
+    expect(onOpenDetails).toHaveBeenCalledTimes(1);
+    expect(onOpenPhoto).not.toHaveBeenCalled();
+  });
+
+  // Regressão que protege a contagem: mirar num botão não pode abrir modal.
+  it('confirmar e remover não abrem nenhum modal', () => {
+    const { onConfirm, onRemove, onOpenDetails, onOpenPhoto } = setup();
+    fireEvent.press(screen.getByLabelText('Confirmar João'));
+    fireEvent.press(screen.getByLabelText('Remover João'));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onRemove).toHaveBeenCalledTimes(1);
+    expect(onOpenDetails).not.toHaveBeenCalled();
+    expect(onOpenPhoto).not.toHaveBeenCalled();
+  });
+
+  it('filho sem foto: alvo da foto desabilitado, detalhes seguem ativos', () => {
+    const { onOpenPhoto, onOpenDetails } = setup({ resident: { id: 'r2', name: 'Ana' } });
+    const photoTarget = screen.getByLabelText('Ver foto de Ana');
+    expect(photoTarget.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.press(photoTarget);
+    expect(onOpenPhoto).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByLabelText('Detalhes de Ana'));
+    expect(onOpenDetails).toHaveBeenCalled();
   });
 });
 

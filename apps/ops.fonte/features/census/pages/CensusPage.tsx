@@ -10,10 +10,12 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { useActiveResidentsByHouse, useConcludeCensus } from '../hooks/useCensus';
+import { ResidentPhotoViewer } from '@/features/residents/components/ResidentPhotoViewer';
 import { CensusListItem } from '../components/CensusListItem';
 import { AddResidentModal } from '../components/AddResidentModal';
 import { RemoveResidentModal } from '../components/RemoveResidentModal';
 import { ConcludeCensusModal } from '../components/ConcludeCensusModal';
+import { ResidentDetailModal } from '../components/ResidentDetailModal';
 
 const isPending = (r: Resident) => r.status === ResidentStatus.CENSUS_ADDED;
 
@@ -26,6 +28,10 @@ export function CensusPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
   const [concludeOpen, setConcludeOpen] = useState(false);
+  // Story 179: consulta, não ação. Nenhum dos dois mexe em `confirmedIds` —
+  // abrir a ficha no pátio não pode confirmar (nem desconfirmar) presença.
+  const [detailTarget, setDetailTarget] = useState<Resident | null>(null);
+  const [photoTarget, setPhotoTarget] = useState<Resident | null>(null);
   const concludeMutation = useConcludeCensus(houseId ?? '');
   const submitConclude = useFieldSubmit(concludeMutation);
 
@@ -97,6 +103,8 @@ export function CensusPage() {
             pending={isPending(item)}
             onConfirm={() => toggleConfirm(item.id)}
             onRemove={() => setRemoveTarget({ id: item.id, name: item.name })}
+            onOpenDetails={() => setDetailTarget(item)}
+            onOpenPhoto={() => setPhotoTarget(item)}
           />
         )}
         ListEmptyComponent={<EmptyState message="Nenhum filho ativo nesta casa." />}
@@ -132,6 +140,20 @@ export function CensusPage() {
         resident={removeTarget}
         onClose={() => setRemoveTarget(null)}
         onSuccess={() => refetch()}
+      />
+
+      <ResidentDetailModal
+        visible={!!detailTarget}
+        resident={detailTarget}
+        onClose={() => setDetailTarget(null)}
+      />
+
+      <ResidentPhotoViewer
+        visible={!!photoTarget}
+        name={photoTarget?.name ?? ''}
+        photoUrl={photoTarget?.photoUrl}
+        photoThumbUrl={photoTarget?.photoThumbUrl}
+        onClose={() => setPhotoTarget(null)}
       />
 
       <ConcludeCensusModal

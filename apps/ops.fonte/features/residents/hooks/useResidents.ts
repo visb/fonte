@@ -25,11 +25,11 @@ export function useResidentCountByHouse(houseId: string | null | undefined) {
   });
 }
 
-export function useResidentById(id: string | undefined) {
+export function useResidentById(id: string | undefined, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.residents.detail(id!),
     queryFn: () => api.residents.getById(id!),
-    enabled: !!id,
+    enabled: (options?.enabled ?? true) && !!id,
   });
 }
 

@@ -1,14 +1,8 @@
 import { useState } from 'react';
-import {
-  Image,
-  Modal,
-  Pressable,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Image, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { resolveAssetUrl } from '@/lib/api';
+import { ResidentPhotoViewer } from './ResidentPhotoViewer';
 
 interface Props {
   name: string;
@@ -16,6 +10,7 @@ interface Props {
   photoThumbUrl?: string | null;
 }
 
+/** Avatar da ficha do filho. O expansor mora no `ResidentPhotoViewer` (story 179). */
 export function ResidentPhoto({ name, photoUrl, photoThumbUrl }: Props) {
   const [open, setOpen] = useState(false);
   const thumbUrl = resolveAssetUrl(photoThumbUrl ?? photoUrl);
@@ -35,27 +30,13 @@ export function ResidentPhoto({ name, photoUrl, photoThumbUrl }: Props) {
         )}
       </TouchableOpacity>
 
-      {fullUrl && (
-        <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-          <Pressable
-            className="flex-1 bg-black/90 items-center justify-center"
-            onPress={() => setOpen(false)}
-          >
-            <Image
-              source={{ uri: fullUrl }}
-              className="w-full h-2/3"
-              resizeMode="contain"
-            />
-            <TouchableOpacity
-              onPress={() => setOpen(false)}
-              className="absolute top-12 right-6 p-2"
-            >
-              <Ionicons name="close" size={32} color="#fff" />
-            </TouchableOpacity>
-            <Text className="text-white text-base mt-4">{name}</Text>
-          </Pressable>
-        </Modal>
-      )}
+      <ResidentPhotoViewer
+        visible={open}
+        name={name}
+        photoUrl={photoUrl}
+        photoThumbUrl={photoThumbUrl}
+        onClose={() => setOpen(false)}
+      />
     </View>
   );
 }

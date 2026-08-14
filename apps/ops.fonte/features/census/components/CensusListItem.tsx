@@ -14,22 +14,45 @@ interface Props {
   pending?: boolean;
   onConfirm: () => void;
   onRemove: () => void;
+  // Story 179: dois alvos de toque na linha — a foto expande, o resto abre os
+  // detalhes. Os botões de confirmar/remover ficam fora dos dois: mirar num
+  // botão e cair no modal (ou pior, confirmar presença sem querer) estraga a
+  // contagem, que é uma passada única no pátio.
+  onOpenDetails: () => void;
+  onOpenPhoto: () => void;
 }
 
-export function CensusListItem({ resident, confirmed, pending, onConfirm, onRemove }: Props) {
+export function CensusListItem({
+  resident,
+  confirmed,
+  pending,
+  onConfirm,
+  onRemove,
+  onOpenDetails,
+  onOpenPhoto,
+}: Props) {
   const thumbUrl = resolveAssetUrl(resident.photoThumbUrl ?? resident.photoUrl);
   return (
     <View
       className={`bg-white rounded-xl border px-4 py-3 flex-row items-center ${confirmed ? 'border-green-200 bg-green-50' : 'border-gray-100'}`}
     >
-      <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3 overflow-hidden">
+      <TouchableOpacity
+        accessibilityLabel={`Ver foto de ${resident.name}`}
+        disabled={!thumbUrl}
+        onPress={onOpenPhoto}
+        className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3 overflow-hidden"
+      >
         {thumbUrl ? (
           <Image source={{ uri: thumbUrl }} className="w-10 h-10 rounded-full" />
         ) : (
           <Ionicons name="person-outline" size={20} color="#2563eb" />
         )}
-      </View>
-      <View className="flex-1">
+      </TouchableOpacity>
+      <TouchableOpacity
+        accessibilityLabel={`Detalhes de ${resident.name}`}
+        onPress={onOpenDetails}
+        className="flex-1"
+      >
         <Text className="text-sm font-semibold text-gray-900">{resident.name}</Text>
         {pending ? (
           <View className="flex-row items-center mt-0.5">
@@ -38,7 +61,7 @@ export function CensusListItem({ resident, confirmed, pending, onConfirm, onRemo
             </View>
           </View>
         ) : null}
-      </View>
+      </TouchableOpacity>
 
       {pending ? (
         <View className="w-10 h-10 rounded-full items-center justify-center mr-2 bg-green-600">
@@ -46,6 +69,7 @@ export function CensusListItem({ resident, confirmed, pending, onConfirm, onRemo
         </View>
       ) : (
         <TouchableOpacity
+          accessibilityLabel={`Confirmar ${resident.name}`}
           className={`w-10 h-10 rounded-full items-center justify-center mr-2 ${confirmed ? 'bg-green-600' : 'bg-green-50'}`}
           onPress={onConfirm}
         >

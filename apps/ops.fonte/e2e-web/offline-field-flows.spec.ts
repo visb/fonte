@@ -28,6 +28,8 @@ const ITEM_NAME = `Item offline ${Date.now()}`;
 const INCIDENT_TEXT = `Ocorrência offline ${Date.now()}`;
 /** Filho criado por fixture só para a evasão — não mexe no elenco do seed. */
 const CENSUS_RESIDENT = `Filho Offline ${Date.now()}`;
+/** Filho da fixture do modal de detalhes (story 179): a evasão acima o tiraria da lista. */
+const DETAIL_RESIDENT = `Filho Detalhe ${Date.now()}`;
 
 let api: APIRequestContext;
 let authHeaders: Record<string, string>;
@@ -59,6 +61,17 @@ test.beforeAll(async () => {
   });
   expect(created.ok(), 'fixture do filho da contagem').toBeTruthy();
   censusResidentId = (await created.json()).id;
+
+  const createdForDetail = await api.post(`${API_BASE_URL}/census/residents`, {
+    headers: authHeaders,
+    data: {
+      name: DETAIL_RESIDENT,
+      houseId,
+      entryDate: new Date().toISOString().slice(0, 10),
+      gender: 'MALE',
+    },
+  });
+  expect(createdForDetail.ok(), 'fixture do filho do modal de detalhes').toBeTruthy();
 });
 
 test.afterAll(async () => {
@@ -224,6 +237,38 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
         { timeout: 60_000 },
       )
       .toBe('EVADED');
+  });
+
+  // Story 179: o modal existe justamente para o operador conferir "é esse o
+  // João mesmo?" no pátio — onde não há sinal. Ele abre com o que a lista já
+  // tem em mãos; a ficha só enriquece se estiver no aparelho.
+  test('contagem: modal de detalhes abre sem sinal, sem erro de rede', async ({
+    page,
+    context,
+  }) => {
+    await login(page, COORDINATOR);
+    // Passagem com rede: é ela que enche o cache que a contagem usa offline.
+    await visible(page, 'Contagem').click();
+    await expect(visible(page, DETAIL_RESIDENT)).toBeVisible({ timeout: 30_000 });
+
+    await goOffline(page, context);
+
+    await page.getByLabel(`Detalhes de ${DETAIL_RESIDENT}`).click();
+
+    await expect(page.getByText('Detalhes do filho').filter({ visible: true })).toBeVisible({
+      timeout: 15_000,
+    });
+    // Bloco base: nome, situação e entrada saem da própria lista da contagem.
+    await expect(visible(page, DETAIL_RESIDENT)).toBeVisible();
+    await expect(visible(page, 'Aguardando aprovação')).toBeVisible();
+    await expect(visible(page, 'Entrada')).toBeVisible();
+    await expect(visible(page, 'Ver ficha completa')).toBeVisible();
+
+    // A ficha (`useResidentById`) falha sem sinal — e isso não pode virar erro
+    // na cara do operador nem spinner bloqueante.
+    await expect(page.getByText(/Network Error|Request failed|Erro ao carregar/)).toHaveCount(0);
+
+    await context.setOffline(false);
   });
 
   test('mensagens: sem sinal a ação é desabilitada com aviso, sem erro na tela', async ({

@@ -96,6 +96,15 @@ describe('associates module', () => {
     });
   });
 
+  // Story 178 — o recibo é um PDF: sem responseType blob o axios devolveria a
+  // string corrompida e o download baixaria um arquivo ilegível.
+  it('chargeReceipt pede responseType blob no path da cobrança', async () => {
+    await associates.chargeReceipt('chg-1');
+    expect(http.get).toHaveBeenCalledWith('/associates/charges/chg-1/receipt', {
+      responseType: 'blob',
+    });
+  });
+
   it('propaga erro HTTP no shape que getErrorMessage espera', async () => {
     const httpError = {
       response: { status: 400, data: { message: 'WhatsApp inválido' } },

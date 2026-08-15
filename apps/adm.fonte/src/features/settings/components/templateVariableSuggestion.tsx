@@ -33,6 +33,12 @@ import {
 export interface VariableSuggestionOptions {
   /** Disparado quando o gatilho `{{` abre — o editor usa para expandir o drawer. */
   onOpen?: () => void;
+  /**
+   * Story 178 — catálogo do autocomplete. Num template de recibo é o das
+   * variáveis de recibo: oferecer `{{name}}` ali seria oferecer um token que o
+   * backend não sabe resolver naquele mundo.
+   */
+  variables?: TemplateVariable[];
   suggestion: Omit<SuggestionOptions<TemplateVariable, TemplateVariable>, 'editor'>;
 }
 
@@ -52,6 +58,7 @@ export const VariableSuggestion = Extension.create<VariableSuggestionOptions>({
   addOptions() {
     return {
       onOpen: undefined,
+      variables: undefined,
       suggestion: {
         char: '{{',
         startOfLine: false,
@@ -77,11 +84,17 @@ export const VariableSuggestion = Extension.create<VariableSuggestionOptions>({
 
   addProseMirrorPlugins() {
     const onOpen = this.options.onOpen;
+    // Story 178 — o catálogo é lido AQUI (e não no `addOptions`, onde as opções
+    // do `configure()` ainda não foram mescladas): num template de recibo o
+    // autocomplete oferece as variáveis de recibo, e só elas.
+    const variables = this.options.variables;
 
     return [
       Suggestion<TemplateVariable, TemplateVariable>({
         editor: this.editor,
         ...this.options.suggestion,
+        items: ({ query }: { query: string }): TemplateVariable[] =>
+          filterVariables(query, variables).slice(0, MAX_SUGGESTIONS),
         render: () => {
           let component: ReactRenderer<VariableSuggestionListRef, VariableSuggestionListProps> | null =
             null;

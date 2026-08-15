@@ -44,6 +44,7 @@ import { CacheModule } from './modules/cache/cache.module';
 import { PreferenceModule } from './modules/preference/preference.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { OfflineSyncModule } from './modules/offline-sync/offline-sync.module';
+import { ReceiptModule } from './modules/receipt/receipt.module';
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { OfflineSyncModule } from './modules/offline-sync/offline-sync.module';
     DataRightsModule,
     RetentionModule,
     AssociateModule,
+    ReceiptModule,
     PayableModule,
     ActivityModule,
     EventModule,

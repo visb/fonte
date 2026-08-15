@@ -7,7 +7,7 @@ import {
   A4_MARGIN_X_PX,
 } from '@fonte/doc-styles';
 import { Repository } from 'typeorm';
-import { ResidentStatus, TemplateAvailability } from '@fonte/types';
+import { ReceiptType, ResidentStatus, TemplateAvailability, TemplateKind } from '@fonte/types';
 import { DocumentTemplateService } from './document-template.service';
 import { DocumentTemplate } from './document-template.entity';
 import { Relative } from '../relative/relative.entity';
@@ -292,8 +292,10 @@ describe('DocumentTemplateService.findAdmissionTemplates', () => {
     const repo = makeRepo();
     const service = makeService(repo);
     await service.findAdmissionTemplates();
+    // Story 178 — o kind entra no WHERE: recibo nunca é documento de
+    // acolhimento, nem por acidente de flag.
     expect(repo.find).toHaveBeenCalledWith({
-      where: { signAtAdmission: true },
+      where: { signAtAdmission: true, kind: TemplateKind.RESIDENT },
       order: { name: 'ASC' },
     });
   });

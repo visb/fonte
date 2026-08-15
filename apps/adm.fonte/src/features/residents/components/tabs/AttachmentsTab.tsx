@@ -1,4 +1,4 @@
-import { isTemplateAvailableForStatus } from '@fonte/types';
+import { TemplateKind, isTemplateAvailableForStatus } from '@fonte/types';
 import { Badge } from '@/components/ui/badge';
 import {
   useResidentById, useResidentDocuments, useResidentAttachments,
@@ -41,8 +41,13 @@ export function AttachmentsTab({ residentId, residentName }: Props) {
   // predicado do backend, inclusive com o filho ainda carregando (`resident`
   // undefined): sem status nenhum template restrito passa — só os `ALL`, que são
   // exatamente os que o backend aceitaria de qualquer forma.
-  const availableTemplates = templates.filter((t) =>
-    isTemplateAvailableForStatus(t.availableFor, resident?.status),
+  // Story 178 — cinto e suspensório: o backend já devolve só `kind = RESIDENT`
+  // (default do `findAll`), mas um recibo que chegasse aqui por cache velho ou
+  // por uma regressão do filtro não pode virar card de documento do filho.
+  const availableTemplates = templates.filter(
+    (t) =>
+      t.kind !== TemplateKind.RECEIPT &&
+      isTemplateAvailableForStatus(t.availableFor, resident?.status),
   );
   const requiredTemplates = availableTemplates.filter((t) => t.isRequired);
   const optionalTemplates = availableTemplates.filter((t) => !t.isRequired);

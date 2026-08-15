@@ -50,6 +50,27 @@ export const VARIABLES: TemplateVariable[] = [
   { key: '{{signature}}',               label: 'Assinatura',               description: 'Assinatura do usuário que gerar o documento' },
 ];
 
+// ─── Variáveis do RECIBO (story 178) ──────────────────────────────────────────
+// Lista SEPARADA de propósito: um recibo não tem acolhido, então oferecer
+// {{name}}/{{residentPhoto}} no painel só convidaria a imprimir "não informado".
+// `{{signature}}` é a única compartilhada — recibo também é assinado por quem
+// emitiu. Nome/CNPJ/endereço da entidade vão DIGITADOS no corpo (decisão 7).
+export const RECEIPT_VARIABLES: TemplateVariable[] = [
+  { key: '{{receiptNumber}}',  label: 'Número do recibo',  description: 'Sequencial por tipo de recibo, com 6 dígitos (ex: 000123)' },
+  { key: '{{payerName}}',      label: 'Pagador — nome',    description: 'Nome do associado que pagou a contribuição' },
+  { key: '{{payerCpf}}',       label: 'Pagador — CPF',     description: 'CPF do pagador formatado (000.000.000-00)' },
+  { key: '{{amount}}',         label: 'Valor pago',        description: 'Valor bruto pago pelo associado (ex: R$ 50,00)' },
+  { key: '{{amountInWords}}',  label: 'Valor por extenso', description: 'Valor pago escrito por extenso (ex: cinquenta reais)' },
+  { key: '{{netAmount}}',      label: 'Valor líquido',     description: 'Valor líquido, já descontada a taxa do gateway' },
+  { key: '{{feeAmount}}',      label: 'Taxa',              description: 'Taxa do meio de pagamento embutida no valor pago' },
+  { key: '{{referenceMonth}}', label: 'Competência',       description: 'Mês de referência da contribuição (ex: agosto/2026)' },
+  { key: '{{paymentDate}}',    label: 'Data do pagamento', description: 'Data em que a cobrança foi paga (dd/mm/aaaa)' },
+  { key: '{{dueDate}}',        label: 'Vencimento',        description: 'Data de vencimento da cobrança (dd/mm/aaaa)' },
+  { key: '{{date}}',           label: 'Data de hoje',      description: 'Data de emissão do recibo (dd/mm/aaaa)' },
+  { key: '{{dateLong}}',       label: 'Data por extenso',  description: 'Data de emissão por extenso (ex: 1 de junho de 2026)' },
+  { key: '{{signature}}',      label: 'Assinatura',        description: 'Assinatura do usuário que emitir o recibo' },
+];
+
 // Máximo de sugestões mostradas no popup do autocomplete inline (story 144).
 export const MAX_SUGGESTIONS = 8;
 
@@ -58,10 +79,16 @@ export const MAX_SUGGESTIONS = 8;
 // `key`, accent-insensitive e case-insensitive (via normalizeForSearch). Query
 // vazia devolve a lista completa (o `items` da extensão fatia em MAX_SUGGESTIONS).
 // Sem match → lista vazia. Testável sem ProseMirror.
-export function filterVariables(query: string): TemplateVariable[] {
+// Story 178 — `source` opcional: o autocomplete de um template de RECIBO filtra
+// RECEIPT_VARIABLES. Default `VARIABLES` para o documento do acolhido seguir
+// exatamente como estava.
+export function filterVariables(
+  query: string,
+  source: TemplateVariable[] = VARIABLES,
+): TemplateVariable[] {
   const q = normalizeForSearch(query.trim());
-  if (!q) return VARIABLES;
-  return VARIABLES.filter(
+  if (!q) return source;
+  return source.filter(
     ({ key, label }) =>
       normalizeForSearch(label).includes(q) || normalizeForSearch(key).includes(q),
   );

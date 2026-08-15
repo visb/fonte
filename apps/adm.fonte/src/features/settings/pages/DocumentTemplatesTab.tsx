@@ -1,40 +1,43 @@
 import { useState } from 'react';
-import { ChevronLeft, Plus } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+import { ReceiptType, TemplateKind } from '@fonte/types';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { EmptyState } from '@/components/shared/EmptyState';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
 import type { DocumentTemplate } from '@fonte/api-client';
-import { useDocumentTemplates, useCreateDocumentTemplate, useDeleteDocumentTemplate } from '../hooks/useDocumentTemplates';
-import { TemplateCard } from '../components/TemplateCard';
+import { useDocumentTemplates, useDeleteDocumentTemplate } from '../hooks/useDocumentTemplates';
 import { TemplateEditor } from '../components/TemplateEditor';
+import { TemplateGroupSection } from '../components/TemplateGroupSection';
+import { CreateTemplateDialog } from '../components/CreateTemplateDialog';
+import { TEMPLATE_KIND_SECTIONS } from '../constants';
 
+/**
+ * Story 178 — a MESMA aba com dois grupos (documentos do acolhido e recibos).
+ * Aba nova só duplicaria chrome: o editor é o mesmo componente; o que muda entre
+ * os grupos é o dicionário de variáveis e os controles que fazem sentido.
+ */
 export function DocumentTemplatesTab() {
   const [editing, setEditing] = useState<DocumentTemplate | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createKind, setCreateKind] = useState<TemplateKind | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DocumentTemplate | null>(null);
-  const [newName, setNewName] = useState('');
 
-  const { data: templates = [] } = useDocumentTemplates();
-  const createMutation = useCreateDocumentTemplate();
+  // Duas queries com query keys distintas (o backend filtra por kind): o recibo
+  // nunca entra na lista que a aba de Anexos do acolhido consome.
+  const { data: residentTemplates = [] } = useDocumentTemplates(TemplateKind.RESIDENT);
+  const { data: receiptTemplates = [] } = useDocumentTemplates(TemplateKind.RECEIPT);
   const deleteMutation = useDeleteDocumentTemplate();
 
-  const handleCreate = () => {
-    const name = newName.trim();
-    if (!name) return;
-    createMutation.mutate(
-      { name, content: '', isRequired: false },
-      { onSuccess: () => { setCreateOpen(false); setNewName(''); } },
-    );
+  const templatesByKind: Record<TemplateKind, DocumentTemplate[]> = {
+    [TemplateKind.RESIDENT]: residentTemplates,
+    [TemplateKind.RECEIPT]: receiptTemplates,
   };
+
+  const takenReceiptTypes = receiptTemplates
+    .map((t) => t.receiptType)
+    .filter((t): t is ReceiptType => !!t);
 
   if (editing) {
     return (
@@ -46,6 +49,9 @@ export function DocumentTemplatesTab() {
           </Button>
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <span className="font-semibold text-sm truncate">{editing.name}</span>
+            {editing.kind === TemplateKind.RECEIPT && (
+              <Badge variant="secondary" className="text-xs shrink-0">Recibo</Badge>
+            )}
             {editing.isRequired && (
               <Badge variant="secondary" className="text-xs shrink-0">Acolhimento</Badge>
             )}
@@ -61,56 +67,27 @@ export function DocumentTemplatesTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Templates com badge <strong>Acolhimento</strong> aparecem automaticamente na aba de Anexos do acolhido.
-        </p>
-        <Button size="sm" onClick={() => { setNewName(''); setCreateOpen(true); }}>
-          <Plus size={14} className="mr-1.5" />
-          Novo template
-        </Button>
-      </div>
+    <div className="space-y-8">
+      {TEMPLATE_KIND_SECTIONS.map((section) => (
+        <TemplateGroupSection
+          key={section.kind}
+          title={section.title}
+          hint={section.hint}
+          emptyTitle={section.emptyTitle}
+          createLabel={section.createLabel}
+          templates={templatesByKind[section.kind]}
+          onCreate={() => setCreateKind(section.kind)}
+          onSelect={setEditing}
+          onDelete={setDeleteTarget}
+        />
+      ))}
 
-      {templates.length === 0 ? (
-        <EmptyState title="Nenhum template cadastrado." />
-      ) : (
-        <div className="space-y-2">
-          {templates.map((t) => (
-            <TemplateCard
-              key={t.id}
-              template={t}
-              onSelect={() => setEditing(t)}
-              onDelete={() => setDeleteTarget(t)}
-            />
-          ))}
-        </div>
-      )}
-
-      <Dialog open={createOpen} onOpenChange={(open) => !open && setCreateOpen(false)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Novo template</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 py-4">
-            <Label htmlFor="new-template-name">Nome do documento</Label>
-            <Input
-              id="new-template-name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Ex: Termo de Confidencialidade"
-              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} disabled={!newName.trim() || createMutation.isPending}>
-              {createMutation.isPending ? 'Criando...' : 'Criar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateTemplateDialog
+        open={createKind !== null}
+        onClose={() => setCreateKind(null)}
+        kind={createKind ?? TemplateKind.RESIDENT}
+        takenReceiptTypes={takenReceiptTypes}
+      />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

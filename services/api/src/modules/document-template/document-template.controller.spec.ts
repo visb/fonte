@@ -20,23 +20,53 @@ describe('DocumentTemplateController', () => {
     const s = svc();
     const c = new DocumentTemplateController(s as never);
     await c.create('Termo', undefined as never, undefined, undefined);
-    // availableFor omitido chega cru (undefined) — quem aplica o default ALL e
-    // valida contra o enum é o service (story 160).
-    expect(s.create).toHaveBeenCalledWith('Termo', '', false, false, undefined);
+    // availableFor/kind/receiptType omitidos chegam crus (undefined) — quem
+    // aplica os defaults (ALL, RESIDENT) e valida contra os enums é o service
+    // (stories 160 e 178).
+    expect(s.create).toHaveBeenCalledWith('Termo', '', false, false, undefined, undefined, undefined);
   });
 
   it('create forwards explicit flags', async () => {
     const s = svc();
     const c = new DocumentTemplateController(s as never);
     await c.create('Termo', 'body', true, true);
-    expect(s.create).toHaveBeenCalledWith('Termo', 'body', true, true, undefined);
+    expect(s.create).toHaveBeenCalledWith('Termo', 'body', true, true, undefined, undefined, undefined);
   });
 
   it('create forwards availableFor to the service (story 160)', async () => {
     const s = svc();
     const c = new DocumentTemplateController(s as never);
     await c.create('Termo', 'body', false, false, 'INACTIVE_ONLY');
-    expect(s.create).toHaveBeenCalledWith('Termo', 'body', false, false, 'INACTIVE_ONLY');
+    expect(s.create).toHaveBeenCalledWith(
+      'Termo', 'body', false, false, 'INACTIVE_ONLY', undefined, undefined,
+    );
+  });
+
+  // Story 178 — kind e receiptType passam CRUS: as invariantes (RECEIPT exige
+  // receiptType, RESIDENT o proíbe) são regra de negócio e vivem no service.
+  it('create forwards kind e receiptType crus ao service (story 178)', async () => {
+    const s = svc();
+    const c = new DocumentTemplateController(s as never);
+    await c.create('Recibo', 'body', false, false, undefined, 'RECEIPT', 'ASSOCIATE_CONTRIBUTION');
+    expect(s.create).toHaveBeenCalledWith(
+      'Recibo', 'body', false, false, undefined, 'RECEIPT', 'ASSOCIATE_CONTRIBUTION',
+    );
+  });
+
+  it('findAll repassa o kind da query (default fica no service — story 178)', async () => {
+    const s = svc();
+    const c = new DocumentTemplateController(s as never);
+    await c.findAll('RECEIPT');
+    expect(s.findAll).toHaveBeenCalledWith('RECEIPT');
+    await c.findAll();
+    expect(s.findAll).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('update inclui kind/receiptType só quando enviados (story 178)', async () => {
+    const s = svc();
+    const c = new DocumentTemplateController(s as never);
+    await c.update('d1', undefined, undefined, undefined, undefined, undefined, 'RECEIPT', 'PIZZA_SALE');
+    expect(s.update).toHaveBeenCalledWith('d1', { kind: 'RECEIPT', receiptType: 'PIZZA_SALE' });
   });
 
   it('update builds a partial only with provided fields', async () => {

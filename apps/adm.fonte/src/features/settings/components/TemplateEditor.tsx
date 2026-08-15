@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
 import { api } from '@/lib/api';
 import type { DocumentTemplate } from '@fonte/api-client';
-import { TemplateAvailability } from '@fonte/types';
+import { TemplateAvailability, TemplateKind } from '@fonte/types';
 import { useUpdateDocumentTemplate } from '../hooks/useDocumentTemplates';
 import { TemplateAvailabilityField } from './TemplateAvailabilityField';
 import { TableToolbar } from './TableToolbar';
@@ -35,6 +35,7 @@ import { LinkBubbleMenu } from './LinkBubbleMenu';
 import { TableBlockMenu } from './TableBlockMenu';
 import { A4EditorFrame } from './A4EditorFrame';
 import { VariablesPanel } from './VariablesPanel';
+import { RECEIPT_VARIABLES, VARIABLES } from './templateVariables';
 import { handleVariableDrop } from './templateDrop';
 import { SignaturePlaceholder } from './SignaturePlaceholder';
 import { ResidentPhotoPlaceholder } from './ResidentPhotoPlaceholder';
@@ -436,6 +437,10 @@ type FormData = z.infer<typeof schema>;
 interface Props { template: DocumentTemplate; onSaved: (updated: DocumentTemplate) => void; }
 
 export function TemplateEditor({ template, onSaved }: Props) {
+  // Story 178 — o editor é o MESMO componente para os dois mundos; o que muda é
+  // o dicionário de variáveis e os controles que fazem sentido. Template legado
+  // (sem `kind`) é documento do acolhido.
+  const isReceipt = template.kind === TemplateKind.RECEIPT;
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
@@ -483,7 +488,11 @@ export function TemplateEditor({ template, onSaved }: Props) {
       // Autocomplete inline de variáveis (story 144): `{{` abre o popup no cursor
       // filtrando VARIABLES; escolher insere `{{key}}`. `onOpen` também expande o
       // drawer VariablesPanel (os dois comportamentos juntos, decisão do plano).
-      VariableSuggestion.configure({ onOpen: () => setVariablesOpen(true) }),
+      // Story 178 — o catálogo do autocomplete acompanha o kind do template.
+      VariableSuggestion.configure({
+        onOpen: () => setVariablesOpen(true),
+        variables: isReceipt ? RECEIPT_VARIABLES : VARIABLES,
+      }),
       ResizableImage.configure({ inline: false, allowBase64: false }),
       // Link visível (azul + sublinhado vêm do CSS compartilhado, não daqui, p/
       // o editor casar 1:1 com o PDF). openOnClick: false p/ não navegar ao
@@ -582,8 +591,13 @@ export function TemplateEditor({ template, onSaved }: Props) {
   const handleSave = useCallback(() => {
     if (!editor) return;
     const { name, isRequired, signAtAdmission, availableFor } = getValues();
+    // Story 178 — recibo salva só nome e conteúdo: mandar os campos do mundo do
+    // acolhido seria mandar um valor que a tela nem renderizou.
+    const data = isReceipt
+      ? { name, content: editor.getHTML() }
+      : { name, content: editor.getHTML(), isRequired, signAtAdmission, availableFor };
     updateMutation.mutate(
-      { id: template.id, data: { name, content: editor.getHTML(), isRequired, signAtAdmission, availableFor } },
+      { id: template.id, data },
       {
         onSuccess: (updated) => {
           onSaved(updated);
@@ -593,7 +607,7 @@ export function TemplateEditor({ template, onSaved }: Props) {
         },
       },
     );
-  }, [editor, updateMutation, template.id, getValues, onSaved]);
+  }, [editor, updateMutation, template.id, getValues, onSaved, isReceipt]);
 
   useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); }, []);
 
@@ -654,20 +668,27 @@ export function TemplateEditor({ template, onSaved }: Props) {
           <Label htmlFor="template-name" className="text-xs mb-1 block">Nome do template</Label>
           <Input id="template-name" {...register('name')} className="h-8 text-sm" />
         </div>
-        <div className="flex items-center gap-2 pt-5">
-          <input id="is-required" type="checkbox" {...register('isRequired')} className="h-4 w-4 cursor-pointer" />
-          <Label htmlFor="is-required" className="text-sm cursor-pointer whitespace-nowrap">
-            Exigir no acolhimento
-          </Label>
-        </div>
-        <div className="flex items-center gap-2 pt-5">
-          <input id="sign-at-admission" type="checkbox" {...register('signAtAdmission')} className="h-4 w-4 cursor-pointer" />
-          <Label htmlFor="sign-at-admission" className="text-sm cursor-pointer whitespace-nowrap">
-            Assinar no acolhimento
-          </Label>
-        </div>
-        {/* Story 160 — para quais filhos este documento pode ser gerado. */}
-        <TemplateAvailabilityField field={register('availableFor')} />
+        {/* Story 178 — os três controles abaixo são do mundo do acolhido:
+            recibo não é documento de acolhimento nem tem status de filho a
+            respeitar (o backend força os valores de qualquer forma). */}
+        {!isReceipt && (
+          <>
+            <div className="flex items-center gap-2 pt-5">
+              <input id="is-required" type="checkbox" {...register('isRequired')} className="h-4 w-4 cursor-pointer" />
+              <Label htmlFor="is-required" className="text-sm cursor-pointer whitespace-nowrap">
+                Exigir no acolhimento
+              </Label>
+            </div>
+            <div className="flex items-center gap-2 pt-5">
+              <input id="sign-at-admission" type="checkbox" {...register('signAtAdmission')} className="h-4 w-4 cursor-pointer" />
+              <Label htmlFor="sign-at-admission" className="text-sm cursor-pointer whitespace-nowrap">
+                Assinar no acolhimento
+              </Label>
+            </div>
+            {/* Story 160 — para quais filhos este documento pode ser gerado. */}
+            <TemplateAvailabilityField field={register('availableFor')} />
+          </>
+        )}
       </div>
 
       {/* Toolbar — fica fixa no topo ao rolar. Offset/margens negativos cancelam
@@ -786,6 +807,7 @@ export function TemplateEditor({ template, onSaved }: Props) {
         onInsert={insertVariable}
         open={variablesOpen}
         onOpenChange={setVariablesOpen}
+        variables={isReceipt ? RECEIPT_VARIABLES : VARIABLES}
       />
 
       {updateMutation.isError && (

@@ -1,12 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
+import { TemplateKind } from '@fonte/types';
 import type { CreateDocumentTemplateInput, UpdateDocumentTemplateInput } from '@fonte/api-client';
 
-export function useDocumentTemplates(options?: { enabled?: boolean }) {
+/**
+ * Story 178 — lista de templates POR TIPO. O default `RESIDENT` mantém os
+ * consumidores de documento do acolhido (aba de Anexos, wizard) exatamente como
+ * estavam: eles não sabem — nem precisam saber — que recibos existem.
+ */
+export function useDocumentTemplates(
+  kind: TemplateKind = TemplateKind.RESIDENT,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
-    queryKey: queryKeys.documentTemplates.all,
-    queryFn: () => api.documentTemplates.list(),
+    queryKey: queryKeys.documentTemplates.byKind(kind),
+    queryFn: () => api.documentTemplates.list({ kind }),
     enabled: options?.enabled ?? true,
   });
 }

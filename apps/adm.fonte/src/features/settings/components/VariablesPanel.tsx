@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PanelRightClose, Variable, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { VARIABLES } from './templateVariables';
+import { VARIABLES, type TemplateVariable } from './templateVariables';
 
 // ─── Variables ────────────────────────────────────────────────────────────────
 // A fonte única das variáveis vive em `templateVariables.ts` (story 144 extraiu a
@@ -23,6 +23,12 @@ interface Props {
    */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Story 178 — o dicionário depende do tipo de template: recibo não lista
+   * {{name}}/{{residentPhoto}}, que não existem no seu mundo. Ausente = as
+   * variáveis do acolhido (comportamento de sempre).
+   */
+  variables?: TemplateVariable[];
 }
 
 // ─── VariablesPanel ─────────────────────────────────────────────────────────
@@ -33,7 +39,12 @@ interface Props {
 // feedback "inserido" por ~1,5s. `z-40`: acima do conteúdo/toolbar sticky (z-20)
 // e abaixo dos dialogs do Radix (z-50).
 
-export function VariablesPanel({ onInsert, open: openProp, onOpenChange }: Props) {
+export function VariablesPanel({
+  onInsert,
+  open: openProp,
+  onOpenChange,
+  variables = VARIABLES,
+}: Props) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -90,7 +101,7 @@ export function VariablesPanel({ onInsert, open: openProp, onOpenChange }: Props
       </p>
 
       <div className="flex-1 space-y-1 overflow-y-auto p-2">
-        {VARIABLES.map(({ key, label, description }) => (
+        {variables.map(({ key, label, description }) => (
           <button
             key={key}
             type="button"

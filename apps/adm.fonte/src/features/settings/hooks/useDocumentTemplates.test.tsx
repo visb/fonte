@@ -8,6 +8,7 @@ vi.mock('@/lib/api', () => ({
   },
 }));
 
+import { TemplateKind } from '@fonte/types';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { renderHookWithClient } from '@/test/utils';
@@ -27,10 +28,24 @@ describe('useDocumentTemplates', () => {
     vi.mocked(api.documentTemplates.list).mockResolvedValue([] as never);
     const { result } = renderHookWithClient(() => useDocumentTemplates());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(api.documentTemplates.list).toHaveBeenCalled();
+    // Story 178 — sem argumento, só documento do acolhido: o recibo é invisível
+    // para quem já consumia este hook.
+    expect(api.documentTemplates.list).toHaveBeenCalledWith({ kind: TemplateKind.RESIDENT });
 
-    const { result: off } = renderHookWithClient(() => useDocumentTemplates({ enabled: false }));
+    const { result: off } = renderHookWithClient(() =>
+      useDocumentTemplates(TemplateKind.RESIDENT, { enabled: false }),
+    );
     expect(off.current.fetchStatus).toBe('idle');
+  });
+
+  it('pede a lista de recibos com query key própria (story 178)', async () => {
+    vi.mocked(api.documentTemplates.list).mockResolvedValue([] as never);
+    const { result } = renderHookWithClient(() => useDocumentTemplates(TemplateKind.RECEIPT));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.documentTemplates.list).toHaveBeenCalledWith({ kind: TemplateKind.RECEIPT });
+    expect(queryKeys.documentTemplates.byKind(TemplateKind.RECEIPT)).not.toEqual(
+      queryKeys.documentTemplates.byKind(TemplateKind.RESIDENT),
+    );
   });
 
   it('create/update/delete invalidam documentTemplates.all', async () => {

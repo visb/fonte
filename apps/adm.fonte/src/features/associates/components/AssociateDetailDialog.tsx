@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { getErrorMessage } from '@/lib/errors';
 import { useAssociateById } from '../hooks/useAssociates';
+import { useChargeReceipt } from '../hooks/useChargeReceipt';
 import { AssociateStatusBadge } from './AssociateStatusBadge';
 import { ChargeRow } from './ChargeRow';
 import { formatBRL, formatDate } from '../lib/format';
@@ -28,6 +29,7 @@ interface Props {
 
 export function AssociateDetailDialog({ associateId, open, onClose }: Props) {
   const { data, isLoading, error, refetch } = useAssociateById(associateId, { enabled: open });
+  const receipt = useChargeReceipt();
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -68,6 +70,11 @@ export function AssociateDetailDialog({ associateId, open, onClose }: Props) {
 
             <div className="space-y-2">
               <h3 className="text-sm font-semibold">Histórico de contribuições</h3>
+              {/* Story 178 — o erro do recibo (ex.: template não cadastrado)
+                  chega ao operador com a frase acionável do backend. */}
+              {receipt.error && (
+                <p className="text-sm text-destructive">{receipt.error}</p>
+              )}
               {data.charges.length === 0 ? (
                 <EmptyState title="Nenhuma cobrança registrada." />
               ) : (
@@ -79,11 +86,17 @@ export function AssociateDetailDialog({ associateId, open, onClose }: Props) {
                         <TableHead>Valor</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Pago em</TableHead>
+                        <TableHead className="text-right">Recibo</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {data.charges.map((charge) => (
-                        <ChargeRow key={charge.id} charge={charge} />
+                        <ChargeRow
+                          key={charge.id}
+                          charge={charge}
+                          onDownloadReceipt={(id) => void receipt.download(id)}
+                          isDownloadingReceipt={receipt.downloadingId === charge.id}
+                        />
                       ))}
                     </TableBody>
                   </Table>

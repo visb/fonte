@@ -48,6 +48,22 @@ Seguir `AUTORUN.md` → "A cada disparo do loop":
    houver orçamento.
 4. Salvar estado: ledger + tudo commitado (cada story = checkpoint).
 
+## Disciplina de shell (o que mais mata run autônomo)
+
+O gateway do auto mode classifica cada comando Bash; o que ele não analisa vira aprovação manual e o
+loop para esperando o usuário. Vale para a skill **e** para os agents disparados:
+
+- Arquivo se escreve com `Write`/`Edit` — **nunca** `cat >`/`cat >>`/heredoc/`python - <<EOF`/
+  `sed -i` multilinha. O hook `bash-guard` nega esses comandos com a alternativa na mensagem.
+- `.env` se lê com `Read` — `grep`/`cat` em `.env` é bloqueado pelo classificador.
+- Um comando simples por chamada; sem `cd X && ... | tail`. Allowlist só casa com o comando inteiro,
+  e regra que casa **pula o classificador**.
+- Comando > ~1500 chars falha com `exceeds the maximum analyzable length`.
+
+**`automode-unavailable` não é bloqueio**: é o classificador fora do ar (`... is temporarily
+unavailable`). Não marcar a story como BLOQUEADO por isso — repetir o comando até 2x; persistindo,
+encerrar o turno e deixar o próximo disparo do loop retomar do ledger.
+
 ## Encerrar
 
 Todas as stories `[OK]`/`BLOQUEADO` → resumo final no ledger, **arquivar a rodada** em

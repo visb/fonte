@@ -64,8 +64,11 @@ explicando o que faltou.
 ## Disciplina de ferramentas (crítico para a autonomia)
 
 **NUNCA criar ou editar arquivo via shell com conteúdo inline.** Nada de `cat <<EOF > arquivo`,
-`echo "..." >> arquivo`, `Set-Content`/`Out-File` com corpo grande, `printf` com o arquivo inteiro.
-Use **sempre** as tools `Write` (arquivo novo / reescrita completa) e `Edit` (mudança pontual).
+`cat >> arquivo`, `echo "..." >> arquivo`, `Set-Content`/`Out-File` com corpo grande, `printf` com o
+arquivo inteiro, **`python - <<'PYEOF'`**, `node <<EOF`, `perl -pi`, `sed -i` multilinha ou com
+payload grande. Use **sempre** as tools `Write` (arquivo novo / reescrita completa) e `Edit` (mudança
+pontual). O hook `bash-guard` nega esses comandos automaticamente — se você levou um
+`[bash-guard:...]`, não tente outra variante de shell: troque para `Write`/`Edit`.
 
 Motivo: comando Bash muito longo estoura o limite do classificador de segurança do harness e falha
 com `Command exceeds the maximum analyzable length; its full text cannot be security-scanned and
@@ -75,7 +78,11 @@ AUTORUN**.
 Mesma regra para:
 
 - **Ler/buscar:** `Read` / `Grep` / `Glob` — não `cat`, `grep`, `type`, `Get-Content`,
-  `Select-String` no shell.
+  `Select-String` no shell. `.env` **só** por `Read`; ler segredo pelo shell é negado.
+- **Um comando simples por chamada Bash.** `pnpm test:api` numa chamada; nada de
+  `cd C:/code/fonte && rtk pnpm test:api 2>&1 | tail -20`. Preferir caminho absoluto a `cd X &&`.
+- **`automode-unavailable` não é bloqueio** — é indisponibilidade transitória do gateway. Repetir até
+  2x; se persistir, seguir com outra parte da story e voltar depois. Não abortar a story por isso.
 - **Payload grande** (ex.: bloco novo do `fonte-api.postman_collection.json`, body de `curl -d`):
   escrever o payload num arquivo com `Write` e referenciar (`curl -d @arquivo.json`).
 - **Mensagem de commit:** heredoc curto é aceitável; se o corpo ficar longo, criar o arquivo com

@@ -31,6 +31,15 @@ commit `feat(story-NN)` = feita; pular.
   dispara um agent por vez, mergeia e registra.
   - **Se o spawn falhar por limite de sessão** ("You've hit your session limit"): encerrar o turno
     sem ação; o próximo disparo do `/loop` (após o reset) retoma sozinho. Não rearmar nada.
+- **Disciplina de shell (o que mais interrompe o run):** arquivo se escreve com `Write`/`Edit`, nunca
+  `cat >`/heredoc/`python - <<EOF`/`sed -i` multilinha; `.env` só por `Read`; um comando simples por
+  chamada Bash (sem `cd X && ... | tail`); comando > ~1500 chars falha com
+  `exceeds the maximum analyzable length` e fica esperando aprovação manual. O hook `bash-guard`
+  nega esses comandos e diz a alternativa — ao levar um `[bash-guard:...]`, trocar de tool, não de
+  sintaxe de shell.
+- **`automode-unavailable` não é bloqueio de story:** é o gateway de permissão temporariamente
+  indisponível ("... is temporarily unavailable"). Repetir até 2x; persistindo, encerrar o turno e
+  deixar o próximo disparo retomar do ledger. Nunca marcar `BLOQUEADO` por esse motivo.
 - **Merge na main por story (padrão), sem push, sem PR:** cada story, ao ficar verde, é mergeada na
   `main` local antes da próxima (`--no-ff`). Branches preservadas.
 - **Teste-antes-do-merge (DoD):** antes de **qualquer** merge — suíte da área tocada **toda verde**

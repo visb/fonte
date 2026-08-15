@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
-import { ResidentStatus, TemplateAvailability } from '@fonte/types';
+import { ResidentStatus, TemplateAvailability, TemplateKind } from '@fonte/types';
 
 const hooks = {
   resident: undefined as unknown,
@@ -323,6 +323,48 @@ describe('AttachmentsTab — filtro por status do filho', () => {
     expect(screen.getByText('Termo geral')).toBeInTheDocument();
     expect(screen.queryByText('Ficha de acolhimento')).not.toBeInTheDocument();
     expect(screen.queryByText('Declaração de alta')).not.toBeInTheDocument();
+  });
+});
+
+// ─── Recibo nunca vira anexo do filho (story 178) ─────────────────────────────
+// O isolamento real vem do backend (findAll com default RESIDENT). Este teste é
+// o cinto e suspensório: mesmo que um recibo chegue na lista, ele não pode
+// aparecer em nenhuma das três seções nem no menu de opcionais.
+
+describe('AttachmentsTab — template de recibo (story 178)', () => {
+  it('recibo presente na lista não aparece em nenhuma seção', () => {
+    hooks.resident = { id: 'r1', name: 'Fulano', cpf: '123', status: ResidentStatus.ACTIVE };
+    hooks.templates = [
+      template({ id: 't1', name: 'Termo geral', isRequired: true }),
+      template({
+        id: 'r-1',
+        name: 'Recibo de contribuição',
+        kind: TemplateKind.RECEIPT,
+        receiptType: 'ASSOCIATE_CONTRIBUTION',
+        isRequired: true,
+        signAtAdmission: true,
+      }),
+    ];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    expect(screen.getByText('Termo geral')).toBeInTheDocument();
+    expect(screen.queryByText('Recibo de contribuição')).not.toBeInTheDocument();
+    expect(screen.queryByText('Documentos para assinatura no acolhimento')).not.toBeInTheDocument();
+  });
+
+  it('recibo opcional não entra no menu "Gerar documento"', () => {
+    hooks.resident = { id: 'r1', name: 'Fulano', cpf: '123', status: ResidentStatus.ACTIVE };
+    hooks.templates = [
+      template({ id: 'r-1', name: 'Recibo de contribuição', kind: TemplateKind.RECEIPT }),
+    ];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    expect(screen.queryByRole('button', { name: /Gerar documento/ })).not.toBeInTheDocument();
+  });
+
+  it('template legado (sem kind) segue aparecendo — o filtro não pune quem já existia', () => {
+    hooks.resident = { id: 'r1', name: 'Fulano', cpf: '123', status: ResidentStatus.ACTIVE };
+    hooks.templates = [template({ id: 't1', name: 'Termo legado', isRequired: true, kind: undefined })];
+    render(<AttachmentsTab residentId="r1" residentName="Fulano" />);
+    expect(screen.getByText('Termo legado')).toBeInTheDocument();
   });
 });
 

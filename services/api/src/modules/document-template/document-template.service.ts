@@ -4,21 +4,33 @@ import { Repository } from 'typeorm';
 import type { Browser } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
 import { DOCUMENT_PRINT_CSS, A4_MARGIN_TOP_PX, A4_MARGIN_X_PX } from '@fonte/doc-styles';
-import { TemplateAvailability, isTemplateAvailableForStatus } from '@fonte/types';
+import {
+  ReceiptType,
+  TemplateAvailability,
+  TemplateKind,
+  isTemplateAvailableForStatus,
+} from '@fonte/types';
 import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
 import { Staff } from '../staff/staff.entity';
 import { DocumentTemplate } from './document-template.entity';
 import { StorageService } from '../storage/storage.service';
+import {
+  applyDocumentVariables,
+  slugify,
+  type DocumentSigner,
+  type DocumentVariableResolver,
+} from './document-variables';
+import { ResidentVariablesResolver } from './resident-variables.resolver';
 
-// Quem assina o documento: dados já resolvidos (nome e URL da assinatura JÁ
-// ASSINADA de acesso). Pré-resolvido fora do applyVariables, que é síncrono e
-// não pode aguardar o signUrl (decisão 7 — regra da story 76). A role NÃO é mais
-// impressa abaixo da assinatura (story 137).
-interface DocumentSigner {
-  name: string;
-  signatureUrl: string | null;
-}
+// Story 178 — os campos que um template de RECIBO não pode escolher: recibo não
+// é documento de acolhimento nem tem status de filho a respeitar. Forçados aqui
+// (e não só escondidos na tela) porque a API é pública para o operador.
+const RECEIPT_FORCED_FIELDS = {
+  isRequired: false,
+  signAtAdmission: false,
+  availableFor: TemplateAvailability.ALL,
+} as const;
 
 @Injectable()
 export class DocumentTemplateService implements OnModuleDestroy {
@@ -66,6 +78,64 @@ export class DocumentTemplateService implements OnModuleDestroy {
     }
   }
 
+  // Story 178, decisão 9 — guarda dos TRÊS caminhos de geração de documento de
+  // filho, espelhando a lição da story 160: sumir da tela não é regra. Um
+  // template de RECIBO alcançado pela URL direta (ou colado na lista do PDF
+  // combinado) recusa, em vez de renderizar um recibo sem sujeito nenhum.
+  private assertResidentKind(template: DocumentTemplate): void {
+    if (template.kind && template.kind !== TemplateKind.RESIDENT) {
+      throw new BadRequestException(
+        'Este template não é um documento do acolhido e não pode ser gerado por aqui',
+      );
+    }
+  }
+
+  private assertValidKind(value: unknown): TemplateKind {
+    const allowed = Object.values(TemplateKind) as string[];
+    if (typeof value !== 'string' || !allowed.includes(value)) {
+      throw new BadRequestException(`kind inválido: use ${allowed.join(', ')}`);
+    }
+    return value as TemplateKind;
+  }
+
+  private assertValidReceiptType(value: unknown): ReceiptType {
+    const allowed = Object.values(ReceiptType) as string[];
+    if (typeof value !== 'string' || !allowed.includes(value)) {
+      throw new BadRequestException(`receiptType inválido: use ${allowed.join(', ')}`);
+    }
+    return value as ReceiptType;
+  }
+
+  // Story 178 — invariantes da tabela do plano (§2), em UM lugar só porque
+  // create e update têm exatamente as mesmas:
+  //   RESIDENT → receiptType tem que ser nulo; demais campos livres.
+  //   RECEIPT  → receiptType obrigatório e válido; isRequired/signAtAdmission/
+  //              availableFor forçados, mesmo se o corpo mandar outra coisa.
+  private async resolveKindFields(
+    kind: TemplateKind,
+    receiptType: unknown,
+    currentId?: string,
+  ): Promise<Partial<DocumentTemplate>> {
+    if (kind === TemplateKind.RESIDENT) {
+      if (receiptType !== undefined && receiptType !== null) {
+        throw new BadRequestException('receiptType só é aceito em template de recibo');
+      }
+      return { kind, receiptType: null };
+    }
+    if (receiptType === undefined || receiptType === null) {
+      throw new BadRequestException('Template de recibo exige um receiptType');
+    }
+    const type = this.assertValidReceiptType(receiptType);
+    // Decisão 2 — um template ativo por tipo: o gerador ACHA o template pelo
+    // tipo, então dois seria ambiguidade silenciosa. Mesma forma do conflito de
+    // nome que já existia.
+    const conflict = await this.repo.findOne({ where: { receiptType: type } });
+    if (conflict && conflict.id !== currentId) {
+      throw new ConflictException(`Já existe um template de recibo para ${type}`);
+    }
+    return { kind, receiptType: type, ...RECEIPT_FORCED_FIELDS };
+  }
+
   // Valor do ternário vindo do corpo da requisição. Regra de negócio (e não
   // roteamento), por isso vive aqui e não no controller — que segue com
   // `@Body('campo')` avulso, sem DTO.
@@ -79,9 +149,20 @@ export class DocumentTemplateService implements OnModuleDestroy {
 
   async generatePdf(templateId: string, resident: Resident, signerUserId?: string): Promise<{ buffer: Buffer; filename: string }> {
     const template = await this.findOne(templateId);
+    this.assertResidentKind(template);
     this.assertAvailableForResident(template, resident);
     const html = await this.renderForResident(templateId, resident, signerUserId);
-    const filename = this.slugify(`${resident.name} ${template.name}`) + '.pdf';
+    const filename = slugify(`${resident.name} ${template.name}`) + '.pdf';
+    return { buffer: await this.htmlToPdf(html), filename };
+  }
+
+  /**
+   * Story 178 — HTML já resolvido → PDF A4. Extraído do `generatePdf` para o
+   * recibo reusar a MESMA impressora (mesmo browser, mesma margem): o que muda
+   * entre um documento de filho e um recibo é o dicionário de variáveis, não a
+   * impressão.
+   */
+  async htmlToPdf(html: string): Promise<Buffer> {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
     try {
@@ -105,7 +186,7 @@ export class DocumentTemplateService implements OnModuleDestroy {
           right: `${A4_MARGIN_X_PX}px`,
         },
       });
-      return { buffer: Buffer.from(pdf), filename };
+      return Buffer.from(pdf);
     } finally {
       await page.close();
     }
@@ -136,7 +217,11 @@ export class DocumentTemplateService implements OnModuleDestroy {
     // browser: um template incompatível com o status do filho reprova a
     // requisição toda, em vez de devolver um PDF parcial silenciosamente.
     for (const templateId of templateIds) {
-      this.assertAvailableForResident(await this.findOne(templateId), resident);
+      const template = await this.findOne(templateId);
+      // Story 178 — um RECIBO no meio da lista reprova a requisição inteira,
+      // pela mesma razão da story 160: PDF parcial silencioso é pior que erro.
+      this.assertResidentKind(template);
+      this.assertAvailableForResident(template, resident);
     }
     const merged = await PDFDocument.create();
     // Sequencial de propósito: uma página do puppeteer por vez (paralelo estoura
@@ -148,30 +233,48 @@ export class DocumentTemplateService implements OnModuleDestroy {
       for (const page of pages) merged.addPage(page);
     }
     const bytes = await merged.save();
-    const filename = this.slugify(`${resident.name} documentos`) + '.pdf';
+    const filename = slugify(`${resident.name} documentos`) + '.pdf';
     return { buffer: Buffer.from(bytes), filename };
   }
 
-  private slugify(text: string): string {
-    return text
-      .normalize('NFD')
-      .split('')
-      .filter((c) => c.charCodeAt(0) < 0x0300 || c.charCodeAt(0) > 0x036f)
-      .join('')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
-  }
-
-  async findAll(): Promise<DocumentTemplate[]> {
-    const templates = await this.repo.find({ order: { name: 'ASC' } });
+  /**
+   * Story 178, decisão 8 — o isolamento é no REPOSITÓRIO, não na tela. O
+   * default `RESIDENT` faz o consumidor atual (aba de Anexos, editor, wizard)
+   * continuar vendo exatamente o que via, e um recibo novo nascer invisível
+   * para eles sem que nenhuma tela precise saber que recibos existem.
+   */
+  async findAll(kind?: TemplateKind | string): Promise<DocumentTemplate[]> {
+    const filter = kind === undefined ? TemplateKind.RESIDENT : this.assertValidKind(kind);
+    const templates = await this.repo.find({ where: { kind: filter }, order: { name: 'ASC' } });
     await Promise.all(templates.map((t) => this.signContent(t)));
     return templates;
   }
 
-  // Templates marcados para assinatura no acolhimento.
+  // Templates marcados para assinatura no acolhimento. Recibo nunca entra aqui
+  // (é forçado a signAtAdmission = false, mas o filtro por kind é o cinto).
   findAdmissionTemplates(): Promise<DocumentTemplate[]> {
-    return this.repo.find({ where: { signAtAdmission: true }, order: { name: 'ASC' } });
+    return this.repo.find({
+      where: { signAtAdmission: true, kind: TemplateKind.RESIDENT },
+      order: { name: 'ASC' },
+    });
+  }
+
+  /**
+   * Story 178 — o gerador ACHA o template pelo tipo de recibo (decisão 2): não
+   * existe escolha de template na hora de emitir, logo não existe risco de
+   * emitir com o template errado. Sem template cadastrado, quem vê o erro é o
+   * operador — daí a mensagem acionável, e não um 404 mudo.
+   */
+  async findByReceiptType(receiptType: ReceiptType, label: string): Promise<DocumentTemplate> {
+    const template = await this.repo.findOne({
+      where: { receiptType, kind: TemplateKind.RECEIPT },
+    });
+    if (!template) {
+      throw new NotFoundException(
+        `Nenhum template de recibo cadastrado para ${label}. Cadastre em Configurações → Templates.`,
+      );
+    }
+    return this.signContent(template);
   }
 
   // Signs every embedded <img src> S3 URL in the template content so the editor
@@ -194,10 +297,16 @@ export class DocumentTemplateService implements OnModuleDestroy {
     isRequired = false,
     signAtAdmission = false,
     availableFor?: TemplateAvailability | string,
+    // Story 178 — sem o campo o template nasce RESIDENT (default da coluna e da
+    // leitura): tudo que existe hoje segue sendo documento de filho.
+    kind?: TemplateKind | string,
+    receiptType?: ReceiptType | string | null,
   ): Promise<DocumentTemplate> {
     // Sem o campo o template nasce ALL (default da coluna) — story 160.
     const availability =
       availableFor === undefined ? TemplateAvailability.ALL : this.assertValidAvailability(availableFor);
+    const resolvedKind = kind === undefined ? TemplateKind.RESIDENT : this.assertValidKind(kind);
+    const kindFields = await this.resolveKindFields(resolvedKind, receiptType);
     const existing = await this.repo.findOne({ where: { name } });
     if (existing) throw new ConflictException(`Template com nome "${name}" já existe`);
     // Persist the canonical (unsigned) S3 URLs — never an expiring signature.
@@ -207,18 +316,36 @@ export class DocumentTemplateService implements OnModuleDestroy {
       isRequired,
       signAtAdmission,
       availableFor: availability,
+      ...kindFields,
     });
     return this.signContent(await this.repo.save(template));
   }
 
   async update(
     id: string,
-    data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired' | 'signAtAdmission' | 'availableFor'>>,
+    data: Partial<
+      Pick<
+        DocumentTemplate,
+        'name' | 'content' | 'isRequired' | 'signAtAdmission' | 'availableFor' | 'kind' | 'receiptType'
+      >
+    >,
   ): Promise<DocumentTemplate> {
     if (data.availableFor !== undefined) this.assertValidAvailability(data.availableFor);
     // Conteúdo bruto (canônico) atual, para diff de imagens (story 93).
     const existing = await this.repo.findOne({ where: { id } });
     if (!existing) throw new NotFoundException(`Template ${id} not found`);
+    // Story 178 — as invariantes valem sobre o estado FINAL: quem não mandou
+    // `kind` continua no que já era, e quem promove um template a recibo tem
+    // que mandar o tipo junto.
+    if (data.kind !== undefined || data.receiptType !== undefined) {
+      const nextKind =
+        data.kind !== undefined
+          ? this.assertValidKind(data.kind)
+          : (existing.kind ?? TemplateKind.RESIDENT);
+      const nextReceiptType =
+        data.receiptType !== undefined ? data.receiptType : (existing.receiptType ?? undefined);
+      Object.assign(data, await this.resolveKindFields(nextKind, nextReceiptType, id));
+    }
     if (data.name) {
       const conflict = await this.repo.findOne({ where: { name: data.name } });
       if (conflict && conflict.id !== id) throw new ConflictException(`Template com nome "${data.name}" já existe`);
@@ -277,23 +404,41 @@ export class DocumentTemplateService implements OnModuleDestroy {
 
   async renderForResident(templateId: string, resident: Resident, signerUserId?: string): Promise<string> {
     const template = await this.findOne(templateId);
+    this.assertResidentKind(template);
     this.assertAvailableForResident(template, resident);
     const responsible = await this.relativeRepo.findOne({
       where: { residentId: resident.id, isResponsible: true },
     });
     const signer = await this.resolveSigner(signerUserId);
     // Story 157 — a foto do acolhido é resolvida aqui, ao lado do signer, pelo
-    // mesmo motivo: applyVariables é síncrono e não pode aguardar o signUrl/
-    // toDataUri.
+    // mesmo motivo: o dicionário de variáveis é montado sem I/O e não pode
+    // aguardar o signUrl/toDataUri.
     const residentPhotoUrl = await this.resolveResidentPhotoUrl(resident);
-    const content = this.applyVariables(template.content, resident, responsible, signer, residentPhotoUrl);
-    return this.wrapPage(template.name, content);
+    return this.renderWithResolver(
+      template,
+      new ResidentVariablesResolver(resident, responsible, signer, residentPhotoUrl),
+    );
+  }
+
+  /**
+   * Story 178 — renderização compartilhada: o resolver diz O QUE cada token
+   * vale, esta função aplica e embrulha na página A4. É o ponto por onde o
+   * recibo entra sem tocar em nada do filho.
+   */
+  async renderWithResolver(
+    template: DocumentTemplate,
+    resolver: DocumentVariableResolver,
+  ): Promise<string> {
+    const vars = await resolver.resolve();
+    return this.wrapPage(template.name, applyDocumentVariables(template.content, vars));
   }
 
   // Resolve o staff que está gerando o documento e pré-assina a URL da sua
-  // assinatura (decisão 7): applyVariables é síncrono e roda depois do findOne
-  // que já assinou o conteúdo, então a URL da imagem tem que chegar pronta.
-  private async resolveSigner(userId?: string): Promise<DocumentSigner | null> {
+  // assinatura (decisão 7): o dicionário de variáveis é montado sem I/O e roda
+  // depois do findOne que já assinou o conteúdo, então a URL da imagem tem que
+  // chegar pronta. Público desde a story 178: o recibo também é assinado por
+  // quem o emitiu, e pelo mesmo caminho.
+  async resolveSigner(userId?: string): Promise<DocumentSigner | null> {
     if (!userId) return null;
     const staff = await this.staffRepo.findOne({ where: { userId } });
     if (!staff) return null;
@@ -319,186 +464,6 @@ export class DocumentTemplateService implements OnModuleDestroy {
     return this.storageService.isS3Url(canonical)
       ? this.storageService.signUrl(canonical)
       : this.storageService.toDataUri(resident.photoUrl);
-  }
-
-  // Bloco da assinatura (story 128): imagem acima da linha (25 "_") e nome abaixo.
-  // Sem imagem, sai só a linha + nome — o documento nunca imprime {{signature}}
-  // cru. Story 137: a role deixou de ser impressa e o nome não é mais negrito.
-  private buildSignatureBlock(signer: DocumentSigner | null, align?: string): string {
-    const line = '_'.repeat(25);
-    const img = signer?.signatureUrl
-      ? `<img class="doc-signature-img" src="${signer.signatureUrl}" alt="Assinatura"/>`
-      : '';
-    const name = signer?.name
-      ? `<div class="doc-signature-name">${signer.name}</div>`
-      : '';
-    // Story 136 — quando o {{signature}} está numa linha com alinhamento próprio,
-    // carrega o text-align para o style do bloco (o CSS centraliza a img via
-    // .doc-signature-img{display:inline-block}). Sem align → default à esquerda.
-    const style = align ? ` style="text-align:${align}"` : '';
-    return `<div class="doc-signature"${style}>${img}<div class="doc-signature-line">${line}</div>${name}</div>`;
-  }
-
-  // Story 157 — bloco da foto do acolhido ({{residentPhoto}}). Com foto, a
-  // imagem em quadrado fixo (CSS `.doc-photo-img`, 151px ≈ 4 cm); sem foto, a
-  // MOLDURA VAZIA rotulada "Foto" — análogo direto da linha de 25 "_" que a
-  // assinatura imprime quando não há imagem: o papel sai com o espaço reservado
-  // para colar a foto à mão, e o documento nunca imprime {{residentPhoto}} cru.
-  // `align` funciona igual ao bloco de assinatura (story 136).
-  private buildResidentPhotoBlock(photoUrl: string | null, align?: string): string {
-    const inner = photoUrl
-      ? `<img class="doc-photo-img" src="${photoUrl}" alt="Foto"/>`
-      : '<div class="doc-photo-placeholder">Foto</div>';
-    const style = align ? ` style="text-align:${align}"` : '';
-    return `<div class="doc-photo"${style}>${inner}</div>`;
-  }
-
-  // Story 136 — extrai o text-align dos atributos de um <p> que só contém o
-  // {{signature}}, para que o bloco da assinatura honre o alinhamento do editor.
-  private extractTextAlign(attrs: string): string | undefined {
-    const match = attrs.match(/text-align\s*:\s*(left|right|center|justify)/i);
-    return match ? match[1].toLowerCase() : undefined;
-  }
-
-  // Ruído que o editor deixa em volta do token dentro do <p>: espaços, `&nbsp;`
-  // e os <span> de fonte (ex.:
-  // `<p style="text-align:center"><span …>&nbsp;{{signature}}</span></p>`).
-  // Sem tolerar isso, o parágrafo não casa e o bloco cai no fallback inline sem
-  // alinhamento (bug de produção da story 136). Compartilhado pelas DUAS
-  // variáveis de bloco desde a story 157 — era o `SIG_WRAP` da assinatura.
-  private static readonly TOKEN_WRAP = String.raw`(?:\s|&nbsp;|<span[^>]*>|</span>)*`;
-
-  // Mecânica das variáveis de BLOCO ({{signature}}, story 128/136;
-  // {{residentPhoto}}, story 157): um token cujo valor é HTML de bloco, não
-  // texto. Extraído na story 157 para as duas variáveis compartilharem
-  // exatamente o mesmo comportamento. Em ordem:
-  //   1. troca o <p …> INTEIRO quando o token é seu único conteúdo visível,
-  //      carregando o text-align do parágrafo — evita <div> dentro de <p>
-  //      (parser fecha o <p> e o alinhamento se perde);
-  //   2. fallback inline para as ocorrências remanescentes (sem alinhamento).
-  // Os dois `replace` usam FUNÇÃO: o `$` de uma URL presignada não pode ser
-  // interpretado como padrão de substituição.
-  private replaceBlockToken(
-    html: string,
-    token: string,
-    build: (align?: string) => string,
-  ): string {
-    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const wrap = DocumentTemplateService.TOKEN_WRAP;
-    const result = html.replace(
-      new RegExp(`<p([^>]*)>${wrap}${escaped}${wrap}</p>`, 'g'),
-      (_m, attrs: string) => build(this.extractTextAlign(attrs)),
-    );
-    const inlineBlock = build();
-    return result.replace(new RegExp(escaped, 'g'), () => inlineBlock);
-  }
-
-  // Story 153 — variável ÚNICA e condicional para o rótulo de assinatura do
-  // familiar responsável. Substitui o rodapé escrito à mão
-  // `{{responsibleName}}({{responsibleRelationship}})`, que imprimia
-  // `não informado(não informado)` quando o acolhido não tinha responsável.
-  //
-  //   nome + parentesco → `Maria Souza (Mãe)`  (com espaço antes do parêntese)
-  //   nome sem parentesco → `Maria Souza`      (sem parênteses vazios)
-  //   sem responsável / nome em branco → `Responsável` (rótulo da linha de assinatura)
-  //
-  // `relationship` é texto livre: sai como foi digitado, sem tradução. O `trim()`
-  // vale para os dois campos, então espaços em branco contam como ausência.
-  private buildResponsibleWithRelationship(responsible: Relative | null): string {
-    const name = responsible?.name?.trim();
-    if (!name) return 'Responsável';
-    const rel = responsible?.relationship?.trim();
-    return rel ? `${name} (${rel})` : name;
-  }
-
-  private applyVariables(
-    content: string,
-    resident: Resident,
-    responsible: Relative | null,
-    signer?: DocumentSigner | null,
-    residentPhotoUrl?: string | null,
-  ): string {
-    const MARITAL_PT: Record<string, string> = {
-      SINGLE: 'Solteiro(a)', MARRIED: 'Casado(a)', DIVORCED: 'Divorciado(a)',
-    };
-
-    const vars: Record<string, string> = {
-      name:          resident.name ?? '',
-      cpf:           this.formatCpf(resident.cpf),
-      rg:            resident.rg ?? 'não informado',
-      nationality:   resident.nationality ?? 'não informado',
-      city:          resident.city ?? 'não informado',
-      state:         resident.state ?? 'não informado',
-      birthDate:     this.formatDate(resident.birthDate as Date | null),
-      age:           this.computeAge(resident.birthDate as Date | null),
-      maritalStatus: resident.maritalStatus ? (MARITAL_PT[resident.maritalStatus] ?? resident.maritalStatus) : 'não informado',
-      address:       resident.address ?? 'não informado',
-      phone:         resident.contactPhone ?? 'não informado',
-      house:         resident.house?.name ?? '',
-      houseName:     resident.house?.name ?? '',
-      houseAddress:  resident.house?.address ?? 'não informado',
-      houseCity:     resident.house?.city ?? 'não informado',
-      houseState:    resident.house?.state ?? 'não informado',
-      entryDate:     this.formatDate(resident.entryDate as Date | null),
-      // Story 159 — DIVERGE de propósito das demais datas: sem saída imprime
-      // 'não informado' (fallback de `rg`/`city`/`address`) em vez do traço
-      // `___/___/______` que `formatDate(null)` devolve. Filho SEM saída é o caso
-      // normal (está ativo) e o traço convidaria a preencher à mão uma data que
-      // não existe. O ternário é o que evita cair no traço.
-      exitDate:      resident.exitDate
-        ? this.formatDate(resident.exitDate as Date | null)
-        : 'não informado',
-      date:          this.formatDate(new Date()),
-      dateLong:      this.formatDateLong(new Date()),
-      responsibleName:         responsible?.name ?? 'não informado',
-      responsibleRelationship: responsible?.relationship ?? 'não informado',
-      responsibleWithRelationship: this.buildResponsibleWithRelationship(responsible),
-      responsiblePhone:        responsible?.phone ?? 'não informado',
-    };
-    let result = content;
-    for (const [key, value] of Object.entries(vars)) {
-      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
-    }
-    // Variáveis de BLOCO — saem só quando o template as usa; ambas passam pelo
-    // mesmo replaceBlockToken (parágrafo inteiro + fallback inline).
-    const resolvedSigner = signer ?? null;
-    result = this.replaceBlockToken(result, '{{signature}}', (align) =>
-      this.buildSignatureBlock(resolvedSigner, align),
-    );
-    // Story 157 — foto do acolhido. Sem foto (`null`), o bloco vira a moldura
-    // vazia: nunca sobra `{{residentPhoto}}` cru no papel.
-    result = this.replaceBlockToken(result, '{{residentPhoto}}', (align) =>
-      this.buildResidentPhotoBlock(residentPhotoUrl ?? null, align),
-    );
-    return result;
-  }
-
-  private computeAge(birthDate: Date | string | null): string {
-    if (!birthDate) return 'não informado';
-    const birth = new Date(birthDate);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    return `${age} anos`;
-  }
-
-  private formatDateLong(date: Date | string | null): string {
-    if (!date) return '_______________';
-    return new Date(date).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-  }
-
-  private formatDate(date: Date | string | null): string {
-    if (!date) return '___/___/______';
-    const d = new Date(date);
-    return d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-  }
-
-  private formatCpf(cpf: string | null): string {
-    if (!cpf) return 'não informado';
-    const digits = cpf.replace(/\D/g, '');
-    if (digits.length !== 11) return cpf;
-    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   }
 
   private wrapPage(title: string, body: string): string {

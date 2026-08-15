@@ -1,0 +1,163 @@
+import {
+  test,
+  expect,
+  request as playwrightRequest,
+  type APIRequestContext,
+  type Page,
+} from '@playwright/test';
+import { login } from './helpers/auth';
+import { API_URL, loginApi } from './helpers/api';
+import { resetResidentsFilters } from './helpers/preferences';
+import { createPaidCharge, deleteChargesOf } from './helpers/associateCharges';
+
+/**
+ * Story 178 — recibo da contribuição, do cadastro do template ao download.
+ *
+ * O fluxo do plano, inteiro: criar o template de recibo em Configurações →
+ * abrir o associado com cobrança paga → baixar o recibo → conferir que o
+ * template de recibo NÃO aparece na aba de Anexos de um filho.
+ *
+ * Como todo template de recibo criado aqui é removido no `afterAll`, nenhuma
+ * outra suíte enxerga um tipo de recibo ocupado (um template ativo POR TIPO).
+ */
+const RESIDENT_NAME = 'João Testador'; // filho ACTIVE do seed
+const STAMP = Date.now();
+const RECEIPT_NAME = `E2E Recibo ${STAMP}`;
+const ASSOCIATE_NAME = `E2E Pagador ${STAMP}`;
+
+let api: APIRequestContext;
+let token: string;
+let associateId: string;
+
+async function receiptTemplateIds(): Promise<string[]> {
+  const res = await api.get(`${API_URL}/document-templates?kind=RECEIPT`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return ((await res.json()) as { id: string }[]).map((t) => t.id);
+}
+
+async function clearReceiptTemplates() {
+  for (const id of await receiptTemplateIds()) {
+    await api.delete(`${API_URL}/document-templates/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+}
+
+test.beforeAll(async () => {
+  api = await playwrightRequest.newContext();
+  token = await loginApi(api);
+  await clearReceiptTemplates();
+
+  const created = await api.post(`${API_URL}/associates`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      name: ASSOCIATE_NAME,
+      whatsapp: '+5562988887766',
+      contributionAmount: 51.75,
+      dueDay: 10,
+    },
+  });
+  expect(created.ok()).toBeTruthy();
+  associateId = (await created.json()).id as string;
+  await createPaidCharge(associateId);
+});
+
+test.afterAll(async () => {
+  await clearReceiptTemplates();
+  await deleteChargesOf(associateId);
+  await api.delete(`${API_URL}/associates/${associateId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  await api.dispose();
+  // `openResidentFromList` troca o filtro de status, persistido como preferência
+  // no DB compartilhado (story 130).
+  await resetResidentsFilters();
+});
+
+async function gotoTemplates(page: Page) {
+  await page.getByRole('button', { name: 'Configurações' }).click();
+  await page.getByRole('link', { name: 'Templates de documentos' }).click();
+  await expect(page).toHaveURL('/settings/templates');
+}
+
+test.describe('Recibos (story 178)', () => {
+  // O fluxo é longo de propósito (cadastro + edição + geração real do PDF pelo
+  // puppeteer + navegação); o default de 30s não cobre a renderização do PDF.
+  test.setTimeout(180_000);
+
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('cadastra o recibo, baixa o PDF da cobrança paga e o template não vaza para os anexos do filho', async ({
+    page,
+  }) => {
+    // ── 1. Cadastro do template, no grupo Recibos ─────────────────────────────
+    await gotoTemplates(page);
+    await expect(page.getByText('Documentos do acolhido')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Recibos' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Novo recibo' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    // O tipo só é pedido no grupo Recibos, e só os tipos com resolver aparecem.
+    const typeSelect = dialog.getByLabel('Tipo de recibo');
+    await expect(typeSelect).toBeVisible();
+    await expect(typeSelect.locator('option')).toHaveCount(1);
+    await dialog.getByLabel('Nome do documento').fill(RECEIPT_NAME);
+    await dialog.getByRole('button', { name: 'Criar' }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(page.getByText(RECEIPT_NAME, { exact: true })).toBeVisible();
+
+    // ── 2. O editor do recibo é o do OUTRO mundo ──────────────────────────────
+    await page.getByText(RECEIPT_NAME, { exact: true }).click();
+    await expect(page.getByLabel('Exigir no acolhimento')).toHaveCount(0);
+    await expect(page.getByRole('radio', { name: 'Todos' })).toHaveCount(0);
+
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+    await page.keyboard.type('Recibo ');
+    await page.keyboard.type('{{');
+    const popup = page.locator('[data-variable-suggestion]');
+    await expect(popup).toBeVisible();
+    await page.keyboard.type('numero');
+    await expect(popup.getByText('Número do recibo')).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(editor).toContainText('{{receiptNumber}}');
+
+    await page.getByRole('button', { name: 'Recolher variáveis' }).click();
+    await page.getByRole('button', { name: 'Salvar template' }).click();
+    await expect(page.getByText('Template salvo')).toBeVisible({ timeout: 15000 });
+
+    // ── 3. Download do recibo no detalhe do associado ─────────────────────────
+    await page.goto('/billing/associados/lista');
+    await page.getByRole('cell', { name: ASSOCIATE_NAME }).click();
+    const detail = page.getByRole('dialog');
+    await expect(detail.getByText('Histórico de contribuições')).toBeVisible();
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+    await detail.getByRole('button', { name: 'Recibo' }).click();
+    const download = await downloadPromise;
+    // O nome do arquivo carrega o número sequencial já alocado (6 dígitos).
+    expect(download.suggestedFilename()).toMatch(/\.pdf$/);
+    // Caminho feliz não passa pelo getErrorMessage.
+    await expect(detail.getByText(/Falha ao gerar o recibo/)).toHaveCount(0);
+
+    // ── 4. O recibo NÃO aparece na aba de Anexos do filho ─────────────────────
+    await page.keyboard.press('Escape');
+    await expect(detail).not.toBeVisible();
+    // `goto` em vez do link da sidebar: dentro de Faturamento existem DOIS links
+    // "Filhos" (o do menu principal e o do submenu de faturamento).
+    await page.goto('/residents');
+    await page.locator('select').first().selectOption('');
+    await page.getByPlaceholder('Buscar por nome...').fill(RESIDENT_NAME);
+    const card = page.locator('.rounded-lg.border.bg-card').filter({ hasText: RESIDENT_NAME });
+    await expect(card).toBeVisible();
+    await card.click();
+    await expect(page).toHaveURL(/\/residents\/[0-9a-f-]{36}/);
+    await page.getByRole('button', { name: 'Anexos', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Gerar PDF combinado' })).toBeVisible();
+    await expect(page.getByText(RECEIPT_NAME, { exact: true })).toHaveCount(0);
+  });
+});

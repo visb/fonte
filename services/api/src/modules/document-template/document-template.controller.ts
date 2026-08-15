@@ -10,13 +10,14 @@
   ParseUUIDPipe,
   Post,
   Put,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { Role, TemplateAvailability } from '@fonte/types';
+import { ReceiptType, Role, TemplateAvailability, TemplateKind } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -30,10 +31,13 @@ const imageUploadOptions = { storage: memoryStorage() };
 export class DocumentTemplateController {
   constructor(private service: DocumentTemplateService) {}
 
+  // Story 178 — `kind` opcional com default RESIDENT no service (decisão 8):
+  // quem já consumia esta rota (aba de Anexos, wizard) continua vendo só
+  // documento de filho, sem saber que recibos existem.
   @Get()
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
-  findAll(): Promise<DocumentTemplate[]> {
-    return this.service.findAll();
+  findAll(@Query('kind') kind?: string): Promise<DocumentTemplate[]> {
+    return this.service.findAll(kind);
   }
 
   @Get(':id')
@@ -52,6 +56,10 @@ export class DocumentTemplateController {
     // Story 160 — validado contra TemplateAvailability no service (regra de
     // negócio); aqui só roteia o valor cru do corpo.
     @Body('availableFor') availableFor?: string,
+    // Story 178 — valores crus; as invariantes kind × receiptType são regra de
+    // negócio e ficam no service.
+    @Body('kind') kind?: string,
+    @Body('receiptType') receiptType?: string,
   ): Promise<DocumentTemplate> {
     return this.service.create(
       name,
@@ -59,6 +67,8 @@ export class DocumentTemplateController {
       isRequired ?? false,
       signAtAdmission ?? false,
       availableFor,
+      kind,
+      receiptType,
     );
   }
 
@@ -83,14 +93,24 @@ export class DocumentTemplateController {
     @Body('isRequired') isRequired?: boolean,
     @Body('signAtAdmission') signAtAdmission?: boolean,
     @Body('availableFor') availableFor?: string,
+    @Body('kind') kind?: string,
+    @Body('receiptType') receiptType?: string | null,
   ): Promise<DocumentTemplate> {
-    const data: Partial<Pick<DocumentTemplate, 'name' | 'content' | 'isRequired' | 'signAtAdmission' | 'availableFor'>> = {};
+    const data: Partial<
+      Pick<
+        DocumentTemplate,
+        'name' | 'content' | 'isRequired' | 'signAtAdmission' | 'availableFor' | 'kind' | 'receiptType'
+      >
+    > = {};
     if (name !== undefined) data.name = name;
     if (content !== undefined) data.content = content;
     if (isRequired !== undefined) data.isRequired = isRequired;
     if (signAtAdmission !== undefined) data.signAtAdmission = signAtAdmission;
     // Valor cru: o service valida contra o enum antes de persistir (story 160).
     if (availableFor !== undefined) data.availableFor = availableFor as TemplateAvailability;
+    // Story 178 — idem para kind/receiptType: as invariantes ficam no service.
+    if (kind !== undefined) data.kind = kind as TemplateKind;
+    if (receiptType !== undefined) data.receiptType = receiptType as ReceiptType | null;
     return this.service.update(id, data);
   }
 

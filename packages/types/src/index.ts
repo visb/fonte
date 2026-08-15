@@ -102,6 +102,49 @@ export enum TemplateAvailability {
   INACTIVE_ONLY = 'INACTIVE_ONLY',
 }
 
+/**
+ * Story 178 — que tipo de documento um template descreve.
+ *
+ * `RESIDENT` é o comportamento de sempre (documento do filho) e é o DEFAULT em
+ * toda leitura: um template de recibo nasce invisível para a aba de Anexos, para
+ * o editor de documentos do filho e para o wizard de acolhimento, sem que
+ * nenhuma dessas telas precise saber que recibos existem.
+ */
+export enum TemplateKind {
+  RESIDENT = 'RESIDENT',
+  RECEIPT = 'RECEIPT',
+}
+
+/**
+ * Story 178 — tipo de recibo. É DADO (varchar no banco), não código: um tipo
+ * novo não exige `ALTER TYPE` nem migration, só um resolver.
+ */
+export enum ReceiptType {
+  ASSOCIATE_CONTRIBUTION = 'ASSOCIATE_CONTRIBUTION',
+  /** Declarado de propósito; o resolver entra numa story própria. */
+  PIZZA_SALE = 'PIZZA_SALE',
+  /** Declarado de propósito; o resolver entra numa story própria. */
+  BREAD_SALE = 'BREAD_SALE',
+}
+
+/** Sujeito de um recibo emitido. Polimórfico para comportar pizza/pão. */
+export enum ReceiptSubjectType {
+  ASSOCIATE_CHARGE = 'ASSOCIATE_CHARGE',
+}
+
+/**
+ * Tipos de recibo com resolver implementado — o que a UI pode oferecer hoje.
+ * Impede a tela de cadastrar um template cujo recibo ninguém sabe emitir.
+ */
+export const IMPLEMENTED_RECEIPT_TYPES: ReceiptType[] = [ReceiptType.ASSOCIATE_CONTRIBUTION];
+
+/** Rótulo em pt-BR de cada tipo de recibo (usado na tela e nas mensagens de erro). */
+export const RECEIPT_TYPE_LABELS: Record<ReceiptType, string> = {
+  [ReceiptType.ASSOCIATE_CONTRIBUTION]: 'Contribuição mensal do associado',
+  [ReceiptType.PIZZA_SALE]: 'Venda de pizza',
+  [ReceiptType.BREAD_SALE]: 'Venda de pão',
+};
+
 export function isResidentStatusActive(status: ResidentStatus | null | undefined): boolean {
   return !!status && ACTIVE_RESIDENT_STATUSES.includes(status);
 }

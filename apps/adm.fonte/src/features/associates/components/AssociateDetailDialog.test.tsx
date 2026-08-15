@@ -1,9 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
 const state = { data: undefined as unknown, isLoading: false, error: null as unknown, refetch: vi.fn() };
 vi.mock('../hooks/useAssociates', () => ({ useAssociateById: () => state }));
-vi.mock('./ChargeRow', () => ({ ChargeRow: ({ charge }: { charge: { id: string } }) => <tr><td>charge-{charge.id}</td></tr> }));
+vi.mock('./ChargeRow', () => ({
+  ChargeRow: ({ charge, onDownloadReceipt }: { charge: { id: string }; onDownloadReceipt?: (id: string) => void }) => (
+    <tr>
+      <td>
+        <button type="button" onClick={() => onDownloadReceipt?.(charge.id)}>charge-{charge.id}</button>
+      </td>
+    </tr>
+  ),
+}));
+
+// Story 178 — o download do recibo é do hook; aqui só a fiação e o erro na tela.
+const receiptState = {
+  downloadingId: null as string | null,
+  error: null as string | null,
+  dismissError: vi.fn(),
+  download: vi.fn(),
+};
+vi.mock('../hooks/useChargeReceipt', () => ({ useChargeReceipt: () => receiptState }));
 
 import { AssociateDetailDialog } from './AssociateDetailDialog';
 
@@ -20,6 +37,8 @@ beforeEach(() => {
   state.data = associate();
   state.isLoading = false;
   state.error = null;
+  receiptState.downloadingId = null;
+  receiptState.error = null;
 });
 afterEach(() => cleanup());
 
@@ -50,5 +69,22 @@ describe('AssociateDetailDialog', () => {
     render(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
     expect(screen.getByText('charge-c1')).toBeInTheDocument();
     expect(screen.getByText('charge-c2')).toBeInTheDocument();
+    expect(screen.getByText('Recibo')).toBeInTheDocument();
+  });
+
+  // ─── Recibo (story 178) ─────────────────────────────────────────────────────
+
+  it('liga o botão de recibo da linha ao download do hook', () => {
+    state.data = associate({ charges: [{ id: 'c1' }] });
+    render(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'charge-c1' }));
+    expect(receiptState.download).toHaveBeenCalledWith('c1');
+  });
+
+  it('erro do recibo aparece na tela com a mensagem do backend', () => {
+    state.data = associate({ charges: [{ id: 'c1' }] });
+    receiptState.error = 'Nenhum template de recibo cadastrado. Cadastre em Configurações → Templates.';
+    render(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
+    expect(screen.getByText(/Cadastre em Configurações → Templates\./)).toBeInTheDocument();
   });
 });

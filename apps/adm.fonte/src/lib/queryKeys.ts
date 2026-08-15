@@ -41,6 +41,10 @@ export const queryKeys = {
   },
   documentTemplates: {
     all: ['document-templates'] as const,
+    // Story 178 — documento do acolhido e recibo são listas distintas (o
+    // backend filtra por kind). Prefixadas por `all` para uma invalidação só
+    // continuar valendo para as duas.
+    byKind: (kind: string) => ['document-templates', kind] as const,
   },
   supportGroups: {
     all: ['support-groups'] as const,

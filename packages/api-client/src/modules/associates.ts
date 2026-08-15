@@ -40,6 +40,16 @@ export function createAssociatesModule(http: AxiosInstance) {
 
     remove: (id: string) => http.delete(`/associates/${id}`).then((r) => r.data),
 
+    /**
+     * Story 178 — PDF do recibo da contribuição de uma cobrança PAGA. O arquivo
+     * é gerado na hora e nunca persistido; o número do recibo (sequencial por
+     * tipo) vem no `Content-Disposition`. ADMIN/COORDINATOR.
+     */
+    chargeReceipt: (chargeId: string) =>
+      http
+        .get<Blob>(`/associates/charges/${chargeId}/receipt`, { responseType: 'blob' })
+        .then((r) => r.data),
+
     /** Cancela a recorrência de cartão do associado (admin). */
     cancelSubscription: (id: string) =>
       http

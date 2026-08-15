@@ -98,6 +98,8 @@ import type {
   UserPreferences,
   ResidentsFiltersPreference,
   TemplateAvailability,
+  TemplateKind,
+  ReceiptType,
   HouseOfflineSnapshot,
   OfflineSnapshotDeleted,
 } from '@fonte/types';
@@ -1133,6 +1135,11 @@ export interface DocumentTemplate {
   signAtAdmission: boolean;
   // Story 160 — para quais filhos este documento pode ser gerado (por status).
   availableFor: TemplateAvailability;
+  // Story 178 — que tipo de documento o template descreve. Legado (e omissão do
+  // backend) é RESIDENT: o consumidor de documento de filho não muda de vida.
+  kind: TemplateKind;
+  // Story 178 — só em kind = RECEIPT: qual recibo este template imprime.
+  receiptType: ReceiptType | null;
   updatedAt: string;
 }
 
@@ -1142,6 +1149,8 @@ export interface CreateDocumentTemplateInput {
   isRequired: boolean;
   signAtAdmission?: boolean;
   availableFor?: TemplateAvailability;
+  kind?: TemplateKind;
+  receiptType?: ReceiptType;
 }
 
 export interface UpdateDocumentTemplateInput {
@@ -1150,6 +1159,8 @@ export interface UpdateDocumentTemplateInput {
   isRequired?: boolean;
   signAtAdmission?: boolean;
   availableFor?: TemplateAvailability;
+  kind?: TemplateKind;
+  receiptType?: ReceiptType | null;
 }
 
 // ─── LGPD ─────────────────────────────────────────────────────────────────────

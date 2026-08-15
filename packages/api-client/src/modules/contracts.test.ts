@@ -1,5 +1,6 @@
 import type { AxiosInstance } from 'axios';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { TemplateKind } from '@fonte/types';
 
 import { createActivitiesModule } from './activities.js';
 import { createAppSettingsModule } from './app-settings.js';
@@ -365,7 +366,15 @@ describe('document-templates module', () => {
   });
   it('list busca templates', async () => {
     await m.list();
-    expect(http.get).toHaveBeenCalledWith('/document-templates');
+    // Story 178 — sem `kind` o backend aplica o default RESIDENT; o cliente não
+    // repete a regra, só deixa de mandar o params.
+    expect(http.get).toHaveBeenCalledWith('/document-templates', { params: undefined });
+  });
+  it('list repassa o kind quando pedido (story 178)', async () => {
+    await m.list({ kind: TemplateKind.RECEIPT });
+    expect(http.get).toHaveBeenCalledWith('/document-templates', {
+      params: { kind: 'RECEIPT' },
+    });
   });
   it('getById busca por id', async () => {
     await m.getById('t1');

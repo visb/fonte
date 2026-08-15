@@ -59,6 +59,10 @@
     {
       "key": "idempotencyKey",
       "value": ""
+    },
+    {
+      "key": "chargeId",
+      "value": ""
     }
   ],
   "auth": {
@@ -4323,15 +4327,22 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/document-templates",
+              "raw": "{{baseUrl}}/document-templates?kind=RESIDENT",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "document-templates"
+              ],
+              "query": [
+                {
+                  "key": "kind",
+                  "value": "RESIDENT",
+                  "description": "Story 178 — RESIDENT (default) | RECEIPT. Sem o parâmetro a API devolve só documentos do acolhido, então um template de recibo nunca aparece na aba de Anexos do filho. Valor fora do enum → 400."
+                }
               ]
             },
-            "description": "Cada template devolve availableFor: ALL | ACTIVE_ONLY | INACTIVE_ONLY (story 160)."
+            "description": "Cada template devolve availableFor: ALL | ACTIVE_ONLY | INACTIVE_ONLY (story 160), kind: RESIDENT | RECEIPT e receiptType (story 178). O filtro por kind tem default RESIDENT."
           }
         },
         {
@@ -4348,7 +4359,7 @@
                 "{{templateId}}"
               ]
             },
-            "description": "Devolve availableFor: ALL | ACTIVE_ONLY | INACTIVE_ONLY (story 160)."
+            "description": "Devolve availableFor: ALL | ACTIVE_ONLY | INACTIVE_ONLY (story 160), kind e receiptType (story 178)."
           }
         },
         {
@@ -4363,7 +4374,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Termo de Internação\",\n  \"content\": \"<html>...</html>\",\n  \"isRequired\": false,\n  \"signAtAdmission\": false,\n  \"availableFor\": \"ACTIVE_ONLY\"\n}"
+              "raw": "{\n  \"name\": \"Termo de Internação\",\n  \"content\": \"<html>...</html>\",\n  \"isRequired\": false,\n  \"signAtAdmission\": false,\n  \"availableFor\": \"ACTIVE_ONLY\",\n  \"kind\": \"RESIDENT\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/document-templates",
@@ -4374,7 +4385,33 @@
                 "document-templates"
               ]
             },
-            "description": "availableFor (story 160, opcional): ALL (default) | ACTIVE_ONLY | INACTIVE_ONLY. Ativo = PRE_ADMISSION, ACTIVE, DISCIPLINE, TEMP_LEAVE. Valor fora do enum → 400."
+            "description": "Story 178 — `kind` (RESIDENT default | RECEIPT) e `receiptType`. Invariantes: RESIDENT não aceita receiptType (400); RECEIPT exige receiptType válido (400 se ausente/inválido) e nasce com isRequired=false, signAtAdmission=false e availableFor=ALL, ignorando o que o body mandar. Segundo template do mesmo receiptType → 409."
+          }
+        },
+        {
+          "name": "Create Receipt Template (story 178)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Recibo de contribuição mensal\",\n  \"content\": \"<p>Recibo nº {{receiptNumber}} — recebi de {{payerName}} a quantia de {{amount}} ({{amountInWords}}), referente à contribuição de {{referenceMonth}}, paga em {{paymentDate}}.</p><p>{{signature}}</p>\",\n  \"kind\": \"RECEIPT\",\n  \"receiptType\": \"ASSOCIATE_CONTRIBUTION\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/document-templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "document-templates"
+              ]
+            },
+            "description": "Um template ativo POR TIPO de recibo (índice único parcial). Tipos: ASSOCIATE_CONTRIBUTION (implementado), PIZZA_SALE e BREAD_SALE (declarados, sem resolver ainda). Variáveis do recibo: receiptNumber, payerName, payerCpf, amount, netAmount, feeAmount, amountInWords, referenceMonth, paymentDate, dueDate, date, dateLong e o bloco signature."
           }
         },
         {
@@ -4401,7 +4438,7 @@
                 "{{templateId}}"
               ]
             },
-            "description": "Campos omitidos ficam inalterados. availableFor (story 160): ALL | ACTIVE_ONLY | INACTIVE_ONLY; valor fora do enum → 400."
+            "description": "Story 178 — aceita também `kind` e `receiptType`, com as mesmas invariantes do POST (avaliadas sobre o estado final do template). Campos omitidos ficam como estão."
           }
         },
         {
@@ -4939,6 +4976,25 @@
               ]
             },
             "description": "Dispara manualmente a cobrança via WhatsApp (Meta Cloud API) de um associado (ADMIN). Respeita o dedupe de 5 dias e os mesmos gatilhos do scheduler diário das 9h (PENDING vencido → ADHESION, PAST_DUE → REACTIVATION). ACTIVE/CANCELED ou associado inexistente retornam { sent: false, skipped: true }. Sem credencial Meta no ambiente, o envio é best-effort (loga e segue)."
+          }
+        },
+        {
+          "name": "Download Charge Receipt (PDF, story 178)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/associates/charges/{{chargeId}}/receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "associates",
+                "charges",
+                "{{chargeId}}",
+                "receipt"
+              ]
+            },
+            "description": "ADMIN/COORDINATOR. PDF do recibo da contribuição de uma cobrança PAGA, gerado sob demanda e NUNCA persistido (nada vai para o bucket nem para os anexos do filho). O número é sequencial por tipo de recibo e idempotente por cobrança: baixar duas vezes reusa o mesmo número. 400 se a cobrança não estiver PAID; 404 se a cobrança não existir ou se não houver template do tipo cadastrado (mensagem acionável); 403 para SERVANT/RELATIVE."
           }
         },
         {

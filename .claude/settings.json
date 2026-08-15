@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(pnpm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(docker:*)",
+      "Bash(rtk *)",
+      "Bash(sed -i \"s#describe\\('driver.web — detalhes da representação'#describe\\('driver de AsyncStorage — detalhes da representação'#\" lib/offline/store/driver.test.ts)",
+      "Bash(sed -i \"s#o \\\\`driver.web\\\\` existe para o mesmo app rodar em#o \\\\`driver.asyncStorage\\\\` existe para o mesmo app rodar em#\" lib/offline/store/driver.sqlite.ts)",
+      "Bash(sed -i 's/^const residents = \\\\[/const mockResidents = [/; s/data: residents,/data: mockResidents,/' features/census/pages/CensusPage.test.tsx)",
+      "Bash(npx jest *)",
+      "Bash(git:*)",
+      "Bash(pnpm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(docker:*)",
+      "Bash(ls:*)",
+      "Bash(rtk git:*)",
+      "Bash(rtk pnpm:*)",
+      "Bash(rtk npm:*)",
+      "Bash(rtk npx:*)",
+      "Bash(rtk docker:*)",
+      "Bash(rtk gh:*)",
+      "Bash(rtk ls:*)",
+      "Bash(rtk read:*)",
+      "Bash(rtk grep:*)",
+      "Bash(rtk find:*)",
+      "Bash(rtk jest:*)",
+      "Bash(rtk vitest:*)",
+      "Bash(rtk playwright:*)",
+      "Bash(rtk tsc:*)",
+      "Bash(rtk lint:*)",
+      "Bash(rtk prettier:*)"
+    ]
+  }
+}

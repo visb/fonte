@@ -825,6 +825,7 @@
           "name": "Get House Staff",
           "request": {
             "method": "GET",
+            "description": "Resumo dos servos da casa (ADMIN | COORDINATOR | SERVANT). Não devolve a entidade Staff inteira — só as colunas do resumo, por minimização de dado pessoal. Story 181: passa a incluir `photoUrl` (foto do servo; `staff` não tem thumb). Resposta 200: [ { \"id\": \"uuid\", \"name\": \"Coordenador Teste\", \"whatsapp\": \"11977773000\", \"photoUrl\": \"/uploads/staff/foto.jpg\" }, { \"id\": \"uuid\", \"name\": \"Operador Teste\", \"whatsapp\": \"11977771000\", \"photoUrl\": null } ]",
             "url": {
               "raw": "{{baseUrl}}/houses/{{houseId}}/staff",
               "host": [

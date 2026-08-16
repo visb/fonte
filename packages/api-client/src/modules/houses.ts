@@ -11,7 +11,7 @@ import type {
   HouseCapacityRequest,
   CreateCapacityRequestInput,
   Resident,
-  Staff,
+  HouseStaffSummary,
 } from '../types.js';
 
 export function createHousesModule(http: AxiosInstance) {
@@ -33,7 +33,7 @@ export function createHousesModule(http: AxiosInstance) {
     listResidents: (id: string) =>
       http.get<Resident[]>(`/houses/${id}/residents`).then((r) => r.data),
     listStaff: (id: string) =>
-      http.get<Staff[]>(`/houses/${id}/staff`).then((r) => r.data),
+      http.get<HouseStaffSummary[]>(`/houses/${id}/staff`).then((r) => r.data),
     listMinistries: (id: string) =>
       http.get<HouseMinistry[]>(`/houses/${id}/ministries`).then((r) => r.data),
     addMinistry: (id: string, data: AddMinistryInput) =>

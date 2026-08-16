@@ -1,24 +1,11 @@
-import { Building2, KeyRound, Mail, Pencil, Phone, Trash2, User } from 'lucide-react';
+import { Building2, KeyRound, Mail, Pencil, Phone, Trash2 } from 'lucide-react';
 import { Role } from '@fonte/types';
 import type { Staff } from '@fonte/api-client';
-import { api } from '@/lib/api';
 import { maskPhone } from '@/lib/masks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PersonAvatar } from '@/components/shared/PersonAvatar';
 import { SERVANT_RANK_LABELS, SERVANT_RANK_VARIANT } from '../constants';
-
-function StaffAvatar({ url, name }: { url: string | null; name: string }) {
-  const src = api.photoUrl(url);
-  return (
-    <div className="w-10 h-10 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
-      {src ? (
-        <img src={src} alt={name} className="w-full h-full object-cover" />
-      ) : (
-        <User size={18} className="text-muted-foreground" />
-      )}
-    </div>
-  );
-}
 
 const ROLE_LABEL: Record<string, string> = {
   [Role.ADMIN]: 'Administrador',
@@ -43,7 +30,7 @@ interface Props {
 export function StaffCard({ staff: s, onView, onEdit, onResetPassword, onDelete }: Props) {
   return (
     <div className="flex w-full items-center gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-accent/50 transition-colors">
-      <StaffAvatar url={s.photoUrl} name={s.name} />
+      <PersonAvatar size="md" url={s.photoUrl} name={s.name} />
       <button type="button" onClick={onView} className="flex-1 min-w-0 text-left">
         <p className="font-semibold truncate">{s.name}</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">

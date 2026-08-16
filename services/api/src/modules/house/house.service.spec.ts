@@ -277,6 +277,42 @@ describe('HouseService.removePhoto', () => {
   });
 });
 
+describe('HouseService.findStaffForHouse', () => {
+  it('seleciona a foto do servo junto das colunas do resumo (story 181)', async () => {
+    const query = jest.fn().mockResolvedValue([]);
+    const houseRepo = makeHouseRepo({ count: jest.fn().mockResolvedValue(1) }, query);
+    const service = makeService(houseRepo);
+
+    await service.findStaffForHouse('h1');
+
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toContain('photo_url AS "photoUrl"');
+    expect(sql).toContain('FROM staff');
+    expect(sql).toContain('deleted_at IS NULL');
+    expect(params).toEqual(['h1']);
+  });
+
+  it('propaga photoUrl com valor e com null sem mexer no resto do payload', async () => {
+    const rows = [
+      { id: 's1', name: 'Ana', whatsapp: '62999990000', photoUrl: '/uploads/staff/ana.jpg' },
+      { id: 's2', name: 'Bruno', whatsapp: null, photoUrl: null },
+    ];
+    const query = jest.fn().mockResolvedValue(rows);
+    const houseRepo = makeHouseRepo({ count: jest.fn().mockResolvedValue(1) }, query);
+    const service = makeService(houseRepo);
+
+    const result = await service.findStaffForHouse('h1');
+
+    expect(result).toEqual(rows);
+  });
+
+  it('throws NotFound for a missing house', async () => {
+    const houseRepo = makeHouseRepo({ count: jest.fn().mockResolvedValue(0) });
+    const service = makeService(houseRepo);
+    await expect(service.findStaffForHouse('nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
 describe('HouseService.assertHouseExists', () => {
   it('throws NotFound when count is zero', async () => {
     const houseRepo = makeHouseRepo({ count: jest.fn().mockResolvedValue(0) });

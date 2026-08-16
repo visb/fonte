@@ -4,6 +4,7 @@ process.env.NODE_ENV = 'test';
 
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
+import { DataSource } from 'typeorm';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
 
 describe('HouseController (e2e)', () => {
@@ -11,12 +12,14 @@ describe('HouseController (e2e)', () => {
   let token: string;
   let houseId: string;
   let adminToken: string;
+  let dataSource: DataSource;
   const createdIds: string[] = [];
 
   beforeAll(async () => {
     app = await bootstrapApp();
     ({ token, houseId } = await loginCoordinator(app));
     adminToken = await login(app, 'admin@fonte.com', 'admin123');
+    dataSource = app.get(DataSource);
   });
 
   afterAll(async () => {
@@ -77,6 +80,51 @@ describe('HouseController (e2e)', () => {
         .get(`${BASE}/houses/not-a-uuid`)
         .set('Authorization', `Bearer ${token}`)
         .expect(400));
+  });
+
+  describe('staff da casa (story 181)', () => {
+    const PHOTO = '/uploads/staff/e2e-181.jpg';
+
+    it('GET /houses/:id/staff devolve o resumo com photoUrl (null no seed, valor quando há foto)', async () => {
+      const before = await request(app.getHttpServer())
+        .get(`${BASE}/houses/${houseId}/staff`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(before.body.length).toBeGreaterThan(0);
+      // O seed não sobe foto de servo: todos descem com `photoUrl` null — e só
+      // com as 4 colunas do resumo (minimização; a rota é lida por SERVANT).
+      for (const s of before.body) {
+        expect(Object.keys(s).sort()).toEqual(['id', 'name', 'photoUrl', 'whatsapp']);
+        expect(s.photoUrl).toBeNull();
+      }
+
+      const target = before.body[0];
+      await dataSource.query('UPDATE staff SET photo_url = $1 WHERE id = $2', [PHOTO, target.id]);
+      try {
+        const after = await request(app.getHttpServer())
+          .get(`${BASE}/houses/${houseId}/staff`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        const withPhoto = after.body.find((s: { id: string }) => s.id === target.id);
+        expect(withPhoto).toMatchObject({
+          id: target.id,
+          name: target.name,
+          whatsapp: target.whatsapp,
+          photoUrl: PHOTO,
+        });
+      } finally {
+        // Devolve o servo ao estado do seed — a suíte não pode deixar rastro.
+        await dataSource.query('UPDATE staff SET photo_url = NULL WHERE id = $1', [target.id]);
+      }
+    });
+
+    it('GET /houses/:id/staff → 404 para casa inexistente', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/houses/00000000-0000-0000-0000-000000000000/staff`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404));
   });
 
   describe('CRUD', () => {

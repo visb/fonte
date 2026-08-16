@@ -2,6 +2,7 @@ import { Pencil, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { PersonAvatar } from '@/components/shared/PersonAvatar';
 import { maskPhone } from '@/lib/masks';
 import { useHouseStaff } from '../../hooks/useHouses';
 
@@ -16,8 +17,11 @@ export function StaffTab({ houseId }: { houseId: string }) {
     <div className="space-y-1">
       {staff.map((s) => (
         <div key={s.id} className="flex items-center justify-between rounded-lg border p-3">
-          <p className="font-medium text-sm">{s.name}</p>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <PersonAvatar size="sm" url={s.photoUrl} name={s.name} />
+            <p className="font-medium text-sm truncate">{s.name}</p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
             {s.whatsapp && (
               <span className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Phone size={12} />

@@ -240,12 +240,20 @@ export class HouseService {
 
   // ─── Staff ──────────────────────────────────────────────────────────────────
 
+  /**
+   * Resumo dos servos da casa (story 181): as colunas mínimas para a aba Servos
+   * do detalhe da casa e os dropdowns de ministério. Segue sendo `SELECT` cru e
+   * enxuto de propósito — a rota é lida por SERVANT e devolver o registro
+   * completo (e-mail, rank, ex-filho) ampliaria a superfície de dado pessoal sem
+   * necessidade (LGPD art. 6, minimização).
+   */
   async findStaffForHouse(houseId: string): Promise<
-    Array<{ id: string; name: string; whatsapp: string | null }>
+    Array<{ id: string; name: string; whatsapp: string | null; photoUrl: string | null }>
   > {
     await this.assertHouseExists(houseId);
     return this.houseRepository.manager.query(
-      `SELECT id, name, whatsapp FROM staff WHERE house_id = $1 AND deleted_at IS NULL ORDER BY name`,
+      `SELECT id, name, whatsapp, photo_url AS "photoUrl" FROM staff
+       WHERE house_id = $1 AND deleted_at IS NULL ORDER BY name`,
       [houseId],
     );
   }

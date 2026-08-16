@@ -1,7 +1,46 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type APIRequestContext } from '@playwright/test';
 import { login } from './helpers/auth';
+import { API_URL, loginApi } from './helpers/api';
 
 const HOUSE_NAME = `Casa E2E ${Date.now()}`;
+
+/**
+ * Cria um filho ACTIVE na Casa Teste, com ou sem foto (story 181).
+ *
+ * Fixture por teste em vez de depender do seed: o seed não sobe foto de ninguém
+ * (a linha da aba Filhos mostraria só o fallback) e o filho semeado pode ganhar
+ * foto por outra suíte que rode antes.
+ */
+async function createResident(
+  request: APIRequestContext,
+  name: string,
+  options: { withPhoto: boolean },
+): Promise<void> {
+  const headers = { Authorization: `Bearer ${await loginApi(request)}` };
+
+  const housesRes = await request.get(`${API_URL}/houses`, { headers });
+  const houses = (await housesRes.json()) as Array<{ id: string; name: string }>;
+  const house = houses.find((h) => h.name === 'Casa Teste') ?? houses[0];
+
+  const created = await request.post(`${API_URL}/residents`, {
+    headers,
+    data: { name, houseId: house.id, status: 'ACTIVE', entryDate: '2024-01-01' },
+  });
+  expect(created.status()).toBe(201);
+  const residentId = (await created.json()).id as string;
+  if (!options.withPhoto) return;
+
+  // 1x1 PNG transparente — o upload passa pelo sharp e gera a thumb.
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  const photo = await request.post(`${API_URL}/residents/${residentId}/photo`, {
+    headers,
+    multipart: { file: { name: 'foto.png', mimeType: 'image/png', buffer: png } },
+  });
+  expect(photo.status()).toBe(201);
+}
 
 test.describe('Casas', () => {
   test.beforeEach(async ({ page }) => {
@@ -91,5 +130,48 @@ test.describe('Casas', () => {
     await expect(page).toHaveURL(/tab=staff/);
     await page.getByRole('button', { name: 'Filhos' }).click();
     await expect(page).toHaveURL(/tab=residents/);
+  });
+
+  // ─── Avatar nas abas do detalhe da casa (story 181) ───────────────────────
+
+  test('aba Filhos mostra a foto do filho e a linha continua abrindo o dialog', async ({
+    page,
+    request,
+  }) => {
+    const name = `Filho Foto ${Date.now()}`;
+    await createResident(request, name, { withPhoto: true });
+
+    await page.getByText('Casa Teste').click();
+    await page.getByRole('button', { name: 'Filhos' }).click();
+    await page.getByPlaceholder('Buscar por nome...').fill(name);
+
+    const avatar = page.getByAltText(name);
+    await expect(avatar).toBeVisible();
+
+    // Clicar no avatar não pode engolir o clique da linha.
+    await avatar.click();
+    await expect(page.getByRole('dialog').getByText('Detalhes do Filho')).toBeVisible();
+  });
+
+  test('aba Filhos cai no fallback para filho sem foto', async ({ page, request }) => {
+    const name = `Filho Sem Foto ${Date.now()}`;
+    await createResident(request, name, { withPhoto: false });
+
+    await page.getByText('Casa Teste').click();
+    await page.getByRole('button', { name: 'Filhos' }).click();
+    await page.getByPlaceholder('Buscar por nome...').fill(name);
+
+    const row = page.locator('button').filter({ hasText: name });
+    await expect(row.locator('.w-9.h-9.rounded-full')).toBeVisible();
+    await expect(row.locator('img')).toHaveCount(0);
+  });
+
+  test('aba Servos mostra o avatar do servo', async ({ page }) => {
+    await page.getByText('Casa Teste').click();
+    await page.getByRole('button', { name: 'Servos' }).click();
+
+    const row = page.locator('.rounded-lg.border').filter({ hasText: 'Coordenador Teste' });
+    // Sem foto no seed: o avatar aparece no fallback, com a caixa do tamanho sm.
+    await expect(row.locator('.w-9.h-9.rounded-full').first()).toBeVisible();
   });
 });

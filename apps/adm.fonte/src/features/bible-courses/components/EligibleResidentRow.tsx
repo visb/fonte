@@ -1,6 +1,6 @@
-import { ExternalLink, GraduationCap, User } from 'lucide-react';
+import { ExternalLink, GraduationCap } from 'lucide-react';
 import type { EligibleResident } from '@fonte/api-client';
-import { api } from '@/lib/api';
+import { PersonAvatar } from '@/components/shared/PersonAvatar';
 
 interface Props {
   resident: EligibleResident;
@@ -15,8 +15,6 @@ function formatMonths(months: number): string {
 }
 
 export function EligibleResidentRow({ resident, checked, onToggle, onMarkExternal }: Props) {
-  const src = api.photoUrl(resident.photoThumbUrl);
-
   // Sem <label> de wrapper (story 125): o link de ficha não pode alternar o
   // checkbox. Checkbox controlado + área de conteúdo clicável, link fora dela.
   return (
@@ -32,13 +30,7 @@ export function EligibleResidentRow({ resident, checked, onToggle, onMarkExterna
         className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
         onClick={() => onToggle(resident.id)}
       >
-        <div className="w-9 h-9 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
-          {src ? (
-            <img src={src} alt={resident.name} className="w-full h-full object-cover" />
-          ) : (
-            <User size={16} className="text-muted-foreground" />
-          )}
-        </div>
+        <PersonAvatar size="sm" url={resident.photoThumbUrl} name={resident.name} />
         <div className="min-w-0 flex-1">
           <span className="text-sm font-medium">{resident.name}</span>
           <p className="text-xs text-muted-foreground truncate">

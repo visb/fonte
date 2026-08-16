@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ResidentStatus, Role } from '@fonte/types';
 import { useGoBack } from '@/lib/navigation';
-import { ArrowLeft, Pencil, RefreshCw, User, UserPlus } from 'lucide-react';
+import { ArrowLeft, Pencil, RefreshCw, UserPlus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { PersonAvatar } from '@/components/shared/PersonAvatar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { RESIDENT_STATUS_LABELS, RESIDENT_STATUS_VARIANT } from '../constants';
 import { useResidentById } from '../hooks/useResidents';
@@ -57,19 +58,15 @@ export function ResidentDetailPage() {
         <Button variant="ghost" size="icon" onClick={goBack}>
           <ArrowLeft size={18} />
         </Button>
-        <div
-          className={cn(
-            'w-12 h-12 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden',
-            resident.photoUrl && 'cursor-pointer hover:opacity-80 transition-opacity',
-          )}
+        {/* A guarda do clique fica na foto CHEIA de propósito: é ela que o modal
+            mostra — abrir o modal a partir da thumb deixaria o modal vazio. */}
+        <PersonAvatar
+          size="lg"
+          url={resident.photoThumbUrl ?? resident.photoUrl}
+          name={resident.name}
+          className={cn(resident.photoUrl && 'cursor-pointer hover:opacity-80 transition-opacity')}
           onClick={() => resident.photoUrl && setPhotoModalOpen(true)}
-        >
-          {resident.photoUrl ? (
-            <img src={api.photoUrl(resident.photoThumbUrl ?? resident.photoUrl)!} alt={resident.name} className="w-full h-full object-cover" />
-          ) : (
-            <User size={22} className="text-muted-foreground" />
-          )}
-        </div>
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold truncate">{resident.name}</h1>

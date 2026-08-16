@@ -373,6 +373,20 @@ export interface Staff {
   user: { email: string | null; role: Role };
 }
 
+/**
+ * Resumo devolvido por `GET /houses/:id/staff` (story 181).
+ *
+ * A rota nunca devolveu a entidade `Staff` inteira — são só estas quatro
+ * colunas, por minimização de dado pessoal (a rota é lida por SERVANT). O tipo
+ * existe para o contrato parar de mentir `Staff[]`.
+ */
+export interface HouseStaffSummary {
+  id: string;
+  name: string;
+  whatsapp: string | null;
+  photoUrl: string | null;
+}
+
 export interface PromoteToServantInput {
   email?: string;
   password?: string;

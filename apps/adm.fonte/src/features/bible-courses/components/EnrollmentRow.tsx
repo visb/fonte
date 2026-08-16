@@ -1,8 +1,8 @@
-import { Check, Eye, RotateCcw, Trash2, User, X } from 'lucide-react';
+import { Check, Eye, RotateCcw, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { BibleCourseEnrollment } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
+import { PersonAvatar } from '@/components/shared/PersonAvatar';
 import { useUpdateEnrollment, useRemoveEnrollment } from '../hooks/useBibleCourses';
 import { ENROLLMENT_STATUS_LABELS, ENROLLMENT_STATUS_BADGE } from '../constants';
 
@@ -19,18 +19,14 @@ export function EnrollmentRow({ classId, enrollment }: Props) {
   const setStatus = (status: BibleCourseEnrollment['status']) =>
     updateMutation.mutate({ id: enrollment.id, data: { status } });
 
-  const src = api.photoUrl(enrollment.residentPhotoThumbUrl);
-
   return (
     <div className="flex items-center justify-between border rounded px-3 py-2">
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-9 h-9 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
-          {src ? (
-            <img src={src} alt={enrollment.residentName} className="w-full h-full object-cover" />
-          ) : (
-            <User size={16} className="text-muted-foreground" />
-          )}
-        </div>
+        <PersonAvatar
+          size="sm"
+          url={enrollment.residentPhotoThumbUrl}
+          name={enrollment.residentName}
+        />
         <div className="min-w-0">
           <span className="text-sm font-medium">{enrollment.residentName}</span>
           {enrollment.residentHouseName && (

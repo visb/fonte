@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Building2, CalendarDays, Pencil, Trash2, User } from 'lucide-react';
+import { Building2, CalendarDays, Pencil, Trash2 } from 'lucide-react';
 import { FamilyInvestment, ResidentStatus } from '@fonte/types';
-import { api } from '@/lib/api';
 import type { Resident } from '@fonte/api-client';
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import type { BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PersonAvatar } from '@/components/shared/PersonAvatar';
 import { cn } from '@/lib/utils';
 import { RESIDENT_STATUS_LABELS, RESIDENT_STATUS_VARIANT } from '../constants';
 
@@ -100,19 +100,6 @@ function computeAge(birthDate: string | null): number | null {
   return age;
 }
 
-function ResidentAvatar({ url, name }: { url: string | null; name: string }) {
-  const src = api.photoUrl(url);
-  return (
-    <div className="w-10 h-10 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
-      {src ? (
-        <img src={src} alt={name} className="w-full h-full object-cover" />
-      ) : (
-        <User size={18} className="text-muted-foreground" />
-      )}
-    </div>
-  );
-}
-
 interface Props {
   resident: Resident;
   onDelete: () => void;
@@ -138,7 +125,11 @@ export function ResidentCard({ resident, onDelete }: Props) {
         className="absolute inset-0 rounded-lg"
         aria-label={resident.name}
       />
-      <ResidentAvatar url={resident.photoThumbUrl ?? resident.photoUrl} name={resident.name} />
+      <PersonAvatar
+        size="md"
+        url={resident.photoThumbUrl ?? resident.photoUrl}
+        name={resident.name}
+      />
       <div className="flex-1 min-w-0">
         <p className="font-semibold truncate">{resident.name}</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">

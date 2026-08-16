@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Role } from '@fonte/types';
-import { ArrowLeft, KeyRound, Pencil, User } from 'lucide-react';
+import { ArrowLeft, KeyRound, Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useGoBack } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { PersonAvatar } from '@/components/shared/PersonAvatar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { TrackingTab } from '@/features/residents/components/tabs/TrackingTab';
 import { RelativesTab } from '@/features/residents/components/tabs/RelativesTab';
@@ -75,19 +76,13 @@ export function StaffDetailPage() {
         <Button variant="ghost" size="icon" onClick={goBack}>
           <ArrowLeft size={18} />
         </Button>
-        <div
-          className={cn(
-            'w-12 h-12 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden',
-            staff.photoUrl && 'cursor-pointer hover:opacity-80 transition-opacity',
-          )}
+        <PersonAvatar
+          size="lg"
+          url={staff.photoUrl}
+          name={staff.name}
+          className={cn(staff.photoUrl && 'cursor-pointer hover:opacity-80 transition-opacity')}
           onClick={() => staff.photoUrl && setPhotoModalOpen(true)}
-        >
-          {staff.photoUrl ? (
-            <img src={api.photoUrl(staff.photoUrl)!} alt={staff.name} className="w-full h-full object-cover" />
-          ) : (
-            <User size={22} className="text-muted-foreground" />
-          )}
-        </div>
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold truncate">{staff.name}</h1>

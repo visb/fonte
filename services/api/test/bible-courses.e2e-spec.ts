@@ -7,6 +7,12 @@ import * as request from 'supertest';
 import { BibleCourseEnrollmentStatus } from '@fonte/types';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
 
+// PNG 1x1 transparente válido — o upload de foto passa pelo sharp.
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64',
+);
+
 describe('BibleCourseController (e2e)', () => {
   let app: INestApplication;
   let token: string;
@@ -633,6 +639,75 @@ describe('BibleCourseController (e2e)', () => {
       expect(mark.body.markedAt).toBeDefined();
 
       expect(await isEligible(residentId)).toBe(false);
+    });
+  });
+
+  // Story 180: a listagem de matriculados mostra a foto do filho — o detalhe da
+  // turma passa a devolver a thumb junto de cada matrícula.
+  describe('enrollment thumbs no detalhe da turma (story 180)', () => {
+    let classId: string;
+    let withPhotoId: string;
+    let withoutPhotoId: string;
+
+    beforeAll(async () => {
+      const klass = await request(app.getHttpServer())
+        .post(`${BASE}/bible-course/classes`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Turma Foto ${Date.now()}`, houseId, startDate: '2026-06-01', endDate: '2026-09-01' })
+        .expect(201);
+      classId = klass.body.id;
+      createdClassIds.push(classId);
+
+      const withPhoto = await request(app.getHttpServer())
+        .post(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Com Foto ${Date.now()}`, houseId, status: 'ACTIVE', entryDate: '2020-01-01' })
+        .expect(201);
+      withPhotoId = withPhoto.body.id;
+
+      await request(app.getHttpServer())
+        .post(`${BASE}/residents/${withPhotoId}/photo`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .attach('file', TINY_PNG, { filename: 'foto.png', contentType: 'image/png' })
+        .expect(201);
+
+      const withoutPhoto = await request(app.getHttpServer())
+        .post(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Sem Foto ${Date.now()}`, houseId, status: 'ACTIVE', entryDate: '2020-01-01' })
+        .expect(201);
+      withoutPhotoId = withoutPhoto.body.id;
+
+      for (const residentId of [withPhotoId, withoutPhotoId]) {
+        await request(app.getHttpServer())
+          .post(`${BASE}/bible-course/classes/${classId}/enrollments`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ residentId })
+          .expect(201);
+      }
+    });
+
+    it('devolve residentPhotoThumbUrl em cada matrícula (valor e null)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/bible-course/classes/${classId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const enrollments = res.body.enrollments as Array<{
+        residentId: string;
+        residentPhotoThumbUrl: string | null;
+      }>;
+      expect(enrollments).toHaveLength(2);
+      // A chave existe em todas — o contrato é nullable, não opcional.
+      for (const e of enrollments) {
+        expect(e).toHaveProperty('residentPhotoThumbUrl');
+      }
+
+      const comFoto = enrollments.find((e) => e.residentId === withPhotoId);
+      const semFoto = enrollments.find((e) => e.residentId === withoutPhotoId);
+      expect(typeof comFoto?.residentPhotoThumbUrl).toBe('string');
+      expect(comFoto?.residentPhotoThumbUrl).toBeTruthy();
+      expect(semFoto?.residentPhotoThumbUrl).toBeNull();
     });
   });
 });

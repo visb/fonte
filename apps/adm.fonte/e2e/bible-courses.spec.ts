@@ -1,34 +1,65 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { login, TEST_ADMIN } from './helpers/auth';
-
-const API = 'http://localhost:3001/api/v1';
+import { login } from './helpers/auth';
+import { API_URL, loginApi } from './helpers/api';
 
 /**
- * Cria um filho elegível para sugestão de matrícula (story 127).
+ * Cria um filho ACTIVE com entrada antiga e devolve o id.
  *
- * O seed nasce com `entryDate` = hoje e a regra exige 3+ meses de casa, então
- * sem isto o painel de sugeridos fica vazio e o teste vira skip — ou seja, o
- * fluxo não seria verificado. Criar pela API é o único jeito de ter data de
- * entrada antiga: o wizard sempre usa hoje.
+ * Criar pela API é o único jeito de ter data de entrada no passado: o wizard
+ * sempre usa hoje, e a regra de elegibilidade exige 3+ meses de casa.
  */
-async function seedEligibleResident(
+async function createOldActiveResident(
   request: APIRequestContext,
   name: string,
-): Promise<void> {
-  const loginRes = await request.post(`${API}/auth/login`, {
-    data: { identifier: TEST_ADMIN.email, password: TEST_ADMIN.password },
-  });
-  const token = (await loginRes.json()).accessToken as string;
-  const headers = { Authorization: `Bearer ${token}` };
+): Promise<string> {
+  const headers = { Authorization: `Bearer ${await loginApi(request)}` };
 
-  const housesRes = await request.get(`${API}/houses`, { headers });
+  const housesRes = await request.get(`${API_URL}/houses`, { headers });
   const houses = (await housesRes.json()) as Array<{ id: string }>;
 
-  const res = await request.post(`${API}/residents`, {
+  const res = await request.post(`${API_URL}/residents`, {
     headers,
     data: { name, houseId: houses[0].id, status: 'ACTIVE', entryDate: '2020-01-01' },
   });
   expect(res.status()).toBe(201);
+  return (await res.json()).id as string;
+}
+
+/**
+ * Cria um filho elegível para sugestão de matrícula (story 127).
+ *
+ * Sem ele o painel de sugeridos fica vazio e o teste vira skip — ou seja, o
+ * fluxo não seria verificado.
+ */
+async function seedEligibleResident(request: APIRequestContext, name: string): Promise<void> {
+  await createOldActiveResident(request, name);
+}
+
+/**
+ * Cria um filho ativo COM foto (story 180) e devolve o id.
+ *
+ * O seed não sobe foto de ninguém, e a linha de matrícula só mostra `<img>`
+ * quando há thumb — sem isto o teste provaria o fallback, não o avatar.
+ */
+async function seedResidentWithPhoto(
+  request: APIRequestContext,
+  name: string,
+): Promise<string> {
+  const residentId = await createOldActiveResident(request, name);
+  const headers = { Authorization: `Bearer ${await loginApi(request)}` };
+
+  // 1x1 PNG transparente — o upload passa pelo sharp e gera a thumb.
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  const photo = await request.post(`${API_URL}/residents/${residentId}/photo`, {
+    headers,
+    multipart: { file: { name: 'foto.png', mimeType: 'image/png', buffer: png } },
+  });
+  expect(photo.status()).toBe(201);
+
+  return residentId;
 }
 
 test.describe('Curso Bíblico', () => {
@@ -208,6 +239,45 @@ test.describe('Curso Bíblico', () => {
     await page.getByRole('button', { name: 'Desfazer' }).click();
     await expect(page.getByText('Marcação removida.')).toBeVisible();
     await expect(rowBox).toBeVisible();
+  });
+
+  // Story 180: quem opera a turma precisa reconhecer o matriculado (foto) e
+  // chegar na ficha dele sem sair da tela — mesma aba, por decisão travada.
+  test('matriculado mostra foto e "Ver perfil" leva à ficha na mesma aba (story 180)', async ({
+    page,
+    context,
+    request,
+  }) => {
+    const residentName = `Com Foto E2E ${ts()}`;
+    const residentId = await seedResidentWithPhoto(request, residentName);
+
+    const name = `Turma Perfil ${ts()}`;
+    await createClass(page, name);
+
+    await page.getByText(name).click();
+    await expect(page).toHaveURL(/\/bible-courses\/.+/);
+
+    // Matricula o filho recém-criado (busca pelo nome para não pegar outro).
+    await page.getByRole('button', { name: 'Matricular filho' }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByPlaceholder('Buscar filho...').fill(residentName);
+    // A busca é debounced: esperar a lista já filtrada evita matricular o
+    // primeiro filho da listagem inteira.
+    await expect(dialog.getByRole('button', { name: 'Matricular' })).toHaveCount(1);
+    await expect(dialog.getByText(residentName)).toBeVisible();
+    await dialog.getByRole('button', { name: 'Matricular' }).click();
+    await page.keyboard.press('Escape');
+
+    // A linha de matrícula traz a foto do filho.
+    await expect(page.getByRole('img', { name: residentName })).toBeVisible();
+
+    // "Ver perfil" navega na MESMA aba: nenhuma página nova é aberta no contexto.
+    const link = page.getByLabel(`Ver perfil de ${residentName}`);
+    await expect(link).toHaveAttribute('href', `/residents/${residentId}`);
+    await link.click();
+    await expect(page).toHaveURL(`/residents/${residentId}`);
+    expect(context.pages()).toHaveLength(1);
+    await expect(page.getByRole('heading', { name: residentName })).toBeVisible();
   });
 
   // Story 126: feedback de ação é toast (sonner), não texto inline no dialog.

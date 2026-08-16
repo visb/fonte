@@ -1,6 +1,8 @@
-import { Check, RotateCcw, Trash2, X } from 'lucide-react';
+import { Check, Eye, RotateCcw, Trash2, User, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { BibleCourseEnrollment } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
 import { useUpdateEnrollment, useRemoveEnrollment } from '../hooks/useBibleCourses';
 import { ENROLLMENT_STATUS_LABELS, ENROLLMENT_STATUS_BADGE } from '../constants';
 
@@ -17,18 +19,39 @@ export function EnrollmentRow({ classId, enrollment }: Props) {
   const setStatus = (status: BibleCourseEnrollment['status']) =>
     updateMutation.mutate({ id: enrollment.id, data: { status } });
 
+  const src = api.photoUrl(enrollment.residentPhotoThumbUrl);
+
   return (
     <div className="flex items-center justify-between border rounded px-3 py-2">
-      <div className="min-w-0">
-        <span className="text-sm font-medium">{enrollment.residentName}</span>
-        {enrollment.residentHouseName && (
-          <p className="text-xs text-muted-foreground truncate">{enrollment.residentHouseName}</p>
-        )}
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 rounded-full border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+          {src ? (
+            <img src={src} alt={enrollment.residentName} className="w-full h-full object-cover" />
+          ) : (
+            <User size={16} className="text-muted-foreground" />
+          )}
+        </div>
+        <div className="min-w-0">
+          <span className="text-sm font-medium">{enrollment.residentName}</span>
+          {enrollment.residentHouseName && (
+            <p className="text-xs text-muted-foreground truncate">{enrollment.residentHouseName}</p>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <span className={`text-xs px-2 py-0.5 rounded-full ${ENROLLMENT_STATUS_BADGE[enrollment.status]}`}>
           {ENROLLMENT_STATUS_LABELS[enrollment.status]}
         </span>
+        {/* Mesma aba, de propósito (story 180, decisão 1): o link de ficha do
+            painel de elegíveis abre em nova aba; aqui não. */}
+        <Button variant="ghost" size="icon" asChild title={`Ver perfil de ${enrollment.residentName}`}>
+          <Link
+            to={`/residents/${enrollment.residentId}`}
+            aria-label={`Ver perfil de ${enrollment.residentName}`}
+          >
+            <Eye size={15} />
+          </Link>
+        </Button>
         {enrollment.status === 'ENROLLED' ? (
           <>
             <Button variant="ghost" size="icon" title="Concluir" disabled={busy} onClick={() => setStatus('COMPLETED')}>

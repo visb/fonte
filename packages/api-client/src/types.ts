@@ -986,6 +986,8 @@ export interface BibleCourseEnrollment {
   residentName: string;
   residentHouseId: string | null;
   residentHouseName: string | null;
+  // Thumb do filho na listagem de matriculados (story 180); null sem foto.
+  residentPhotoThumbUrl: string | null;
   status: BibleCourseEnrollmentStatus;
   enrolledAt: string;
   completedAt: string | null;

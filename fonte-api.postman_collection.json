@@ -3838,6 +3838,7 @@
           "name": "Get Class by ID",
           "request": {
             "method": "GET",
+            "description": "Detalhe da turma com as matrículas. Story 180 — cada item de `enrollments` passa a trazer `residentPhotoThumbUrl` (thumb do filho; `null` quando não há foto), ao lado de `residentId`, `residentName`, `residentHouseId`, `residentHouseName`, `status`, `enrolledAt`, `completedAt` e `notes`. Ex.: { \"id\": \"...\", \"name\": \"Turma 2026/1\", \"enrollments\": [{ \"id\": \"...\", \"residentId\": \"...\", \"residentName\": \"João\", \"residentHouseId\": \"...\", \"residentHouseName\": \"Casa Belém\", \"residentPhotoThumbUrl\": \"/uploads/residents/joao-thumb.jpg\", \"status\": \"ENROLLED\", \"enrolledAt\": \"2026-06-01T12:00:00.000Z\", \"completedAt\": null, \"notes\": null }] }. A foto cheia não vem nesta rota — só a thumb.",
             "url": {
               "raw": "{{baseUrl}}/bible-course/classes/{{bibleClassId}}",
               "host": [

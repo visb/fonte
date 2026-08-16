@@ -140,6 +140,9 @@ export class BibleCourseService {
       residentName: string;
       residentHouseId: string | null;
       residentHouseName: string | null;
+      // Só a thumb (story 180): a linha de matrícula renderiza 36px; a foto
+      // cheia mora na ficha do filho, a um clique do botão "Ver perfil".
+      residentPhotoThumbUrl: string | null;
       status: string;
       enrolledAt: Date;
       completedAt: Date | null;
@@ -169,6 +172,7 @@ export class BibleCourseService {
               r.name        AS "residentName",
               r.house_id    AS "residentHouseId",
               rh.name       AS "residentHouseName",
+              r.photo_thumb_url AS "residentPhotoThumbUrl",
               e.status,
               e.enrolled_at  AS "enrolledAt",
               e.completed_at AS "completedAt",

@@ -59,6 +59,63 @@ describe('BibleCourseService.findOneClass', () => {
     const result = await service.findOneClass('class-1');
     expect(result.enrollments).toHaveLength(1);
   });
+
+  // Story 180: a listagem de matriculados mostra a foto do filho — é uma coluna
+  // a mais no JOIN que já existia, sem query nova.
+  it('selects the resident thumb in the enrollments query (story 180)', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce([{ id: 'class-1' }])
+      .mockResolvedValueOnce([]);
+    const service = makeService(makeRepo({}, query));
+
+    await service.findOneClass('class-1');
+    const sql = (query.mock.calls[1][0] as string).replace(/\s+/g, ' ');
+    expect(sql).toContain('r.photo_thumb_url AS "residentPhotoThumbUrl"');
+    // Continua sendo o mesmo JOIN de sempre — nenhuma consulta extra por linha.
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
+  it('propagates residentPhotoThumbUrl with a value and as null (story 180)', async () => {
+    const rows = [
+      {
+        id: 'e1',
+        residentId: 'r1',
+        residentName: 'Com Foto',
+        residentHouseId: 'h1',
+        residentHouseName: 'Casa 1',
+        residentPhotoThumbUrl: '/uploads/r1-thumb.jpg',
+        status: 'ENROLLED',
+        enrolledAt: new Date('2026-06-01T00:00:00Z'),
+        completedAt: null,
+        notes: null,
+      },
+      {
+        id: 'e2',
+        residentId: 'r2',
+        residentName: 'Sem Foto',
+        residentHouseId: null,
+        residentHouseName: null,
+        residentPhotoThumbUrl: null,
+        status: 'COMPLETED',
+        enrolledAt: new Date('2026-06-02T00:00:00Z'),
+        completedAt: new Date('2026-07-02T00:00:00Z'),
+        notes: 'obs',
+      },
+    ];
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce([{ id: 'class-1', name: 'Turma A' }])
+      .mockResolvedValueOnce(rows);
+    const service = makeService(makeRepo({}, query));
+
+    const result = await service.findOneClass('class-1');
+
+    expect(result.enrollments[0].residentPhotoThumbUrl).toBe('/uploads/r1-thumb.jpg');
+    expect(result.enrollments[1].residentPhotoThumbUrl).toBeNull();
+    // Regressão: os campos que já existiam continuam saindo iguais.
+    expect(result.enrollments).toEqual(rows);
+  });
 });
 
 describe('BibleCourseService.updateClass', () => {

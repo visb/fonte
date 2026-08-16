@@ -60,7 +60,7 @@ Rodada de autorun **175–181** — aberta em 2026-08-14 (estendida com a 181 em
 | 3 | 176 — ops: tab "Menu" no lugar de "Perfil" | [OK] | ops unit 1146 · e2e-web 19 | ec5f8b7 d72f9f3 | e10a321 |
 | 4 | 179 — ops: modal de detalhes do filho na contagem + foto em tela cheia | [OK] | ops unit 1186 · e2e-web 20 | 4c0770b | 1080774 |
 | 5 | 178 — templates de recibo: estrutura genérica + contribuição mensal | [OK] | api 1592 · e2e 561 · adm unit 1641 · adm e2e 38 · api-client 292 | d1eed32 | 8ad0314 |
-| 6 | 180 — adm: foto e acesso ao perfil na listagem de matriculados | [ ] | | | |
+| 6 | 180 — adm: foto e acesso ao perfil na listagem de matriculados | [OK] | api 1594 · e2e 562 · adm unit 1646 · adm e2e 181 | 75fd042 | 2352c34 |
 | 7 | 181 — adm: avatar nas abas Filhos e Servos do detalhe da casa | [ ] | | | |
 
 ## Log
@@ -95,6 +95,12 @@ Rodada de autorun **175–181** — aberta em 2026-08-14 (estendida com a 181 em
      Nota: `AttachmentsTab` ganhou filtro defensivo de 1 linha (`kind !== RECEIPT`) — o plano dizia
      "sem mudança", mas o teste exigido pela Validação era impossível sem ele; `payerCpf` sai como
      "não informado" (Associate ainda não tem CPF no schema).
+
+[OK] 180 — testes: api 1594/1594 · e2e 562/562 · adm unit 1646/1646 · adm e2e 181/181; cobertura
+     EnrollmentRow 100%, api global 92.5%, adm 93.4% — commit: 75fd042 — merge: 2352c34 — 2026-08-16
+     Nota (ambiente, pré-existente): suítes e2e só são idempotentes com `pnpm test:setup` antes —
+     `residents.spec.ts` deixa as 6 parcelas PAID e `test:adm` antes do `test:api:e2e` derruba o
+     `afterAll` de `storerooms.e2e-spec.ts` (FK `receivable_product_contributions` → CHK xor).
 ```
 
 ## Resumo final

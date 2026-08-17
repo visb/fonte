@@ -11,6 +11,7 @@
     "build:web": "expo export --platform web",
     "build:web:test": "EXPO_PUBLIC_API_URL=http://localhost:3001/api/v1 expo export --platform web --clear",
     "build:e2e:android": "node scripts/build-e2e-android.js",
+    "maestro:flakiness": "node scripts/maestro-flakiness-run.js",
     "start:test": "EXPO_PUBLIC_API_URL=http://10.0.2.2:3001/api/v1 expo start --android",
     "start:web": "npx serve dist",
     "test:maestro": "maestro test e2e/",

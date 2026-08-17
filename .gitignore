@@ -9,6 +9,12 @@ todo.md
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 
+# Artefatos da bancada de flakiness da suíte Maestro (story 187):
+# saída do runner, debug do Maestro (screenshot + hierarquia de views) e logcat
+# por batelada. Pesados e por definição de uma máquina só — o que vai pro repo é
+# o laudo (stories/187-laudo-maestro-flakiness.md), não a evidência bruta.
+.maestro-flakiness/
+
 # PII real — planilha de referência do import de filhos (story 106). Fixtures anonimizadas
 # vivem em services/api/test/fixtures/ e não são bloqueadas por este padrão.
 /stories/*.xlsx

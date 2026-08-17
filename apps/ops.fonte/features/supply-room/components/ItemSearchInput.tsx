@@ -77,6 +77,7 @@ export function ItemSearchInput({
           {filteredItems.map((i) => (
             <TouchableOpacity
               key={i.id}
+              accessibilityLabel={`Selecionar ${i.name}`}
               className="px-4 py-3 border-b border-gray-100"
               onPress={() => handleSelect(i)}
             >

@@ -70,8 +70,12 @@ export function CatalogProductPicker({ value, items, loading, error, onSelect }:
             </View>
           ) : (
             filtered.map((item) => (
+              // Story 183: alvo nomeado da linha. Sem ele o e2e só tem o nome do
+              // item para mirar, que é exatamente o texto já digitado no campo de
+              // busca — o tap cai no TextInput e nada é selecionado.
               <TouchableOpacity
                 key={item.id}
+                accessibilityLabel={`Selecionar ${item.name}`}
                 className="px-4 py-3 border-b border-gray-100"
                 onPress={() => handleSelect(item)}
               >

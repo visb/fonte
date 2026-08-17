@@ -6,6 +6,7 @@ jest.mock('@/lib/api', () => ({
     supplyRoom: { listItems: jest.fn() },
     residents: {
       getReceivables: jest.fn(),
+      getReceivablesSummary: jest.fn(),
       getProductContributions: jest.fn(),
       declareProductContributions: jest.fn(),
     },
@@ -55,16 +56,27 @@ describe('useInventoryCatalog', () => {
 });
 
 describe('useResidentReceivables', () => {
-  it('busca o carnê do filho', async () => {
-    m.residents.getReceivables.mockResolvedValue([{ id: 'rc1' }]);
+  // Story 186 — o ops usa o RECORTE. A rota cheia (`getReceivables`) é
+  // ADMIN/COORDINATOR e devolvia 403 para o servo: chamá-la aqui era o que
+  // matava a declaração de contribuição em produtos em campo.
+  it('busca o recorte do carnê, não o carnê cheio', async () => {
+    m.residents.getReceivablesSummary.mockResolvedValue([
+      { id: 'rc1', referenceMonth: '2026-08-01', status: 'PENDING' },
+    ]);
     const { result } = renderHookWithClient(() => useResidentReceivables('res-1'));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.residents.getReceivables).toHaveBeenCalledWith('res-1');
+    expect(m.residents.getReceivablesSummary).toHaveBeenCalledWith('res-1');
+    expect(m.residents.getReceivables).not.toHaveBeenCalled();
   });
 
   it('não dispara sem residentId', () => {
     renderHookWithClient(() => useResidentReceivables(undefined));
-    expect(m.residents.getReceivables).not.toHaveBeenCalled();
+    expect(m.residents.getReceivablesSummary).not.toHaveBeenCalled();
+  });
+
+  it('respeita enabled=false', () => {
+    renderHookWithClient(() => useResidentReceivables('res-1', { enabled: false }));
+    expect(m.residents.getReceivablesSummary).not.toHaveBeenCalled();
   });
 });
 

@@ -260,17 +260,39 @@ describe('Offline snapshot da casa (e2e)', () => {
       expect(snapshot.body.attachments[residentId][0].fileUrl).toBe(individual.body[0].fileUrl);
     });
 
-    it('o servo não recebe o carnê (paridade com GET /residents/:id/receivables)', async () => {
+    // Story 186 — o pacote passou a levar o RECORTE do carnê, para toda role de
+    // staff. O que ele NÃO leva (valor, pagamento) e o que continua fechado (a
+    // rota cheia) são as duas metades da decisão, asseguradas aqui juntas.
+    it('o servo recebe o recorte do carnê, e a rota cheia continua 403 para ele', async () => {
       const res = await request(app.getHttpServer())
         .get(snapshotUrl(houseId))
         .set('Authorization', `Bearer ${servantToken}`)
         .expect(200);
-      expect(res.body.receivables).toEqual({});
+
+      expect(res.body.receivables[residentId].length).toBeGreaterThan(0);
 
       await request(app.getHttpServer())
         .get(`${BASE}/residents/${residentId}/receivables`)
         .set('Authorization', `Bearer ${servantToken}`)
         .expect(403);
+    });
+
+    it('nenhuma parcela do pacote carrega valor ou pagamento — para role nenhuma', async () => {
+      for (const token of [servantToken, coordToken, adminToken]) {
+        const res = await request(app.getHttpServer())
+          .get(snapshotUrl(houseId))
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        for (const item of res.body.receivables[residentId]) {
+          expect(Object.keys(item).sort()).toEqual([
+            'id',
+            'referenceMonth',
+            'residentId',
+            'status',
+          ]);
+        }
+      }
     });
   });
 

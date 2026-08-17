@@ -50,7 +50,7 @@ function build(over: Partial<Record<keyof Deps, Record<string, jest.Mock>>> = {}
       ...over.followUps,
     },
     receivables: {
-      findByResidents: jest.fn().mockResolvedValue([]),
+      findSummariesByResidents: jest.fn().mockResolvedValue([]),
       findDeletedIdsSince: jest.fn().mockResolvedValue([]),
       ...over.receivables,
     },
@@ -103,7 +103,7 @@ describe('OfflineSyncService — sincronização completa', () => {
         findByResidents: jest.fn().mockResolvedValue([{ id: 'f1', residentId: 'r1' }]),
       },
       receivables: {
-        findByResidents: jest.fn().mockResolvedValue([{ id: 'rc1', residentId: 'r2' }]),
+        findSummariesByResidents: jest.fn().mockResolvedValue([{ id: 'rc1', residentId: 'r2' }]),
       },
       consents: {
         findForSubjects: jest
@@ -159,19 +159,72 @@ describe('OfflineSyncService — sincronização completa', () => {
     expect(mocks.followUps.findByResidents).toHaveBeenCalledWith(['r1'], Role.ADMIN, undefined);
   });
 
-  it('o carnê NÃO desce para o servo — o pacote não é atalho de permissão', async () => {
+  // Story 186 — o que desce deixou de ser "o carnê": é o RECORTE (mês + status).
+  // O teste anterior afirmava "o carnê NÃO desce para o servo"; a decisão que ele
+  // guardava continua viva, agora em duas asserções mais fortes.
+  it('o RECORTE do carnê desce para o servo — é o que fecha a contribuição em produtos', async () => {
     const { service, mocks } = build({
       residents: { findPresentByHouse: jest.fn().mockResolvedValue([residentRow('r1')]) },
       receivables: {
-        findByResidents: jest.fn().mockResolvedValue([{ id: 'rc1', residentId: 'r1' }]),
+        findSummariesByResidents: jest
+          .fn()
+          .mockResolvedValue([
+            { id: 'rc1', residentId: 'r1', referenceMonth: '2026-08-01', status: 'PENDING' },
+          ]),
       },
     });
 
     const snapshot = await service.houseSnapshot(HOUSE, {}, SERVANT);
 
-    // `GET /residents/:id/receivables` é ADMIN/COORDINATOR: a paridade se mantém.
-    expect(snapshot.receivables).toEqual({});
-    expect(mocks.receivables.findByResidents).not.toHaveBeenCalled();
+    expect(snapshot.receivables.r1).toHaveLength(1);
+    expect(mocks.receivables.findSummariesByResidents).toHaveBeenCalledWith(['r1'], undefined);
+  });
+
+  it.each([
+    ['SERVANT', SERVANT],
+    ['COORDINATOR', COORDINATOR],
+    ['ADMIN', ADMIN],
+  ])(
+    'o pacote de %s vem do recorte, nunca do carnê cheio',
+    async (_role, user) => {
+      // A catraca desta camada é a FONTE do bloco: quem recorta as colunas é a
+      // projeção do repositório (coberta em resident-receivable.service.spec).
+      // Aqui o mock expõe as duas leituras e o teste prova que a cheia — a que
+      // traz valor e pagamento — não é chamada para role nenhuma.
+      const { service, mocks } = build({
+        residents: { findPresentByHouse: jest.fn().mockResolvedValue([residentRow('r1')]) },
+        receivables: {
+          findByResidents: jest.fn().mockResolvedValue([]),
+          findSummariesByResidents: jest.fn().mockResolvedValue([
+            { id: 'rc1', residentId: 'r1', referenceMonth: '2026-08-01', status: 'PENDING' },
+          ]),
+        },
+      });
+
+      const snapshot = await service.houseSnapshot(HOUSE, {}, user);
+
+      expect(mocks.receivables.findByResidents).not.toHaveBeenCalled();
+      for (const item of snapshot.receivables.r1) {
+        expect(Object.keys(item).sort()).toEqual([
+          'id',
+          'referenceMonth',
+          'residentId',
+          'status',
+        ]);
+      }
+    },
+  );
+
+  it('o recorte de access_level da timeline continua valendo para o servo', async () => {
+    const { service, mocks } = build({
+      residents: { findPresentByHouse: jest.fn().mockResolvedValue([residentRow('r1')]) },
+    });
+
+    await service.houseSnapshot(HOUSE, {}, SERVANT);
+
+    // Liberar o recorte do carnê não solta o vizinho: a timeline continua
+    // recortada por role dentro do `findByResidents` do follow-up.
+    expect(mocks.followUps.findByResidents).toHaveBeenCalledWith(['r1'], Role.SERVANT, undefined);
   });
 });
 
@@ -202,7 +255,10 @@ describe('OfflineSyncService — delta', () => {
       Role.COORDINATOR,
       new Date(since),
     );
-    expect(mocks.receivables.findByResidents).toHaveBeenCalledWith(['r1', 'r2'], new Date(since));
+    expect(mocks.receivables.findSummariesByResidents).toHaveBeenCalledWith(
+      ['r1', 'r2'],
+      new Date(since),
+    );
   });
 
   it('anexo vem completo, e só para o filho que está no payload (decisão 5)', async () => {
@@ -264,6 +320,20 @@ describe('OfflineSyncService — delta', () => {
     });
     expect(mocks.residents.findDepartedIdsSince).toHaveBeenCalledWith(HOUSE, new Date(since));
     expect(mocks.followUps.findDeletedIdsSince).toHaveBeenCalledWith(['r1'], new Date(since));
+  });
+
+  // Story 186: o recorte desce para o servo, então o apagado também precisa —
+  // senão a parcela cancelada/apagada ficaria eterna no aparelho dele.
+  it('o servo também recebe os recortes apagados para limpar o store', async () => {
+    const { service, mocks } = build({
+      residents: { findPresentIdsByHouse: jest.fn().mockResolvedValue(['r1']) },
+      receivables: { findDeletedIdsSince: jest.fn().mockResolvedValue(['rc-morto']) },
+    });
+
+    const snapshot = await service.houseSnapshot(HOUSE, { since }, SERVANT);
+
+    expect(snapshot.deleted.receivables).toEqual(['rc-morto']);
+    expect(mocks.receivables.findDeletedIdsSince).toHaveBeenCalledWith(['r1'], new Date(since));
   });
 
   it('since mais velho que a janela máxima vira sincronização completa', async () => {

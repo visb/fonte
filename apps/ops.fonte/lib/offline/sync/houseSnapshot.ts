@@ -90,8 +90,9 @@ function buildFullHouseData(
       kind: 'consents',
       data: mergeConsentStatuses(null, (snapshot.consents[id] ?? []) as ConsentRecord[]),
     });
-    // Carnê é ADMIN/COORDINATOR: para o servo o bloco vem `{}` e isso **não** é
-    // "carnê vazio". Só grava quem realmente veio no pacote — assim a tela
+    // O bloco traz o RECORTE do carnê (story 186: mês + status, sem valor nem
+    // pagamento) e desce para toda role de staff. Bloco ausente continua **não**
+    // sendo "carnê vazio": só grava quem realmente veio no pacote — assim a tela
     // continua buscando na rede em vez de mostrar um carnê que ninguém enviou.
     const receivables = snapshot.receivables[id];
     if (receivables) {

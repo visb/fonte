@@ -559,7 +559,7 @@
           "name": "Offline Snapshot da Casa (completo)",
           "request": {
             "method": "GET",
-            "description": "Story 177 — pacote offline da casa num request só (substitui o fan-out de 1 + N×4 do ops.fonte). Sem `since`, devolve tudo com `full: true`: filhos PRESENTES (ACTIVE | DISCIPLINE | TEMP_LEAVE), followUps, consents, receivables, attachments (indexados por residentId) e os ministérios da casa. `syncedAt` é o relógio do SERVIDOR e é o que o cliente guarda para o próximo `since`. Acesso: ADMIN, ou staff (COORDINATOR/SERVANT) DA PRÓPRIA casa — staff de outra casa, servo sem casa, RELATIVE e RESIDENT recebem 403. O carnê (`receivables`) só desce para ADMIN/COORDINATOR, igual à rota individual.",
+            "description": "Story 177 — pacote offline da casa num request só (substitui o fan-out de 1 + N×4 do ops.fonte). Sem `since`, devolve tudo com `full: true`: filhos PRESENTES (ACTIVE | DISCIPLINE | TEMP_LEAVE), followUps, consents, receivables, attachments (indexados por residentId) e os ministérios da casa. `syncedAt` é o relógio do SERVIDOR e é o que o cliente guarda para o próximo `since`. Acesso: ADMIN, ou staff (COORDINATOR/SERVANT) DA PRÓPRIA casa — staff de outra casa, servo sem casa, RELATIVE e RESIDENT recebem 403. Story 186 — o bloco `receivables` leva o RECORTE do carnê (`{ id, residentId, referenceMonth, status }`), nunca valor ou pagamento, e desce para toda role de staff; o carnê cheio continua só em `GET /residents/:id/receivables` (ADMIN/COORDINATOR).",
             "url": {
               "raw": "{{baseUrl}}/houses/{{houseId}}/offline-snapshot",
               "host": [
@@ -1628,7 +1628,26 @@
                 "receivables"
               ]
             },
-            "description": "Lista o carnê de contribuição do acolhido (parcelas mensais). Gera 6 parcelas obrigatórias a partir da entrada e rola garantindo ≥1 mês futuro aberto enquanto ativo. Plano SOCIAL ou acolhido isento não geram parcelas. Ordenado por `referenceMonth` ASC.\n\nStory 164 — cada parcela traz `admissionId`: o acolhimento dono da competência (`null` em parcela órfã, de filho sem acolhimento vivo). O endpoint devolve TODAS as parcelas do filho, sem filtro nem query param; o agrupamento por acolhimento é do cliente, cruzando com `GET /residents/:id/admissions`.\n\nResponse (item): `{ id, residentId, admissionId, referenceMonth, dueDate, amount, familyInvestment, paidAmount, paidFamilyInvestment, mandatory, status, paidAt, paymentMethod, attachmentUrl, notes, createdByName, createdAt, productContributions[] }`.\n\nRoles: ADMIN, COORDINATOR."
+            "description": "Lista o carnê de contribuição do acolhido (parcelas mensais). Gera 6 parcelas obrigatórias a partir da entrada e rola garantindo ≥1 mês futuro aberto enquanto ativo. Plano SOCIAL ou acolhido isento não geram parcelas. Ordenado por `referenceMonth` ASC.\n\nStory 164 — cada parcela traz `admissionId`: o acolhimento dono da competência (`null` em parcela órfã, de filho sem acolhimento vivo). O endpoint devolve TODAS as parcelas do filho, sem filtro nem query param; o agrupamento por acolhimento é do cliente, cruzando com `GET /residents/:id/admissions`.\n\nResponse (item): `{ id, residentId, admissionId, referenceMonth, dueDate, amount, familyInvestment, paidAmount, paidFamilyInvestment, mandatory, status, paidAt, paymentMethod, attachmentUrl, notes, createdByName, createdAt, productContributions[] }`.\n\nRoles: ADMIN, COORDINATOR. Story 186 — o servo NÃO lê esta rota; para localizar a parcela ele usa `GET /residents/:id/receivables/summary`."
+          }
+        },
+        {
+          "name": "Get Resident Receivables Summary (recorte do carnê)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "receivables",
+                "summary"
+              ]
+            },
+            "description": "Story 186 — RECORTE do carnê, para o `ops.fonte`. Devolve apenas o necessário para localizar a parcela em que o operador declara contribuição em produtos (liberada a SERVANT+ desde a story 112): mês de referência e status. Valor, pagamento, plano e histórico NÃO saem por aqui — o carnê cheio segue em `GET /residents/:id/receivables`, restrito a ADMIN/COORDINATOR.\n\nMesmo conjunto e mesma ordem de parcelas da rota cheia (`referenceMonth` ASC), inclusive rolando o carnê do filho ativo. `:id` inexistente → 404.\n\nResponse (item): `{ id, referenceMonth, status }`.\n\nRoles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {

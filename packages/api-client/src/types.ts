@@ -22,6 +22,7 @@ import type {
   ReceivableStatus,
   PaymentMethod,
   ResidentReceivable,
+  ResidentReceivableSummary,
   RegisterReceivablePaymentInput,
   UpdateContributionPlanInput,
   SetContributionExemptInput,
@@ -121,6 +122,7 @@ export type {
   ReceivableStatus,
   PaymentMethod,
   ResidentReceivable,
+  ResidentReceivableSummary,
   RegisterReceivablePaymentInput,
   UpdateContributionPlanInput,
   SetContributionExemptInput,
@@ -1465,12 +1467,16 @@ export { SNAPSHOT_MAX_DELTA_AGE_DAYS };
  * Substitui o fan-out de `1 + N×4` requests que o `ops.fonte` fazia para aquecer
  * a casa. `syncedAt` é o relógio do servidor e é o que o cliente guarda para o
  * próximo `since`; `full: true` manda substituir o store em vez de mesclar.
+ *
+ * O bloco `receivables` leva o **recorte** do carnê (story 186) — mês, status e
+ * o filho dono da parcela —, nunca valor ou pagamento: o pacote vai para o
+ * aparelho de todo operador da casa.
  */
 export type HouseOfflineSnapshotResponse = HouseOfflineSnapshot<{
   resident: Resident;
   followUp: ResidentFollowUp;
   consent: ConsentRecord;
-  receivable: ResidentReceivable;
+  receivable: ResidentReceivableSummary & { residentId: string };
   attachment: ResidentAttachment;
   ministry: HouseMinistry;
 }>;

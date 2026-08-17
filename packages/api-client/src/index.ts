@@ -110,6 +110,7 @@ export type {
   ReceivableStatus,
   PaymentMethod,
   ResidentReceivable,
+  ResidentReceivableSummary,
   RegisterReceivablePaymentInput,
   UpdateContributionPlanInput,
   SetContributionExemptInput,

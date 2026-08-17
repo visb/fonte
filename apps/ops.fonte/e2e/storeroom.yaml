@@ -11,8 +11,14 @@ appId: org.fonte.ops
 - tapOn: "Buscar item..."
 - inputText: "Arroz"
 - waitForAnimationToEnd
-- assertVisible: "Arroz"
-- tapOn: "Arroz"
+# Story 183: mirar a linha do dropdown pelo accessibilityLabel, não pelo nome do
+# item. Depois do inputText o próprio TextInput contém "Arroz", então um
+# `tapOn: "Arroz"` casa com o campo de busca, `onSelect` nunca roda e o
+# formulário morre em "Selecione um item". O assertVisible também é a espera
+# (sem sleep) pela lista do `useStoreroomItems` — a linha só existe depois de
+# `items` carregar.
+- assertVisible: "Selecionar Arroz"
+- tapOn: "Selecionar Arroz"
 - tapOn: "0"
 - inputText: "5"
 - hideKeyboard

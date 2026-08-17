@@ -60,4 +60,32 @@ describe('supply-room/ItemSearchInput', () => {
     );
     expect(screen.getByText(/8 L em estoque/)).toBeTruthy();
   });
+
+  // Story 183: espelho do componente da dispensa — a linha do dropdown precisa
+  // de alvo próprio ("Selecionar <nome>"), porque o TextInput já contém o texto
+  // digitado e um tapOn pelo nome do item casaria com o campo de busca.
+  it('cada linha do dropdown expõe accessibilityLabel "Selecionar <nome>"', () => {
+    render(<ItemSearchInput {...baseProps} value="" />);
+    fireEvent(screen.getByPlaceholderText('Buscar item...'), 'focus');
+    expect(screen.getByLabelText('Selecionar Detergente')).toBeTruthy();
+    expect(screen.getByLabelText('Selecionar Sabão')).toBeTruthy();
+  });
+
+  it('tocar pelo accessibilityLabel dispara onSelect com o item da linha', () => {
+    const onSelect = jest.fn();
+    render(<ItemSearchInput {...baseProps} value="Detergente" onSelect={onSelect} />);
+    fireEvent(screen.getByPlaceholderText('Buscar item...'), 'focus');
+    fireEvent.press(screen.getByLabelText('Selecionar Detergente'));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'i1', name: 'Detergente' }),
+    );
+  });
+
+  it('sem itens carregados só oferece cadastrar — nenhuma linha "Selecionar"', () => {
+    render(<ItemSearchInput {...baseProps} value="Detergente" items={[]} />);
+    fireEvent(screen.getByPlaceholderText('Buscar item...'), 'focus');
+    expect(screen.getByText('+ Cadastrar "Detergente"')).toBeTruthy();
+    expect(screen.queryByLabelText(/^Selecionar /)).toBeNull();
+  });
 });

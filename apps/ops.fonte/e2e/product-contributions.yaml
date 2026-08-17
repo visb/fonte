@@ -1,16 +1,64 @@
 appId: org.fonte.ops
-# Story 114 — operador (SERVANT) declara contribuição em PRODUTOS de um filho.
+# Story 114 — declaração de contribuição em PRODUTOS de um filho.
 # Fluxo: detalhe do filho → "Declarar contribuição de produtos" → uma linha do
 # catálogo + uma avulsa → declarar → aparece listada na parcela como já declarada.
-# Requer emulador/dispositivo + Metro + API de teste (schema 111+112) com catálogo
-# semeado na casa do operador. Executar manualmente (ambiente autônomo sem device).
+# Requer emulador/dispositivo + API de teste (schema 111+112) com catálogo
+# semeado na casa. Pré-requisitos de build/ambiente: story 184.
+#
+# Story 183 — duas escolhas deste spec, conferidas em aparelho:
+#
+# 1. O filho é o "Marcelo Reacolhido" de propósito: é o único do seed de teste que
+#    nasce com plano de contribuição (`family_investment = BASKET_500`, vencimento
+#    dia 10) e acolhimento atual em aberto, logo o único cujo carnê vigente se
+#    materializa sozinho e tem parcela para declarar. O João Testador entra no seed
+#    sem plano — a tela dele devolve "Nenhuma parcela disponível para declarar
+#    contribuição.".
+#
+# 2. O login é o do COORDENADOR, não o do operador. A tela precisa da parcela
+#    corrente, que vem de `GET /residents/:id/receivables` — rota
+#    ADMIN/COORDINATOR por decisão de permissão (o pacote offline espelha isso:
+#    "o carnê NÃO desce para o servo", offline-sync.service.spec.ts). Com o
+#    operador (SERVANT) a rota devolve 403 e a tela mostra "Erro ao carregar o
+#    carnê do filho." — independente do filho escolhido. Liberar o carnê ao servo é
+#    decisão de backend/permissão, não deste spec; enquanto isso o fluxo é
+#    exercitado pelo perfil que hoje consegue lê-lo (mesmo motivo do
+#    census.yaml, que é COORDINATOR-only).
 ---
-- runFlow: helpers/login-operator.yaml
+- runFlow: helpers/login-coordinator.yaml
 - tapOn: "Filhos"
 - assertVisible: "João Testador"
-- tapOn: "João Testador"
+- tapOn: "Buscar filho..."
+# Prefixo sem acento: o Maestro não digita fora do ASCII
+# (mobile-dev-inc/maestro#146).
+- inputText: "Marcelo"
+- assertVisible: "Marcelo Reacolhido"
+- hideKeyboard
+- tapOn: "Marcelo Reacolhido"
 - waitForAnimationToEnd
 - assertVisible: "Visão Geral"
+
+# Story 183 — pull-to-refresh na ficha ANTES de abrir a declaração. Não é
+# maquiagem de timing: é um defeito conhecido do store local (story 175), provado
+# em aparelho e ainda sem story própria.
+#
+# `GET /houses/:id/residents` devolve a linha ENXUTA do filho
+# (id, name, status, entryDate, photoUrl, photoThumbUrl — sem `houseId`), e é ela
+# que o store grava. `hydrateResidentQueries` semeia essa linha na chave de
+# DETALHE (`queryKeys.residents.detail`) como dado FRESCO — diferente de
+# `residents.byHouse`, que a mesma função marca com `needsServerConfirmation`.
+# Com `staleTime: 30s`, a ficha aberta logo depois do login não rebusca o detalhe:
+# `resident.houseId` fica `undefined`, o `router.push` manda `houseId: ''` e
+# `useInventoryCatalog('')` nem dispara — o seletor mostra "Nenhum produto
+# encontrado." e a declaração é impossível.
+#
+# O refresh força o `refetch()` do detalhe completo (com `houseId`) e o catálogo
+# carrega. REMOVER este passo quando a hidratação parar de semear a linha enxuta
+# como detalhe fresco.
+- swipe:
+    start: 50%,45%
+    end: 50%,85%
+- waitForAnimationToEnd
+
 - tapOn: "Declarar contribuição de produtos"
 - waitForAnimationToEnd
 - assertVisible: "Parcela"
@@ -19,8 +67,13 @@ appId: org.fonte.ops
 - tapOn: "Buscar produto..."
 - inputText: "Arroz"
 - waitForAnimationToEnd
-- tapOn:
-    text: "Arroz.*"
+# Story 183: mesmo problema do storeroom.yaml — `text: "Arroz.*"` casa também com
+# o próprio campo de busca (que já contém "Arroz"), então o tap não seleciona
+# nada e o form morre em "Selecione um produto". O accessibilityLabel da linha é
+# alvo exclusivo do dropdown; o assertVisible é a espera (sem sleep) pelo
+# catálogo da casa carregar.
+- assertVisible: "Selecionar Arroz"
+- tapOn: "Selecionar Arroz"
 - tapOn: "Quantidade"
 - inputText: "3"
 - hideKeyboard

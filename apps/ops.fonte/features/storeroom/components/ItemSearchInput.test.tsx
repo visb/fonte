@@ -66,4 +66,31 @@ describe('storeroom/ItemSearchInput', () => {
     fireEvent(screen.getByPlaceholderText('Buscar item...'), 'focus');
     expect(screen.getByText('Nenhum item encontrado.')).toBeTruthy();
   });
+
+  // Story 183: o e2e não consegue mirar a linha do dropdown pelo nome do item,
+  // porque o próprio TextInput já contém o texto digitado. O accessibilityLabel
+  // "Selecionar <nome>" é o alvo inequívoco da linha.
+  it('cada linha do dropdown expõe accessibilityLabel "Selecionar <nome>"', () => {
+    render(<ItemSearchInput {...baseProps} value="" />);
+    fireEvent(screen.getByPlaceholderText('Buscar item...'), 'focus');
+    expect(screen.getByLabelText('Selecionar Arroz')).toBeTruthy();
+    expect(screen.getByLabelText('Selecionar Feijão')).toBeTruthy();
+  });
+
+  it('tocar pelo accessibilityLabel dispara onSelect com o item da linha', () => {
+    const onSelect = jest.fn();
+    render(<ItemSearchInput {...baseProps} value="Arroz" onSelect={onSelect} />);
+    fireEvent(screen.getByPlaceholderText('Buscar item...'), 'focus');
+    fireEvent.press(screen.getByLabelText('Selecionar Arroz'));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1', name: 'Arroz' }));
+  });
+
+  it('sem itens carregados só oferece cadastrar — nenhuma linha "Selecionar"', () => {
+    render(<ItemSearchInput {...baseProps} value="Arroz" items={[]} />);
+    fireEvent(screen.getByPlaceholderText('Buscar item...'), 'focus');
+    expect(screen.getByText('+ Cadastrar "Arroz"')).toBeTruthy();
+    expect(screen.queryByLabelText('Selecionar Arroz')).toBeNull();
+    expect(screen.queryByLabelText(/^Selecionar /)).toBeNull();
+  });
 });

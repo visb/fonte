@@ -158,6 +158,31 @@ describe('CatalogProductPicker', () => {
     expect(screen.getByPlaceholderText('Carregando catálogo...')).toBeTruthy();
     expect(screen.getByText('Selecione um produto')).toBeTruthy();
   });
+
+  // Story 183: o e2e precisa de um alvo que não colida com o texto digitado no
+  // campo de busca (o nome do item), por isso cada linha tem o label próprio.
+  it('cada linha do dropdown expõe accessibilityLabel "Selecionar <nome>"', () => {
+    render(<CatalogProductPicker value="" items={catalog} onSelect={jest.fn()} />);
+    fireEvent(screen.getByPlaceholderText('Buscar produto...'), 'focus');
+    expect(screen.getByLabelText('Selecionar Arroz')).toBeTruthy();
+    expect(screen.getByLabelText('Selecionar Feijão')).toBeTruthy();
+  });
+
+  it('tocar pelo accessibilityLabel dispara onSelect com o item da linha', () => {
+    const onSelect = jest.fn();
+    render(<CatalogProductPicker value="" items={catalog} onSelect={onSelect} />);
+    fireEvent.changeText(screen.getByPlaceholderText('Buscar produto...'), 'Arroz');
+    fireEvent.press(screen.getByLabelText('Selecionar Arroz'));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith({ id: 'i1', name: 'Arroz', unit: 'kg' });
+  });
+
+  it('catálogo vazio não expõe nenhuma linha "Selecionar"', () => {
+    render(<CatalogProductPicker value="" items={[]} onSelect={jest.fn()} />);
+    fireEvent.changeText(screen.getByPlaceholderText('Buscar produto...'), 'Arroz');
+    expect(screen.getByText('Nenhum produto encontrado.')).toBeTruthy();
+    expect(screen.queryByLabelText(/^Selecionar /)).toBeNull();
+  });
 });
 
 describe('ProductContributionList', () => {

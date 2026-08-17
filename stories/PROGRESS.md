@@ -51,14 +51,18 @@ Rodada de autorun **182–184** — aberta em 2026-08-17.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 182 — suítes e2e idempotentes (fixture por suíte + catraca) | [ ] | | | |
+| 1 | 182 — suítes e2e idempotentes (fixture por suíte + catraca) | [OK] | api 1609 · e2e 566 2x · adm 184 2x | `e391a3f` | `a8e9812` |
 | 2 | 184 — ops.fonte: build/ambiente de e2e reproduzíveis | [ ] | | | |
 | 3 | 183 — ops.fonte: dispensa e contribuição em produtos verdes (13/13) | [ ] | | | |
 
 ## Log
 
 ```
-(vazio — primeira entrada ao fechar a story 182)
+[OK] 182 — testes: api 1609/1609 (132 suítes, +12 da catraca) · api:e2e 566/566 duas vezes sem
+     reseed · adm 184/184 duas vezes · prova de ordem adm→api:e2e verde · cov services/api
+     92.55/79.85/90/94.32 inalterada — commit: e391a3f — merge: a8e9812 — 2026-08-17
+     Nota: jest unit do api ganhou `roots` com `test/` para a catraca rodar em test:api (testRegex
+     não casa *.e2e-spec.ts, então nenhum e2e entrou no unit).
 ```
 
 ## Resumo final

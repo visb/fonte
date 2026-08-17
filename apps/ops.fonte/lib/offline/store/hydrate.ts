@@ -70,7 +70,16 @@ export async function hydrateResidentQueries(queryClient: QueryClient): Promise<
   }
 
   for (const entry of dump.residents) {
-    seed(queryClient, queryKeys.residents.detail(entry.data.id), entry.data, entry.updatedAt);
+    const detail = queryKeys.residents.detail(entry.data.id);
+    seed(queryClient, detail, entry.data, entry.updatedAt);
+    // A linha guardada é a **enxuta** da listagem da casa (`id, name, status,
+    // entryDate, photoUrl, photoThumbUrl` — sem `houseId`, entre outros) e a
+    // ficha precisa de mais que isso. Semear como dado fresco fazia a tela
+    // **nunca** buscar dentro do `staleTime`: `houseId` vazio derrubava o
+    // catálogo de produtos ("Nenhum produto encontrado.") e escondia a troca de
+    // ministério. Marcada como pendente, a ficha abre com o dado do disco e a
+    // rede continua sendo a verdade quando existe.
+    needsServerConfirmation(queryClient, detail);
   }
 
   for (const detail of dump.details) {

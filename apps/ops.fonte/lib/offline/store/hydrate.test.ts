@@ -15,8 +15,23 @@ function resident(id: string, name: string): Resident {
   return { id, name, houseId: 'h1', status: 'ACTIVE' } as unknown as Resident;
 }
 
-function createClient(): QueryClient {
-  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
+/**
+ * A linha como `GET /houses/:id/residents` devolve (e como o store grava):
+ * sem `houseId`, entre outros campos que a ficha precisa (story 185).
+ */
+function leanResident(id: string, name: string): Resident {
+  return {
+    id,
+    name,
+    status: 'ACTIVE',
+    entryDate: '2026-01-10',
+    photoUrl: null,
+    photoThumbUrl: null,
+  } as unknown as Resident;
+}
+
+function createClient(staleTime = 0): QueryClient {
+  return new QueryClient({ defaultOptions: { queries: { retry: false, staleTime } } });
 }
 
 beforeEach(async () => {
@@ -79,9 +94,71 @@ describe('hydrateResidentQueries', () => {
     // contagem enxerga quem entrou por ela, `CENSUS_ADDED`).
     expect(client.getQueryState(queryKeys.residents.byHouse('h1'))?.isInvalidated).toBe(true);
     expect(client.getQueryState(queryKeys.residents.countByHouse('h1'))?.isInvalidated).toBe(true);
-    // Os blocos da ficha vêm completos por filho: não precisam de confirmação.
+    // Os blocos de detalhe guardam a resposta inteira do endpoint que a tela
+    // consome: não precisam de confirmação.
     expect(client.getQueryState(queryKeys.residents.followUps('r1'))?.isInvalidated).toBe(false);
-    expect(client.getQueryState(queryKeys.residents.detail('r1'))?.isInvalidated).toBe(false);
+  });
+
+  it('a ficha abre com o dado do disco, mas pendente de confirmação (a linha do store é enxuta)', async () => {
+    await saveResidentList('h1', [leanResident('r1', 'Marcelo Reacolhido')]);
+
+    const client = createClient();
+    await hydrateResidentQueries(client);
+
+    // Offline-first não regride: a tela abre com o que está no aparelho...
+    expect(client.getQueryData(queryKeys.residents.detail('r1'))).toMatchObject({
+      id: 'r1',
+      name: 'Marcelo Reacolhido',
+    });
+    // ...e ainda assim busca no servidor ao montar, quando houver rede.
+    expect(client.getQueryState(queryKeys.residents.detail('r1'))?.isInvalidated).toBe(true);
+  });
+
+  it('regressão story 185: com `staleTime` de 30s a ficha do store continua stale (o consumidor rebusca)', async () => {
+    // A linha enxuta não tem `houseId`; nascer fresca fazia a ficha aberta nos
+    // primeiros 30s após o login mandar `houseId: ''` para o catálogo de
+    // produtos ("Nenhum produto encontrado.") e esconder a troca de ministério.
+    await saveResidentList('h1', [leanResident('r1', 'Marcelo Reacolhido')]);
+
+    const client = createClient(30_000);
+    await hydrateResidentQueries(client);
+
+    const detail = client
+      .getQueryCache()
+      .find({ queryKey: queryKeys.residents.detail('r1'), exact: true });
+    expect(detail?.state.data).toMatchObject({ id: 'r1' });
+    expect(detail?.state.data).not.toMatchObject({ houseId: expect.anything() });
+    expect(detail?.isStale()).toBe(true);
+  });
+
+  it('hidratar não dispara busca (`refetchType: none`): boot offline não queima tentativa', async () => {
+    await saveResidentList('h1', [leanResident('r1', 'Marcelo Reacolhido')]);
+
+    const client = createClient(30_000);
+    const queryFn = jest.fn().mockResolvedValue([]);
+    client.setQueryDefaults(queryKeys.residents.detail('r1'), { queryFn });
+    client.setQueryDefaults(queryKeys.residents.byHouse('h1'), { queryFn });
+    client.setQueryDefaults(queryKeys.residents.countByHouse('h1'), { queryFn });
+
+    await hydrateResidentQueries(client);
+    await Promise.resolve();
+
+    expect(queryFn).not.toHaveBeenCalled();
+    expect(client.getQueryState(queryKeys.residents.detail('r1'))?.fetchStatus).toBe('idle');
+    expect(client.getQueryState(queryKeys.residents.byHouse('h1'))?.fetchStatus).toBe('idle');
+  });
+
+  it('a ficha pendente mantém o carimbo do disco (a marcação não finge frescor novo)', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    await saveResidentList('h1', [leanResident('r1', 'Marcelo Reacolhido')]);
+    jest.restoreAllMocks();
+
+    const client = createClient(30_000);
+    await hydrateResidentQueries(client);
+
+    expect(client.getQueryState(queryKeys.residents.detail('r1'))?.dataUpdatedAt).toBe(
+      1_700_000_000_000,
+    );
   });
 
   it('store vazio não semeia nada (e não estoura)', async () => {

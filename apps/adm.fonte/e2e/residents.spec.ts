@@ -1,7 +1,22 @@
-import { test, expect, type Page } from '@playwright/test';
+import {
+  test,
+  expect,
+  request as playwrightRequest,
+  type APIRequestContext,
+  type Page,
+} from '@playwright/test';
 import { login } from './helpers/auth';
 import { createResidentViaWizard, openResidentFromList } from './helpers/residents';
 import { resetResidentsFilters } from './helpers/preferences';
+import {
+  createResident,
+  createStoreroomItem,
+  deleteResident,
+  deleteStoreroomItem,
+  loginApi,
+  type ResidentFixture,
+  type StoreroomItemFixture,
+} from './helpers/api';
 
 test.describe('Filhos (Residentes)', () => {
   test.beforeEach(async ({ page }) => {
@@ -473,86 +488,120 @@ test.describe('Filhos (Residentes)', () => {
 
   // ─── Aba Contribuição (recebíveis + plano) ──────────────────────────────────
 
-  test('aba Contribuição: define plano e registra pagamento de parcela', async ({ page }) => {
-    // Usa o acolhido do seed (João Testador), que tem entry_date definida —
-    // garantindo a geração das parcelas ao definir um plano pagante.
-    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'João Testador' }).first().click();
-    await expect(page).toHaveURL(/\/residents\/.+/);
+  // Story 182 — estes dois testes MUTAM o carnê (registram pagamento e declaram
+  // produto). Fazê-lo no João Testador do seed queimava um recurso compartilhado:
+  // num segundo run sem reseed as parcelas já estavam PAID, o botão "Registrar
+  // pagamento" não existia mais e os dois falhavam. Agora cada execução cria o
+  // próprio filho e o próprio item de catálogo via API e os remove no fim — o
+  // seed volta a ser somente leitura para esta parte da suíte.
+  test.describe('aba Contribuição', () => {
+    let api: APIRequestContext;
+    let token: string;
+    let resident: ResidentFixture;
+    let catalogItem: StoreroomItemFixture;
 
-    await page.getByRole('button', { name: 'Contribuição' }).click();
+    test.beforeAll(async () => {
+      api = await playwrightRequest.newContext();
+      token = await loginApi(api);
+      // `entryDate` de hoje + plano pagante ⇒ carnê já materializado com 6
+      // competências PENDENTES (uma por teste, com folga).
+      resident = await createResident(api, token, { name: `Contribuinte E2E ${Date.now()}` });
+      catalogItem = await createStoreroomItem(api, token, {
+        name: `Arroz Contribuicao E2E ${Date.now()}`,
+        unit: 'kg',
+        houseId: resident.houseId,
+      });
+    });
 
-    // Define o plano (default do diálogo é Pagamento R$700) → gera o carnê.
-    // Dia de vencimento fica em branco de propósito: o campo é opcional e o
-    // submit deve passar mesmo vazio (cai no dia do acolhimento).
-    await page.getByRole('button', { name: 'Alterar plano' }).click();
-    await expect(page.getByText('Alterar plano de contribuição')).toBeVisible();
-    await page.getByRole('button', { name: 'Salvar' }).click();
+    test.afterAll(async () => {
+      await deleteStoreroomItem(api, token, catalogItem.id);
+      await deleteResident(api, token, resident.id);
+      await api.dispose();
+    });
 
-    // As parcelas obrigatórias aparecem com a ação de pagamento.
-    const payButton = page.getByRole('button', { name: 'Registrar pagamento' }).first();
-    await expect(payButton).toBeVisible();
-    await payButton.click();
+    /** Abre a aba Contribuição do filho da fixture (buscado pelo nome único). */
+    async function openContributionTab(page: Page) {
+      const card = await openResidentFromList(page, resident.name);
+      await card.first().click();
+      await expect(page).toHaveURL(/\/residents\/[0-9a-f-]{36}/);
+      await page.getByRole('button', { name: 'Contribuição' }).click();
+    }
 
-    // Diálogo de pagamento (data e PIX já vêm preenchidos por padrão).
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    test('define plano e registra pagamento de parcela', async ({ page }) => {
+      await openContributionTab(page);
 
-    // Modalidade e valor pago vêm pré-preenchidos com o plano (R$700 / Pagamento).
-    const modalityField = dialog.locator('div', { has: page.getByText('Modalidade', { exact: true }) }).last();
-    const modality = modalityField.locator('select');
-    await expect(modality).toBeVisible();
-    const amountField = dialog.locator('div', { has: page.getByText('Valor pago (R$)', { exact: true }) }).last();
-    const paidAmount = amountField.locator('input[type="number"]');
-    await expect(paidAmount).toHaveValue('700');
+      // Define o plano (default do diálogo é Pagamento R$700) → gera o carnê.
+      // Dia de vencimento fica em branco de propósito: o campo é opcional e o
+      // submit deve passar mesmo vazio (cai no dia do acolhimento).
+      await page.getByRole('button', { name: 'Alterar plano' }).click();
+      await expect(page.getByText('Alterar plano de contribuição')).toBeVisible();
+      await page.getByRole('button', { name: 'Salvar' }).click();
 
-    // Registra um valor fora do padrão do plano (modalidade Negociado / R$ 250).
-    await modality.selectOption('NEGOTIATED');
-    await paidAmount.fill('250');
-    await dialog.getByRole('button', { name: 'Confirmar' }).click();
+      // As parcelas obrigatórias aparecem com a ação de pagamento.
+      const payButton = page.getByRole('button', { name: 'Registrar pagamento' }).first();
+      await expect(payButton).toBeVisible();
+      await payButton.click();
 
-    // A parcela passa a exibir o estado "Pago em ..." e o valor efetivamente pago.
-    await expect(page.getByText(/Pago em/).first()).toBeVisible();
-    await expect(page.getByText('R$ 250').first()).toBeVisible();
-  });
+      // Diálogo de pagamento (data e PIX já vêm preenchidos por padrão).
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
 
-  test('aba Contribuição: declara produtos (catálogo + avulso) sem pagamento em dinheiro', async ({ page }) => {
-    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'João Testador' }).first().click();
-    await expect(page).toHaveURL(/\/residents\/.+/);
-    await page.getByRole('button', { name: 'Contribuição' }).click();
+      // Modalidade e valor pago vêm pré-preenchidos com o plano (R$700 / Pagamento).
+      const modalityField = dialog.locator('div', { has: page.getByText('Modalidade', { exact: true }) }).last();
+      const modality = modalityField.locator('select');
+      await expect(modality).toBeVisible();
+      const amountField = dialog.locator('div', { has: page.getByText('Valor pago (R$)', { exact: true }) }).last();
+      const paidAmount = amountField.locator('input[type="number"]');
+      await expect(paidAmount).toHaveValue('700');
 
-    // Garante o carnê gerado (idempotente — o plano default gera parcelas).
-    await page.getByRole('button', { name: 'Alterar plano' }).click();
-    await expect(page.getByText('Alterar plano de contribuição')).toBeVisible();
-    await page.getByRole('button', { name: 'Salvar' }).click();
+      // Registra um valor fora do padrão do plano (modalidade Negociado / R$ 250).
+      await modality.selectOption('NEGOTIATED');
+      await paidAmount.fill('250');
+      await dialog.getByRole('button', { name: 'Confirmar' }).click();
 
-    // Abre a declaração numa parcela pendente.
-    const payButton = page.getByRole('button', { name: 'Registrar pagamento' }).first();
-    await expect(payButton).toBeVisible();
-    await payButton.click();
+      // A parcela passa a exibir o estado "Pago em ..." e o valor efetivamente pago.
+      await expect(page.getByText(/Pago em/).first()).toBeVisible();
+      await expect(page.getByText('R$ 250').first()).toBeVisible();
+    });
 
-    const dialog = page.getByRole('dialog');
-    await expect(dialog.getByText('Registrar contribuição')).toBeVisible();
+    test('declara produtos (catálogo + avulso) sem pagamento em dinheiro', async ({ page }) => {
+      await openContributionTab(page);
 
-    // Desmarca o pagamento em dinheiro → declara SÓ produtos.
-    await dialog.getByRole('checkbox', { name: /Registrar pagamento em dinheiro/ }).uncheck();
-    await expect(dialog.getByText('Data do pagamento')).toHaveCount(0);
+      // Garante o carnê gerado (idempotente — o plano default gera parcelas).
+      await page.getByRole('button', { name: 'Alterar plano' }).click();
+      await expect(page.getByText('Alterar plano de contribuição')).toBeVisible();
+      await page.getByRole('button', { name: 'Salvar' }).click();
 
-    // Linha do catálogo: item "Arroz (kg)" do seed, quantidade 2.
-    await dialog.getByRole('button', { name: /Adicionar produto/ }).click();
-    await dialog.getByLabel('Produto do catálogo').selectOption({ label: 'Arroz (kg)' });
-    await dialog.getByLabel('Quantidade').fill('2');
+      // Abre a declaração numa parcela pendente.
+      const payButton = page.getByRole('button', { name: 'Registrar pagamento' }).first();
+      await expect(payButton).toBeVisible();
+      await payButton.click();
 
-    // Linha avulsa: descrição livre "cesta básica".
-    await dialog.getByRole('button', { name: /Adicionar produto/ }).click();
-    await dialog.getByRole('button', { name: 'Avulso' }).nth(1).click();
-    await dialog.getByLabel('Descrição').fill('cesta básica');
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByText('Registrar contribuição')).toBeVisible();
 
-    await dialog.getByRole('button', { name: 'Confirmar' }).click();
+      // Desmarca o pagamento em dinheiro → declara SÓ produtos.
+      await dialog.getByRole('checkbox', { name: /Registrar pagamento em dinheiro/ }).uncheck();
+      await expect(dialog.getByText('Data do pagamento')).toHaveCount(0);
 
-    // A parcela passa a listar os produtos declarados (seção "Produtos").
-    await expect(page.getByText('Produtos', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Arroz').first()).toBeVisible();
-    await expect(page.getByText('cesta básica').first()).toBeVisible();
+      // Linha do catálogo: o item DA FIXTURE (não o "Arroz (kg)" do seed, que
+      // outra suíte poderia ter removido), quantidade 2.
+      await dialog.getByRole('button', { name: /Adicionar produto/ }).click();
+      await dialog.getByLabel('Produto do catálogo').selectOption({ label: catalogItem.label });
+      await dialog.getByLabel('Quantidade').fill('2');
+
+      // Linha avulsa: descrição livre "cesta básica".
+      await dialog.getByRole('button', { name: /Adicionar produto/ }).click();
+      await dialog.getByRole('button', { name: 'Avulso' }).nth(1).click();
+      await dialog.getByLabel('Descrição').fill('cesta básica');
+
+      await dialog.getByRole('button', { name: 'Confirmar' }).click();
+
+      // A parcela passa a listar os produtos declarados (seção "Produtos").
+      await expect(page.getByText('Produtos', { exact: true }).first()).toBeVisible();
+      await expect(page.getByText(catalogItem.name).first()).toBeVisible();
+      await expect(page.getByText('cesta básica').first()).toBeVisible();
+    });
   });
 
   // Story 164: filho com 2 acolhimentos (Marcelo Reacolhido, do seed).

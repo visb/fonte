@@ -13,6 +13,9 @@ module.exports = {
     // Rotas Expo Router (app/**) sao orquestracao de navegacao/telas → cobertas por
     // Maestro E2E, fora do denominador unit (decisao travada story 81 / AUTORUN honestidade).
     '!app/**/*.{ts,tsx}',
+    // Config de build (app.config.js, scripts/build-e2e-android.js — story 184) fica
+    // fora do denominador do app, mesmo criterio de app/**: nao e codigo embarcado.
+    // Tem spec dedicado em tests/appConfig.test.ts e tests/buildE2eAndroid.test.ts.
     // Pages de feature sao orquestracao (layout + composicao de hooks/componentes,
     // sem logica de negocio — CLAUDE.md: "pages nao fazem fetch"). Cobertas por
     // Maestro E2E nativo. Mesmo criterio do adm.fonte (src/**/pages/** excluido na story 80).

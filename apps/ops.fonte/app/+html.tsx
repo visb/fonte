@@ -3,7 +3,7 @@ import type { PropsWithChildren } from 'react';
 
 /**
  * Template do HTML raiz do export web (só roda no build estático, nunca no runtime nativo).
- * Serve para injetar o que o app.json não cobre: ícones e manifest do PWA.
+ * Serve para injetar o que o app.config.js não cobre: ícones e manifest do PWA.
  * O <title> vem do <Head> em app/_layout.tsx — o helmet do expo-router já emite
  * uma tag <title> aqui, e o parser HTML só respeita a primeira.
  */

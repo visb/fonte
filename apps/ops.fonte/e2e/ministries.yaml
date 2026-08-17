@@ -14,7 +14,9 @@ appId: org.fonte.ops
 - tapOn: "Nova tarefa"
 - assertVisible: "Nova Tarefa"
 - tapOn: "Título da tarefa"
-- inputText: "Lavar louça"
+# Texto digitado é ASCII de propósito: o Maestro não digita fora do ASCII
+# (mobile-dev-inc/maestro#146). Asserção de texto acentuado funciona normalmente.
+- inputText: "Lavar pratos"
 - tapOn: "Adicionar"
 - waitForAnimationToEnd
-- assertVisible: "Lavar louça"
+- assertVisible: "Lavar pratos"

@@ -14,11 +14,12 @@ appId: org.fonte.ops
 - assertVisible: "Notificações"
 
 # A lista mostra avisos escopados à casa do operador (o backend filtra por houseId).
-# Tocar um item marca como lido.
-- tapOn:
-    id: "notification-bell"
-    optional: true
+# Marcar item como lido não entra aqui: o seed não garante notificação, então a
+# asserção seria não-determinística — isso vive no unit (NotificationRow).
 
-# Fechar a folha.
-- tapOn: "Notificações"
+# Fechar a folha pelo botão de fechar do Modal (`accessibilityLabel="Fechar"`).
+# Tocar no título "Notificações" NÃO fecha — era o que este spec fazia, e por
+# isso a folha seguia aberta na asserção seguinte.
+- tapOn: "Fechar"
+- waitForAnimationToEnd
 - assertVisible: "Bem-vindo,"

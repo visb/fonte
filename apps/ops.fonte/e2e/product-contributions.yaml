@@ -33,7 +33,9 @@ appId: org.fonte.ops
     index: 1
 - assertVisible: "Ficará pendente de detalhamento."
 - tapOn: "Descrição (ex: cesta básica)"
-- inputText: "Cesta básica"
+# ASCII de propósito: o Maestro não digita fora do ASCII
+# (mobile-dev-inc/maestro#146).
+- inputText: "Cesta basica"
 - hideKeyboard
 
 - tapOn: "Declarar contribuição"

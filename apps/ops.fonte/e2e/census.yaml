@@ -1,0 +1,56 @@
+appId: org.fonte.ops
+# Story 179 — modal de detalhes do filho na contagem.
+#
+# A tela de Contagem é COORDINATOR-only (`census: isHouseStaff && a.isCoordinator`
+# em features/menu/constants.ts), por isso este fluxo entra pelo
+# helpers/login-coordinator.yaml e não pelo login-operator dos demais specs.
+#
+# Conta com o seed de teste recém-aplicado: 5 filhos ACTIVE na Casa Teste
+# (João Testador, Marcelo Reacolhido, Lucas/Marcos/Tiago Elegível). Rodar sobre um
+# banco sujo de execuções anteriores muda o denominador e quebra as asserções de
+# contador — ver story 182.
+#
+# A foto em tela cheia NÃO é exercitada aqui: nenhum filho do seed tem `photo_url`,
+# então o alvo da foto nasce `disabled` e mostra o ícone de fallback. Cobrir a
+# ampliação exigiria semear uma foto — enquanto isso o caminho fica coberto pelo
+# unit (ResidentDetailModal.test.tsx) e pelo e2e-web.
+---
+- runFlow: helpers/login-coordinator.yaml
+
+# Contagem vive na seção "Casa" do menu (story 176).
+- tapOn: "Menu"
+- waitForAnimationToEnd
+- tapOn: "Contagem"
+- waitForAnimationToEnd
+- assertVisible: "0/5 confirmados"
+- assertVisible: "João Testador"
+
+# --- Abre a ficha do filho: consulta, não ação ---
+- tapOn: "Detalhes de João Testador"
+- waitForAnimationToEnd
+- assertVisible: "Detalhes do filho"
+- assertVisible: "João Testador"
+- assertVisible: "Entrada"
+- assertVisible: "Ver ficha completa"
+
+# Fechar o modal não pode confirmar presença — o contador segue zerado.
+- tapOn: "Fechar detalhes"
+- waitForAnimationToEnd
+- assertVisible: "0/5 confirmados"
+- assertVisible: "Confirme todos os filhos para concluir."
+
+# --- Confirmar presença segue exclusivamente no botão da linha ---
+- tapOn: "Confirmar João Testador"
+- waitForAnimationToEnd
+- assertVisible: "1/5 confirmados"
+
+# --- "Ver ficha completa" leva à ficha do filho ---
+# Por último de propósito: `router.push` para a ficha entra na stack de Filhos,
+# então o `back` sai da Contagem e cai no Dashboard. Deixar esta navegação no fim
+# evita depender de para onde o `back` volta.
+- tapOn: "Detalhes de João Testador"
+- waitForAnimationToEnd
+- tapOn: "Ver ficha completa"
+- waitForAnimationToEnd
+- assertVisible: "Visão Geral"
+- assertVisible: "Acompanhamento"

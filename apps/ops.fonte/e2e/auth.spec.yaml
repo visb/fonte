@@ -36,8 +36,14 @@ appId: org.fonte.ops
 - inputText: "operator123"
 - tapOn: "Entrar"
 - assertVisible: "Bem-vindo,"
-# "Sair" saiu do cabeçalho do dashboard: agora é o último item do menu.
+# "Sair" saiu do cabeçalho do dashboard: agora é o último item do menu — e como
+# é o ÚLTIMO item, nasce abaixo da dobra em tela de celular. Sem o scroll o
+# `tapOn` falha com "Element not found", que é o que acontecia aqui.
 - tapOn: "Menu"
 - assertVisible: "Editar perfil"
+- scrollUntilVisible:
+    element:
+      text: "Sair"
+    direction: DOWN
 - tapOn: "Sair"
 - assertVisible: "OPS Fonte"

@@ -116,11 +116,11 @@ Aberta em 2026-08-14, estendida com a 181 em 2026-08-16, encerrada em 2026-08-16
 
 ### PENDENTE-MANUAL (nada bloqueia código; tudo é ambiente)
 
-1. **Maestro (`test:ops`) nas stories 175, 176 e 179** — sem emulador/dispositivo nesta máquina. A
-   cobertura de fluxo offline foi feita no Playwright web (`e2e-web/`, `context.setOffline`). Falta
-   ainda criar `e2e/helpers/login-coordinator.yaml` + `census.yaml` para a 179 (a tela de contagem é
-   COORDINATOR-only e não há fluxo dela em `e2e/`). Roteiro manual da 175 (modo avião + restart do
-   app) também não foi executado.
+1. ~~**Maestro (`test:ops`) nas stories 175, 176 e 179**~~ — **RESOLVIDO em 2026-08-16**, em
+   emulador. `census.yaml` + `helpers/login-coordinator.yaml` criados (179), `auth.spec.yaml`
+   corrigido (176) e `residents-offline.yaml` criado (175) — este último automatiza o roteiro que
+   era manual, com `setAirplaneMode` + `stopApp`/`launchApp` sem `clearState`. Os três passam.
+   Suíte `test:ops` inteira: **11/13**. Ver o bloco "Maestro em aparelho" abaixo.
 2. **Suítes e2e não são idempotentes entre si** (achado pré-existente, confirmado nas 180 e 181):
    - `residents.spec.ts` (Playwright) deixa as 6 parcelas do "João Testador" como PAID → num segundo
      run sem reseed, 2 testes falham por não haver parcela pendente.
@@ -134,6 +134,38 @@ Aberta em 2026-08-14, estendida com a 181 em 2026-08-16, encerrada em 2026-08-16
    **Vale uma story própria**: desacoplar as duas suítes com fixture de storeroom dedicada no seed.
    Até lá, a ordem que fecha verde é: `pnpm test:setup` → `pnpm test:api:e2e` → `pnpm test:setup` →
    `pnpm test:adm`.
+
+### Maestro em aparelho (2026-08-16)
+
+Primeira execução real da suíte `test:ops` — os specs existiam mas nunca tinham rodado. Pré-requisitos
+descobertos, todos não óbvios:
+
+- **Maestro 2.6.0 não funciona em Android 16/17 (SDK 36/37).** Em SDK 37 o driver morre
+  (`Not able to reach the gRPC server` → `StatusRuntimeException: UNAVAILABLE`); em SDK 36 nem inicia
+  o fluxo (loop de `Failed to record heartbeat`). Usar **API 34**
+  (`system-images;android-34;google_apis;x86_64`, AVD `Maestro_API34`).
+- **APK release bloqueia HTTP puro.** `usesCleartextTraffic="true"` só existe no manifest de *debug*,
+  então o app não alcança `http://10.0.2.2:3001` e a tela de login mostra a mensagem genérica de
+  credenciais. Build de e2e precisa do atributo no manifest de `main`. **Não commitado** — `android/`
+  é gerado por CNG; ver "a fazer" abaixo.
+- **ABI**: o emulador é x86_64 → `-PreactNativeArchitectures=x86_64` (a receita da memória usava
+  arm64-v8a, de aparelho físico).
+- **Maestro não digita fora do ASCII** (mobile-dev-inc/maestro#146): `inputText` com acento aborta o
+  fluxo. Quatro specs tinham isso. Asserção de texto acentuado funciona normalmente.
+- **Match de texto é regex de match COMPLETO**: `"Aprovados"` não casa com `"Aprovados (1)"`.
+
+Correções aplicadas nos specs pré-existentes: scroll até "Sair" (o item é o último do menu e nasce
+abaixo da dobra), fechar a folha de notificações pelo botão `Fechar` (tocar no título não fecha),
+`.*` nas abas com contador, e texto digitado em ASCII.
+
+**Restam 2 de 13 vermelhos, ambos pré-existentes e fora do escopo desta rodada** — merecem story
+própria, na mesma família da 182 (determinismo de e2e):
+- `storeroom.yaml`: `tapOn: "Arroz"` casa com o texto digitado no próprio campo em vez da sugestão do
+  dropdown, e o item nunca é selecionado ("Selecione um item"); o dropdown só oferece
+  `+ Cadastrar "Arroz"`, sugerindo que o catálogo pesquisado no formulário de movimentação não é o
+  que o seed popula.
+- `product-contributions.yaml`: falha logo ao abrir a declaração (`"Parcela"` não visível) — provável
+  dependência de carnê que o seed não garante para o filho usado.
 
 ### Reproduzir os gates
 

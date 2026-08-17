@@ -1,0 +1,41 @@
+appId: org.fonte.ops
+# Story 175 — ficha dos filhos persistente em SQLite.
+#
+# Prova o invariante offline-first do ops.fonte: o que foi lido com sinal
+# continua legível sem sinal, inclusive depois de matar e reabrir o app (o cache
+# em memória do React Query morre no restart; só o store em disco sobrevive).
+#
+# `launchApp` aqui é SEM `clearState` de propósito — limpar o estado apagaria o
+# SQLite e o teste passaria a provar o contrário do que se quer.
+#
+# Requer o roteiro na ordem: aquecer online → cortar a rede → reiniciar → ler.
+# O `setAirplaneMode: disabled` do fim não é cosmético: sem ele o emulador fica
+# sem rede para os fluxos seguintes da suíte.
+---
+# --- 1. Online: aquece o store lendo a lista e a ficha ---
+- runFlow: helpers/login-operator.yaml
+- tapOn: "Filhos"
+- waitForAnimationToEnd
+- assertVisible: "João Testador"
+- tapOn: "João Testador"
+- waitForAnimationToEnd
+- assertVisible: "Visão Geral"
+- assertVisible: "Acompanhamento"
+
+# --- 2. Corta a rede e reinicia o app ---
+- setAirplaneMode: enabled
+- stopApp
+- launchApp
+- waitForAnimationToEnd
+
+# --- 3. Sem sinal e sem cache em memória, a ficha ainda abre do SQLite ---
+- tapOn: "Filhos"
+- waitForAnimationToEnd
+- assertVisible: "João Testador"
+- tapOn: "João Testador"
+- waitForAnimationToEnd
+- assertVisible: "Visão Geral"
+- assertVisible: "Acompanhamento"
+
+# --- 4. Devolve a rede para os fluxos seguintes ---
+- setAirplaneMode: disabled

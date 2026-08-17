@@ -1,0 +1,12 @@
+appId: org.fonte.ops
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "input-email"
+- inputText: "coord@fonte.com"
+- tapOn:
+    text: "input-senha"
+- inputText: "coord123"
+- tapOn: "Entrar"
+- assertVisible: "Bem-vindo,"

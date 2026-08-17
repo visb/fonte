@@ -3,9 +3,11 @@ appId: org.fonte.ops
 - runFlow: helpers/login-resident.yaml
 - tapOn: "Pedidos"
 - waitForAnimationToEnd
-- assertVisible: "Aprovados"
-- assertVisible: "Pendentes"
-- assertVisible: "Recusados"
+# As abas trazem o contador no rótulo ("Aprovados (1)"). O Maestro casa texto por
+# regex de match COMPLETO, então "Aprovados" não bate — daí o `.*`.
+- assertVisible: "Aprovados.*"
+- assertVisible: "Pendentes.*"
+- assertVisible: "Recusados.*"
 - tapOn: "Adicionar item"
 - assertVisible: "Adicionar item"
 - tapOn: "Ex: Bermuda azul tamanho M"
@@ -13,5 +15,5 @@ appId: org.fonte.ops
 - hideKeyboard
 - tapOn: "Adicionar"
 - waitForAnimationToEnd
-- tapOn: "Pendentes"
+- tapOn: "Pendentes.*"
 - assertVisible: "Chinelo azul tamanho 42"

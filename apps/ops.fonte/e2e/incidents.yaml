@@ -4,7 +4,10 @@ appId: org.fonte.ops
 - tapOn: "Nova ocorrência"
 - assertVisible: "Descreva a ocorrência com detalhes..."
 - tapOn: "Descreva a ocorrência com detalhes..."
-- inputText: "Ocorrência de teste E2E"
+# Sem acento de propósito: o Maestro não digita caracteres fora do ASCII
+# (mobile-dev-inc/maestro#146). Vale só para `inputText` — asserção de texto
+# acentuado funciona normalmente.
+- inputText: "Ocorrencia de teste E2E"
 - tapOn: "Média"
 - hideKeyboard
 - tapOn: "Registrar ocorrência"

@@ -4,7 +4,9 @@ appId: org.fonte.ops
 - tapOn: "Filhos"
 - assertVisible: "João Testador"
 - tapOn: "Buscar filho..."
-- inputText: "João"
+# Prefixo sem acento: o Maestro não digita fora do ASCII
+# (mobile-dev-inc/maestro#146) e "Jo" já filtra o João Testador.
+- inputText: "Jo"
 - assertVisible: "João Testador"
 - hideKeyboard
 - tapOn: "João Testador"

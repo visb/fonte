@@ -38,13 +38,16 @@ Rodada de autorun **185–187** — aberta em 2026-08-17.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 185 — ficha do filho hidratada do store não nasce fresca | [ ] | | | |
+| 1 | 185 — ficha do filho hidratada do store não nasce fresca | [x] OK | ops unit 1246/1246 | `67dee27` | `35a5756` |
 | 2 | 186 — recorte do carnê para o servo | [ ] | | | |
 | 3 | 187 — diagnóstico da flakiness da suíte Maestro | [ ] | | | |
 
 ## Log
 
 ```
+[OK] 185 — testes: ops unit 1246/1246 (111 suites), cov 94.54/85.29/93.23/95.64 (hydrate.ts 100%)
+     — commit: 67dee27 — merge: 35a5756 — 2026-08-17
+     PENDENTE-MANUAL: `pnpm test:ops` (Maestro) e prova do ChangeMinistryModal — sem emulador.
 ```
 
 ## Resumo final

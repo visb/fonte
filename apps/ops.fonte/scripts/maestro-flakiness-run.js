@@ -110,8 +110,11 @@ function flowNameFromFile(file = '') {
 function maestroArgs({ serial, debugDir, flows = [], reverse = false } = {}) {
   const args = [];
   if (serial) args.push('--device', serial);
-  if (debugDir) args.push('--debug-output', debugDir);
   args.push('test');
+  // `--debug-output` e flag do SUBCOMANDO `test`, nao global: antes do `test` o
+  // Maestro 2.6.0 morre com "Unknown options: '--debug-output'" e a batelada
+  // inteira vira inconclusiva (medido em aparelho, 2026-08-17).
+  if (debugDir) args.push('--debug-output', debugDir);
   if (reverse) args.push(...flows.map((flow) => path.posix.join(FLOWS_DIR, flow)));
   else args.push(`${FLOWS_DIR}/`);
   return args;

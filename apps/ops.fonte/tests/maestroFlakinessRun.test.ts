@@ -551,12 +551,14 @@ describe('maestro-flakiness — CLI', () => {
 describe('maestro-flakiness — comando do maestro', () => {
   it('na ordem normal roda o diretorio inteiro: o mesmo comando do pnpm test:ops', () => {
     const args = script.maestroArgs({ serial: 'emulator-5556', debugDir: 'out/debug' });
+    // `--debug-output` fica DEPOIS do `test`: e flag do subcomando, e o Maestro
+    // 2.6.0 recusa a invocacao inteira se ela vier antes ("Unknown options").
     expect(args).toEqual([
       '--device',
       'emulator-5556',
+      'test',
       '--debug-output',
       'out/debug',
-      'test',
       'e2e/',
     ]);
   });

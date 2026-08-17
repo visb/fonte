@@ -14,17 +14,18 @@ appId: org.fonte.ops
 #    sem plano — a tela dele devolve "Nenhuma parcela disponível para declarar
 #    contribuição.".
 #
-# 2. O login é o do COORDENADOR, não o do operador. A tela precisa da parcela
-#    corrente, que vem de `GET /residents/:id/receivables` — rota
-#    ADMIN/COORDINATOR por decisão de permissão (o pacote offline espelha isso:
-#    "o carnê NÃO desce para o servo", offline-sync.service.spec.ts). Com o
-#    operador (SERVANT) a rota devolve 403 e a tela mostra "Erro ao carregar o
-#    carnê do filho." — independente do filho escolhido. Liberar o carnê ao servo é
-#    decisão de backend/permissão, não deste spec; enquanto isso o fluxo é
-#    exercitado pelo perfil que hoje consegue lê-lo (mesmo motivo do
-#    census.yaml, que é COORDINATOR-only).
+# 2. O login era o do COORDENADOR porque a tela buscava a parcela corrente em
+#    `GET /residents/:id/receivables` (ADMIN/COORDINATOR) e o operador levava 403
+#    — "Erro ao carregar o carnê do filho.", independente do filho escolhido.
+#
+# Story 186 — o login volta a ser o do OPERADOR, que é o ponto do fluxo: a tela
+# passou a usar `GET /residents/:id/receivables/summary`, o recorte do carnê
+# (mês + status, sem valor nem pagamento), liberado para SERVANT+ como já eram as
+# rotas de contribuição em produtos desde a story 112. Este spec é a prova de
+# ponta a ponta de que o servo declara produtos sem enxergar o financeiro da
+# família — a rota cheia segue ADMIN/COORDINATOR.
 ---
-- runFlow: helpers/login-coordinator.yaml
+- runFlow: helpers/login-operator.yaml
 - tapOn: "Filhos"
 - assertVisible: "João Testador"
 - tapOn: "Buscar filho..."

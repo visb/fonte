@@ -17,7 +17,7 @@ import {
 } from '../resident-follow-up/resident-follow-up.service';
 import {
   ResidentReceivableService,
-  ResidentReceivableView,
+  ResidentReceivableSummaryView,
 } from '../resident-receivable/resident-receivable.service';
 import { StaffService } from '../staff/staff.service';
 import { OfflineSnapshotQueryDto } from './dto/offline-snapshot-query.dto';
@@ -29,7 +29,7 @@ export interface HouseSnapshotShapes {
   resident: Resident;
   followUp: ResidentFollowUpView;
   consent: ConsentRecord;
-  receivable: ResidentReceivableView;
+  receivable: ResidentReceivableSummaryView;
   attachment: ResidentAttachment;
   ministry: HouseMinistrySummary;
 }
@@ -96,16 +96,19 @@ export class OfflineSyncService {
       ? residents.map((resident) => resident.id)
       : await this.residents.findPresentIdsByHouse(houseId);
 
-    // O carnê é ADMIN/COORDINATOR nas rotas individuais (`GET /residents/:id/
-    // receivables`): o pacote offline NÃO pode ser o atalho que dá o financeiro
-    // da casa ao servo. Mesma lógica do recorte de `access_level` da timeline.
-    const canSeeReceivables = user.role === Role.ADMIN || user.role === Role.COORDINATOR;
+    // Do carnê o pacote leva só o RECORTE (story 186): mês de referência e
+    // status, nunca valor nem pagamento. É o que o `ops.fonte` precisa para
+    // declarar contribuição em produtos, e por não ser financeiro desce para
+    // toda role de staff. O carnê cheio continua fora daqui e a rota que o serve
+    // (`GET /residents/:id/receivables`) segue ADMIN/COORDINATOR — o pacote
+    // offline não é atalho de permissão. O recorte de `access_level` da timeline
+    // (abaixo) continua valendo: aquele é por role.
 
     // Uma consulta por recurso — o N+1 que a story existe para matar. A contagem
     // de idas ao banco é constante em relação ao número de filhos da casa.
     const [followUps, receivables, consents, attachments, ministries] = await Promise.all([
       this.followUps.findByResidents(presentIds, user.role, since ?? undefined),
-      canSeeReceivables ? this.receivables.findByResidents(presentIds, since ?? undefined) : [],
+      this.receivables.findSummariesByResidents(presentIds, since ?? undefined),
       this.consents.findForSubjects('RESIDENT', presentIds, since ?? undefined),
       // Anexo não tem data de alteração: só desce para o filho que está no payload.
       this.residents.findAttachmentsByResidents(residents.map((resident) => resident.id)),
@@ -121,9 +124,7 @@ export class OfflineSyncService {
       receivables: groupBy(receivables, (item) => item.residentId),
       attachments: groupBy(attachments, (item) => item.residentId),
       ministries,
-      deleted: since
-        ? await this.collectDeleted(houseId, presentIds, since, canSeeReceivables)
-        : emptyDeleted(),
+      deleted: since ? await this.collectDeleted(houseId, presentIds, since) : emptyDeleted(),
     };
   }
 
@@ -161,12 +162,11 @@ export class OfflineSyncService {
     houseId: string,
     presentIds: string[],
     since: Date,
-    canSeeReceivables: boolean,
   ): Promise<HouseSnapshot['deleted']> {
     const [residents, followUps, receivables] = await Promise.all([
       this.residents.findDepartedIdsSince(houseId, since),
       this.followUps.findDeletedIdsSince(presentIds, since),
-      canSeeReceivables ? this.receivables.findDeletedIdsSince(presentIds, since) : [],
+      this.receivables.findDeletedIdsSince(presentIds, since),
     ]);
     return { residents, followUps, receivables };
   }

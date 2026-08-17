@@ -529,6 +529,25 @@ export interface ResidentReceivable {
   productContributions?: ReceivableProductContribution[];
 }
 
+/**
+ * Recorte do carnê para o `ops.fonte` (story 186) — resposta de
+ * `GET /residents/:id/receivables/summary`.
+ *
+ * O servo declara **contribuição em produtos** (SERVANT+ desde a story 112) e,
+ * para isso, só precisa localizar a parcela: mês de referência e status. Valor,
+ * pagamento e histórico ficam de fora — histórico financeiro da família não é
+ * assunto de todo operador da casa, e a rota cheia (`GET :id/receivables`) segue
+ * `ADMIN`/`COORDINATOR`.
+ *
+ * **Não** estende `ResidentReceivable` de propósito: são contratos diferentes, e
+ * acoplá-los faria um campo novo do carnê vazar para o recorte sem ninguém decidir.
+ */
+export interface ResidentReceivableSummary {
+  id: string;
+  referenceMonth: string; // YYYY-MM-01
+  status: ReceivableStatus;
+}
+
 // ─── Receivable Product Contributions (story 112) ──────────────────────────────
 
 /**

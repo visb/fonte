@@ -206,6 +206,25 @@ Regras:
 | Atribuir responsável/filho |   ✓   |      ✓      |          |
 | Movimentar storeroom       |   ✓   |      ✓      |    ✓     |
 | Conferência de storeroom   |   ✓   |      ✓      |    ✓     |
+| Ler o carnê (valores)      |   ✓   |      ✓      |          |
+| Ler o recorte do carnê     |   ✓   |      ✓      |    ✓     |
+| Declarar contribuição em produtos |   ✓   |      ✓      |    ✓     |
+| Registrar pagamento em valor |   ✓   |      ✓      |          |
+| Reabrir parcela paga       |   ✓   |      ✓      |          |
+| Alterar plano de contribuição / isenção |   ✓   |      ✓      |          |
+
+### Carnê do filho: valor é do coordenador, produto é da casa (story 186)
+
+- O **carnê cheio** (valor, vencimento, pagamento, forma, comprovante, histórico) é lido só por
+  ADMIN/COORDINATOR — `GET /residents/:id/receivables`. Histórico de pagamento da família é dado
+  pessoal financeiro e não fica acessível a todo operador da casa.
+- O servo lê o **recorte** — `GET /residents/:id/receivables/summary`: `id`, `referenceMonth` e
+  `status`, e nada mais. É o mínimo para localizar em qual parcela ele declara a **contribuição em
+  produtos** (liberada a SERVANT+ desde a story 112), que é operação de casa, não de financeiro.
+- O pacote offline da casa (`GET /houses/:id/offline-snapshot`) leva o **recorte**, para toda role de
+  staff — nunca valor nem pagamento.
+- Escrita financeira segue ADMIN/COORDINATOR: registrar pagamento em valor, reabrir parcela, alterar
+  plano de contribuição e marcar isenção.
 
 ---
 

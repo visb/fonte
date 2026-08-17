@@ -21,7 +21,7 @@
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { memoryStorage } from 'multer';
-import { Role } from '@fonte/types';
+import { ResidentReceivableSummary, Role } from '@fonte/types';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RevealSensitive } from '../../common/decorators/reveal-sensitive.decorator';
@@ -392,6 +392,22 @@ export class ResidentController {
   @Roles(Role.ADMIN, Role.COORDINATOR)
   getReceivables(@Param('id', ParseUUIDPipe) id: string): Promise<ResidentReceivableView[]> {
     return this.receivableService.findByResident(id);
+  }
+
+  // Recorte do carnê para o ops (story 186): o servo precisa localizar a parcela
+  // para declarar contribuição em produtos (SERVANT+ desde a story 112), e para
+  // isso bastam mês de referência e status. Valor, pagamento e histórico NÃO
+  // entram aqui — a rota cheia acima segue ADMIN/COORDINATOR.
+  //
+  // Declarada ANTES de qualquer ':id/receivables/:receivableId': o Nest casa a
+  // primeira rota compatível, e na ordem inversa `summary` cairia no
+  // `ParseUUIDPipe` do `receivableId` — um 400 confuso em vez desta rota.
+  @Get(':id/receivables/summary')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  getReceivablesSummary(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ResidentReceivableSummary[]> {
+    return this.receivableService.findSummaryByResident(id);
   }
 
   @Patch(':id/contribution-plan')

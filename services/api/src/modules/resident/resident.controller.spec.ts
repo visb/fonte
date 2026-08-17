@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { PATH_METADATA } from '@nestjs/common/constants';
 import { Role } from '@fonte/types';
 import { ROLES_KEY } from '../../common/decorators/roles.decorator';
 import { AUDIT_KEY } from '../../common/decorators/audit.decorator';
@@ -47,6 +48,7 @@ const followUp = {
 };
 const receivable = {
   findByResident: jest.fn().mockResolvedValue([]),
+  findSummaryByResident: jest.fn().mockResolvedValue([]),
   registerPayment: jest.fn().mockResolvedValue({ id: 'rcv1' }),
   reopenPayment: jest.fn().mockResolvedValue({ id: 'rcv1' }),
 };
@@ -158,6 +160,8 @@ describe('ResidentController', () => {
   it('receivable + plan endpoints delegate', async () => {
     const { c, rs } = make();
     await c.getReceivables('r1');
+    await c.getReceivablesSummary('r1');
+    expect(receivable.findSummaryByResident).toHaveBeenCalledWith('r1');
     await c.updateContributionPlan('r1', {} as never);
     await c.setContributionExempt('r1', { exempt: true } as never);
     await c.registerReceivablePayment('r1', 'rcv1', {} as never, user, file);
@@ -228,6 +232,53 @@ describe('ResidentController', () => {
       'attachment; filename="ana-documentos.pdf"',
     );
     expect((res as { send: jest.Mock }).send).toHaveBeenCalledWith(Buffer.from('combined'));
+  });
+
+  // ── Story 186: o recorte do carnê ─────────────────────────────────────────
+  describe('recorte do carnê (story 186)', () => {
+    const roles = (fn: unknown) => Reflect.getMetadata(ROLES_KEY, fn as object);
+    const path = (fn: unknown) => Reflect.getMetadata(PATH_METADATA, fn as object) as string;
+    const proto = ResidentController.prototype;
+
+    it('o recorte abre para o servo e o carnê cheio continua ADMIN/COORDINATOR', () => {
+      expect(roles(proto.getReceivablesSummary)).toEqual([
+        Role.ADMIN,
+        Role.COORDINATOR,
+        Role.SERVANT,
+      ]);
+      expect(roles(proto.getReceivables)).toEqual([Role.ADMIN, Role.COORDINATOR]);
+    });
+
+    it('a escrita financeira não pegou carona na liberação', () => {
+      for (const handler of [
+        proto.registerReceivablePayment,
+        proto.reopenReceivable,
+        proto.updateContributionPlan,
+        proto.setContributionExempt,
+      ]) {
+        expect(roles(handler)).toEqual([Role.ADMIN, Role.COORDINATOR]);
+      }
+    });
+
+    // Ordem de declaração É a ordem de rota no Nest: se `:id/receivables/summary`
+    // cair depois de um `:id/receivables/:receivableId`, "summary" vira
+    // `receivableId` e o `ParseUUIDPipe` devolve um 400 confuso no lugar da rota.
+    it('é declarado antes de qualquer :id/receivables/:receivableId', () => {
+      const handlers = Object.getOwnPropertyNames(proto).filter(
+        (name) => name !== 'constructor',
+      );
+      const summaryIndex = handlers.indexOf('getReceivablesSummary');
+      expect(summaryIndex).toBeGreaterThan(-1);
+
+      const conflicting = handlers.filter((name) => {
+        const route = path((proto as unknown as Record<string, unknown>)[name]);
+        return typeof route === 'string' && route.startsWith(':id/receivables/:receivableId');
+      });
+      expect(conflicting.length).toBeGreaterThan(0);
+      for (const name of conflicting) {
+        expect(handlers.indexOf(name)).toBeGreaterThan(summaryIndex);
+      }
+    });
   });
 
   it('downloadCombinedPdf guarda os mesmos papéis do download individual e audita', () => {

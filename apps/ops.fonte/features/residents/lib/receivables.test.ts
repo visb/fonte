@@ -1,25 +1,17 @@
 import { ReceivableStatus } from '@fonte/types';
-import type { ResidentReceivable } from '@fonte/api-client';
+import type { ResidentReceivableSummary } from '@fonte/api-client';
 import { formatReferenceMonth, currentReceivable } from './receivables';
 
-function makeReceivable(overrides: Partial<ResidentReceivable> = {}): ResidentReceivable {
+// Story 186 — a fixture é o RECORTE (três campos), não o carnê. Os casos abaixo
+// continuam com as mesmas expectativas: é a prova de que a escolha da parcela
+// nunca dependeu de valor ou pagamento.
+function makeReceivable(
+  overrides: Partial<ResidentReceivableSummary> = {},
+): ResidentReceivableSummary {
   return {
     id: 'rc-1',
-    residentId: 'res-1',
     referenceMonth: '2026-01-01',
-    dueDate: '2026-01-10',
-    amount: 100,
-    familyInvestment: {} as never,
-    paidAmount: null,
-    paidFamilyInvestment: null,
-    mandatory: true,
     status: ReceivableStatus.PENDING,
-    paidAt: null,
-    paymentMethod: null,
-    attachmentUrl: null,
-    notes: null,
-    createdByName: null,
-    createdAt: '2026-01-01',
     ...overrides,
   };
 }

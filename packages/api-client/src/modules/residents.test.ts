@@ -178,6 +178,12 @@ describe('residents module', () => {
     expect(http.get).toHaveBeenCalledWith('/residents/res-1/receivables');
   });
 
+  // Story 186 — rota do recorte, separada da cheia de propósito.
+  it('getReceivablesSummary busca o recorte do carnê', async () => {
+    await residents.getReceivablesSummary('res-1');
+    expect(http.get).toHaveBeenCalledWith('/residents/res-1/receivables/summary');
+  });
+
   it('registerReceivablePayment envia FormData na rota de pagamento', async () => {
     const form = new FormData();
     await residents.registerReceivablePayment('res-1', 'rc-1', form);

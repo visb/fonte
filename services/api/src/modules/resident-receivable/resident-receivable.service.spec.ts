@@ -842,23 +842,102 @@ function makeSnapshotQb(rows: unknown[] = []) {
   return qb;
 }
 
-describe('ResidentReceivableService.findByResidents (story 177)', () => {
+// A linha CHEIA que o banco tem — o mock devolve isto para provar que o recorte
+// não é "o que o SELECT trouxe", e sim o que o service decide devolver.
+function fullRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'rcv-1',
+    residentId: 'r1',
+    admissionId: 'adm-1',
+    referenceMonth: '2026-08-01',
+    dueDate: '2026-08-10',
+    amount: 700,
+    familyInvestment: 'PAYMENT_700',
+    paidAmount: 700,
+    paidFamilyInvestment: 'PAYMENT_700',
+    mandatory: true,
+    status: 'PENDING',
+    paidAt: '2026-08-09',
+    paymentMethod: 'PIX',
+    attachmentUrl: 'https://bucket/comprovante.pdf',
+    notes: 'pix recebido',
+    createdBy: null,
+    createdAt: new Date(),
+    ...overrides,
+  };
+}
+
+describe('ResidentReceivableService.findSummaryByResident (story 186)', () => {
+  it('filho inexistente → NotFound (e não lista de outro filho)', async () => {
+    const service = makeService(makeRepo(), { findOne: jest.fn().mockResolvedValue(null) });
+    await expect(service.findSummaryByResident('res-1')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('projeta as três colunas no repositório e ordena por competência', async () => {
+    const qb = makeSnapshotQb([fullRow(), fullRow({ id: 'rcv-2', referenceMonth: '2026-09-01' })]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const residentRepo = {
+      findOne: jest.fn().mockResolvedValue(makeResident({ status: 'DISCHARGED' as never })),
+    };
+    const service = makeService(repo, residentRepo);
+
+    const result = await service.findSummaryByResident('res-1');
+
+    // A projeção é do SELECT, não de um map() sobre a entidade cheia.
+    expect(qb.select).toHaveBeenCalledWith(['rcv.id', 'rcv.referenceMonth', 'rcv.status']);
+    expect(qb.orderBy).toHaveBeenCalledWith('rcv.reference_month', 'ASC');
+    expect(result).toEqual([
+      { id: 'rcv-1', referenceMonth: '2026-08-01', status: 'PENDING' },
+      { id: 'rcv-2', referenceMonth: '2026-09-01', status: 'PENDING' },
+    ]);
+  });
+
+  // A catraca da decisão 1 da story: o recorte é sobre CHAVES. Se `amount`,
+  // `paidAt` ou qualquer campo financeiro reaparecer na saída, isto reprova —
+  // mesmo que o valor esteja "certo".
+  it('nenhum item carrega valor, pagamento ou histórico', async () => {
+    const qb = makeSnapshotQb([fullRow()]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const residentRepo = {
+      findOne: jest.fn().mockResolvedValue(makeResident({ status: 'DISCHARGED' as never })),
+    };
+    const service = makeService(repo, residentRepo);
+
+    const [item] = await service.findSummaryByResident('res-1');
+
+    expect(Object.keys(item).sort()).toEqual(['id', 'referenceMonth', 'status']);
+  });
+
+  it('filho ativo rola o carnê antes de recortar (mesma parcela corrente do adm)', async () => {
+    const qb = makeSnapshotQb();
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const residentRepo = {
+      findOne: jest.fn().mockResolvedValue(makeResident({ status: 'ACTIVE' as never })),
+    };
+    const service = makeService(repo, residentRepo);
+    const ensureSpy = jest.spyOn(service, 'ensureFutureOpen').mockResolvedValue(undefined);
+
+    await service.findSummaryByResident('res-1');
+
+    expect(ensureSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ResidentReceivableService.findSummariesByResidents (story 177 + 186)', () => {
   it('não vai ao banco com lista vazia', async () => {
     const repo = makeRepo();
     const service = makeService(repo, {});
-    await expect(service.findByResidents([])).resolves.toEqual([]);
+    await expect(service.findSummariesByResidents([])).resolves.toEqual([]);
     expect(repo.createQueryBuilder).not.toHaveBeenCalled();
   });
 
   it('busca N filhos numa consulta só e NÃO materializa carnê (GET não escreve)', async () => {
-    const qb = makeSnapshotQb([
-      { id: 'rcv-1', residentId: 'r1', referenceMonth: '2026-08-01', productContributions: [] },
-    ]);
+    const qb = makeSnapshotQb([fullRow()]);
     const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
     const residentRepo = { findOne: jest.fn() };
     const service = makeService(repo, residentRepo);
 
-    const result = await service.findByResidents(['r1', 'r2']);
+    const result = await service.findSummariesByResidents(['r1', 'r2']);
 
     expect(result).toHaveLength(1);
     expect(repo.createQueryBuilder).toHaveBeenCalledTimes(1);
@@ -870,13 +949,37 @@ describe('ResidentReceivableService.findByResidents (story 177)', () => {
     expect(repo.save).not.toHaveBeenCalled();
   });
 
+  // O pacote offline vai para o aparelho de todo operador: aqui a catraca de
+  // chaves vale em dobro. `residentId` entra porque o snapshot agrupa por filho.
+  it('cada item leva o recorte mais o dono da parcela — e nada de financeiro', async () => {
+    const qb = makeSnapshotQb([fullRow()]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo, {});
+
+    const [item] = await service.findSummariesByResidents(['r1']);
+
+    expect(qb.select).toHaveBeenCalledWith([
+      'rcv.id',
+      'rcv.residentId',
+      'rcv.referenceMonth',
+      'rcv.status',
+    ]);
+    expect(Object.keys(item).sort()).toEqual(['id', 'referenceMonth', 'residentId', 'status']);
+    expect(item).toEqual({
+      id: 'rcv-1',
+      residentId: 'r1',
+      referenceMonth: '2026-08-01',
+      status: 'PENDING',
+    });
+  });
+
   it('recorta o delta por updated_at', async () => {
     const qb = makeSnapshotQb();
     const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
     const service = makeService(repo, {});
     const since = new Date('2026-08-01T00:00:00.000Z');
 
-    await service.findByResidents(['r1'], since);
+    await service.findSummariesByResidents(['r1'], since);
 
     expect(qb.andWhere).toHaveBeenCalledWith('rcv.updated_at > :since', {
       since: '2026-08-01 00:00:00.000',

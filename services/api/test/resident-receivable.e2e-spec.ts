@@ -311,6 +311,213 @@ describe('Resident receivables por acolhimento (e2e)', () => {
   });
 });
 
+/**
+ * Story 186 — recorte do carnê para o servo.
+ *
+ * A tela de contribuição em produtos do `ops.fonte` precisa achar a parcela, e
+ * só isso. Esta suíte prova as duas metades da decisão: o recorte abre para o
+ * operador **e** o financeiro continua fechado (rota cheia e escritas).
+ */
+describe('Recorte do carnê — GET :id/receivables/summary (e2e)', () => {
+  let app: INestApplication;
+  let coordToken: string;
+  let servantToken: string;
+  let adminToken: string;
+  let relativeToken: string;
+  let residentToken: string;
+  let houseId: string;
+  let residentId: string;
+  // Contribuição criada pelo fluxo abaixo; removida no afterAll (é avulsa, então
+  // a remoção não mexe em estoque). A suíte não deixa rastro no seed.
+  let declaredIds: { receivableId: string; contributionId: string }[] = [];
+
+  beforeAll(async () => {
+    app = await bootstrapApp();
+    ({ token: coordToken, houseId } = await loginCoordinator(app));
+    adminToken = await login(app, 'admin@fonte.com', 'admin123');
+    servantToken = await login(app, 'operator@fonte.com', 'operator123');
+    relativeToken = await login(app, 'familiar@fonte.com', 'familiar123');
+    residentToken = await login(app, 'resident@teste.com', 'resident123');
+
+    const created = await request(app.getHttpServer())
+      .post(`${BASE}/residents`)
+      .set('Authorization', `Bearer ${coordToken}`)
+      .send({
+        name: `Recorte E2E ${Date.now()}`,
+        houseId,
+        entryDate: new Date().toISOString().slice(0, 10),
+        familyInvestment: FamilyInvestment.PAYMENT_700,
+        contributionDueDay: 10,
+      })
+      .expect(201);
+    residentId = created.body.id;
+  });
+
+  afterAll(async () => {
+    for (const { receivableId, contributionId } of declaredIds) {
+      // Tolera 404: a remoção não pode ser o que derruba a suíte.
+      await request(app.getHttpServer())
+        .delete(
+          `${BASE}/residents/${residentId}/receivables/${receivableId}/product-contributions/${contributionId}`,
+        )
+        .set('Authorization', `Bearer ${adminToken}`);
+    }
+    declaredIds = [];
+    await request(app.getHttpServer())
+      .delete(`${BASE}/residents/${residentId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    await app.close();
+  });
+
+  const summaryUrl = (id: string) => `${BASE}/residents/${id}/receivables/summary`;
+
+  describe('o recorte abre para o servo', () => {
+    it('sem token → 401', () =>
+      request(app.getHttpServer()).get(summaryUrl(residentId)).expect(401));
+
+    it('operador → 200 com itens só de id/referenceMonth/status', async () => {
+      const res = await request(app.getHttpServer())
+        .get(summaryUrl(residentId))
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(200);
+
+      expect(res.body.length).toBeGreaterThan(0);
+      // Asserção sobre CHAVES: é o que impede valor/pagamento de voltarem a
+      // vazar por um `select` distraído lá no service.
+      for (const item of res.body) {
+        expect(Object.keys(item).sort()).toEqual(['id', 'referenceMonth', 'status']);
+      }
+      expect(res.body[0].referenceMonth).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('devolve as mesmas parcelas que a rota cheia, na mesma ordem', async () => {
+      const [summary, full] = await Promise.all([
+        request(app.getHttpServer())
+          .get(summaryUrl(residentId))
+          .set('Authorization', `Bearer ${servantToken}`)
+          .expect(200),
+        request(app.getHttpServer())
+          .get(`${BASE}/residents/${residentId}/receivables`)
+          .set('Authorization', `Bearer ${coordToken}`)
+          .expect(200),
+      ]);
+
+      expect(summary.body.map((r: { id: string }) => r.id)).toEqual(
+        full.body.map((r: { id: string }) => r.id),
+      );
+    });
+
+    it(':id inexistente → 404 (a rota não é engolida por :receivableId)', () =>
+      request(app.getHttpServer())
+        .get(summaryUrl('11111111-1111-4111-8111-111111111111'))
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(404));
+
+    it(':id que não é UUID → 400', () =>
+      request(app.getHttpServer())
+        .get(summaryUrl('nao-e-uuid'))
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(400));
+  });
+
+  describe('o financeiro continua fechado para o servo', () => {
+    it('GET receivables (carnê cheio) → 403', () =>
+      request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/receivables`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(403));
+
+    it('POST payment → 403', async () => {
+      const list = await request(app.getHttpServer())
+        .get(summaryUrl(residentId))
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(`${BASE}/residents/${residentId}/receivables/${list.body[0].id}/payment`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .send({ paidAt: new Date().toISOString().slice(0, 10), paymentMethod: PaymentMethod.PIX })
+        .expect(403);
+    });
+
+    it('POST reopen → 403', async () => {
+      const list = await request(app.getHttpServer())
+        .get(summaryUrl(residentId))
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(`${BASE}/residents/${residentId}/receivables/${list.body[0].id}/reopen`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(403);
+    });
+
+    it('PATCH contribution-plan → 403', () =>
+      request(app.getHttpServer())
+        .patch(`${BASE}/residents/${residentId}/contribution-plan`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .send({ familyInvestment: FamilyInvestment.NEGOTIATED, familyInvestmentAmount: 1 })
+        .expect(403));
+
+    it('PATCH contribution-exempt → 403', () =>
+      request(app.getHttpServer())
+        .patch(`${BASE}/residents/${residentId}/contribution-exempt`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .send({ exempt: true })
+        .expect(403));
+  });
+
+  // A liberação é de staff: quem não foi citado no `@Roles` não pega carona.
+  describe('RELATIVE e RESIDENT não leem carnê nenhum', () => {
+    it.each([
+      ['RELATIVE', () => relativeToken],
+      ['RESIDENT', () => residentToken],
+    ])('%s → 403 no recorte e na rota cheia', async (_role, getToken) => {
+      await request(app.getHttpServer())
+        .get(summaryUrl(residentId))
+        .set('Authorization', `Bearer ${getToken()}`)
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .get(`${BASE}/residents/${residentId}/receivables`)
+        .set('Authorization', `Bearer ${getToken()}`)
+        .expect(403);
+    });
+  });
+
+  // O motivo de a story existir: com 403 no carnê, este fluxo era impossível.
+  it('operador vai do recorte à contribuição em produtos declarada', async () => {
+    const summary = await request(app.getHttpServer())
+      .get(summaryUrl(residentId))
+      .set('Authorization', `Bearer ${servantToken}`)
+      .expect(200);
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const parcela =
+      summary.body.find((r: { referenceMonth: string }) =>
+        r.referenceMonth.startsWith(currentMonth),
+      ) ?? summary.body[0];
+
+    const created = await request(app.getHttpServer())
+      .post(`${BASE}/residents/${residentId}/receivables/${parcela.id}/product-contributions`)
+      .set('Authorization', `Bearer ${servantToken}`)
+      .send({ lines: [{ description: 'Cesta basica do recorte' }] })
+      .expect(201);
+    declaredIds.push({ receivableId: parcela.id, contributionId: created.body[0].id });
+
+    const declared = await request(app.getHttpServer())
+      .get(`${BASE}/residents/${residentId}/receivables/${parcela.id}/product-contributions`)
+      .set('Authorization', `Bearer ${servantToken}`)
+      .expect(200);
+
+    expect(
+      declared.body.some(
+        (c: { description: string | null }) => c.description === 'Cesta basica do recorte',
+      ),
+    ).toBe(true);
+  });
+});
+
 describe('Payment notification is best-effort (e2e)', () => {
   let app: INestApplication;
   let token: string;

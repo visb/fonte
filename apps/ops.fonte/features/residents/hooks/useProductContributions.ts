@@ -38,14 +38,23 @@ export function useInventoryCatalog(
   });
 }
 
-/** Carnê do filho (parcelas). Usado para localizar a parcela corrente (story 114). */
+/**
+ * Recorte do carnê do filho — id, mês de referência e status (story 186). É o
+ * bastante para localizar a parcela corrente (story 114), que é tudo que esta
+ * tela faz com o carnê. O carnê cheio (valores, pagamentos, histórico) é assunto
+ * do `adm.fonte` e continua restrito a ADMIN/COORDINATOR; usar o recorte aqui é
+ * o que destrava a declaração de produtos para o servo.
+ *
+ * Mesma query key de sempre: a pergunta é a mesma ("quais parcelas esse filho
+ * tem?"), só a resposta encolheu — e é ela que o pacote offline também grava.
+ */
 export function useResidentReceivables(
   residentId: string | null | undefined,
   options?: { enabled?: boolean },
 ) {
   return useQuery({
     queryKey: queryKeys.residents.receivables(residentId!),
-    queryFn: () => api.residents.getReceivables(residentId!),
+    queryFn: () => api.residents.getReceivablesSummary(residentId!),
     enabled: (options?.enabled ?? true) && !!residentId,
   });
 }

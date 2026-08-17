@@ -54,7 +54,7 @@ Categorias: **P** = dado pessoal; **S** = dado pessoal sensível (art. 11).
 
 > Origem: story 175 (store local em SQLite/AsyncStorage), sobre o snapshot da casa da story 177. Decisão de escopo tomada explicitamente pelo responsável pelo produto.
 
-- **Dado:** cópia local da ficha dos filhos **presentes na casa do operador** — ficha básica (`Resident`), acompanhamentos (`ResidentFollowUp`), **consentimentos** (`ConsentRecord` consolidado por finalidade), **carnê/financeiro** (`ResidentReceivable`, apenas para `ADMIN`/`COORDINATOR`), **metadados** de anexos (nome, tipo, data, id) e ministérios da casa.
+- **Dado:** cópia local da ficha dos filhos **presentes na casa do operador** — ficha básica (`Resident`), acompanhamentos (`ResidentFollowUp`), **consentimentos** (`ConsentRecord` consolidado por finalidade), **recorte do carnê** (`ResidentReceivableSummary` — `id`, `referenceMonth`, `status` e o filho dono da parcela; story 186), **metadados** de anexos (nome, tipo, data, id) e ministérios da casa.
 - **Titular:** interno (**Resident**).
 - **Categoria:** dado pessoal (**P**) e **sensível** (**S**) — a ficha básica carrega `healthIssues`, `continuousMedication`, `religion`, `addiction`.
 - **Onde:** aparelho do operador. Banco **SQLite** local (`ops-fonte-resident-store.db`) no Android/iOS; `AsyncStorage` (uma chave por registro, prefixo `ops-fonte-resident-store:`) no web. **Binário de anexo não é baixado** — só a lista; abrir o arquivo continua exigindo conexão.
@@ -64,7 +64,7 @@ Categorias: **P** = dado pessoal; **S** = dado pessoal sensível (art. 11).
   - **Purga verificada** no logout e na sessão expirada (`purgeAll()` junto de `clearPersistedCache()`); falha na purga **propaga** o erro (registrada no console/Sentry) em vez de falhar em silêncio.
   - **Allowlist, nunca denylist**: só as chaves declaradas em `lib/offline/store/` e `lib/offline/constants.ts` vão para o disco — dado novo não entra por omissão.
   - **Escopo por casa**: o aparelho só baixa o pacote da **própria casa** do operador (`GET /houses/:id/offline-snapshot`, story 177); o snapshot também **remove** do aparelho quem deixou de ser presente na casa (transferência, alta, evasão).
-  - **Carnê só para quem pode ver**: para `SERVANT` o bloco financeiro vem vazio do backend e nada é gravado.
+  - **Minimização no carnê (story 186)**: o aparelho passou a receber e **persistir** mês de referência e status de parcela por filho, para toda role de staff — é dado pessoal, ainda que não financeiro, e por isso fica registrado aqui. O que **não** trafega nem é gravado: valor, valor pago, forma de pagamento, data de pagamento, comprovante e observações. A leitura do carnê cheio continua restrita a `ADMIN`/`COORDINATOR` e só existe no `adm.fonte` (web, sem cópia local).
 - **Gaps remanescentes:** (1) **sem criptografia em repouso** do banco local (SQLCipher) — aparelho comprometido/roubado expõe a ficha até o logout; (2) não há **purga remota** ou por inatividade se o aparelho nunca mais abrir o app. Ver `ROADMAP_LGPD.md`.
 
 ## 3. Mapa de gaps

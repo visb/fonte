@@ -7,6 +7,7 @@ import {
   NotificationType,
   PaymentMethod,
   ReceivableStatus,
+  ResidentReceivableSummary,
   ResidentStatus,
   Role,
 } from '@fonte/types';
@@ -61,6 +62,15 @@ export interface ResidentReceivableView {
   productContributions: ProductContributionView[];
 }
 
+/**
+ * O recorte do carnê (story 186) com o dono da parcela: o pacote offline agrupa
+ * por filho, e sem `residentId` cada linha voltaria a precisar do carnê cheio
+ * para se localizar. Continua sem valor, pagamento e histórico.
+ */
+export interface ResidentReceivableSummaryView extends ResidentReceivableSummary {
+  residentId: string;
+}
+
 function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
@@ -86,6 +96,19 @@ function monthIndex(year: number, month0: number): number {
 function parseYearMonth(dateStr: string): { year: number; month0: number; day: number } {
   const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number);
   return { year: y, month0: m - 1, day: d };
+}
+
+/**
+ * Monta o recorte (story 186) a partir da linha já projetada. Os três campos são
+ * escritos um a um de propósito: espalhar a entidade aqui (`...item`) devolveria
+ * ao cliente qualquer coluna que a projeção passasse a trazer.
+ */
+function toSummary(item: Pick<ResidentReceivable, 'id' | 'referenceMonth' | 'status'>): ResidentReceivableSummary {
+  return {
+    id: item.id,
+    referenceMonth: String(item.referenceMonth).slice(0, 10),
+    status: item.status,
+  };
 }
 
 function resolveAmount(plan: FamilyInvestment, amount: number | null): number {
@@ -137,20 +160,58 @@ export class ResidentReceivableService {
   }
 
   /**
-   * Lote (story 177): parcelas de N filhos em DUAS consultas (carnês + suas
-   * contribuições em produto), para o snapshot offline da casa. `since` recorta
-   * o delta por `updated_at`.
+   * Recorte do carnê de UM filho (story 186) — o que a tela de contribuição em
+   * produtos do `ops.fonte` precisa para achar a parcela: mês e status.
    *
-   * Diferente de `findByResident`, **não** roda `ensureFutureOpen`: snapshot é
-   * leitura, e materializar carnê a cada volta do foreground de cada aparelho
-   * seria escrita disparada por GET.
+   * A projeção é feita **no repositório** (`select` das colunas do recorte), não
+   * por `map()` sobre a entidade cheia: recorte que só existe na saída volta a
+   * vazar no dia em que alguém logar o objeto ou reusar o método.
+   *
+   * Rola o carnê como `findByResident` faz: o servo tem que enxergar a mesma
+   * parcela corrente que o `adm.fonte` mostra, senão declararia produto no mês
+   * errado.
    */
-  async findByResidents(residentIds: string[], since?: Date): Promise<ResidentReceivableView[]> {
+  async findSummaryByResident(residentId: string): Promise<ResidentReceivableSummary[]> {
+    const resident = await this.residentRepo.findOne({ where: { id: residentId } });
+    if (!resident) throw new NotFoundException(`Resident ${residentId} not found`);
+
+    if (ACTIVE_STATUSES.includes(resident.status)) {
+      await this.ensureFutureOpen(resident);
+    }
+
+    const items = await this.repo
+      .createQueryBuilder('rcv')
+      .select(['rcv.id', 'rcv.referenceMonth', 'rcv.status'])
+      .where('rcv.resident_id = :residentId', { residentId })
+      .andWhere('rcv.deleted_at IS NULL')
+      .orderBy('rcv.reference_month', 'ASC')
+      .getMany();
+
+    return items.map((item) => toSummary(item));
+  }
+
+  /**
+   * Lote (story 177) do recorte (story 186): parcelas de N filhos numa consulta
+   * só, para o snapshot offline da casa. `since` recorta o delta por
+   * `updated_at`.
+   *
+   * O pacote leva o **recorte** — mês e status —, nunca valor ou pagamento: ele
+   * desce para toda role de staff e não pode ser o atalho que entrega o
+   * financeiro da família ao aparelho de qualquer operador.
+   *
+   * Diferente de `findSummaryByResident`, **não** roda `ensureFutureOpen`:
+   * snapshot é leitura, e materializar carnê a cada volta do foreground de cada
+   * aparelho seria escrita disparada por GET.
+   */
+  async findSummariesByResidents(
+    residentIds: string[],
+    since?: Date,
+  ): Promise<ResidentReceivableSummaryView[]> {
     if (residentIds.length === 0) return [];
 
     const qb = this.repo
       .createQueryBuilder('rcv')
-      .leftJoinAndSelect('rcv.createdBy', 'staff')
+      .select(['rcv.id', 'rcv.residentId', 'rcv.referenceMonth', 'rcv.status'])
       .where('rcv.resident_id IN (:...residentIds)', { residentIds })
       .andWhere('rcv.deleted_at IS NULL');
 
@@ -160,13 +221,7 @@ export class ResidentReceivableService {
 
     const items = await qb.orderBy('rcv.reference_month', 'ASC').getMany();
 
-    const contributionsByReceivable = await this.productContributions.mapByReceivables(
-      items.map((item) => item.id),
-    );
-
-    return items.map((item) =>
-      this.toView(item, contributionsByReceivable.get(item.id) ?? []),
-    );
+    return items.map((item) => ({ ...toSummary(item), residentId: item.residentId }));
   }
 
   /** Ids apagados desde `since` (story 177) — o app remove do store local. */

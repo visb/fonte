@@ -29,6 +29,7 @@ import type {
   ContributionsReportResponse,
   GetContributionsReportParams,
   ResidentReceivable,
+  ResidentReceivableSummary,
   UpdateContributionPlanInput,
   ReceivableProductContribution,
   DeclareProductContributionInput,
@@ -118,6 +119,15 @@ export function createResidentsModule(http: AxiosInstance) {
 
     getReceivables: (id: string): Promise<ResidentReceivable[]> =>
       http.get<ResidentReceivable[]>(`/residents/${id}/receivables`).then((r) => r.data),
+
+    // Recorte do carnê (story 186): `id`, `referenceMonth` e `status`, e nada
+    // mais. É o que o `ops.fonte` usa para achar a parcela onde declarar
+    // contribuição em produtos — liberado ao servo, ao contrário de
+    // `getReceivables`, que segue ADMIN/COORDINATOR.
+    getReceivablesSummary: (id: string): Promise<ResidentReceivableSummary[]> =>
+      http
+        .get<ResidentReceivableSummary[]>(`/residents/${id}/receivables/summary`)
+        .then((r) => r.data),
 
     registerReceivablePayment: (id: string, receivableId: string, formData: FormData): Promise<ResidentReceivable> =>
       http

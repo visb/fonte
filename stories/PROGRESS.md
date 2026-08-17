@@ -52,7 +52,7 @@ Rodada de autorun **182–184** — aberta em 2026-08-17.
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 182 — suítes e2e idempotentes (fixture por suíte + catraca) | [OK] | api 1609 · e2e 566 2x · adm 184 2x | `e391a3f` | `a8e9812` |
-| 2 | 184 — ops.fonte: build/ambiente de e2e reproduzíveis | [ ] | | | |
+| 2 | 184 — ops.fonte: build/ambiente de e2e reproduzíveis | [OK] | ops:unit 1233 (+47) | `19e8934` | `9335606` |
 | 3 | 183 — ops.fonte: dispensa e contribuição em produtos verdes (13/13) | [ ] | | | |
 
 ## Log
@@ -63,6 +63,11 @@ Rodada de autorun **182–184** — aberta em 2026-08-17.
      92.55/79.85/90/94.32 inalterada — commit: e391a3f — merge: a8e9812 — 2026-08-17
      Nota: jest unit do api ganhou `roots` com `test/` para a catraca rodar em test:api (testRegex
      não casa *.e2e-spec.ts, então nenhum e2e entrou no unit).
+[OK] 184 — testes: ops:unit 1233/1233 (111 suítes, +47) · cov ops.fonte 94.5/85.2/93.15/95.6
+     inalterada · config resolvida antes/depois difere só em usesCleartextTraffic · manifest e
+     build de release provados em aparelho (emulator-5556, API 34) — commit: 19e8934 —
+     merge: 9335606 — 2026-08-17
+     PENDENTE-MANUAL: `pnpm test:ops` (13/13) só confirmável após a story 183.
 ```
 
 ## Resumo final

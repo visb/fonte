@@ -190,6 +190,36 @@ Regras ao tocar `apps/ops.fonte`:
 - **Teste de offline mora no Playwright web** (`apps/ops.fonte/e2e-web/`, `context.setOffline`) —
   o Maestro não controla rede. Fluxo de campo novo ganha caso offline lá.
 
+### Rodar a suíte Maestro do ops.fonte (`pnpm test:ops`) — story 184
+
+Receita, na ordem:
+
+1. AVD em **API 34** (obrigatório, ver abaixo):
+   `sdkmanager "system-images;android-34;google_apis;x86_64"` +
+   `avdmanager create avd -n Maestro_API34 -k "system-images;android-34;google_apis;x86_64" -d pixel_6`
+   → `emulator -avd Maestro_API34`.
+2. `pnpm test:setup` + `pnpm dev:api:test` (API de teste na 3001) + `pnpm dev:ops` (Metro).
+3. `pnpm --filter ops.fonte build:e2e:android` — usa `ANDROID_HOME`, aborta se o API level for > 34,
+   lê a ABI do aparelho (`ro.product.cpu.abi`) e exporta as env vars do release. Com mais de um
+   aparelho conectado, passe `--device <serial>` (ou `ANDROID_SERIAL`): `adb shell` sem serial falha
+   com "more than one device/emulator".
+4. `adb -s <serial> install -r android/app/build/outputs/apk/release/app-release.apk`.
+5. `maestro test --device <serial> e2e/` (`--device` é opção do subcomando `test`; antes de `test`
+   o CLI trava sem saída).
+
+**Três sintomas que apontam para o lugar errado** — é o que se perde entre sessões:
+
+| Sintoma | Causa real |
+|---|---|
+| Login diz **"WhatsApp/e-mail ou senha incorretos"** | Cleartext bloqueado: release não fala `http://`. `usesCleartextTraffic` sai de `app.config.js` e só liga quando `EXPO_PUBLIC_API_URL` é `http://` — build feito sem essa env, ou manifest editado à mão (evapora no prebuild, `android/` é CNG). Não é senha nem seed. |
+| **Spinner infinito** no login | `onlineManager` desligado: `lib/offline/network.ts` marca offline enquanto `isInternetReachable === false`, e o React Query com `networkMode: 'online'` **pausa** a mutation. Emulador recém-bootado ainda não validou a rede — espere aquecer. Comportamento correto do app. |
+| `gRPC ... UNAVAILABLE` / `Not able to reach the gRPC server` / loop de `Failed to record heartbeat` | **API level do emulador**. Maestro 2.6.x não opera em SDK 36/37. Checar isso **antes** de investigar o app. |
+
+Outros detalhes que custaram tempo: ABI errada gera APK sem as libs dos módulos compilados do fonte
+(`libexpo-modules-core.so` etc.); `SENTRY_DISABLE_AUTO_UPLOAD=true` é obrigatório no release (sem
+org/slug o build **falha**); `inputText` do Maestro não digita não-ASCII e o match de texto é regex
+de correspondência total (`"Aprovados"` não casa `"Aprovados (1)"`).
+
 ---
 
 ## Tipos compartilhados (Model)

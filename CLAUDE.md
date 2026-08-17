@@ -157,6 +157,8 @@ Cada frontend também tem unit tests: `test:adm:unit`, `test:ops:unit`, `test:ap
 - **`test:adm`** — `pnpm test:setup` + `pnpm dev:api:test` + `pnpm dev:adm` rodando na porta 5174.
 - **`test:portal` / `test:portal:e2e`** — o unit não precisa de nada; o e2e sobe o próprio Vite na porta 5176 (não reusa o dev), mas precisa de `pnpm test:setup` + `pnpm dev:api:test`.
 - **`test:ops` / `test:app`** — Maestro instalado + emulador/dispositivo conectado + API de teste rodando + Metro bundler rodando (`pnpm dev:ops` ou `pnpm dev:app`). No Android, pode ser necessário `adb reverse tcp:8081 tcp:8081` para o emulador alcançar o Metro.
+  - **API level máximo 34.** Maestro 2.6.x **não** opera em SDK 36/37 (gRPC `UNAVAILABLE` ou loop de `Failed to record heartbeat`). AVD suportado: `sdkmanager "system-images;android-34;google_apis;x86_64"` + `avdmanager create avd -n Maestro_API34 -k "system-images;android-34;google_apis;x86_64" -d pixel_6`.
+  - **APK do `ops.fonte` para e2e:** `pnpm --filter ops.fonte build:e2e:android` (com `--device <serial>` se houver mais de um emulador ligado). O script exige `ANDROID_HOME`, checa o API level, usa a ABI do aparelho e exporta a URL HTTP da API de teste — que é o que libera cleartext no `app.config.js`. Nunca editar o manifest gerado à mão: `android/` é CNG e evapora no próximo prebuild. Sintomas enganosos e causas: skill `fonte-frontend`.
 
 ### Suítes e2e são idempotentes (story 182)
 

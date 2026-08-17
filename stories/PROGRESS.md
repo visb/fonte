@@ -43,6 +43,9 @@ Rodada de autorun **182–184** — aberta em 2026-08-17.
     Conferir a config resolvida antes/depois: única diferença aceitável é `usesCleartextTraffic`
     (em especial `newArchEnabled: false` não pode desaparecer).
   - **`seed-test.ts` não muda em nenhuma das três** (rejeitado na decisão 2 da 183 e na 7 da 182).
+  - **Ambiente desta máquina (2026-08-17):** dois emuladores conectados (`emulator-5554`,
+    `emulator-5556`). `adb shell getprop` sem `-s <serial>` falha com "more than one device" — o
+    script da 184 tem que escolher/exigir o alvo explicitamente, não assumir device único.
 
 ## Fila
 

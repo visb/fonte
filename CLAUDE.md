@@ -158,6 +158,22 @@ Cada frontend também tem unit tests: `test:adm:unit`, `test:ops:unit`, `test:ap
 - **`test:portal` / `test:portal:e2e`** — o unit não precisa de nada; o e2e sobe o próprio Vite na porta 5176 (não reusa o dev), mas precisa de `pnpm test:setup` + `pnpm dev:api:test`.
 - **`test:ops` / `test:app`** — Maestro instalado + emulador/dispositivo conectado + API de teste rodando + Metro bundler rodando (`pnpm dev:ops` ou `pnpm dev:app`). No Android, pode ser necessário `adb reverse tcp:8081 tcp:8081` para o emulador alcançar o Metro.
 
+### Suítes e2e são idempotentes (story 182)
+
+As suítes e2e rodam **em qualquer ordem e quantas vezes for preciso** sem reseed: `pnpm test:setup` é
+necessário só na **primeira vez** (banco vazio) ou **após mudança de schema**. Não reseede entre
+baterias — se precisou, é bug de isolamento da suíte, não do ambiente.
+
+O que sustenta isso, e o que toda suíte nova deve respeitar:
+
+- **Ninguém apaga linha que não criou.** Limpeza é por **id acumulado da fixture**
+  (`WHERE id = ANY($1)`), nunca por categoria (`WHERE kind = '...'`) e nunca `DELETE FROM <tabela>`
+  seco em tabela que o `seed-test.ts` popula. A catraca `services/api/test/e2e-cleanup-scope.spec.ts`
+  (roda em `pnpm test:api`) reprova o padrão antigo.
+- **Ninguém deixa o estado do seed mutado.** Teste que grava (pagar parcela, declarar produto, mudar
+  status) cria a **própria** fixture via API (`apps/adm.fonte/e2e/helpers/api.ts`) e a remove no
+  `afterAll`; o seed é somente leitura. Nome de fixture leva `Date.now()`, e o delete tolera 404.
+
 ### Antes de commitar
 
 **SEMPRE** verificar se os testes existentes continuam passando e atualizar os testes afetados pelas mudanças:

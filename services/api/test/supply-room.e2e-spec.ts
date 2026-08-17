@@ -8,12 +8,25 @@ import { DataSource } from 'typeorm';
 import { MovementType, SupplyRoomCategory } from '@fonte/types';
 import { bootstrapApp, login, BASE } from './helpers/e2e-app';
 
+/**
+ * Story 182 — a limpeza desta suíte é POR ID DA FIXTURE, nunca por categoria.
+ *
+ * A versão anterior fazia `DELETE FROM inventory_items WHERE kind = 'SUPPLY_ROOM'`
+ * (mesma forma que apagava o "Arroz (kg)" do seed em `storerooms.e2e-spec.ts`).
+ * Hoje o `seed-test.ts` só insere item `STOREROOM`, então era uma bomba armada e
+ * não uma falha — mas limpar por *categoria* em vez de por *autoria* volta a
+ * quebrar no dia em que o seed ganhar um item de dispensa. Todo item criado aqui
+ * entra em `createdItemIds` e só esses ids são removidos.
+ */
 describe('SupplyRoomController (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let coordToken: string;
   let houseId: string;
   let staffId: string;
+
+  /** Ids de tudo que ESTA suíte criou — a limpeza é escopada por eles. */
+  const createdItemIds: string[] = [];
 
   beforeAll(async () => {
     app = await bootstrapApp();
@@ -30,14 +43,19 @@ describe('SupplyRoomController (e2e)', () => {
   });
 
   afterAll(async () => {
-    // catálogo unificado — limpa apenas os itens de dispensa
-    await dataSource.query(`DELETE FROM inventory_movements WHERE kind = 'SUPPLY_ROOM'`);
-    await dataSource.query(`DELETE FROM inventory_items WHERE kind = 'SUPPLY_ROOM'`);
+    if (createdItemIds.length) {
+      // Movimentos antes dos itens (FK item_id). Dispensa não entra em carnê,
+      // então não há contribuição em produtos apontando para estes ids.
+      await dataSource.query(`DELETE FROM inventory_movements WHERE item_id = ANY($1)`, [createdItemIds]);
+      await dataSource.query(`DELETE FROM inventory_items WHERE id = ANY($1)`, [createdItemIds]);
+    }
     await app.close();
   });
 
+  // Nome único: dois runs sem reseed (ou um run interrompido) não colidem nas
+  // asserções de listagem.
   const itemBody = () => ({
-    name: 'Sabão em pó',
+    name: `Sabão em pó ${Date.now()}`,
     unit: 'kg',
     category: SupplyRoomCategory.CLEANING,
     houseId,
@@ -93,14 +111,16 @@ describe('SupplyRoomController (e2e)', () => {
     let itemId: string;
 
     it('creates an item preserving the supply-room shape (category, no storeroom/kind fields)', async () => {
+      const body = itemBody();
       const res = await request(app.getHttpServer())
         .post(`${BASE}/supply-room/items`)
         .set('Authorization', `Bearer ${coordToken}`)
-        .send(itemBody())
+        .send(body)
         .expect(201);
+      createdItemIds.push(res.body.id);
 
       expect(res.body.id).toBeDefined();
-      expect(res.body.name).toBe('Sabão em pó');
+      expect(res.body.name).toBe(body.name);
       expect(res.body.unit).toBe('kg');
       expect(res.body.category).toBe(SupplyRoomCategory.CLEANING);
       expect(res.body.houseId).toBe(houseId);

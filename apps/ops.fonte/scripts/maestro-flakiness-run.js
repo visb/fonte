@@ -110,8 +110,11 @@ function flowNameFromFile(file = '') {
 function maestroArgs({ serial, debugDir, flows = [], reverse = false } = {}) {
   const args = [];
   if (serial) args.push('--device', serial);
-  if (debugDir) args.push('--debug-output', debugDir);
   args.push('test');
+  // `--debug-output` e flag do SUBCOMANDO `test`, nao global: antes do `test` o
+  // Maestro 2.6.0 morre com "Unknown options: '--debug-output'" e a batelada
+  // inteira vira inconclusiva (medido em aparelho, 2026-08-17).
+  if (debugDir) args.push('--debug-output', debugDir);
   if (reverse) args.push(...flows.map((flow) => path.posix.join(FLOWS_DIR, flow)));
   else args.push(`${FLOWS_DIR}/`);
   return args;
@@ -125,8 +128,15 @@ function maestroArgs({ serial, debugDir, flows = [], reverse = false } = {}) {
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 /** Molduras que o Maestro desenha em volta da saida interativa (║ | > -). */
 const BOX_CHARS = /^[\s║|>-]+/;
-const FLOW_LINE = /^\[(Passed|Failed|Skipped)\]\s+(.+?)\s+\(([^)]+)\)\s*$/;
-const SUMMARY_LINE = /^(\d+)\/(\d+)\s+Flows?\s+(Passed|Failed)\s*$/i;
+// Linha de fluxo. A duracao SEMPRE comeca com digito ("18s", "1m 9s"); o grupo
+// opcional depois dela e o motivo da falha, que o Maestro imprime so em
+// `[Failed]` — sem ancorar a duracao em digito, o nome do fluxo saia grudado
+// com ela ("incidents (18s)") e a agregacao rachava em duas linhas (medido em
+// aparelho, 2026-08-17).
+const FLOW_LINE = /^\[(Passed|Failed|Skipped)\]\s+(.+?)\s+\((\d[^)]*)\)(?:\s+\((.*)\))?\s*$/;
+// O sumario da batelada verde vem com o tempo total colado ("13/13 Flows Passed
+// in 8m 30s"); sem tolerar esse sufixo, batelada verde virava "inconclusiva".
+const SUMMARY_LINE = /^(\d+)\/(\d+)\s+Flows?\s+(Passed|Failed)(?:\s+in\s+.+)?\s*$/i;
 
 function stripDecoration(line = '') {
   return line.replace(ANSI, '').replace(BOX_CHARS, '').trimEnd();
@@ -176,6 +186,7 @@ function parseMaestroOutput({ stdout = '', stderr = '', exitCode = 0 } = {}) {
         status: flowMatch[1].toLowerCase(),
         durationMs: parseDurationToMs(flowMatch[3]),
         rawDuration: flowMatch[3].trim(),
+        reason: flowMatch[4] ? flowMatch[4].trim() : null,
       });
       return;
     }

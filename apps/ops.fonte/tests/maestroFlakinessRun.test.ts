@@ -177,6 +177,48 @@ describe('maestro-flakiness — parser da saida do maestro', () => {
     expect(parsed.reason).toBeNull();
   });
 
+  // Os dois casos abaixo sao a saida LITERAL do Maestro 2.6.0 em aparelho
+  // (emulador API 34, 2026-08-17). Ambos passavam batido no parser escrito
+  // contra saida sintetica: a batelada verde virava "inconclusiva" e o nome do
+  // fluxo reprovado saia grudado com a duracao, rachando a agregacao.
+  it('aceita o sumario com o tempo total colado ("13/13 Flows Passed in 8m 30s")', () => {
+    const stdout = [
+      '',
+      'Waiting for flows to complete...',
+      '[Passed] auth.spec (1m)',
+      '[Passed] census (41s)',
+      '[Passed] dashboard (19s)',
+      '',
+      '13/13 Flows Passed in 8m 30s',
+    ]
+      .join('\n')
+      .replace('13/13', '3/3');
+    const parsed = script.parseMaestroOutput({ stdout, exitCode: 0 });
+    expect(parsed.status).toBe('passed');
+    expect(parsed.summary).toMatchObject({ total: 3, passed: 3, failed: 0 });
+  });
+
+  it('separa o nome do fluxo reprovado da duracao e do motivo', () => {
+    const stdout = [
+      '[Passed] auth.spec (1m 4s)',
+      '[Failed] phone-login (18s) (Element not found: Text matching regex: input-email)',
+      '[Failed] resident-flow (34s) (Assertion is false: "Bem-vindo," is visible)',
+      '',
+      '2/3 Flows Failed',
+    ].join('\n');
+    const parsed = script.parseMaestroOutput({ stdout, exitCode: 1 });
+    expect(parsed.status).toBe('failed');
+    expect(parsed.failed.map((flow: { name: string }) => flow.name)).toEqual([
+      'phone-login',
+      'resident-flow',
+    ]);
+    expect(parsed.failed[0].durationMs).toBe(18_000);
+    expect(parsed.failed[0].reason).toBe(
+      'Element not found: Text matching regex: input-email',
+    );
+    expect(parsed.failed[1].reason).toBe('Assertion is false: "Bem-vindo," is visible');
+  });
+
   it('trata saida truncada como inconclusiva, nunca como verde', () => {
     const truncated = maestroOutput(GREEN_SUITE, { summary: false });
     const parsed = script.parseMaestroOutput({ stdout: truncated, exitCode: 0 });

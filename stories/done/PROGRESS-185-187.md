@@ -19,7 +19,7 @@ Rodada de autorun **185–187** — aberta e encerrada em 2026-08-17.
 | --- | --- | --- | --- | --- | --- |
 | 1 | 185 — ficha do filho hidratada do store não nasce fresca | [x] OK | ops unit 1246/1246 | `67dee27` | `35a5756` |
 | 2 | 186 — recorte do carnê para o servo | [x] OK | api 1622 + e2e 580, ops 1247, adm 1661 + 184 pw | `17f0649` | `f1c26d2` |
-| 3 | 187 — diagnóstico da flakiness da suíte Maestro | [~] PARCIAL | ops unit 1308/1308 | `1b1c698` | `b63ff89` |
+| 3 | 187 — diagnóstico da flakiness da suíte Maestro | [x] OK | ops unit 1310/1310 + 14 bateladas Maestro | `1b1c698`, `27c1fed`, `48ff409` | `b63ff89`, `dcee3c8` |
 
 ## Log
 
@@ -33,6 +33,9 @@ Rodada de autorun **185–187** — aberta e encerrada em 2026-08-17.
 [PARCIAL] 187 — testes: ops unit 1308/1308 (112 suites, +61 casos), cov 94.54/85.29/93.23/95.64
      (script fica fora do denominador, como o da 184) — commit: 1b1c698 — merge: b63ff89 — 2026-08-17
      PENDENTE-MANUAL: o experimento inteiro (10 bateladas + 3 --reverse) e o preenchimento do laudo.
+[OK] 187 — experimento executado em emulador API 34 (usuario subiu aparelho depois da rodada):
+     14 bateladas, ops unit 1310/1310, cov inalterada — commits: 27c1fed, 48ff409 — merge: dcee3c8
+     — 2026-08-18 — laudo em done/187-laudo-maestro-flakiness.md; fecha tambem o Maestro da 185/186.
 ```
 
 ## Resumo final
@@ -59,7 +62,22 @@ Rodada de autorun **185–187** — aberta e encerrada em 2026-08-17.
   transforma saída inesperada em verde — vira `inconclusive` com motivo. `pnpm test:ops` continua
   byte a byte `maestro test e2e/` (decisão 2), com spec que reprova quem mexer.
 
-### O que ficou PENDENTE-MANUAL (tudo pela mesma causa: sem emulador API ≤ 34)
+### Adendo de 2026-08-18 — as pendências de Maestro foram fechadas
+
+O usuário subiu um emulador depois da rodada. Com `Maestro_API34` (API 34) e o APK de release, o
+experimento da 187 rodou: **14 bateladas**, laudo escrito e arquivado
+(`stories/done/187-laudo-maestro-flakiness.md`). Isso encerrou os itens 1, 3 e 4 da lista abaixo:
+
+- **185 e 186 validadas em aparelho:** `product-contributions` passou em **14/14** bateladas, sem o
+  `swipe` e logado como operador.
+- **187 fechada:** 6 de 11 bateladas em ordem normal terminaram vermelhas (**55%**, não o "hiccup
+  ocasional" da premissa); causa dominante provada por logcat — o processo do app é morto 8 ms após
+  nascer (`remove task`) numa corrida do `launchApp: clearState` do driver, sem executar código do
+  app. Sem conserto e sem retry, conforme as decisões 1 e 2.
+- **Continua pendente:** só o item 2 (prova manual do `ChangeMinistryModal`, que é interação manual e
+  não tem yaml).
+
+### O que ficou PENDENTE-MANUAL na rodada (tudo pela mesma causa: sem emulador API ≤ 34)
 
 1. **`pnpm test:ops` (suíte Maestro, 13/13)** — pendente para as três stories. Em particular:
    `product-contributions.yaml` verde **sem o `swipe`** (aceite da 185) e **logado como operador**

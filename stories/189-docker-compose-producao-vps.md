@@ -18,6 +18,9 @@ reproduzir o ambiente.
 - **nginx é a porta de entrada única:** termina TLS, roteia `/api/v1` para a API, faz proxy do
   host de storage para o MinIO e serve os estáticos dos **dois** frontends web do primeiro
   corte. Nenhum outro serviço publica porta.
+- **TLS por Let's Encrypt + `certbot`** (confirmado pelo usuário), em container companion com
+  webroot compartilhado com o nginx. Certificado dura 90 dias e renova sozinho. Caddy faria
+  isso embutido, mas o pedido foi nginx.
 - **Dois frontends, ambos estáticos.** `adm.fonte` sai do Vite; `ops.fonte` sai do
   `expo export --platform web` (`build:web`), que também produz um `dist/` estático — o
   `start:web` dele é literalmente `npx serve dist`. Nenhum dos dois precisa de processo Node
@@ -76,8 +79,6 @@ Não bloqueiam a escrita da story, mas mudam o `nginx.conf`:
   `.com.br`. Não bloqueia a migração — o envio não passa pelo VPS — mas conferir que o
   `.org` continua com SPF/DKIM válidos, já que os links dentro do e-mail passam a apontar
   para o `.com.br`.
-- **TLS:** assumido `certbot` em container companion com renovação por cron e webroot
-  compartilhado, em vez de Caddy (o usuário pediu nginx explicitamente).
 - **URL da API é build-time nos dois.** Vite embute `VITE_API_URL` e Expo embute
   `EXPO_PUBLIC_API_URL` no bundle. Trocar de domínio exige **rebuild da imagem**, não
   restart. Mesmo vale para `APP_ASSOCIADOS_URL` e `CORS_ORIGIN` no lado da API.
@@ -120,7 +121,7 @@ os frontends dependem de `@fonte/types` e `@fonte/api-client` (adm também de
 
 ### 2. `docker-compose.prod.yml` (raiz)
 
-Quatro serviços; só o nginx publica porta no host (80/443).
+Cinco serviços; só o nginx publica porta no host (80/443).
 
 - **`postgres`** — `postgres:16-alpine`, volume nomeado `postgres_data`, `TZ/PGTZ=UTC`
   (espelha o `docker-compose.yml` de dev), healthcheck `pg_isready`. **Sem** `ports:` — só a
@@ -132,7 +133,14 @@ Quatro serviços; só o nginx publica porta no host (80/443).
 - **`api`** — imagem stage `api`, `env_file`, `depends_on` com `condition: service_healthy`
   (postgres e minio), `restart: unless-stopped`. **Sem volume de arquivos** — o acervo vive no
   MinIO.
-- **`nginx`** — imagem stage `web`, publica 80/443, monta os certificados.
+- **`nginx`** — imagem stage `web`, publica 80/443, monta `certbot_conf` (`:ro`) e
+  `certbot_www`.
+- **`certbot`** — `certbot/certbot`, monta os mesmos dois volumes. Entrypoint em laço:
+  `renew` a cada 12h e dorme. Renova só o que está perto de vencer, então rodar com folga é
+  barato. Depois de renovar precisa fazer o nginx recarregar — via `docker compose exec nginx
+  nginx -s reload` a partir de um cron no host, ou um `--deploy-hook` que toca um arquivo que
+  o nginx observa. **Cert renovado sem reload não vale**: o nginx segue servindo o antigo até
+  reiniciar, e o site cai quando o velho expira.
 
 Volumes nomeados: `postgres_data`, `minio_data`, `certbot_conf`, `certbot_www`.
 
@@ -170,6 +178,16 @@ Rotas, na ordem de precedência:
 - `client_max_body_size 10m` — casar com o limite de body da API (`main.ts:20-21`); menor que
   isso derruba upload com `413` antes de chegar no Node.
 - `gzip` nos assets de texto; `server_tokens off`.
+- **ACME:** `location /.well-known/acme-challenge/ { root /var/www/certbot; }` num `server`
+  de porta 80 para **cada** um dos três hosts, servido **antes** do redirect para HTTPS.
+  Redirect cego de 80→443 quebra a renovação: o desafio do Let's Encrypt chega em HTTP.
+- Fora esse `location`, porta 80 redireciona para 443.
+
+> **Ordem de bootstrap:** o nginx não sobe com `ssl_certificate` apontando para arquivo que
+> ainda não existe, e o certbot não emite sem o nginx respondendo na porta 80. Resolver
+> subindo o nginx primeiro com uma config só-HTTP (ou cert autoassinado temporário), emitir os
+> certificados, e só então aplicar a config final. Documentar isso no README — é o passo em
+> que essa montagem costuma travar.
 
 ### 4. Ajustes em `services/api/src/main.ts`
 
@@ -187,8 +205,9 @@ Rotas, na ordem de precedência:
   (`.env.example:15`); passa a ser MinIO auto-hospedado, com `AWS_ENDPOINT_URL` = a URL
   **pública** do storage.
 - `README.md`: seção de deploy no VPS — build da imagem, `docker compose -f
-  docker-compose.prod.yml up -d`, emissão do certificado, criação do bucket no MinIO, e o
-  ponteiro para a story 188 para popular banco e bucket.
+  docker-compose.prod.yml up -d`, a **ordem de bootstrap do TLS** (nginx só-HTTP → emitir
+  certificados → config final), criação do bucket no MinIO, e o ponteiro para a story 188
+  para popular banco e bucket.
 
 ---
 
@@ -270,7 +289,7 @@ separado.
 **Verificação manual (a que prova o deploy):**
 1. `docker compose -f docker-compose.prod.yml build` conclui; `docker image ls` mostra a
    imagem da API com `pg_dump --version` reportando **16** de dentro do container.
-2. `up -d` sobe os quatro serviços; `postgres` e `minio` ficam `healthy`; as migrations rodam
+2. `up -d` sobe os cinco serviços; `postgres` e `minio` ficam `healthy`; as migrations rodam
    no start da API (log do `migration:run`). Nenhum log de tentativa de conexão a Redis.
 3. `GET /api/v1/...` responde através do nginx (não direto na 3000 — a API não publica porta).
    Os **dois** hosts carregam e fazem login contra a API pelo domínio real (pega
@@ -289,6 +308,13 @@ separado.
 9. Requisição de origem não listada em `CORS_ORIGIN` é rejeitada no preflight — e as
    **duas** origens (`adm.` e `ops.`) **estão** listadas (esquecer uma derruba o app inteiro
    em produção).
+10. **TLS:** os três hosts (`adm.`, `ops.`, `static.`) respondem em HTTPS com certificado
+    válido, e HTTP redireciona para HTTPS. `certbot renew --dry-run` passa nos três — é o que
+    prova que a renovação vai funcionar daqui a 60 dias, e não só que a emissão inicial
+    funcionou.
+11. Após um `renew` (mesmo em dry-run + reload manual), o nginx serve o certificado novo:
+    conferir a data de validade em `openssl s_client`. É o passo que costuma passar
+    despercebido e derrubar o site 90 dias depois.
 
 > **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente
 > — nenhum código novo entra sem teste. Rodar `pnpm test:api:cov` e **não reduzir** a cobertura

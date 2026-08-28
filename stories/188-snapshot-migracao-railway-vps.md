@@ -47,8 +47,14 @@ referência apontando para `https://t3.storageapi.dev/<bucket-antigo>/...`, que 
 desligado.
 
 Como a *chave* do objeto não muda (o `importFromZip` reenvia com a mesma key), a correção é
-**troca de prefixo**: `<base-antiga>/<key>` → `<base-nova>/<key>`. São 23 colunas em 15
-tabelas, mais HTML com `<img src>` embutido.
+**troca de prefixo**:
+
+```
+https://t3.storageapi.dev/<bucket-antigo>/<key>
+      → https://static.fontedemisericordia.com.br/<bucket-novo>/<key>
+```
+
+São 23 colunas em 15 tabelas, mais HTML com `<img src>` embutido.
 
 ---
 
@@ -114,7 +120,8 @@ export function rebaseHtmlStorageUrls(
 Exposto como `pnpm --filter api storage:rebase-urls --from <base> --to <base>`.
 Roda **depois** do `backup:import`, contra o banco já restaurado. Tudo numa transação.
 
-- `--to` default: `${AWS_ENDPOINT_URL}/${AWS_S3_BUCKET_NAME}` do `.env` corrente (o destino).
+- `--to` default: `${AWS_ENDPOINT_URL}/${AWS_S3_BUCKET_NAME}` do `.env` corrente (o destino)
+  — em produção, `https://static.fontedemisericordia.com.br/<bucket>` (story 189).
 - `--from` é **obrigatório** e sem default. Adivinhar a base de origem e errar reescreve o
   acervo inteiro para um endereço inválido, em silêncio.
 - Falha explícita se `--from` e `--to` forem iguais, ou se qualquer um for vazio.

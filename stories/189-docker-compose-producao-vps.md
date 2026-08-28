@@ -58,10 +58,13 @@ Não bloqueiam a escrita da story, mas mudam o `nginx.conf`:
   dois sob paths do mesmo host. Path-based exigiria `base` no Vite (adm) e
   `experiments.baseUrl` no Expo (ops), mais invasivo e fácil de quebrar no fallback de SPA.
   - `adm.fontedemisericordia.com.br` — confirmado.
-  - **Um subdomínio a mais que os apps:** o storage precisa do próprio
-    (ex.: `storage.fontedemisericordia.com.br`), porque a assinatura do presign cobre o host.
-    Esse valor vira `AWS_ENDPOINT_URL` e fica **gravado nas URLs do banco** — trocá-lo depois
-    exige rodar de novo o rebase da story 188. Escolher com cuidado antes do corte.
+  - `static.fontedemisericordia.com.br` — **confirmado**, host do storage (MinIO). Precisa de
+    subdomínio próprio porque a assinatura do presign cobre o host. Esse valor vira
+    `AWS_ENDPOINT_URL` e fica **gravado nas URLs do banco** — trocá-lo depois exige rodar de
+    novo o rebase da story 188.
+    > Apesar do nome, **o bucket não é público**. `static.` aqui é só o host que faz proxy
+    > para o MinIO; o conteúdo é privado e só sai por URL assinada. Não tratar como CDN de
+    > asset aberto.
   - `ops.fontedemisericordia.com.br` — confirmado, e **já em produção**: é o endereço que
     `docs/comunicacao/whatsapp-coordenadores-nova-plataforma.md:25` manda os coordenadores
     abrirem. O corte para o VPS tem de preservar esse host funcionando.
@@ -144,14 +147,18 @@ Rotas, na ordem de precedência:
 - `location /api/v1/ { proxy_pass http://api:3000; }` — casa com o
   `setGlobalPrefix("api/v1")` (`main.ts:25`). Repassa `Host`, `X-Real-IP`,
   `X-Forwarded-For`, `X-Forwarded-Proto`.
-- **`server` próprio para o storage** (ex.: `storage.fontedemisericordia.com.br`) fazendo
+- **`server` próprio para o storage** — `static.fontedemisericordia.com.br` — fazendo
   `proxy_pass http://minio:9000`. Precisa ser host dedicado, não um path: a assinatura do
   presign **cobre o host**, então a URL que o cliente recebe tem de bater exatamente com o
   endpoint que assinou. Repassar `Host` e usar `proxy_request_buffering off` para upload
   grande.
-  - `AWS_ENDPOINT_URL` da API = essa URL pública, **não** `http://minio:9000`. O tráfego
-    interno de `PutObject` sai e volta pelo nginx no mesmo host — custo desprezível, e é o que
-    mantém presign e upload consistentes com um único endpoint.
+  - `AWS_ENDPOINT_URL=https://static.fontedemisericordia.com.br`, **não**
+    `http://minio:9000`. O tráfego interno de `PutObject` sai e volta pelo nginx no mesmo
+    host — custo desprezível, e é o que mantém presign e upload consistentes com um único
+    endpoint.
+  - Com `forcePathStyle: true` (já setado, `storage.service.ts:53`), a URL canônica fica
+    `https://static.fontedemisericordia.com.br/<bucket>/<key>` — que é exatamente o
+    `publicBaseUrl` (`storage.service.ts:46`) e o `--to` do rebase da story 188.
   - O console do MinIO (`:9001`) **não** ganha `server` block. Administração via `mc` no host.
 - `location / { try_files $uri $uri/ /index.html; }` — SPA fallback. Um `server` por app,
   cada um com seu `root`: `/srv/adm`, `/srv/ops`. O bloco de rota é idêntico nos dois;
@@ -276,8 +283,8 @@ separado.
    teste que prova que o bucket está privado; se servir o arquivo, a policy está errada e todo
    o modelo de acesso caiu.
 6. Esperar a assinatura expirar e reabrir a URL → negado.
-7. `curl https://<host-do-storage>/` não expõe listagem de buckets, e o console (`:9001`) não
-   responde de fora.
+7. `curl https://static.fontedemisericordia.com.br/` não expõe listagem de buckets, e o
+   console (`:9001`) não responde de fora.
 8. Upload de arquivo acima de 10 MB falha com erro tratado, não com `413` cru do nginx.
 9. Requisição de origem não listada em `CORS_ORIGIN` é rejeitada no preflight — e as
    **duas** origens (`adm.` e `ops.`) **estão** listadas (esquecer uma derruba o app inteiro

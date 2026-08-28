@@ -12,15 +12,16 @@ reproduzir o ambiente.
 - **Arquivos em disco, servidos por nginx.** O `uploads/` deixa de ser bucket S3 e vira volume;
   quem entrega os bytes é o nginx, não o Node.
 - **nginx é a porta de entrada única:** termina TLS, roteia `/api/v1` para a API, `/uploads`
-  para o volume e serve os estáticos dos **três** frontends web.
-- **Três frontends, todos estáticos.** `adm.fonte` e `portal.fonte` saem do Vite;
-  `ops.fonte` sai do `expo export --platform web` (`build:web`), que também produz um `dist/`
-  estático — o `start:web` dele é literalmente `npx serve dist`. Nenhum dos três precisa de
-  processo Node em runtime, então **nenhum vira serviço no compose**: são roots de `server`
-  no nginx.
-- **`app.fonte` fica de fora.** Não vai ser servido por URL no momento (decisão do usuário);
-  familiares seguem pelo app instalado. O `build:web` dele existe, então incluir depois é
-  um `COPY` e um `server` block.
+  para o volume e serve os estáticos dos **dois** frontends web do primeiro corte.
+- **Dois frontends, ambos estáticos.** `adm.fonte` sai do Vite; `ops.fonte` sai do
+  `expo export --platform web` (`build:web`), que também produz um `dist/` estático — o
+  `start:web` dele é literalmente `npx serve dist`. Nenhum dos dois precisa de processo Node
+  em runtime, então **nenhum vira serviço no compose**: são roots de `server` no nginx.
+- **`portal.fonte` e `app.fonte` ficam de fora** (decisão do usuário). O portal não tem
+  domínio definido nem tráfego vivo: a cobrança de associados ainda não foi para produção —
+  a story 42 rastreia a ativação (credenciais Pagar.me e template Meta, checklist todo em
+  aberto). Familiares seguem pelo `app.fonte` instalado. Os dois têm build pronto, então
+  entrar depois é um `COPY`, um `server` block e uma entrada em `CORS_ORIGIN`.
 
 Depende da story 188 (snapshot de migração) para popular o volume `uploads/` e o banco. Esta
 story entrega o *ambiente*; a 188 entrega o *conteúdo*.
@@ -42,15 +43,15 @@ story entrega o *ambiente*; a 188 entrega o *conteúdo*.
 Não bloqueiam a escrita da story, mas mudam o `nginx.conf`:
 
 - **Domínios: um `server_name` por app, em subdomínio** (confirmado pelo usuário), não os
-  três sob paths do mesmo host. Path-based exigiria `base` no Vite (adm/portal) e
+  dois sob paths do mesmo host. Path-based exigiria `base` no Vite (adm) e
   `experiments.baseUrl` no Expo (ops), mais invasivo e fácil de quebrar no fallback de SPA.
   - `adm.fontedemisericordia.com.br` — confirmado.
   - `ops.fontedemisericordia.com.br` — confirmado, e **já em produção**: é o endereço que
     `docs/comunicacao/whatsapp-coordenadores-nova-plataforma.md:25` manda os coordenadores
     abrirem. O corte para o VPS tem de preservar esse host funcionando.
-  - `portal.` — **ainda não definido**. É a superfície pública dos associados (projeto Sentry
-    `fonte-associados`), então pode querer `associados.` em vez de `portal.`; o nome escolhido
-    entra em `APP_ASSOCIADOS_URL`, que é o que vai nos links de cobrança do WhatsApp.
+  - Portal: **sem domínio por enquanto** — não precisa neste corte. Quando entrar, o nome
+    escolhido (`portal.` ou `associados.`) vai em `APP_ASSOCIADOS_URL`, que é o que aparece
+    nos links de cobrança do WhatsApp. Deixar o `server` block preparado mas não ativado.
 - **Domínio de e-mail diverge do domínio web.** `mail.service.ts:36` envia como
   `nao-responda@fontedemisericordia.org` (`.org`), enquanto os apps ficam em
   `.com.br`. Não bloqueia a migração — o envio não passa pelo VPS — mas conferir que o
@@ -58,7 +59,7 @@ Não bloqueiam a escrita da story, mas mudam o `nginx.conf`:
   para o `.com.br`.
 - **TLS:** assumido `certbot` em container companion com renovação por cron e webroot
   compartilhado, em vez de Caddy (o usuário pediu nginx explicitamente).
-- **URL da API é build-time nos três.** Vite embute `VITE_API_URL` e Expo embute
+- **URL da API é build-time nos dois.** Vite embute `VITE_API_URL` e Expo embute
   `EXPO_PUBLIC_API_URL` no bundle. Trocar de domínio exige **rebuild da imagem**, não
   restart. Mesmo vale para `APP_ASSOCIADOS_URL` e `CORS_ORIGIN` no lado da API.
 
@@ -69,7 +70,7 @@ Não bloqueiam a escrita da story, mas mudam o `nginx.conf`:
 ### 1. `Dockerfile` (raiz do monorepo, multi-stage)
 
 O build precisa do workspace inteiro: a `api` depende de `@fonte/types` e `@fonte/doc-styles`;
-os três frontends dependem de `@fonte/types` e `@fonte/api-client` (adm também de
+os frontends dependem de `@fonte/types` e `@fonte/api-client` (adm também de
 `doc-styles`). Build de app isolado não funciona.
 
 - **`base`** — `node:22-alpine`, `corepack enable` fixando `pnpm@11.3.0` (o
@@ -79,10 +80,10 @@ os três frontends dependem de `@fonte/types` e `@fonte/api-client` (adm também
   cada mudança de código.
 - **`build`** — copia o código e roda, nesta ordem: `pnpm build:types`,
   `pnpm build:doc-styles`, `pnpm build:api-client`, `pnpm build:api`,
-  `pnpm --filter adm.fonte build`, `pnpm --filter portal.fonte build`, `pnpm build:ops`.
-  O último é o script de raiz que já existe e chama o `expo export --platform web`.
-  **Não** buildar `app.fonte` — fora de escopo.
-  Os três frontends recebem sua URL de API por env de build (`VITE_API_URL` /
+  `pnpm --filter adm.fonte build`, `pnpm build:ops`. O último é o script de raiz que já
+  existe e chama o `expo export --platform web`.
+  **Não** buildar `portal.fonte` nem `app.fonte` — fora de escopo deste corte.
+  Os dois frontends recebem sua URL de API por env de build (`VITE_API_URL` /
   `EXPO_PUBLIC_API_URL`) — declarar como `ARG` no stage e passar no `build`.
 - **`api`** (runtime final da API) — `node:22-alpine` +
   **`apk add postgresql16-client`** (pré-requisito bloqueante das stories 20 e 188: o
@@ -92,9 +93,9 @@ os três frontends dependem de `@fonte/types` e `@fonte/api-client` (adm também
   `typeorm migration:run` antes do `node dist/main` (`services/api/package.json:12`).
   `WORKDIR` tem de ser `services/api`: o `StorageService` resolve `process.cwd()/uploads`
   (`storage.service.ts:104`).
-- **`web`** (runtime do nginx) — `nginx:alpine` + `COPY --from=build` dos **três** `dist/`
-  para `/srv/adm`, `/srv/portal` e `/srv/ops`, mais o `default.conf`.
-  Origens: `apps/adm.fonte/dist`, `apps/portal.fonte/dist`, `apps/ops.fonte/dist`.
+- **`web`** (runtime do nginx) — `nginx:alpine` + `COPY --from=build` dos **dois** `dist/`
+  para `/srv/adm` e `/srv/ops`, mais o `default.conf`.
+  Origens: `apps/adm.fonte/dist`, `apps/ops.fonte/dist`.
 
 ### 2. `docker-compose.prod.yml` (raiz)
 
@@ -126,9 +127,10 @@ Rotas, na ordem de precedência:
 - `location /uploads/ { alias /srv/uploads/; }` — servido direto do disco, com
   `expires`/`Cache-Control` e **`autoindex off`** (listar diretório expõe o acervo inteiro).
 - `location / { try_files $uri $uri/ /index.html; }` — SPA fallback. Um `server` por app,
-  cada um com seu `root`: `/srv/adm`, `/srv/portal`, `/srv/ops`. O bloco de rota é idêntico
-  nos três; fatorar num `include` parcial em vez de repetir.
-- **`index.html` sem cache** (`Cache-Control: no-store`) nos três, com hash-cache longo só
+  cada um com seu `root`: `/srv/adm`, `/srv/ops`. O bloco de rota é idêntico nos dois;
+  fatorar num `include` parcial em vez de repetir — é o que faz o portal entrar depois sem
+  reescrever nada.
+- **`index.html` sem cache** (`Cache-Control: no-store`) nos dois, com hash-cache longo só
   nos assets. Sem isso, deploy novo continua servindo bundle velho — e no `ops.fonte`, que é
   offline-first e guarda fila de mutations, bundle velho com backend novo é o cenário ruim.
 - `client_max_body_size 10m` — casar com o limite de body da API (`main.ts:20-21`); menor que
@@ -217,10 +219,9 @@ separado.
 1. `pnpm test:api` — unit verdes, sem regressão. `uniqueFilename` mudou de formato: conferir
    que nenhum teste dependia do padrão `timestamp-random`.
 2. `pnpm test:api:e2e` — o upload continua funcionando com o nome novo ponta a ponta.
-3. `pnpm build:api` + `pnpm --filter adm.fonte build` + `pnpm --filter portal.fonte build` +
-   `pnpm build:ops` — é exatamente o que o stage `build` roda; quebrar aqui quebra a imagem.
-   O `expo export` do ops é o passo mais frágil da cadeia (é o que menos roda hoje):
-   validar antes de escrever o Dockerfile.
+3. `pnpm build:api` + `pnpm --filter adm.fonte build` + `pnpm build:ops` — é exatamente o
+   que o stage `build` roda; quebrar aqui quebra a imagem. O `expo export` do ops é o passo
+   mais frágil da cadeia (é o que menos roda hoje): validar antes de escrever o Dockerfile.
 4. Sem endpoint novo → **não** há mudança no Postman nem em `packages/types`/`api-client`.
 
 **Casos a cobrir (unit):**
@@ -237,17 +238,17 @@ separado.
 2. `up -d` sobe os quatro serviços; `postgres` fica `healthy`; as migrations rodam no
    start da API (log do `migration:run`).
 3. `GET /api/v1/...` responde através do nginx (não direto na 3000 — a API não publica porta).
-   Os **três** hosts carregam e fazem login contra a API pelo domínio real (pega
+   Os **dois** hosts carregam e fazem login contra a API pelo domínio real (pega
    `VITE_API_URL`/`EXPO_PUBLIC_API_URL` embutido errado, que é o modo de falha mais provável).
-   Deep link direto (ex.: `/residents/<id>` no adm, `/cancelar/<token>` no portal) resolve
-   pelo fallback de SPA em vez de `404`.
+   Deep link direto (ex.: `/residents/<id>` no adm) resolve pelo fallback de SPA em vez de
+   `404`.
 4. Upload de foto de residente pelo adm → arquivo aparece no volume `uploads` e é servido
    por **nginx** em `/uploads/residents/<uuid>.jpg`. Conferir no header de resposta que quem
    serviu foi o nginx, não o Node.
 5. `curl http://host/uploads/` retorna `403`/`404`, **não** listagem de diretório.
 6. Upload de arquivo acima de 10 MB falha com erro tratado, não com `413` cru do nginx.
 7. Requisição de origem não listada em `CORS_ORIGIN` é rejeitada no preflight — e as
-   **três** origens dos frontends **estão** listadas (esquecer uma derruba o app inteiro
+   **duas** origens (`adm.` e `ops.`) **estão** listadas (esquecer uma derruba o app inteiro
    em produção).
 
 > **Gate de cobertura (trava a story):** todo caminho novo ou alterado tem teste correspondente
@@ -267,8 +268,10 @@ separado.
 - **CI/CD** (build e push automático da imagem). Nesta story o build é manual no VPS ou local.
 - Autenticação em `/uploads` pelas opções 2 e 3 (`auth_request`, `X-Accel-Redirect`) — story
   própria.
-- **`app.fonte` inteiro.** Não é servido por URL no momento (decisão do usuário) — nem build
-  web, nem `server` block, nem entrada em `CORS_ORIGIN`. Familiares seguem pelo app instalado.
+- **`portal.fonte` e `app.fonte`.** Não são servidos por URL neste corte (decisão do
+  usuário) — nem build, nem `server` block, nem entrada em `CORS_ORIGIN`. O portal volta
+  quando a cobrança de associados for ativada (story 42) e o subdomínio for escolhido;
+  familiares seguem pelo `app.fonte` instalado.
 - **Builds nativos** de `ops.fonte` (APK/EAS, lojas). Esta story serve só o build **web** do
   ops; a distribuição do APK continua como está hoje (`build:e2e:android`, EAS) e não passa
   pelo nginx.

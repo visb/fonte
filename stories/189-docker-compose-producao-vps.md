@@ -8,7 +8,8 @@ nada disso está versionado. Sem Dockerfile e sem compose, não há como subir a
 reproduzir o ambiente.
 
 **Decisões do usuário:**
-- **Um VPS, tudo em Docker Compose:** api + postgres + redis + nginx.
+- **Um VPS, tudo em Docker Compose:** api + postgres + nginx. **Sem Redis** — a dependência
+  sai do código na story 190, e o compose de produção já nasce sem ela.
 - **Arquivos em disco, servidos por nginx.** O `uploads/` deixa de ser bucket S3 e vira volume;
   quem entrega os bytes é o nginx, não o Node.
 - **nginx é a porta de entrada única:** termina TLS, roteia `/api/v1` para a API, `/uploads`
@@ -25,6 +26,10 @@ reproduzir o ambiente.
 
 Depende da story 188 (snapshot de migração) para popular o volume `uploads/` e o banco. Esta
 story entrega o *ambiente*; a 188 entrega o *conteúdo*.
+
+Depende também da story 190 (remoção do Redis). Se a 190 não tiver entrado, o compose sobe
+mesmo assim — o `CacheService` já degrada sem `REDIS_URL` — mas cada request de casa loga
+aviso de conexão. Ordem preferida: **190 antes da 189**.
 
 ### Correções que entram junto (o deploy sai quebrado sem elas)
 
@@ -99,13 +104,11 @@ os frontends dependem de `@fonte/types` e `@fonte/api-client` (adm também de
 
 ### 2. `docker-compose.prod.yml` (raiz)
 
-Quatro serviços; só o nginx publica porta no host (80/443).
+Três serviços; só o nginx publica porta no host (80/443).
 
 - **`postgres`** — `postgres:16-alpine`, volume nomeado `postgres_data`, `TZ/PGTZ=UTC`
   (espelha o `docker-compose.yml` de dev), healthcheck `pg_isready`. **Sem** `ports:` — só a
   rede interna. `POSTGRES_PASSWORD` vem do `.env` do host, nunca hardcoded.
-- **`redis`** — `redis:7-alpine`, sem `ports:`. Cache não crítico (sem `REDIS_URL` a app
-  recalcula, ver `.env.example:9-10`).
 - **`api`** — imagem stage `api`, `env_file`, `depends_on` com `condition: service_healthy`,
   `restart: unless-stopped`. Monta o volume `uploads` em
   `/app/services/api/uploads` (**rw**).
@@ -235,8 +238,8 @@ separado.
 **Verificação manual (a que prova o deploy):**
 1. `docker compose -f docker-compose.prod.yml build` conclui; `docker image ls` mostra a
    imagem da API com `pg_dump --version` reportando **16** de dentro do container.
-2. `up -d` sobe os quatro serviços; `postgres` fica `healthy`; as migrations rodam no
-   start da API (log do `migration:run`).
+2. `up -d` sobe os três serviços; `postgres` fica `healthy`; as migrations rodam no
+   start da API (log do `migration:run`). Nenhum log de tentativa de conexão a Redis.
 3. `GET /api/v1/...` responde através do nginx (não direto na 3000 — a API não publica porta).
    Os **dois** hosts carregam e fazem login contra a API pelo domínio real (pega
    `VITE_API_URL`/`EXPO_PUBLIC_API_URL` embutido errado, que é o modo de falha mais provável).

@@ -264,10 +264,37 @@ AWS_SECRET_ACCESS_KEY=<MINIO_ROOT_PASSWORD>
 > são embutidos no bundle pelo stage `build`. Trocar de domínio exige **rebuild da imagem**, não
 > restart. Os defaults do compose já apontam para os hosts acima.
 
-## 9.2 Build
+## 9.2 Imagens — build fora do VPS, registry no meio
+
+**O VPS não compila.** Com 1 vCPU, buildar o monorepo (pnpm install de ~1200 deps, Chromium do
+puppeteer, `sharp`/`bcrypt` nativos, Vite do adm e `expo export` do ops) é lento e disputa a
+memória que a stack precisa para rodar. O `docker-compose.prod.yml` referencia
+`ghcr.io/visb/fonte-api` e `ghcr.io/visb/fonte-web`; o VPS só faz `pull`.
+
+O build roda **fora**: hoje na máquina do operador, depois no GitHub Actions. O bloco `build:`
+de cada serviço fica comentado no compose para o caso de precisar buildar no lugar.
+
+**Na máquina que builda** (precisa ser `linux/amd64`, igual ao VPS):
 
 ```bash
-docker compose -f docker-compose.prod.yml build
+docker build --target api -t ghcr.io/visb/fonte-api:latest .
+docker build --target web -t ghcr.io/visb/fonte-web:latest \
+  --build-arg VITE_API_URL=https://adm.fontedemisericordia.com.br/api/v1 \
+  --build-arg EXPO_PUBLIC_API_URL=https://ops.fontedemisericordia.com.br/api/v1 .
+
+echo $GHCR_TOKEN | docker login ghcr.io -u <usuário> --password-stdin
+docker push ghcr.io/visb/fonte-api:latest
+docker push ghcr.io/visb/fonte-web:latest
+```
+
+> A URL da API é **build-time** nos dois front-ends. Trocar de domínio exige rebuild **e push**
+> da imagem `web` — `restart` não resolve.
+
+**No VPS** (token separado, só `read:packages`):
+
+```bash
+echo $GHCR_READ_TOKEN | docker login ghcr.io -u <usuário> --password-stdin
+docker compose -f docker-compose.prod.yml pull
 ```
 
 Confira que o cliente do Postgres na imagem da API é **18** (é o que permite restaurar o dump da

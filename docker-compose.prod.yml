@@ -65,10 +65,14 @@ services:
 
   # ── API ─────────────────────────────────────────────────────────────────────
   api:
-    build:
-      context: .
-      target: api
-    image: fonte-api:local
+    # Imagem vem do registry: o VPS tem 1 vCPU e não compila o monorepo. O build
+    # roda fora (máquina do operador hoje, GitHub Actions depois) e aqui só se
+    # faz `pull`. Para buildar localmente em vez de puxar, comente `image:` e
+    # descomente o bloco `build:`.
+    image: ghcr.io/visb/fonte-api:${IMAGE_TAG:-latest}
+    # build:
+    #   context: .
+    #   target: api
     restart: unless-stopped
     env_file:
       - .env
@@ -82,15 +86,17 @@ services:
 
   # ── borda ───────────────────────────────────────────────────────────────────
   nginx:
-    build:
-      context: .
-      target: web
-      args:
-        # URL da API é BUILD-TIME nos dois front-ends (embutida no bundle).
-        # Mudar aqui exige `build`, não `restart`.
-        VITE_API_URL: ${VITE_API_URL:-https://adm.fontedemisericordia.com.br/api/v1}
-        EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-https://ops.fontedemisericordia.com.br/api/v1}
-    image: fonte-web:local
+    # Idem `api`: imagem pronta do registry. A URL da API dos dois front-ends é
+    # BUILD-TIME (embutida no bundle), então trocar de domínio exige **rebuild e
+    # push da imagem**, não `restart` — os args ficam registrados no bloco
+    # comentado abaixo, que é o que o build fora daqui precisa passar.
+    image: ghcr.io/visb/fonte-web:${IMAGE_TAG:-latest}
+    # build:
+    #   context: .
+    #   target: web
+    #   args:
+    #     VITE_API_URL: https://adm.fontedemisericordia.com.br/api/v1
+    #     EXPO_PUBLIC_API_URL: https://ops.fontedemisericordia.com.br/api/v1
     restart: unless-stopped
     ports:
       - '80:80'

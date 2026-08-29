@@ -24,10 +24,13 @@ jobs:
         with:
           version: 11.3.0
 
+      # Node 22: o pnpm 11.3.0 (packageManager da raiz) exige >= 22.13 e nem
+      # inicia em Node 20 — falha em `node:sqlite`, antes de rodar teste algum.
+      # Casa com a imagem de produção, que é node:22-alpine.
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install deps

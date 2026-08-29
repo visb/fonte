@@ -43,14 +43,15 @@ Rodada de autorun **189–190** — aberta em 2026-08-29.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 190 — remover a dependência de Redis | [ ] | | | |
-| 2 | 189 — Dockerfile multi-stage + compose no VPS (nginx + MinIO) | [ ] | | | |
+| 1 | 190 — remover a dependência de Redis | [OK] | 132 suítes / 1655 unit + 582 e2e | `6caa0fb` | `fb60519` |
+| 2 | 189 — Dockerfile multi-stage + compose no VPS (nginx + MinIO) | in_progress | | | |
 
 ## Log
 
 ```
-[OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data>
-     <bloqueio/PENDENTE-MANUAL e no máx. 1 nota crítica — máx. ~3 linhas por entrada>
+[OK] 190 — testes: 132 suítes / 1655 unit (baseline 133/1650; -1 suíte = cache.service.spec
+     apagada), 582 e2e, build limpo, cobertura global e por módulo subiu — commit: 6caa0fb —
+     merge: fb60519 — 2026-08-29 — EventEmitterModule mantido (alimenta o NotificationGateway).
 ```
 
 ## Resumo final

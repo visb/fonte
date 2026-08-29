@@ -97,22 +97,14 @@ jobs:
           cache-to: type=gha,mode=max,scope=web
 
   # ── deploy ─────────────────────────────────────────────────────────────────
-  # O environment `production` tem required reviewer: o job fica pendente ate
-  # alguem aprovar na aba Actions. Nenhum deploy toca o servidor sozinho.
+  # Automatico: todo push na main que passar no gate e publicar imagem vai para
+  # producao. O passo em si mora em deploy.yml (reutilizavel), que tambem aceita
+  # disparo manual para reimplantar sem commit.
   #
-  # A chave SSH e restrita por forced command no authorized_keys do VPS: ela so
-  # consegue rodar /opt/fonte/deploy.sh, nao abre shell. Ver README (§ 9.7).
+  # Sem aprovacao no meio por decisao do usuario: required reviewer de GitHub
+  # Environment exige plano pago em repositorio privado. O que limita o estrago
+  # e a chave SSH, amarrada por forced command a /opt/fonte/deploy.sh.
   deploy:
-    name: Deploy no VPS
     needs: images
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: pull + up -d no VPS
-        run: |
-          install -m 700 -d ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
-          ssh -i ~/.ssh/id_ed25519 \
-            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" true
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

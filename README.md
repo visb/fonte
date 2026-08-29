@@ -444,14 +444,26 @@ query) tem de dar 403.
 
 ## 9.6 Deploy automático (GitHub Actions)
 
-O workflow `.github/workflows/ci.yml` tem três estágios encadeados:
+São dois workflows, e a separação é deliberada.
+
+**`ci.yml`** roda a cada push na `main`, em dois estágios encadeados:
 
 1. **`coverage-gate`** — suíte de todos os pacotes com o piso de cobertura. Já existia.
 2. **`images`** — depende do gate (nada é publicado com a suíte vermelha), só em push na
    `main`. Builda `api` e `web` e publica no GHCR com duas tags: `latest` e o **SHA** do
    commit. O SHA é o que permite voltar sem rebuildar.
-3. **`deploy`** — roda no GitHub Environment `production`, que tem **required reviewer**: o job
-   fica pendente até alguém aprovar na aba Actions. Nenhum deploy toca o servidor sozinho.
+
+3. **`deploy`** — chama `deploy.yml` e manda o servidor puxar o que acabou de ser publicado.
+
+**`deploy.yml`** é reutilizável: o CI o chama no passo 3, e ele também aceita **disparo manual**
+(Actions → Deploy → Run workflow), útil para reimplantar sem commit — mudou o `.env` do
+servidor, quer reaplicar o compose, ou está voltando de um rollback.
+
+> **Todo push na `main` que passar no gate vai para produção**, sem aprovação no meio. Foi
+> decisão consciente: *required reviewer* de GitHub Environment exige plano pago em repositório
+> privado, e declarar `environment:` sem ele seria decoração sugerindo uma proteção inexistente.
+> O que de fato limita o estrago é a chave SSH — o `authorized_keys` do VPS a amarra por
+> `command=` ao `/opt/fonte/deploy.sh`, então ela não abre shell nem executa outra coisa.
 
 ### Configuração (uma vez)
 

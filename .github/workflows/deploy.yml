@@ -1,0 +1,33 @@
+name: Deploy
+
+# Dois gatilhos:
+#   workflow_call     — chamado pelo ci.yml depois que as imagens sobem (deploy
+#                       automático a cada push na main).
+#   workflow_dispatch — disparo manual em Actions → Deploy → Run workflow. Serve
+#                       para reimplantar sem commit: mudou o .env do servidor,
+#                       quer reaplicar o compose, ou voltar de um rollback.
+#
+# Sobre não haver aprovação: required reviewer de GitHub Environment exige plano
+# pago em repositório privado. Declarar `environment:` aqui não seguraria nada —
+# seria só decoração sugerindo uma proteção inexistente. O que de fato limita o
+# estrago é a chave SSH: o authorized_keys do VPS a amarra por `command=` ao
+# /opt/fonte/deploy.sh, então ela não abre shell nem executa outra coisa.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy no VPS
+    runs-on: ubuntu-latest
+    steps:
+      # O `ssh` não passa comando: quem decide o que rodar é o forced command do
+      # servidor. Passar comando aqui seria ignorado de qualquer forma.
+      - name: pull + up -d no VPS
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" true

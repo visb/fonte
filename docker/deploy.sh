@@ -13,6 +13,15 @@ set -eu
 
 cd /opt/fonte
 
+# O repositório também precisa vir junto: o compose e os configs do nginx vivem
+# nele, não na imagem. Sem isto, mudança em docker-compose.prod.yml ou em
+# docker/nginx/ ficaria só no git e o servidor seguiria com a versão antiga —
+# silenciosamente. A deploy key é só-leitura.
+echo "==> git"
+git fetch --quiet origin main
+git reset --hard --quiet origin/main
+git log --oneline -1
+
 echo "==> pull"
 docker compose -f docker-compose.prod.yml pull api nginx
 

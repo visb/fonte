@@ -106,8 +106,9 @@ os frontends dependem de `@fonte/types` e `@fonte/api-client` (adm também de
   Os dois frontends recebem sua URL de API por env de build (`VITE_API_URL` /
   `EXPO_PUBLIC_API_URL`) — declarar como `ARG` no stage e passar no `build`.
 - **`api`** (runtime final da API) — `node:22-alpine` +
-  **`apk add postgresql16-client`** (pré-requisito bloqueante das stories 20 e 188: o
-  `BackupService` faz `spawn` de `pg_dump`/`pg_restore` v16, `backup.service.ts:297,328`).
+  **`apk add postgresql18-client`** (pré-requisito bloqueante das stories 20 e 188: o
+  `BackupService` faz `spawn` de `pg_dump`/`pg_restore`, `backup.service.ts:297,328`).
+  **18, não 16** — ver a nota de versão abaixo.
   Copia `services/api/dist`, os `dist` dos packages compartilhados e as deps de produção.
   `CMD` = `pnpm --filter api start` — que já roda
   `typeorm migration:run` antes do `node dist/main` (`services/api/package.json:12`).
@@ -123,9 +124,22 @@ os frontends dependem de `@fonte/types` e `@fonte/api-client` (adm também de
 
 Cinco serviços; só o nginx publica porta no host (80/443).
 
-- **`postgres`** — `postgres:16-alpine`, volume nomeado `postgres_data`, `TZ/PGTZ=UTC`
-  (espelha o `docker-compose.yml` de dev), healthcheck `pg_isready`. **Sem** `ports:` — só a
-  rede interna. `POSTGRES_PASSWORD` vem do `.env` do host, nunca hardcoded.
+- **`postgres`** — **`postgres:18-alpine`** (ver nota de versão abaixo), volume nomeado
+  `postgres_data`, `TZ/PGTZ=UTC`, healthcheck `pg_isready`. **Sem** `ports:` — só a rede
+  interna. `POSTGRES_PASSWORD` vem do `.env` do host, nunca hardcoded.
+
+> **Versão do Postgres: 18, não 16.** Medido contra a produção durante a captura da story 188:
+> o servidor do Railway é **18.6**, enquanto o `docker-compose.yml` de dev usa
+> `postgres:16-alpine` e as stories 20/189 diziam v16. Dev e produção estão em majors
+> diferentes.
+>
+> Isso é imposição, não preferência: o dump sai do servidor 18, e **archive custom-format de
+> versão nova não é lido por `pg_restore` mais antigo** (`unsupported version in file header`).
+> Restaurar num Postgres 16 no VPS simplesmente não funciona.
+>
+> Alinhar o `docker-compose.yml` de dev para 18 **fica fora desta story** — mexe no ambiente de
+> todo mundo e nas suítes e2e. Mas está registrado como divergência conhecida: hoje os testes
+> rodam contra um major diferente do de produção.
 - **`minio`** — `minio/minio`, volume nomeado `minio_data`, healthcheck em `/minio/health/ready`.
   **Sem** `ports:`: nem a API (`:9000`) nem o console (`:9001`) são publicados direto — tudo
   passa pelo nginx, e o console **não** é exposto na internet. Credenciais
@@ -288,7 +302,8 @@ separado.
 
 **Verificação manual (a que prova o deploy):**
 1. `docker compose -f docker-compose.prod.yml build` conclui; `docker image ls` mostra a
-   imagem da API com `pg_dump --version` reportando **16** de dentro do container.
+   imagem da API com `pg_dump --version` reportando **18** de dentro do container, e
+   `pg_restore --version` idem — é o que permite restaurar o dump da 188.
 2. `up -d` sobe os cinco serviços; `postgres` e `minio` ficam `healthy`; as migrations rodam
    no start da API (log do `migration:run`). Nenhum log de tentativa de conexão a Redis.
 3. `GET /api/v1/...` responde através do nginx (não direto na 3000 — a API não publica porta).

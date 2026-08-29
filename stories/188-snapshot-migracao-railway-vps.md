@@ -58,29 +58,51 @@ São 23 colunas em 15 tabelas, mais HTML com `<img src>` embutido.
 
 ---
 
-## Pré-requisito (bloqueante)
+## Pré-requisito (bloqueante) — versão do Postgres
 
-`pg_dump`/`pg_restore` **v16** não estão na máquina do operador (`pg_dump: command not found`).
-O winget não instala a 16: o pacote existe mas o download do EnterpriseDB responde `403`, e o
-catálogo só lista 17 e 18.
+> **Produção roda Postgres 18.6, não 16.** Medido ao rodar o dump:
+> `server version: 18.6 (Debian 18.6-1.pgdg13+2); pg_dump version: 16.11` →
+> `aborting because of server version mismatch`. O `docker-compose.yml` de dev usa
+> `postgres:16-alpine` e as stories 20 e 189 falavam em v16 — dev e produção estão em majors
+> diferentes. **O VPS tem de rodar 18**, e a story 189 foi corrigida.
 
-Versão importa nos dois sentidos: `pg_dump` mais novo dumpa servidor mais velho sem problema,
-mas **archive custom-format gerado por versão nova não é lido por `pg_restore` mais antigo**
-(`unsupported version in file header`). Como o VPS roda Postgres 16, o dump precisa sair de uma
-v16.
+Regra que manda aqui, nos dois sentidos:
 
-**Caminho adotado — rodar o export dentro de container**, que dá a v16 exata sem instalar nada:
+- `pg_dump` precisa ser **>= a versão do servidor**. Contra o Railway (18.6), só v18+.
+- Archive custom-format gerado por versão nova **não é lido por `pg_restore` mais antigo**
+  (`unsupported version in file header`). Dump feito com 18 exige `pg_restore` 18 no destino.
+
+Logo: **18 na captura e 18 no VPS.**
+
+O archive capturado confirma (`pg_restore --list`):
 
 ```
-docker run --rm -v C:/code/fonte:/repo -w /repo node:22-alpine sh -c \
-  "apk add --no-cache postgresql16-client && corepack enable && pnpm --filter api backup:export /repo"
+Dump Version: 1.16-0   Format: CUSTOM   TOC Entries: 371
+Dumped from database version: 18.6 (Debian 18.6-1.pgdg13+2)
+Dumped by pg_dump version: 18.6
 ```
 
-Bônus: essa imagem é exatamente o stage `api` da story 189 — valida cedo o `apk add
-postgresql16-client`, que é o passo mais arriscado daquele Dockerfile.
+**Extensões usadas pelo banco: `unaccent` e `uuid-ossp`.** Precisam estar disponíveis no
+Postgres do VPS — a imagem oficial `postgres:18-alpine` traz os contrib, mas conferir antes do
+restore, porque a falta delas quebra o `pg_restore` logo nas primeiras entradas do TOC.
 
-No VPS, o container que roda o `backup:import` precisa do `postgresql16-client` pelo mesmo
-motivo — já é exigência registrada na story 189.
+`pg_dump` não existe na máquina do operador (`command not found`), e o winget não resolve — a
+16 dá `403` no EnterpriseDB e o catálogo só lista 17/18. **Caminho adotado: container.**
+
+Dois detalhes do ambiente que quebram o caminho "rodar o `backup:export` dentro do container"
+descrito antes:
+
+1. `.npmrc` tem `shamefully-hoist=false`, mas o install real deste repo é **hoisted** — as
+   ~1200 deps estão em `node_modules/` da raiz e `services/api/node_modules` tem 8 pacotes.
+2. `bcrypt` e `sharp` são nativos, compilados para Windows.
+
+Montar o repo num `node:22-alpine` e reusar esse `node_modules` não funciona. Na captura desta
+migração o que rodou foi: **só o `pg_dump` no container** (`postgres:18-alpine`, com
+`DATABASE_URL` passado por variável de ambiente, nunca em linha de comando), e o download do
+bucket + zip no host, com as deps que já funcionam. Script one-off, fora do repo.
+
+No VPS o problema não existe: a imagem é Linux e o `postgresql-client` **18** entra nela
+(exigência registrada na story 189).
 
 ---
 

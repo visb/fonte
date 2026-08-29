@@ -226,7 +226,6 @@ function makeService(
     cancelFuturePending: jest.fn().mockResolvedValue(undefined),
     cancelAfterExit: jest.fn().mockResolvedValue(undefined),
   },
-  eventEmitter: { emit: jest.Mock } = { emit: jest.fn() },
   notifications: Record<string, jest.Mock> = {
     create: jest.fn().mockResolvedValue(undefined),
   },
@@ -243,7 +242,6 @@ function makeService(
     staffService as never, // StaffService
     { query: jest.fn().mockResolvedValue([]) } as never, // DataSource
     notifications as never, // NotificationService
-    eventEmitter as never, // EventEmitter2
   );
 }
 
@@ -485,9 +483,11 @@ describe('ResidentService.create', () => {
     expect(result).toBe(saved);
   });
 
-  it('emits resident.counts.changed so the house count cache is invalidated', async () => {
+  // Story 190: create/update/readmit/remove não dependem mais de EventEmitter2 —
+  // a contagem por casa é lida direto do banco. O módulo de teste não fornece o
+  // provider; se voltar a ser exigido, sobrou injeção no serviço.
+  it('creates without an EventEmitter2 provider in the test module', async () => {
     const saved = makeResident({ id: RESIDENT_ID, houseId: HOUSE_ID });
-    const emitter = { emit: jest.fn() };
     const service = makeService(
       {
         create: jest.fn().mockReturnValue(saved),
@@ -496,16 +496,27 @@ describe('ResidentService.create', () => {
         update: jest.fn(),
       },
       { create: jest.fn().mockReturnValue(makeAdmission()), save: jest.fn().mockResolvedValue(makeAdmission()) },
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      emitter,
     );
 
-    await service.create({ name: 'Ana', houseId: HOUSE_ID, status: 'PRE_ADMISSION' } as never);
+    const result = await service.create({
+      name: 'Ana',
+      houseId: HOUSE_ID,
+      status: 'PRE_ADMISSION',
+    } as never);
 
-    expect(emitter.emit).toHaveBeenCalledWith('resident.counts.changed');
+    expect(result).toBe(saved);
+  });
+
+  it('removes without an EventEmitter2 provider in the test module', async () => {
+    const softDelete = jest.fn().mockResolvedValue({ affected: 1 });
+    const service = makeService({
+      findOne: jest.fn().mockResolvedValue(makeResident({ id: RESIDENT_ID })),
+      softDelete,
+    });
+
+    await service.remove(RESIDENT_ID);
+
+    expect(softDelete).toHaveBeenCalledWith(RESIDENT_ID);
   });
 
   function makeCreateServiceForNotification(status: string) {
@@ -519,7 +530,6 @@ describe('ResidentService.create', () => {
         update: jest.fn(),
       },
       { create: jest.fn().mockReturnValue(makeAdmission()), save: jest.fn().mockResolvedValue(makeAdmission()) },
-      undefined,
       undefined,
       undefined,
       undefined,
@@ -555,7 +565,6 @@ describe('ResidentService.create', () => {
     const service = makeService(
       { findOne: jest.fn().mockResolvedValue(saved), update: jest.fn() },
       {},
-      undefined,
       undefined,
       undefined,
       undefined,
@@ -771,7 +780,6 @@ describe('ResidentService.readmit', () => {
         cancelFuturePending: jest.fn().mockResolvedValue(undefined),
         cancelAfterExit: jest.fn().mockResolvedValue(undefined),
       },
-      undefined,
       { create: notificationsCreate },
     );
 
@@ -1217,7 +1225,6 @@ describe('ResidentService.getContributionsReport', () => {
       {} as never,
       { query } as never,
       { create: jest.fn().mockResolvedValue(undefined) } as never,
-      { emit: jest.fn() } as never,
     );
     return { service, query };
   }
@@ -1313,7 +1320,6 @@ describe('ResidentService.findAdmissionDocuments', () => {
       {} as never,                                                            // staffService
       {} as never,                                                            // dataSource
       {} as never,                                                            // notifications
-      { emit: jest.fn() } as never,                                           // eventEmitter
     );
 
     const result = await service.findAdmissionDocuments(RESIDENT_ID, [

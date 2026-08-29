@@ -43,23 +43,20 @@ function makeRepo(overrides: Partial<MockRepo> = {}): MockRepo {
   };
 }
 
-function makeEmitter() {
-  return { emit: jest.fn() };
-}
-
+// Story 190: o serviço não injeta mais EventEmitter2 — o staffCount por casa é
+// lido direto do banco pelo HouseService. Se algum teste voltar a precisar do
+// provider aqui, sobrou injeção no serviço.
 function makeService(
   staffRepo: MockRepo,
   userRepo: MockRepo,
   permissionRepo: MockRepo,
   storage: Partial<StorageService> = {},
-  emitter: ReturnType<typeof makeEmitter> = makeEmitter(),
 ) {
   return new StaffService(
     staffRepo as unknown as Repository<Staff>,
     userRepo as unknown as Repository<User>,
     permissionRepo as unknown as Repository<StaffPermission>,
     storage as StorageService,
-    emitter as never,
   );
 }
 
@@ -456,15 +453,113 @@ describe('StaffService permissions', () => {
     const service = makeService(makeRepo(), makeRepo(), permRepo);
     await expect(service.hasPermission('staff-1', 'MANAGE_STOREROOM' as never)).resolves.toBe(false);
   });
+
+  it('getPermissions lists the permissions of an existing staff', async () => {
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1' }) });
+    const permRepo = makeRepo({ find: jest.fn().mockResolvedValue([{ id: 'perm-1' }]) });
+    const service = makeService(staffRepo, makeRepo(), permRepo);
+
+    const result = await service.getPermissions('staff-1');
+
+    expect(permRepo.find).toHaveBeenCalledWith({
+      where: { staffId: 'staff-1' },
+      order: { permissionType: 'ASC' },
+    });
+    expect(result).toEqual([{ id: 'perm-1' }]);
+  });
+
+  it('addPermission persists a permission that does not exist yet', async () => {
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1' }) });
+    const permRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const service = makeService(staffRepo, makeRepo(), permRepo);
+
+    await service.addPermission('staff-1', 'MANAGE_STOREROOM' as never);
+
+    expect(permRepo.create).toHaveBeenCalledWith({
+      staffId: 'staff-1',
+      permissionType: 'MANAGE_STOREROOM',
+    });
+    expect(permRepo.save).toHaveBeenCalled();
+  });
+
+  it('removePermission deletes an existing permission', async () => {
+    const permRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'perm-1' }) });
+    const service = makeService(makeRepo(), makeRepo(), permRepo);
+
+    await service.removePermission('staff-1', 'MANAGE_STOREROOM' as never);
+
+    expect(permRepo.delete).toHaveBeenCalledWith('perm-1');
+  });
 });
 
-describe('StaffService house:list cache invalidation', () => {
-  const HOUSE_STAFF_CHANGED_EVENT = 'house.staff.changed';
+describe('StaffService misc', () => {
+  it('existsForFormerResident delegates to the repository', async () => {
+    const staffRepo = makeRepo({ exists: jest.fn().mockResolvedValue(true) });
+    const service = makeService(staffRepo, makeRepo(), makeRepo());
 
-  it('emits HOUSE_STAFF_CHANGED_EVENT on create', async () => {
-    const emitter = makeEmitter();
+    await expect(service.existsForFormerResident('res-9')).resolves.toBe(true);
+    expect(staffRepo.exists).toHaveBeenCalledWith({ where: { formerResidentId: 'res-9' } });
+  });
+
+  it('uploadPhotoMe resolves the own staff and uploads the photo', async () => {
+    const staffRepo = makeRepo({
+      findOne: jest
+        .fn()
+        // findByUserId
+        .mockResolvedValueOnce({ id: 'staff-1', userId: 'user-1', photoUrl: null })
+        .mockResolvedValue({ id: 'staff-1', photoUrl: null }),
+    });
+    const permRepo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
+    const storage = {
+      uniqueFilename: jest.fn().mockReturnValue('me.jpg'),
+      upload: jest.fn().mockResolvedValue('https://cdn/me.jpg'),
+    };
+    const service = makeService(staffRepo, makeRepo(), permRepo, storage as never);
+
+    await service.uploadPhotoMe('user-1', {
+      originalname: 'me.jpg',
+      buffer: Buffer.from(''),
+      mimetype: 'image/jpeg',
+    } as never);
+
+    expect(staffRepo.update).toHaveBeenCalledWith('staff-1', { photoUrl: 'https://cdn/me.jpg' });
+  });
+
+  it('updateMe rejects an e-mail already used by another user', async () => {
+    const staffRepo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }),
+    });
+    const userRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'user-2' }) });
+    const permRepo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
+    const service = makeService(staffRepo, userRepo, permRepo);
+
+    await expect(
+      service.updateMe('user-1', { email: 'outro@fonte.com' } as never),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(userRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('updateMe persists the own e-mail when it is free', async () => {
+    const staffRepo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }),
+    });
+    const userRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const permRepo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
+    const service = makeService(staffRepo, userRepo, permRepo);
+
+    await service.updateMe('user-1', { email: 'meu@fonte.com' } as never);
+
+    expect(userRepo.update).toHaveBeenCalledWith('user-1', { email: 'meu@fonte.com' });
+  });
+});
+
+// Story 190: as mutações que antes emitiam HOUSE_STAFF_CHANGED_EVENT seguem
+// funcionando com o módulo de teste SEM nenhum provider de barramento.
+describe('StaffService mutations without EventEmitter2', () => {
+  it('creates the staff row', async () => {
+    const staffRepo = makeRepo();
     const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });
-    const service = makeService(makeRepo(), userRepo, makeRepo(), {}, emitter);
+    const service = makeService(staffRepo, userRepo, makeRepo());
 
     await service.create({
       name: 'Servo',
@@ -473,37 +568,34 @@ describe('StaffService house:list cache invalidation', () => {
       role: 'SERVANT' as never,
     } as never);
 
-    expect(emitter.emit).toHaveBeenCalledWith(HOUSE_STAFF_CHANGED_EVENT);
+    expect(staffRepo.save).toHaveBeenCalled();
   });
 
-  it('emits HOUSE_STAFF_CHANGED_EVENT on update', async () => {
-    const emitter = makeEmitter();
+  it('updates the staff house', async () => {
     const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }) });
-    const service = makeService(staffRepo, makeRepo(), makeRepo(), {}, emitter);
+    const service = makeService(staffRepo, makeRepo(), makeRepo());
 
     await service.update('staff-1', { houseId: 'house-2' } as never);
 
-    expect(emitter.emit).toHaveBeenCalledWith(HOUSE_STAFF_CHANGED_EVENT);
+    expect(staffRepo.update).toHaveBeenCalled();
   });
 
-  it('emits HOUSE_STAFF_CHANGED_EVENT on remove', async () => {
-    const emitter = makeEmitter();
+  it('soft deletes the staff row', async () => {
     const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }) });
-    const service = makeService(staffRepo, makeRepo(), makeRepo(), {}, emitter);
+    const service = makeService(staffRepo, makeRepo(), makeRepo());
 
     await service.remove('staff-1');
 
-    expect(emitter.emit).toHaveBeenCalledWith(HOUSE_STAFF_CHANGED_EVENT);
+    expect(staffRepo.softDelete).toHaveBeenCalledWith('staff-1');
   });
 
-  it('does not emit on updateMe (own profile, no house/lotação change)', async () => {
-    const emitter = makeEmitter();
+  it('updates the own profile (updateMe)', async () => {
     const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'staff-1', userId: 'user-1' }) });
-    const service = makeService(staffRepo, makeRepo(), makeRepo(), {}, emitter);
+    const service = makeService(staffRepo, makeRepo(), makeRepo());
 
     await service.updateMe('user-1', { whatsapp: '11999' } as never);
 
-    expect(emitter.emit).not.toHaveBeenCalled();
+    expect(staffRepo.update).toHaveBeenCalled();
   });
 });
 

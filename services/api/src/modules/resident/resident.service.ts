@@ -1,8 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
-import { RESIDENT_COUNTS_CHANGED_EVENT } from '../../common/events/resident-counts.event';
 import * as bcrypt from 'bcrypt';
 // require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
 // emits an undefined default for sharp's CommonJS module.
@@ -97,14 +95,7 @@ export class ResidentService {
     private staffService: StaffService,
     private dataSource: DataSource,
     private notifications: NotificationService,
-    private eventEmitter: EventEmitter2,
   ) {}
-
-  // Sinaliza ao HouseService que a contagem de filhos por casa pode ter mudado
-  // (invalida o cache Redis). Sobre-invalidar é aceitável: correção > micro-opt.
-  private emitCountsChanged(): void {
-    this.eventEmitter.emit(RESIDENT_COUNTS_CHANGED_EVENT);
-  }
 
   async findAll(
     dto: ListResidentsDto,
@@ -338,7 +329,6 @@ export class ResidentService {
       await this.notifyAdmissionCreated(saved);
     }
 
-    this.emitCountsChanged();
     return saved;
   }
 
@@ -386,11 +376,6 @@ export class ResidentService {
       if (currentAdmission) {
         await this.admissionRepository.update(currentAdmission.id, admissionUpdate);
       }
-    }
-
-    // Só status e casa afetam a contagem de filhos presentes por casa.
-    if (dto.status !== undefined || dto.houseId !== undefined) {
-      this.emitCountsChanged();
     }
 
     return this.findOne(id);
@@ -546,7 +531,6 @@ export class ResidentService {
 
     await this.receivableService.generateSchedule(id);
 
-    this.emitCountsChanged();
     return this.findOne(id);
   }
 
@@ -607,7 +591,6 @@ export class ResidentService {
   async remove(id: string): Promise<void> {
     await this.findOne(id);
     await this.residentRepository.softDelete(id);
-    this.emitCountsChanged();
   }
 
   async findMe(userId: string): Promise<ResidentMeView> {
@@ -701,9 +684,6 @@ export class ResidentService {
       exitDate: promotedAt as unknown as Date,
     });
     await this.followUpService.createAuto(id, FollowUpType.PROMOTED_TO_SERVANT, promotedAt);
-
-    // Filho saiu da contagem (DISCHARGED) — invalida o cache de contagem.
-    this.emitCountsChanged();
 
     // Recarrega com as relações (user/house) para a resposta.
     return this.staffService.findOne(staff.id);

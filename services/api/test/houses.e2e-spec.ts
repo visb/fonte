@@ -67,6 +67,59 @@ describe('HouseController (e2e)', () => {
       expect(seeded).toBeDefined();
       expect(seeded).toHaveProperty('activeResidentsCount');
       expect(seeded).toHaveProperty('staffCount');
+      expect(seeded).toHaveProperty('thumbnailUrl');
+    });
+
+    // Story 190: os três campos agregados saíam de um payload cacheado no Redis.
+    // Sem cache, cada request recalcula — o contrato tem de bater com o banco.
+    it('GET /houses agrega os contadores exatamente como o banco (sem cache)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/houses`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const seeded = res.body.find((h: { id: string }) => h.id === houseId);
+      const [residents] = await dataSource.query(
+        `SELECT COUNT(id)::int AS count FROM residents
+         WHERE house_id = $1 AND status = ANY($2) AND deleted_at IS NULL`,
+        [houseId, ['ACTIVE', 'DISCIPLINE', 'TEMP_LEAVE']],
+      );
+      const [staff] = await dataSource.query(
+        `SELECT COUNT(DISTINCT id)::int AS count FROM staff
+         WHERE house_id = $1 AND deleted_at IS NULL`,
+        [houseId],
+      );
+
+      expect(typeof seeded.activeResidentsCount).toBe('number');
+      expect(typeof seeded.staffCount).toBe('number');
+      expect(seeded.activeResidentsCount).toBe(residents.count);
+      expect(seeded.staffCount).toBe(staff.count);
+      // Sem foto o campo desce como null explícito, nunca undefined.
+      expect(seeded.thumbnailUrl === null || typeof seeded.thumbnailUrl === 'string').toBe(true);
+    });
+
+    // Casa recém-criada aparece na listagem no request seguinte com os agregados
+    // zerados. Antes da 190 isso dependia da invalidação do cache house:list.
+    it('GET /houses reflete uma casa nova imediatamente, com contadores zerados', async () => {
+      const created = await request(app.getHttpServer())
+        .post(`${BASE}/houses`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `Casa Sem Cache ${Date.now()}`, generalCapacity: 4, state: 'SP' })
+        .expect(201);
+      createdIds.push(created.body.id);
+
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/houses`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      const fresh = res.body.find((h: { id: string }) => h.id === created.body.id);
+      expect(fresh).toBeDefined();
+      expect(fresh).toMatchObject({
+        activeResidentsCount: 0,
+        staffCount: 0,
+        thumbnailUrl: null,
+      });
     });
 
     it('GET /houses/:id → 404 for an unknown house', () =>

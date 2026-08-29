@@ -40,7 +40,6 @@ import { AssociateModule } from './modules/associate/associate.module';
 import { PayableModule } from './modules/payable/payable.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { EventModule } from './modules/event/event.module';
-import { CacheModule } from './modules/cache/cache.module';
 import { PreferenceModule } from './modules/preference/preference.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { OfflineSyncModule } from './modules/offline-sync/offline-sync.module';
@@ -58,8 +57,9 @@ import { ReceiptModule } from './modules/receipt/receipt.module';
       useFactory: getDatabaseConfig,
     }),
     ScheduleModule.forRoot(),
+    // Barramento interno de eventos: alimenta o NotificationGateway
+    // (NOTIFICATION_CREATED_EVENT → websocket).
     EventEmitterModule.forRoot(),
-    CacheModule,
     // LGPD art. 46 — proteção contra força bruta. Janela global padrão; o login
     // recebe limite mais estrito via @Throttle no AuthController.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),

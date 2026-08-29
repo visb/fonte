@@ -27,6 +27,49 @@ export function extractImageUrls(html: string, bucketBaseUrl: string | null): st
 }
 
 /**
+ * Moves a persisted storage URL from one bucket base to another, keeping the
+ * object key (story 188 — Railway → self-hosted MinIO). Since `upload()` stores
+ * `${publicBaseUrl}/${key}` and the migration re-uploads under the same key,
+ * rebasing is a prefix swap.
+ *
+ * Anything not under `fromBase` is returned untouched: URLs already on
+ * `toBase` (so the rewrite is idempotent), external CDNs, `data:` blobs and
+ * local `/uploads/...` paths. Any presign query is stripped, recovering the
+ * canonical URL. Pure: no I/O.
+ */
+export function rebaseStorageUrl(
+  url: string | null | undefined,
+  fromBase: string,
+  toBase: string,
+): string | null | undefined {
+  if (!url) return url;
+  const prefix = `${fromBase}/`;
+  const qIdx = url.indexOf('?');
+  const base = qIdx >= 0 ? url.slice(0, qIdx) : url;
+  if (!base.startsWith(prefix)) return url;
+  return `${toBase}/${base.slice(prefix.length)}`;
+}
+
+/**
+ * Rebases every `<img src>` of an HTML blob that points at `fromBase`
+ * (story 188). Uses {@link IMG_SRC_RE} so it only ever touches the `src`
+ * attribute of an `<img>` — a plain string replace would also rewrite the base
+ * url wherever it appears as body text. Pure: no I/O.
+ */
+export function rebaseHtmlStorageUrls(
+  html: string | null | undefined,
+  fromBase: string,
+  toBase: string,
+): string | null | undefined {
+  if (!html) return html;
+  return html.replace(
+    IMG_SRC_RE,
+    (_match, pre: string, quote: string, src: string) =>
+      `${pre}${quote}${rebaseStorageUrl(src, fromBase, toBase)}${quote}`,
+  );
+}
+
+/**
  * Orphans = bucket objects not referenced by any record. Pure set difference,
  * order-preserving over `bucketKeys`. Extracted for isolated unit testing of the
  * reconcile math.

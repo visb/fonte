@@ -1,6 +1,6 @@
 ---
 name: fonte-backup
-description: Runbook de backup banco+bucket da API fonte — pg_dump/pg_restore v16 (pré-requisito bloqueante), agenda semanal sob advisory lock, retenção por contagem, restore a partir da nuvem, export/import local 3-2-1, endpoints ADMIN. Use ao mexer em backup, restore, pg_dump ou ao operar/configurar o backup.
+description: Runbook de backup banco+bucket da API fonte — pg_dump/pg_restore casando a major do servidor (pré-requisito bloqueante; produção roda 18), agenda semanal sob advisory lock, retenção por contagem, restore a partir da nuvem, export/import local 3-2-1, migração Railway→VPS com rebase de URLs, endpoints ADMIN. Use ao mexer em backup, restore, pg_dump, migração de storage ou ao operar/configurar o backup.
 ---
 
 # Backup — guia de operação
@@ -21,10 +21,20 @@ Backup do banco (Postgres) e do bucket de arquivos. Implementado na story 20
 
 ## Pré-requisito (bloqueante)
 
-`pg_dump`/`pg_restore` **v16** disponíveis onde a API roda (e na máquina local para export/import):
+`pg_dump`/`pg_restore` disponíveis onde a API roda (e na máquina local para export/import), numa
+major **>= a do servidor**. **Produção roda Postgres 18** (medido: `18.6`), então o cliente é 18:
 
-- Alpine: `apk add postgresql16-client`
-- Debian/Ubuntu: `apt-get install postgresql-client-16`
+- Alpine: `apk add postgresql18-client`
+- Debian/Ubuntu: `apt-get install postgresql-client-18`
+
+Duas regras que decorrem disso, e que quebram de formas diferentes:
+
+- `pg_dump` **mais antigo que o servidor** aborta com `server version mismatch`.
+- Archive custom-format gerado por uma major **nova** não é lido por `pg_restore` mais antigo
+  (`unsupported version in file header`) — então o destino precisa ser >= a origem.
+
+> O `docker-compose.yml` de dev usa `postgres:16-alpine`: dev e produção estão em majors
+> diferentes. Para qualquer operação contra produção, use cliente 18.
 
 Sem o binário, o backup falha de forma visível (log de erro), não silenciosa. O caminho pode ser
 sobrescrito por `PG_DUMP_PATH` / `PG_RESTORE_PATH`.
@@ -68,6 +78,55 @@ pnpm backup:import <arquivo.zip> --yes   # DESTRUTIVO: pg_restore + reenvia arqu
 
 O `.env` local deve apontar `DATABASE_URL` + credenciais do bucket para o ambiente desejado
 (produção, para tirar a cópia). Requer `pg_dump`/`pg_restore` v16 locais.
+
+## Migração Railway → VPS (story 188)
+
+Mover banco + arquivos para o MinIO auto-hospedado. **One-shot e manual** — não confundir com
+o backup agendado acima.
+
+> **Versão do Postgres: produção roda 18.** `pg_dump` tem de ser **>= a versão do servidor**, e
+> archive custom-format de versão nova **não é lido por `pg_restore` mais antigo**. Logo: 18 na
+> captura e 18 no destino. O `docker-compose.yml` de dev usa 16 — não serve para esta operação.
+
+**1. Captura** (máquina do operador, `.env` apontando para a **origem**):
+
+```
+pnpm backup:export [dir]      # dump.dump + files/ num zip
+```
+
+Sem `pg_dump` 18 no host, rodar só o dump em container e montar o zip fora — foi o que a
+migração usou (o install deste repo é hoisted e `bcrypt`/`sharp` são nativos, então montar o
+repo num `node:alpine` não funciona).
+
+**Anotar a base de origem** (`AWS_ENDPOINT_URL` + `/` + `AWS_S3_BUCKET_NAME`) antes de desligar
+o provider antigo — é o `--from` do passo 3 e depois não dá mais para consultá-la.
+
+**2. Restore** (no VPS, `.env` apontando para o **destino**, MinIO de pé e bucket criado):
+
+```
+pnpm backup:import <arquivo.zip> --yes    # DESTRUTIVO: pg_restore + reenvia arquivos
+```
+
+O banco precisa das extensões `unaccent` e `uuid-ossp` disponíveis, senão o `pg_restore` falha
+nas primeiras entradas do TOC.
+
+**3. Rebase das URLs** — o `upload()` grava URL absoluta, então o dump restaurado ainda aponta
+para o endpoint antigo. Como o import reenvia com a mesma key, é troca de prefixo:
+
+```
+pnpm storage:rebase-urls --from <base-antiga> [--to <base-nova>]
+```
+
+Sem `--to`, usa `AWS_ENDPOINT_URL/AWS_S3_BUCKET_NAME` do `.env` corrente. Cobre 16 colunas de
+URL em 13 tabelas mais o HTML de `document_templates.content`. **Idempotente**: rodar de novo
+reescreve zero linhas — é assim que se confere que terminou.
+
+**4. Conferência:** abrir ficha com foto, um anexo e um template com imagem. A URL entregue ao
+cliente tem de vir **assinada** (`X-Amz-Signature`); a URL canônica, sem assinatura, tem de ser
+**negada** — se servir o arquivo, o bucket está público e o controle de acesso caiu.
+
+> O zip contém prontuário e documento assinado em claro. Tratar como dado sensível enquanto
+> existir no disco do operador e apagar depois do corte.
 
 ## Esvaziar o bucket principal (wipe — story 123)
 

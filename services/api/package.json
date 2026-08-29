@@ -25,6 +25,7 @@
     "seed:associates": "npx ts-node src/database/seed-associates.ts",
     "seed:events": "npx ts-node src/database/seed-events.ts",
     "backfill:resident-thumbs": "npx ts-node src/database/backfill-resident-thumbnails.ts",
+    "storage:rebase-urls": "npx ts-node src/database/rewrite-storage-urls.ts",
     "backup:restore": "npx ts-node src/database/restore-backup.ts",
     "backup:export": "npx ts-node src/database/backup-export.ts",
     "backup:import": "npx ts-node src/database/backup-import.ts",

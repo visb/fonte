@@ -54,7 +54,12 @@ https://t3.storageapi.dev/<bucket-antigo>/<key>
       → https://static.fontedemisericordia.com.br/<bucket-novo>/<key>
 ```
 
-São 23 colunas em 15 tabelas, mais HTML com `<img src>` embutido.
+São **16 colunas de URL em 13 tabelas**, mais `document_templates.content`, que guarda HTML
+com `<img src>` embutido — 14 tabelas no total.
+
+> Correção: versões anteriores desta story diziam "23 colunas". Aquele número veio de um grep
+> que também pegava colunas de *nome* e *tipo* de arquivo (`file_name`, `attachment_name`,
+> `attachment_type`, `filename`), que não guardam URL e não devem ser reescritas.
 
 ---
 
@@ -237,7 +242,7 @@ dado sensível enquanto estiver no disco do operador, e apagar depois do corte.
 - Aspas simples e duplas no atributo; HTML sem imagem; `null`.
 
 **Casos a cobrir em `rewrite-storage-urls.spec.ts` (DataSource mockado):**
-- Percorre as 15 tabelas da lista declarativa — assertar a lista **completa**, não uma
+- Percorre as 14 tabelas da lista declarativa — assertar a lista **completa**, não uma
   amostra; é o teste que pega tabela esquecida.
 - Linha cujo valor não muda **não** gera `UPDATE`.
 - Coluna `null` não quebra o loop.

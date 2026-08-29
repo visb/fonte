@@ -37,3 +37,79 @@ jobs:
       # piso encerra com exit != 0 e quebra o build (gate). E2E nao entra no gate.
       - name: Unit + coverage gate (todos os pacotes)
         run: pnpm test:cov:all
+
+  # ── imagens ────────────────────────────────────────────────────────────────
+  # O VPS tem 1 vCPU e nao compila o monorepo: as imagens sao construidas aqui e
+  # publicadas no GHCR; la so se faz `pull`. Depende do gate acima, entao nada e
+  # publicado com a suite vermelha. So em push na main (PR nao publica).
+  images:
+    name: Build e push das imagens
+    needs: coverage-gate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Duas tags: `latest` e o SHA. O SHA e o que permite voltar para uma
+      # versao anterior sem rebuildar (IMAGE_TAG no docker-compose.prod.yml).
+      - name: API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: api
+          push: true
+          tags: |
+            ghcr.io/visb/fonte-api:latest
+            ghcr.io/visb/fonte-api:${{ github.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      # A URL da API e BUILD-TIME nos dois front-ends: fica embutida no bundle.
+      # Trocar de dominio exige rebuild, nao restart.
+      - name: Web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: web
+          push: true
+          build-args: |
+            VITE_API_URL=https://adm.fontedemisericordia.com.br/api/v1
+            EXPO_PUBLIC_API_URL=https://ops.fontedemisericordia.com.br/api/v1
+          tags: |
+            ghcr.io/visb/fonte-web:latest
+            ghcr.io/visb/fonte-web:${{ github.sha }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  # ── deploy ─────────────────────────────────────────────────────────────────
+  # O environment `production` tem required reviewer: o job fica pendente ate
+  # alguem aprovar na aba Actions. Nenhum deploy toca o servidor sozinho.
+  #
+  # A chave SSH e restrita por forced command no authorized_keys do VPS: ela so
+  # consegue rodar /opt/fonte/deploy.sh, nao abre shell. Ver README (§ 9.7).
+  deploy:
+    name: Deploy no VPS
+    needs: images
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: pull + up -d no VPS
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" true

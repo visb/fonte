@@ -442,7 +442,60 @@ idempotente de verdade.
 imagem começando com o host do storage **e contendo `X-Amz-Signature=`**. A URL canônica (sem a
 query) tem de dar 403.
 
-## 9.6 Limites conhecidos
+## 9.6 Deploy automático (GitHub Actions)
+
+O workflow `.github/workflows/ci.yml` tem três estágios encadeados:
+
+1. **`coverage-gate`** — suíte de todos os pacotes com o piso de cobertura. Já existia.
+2. **`images`** — depende do gate (nada é publicado com a suíte vermelha), só em push na
+   `main`. Builda `api` e `web` e publica no GHCR com duas tags: `latest` e o **SHA** do
+   commit. O SHA é o que permite voltar sem rebuildar.
+3. **`deploy`** — roda no GitHub Environment `production`, que tem **required reviewer**: o job
+   fica pendente até alguém aprovar na aba Actions. Nenhum deploy toca o servidor sozinho.
+
+### Configuração (uma vez)
+
+**No VPS** — chave dedicada, amarrada a um único comando:
+
+```bash
+install -m 755 /opt/fonte/docker/deploy.sh /opt/fonte/deploy.sh
+ssh-keygen -t ed25519 -C "github-actions-deploy" -f /root/.ssh/gha_deploy -N ""
+```
+
+Acrescente a **pública** ao `/root/.ssh/authorized_keys` prefixada pelo forced command — é isto
+que impede a chave de abrir shell:
+
+```
+command="/opt/fonte/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-user-rc ssh-ed25519 AAAA... github-actions-deploy
+```
+
+> O forced command é o controle de verdade. Estar no grupo `docker` já equivale a root, então
+> criar um usuário separado compraria pouco; o que limita o estrago é a chave não conseguir
+> executar nada além do script.
+
+**No GitHub** — Settings → Secrets and variables → Actions:
+
+| Secret | Valor |
+|---|---|
+| `VPS_HOST` | IP do servidor |
+| `VPS_USER` | `root` |
+| `VPS_SSH_KEY` | conteúdo de `/root/.ssh/gha_deploy` (a **privada**) |
+
+E Settings → Environments → **New environment** `production` → marque **Required reviewers** e
+adicione você mesmo. Sem isso o deploy deixa de ter aprovação manual.
+
+> **Pacote e permissão:** as imagens no GHCR foram criadas por um token pessoal. Para o
+> `GITHUB_TOKEN` do Actions conseguir publicar, cada pacote precisa estar ligado ao
+> repositório: Packages → `fonte-api` → Package settings → Manage Actions access → adicionar o
+> repositório com role **Write**. Idem `fonte-web`. Sem isso o push falha com `denied`.
+
+### Rollback
+
+```bash
+IMAGE_TAG=<sha-do-commit-bom> docker compose -f docker-compose.prod.yml up -d api nginx
+```
+
+## 9.7 Limites conhecidos
 
 - **MinIO no mesmo VPS não é backup** — os bytes ficam no mesmo disco do Postgres. Destino
   offsite segue em aberto (story 20).

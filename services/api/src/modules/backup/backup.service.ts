@@ -218,12 +218,30 @@ export class BackupService implements OnModuleInit {
   // ─── Export / Import local (CLI) ─────────────────────────────────────────────
 
   /**
+   * Resolve o construtor do JSZip tolerando os dois formatos de interop.
+   *
+   * O tsconfig deste pacote NÃO tem `esModuleInterop`, então `await
+   * import("jszip")` compila para um `require()` cru: como o jszip é CommonJS,
+   * o retorno já É o construtor e `.default` vem `undefined`. Ler `.default`
+   * direto quebrava com `Cannot read properties of undefined (reading
+   * 'loadAsync')` — e passou despercebido porque export/import nunca haviam
+   * rodado ponta a ponta (dependiam do pg_dump, que era pendência da story 20).
+   *
+   * Import dinâmico porque o jszip só é usado pelos comandos CLI.
+   */
+  private async loadJSZip() {
+    const mod = (await import("jszip")) as unknown as {
+      default?: typeof import("jszip");
+    };
+    return mod.default ?? (mod as unknown as typeof import("jszip"));
+  }
+
+  /**
    * Snapshot completo (dump + todos os arquivos) num Buffer .zip para guardar
    * offsite na máquina do operador. `dump.dump` na raiz + objetos sob `files/`.
    */
   async exportToZip(): Promise<Buffer> {
-    // Import dinâmico: jszip só é usado pelos comandos CLI.
-    const JSZip = (await import("jszip")).default;
+    const JSZip = await this.loadJSZip();
     const zip = new JSZip();
 
     const dump = await this.dumpDatabase();
@@ -242,7 +260,7 @@ export class BackupService implements OnModuleInit {
 
   /** Restaura banco + arquivos a partir de um .zip gerado por `exportToZip`. */
   async importFromZip(zipBuffer: Buffer): Promise<{ filesRestored: number }> {
-    const JSZip = (await import("jszip")).default;
+    const JSZip = await this.loadJSZip();
     const zip = await JSZip.loadAsync(zipBuffer);
 
     const dumpEntry = zip.file("dump.dump");

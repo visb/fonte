@@ -81,6 +81,11 @@ RUN pnpm build:ops
 
 # ── api ───────────────────────────────────────────────────────────────────────
 FROM base AS api
+# Liga o pacote no GHCR a este repositório: com o label, um push novo faz o
+# GitHub vincular os dois sozinho, e o GITHUB_TOKEN do Actions passa a ter
+# permissão sem concessão manual em Package settings. Também faz a página do
+# pacote apontar de volta para o código.
+LABEL org.opencontainers.image.source=https://github.com/visb/fonte
 # postgresql18-client: o BackupService faz spawn de pg_dump/pg_restore.
 # chromium + fontes: geração de PDF via puppeteer (document-template).
 # tini: PID 1 decente, para o container morrer limpo.
@@ -135,6 +140,7 @@ CMD ["pnpm", "--filter", "api", "start"]
 
 # ── web ───────────────────────────────────────────────────────────────────────
 FROM nginx:alpine AS web
+LABEL org.opencontainers.image.source=https://github.com/visb/fonte
 # Os dois frontends são estáticos: nenhum precisa de processo Node em runtime,
 # então nenhum vira serviço no compose — são roots de `server` no nginx.
 COPY --from=build /app/apps/adm.fonte/dist /srv/adm

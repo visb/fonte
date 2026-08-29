@@ -101,10 +101,25 @@ repo num `node:alpine` não funciona).
 **Anotar a base de origem** (`AWS_ENDPOINT_URL` + `/` + `AWS_S3_BUCKET_NAME`) antes de desligar
 o provider antigo — é o `--from` do passo 3 e depois não dá mais para consultá-la.
 
-**2. Restore** (no VPS, `.env` apontando para o **destino**, MinIO de pé e bucket criado):
+**2. Restore** (no VPS, `.env` apontando para o **destino**, MinIO de pé e bucket criado).
+
+> **Dentro da imagem, os scripts `pnpm` não funcionam.** Todos rodam via
+> `npx ts-node src/database/*.ts` e a imagem só carrega o `dist/`. Use
+> `node dist/database/<script>.js`. Os comandos `pnpm` valem em desenvolvimento.
+
+> **O banco precisa estar VAZIO.** O dump traz schema + dados + a tabela `migrations`. Se as
+> migrations já rodaram (o `CMD` da imagem roda `migration:run` a cada boot), o
+> `pg_restore --clean` trava nas FKs cruzadas e deixa o banco meio-restaurado. Por isso o
+> import roda em container **avulso** (`run`, não `exec`) — `run` não passa pelo `CMD`.
 
 ```
-pnpm backup:import <arquivo.zip> --yes    # DESTRUTIVO: pg_restore + reenvia arquivos
+docker compose -f docker-compose.prod.yml stop api
+docker compose -f docker-compose.prod.yml exec -T postgres psql -U fonte -d postgres -c "DROP DATABASE IF EXISTS fonte;"
+docker compose -f docker-compose.prod.yml exec -T postgres psql -U fonte -d postgres -c "CREATE DATABASE fonte OWNER fonte;"
+docker compose -f docker-compose.prod.yml run --rm \
+  -v /opt/fonte/<arquivo>.zip:/tmp/backup.zip \
+  --entrypoint node api dist/database/backup-import.js /tmp/backup.zip --yes
+docker compose -f docker-compose.prod.yml up -d api
 ```
 
 O banco precisa das extensões `unaccent` e `uuid-ossp` disponíveis, senão o `pg_restore` falha
@@ -114,7 +129,8 @@ nas primeiras entradas do TOC.
 para o endpoint antigo. Como o import reenvia com a mesma key, é troca de prefixo:
 
 ```
-pnpm storage:rebase-urls --from <base-antiga> [--to <base-nova>]
+docker compose -f docker-compose.prod.yml exec -T api \
+  node dist/database/rewrite-storage-urls.js --from <base-antiga> [--to <base-nova>]
 ```
 
 Sem `--to`, usa `AWS_ENDPOINT_URL/AWS_S3_BUCKET_NAME` do `.env` corrente. Cobre 16 colunas de

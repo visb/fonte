@@ -376,19 +376,82 @@ Verificação que prova o modelo de acesso: pegue a URL **canônica** de um arqu
 ## 9.5 Popular banco e bucket
 
 Ambiente pronto ≠ ambiente com dados. A carga do snapshot de produção (dump + acervo) é a
-**story 188** (`stories/188-*.md`): `pnpm --filter api backup:import` e, se o host do storage
-mudar, `pnpm --filter api storage:rebase-urls`. Ambos rodam **de dentro do container da API**
-(o `WORKDIR` já é `services/api`):
+**story 188**.
+
+> **Os scripts `pnpm` do `services/api/package.json` NÃO funcionam dentro da imagem.** Todos
+> rodam via `npx ts-node src/database/*.ts`, e a imagem de produção só carrega o `dist/` — o
+> `src/` não é copiado. Dentro do container, chame o JS compilado direto:
+> `node dist/database/<script>.js`. Os scripts `pnpm` seguem válidos em desenvolvimento.
+
+> **O restore exige banco VAZIO.** O dump traz schema **e** dados, inclusive a tabela
+> `migrations` com as linhas da origem. Se as migrations já rodaram (o `CMD` da imagem roda
+> `migration:run` a cada boot), o `pg_restore --clean` tenta derrubar o schema objeto por
+> objeto sem `CASCADE` e trava nas FKs cruzadas — termina com `errors ignored on restore` e o
+> banco fica num estado meio-restaurado que não serve.
+>
+> Por isso o import roda num container **avulso** (`run`, não `exec`): `run` não passa pelo
+> `CMD`, então não dispara migration no meio da operação.
+
+**1. Derrube a API** para ninguém recriar schema durante a carga:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec api pnpm --filter api backup:import
+docker compose -f docker-compose.prod.yml stop api
 ```
+
+**2. Zere o banco** (pule só se ele nunca subiu):
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T postgres psql -U fonte -d postgres \
+  -c "DROP DATABASE IF EXISTS fonte;"
+docker compose -f docker-compose.prod.yml exec -T postgres psql -U fonte -d postgres \
+  -c "CREATE DATABASE fonte OWNER fonte;"
+```
+
+**3. Importe** o zip gerado pelo `backup:export` — montado no container avulso (não use
+`docker cp` para `/tmp`: o diretório some no recreate do container):
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm \
+  -v /opt/fonte/fonte-backup-AAAA-MM-DD.zip:/tmp/backup.zip \
+  --entrypoint node api dist/database/backup-import.js /tmp/backup.zip --yes
+```
+
+Espere `✓ Banco restaurado e N arquivo(s) reenviado(s).` **sem** linha de `errors ignored`.
+
+**4. Suba a API.** O `migration:run` do boot encontra as migrations já aplicadas (vieram no
+dump) e não faz nada:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d api
+```
+
+**5. Rebase das URLs** — o `upload()` grava URL absoluta, então o dump restaurado ainda aponta
+para o endpoint de origem. O import reenvia os objetos com a mesma key, então é troca de
+prefixo:
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T api \
+  node dist/database/rewrite-storage-urls.js --from https://<endpoint-antigo>/<bucket-antigo>
+```
+
+O `--to` sai do `.env` (`AWS_ENDPOINT_URL` + `AWS_S3_BUCKET_NAME`). **Rode uma segunda vez:**
+tem de reescrever **zero** linhas. É assim que se confere que terminou — e que o rebase é
+idempotente de verdade.
+
+**6. Confirme no navegador:** login nos dois hosts, foto de residente renderizando, e a URL da
+imagem começando com o host do storage **e contendo `X-Amz-Signature=`**. A URL canônica (sem a
+query) tem de dar 403.
 
 ## 9.6 Limites conhecidos
 
 - **MinIO no mesmo VPS não é backup** — os bytes ficam no mesmo disco do Postgres. Destino
   offsite segue em aberto (story 20).
-- **CI/CD não entra neste corte:** o build da imagem é manual (no VPS ou local + push).
+- **CI/CD não entra neste corte:** o build e o push da imagem são manuais, feitos na máquina do
+  operador. Mover isso para o GitHub Actions é o próximo passo natural — o caminho de
+  distribuição (GHCR) já está provado.
+- **Os scripts CLI do `services/api/package.json` são de desenvolvimento.** Usam
+  `npx ts-node src/database/*.ts`; a imagem de produção não carrega `src/`. Dentro do
+  container, chame `node dist/database/<script>.js` (ver §9.5).
 - O `docker-compose.yml` de **dev** roda Postgres **16** enquanto produção roda **18** —
   divergência conhecida e registrada na story 189.
 

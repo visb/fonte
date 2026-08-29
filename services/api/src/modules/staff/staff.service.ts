@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Role, ServantRank, StaffPermissionType } from '@fonte/types';
@@ -15,7 +14,6 @@ import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { UpdateStaffMeDto } from './dto/update-staff-me.dto';
 import { StorageService } from '../storage/storage.service';
-import { HOUSE_STAFF_CHANGED_EVENT } from '../../common/events/house-staff.event';
 
 @Injectable()
 export class StaffService {
@@ -27,14 +25,7 @@ export class StaffService {
     @InjectRepository(StaffPermission)
     private permissionRepository: Repository<StaffPermission>,
     private storageService: StorageService,
-    private eventEmitter: EventEmitter2,
   ) {}
-
-  // Sinaliza ao HouseService que o staffCount/lotação por casa pode ter mudado
-  // (invalida o cache house:list). Sobre-invalidar é aceitável: correção > micro-opt.
-  private emitHouseStaffChanged(): void {
-    this.eventEmitter.emit(HOUSE_STAFF_CHANGED_EVENT);
-  }
 
   // O whatsapp é o identificador de login do servo (story 97): persistir só os
   // dígitos, coerente com a normalização do lookup em findActiveUserIdsByPhone.
@@ -101,9 +92,7 @@ export class StaffService {
       rank: dto.role === Role.SERVANT ? (dto.rank ?? null) : null,
       userId: savedUser.id,
     });
-    const saved = await this.staffRepository.save(staff);
-    this.emitHouseStaffChanged();
-    return saved;
+    return this.staffRepository.save(staff);
   }
 
   existsForFormerResident(residentId: string): Promise<boolean> {
@@ -168,7 +157,6 @@ export class StaffService {
       await this.userRepository.update(staff.userId, userUpdates);
     }
 
-    this.emitHouseStaffChanged();
     return this.findOne(id);
   }
 
@@ -249,7 +237,6 @@ export class StaffService {
     await this.userRepository.update(staff.userId, { isActive: false });
     await this.userRepository.softDelete(staff.userId);
     await this.staffRepository.softDelete(id);
-    this.emitHouseStaffChanged();
   }
 
   // ─── Permissions ─────────────────────────────────────────────────────────────

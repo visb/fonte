@@ -92,7 +92,6 @@ function build(over: Partial<Record<keyof Mocks, Record<string, jest.Mock>>> = {
     mocks.staff as never,
     { query: jest.fn().mockResolvedValue([]) } as never,
     { create: jest.fn() } as never,
-    { emit: jest.fn() } as never,
   );
   return { service, mocks };
 }

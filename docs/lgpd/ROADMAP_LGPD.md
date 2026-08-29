@@ -25,6 +25,16 @@ Maior risco × menor esforço. Não depende da Fase 0.
 | Forçar escopo por casa | `resident.service.ts`, `staff.service.ts`, `relative.service.ts` (espelhar `message.service.ts`; derivar `houseId` do JWT, **não** do DTO) | SERVANT/COORDINATOR não lê dados de outra casa; teste cobre |
 | Audit log de dado sensível | Novo módulo `audit` (entity `audit_log` + interceptor) | Acesso/alteração a Resident/Staff/Relative registrado |
 | Minimização de CPF/RG em listas | Serializer / `@Exclude` por contexto em `resident.entity.ts`, `staff.entity.ts` | Listas não retornam CPF/RG; detalhe sim |
+| **Granularidade do presign de arquivo** (gap registrado na story 189) | `storage-url.interceptor.ts`, `storage.service.ts` (`signUrl`) | URL assinada por objeto/papel, com expiração proporcional ao risco |
+
+> **Gap conhecido — presign sem granularidade (story 189).** O `StorageUrlInterceptor` assina
+> **recursivamente toda URL de toda resposta** que passa por ele, sem olhar o papel de quem pediu,
+> e o `signUrl` usa `expiresIn` fixo (24h, com reuso de 12h em cache). A autorização efetiva é a
+> **da rota** que devolveu o payload, não a **do objeto**: uma vez emitida, a URL assinada vale
+> para qualquer portador durante toda a validade, inclusive fora da sessão. É o modelo herdado do
+> Railway e mantido na migração para o VPS — o acervo é foto de residente e documento assinado
+> (dado sensível de saúde, art. 11). O que sustenta o controle hoje é o **bucket privado** + o
+> guard da rota; sem o bucket privado o modelo inteiro cai. Endurecer isso é story própria.
 
 ## Fase 2 — Consentimento + transparência
 

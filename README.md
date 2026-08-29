@@ -137,9 +137,11 @@ Infraestrutura:
 - 1 banco PostgreSQL
 - Deploy em VPS
 
-> **Backup (story 20):** o backup semanal usa `pg_dump`/`pg_restore` **v16**. A imagem/host
-> que roda a API precisa ter o `postgresql-client` v16 instalado (ex.: Alpine
-> `apk add postgresql16-client`; Debian `postgresql-client-16`). Ver skill `fonte-backup` (`.claude/skills/fonte-backup/`).
+> **Backup (story 20):** o backup semanal usa `pg_dump`/`pg_restore` **v18** — o servidor de
+> produção é 18.x e archive custom-format novo não é lido por `pg_restore` mais antigo. A
+> imagem/host que roda a API precisa ter o `postgresql-client` v18 instalado (ex.: Alpine
+> `apk add postgresql18-client`; Debian `postgresql-client-18`). O `Dockerfile` da raiz já faz
+> isso. Ver skill `fonte-backup` (`.claude/skills/fonte-backup/`).
 
 Sem microservices.
 Sem mensageria.
@@ -210,6 +212,158 @@ Fase 3:
 
 - Pós-alta estruturado
 - Métricas
+
+---
+
+# 9. Deploy no VPS
+
+Toda a stack roda em Docker Compose num VPS único: `postgres` + `minio` + `api` + `nginx` +
+`certbot`. **Só o nginx publica porta** (80/443); os demais ficam na rede interna.
+
+Artefatos: `Dockerfile` (multi-stage, raiz), `docker-compose.prod.yml`, `docker/nginx/`.
+O `docker-compose.yml` da raiz é o de **desenvolvimento** e não é usado em produção.
+
+Hosts deste corte:
+
+| Host | Serve |
+|---|---|
+| `adm.fontedemisericordia.com.br` | `adm.fonte` (Vite) + `/api/v1` |
+| `ops.fontedemisericordia.com.br` | `ops.fonte` web (`expo export`) + `/api/v1` |
+| `static.fontedemisericordia.com.br` | proxy para o MinIO (**bucket privado**, só URL assinada) |
+
+`portal.fonte` e `app.fonte` estão fora deste corte: não são buildados, não têm `server` block
+e não entram em `CORS_ORIGIN`.
+
+## 9.1 Pré-requisitos
+
+1. Docker + Docker Compose no VPS, repositório clonado.
+2. DNS: os **três** hosts apontando para o IP do VPS (o certbot só emite depois disso).
+3. `.env` na **raiz** do repositório no VPS (nunca versionado). É ao mesmo tempo o arquivo de
+   interpolação do compose e o `env_file` da API. Base: `services/api/.env.example`. Precisa
+   conter, no mínimo:
+
+```bash
+POSTGRES_PASSWORD=...
+MINIO_ROOT_USER=...
+MINIO_ROOT_PASSWORD=...
+
+DATABASE_URL=postgres://fonte:<POSTGRES_PASSWORD>@postgres:5432/fonte
+JWT_SECRET=...
+NODE_ENV=production
+CORS_ORIGIN=https://adm.fontedemisericordia.com.br,https://ops.fontedemisericordia.com.br
+
+# Storage: endpoint PÚBLICO, não http://minio:9000 (a assinatura cobre o host).
+AWS_S3_BUCKET_NAME=fonte
+AWS_ENDPOINT_URL=https://static.fontedemisericordia.com.br
+AWS_DEFAULT_REGION=auto
+AWS_ACCESS_KEY_ID=<MINIO_ROOT_USER>
+AWS_SECRET_ACCESS_KEY=<MINIO_ROOT_PASSWORD>
+```
+
+> **URL da API é build-time nos front-ends.** `VITE_API_URL` (adm) e `EXPO_PUBLIC_API_URL` (ops)
+> são embutidos no bundle pelo stage `build`. Trocar de domínio exige **rebuild da imagem**, não
+> restart. Os defaults do compose já apontam para os hosts acima.
+
+## 9.2 Build
+
+```bash
+docker compose -f docker-compose.prod.yml build
+```
+
+Confira que o cliente do Postgres na imagem da API é **18** (é o que permite restaurar o dump da
+story 188):
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm --entrypoint sh api -c "pg_dump --version && pg_restore --version"
+```
+
+## 9.3 Ordem de bootstrap do TLS (é aqui que a montagem trava)
+
+Ovo e galinha: o nginx **não sobe** com `ssl_certificate` apontando para arquivo inexistente, e o
+certbot **não emite** sem o nginx respondendo na porta 80. A ordem correta:
+
+**1. Suba banco, storage e API** (não dependem de TLS):
+
+```bash
+docker compose -f docker-compose.prod.yml up -d postgres minio api
+```
+
+**2. Suba o nginx com a config só-HTTP** (`docker/nginx/bootstrap.conf`), montada por cima da
+config final:
+
+```bash
+docker compose -f docker-compose.prod.yml run -d --service-ports \
+  -v ./docker/nginx/bootstrap.conf:/etc/nginx/conf.d/default.conf:ro \
+  --name fonte-nginx-bootstrap nginx
+```
+
+**3. Emita os três certificados** (um por host — a assinatura e o `server_name` são por host):
+
+```bash
+for host in adm ops static; do
+  docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certbot \
+    certonly --webroot -w /var/www/certbot \
+    -d $host.fontedemisericordia.com.br \
+    --email <email> --agree-tos --no-eff-email
+done
+```
+
+**4. Derrube o nginx de bootstrap e suba a stack completa** — agora com a config final, que
+encontra os certificados no volume `certbot_conf`:
+
+```bash
+docker rm -f fonte-nginx-bootstrap
+docker compose -f docker-compose.prod.yml up -d
+```
+
+**5. Prove a renovação** (não basta a emissão inicial ter funcionado):
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certbot renew --dry-run
+```
+
+> **Renovação exige reload.** Certificado renovado sem `nginx -s reload` **não vale**: o nginx
+> segue servindo o antigo até reiniciar, e o site cai quando o velho expira. O serviço `nginx`
+> do compose já recarrega sozinho a cada 6h justamente por isso — se você trocar esse `command`,
+> reponha o reload por outro caminho (cron no host ou `--deploy-hook`).
+
+## 9.4 Criar o bucket no MinIO
+
+O bucket é **privado**: nenhuma policy anônima de leitura. O que libera o objeto é a URL
+assinada emitida pela API (`StorageUrlInterceptor`). Bucket público anula o presign inteiro e
+deixa prontuário e documento assinado acessíveis sem autenticação.
+
+```bash
+docker compose -f docker-compose.prod.yml exec minio \
+  mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+docker compose -f docker-compose.prod.yml exec minio mc mb --ignore-existing local/fonte
+docker compose -f docker-compose.prod.yml exec minio mc anonymous set none local/fonte
+```
+
+Crie também o **segundo** bucket do backup (story 20) se `BACKUP_ENABLED=true`:
+`mc mb --ignore-existing local/fonte-backup`.
+
+Verificação que prova o modelo de acesso: pegue a URL **canônica** de um arquivo (sem a query
+`X-Amz-*`) e acesse direto — tem de ser **negado**. Se servir o arquivo, a policy está errada.
+
+## 9.5 Popular banco e bucket
+
+Ambiente pronto ≠ ambiente com dados. A carga do snapshot de produção (dump + acervo) é a
+**story 188** (`stories/188-*.md`): `pnpm --filter api backup:import` e, se o host do storage
+mudar, `pnpm --filter api storage:rebase-urls`. Ambos rodam **de dentro do container da API**
+(o `WORKDIR` já é `services/api`):
+
+```bash
+docker compose -f docker-compose.prod.yml exec api pnpm --filter api backup:import
+```
+
+## 9.6 Limites conhecidos
+
+- **MinIO no mesmo VPS não é backup** — os bytes ficam no mesmo disco do Postgres. Destino
+  offsite segue em aberto (story 20).
+- **CI/CD não entra neste corte:** o build da imagem é manual (no VPS ou local + push).
+- O `docker-compose.yml` de **dev** roda Postgres **16** enquanto produção roda **18** —
+  divergência conhecida e registrada na story 189.
 
 ---
 

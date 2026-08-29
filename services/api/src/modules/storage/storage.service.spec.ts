@@ -438,3 +438,55 @@ describe('StorageService.signContentUrls', () => {
     expect(mockGetSignedUrl).not.toHaveBeenCalled();
   });
 });
+
+// Story 189 — o nome do objeto passa a vir de randomUUID() (CSPRNG). O formato
+// antigo (`Date.now()-Math.random()`) era adivinhável; nada no código depende
+// dele, mas a extensão e o prefixo continuam sendo contrato (o thumbnail do
+// filho e os comprovantes filtram por prefixo).
+describe('StorageService.uniqueFilename (story 189)', () => {
+  const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+  it('preserves the original extension', () => {
+    const svc = makeService();
+    expect(svc.uniqueFilename('foto do joão.JPEG')).toMatch(/\.JPEG$/);
+    expect(svc.uniqueFilename('contrato.pdf')).toMatch(/\.pdf$/);
+  });
+
+  it('names the file after a v4 UUID', () => {
+    const svc = makeService();
+    expect(svc.uniqueFilename('a.png').replace(/\.png$/, '')).toMatch(UUID_V4);
+  });
+
+  it('produces distinct names on consecutive calls with the same input', () => {
+    const svc = makeService();
+    const names = new Set(
+      Array.from({ length: 50 }, () => svc.uniqueFilename('a.png')),
+    );
+    expect(names.size).toBe(50);
+  });
+
+  it('keeps the prefix in front of the generated name', () => {
+    const svc = makeService();
+    const name = svc.uniqueFilename('thumb.jpg', 'thumb_');
+    expect(name.startsWith('thumb_')).toBe(true);
+    expect(name).toMatch(/\.jpg$/);
+    expect(name.slice('thumb_'.length).replace(/\.jpg$/, '')).toMatch(UUID_V4);
+  });
+
+  it('defaults to no prefix and tolerates a name without extension', () => {
+    const svc = makeService();
+    expect(svc.uniqueFilename('semextensao')).toMatch(UUID_V4);
+  });
+
+  it('does not depend on Date.now (the old timestamp-random format is gone)', () => {
+    const svc = makeService();
+    const now = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+
+    const first = svc.uniqueFilename('a.png');
+    const second = svc.uniqueFilename('a.png');
+
+    expect(first).not.toBe(second);
+    expect(first).not.toContain('1000000');
+    now.mockRestore();
+  });
+});

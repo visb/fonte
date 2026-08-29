@@ -107,6 +107,14 @@ ENV NODE_ENV=production \
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml ./
 
+# pnpm 11 verifica as dependências antes de rodar um script e, se achar
+# divergência, instala sozinho. Com NODE_ENV=production esse install PODA as
+# devDependencies — exatamente o que o bloco acima faz questão de manter (o
+# `start` precisa do ts-node do typeorm). Observado no primeiro deploy: o boot
+# removeu 1265 pacotes e ainda exigiu rede para o registry npm só para subir.
+# A imagem já traz o node_modules correto; não há o que verificar.
+RUN printf 'verify-deps-before-run=false\n' > /app/.npmrc
+
 COPY --from=build /app/packages/types/package.json ./packages/types/
 COPY --from=build /app/packages/types/dist ./packages/types/dist
 COPY --from=build /app/packages/doc-styles/package.json ./packages/doc-styles/

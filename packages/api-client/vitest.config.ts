@@ -9,14 +9,21 @@ export default defineConfig({
       all: true,
       reporter: ['text', 'text-summary'],
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/index.ts'],
-      // Catraca: story 90 sobe statements para 90 (já em 99,06%, passa com folga);
-      // branches/functions/lines travados no valor efetivamente atingido.
+      // types.ts é só declaração de tipo: não tem código executável, e contá-lo
+      // como 0% é ruído de medição, não cobertura faltando.
+      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/index.ts', 'src/types.ts'],
+      // Piso em 95 por decisão do usuário (2026-08-29). O valor anterior
+      // (99/98) foi travado pela story 90 no que se atingia então, mas o gate do
+      // CI estava quebrado no setup do Node e nunca reprovou — então métodos
+      // novos entraram sem teste sem ninguém ver.
+      //
+      // PENDENTE: bible-course.ts está em 72,46% e é a lacuna real que sobrou
+      // (residents.ts foi a 100% junto com esta mudança). Vale story própria.
       thresholds: {
-        statements: 90,
-        branches: 99,
-        functions: 98,
-        lines: 99,
+        statements: 95,
+        branches: 95,
+        functions: 95,
+        lines: 95,
       },
     },
   },

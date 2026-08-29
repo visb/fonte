@@ -275,6 +275,68 @@ describe('residents module', () => {
     expect(http.post).toHaveBeenCalledWith('/residents/res-1/anonymize', {});
   });
 
+  // Import em lote de fichas (stories 103 e 186). Entraram sem teste e passaram
+  // despercebidos porque o gate de cobertura do CI estava quebrado no setup.
+  it('parseSpreadsheet envia FormData com Content-Type undefined', async () => {
+    const form = new FormData();
+    const parsed = { rows: [] };
+    http.post.mockResolvedValueOnce({ data: parsed });
+
+    const result = await residents.parseSpreadsheet(form);
+
+    expect(http.post).toHaveBeenCalledWith('/residents/import/parse-spreadsheet', form, {
+      headers: { 'Content-Type': undefined },
+    });
+    expect(result).toBe(parsed);
+  });
+
+  it('parseDocxWithSpreadsheet envia FormData com Content-Type undefined', async () => {
+    const form = new FormData();
+    await residents.parseDocxWithSpreadsheet(form);
+    expect(http.post).toHaveBeenCalledWith(
+      '/residents/import/parse-docx-with-spreadsheet',
+      form,
+      { headers: { 'Content-Type': undefined } },
+    );
+  });
+
+  it('checkImportFiles envia a lista de nomes no body', async () => {
+    const matched = { matched: [], unmatched: ['ana.docx'] };
+    http.post.mockResolvedValueOnce({ data: matched });
+
+    const result = await residents.checkImportFiles(['ana.docx', 'joao.docx']);
+
+    expect(http.post).toHaveBeenCalledWith('/residents/import/check-files', {
+      fileNames: ['ana.docx', 'joao.docx'],
+    });
+    expect(result).toBe(matched);
+  });
+
+  it('checkImportConflict repassa nome e cpf como query params', async () => {
+    await residents.checkImportConflict('Ana', '12345678900');
+    expect(http.get).toHaveBeenCalledWith('/residents/import/check-conflict', {
+      params: { name: 'Ana', cpf: '12345678900' },
+    });
+  });
+
+  it('checkImportConflict aceita os dois params ausentes', async () => {
+    await residents.checkImportConflict();
+    expect(http.get).toHaveBeenCalledWith('/residents/import/check-conflict', {
+      params: { name: undefined, cpf: undefined },
+    });
+  });
+
+  it('commitImport envia o payload por POST e devolve r.data', async () => {
+    const payload = { name: 'Ana', houseId: 'house-1' } as never;
+    const committed = { id: 'res-9' };
+    http.post.mockResolvedValueOnce({ data: committed });
+
+    const result = await residents.commitImport(payload);
+
+    expect(http.post).toHaveBeenCalledWith('/residents/import/commit', payload);
+    expect(result).toBe(committed);
+  });
+
   it('propaga erro HTTP no shape que getErrorMessage espera (message array)', async () => {
     const httpError = {
       response: { status: 422, data: { message: ['houseId é obrigatório'] } },

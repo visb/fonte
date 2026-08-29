@@ -70,6 +70,16 @@ thread principal **e** para todo agent):
 - **Comando > ~1500 chars falha** com `Command exceeds the maximum analyzable length ... requires
   human review`. Payload grande vai para arquivo via `Write` e é referenciado
   (`curl -d @arquivo.json`, `git commit -F arquivo`).
+- **NUNCA usar here-string do PowerShell (`@'...'@`) na tool Bash.** A tool Bash é Git Bash
+  (POSIX sh) e não entende essa sintaxe: as aspas somem e o `@` fica colado no conteúdo. Em
+  `git commit -m @'...'@` o resultado é um commit cujo **título vira `@`**, com a mensagem real
+  empurrada para a segunda linha — quebra `git log --oneline`, a exibição no GitHub e qualquer
+  ferramenta que leia o subject. Aconteceu em 17 commits antes de ser notado.
+  - **Mensagem de commit multilinha:** escrever num arquivo com `Write` e usar
+    `git commit -F <arquivo>`. É o caminho que esta seção já prescreve para payload grande, e
+    vale aqui mesmo quando a mensagem é curta.
+  - Se for mesmo usar a tool **PowerShell** (não a Bash), aí `@'...'@` é válido — mas o `'@` de
+    fechamento tem de estar na coluna 0.
 - **Código inline** (`node -e`, `python -c`) acima de ~800 chars: escrever script com `Write` e
   executar o arquivo.
 - `automode-unavailable` (“classifier temporarily unavailable”) **não é bloqueio** — é indisponibilidade

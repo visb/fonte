@@ -9,6 +9,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { randomUUID } from "crypto";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { extname, join } from "path";
 import { IMG_SRC_RE, extractImageUrls } from "./storage.util";
@@ -78,9 +79,12 @@ export class StorageService implements OnModuleInit {
     return Buffer.from(originalname, "latin1").toString("utf8");
   }
 
+  // Nome do objeto no bucket. Usa `randomUUID()` (CSPRNG) em vez do antigo
+  // `Date.now()-Math.random()`: timestamp é adivinhável e `Math.random()` não é
+  // criptográfico. Com bucket privado + presign o nome não é a barreira
+  // principal — isto é defesa em profundidade (story 189).
   uniqueFilename(originalname: string, prefix = ""): string {
-    const suffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    return `${prefix}${suffix}${extname(originalname)}`;
+    return `${prefix}${randomUUID()}${extname(originalname)}`;
   }
 
   async upload(

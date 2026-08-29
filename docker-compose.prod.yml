@@ -1,0 +1,133 @@
+# Stack de produção do VPS (story 189). NÃO é o compose de desenvolvimento —
+# `docker-compose.yml` continua sendo o de dev e não deve ser usado aqui.
+#
+#   docker compose -f docker-compose.prod.yml build
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Só o nginx publica porta (80/443). postgres, minio e api ficam apenas na rede
+# interna. Todo segredo vem do `.env` na raiz do VPS (nunca versionado):
+# POSTGRES_PASSWORD, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD + as variáveis de
+# runtime da API (base: services/api/.env.example).
+#
+# Sem Redis: a dependência saiu do código na story 190.
+
+services:
+  # ── banco ───────────────────────────────────────────────────────────────────
+  # Postgres 18, não 16: o dump de produção sai de um servidor 18 e archive
+  # custom-format novo não é lido por pg_restore mais antigo. O
+  # docker-compose.yml de dev segue em 16 — divergência conhecida e registrada
+  # na story 189.
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fonte}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env do host}
+      POSTGRES_DB: ${POSTGRES_DB:-fonte}
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      # ATENÇÃO: na imagem 18 o PGDATA é /var/lib/postgresql/18/docker, e o
+      # VOLUME declarado é /var/lib/postgresql. Montar em
+      # /var/lib/postgresql/data (como no compose de dev, que é 16) deixaria os
+      # dados fora do volume — e eles somem no primeiro `down`.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-fonte} -d ${POSTGRES_DB:-fonte}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── storage ─────────────────────────────────────────────────────────────────
+  # Bucket PRIVADO. Nada de policy anônima de leitura: o acesso é pelas URLs
+  # assinadas que o StorageUrlInterceptor emite. Bucket público anularia o
+  # presign inteiro. Criação do bucket: ver README (§ Deploy no VPS).
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env do host}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env do host}
+    volumes:
+      - minio_data:/data
+    # Sem `ports:` de propósito: nem a API (:9000) nem o console (:9001) são
+    # publicados. A API entra pelo nginx (host `static.`) e o console não é
+    # exposto na internet — administração via `mc` no host.
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── API ─────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      target: api
+    image: fonte-api:local
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    # Sem volume de arquivos: o acervo vive no MinIO. Sem `ports:`: só o nginx
+    # publica. O comando de start roda `migration:run` antes de subir o Node.
+
+  # ── borda ───────────────────────────────────────────────────────────────────
+  nginx:
+    build:
+      context: .
+      target: web
+      args:
+        # URL da API é BUILD-TIME nos dois front-ends (embutida no bundle).
+        # Mudar aqui exige `build`, não `restart`.
+        VITE_API_URL: ${VITE_API_URL:-https://adm.fontedemisericordia.com.br/api/v1}
+        EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-https://ops.fontedemisericordia.com.br/api/v1}
+    image: fonte-web:local
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - certbot_conf:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot
+    depends_on:
+      - api
+    networks:
+      default:
+        aliases:
+          # A API assina e sobe objeto usando AWS_ENDPOINT_URL, que é o host
+          # público do storage. O alias resolve esse nome para o próprio nginx
+          # dentro da rede do compose, sem depender de hairpin NAT do provedor.
+          - static.fontedemisericordia.com.br
+    # Recarrega a cada 6h para pegar certificado renovado pelo certbot.
+    # Certificado renovado sem reload NÃO vale: o nginx segue servindo o antigo
+    # até reiniciar, e o site cai quando o velho expira.
+    command: >
+      sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
+
+  # ── TLS ─────────────────────────────────────────────────────────────────────
+  # Renova a cada 12h; `renew` só age no que está perto de vencer, então rodar
+  # com folga é barato. A emissão INICIAL é manual — ver a ordem de bootstrap no
+  # README (§ Deploy no VPS).
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: >
+      sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
+
+volumes:
+  postgres_data:
+  minio_data:
+  certbot_conf:
+  certbot_www:

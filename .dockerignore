@@ -1,0 +1,52 @@
+# O build roda no monorepo inteiro; o que entra no contexto é só código-fonte.
+# node_modules fica de fora de propósito: o install acontece dentro do container
+# (bcrypt e sharp são nativos e o host é Windows — reaproveitar node_modules do
+# host produz binário incompatível).
+node_modules
+**/node_modules
+
+# Artefatos de build — regerados no stage `build`.
+dist
+**/dist
+build
+**/build
+.expo
+**/.expo
+**/.expo-shared
+android
+**/android
+ios
+**/ios
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Segredo nunca entra na imagem. O compose de produção injeta via env_file.
+.env
+**/.env
+.env.*
+**/.env.*
+!**/.env.example
+
+# Testes, relatórios e cobertura.
+coverage
+**/coverage
+playwright-report
+**/playwright-report
+test-results
+**/test-results
+.maestro-flakiness
+
+# Acervo local do fallback de disco do StorageService — em produção é MinIO.
+uploads
+**/uploads
+
+# Git, tooling e docs que não afetam o build.
+.git
+.github
+.claude
+.openclaude
+.turbo
+stories
+docs
+*.md
+!README.md

@@ -43,12 +43,15 @@ Rodada de autorun **191–192** — aberta em 2026-08-30.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 191 — observabilidade da API (backend) | [ ] | | | |
+| 1 | 191 — observabilidade da API (backend) | [OK] | api 1739 · e2e 592 · cov 98,75% | `bd277af` | `29795a4` |
 | 2 | 192 — tela de observabilidade no adm.fonte | [ ] | | | |
 
 ## Log
 
 ```
+[OK] 191 — testes: test:api 1739/1739, e2e 592/592, cov common/observability 98,75% stmts — commit: bd277af — merge: 29795a4 — 2026-08-30
+     Sentry v10: setMeasurement não existe mais; usado getActiveSpan().setAttributes (conferido no pacote instalado).
+     Nota p/ 192: stats devolve também startedAt (início da janela do agregado).
 ```
 
 ## Resumo final

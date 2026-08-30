@@ -10,6 +10,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { getDatabaseConfig } from './config/database.config';
+import { ObservabilityModule } from './common/observability/observability.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { HouseModule } from './modules/house/house.module';
@@ -63,6 +64,10 @@ import { ReceiptModule } from './modules/receipt/receipt.module';
     // LGPD art. 46 — proteção contra força bruta. Janela global padrão; o login
     // recebe limite mais estrito via @Throttle no AuthController.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+    // Story 191 — aplica o middleware de custo por requisição em '*'. Precisa
+    // vir ANTES dos módulos de feature: a ordem de registro dos módulos é a
+    // ordem da cadeia de middlewares, e este tem que envolver todo o resto.
+    ObservabilityModule,
     AuthModule,
     UserModule,
     HouseModule,

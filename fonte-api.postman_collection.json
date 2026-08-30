@@ -3006,6 +3006,65 @@
       ]
     },
     {
+      "name": "Observability",
+      "item": [
+        {
+          "name": "Health (public)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "description": "Liveness publico (healthcheck do compose e do nginx). Devolve apenas { status, uptimeSec, db } - nao expoe memoria, versao nem rotas.",
+            "url": {
+              "raw": "{{baseUrl}}/observability/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "observability",
+                "health"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Stats (admin)",
+          "request": {
+            "method": "GET",
+            "description": "Custo por requisicao desde o boot (ou desde o ultimo reset): runtime (event loop lag, memoria, cpu), agregado por rota (count, errors, p50/p95, medias de cpu/db/heap) e as ultimas requisicoes. Tudo em memoria, sem persistencia e sem dado pessoal.",
+            "url": {
+              "raw": "{{baseUrl}}/observability/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "observability",
+                "stats"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reset Window (admin)",
+          "request": {
+            "method": "POST",
+            "description": "Zera o agregado, o ring buffer e a janela do event loop - util para medir um cenario especifico sem reiniciar a API. Nao toca em banco.",
+            "url": {
+              "raw": "{{baseUrl}}/observability/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "observability",
+                "reset"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Notifications",
       "item": [
         {

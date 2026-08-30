@@ -1455,6 +1455,84 @@ export interface BackupSummary {
   prunedDumps?: string[];
 }
 
+// ─── Observabilidade (story 191) ──────────────────────────────────────────────
+
+/**
+ * `GET /observability/health` — liveness PÚBLICO (compose/nginx). De propósito
+ * não expõe memória, versão nem rotas: quem sonda o host não ganha nada.
+ */
+export interface ObservabilityHealth {
+  status: 'ok' | 'degraded';
+  uptimeSec: number;
+  db: 'up' | 'down';
+}
+
+/** Saúde do processo. Em 1 vCPU, `eventLoopLagMs` é o sinal mais importante. */
+export interface ObservabilityRuntime {
+  uptimeSec: number;
+  eventLoopLagMs: { p50: number; p99: number; max: number };
+  memory: {
+    rssMb: number;
+    heapUsedMb: number;
+    heapTotalMb: number;
+    externalMb: number;
+  };
+  /** % de CPU do processo desde a leitura anterior. */
+  cpuPercent: number;
+  nodeVersion: string;
+}
+
+/**
+ * Agregado de uma rota desde o boot (ou desde o último `reset`). `route` é a
+ * chave `${METHOD} ${path normalizado}`; rotas acima do cap de cardinalidade
+ * caem na chave `OTHER`.
+ *
+ * `p50`/`p95` são aproximados por histograma de buckets fixos, e `avgDbMs` é
+ * PARCIAL (o TypeORM só reporta duração de query acima de 1ms) — a contagem
+ * `avgDbQueries` é o número confiável para caçar N+1.
+ */
+export interface ObservabilityRouteStats {
+  route: string;
+  count: number;
+  errors: number;
+  avgDurationMs: number;
+  maxDurationMs: number;
+  p50DurationMs: number;
+  p95DurationMs: number;
+  avgCpuMs: number;
+  avgDbQueries: number;
+  avgDbMs: number;
+  avgHeapDeltaKb: number;
+  lastAt: string;
+}
+
+/** Item do ring buffer das últimas requisições. Sem dado pessoal (LGPD). */
+export interface ObservabilityRecentRequest {
+  requestId: string;
+  method: string;
+  route: string;
+  status: number;
+  durationMs: number;
+  cpuMs: number;
+  dbQueries: number;
+  dbMs: number;
+  heapDeltaKb: number;
+  at: string;
+}
+
+/** `GET /observability/stats` (ADMIN). Janela viva do processo, não histórico. */
+export interface ObservabilityStats {
+  startedAt: string;
+  runtime: ObservabilityRuntime;
+  routes: ObservabilityRouteStats[];
+  recent: ObservabilityRecentRequest[];
+}
+
+/** `POST /observability/reset` (ADMIN). */
+export interface ObservabilityResetResponse {
+  startedAt: string;
+}
+
 // ─── Offline snapshot da casa (story 177) ─────────────────────────────────────
 
 export type { OfflineSnapshotDeleted };

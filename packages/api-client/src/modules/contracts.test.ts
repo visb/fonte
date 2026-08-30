@@ -16,6 +16,7 @@ import { createIncidentsModule } from './incidents.js';
 import { createMessagesModule } from './messages.js';
 import { createMinistriesModule } from './ministries.js';
 import { createNotificationsModule } from './notifications.js';
+import { createObservabilityModule } from './observability.js';
 import { createRelativesModule } from './relatives.js';
 import { createResidentSessionsModule } from './resident-sessions.js';
 import { createStaffModule } from './staff.js';
@@ -761,6 +762,37 @@ describe('notifications module', () => {
   it('markAllRead patcheia todas', async () => {
     await m.markAllRead();
     expect(http.patch).toHaveBeenCalledWith('/notifications/read-all');
+  });
+});
+
+// ── observability ─────────────────────────────────────────────────────────────
+describe('observability module', () => {
+  let http: HttpMock;
+  let m: ReturnType<typeof createObservabilityModule>;
+  beforeEach(() => {
+    http = createHttpMock();
+    m = createObservabilityModule(asHttp(http));
+  });
+  it('health busca o liveness público e desserializa r.data', async () => {
+    const sentinel = { status: 'ok', uptimeSec: 1, db: 'up' };
+    http.get.mockResolvedValueOnce({ data: sentinel });
+    const result = await m.health();
+    expect(http.get).toHaveBeenCalledWith('/observability/health');
+    expect(result).toBe(sentinel);
+  });
+  it('stats busca o agregado (ADMIN)', async () => {
+    const sentinel = { startedAt: 'x', runtime: {}, routes: [], recent: [] };
+    http.get.mockResolvedValueOnce({ data: sentinel });
+    const result = await m.stats();
+    expect(http.get).toHaveBeenCalledWith('/observability/stats');
+    expect(result).toBe(sentinel);
+  });
+  it('reset zera a janela (ADMIN)', async () => {
+    const sentinel = { startedAt: 'x' };
+    http.post.mockResolvedValueOnce({ data: sentinel });
+    const result = await m.reset();
+    expect(http.post).toHaveBeenCalledWith('/observability/reset');
+    expect(result).toBe(sentinel);
   });
 });
 

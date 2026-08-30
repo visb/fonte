@@ -7,6 +7,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import {
+  Activity,
   BookOpen,
   Building2,
   CalendarDays,
@@ -340,6 +341,12 @@ export function AppLayout() {
             <Link to="/backup" onClick={closeSidebar} className={navLinkClass}>
               <Database size={16} />
               Backup
+            </Link>
+          )}
+          {isAdmin && (
+            <Link to="/observabilidade" onClick={closeSidebar} className={navLinkClass}>
+              <Activity size={16} />
+              Observabilidade
             </Link>
           )}
         </nav>

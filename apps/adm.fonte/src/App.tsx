@@ -44,6 +44,7 @@ import { MessagesPage } from '@/features/messages/pages/MessagesPage';
 import { ProfilePage } from '@/features/auth/pages/ProfilePage';
 import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage';
 import { BackupPage } from '@/features/backup/pages/BackupPage';
+import { ObservabilityPage } from '@/features/observability/pages/ObservabilityPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,6 +109,7 @@ export default function App() {
               <Route path="bible-courses/:id" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><BibleClassDetailPage /></ProtectedRoute>} />
               <Route path="messages" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><MessagesPage /></ProtectedRoute>} />
               <Route path="backup" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><BackupPage /></ProtectedRoute>} />
+              <Route path="observabilidade" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><ObservabilityPage /></ProtectedRoute>} />
               <Route path="financeiro/contas-a-pagar" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><PayablesPage /></ProtectedRoute>} />
               <Route path="activities" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR, Role.SERVANT]}><ActivitiesPage /></ProtectedRoute>} />
               <Route path="eventos" element={<ProtectedRoute allowedRoles={[Role.ADMIN, Role.COORDINATOR]}><EventsPage /></ProtectedRoute>} />

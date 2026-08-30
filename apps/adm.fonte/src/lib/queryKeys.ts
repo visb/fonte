@@ -115,6 +115,9 @@ export const queryKeys = {
   backup: {
     all: ['backup'] as const,
   },
+  observability: {
+    stats: ['observability', 'stats'] as const,
+  },
   associates: {
     all: ['associates'] as const,
     detail: (id: string) => ['associates', id] as const,

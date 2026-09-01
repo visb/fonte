@@ -1,3 +1,10 @@
+// `--forceExit` nos scripts `test:unit*` do package.json (não cabe comentário lá).
+// Sem ele o jest-expo NÃO SAI depois de a suíte terminar verde: imprime "Jest did
+// not exit one second after the test run has completed" e o processo fica vivo.
+// No CI isso derrubou o gate duas vezes — run 33412759785 (ops.fonte segurou
+// 1h49min até heap out of memory, exit 134) e run 33512261148 (app.fonte segurou
+// até o teto de 20 min). Não reproduz em máquina local, e `--detectOpenHandles`
+// (serial) sai limpo: o handle é do ambiente do jest-expo, não de código do app.
 module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],

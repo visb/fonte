@@ -15,8 +15,8 @@
     "start:test": "EXPO_PUBLIC_API_URL=http://10.0.2.2:3001/api/v1 expo start --android",
     "start:web": "npx serve dist",
     "test:maestro": "maestro test e2e/",
-    "test:unit": "jest",
-    "test:unit:cov": "jest --coverage",
+    "test:unit": "jest --forceExit",
+    "test:unit:cov": "jest --coverage --forceExit",
     "test:e2e": "playwright test"
   },
   "dependencies": {

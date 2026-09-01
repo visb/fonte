@@ -16,6 +16,12 @@ jobs:
   coverage-gate:
     name: Cobertura (piso 80%)
     runs-on: ubuntu-latest
+    # A suite inteira roda em ~7 min. O teto existe para o caso de HANG, nao de
+    # lentidao: em 33412759785 o jest do ops.fonte terminou 1310/1310 verde, nao
+    # saiu ("Jest did not exit one second after the test run has completed") e
+    # ficou alocando por 1h49min ate morrer de heap out of memory (exit 134) —
+    # quase 2h de runner queimadas para um resultado que ja se sabia aos 7 min.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 

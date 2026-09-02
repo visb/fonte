@@ -64,6 +64,7 @@ import { DocxParserService, ParseDocxResult } from './docx-parser.service';
 import { SpreadsheetImportService } from './spreadsheet-parser.service';
 import { ImportMatchService, ImportPreviewResult } from './import-match.service';
 import { ImportService } from './import.service';
+import { ReceiptService } from '../receipt/receipt.service';
 import { CommitImportDto } from './dto/commit-import.dto';
 import { CheckImportFilesDto } from './dto/check-import-files.dto';
 import { CheckImportConflictResult, ParseSpreadsheetResult, SpreadsheetImportRow } from '@fonte/types';
@@ -146,6 +147,9 @@ export class ResidentController {
     private spreadsheetImportService: SpreadsheetImportService,
     private importMatchService: ImportMatchService,
     private importService: ImportService,
+    // Story 193 — recibo da parcela paga do carnê. Último parâmetro de
+    // propósito: os anteriores são contrato dos specs existentes.
+    private receiptService: ReceiptService,
   ) {}
 
   @Get()
@@ -455,6 +459,33 @@ export class ResidentController {
     @Param('receivableId', ParseUUIDPipe) receivableId: string,
   ): Promise<ResidentReceivableView> {
     return this.receivableService.reopenPayment(id, receivableId);
+  }
+
+  /**
+   * Story 193 — recibo da contribuição mensal do acolhido (uma parcela PAGA).
+   *
+   * Fica ao lado das rotas de carnê porque é o carnê que a tela está mostrando,
+   * mas o SUJEITO do recibo é a parcela: o `residentId` da URL localiza, não
+   * escopa (quem escopa é a rota do familiar, decisão 10). O PDF é gerado na
+   * hora e nunca persistido — não vira anexo do filho.
+   */
+  @Get(':id/receivables/:receivableId/receipt')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  // O alvo auditado é a PARCELA (o sujeito do recibo), não o filho da URL.
+  @Audit('resident.receivable.receipt', 'resident-receivable', 'receivableId')
+  async downloadReceivableReceipt(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('receivableId', ParseUUIDPipe) receivableId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { buffer, filename } = await this.receiptService.generateForResidentReceivable(
+      receivableId,
+      user.userId,
+    );
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
   }
 
   // Contribuição em produtos (story 112): liberada para SERVANT+ (ops usa) —

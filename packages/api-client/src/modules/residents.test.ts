@@ -197,6 +197,15 @@ describe('residents module', () => {
     expect(http.post).toHaveBeenCalledWith('/residents/res-1/receivables/rc-1/reopen', {});
   });
 
+  // Story 193 — o recibo da parcela é um PDF: sem responseType blob o axios
+  // devolveria a string corrompida e o download baixaria um arquivo ilegível.
+  it('receivableReceipt pede responseType blob no path da parcela', async () => {
+    await residents.receivableReceipt('res-1', 'rc-1');
+    expect(http.get).toHaveBeenCalledWith('/residents/res-1/receivables/rc-1/receipt', {
+      responseType: 'blob',
+    });
+  });
+
   it('getProductContributions busca as contribuições em produtos da parcela', async () => {
     await residents.getProductContributions('res-1', 'rc-1');
     expect(http.get).toHaveBeenCalledWith('/residents/res-1/receivables/rc-1/product-contributions');

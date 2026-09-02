@@ -848,6 +848,32 @@ describe('relatives module', () => {
     expect(http.post).toHaveBeenCalledWith('/relatives/rel1/access/reset-password', body);
     expect(result).toBeUndefined();
   });
+
+  // Story 193 — o familiar lista as parcelas pagas do PRÓPRIO filho: nenhum id
+  // de filho vai na requisição, o backend resolve pelo vínculo do token.
+  it('myPaidReceivables busca /relatives/me/receivables e desserializa r.data', async () => {
+    const sentinel = [{ id: 'rcv-1' }];
+    http.get.mockResolvedValueOnce({ data: sentinel });
+    const result = await m.myPaidReceivables();
+    expect(http.get).toHaveBeenCalledWith('/relatives/me/receivables');
+    expect(result).toBe(sentinel);
+  });
+
+  // O RN não tem Blob utilizável para escrever arquivo; a web não escreve
+  // arquivo nenhum. Daí o responseType ser parâmetro, e não constante.
+  it('receivableReceipt pede blob por padrão (web)', async () => {
+    await m.receivableReceipt('rcv-1');
+    expect(http.get).toHaveBeenCalledWith('/relatives/me/receivables/rcv-1/receipt', {
+      responseType: 'blob',
+    });
+  });
+
+  it('receivableReceipt aceita arraybuffer (React Native)', async () => {
+    await m.receivableReceipt('rcv-1', { responseType: 'arraybuffer' });
+    expect(http.get).toHaveBeenCalledWith('/relatives/me/receivables/rcv-1/receipt', {
+      responseType: 'arraybuffer',
+    });
+  });
 });
 
 // ── resident-sessions ───────────────────────────────────────────────────────────

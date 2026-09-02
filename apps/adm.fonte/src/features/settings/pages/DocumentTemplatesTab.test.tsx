@@ -54,6 +54,14 @@ const RECEIPT_TEMPLATE = template({
   receiptType: ReceiptType.ASSOCIATE_CONTRIBUTION,
 });
 
+// Story 193 — o segundo tipo implementado.
+const RESIDENT_RECEIPT_TEMPLATE = template({
+  id: 'r2',
+  name: 'Recibo do acolhido',
+  kind: TemplateKind.RECEIPT,
+  receiptType: ReceiptType.RESIDENT_CONTRIBUTION,
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   templatesByKind[TemplateKind.RESIDENT] = [template()];
@@ -120,19 +128,35 @@ describe('DocumentTemplatesTab — criação (story 178)', () => {
     });
   });
 
-  it('tipo sem resolver (pizza/pão) não é oferecido', async () => {
+  // Story 193 — o tipo do acolhido entrou em IMPLEMENTED_RECEIPT_TYPES; pizza e
+  // pão continuam fora (declarados no enum, sem resolver).
+  it('só os tipos COM resolver são oferecidos (pizza/pão continuam fora)', async () => {
     render(<DocumentTemplatesTab />);
     fireEvent.click(screen.getByRole('button', { name: /Novo recibo/ }));
     const dialog = await screen.findByRole('dialog');
     const select = within(dialog).getByLabelText(/Tipo de recibo/i) as HTMLSelectElement;
     const values = Array.from(select.options).map((o) => o.value);
-    expect(values).toEqual([ReceiptType.ASSOCIATE_CONTRIBUTION]);
+    expect(values).toEqual([
+      ReceiptType.ASSOCIATE_CONTRIBUTION,
+      ReceiptType.RESIDENT_CONTRIBUTION,
+    ]);
     expect(values).not.toContain(ReceiptType.PIZZA_SALE);
     expect(values).not.toContain(ReceiptType.BREAD_SALE);
   });
 
-  it('tipo JÁ cadastrado não é oferecido — e sem tipo livre não dá para criar', async () => {
+  it('tipo JÁ cadastrado some da lista; o outro continua oferecido', async () => {
     templatesByKind[TemplateKind.RECEIPT] = [RECEIPT_TEMPLATE];
+    render(<DocumentTemplatesTab />);
+    fireEvent.click(screen.getByRole('button', { name: /Novo recibo/ }));
+    const dialog = await screen.findByRole('dialog');
+    const select = within(dialog).getByLabelText(/Tipo de recibo/i) as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.value)).toEqual([
+      ReceiptType.RESIDENT_CONTRIBUTION,
+    ]);
+  });
+
+  it('com os dois tipos cadastrados não sobra tipo livre — e não dá para criar', async () => {
+    templatesByKind[TemplateKind.RECEIPT] = [RECEIPT_TEMPLATE, RESIDENT_RECEIPT_TEMPLATE];
     render(<DocumentTemplatesTab />);
     fireEvent.click(screen.getByRole('button', { name: /Novo recibo/ }));
     const dialog = await screen.findByRole('dialog');

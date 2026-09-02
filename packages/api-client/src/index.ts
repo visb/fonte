@@ -111,6 +111,7 @@ export type {
   PaymentMethod,
   ResidentReceivable,
   ResidentReceivableSummary,
+  RelativePaidReceivable,
   RegisterReceivablePaymentInput,
   UpdateContributionPlanInput,
   SetContributionExemptInput,

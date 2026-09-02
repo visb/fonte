@@ -69,6 +69,15 @@ const importSvc = {
   commit: jest.fn().mockResolvedValue({ resident: { id: 'r1' }, contributionsCreated: { created: 0, skipped: 0 } }),
 };
 
+// Story 193 — emissão do recibo da parcela paga.
+const receipts = {
+  generateForResidentReceivable: jest.fn().mockResolvedValue({
+    buffer: Buffer.from('%PDF-x'),
+    filename: 'recibo-contribuicao-acolhido-000001.pdf',
+    number: 1,
+  }),
+};
+
 function make() {
   const rs = residentSvc();
   const c = new ResidentController(
@@ -81,6 +90,7 @@ function make() {
     spreadsheetParser as never,
     importMatch as never,
     importSvc as never,
+    receipts as never,
   );
   return { c, rs };
 }
@@ -295,6 +305,38 @@ describe('ResidentController', () => {
       action: 'resident.document.combined-pdf',
       targetType: 'resident',
       targetParam: 'id',
+    });
+  });
+
+  // ── Story 193: recibo da parcela paga ──────────────────────────────────────
+  describe('recibo da contribuição do acolhido (story 193)', () => {
+    it('delega ao ReceiptService com o usuário do TOKEN e devolve o PDF como anexo', async () => {
+      const { c } = make();
+      const res = { setHeader: jest.fn(), send: jest.fn() };
+
+      await c.downloadReceivableReceipt('res-1', 'rcv-1', user, res as never);
+
+      // O sujeito do recibo é a PARCELA; o residentId da URL apenas localiza.
+      expect(receipts.generateForResidentReceivable).toHaveBeenCalledWith('rcv-1', 'u1');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="recibo-contribuicao-acolhido-000001.pdf"',
+      );
+      expect(res.send).toHaveBeenCalled();
+    });
+
+    it('é ADMIN/COORDINATOR e audita a PARCELA (não o filho)', () => {
+      const proto = ResidentController.prototype;
+      expect(Reflect.getMetadata(ROLES_KEY, proto.downloadReceivableReceipt)).toEqual([
+        Role.ADMIN,
+        Role.COORDINATOR,
+      ]);
+      expect(Reflect.getMetadata(AUDIT_KEY, proto.downloadReceivableReceipt)).toEqual({
+        action: 'resident.receivable.receipt',
+        targetType: 'resident-receivable',
+        targetParam: 'receivableId',
+      });
     });
   });
 });

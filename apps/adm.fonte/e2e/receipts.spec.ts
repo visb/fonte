@@ -9,6 +9,11 @@ import { login } from './helpers/auth';
 import { API_URL, loginApi } from './helpers/api';
 import { resetResidentsFilters } from './helpers/preferences';
 import { createPaidCharge, deleteChargesOf } from './helpers/associateCharges';
+import {
+  createResidentWithPaidReceivable,
+  deleteResidentFixture,
+  type PaidReceivableFixture,
+} from './helpers/residentReceivables';
 
 /**
  * Story 178 — recibo da contribuição, do cadastro do template ao download.
@@ -24,10 +29,14 @@ const RESIDENT_NAME = 'João Testador'; // filho ACTIVE do seed
 const STAMP = Date.now();
 const RECEIPT_NAME = `E2E Recibo ${STAMP}`;
 const ASSOCIATE_NAME = `E2E Pagador ${STAMP}`;
+// Story 193 — o recibo do acolhido, com fixture própria de filho + parcela paga.
+const RESIDENT_RECEIPT_NAME = `E2E Recibo do acolhido ${STAMP}`;
+const PAYER_RESIDENT_NAME = `E2E Filho Pagante ${STAMP}`;
 
 let api: APIRequestContext;
 let token: string;
 let associateId: string;
+let residentFixture: PaidReceivableFixture;
 
 async function receiptTemplateIds(): Promise<string[]> {
   const res = await api.get(`${API_URL}/document-templates?kind=RECEIPT`, {
@@ -61,11 +70,14 @@ test.beforeAll(async () => {
   expect(created.ok()).toBeTruthy();
   associateId = (await created.json()).id as string;
   await createPaidCharge(associateId);
+
+  residentFixture = await createResidentWithPaidReceivable(api, token, PAYER_RESIDENT_NAME);
 });
 
 test.afterAll(async () => {
   await clearReceiptTemplates();
   await deleteChargesOf(associateId);
+  if (residentFixture) await deleteResidentFixture(api, token, residentFixture);
   await api.delete(`${API_URL}/associates/${associateId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -81,7 +93,7 @@ async function gotoTemplates(page: Page) {
   await expect(page).toHaveURL('/settings/templates');
 }
 
-test.describe('Recibos (story 178)', () => {
+test.describe('Recibos (stories 178 e 193)', () => {
   // O fluxo é longo de propósito (cadastro + edição + geração real do PDF pelo
   // puppeteer + navegação); o default de 30s não cobre a renderização do PDF.
   test.setTimeout(180_000);
@@ -104,7 +116,10 @@ test.describe('Recibos (story 178)', () => {
     // O tipo só é pedido no grupo Recibos, e só os tipos com resolver aparecem.
     const typeSelect = dialog.getByLabel('Tipo de recibo');
     await expect(typeSelect).toBeVisible();
-    await expect(typeSelect.locator('option')).toHaveCount(1);
+    // Story 193 — dois tipos com resolver: associado e acolhido. Pizza e pão
+    // seguem fora (declarados no enum, sem resolver).
+    await expect(typeSelect.locator('option')).toHaveCount(2);
+    await typeSelect.selectOption({ label: 'Contribuição mensal do associado' });
     await dialog.getByLabel('Nome do documento').fill(RECEIPT_NAME);
     await dialog.getByRole('button', { name: 'Criar' }).click();
     await expect(dialog).not.toBeVisible();
@@ -159,5 +174,57 @@ test.describe('Recibos (story 178)', () => {
     await page.getByRole('button', { name: 'Anexos', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Gerar PDF combinado' })).toBeVisible();
     await expect(page.getByText(RECEIPT_NAME, { exact: true })).toHaveCount(0);
+  });
+
+  // ── Story 193: o segundo tipo de recibo, ponta a ponta ─────────────────────
+  test('cadastra o recibo do acolhido, baixa o PDF da parcela paga e o template não vaza para os anexos', async ({
+    page,
+  }) => {
+    // ── 1. Cadastro do template do tipo NOVO ──────────────────────────────────
+    await gotoTemplates(page);
+    await page.getByRole('button', { name: 'Novo recibo' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel('Tipo de recibo').selectOption({
+      label: 'Contribuição mensal do acolhido',
+    });
+    await dialog.getByLabel('Nome do documento').fill(RESIDENT_RECEIPT_NAME);
+    await dialog.getByRole('button', { name: 'Criar' }).click();
+    await expect(dialog).not.toBeVisible();
+
+    // ── 2. O editor oferece os tokens DO ACOLHIDO ─────────────────────────────
+    await page.getByText(RESIDENT_RECEIPT_NAME, { exact: true }).click();
+    const editor = page.locator('.ProseMirror');
+    await editor.click();
+    await page.keyboard.type('Recibo ');
+    await page.keyboard.type('{{');
+    const popup = page.locator('[data-variable-suggestion]');
+    await expect(popup).toBeVisible();
+    await page.keyboard.type('acolhido');
+    await expect(popup.getByText('Acolhido — nome')).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(editor).toContainText('{{residentName}}');
+
+    await page.getByRole('button', { name: 'Recolher variáveis' }).click();
+    await page.getByRole('button', { name: 'Salvar template' }).click();
+    await expect(page.getByText('Template salvo')).toBeVisible({ timeout: 15000 });
+
+    // ── 3. Download do recibo na aba Contribuição do filho ────────────────────
+    await page.goto(`/residents/${residentFixture.residentId}`);
+    await page.getByRole('button', { name: 'Contribuição', exact: true }).click();
+    const receiptButton = page.getByRole('button', { name: /Recibo/ }).first();
+    await expect(receiptButton).toBeVisible();
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+    await receiptButton.click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/\.pdf$/);
+    // Caminho feliz não passa pelo getErrorMessage.
+    await expect(page.getByText(/Falha ao gerar o recibo/)).toHaveCount(0);
+
+    // ── 4. O template do recibo NÃO aparece nos anexos de nenhum filho ────────
+    await page.getByRole('button', { name: 'Anexos', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Gerar PDF combinado' })).toBeVisible();
+    await expect(page.getByText(RESIDENT_RECEIPT_NAME, { exact: true })).toHaveCount(0);
   });
 });

@@ -313,6 +313,67 @@ describe('guarda dos três caminhos de geração (story 178, decisão 9)', () =>
     expect(newPage).not.toHaveBeenCalled();
   });
 
+  // Story 193 — a guarda é por KIND, não por tipo: o segundo tipo de recibo
+  // nasce barrado nos três caminhos sem que ninguém precise lembrar dele.
+  describe('o segundo tipo de recibo (story 193) nasce barrado igual', () => {
+    function residentReceiptRepo() {
+      return makeRepo({
+        findOne: jest.fn().mockResolvedValue({
+          id: 'tpl-rc',
+          name: 'Recibo do acolhido',
+          content: '<p>x</p>',
+          kind: TemplateKind.RECEIPT,
+          receiptType: ReceiptType.RESIDENT_CONTRIBUTION,
+          availableFor: TemplateAvailability.ALL,
+        }),
+      });
+    }
+
+    it('findAll sem kind continua NÃO trazendo o recibo do acolhido', async () => {
+      const repo = makeRepo();
+      const service = makeService(repo);
+      await service.findAll();
+      expect(repo.find).toHaveBeenCalledWith({
+        where: { kind: TemplateKind.RESIDENT },
+        order: { name: 'ASC' },
+      });
+    });
+
+    it('renderForResident e generatePdf recusam o template do acolhido → 400', async () => {
+      const service = makeService(residentReceiptRepo());
+      const newPage = jest.fn();
+      (service as unknown as { browserPromise: Promise<unknown> }).browserPromise =
+        Promise.resolve({ newPage });
+      await expect(service.renderForResident('tpl-rc', RESIDENT)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      await expect(service.generatePdf('tpl-rc', RESIDENT)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(newPage).not.toHaveBeenCalled();
+    });
+
+    it('generateCombinedPdf também o reprova', async () => {
+      const service = makeService(residentReceiptRepo());
+      const newPage = jest.fn();
+      (service as unknown as { browserPromise: Promise<unknown> }).browserPromise =
+        Promise.resolve({ newPage });
+      await expect(
+        service.generateCombinedPdf(['tpl-rc'], RESIDENT),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(newPage).not.toHaveBeenCalled();
+    });
+
+    it('findByReceiptType procura o template do TIPO do acolhido', async () => {
+      const repo = residentReceiptRepo();
+      const service = makeService(repo);
+      await service.findByReceiptType(ReceiptType.RESIDENT_CONTRIBUTION, 'contribuição do acolhido');
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { receiptType: ReceiptType.RESIDENT_CONTRIBUTION, kind: TemplateKind.RECEIPT },
+      });
+    });
+  });
+
   it('template RESIDENT (ou legado, sem kind) segue gerando normalmente', async () => {
     const repo = makeRepo({
       findOne: jest.fn().mockResolvedValue({

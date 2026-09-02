@@ -68,6 +68,16 @@ function receiptTemplate(): DocumentTemplate {
   });
 }
 
+// Story 193 — o segundo tipo de recibo, com o catálogo de tokens próprio.
+function residentReceiptTemplate(): DocumentTemplate {
+  return template({
+    id: 'r2',
+    name: 'Recibo do acolhido',
+    kind: TemplateKind.RECEIPT,
+    receiptType: ReceiptType.RESIDENT_CONTRIBUTION,
+  });
+}
+
 describe('TemplateEditor — barra de variáveis (story 139)', () => {
   it('renderiza o VariablesPanel (aba recolhida à direita)', () => {
     render(<TemplateEditor template={template()} onSaved={vi.fn()} />);
@@ -166,5 +176,27 @@ describe('TemplateEditor — kind = RECEIPT (story 178)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Salvar template/ }));
     await waitFor(() => expect(updateMutate).toHaveBeenCalled());
     expect(Object.keys(updateMutate.mock.calls[0][0].data).sort()).toEqual(['content', 'name']);
+  });
+
+  // ── Story 193: a lista de variáveis é a DO TIPO do template ────────────────
+  it('recibo do ACOLHIDO lista os tokens do filho, e nenhum token de gateway', () => {
+    render(<TemplateEditor template={residentReceiptTemplate()} onSaved={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Variáveis/i }));
+    expect(screen.getByText('{{residentName}}')).toBeInTheDocument();
+    expect(screen.getByText('{{payerRelationship}}')).toBeInTheDocument();
+    expect(screen.getByText('{{contributionPlan}}')).toBeInTheDocument();
+    expect(screen.getByText('{{signature}}')).toBeInTheDocument();
+    expect(screen.queryByText('{{netAmount}}')).not.toBeInTheDocument();
+    expect(screen.queryByText('{{feeAmount}}')).not.toBeInTheDocument();
+    // E nada do documento do filho.
+    expect(screen.queryByText('{{name}}')).not.toBeInTheDocument();
+  });
+
+  it('recibo do ASSOCIADO segue com a lista da 178, inalterada', () => {
+    render(<TemplateEditor template={receiptTemplate()} onSaved={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Variáveis/i }));
+    expect(screen.getByText('{{netAmount}}')).toBeInTheDocument();
+    expect(screen.getByText('{{feeAmount}}')).toBeInTheDocument();
+    expect(screen.queryByText('{{residentName}}')).not.toBeInTheDocument();
   });
 });

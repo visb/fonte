@@ -25,8 +25,21 @@ vi.mock('../../hooks/useProductContributions', () => ({
 }));
 vi.mock('../ChangeContributionPlanDialog', () => ({ ChangeContributionPlanDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="plan-dialog" /> : null) }));
 vi.mock('../RegisterPaymentDialog', () => ({ RegisterPaymentDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="pay-dialog" /> : null) }));
-vi.mock('../ReceivableRow', () => ({ ReceivableRow: ({ receivable, canManage, onReopenClick }: { receivable: { id: string }; canManage: boolean; onReopenClick: (r: unknown) => void }) => (
-  <button data-testid={`rec-${receivable.id}`} data-can-manage={String(canManage)} onClick={() => onReopenClick(receivable)}>row</button>
+// Story 193 — o download do recibo é do hook; aqui interessa o WIRING.
+const receiptState = {
+  downloadingId: null as string | null,
+  error: null as string | null,
+  dismissError: vi.fn(),
+  download: vi.fn(),
+};
+vi.mock('../../hooks/useReceivableReceipt', () => ({
+  useReceivableReceipt: () => receiptState,
+}));
+vi.mock('../ReceivableRow', () => ({ ReceivableRow: ({ receivable, canManage, onReopenClick, onDownloadReceipt }: { receivable: { id: string }; canManage: boolean; onReopenClick: (r: unknown) => void; onDownloadReceipt?: (id: string) => void }) => (
+  <>
+    <button data-testid={`rec-${receivable.id}`} data-can-manage={String(canManage)} onClick={() => onReopenClick(receivable)}>row</button>
+    <button data-testid={`receipt-${receivable.id}`} onClick={() => onDownloadReceipt?.(receivable.id)}>recibo</button>
+  </>
 ) }));
 
 import { ContributionsTab } from './ContributionsTab';
@@ -62,6 +75,8 @@ beforeEach(() => {
   recState.isLoading = false;
   recState.isError = false;
   admissionsState.data = [];
+  receiptState.downloadingId = null;
+  receiptState.error = null;
 });
 afterEach(() => cleanup());
 
@@ -227,5 +242,26 @@ describe('ContributionsTab', () => {
 
     expect(screen.getByTestId('rec-orfa')).toBeInTheDocument();
     expect(screen.queryByLabelText('Acolhimento')).not.toBeInTheDocument();
+  });
+
+  // ── Story 193: recibo da parcela ──────────────────────────────────────────
+  it('o download do recibo leva o filho E a parcela', () => {
+    admissionsState.data = [CURRENT];
+    recState.data = [receivable({ id: 'rc-paga', admissionId: 'ad-atual' })];
+
+    render(<ContributionsTab resident={resident} />);
+    fireEvent.click(screen.getByTestId('receipt-rc-paga'));
+
+    expect(receiptState.download).toHaveBeenCalledWith('r1', 'rc-paga');
+  });
+
+  it('erro do recibo aparece uma vez, acima da lista, com a frase do backend', () => {
+    admissionsState.data = [CURRENT];
+    recState.data = [receivable({ id: 'rc-paga', admissionId: 'ad-atual' })];
+    receiptState.error = 'Nenhum template de recibo cadastrado. Cadastre em Configurações → Templates.';
+
+    render(<ContributionsTab resident={resident} />);
+
+    expect(screen.getByText(/Cadastre em Configurações → Templates/)).toBeInTheDocument();
   });
 });

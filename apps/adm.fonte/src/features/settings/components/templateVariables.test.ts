@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { ReceiptType } from '@fonte/types';
 import {
+  RECEIPT_VARIABLES_BY_TYPE,
   VARIABLES,
   buildVariableInsertion,
   filterVariables,
+  receiptVariablesFor,
 } from './templateVariables';
 
 // ─── VARIABLES ────────────────────────────────────────────────────────────────
@@ -49,6 +52,79 @@ describe('VARIABLES', () => {
     // O par entrada/saída fica lado a lado na barra.
     const keys = VARIABLES.map((v) => v.key);
     expect(keys.indexOf('{{exitDate}}')).toBe(keys.indexOf('{{entryDate}}') + 1);
+  });
+});
+
+// ─── RECEIPT_VARIABLES_BY_TYPE (story 193) ────────────────────────────────────
+// Uma lista POR TIPO: o operador não pode receber a oferta de um token que o
+// resolver daquele recibo não preenche.
+
+describe('RECEIPT_VARIABLES_BY_TYPE', () => {
+  const associate = RECEIPT_VARIABLES_BY_TYPE[ReceiptType.ASSOCIATE_CONTRIBUTION].map((v) => v.key);
+  const resident = RECEIPT_VARIABLES_BY_TYPE[ReceiptType.RESIDENT_CONTRIBUTION].map((v) => v.key);
+
+  it('o recibo do acolhido tem os tokens do filho e NÃO tem os do gateway', () => {
+    expect(resident).toContain('{{residentName}}');
+    expect(resident).toContain('{{payerRelationship}}');
+    expect(resident).toContain('{{contributionPlan}}');
+    expect(resident).toContain('{{paymentMethod}}');
+    // Não há gateway no carnê do filho: imprimir taxa seria mentira formatada.
+    expect(resident).not.toContain('{{netAmount}}');
+    expect(resident).not.toContain('{{feeAmount}}');
+  });
+
+  // A lista da 178 não pode ter mudado: o recibo do associado é regressão.
+  it('o recibo do associado permanece idêntico ao da story 178', () => {
+    expect(associate).toEqual([
+      '{{receiptNumber}}',
+      '{{payerName}}',
+      '{{payerCpf}}',
+      '{{amount}}',
+      '{{amountInWords}}',
+      '{{netAmount}}',
+      '{{feeAmount}}',
+      '{{referenceMonth}}',
+      '{{paymentDate}}',
+      '{{dueDate}}',
+      '{{date}}',
+      '{{dateLong}}',
+      '{{signature}}',
+    ]);
+    expect(associate).not.toContain('{{residentName}}');
+  });
+
+  it('nenhum recibo oferece token do documento do acolhido ({{name}}, {{residentPhoto}})', () => {
+    for (const list of Object.values(RECEIPT_VARIABLES_BY_TYPE)) {
+      const keys = list.map((v) => v.key);
+      expect(keys).not.toContain('{{name}}');
+      expect(keys).not.toContain('{{residentPhoto}}');
+    }
+  });
+
+  it('todo tipo do enum tem lista (o Record completo quebra o build se faltar)', () => {
+    for (const type of Object.values(ReceiptType)) {
+      expect(RECEIPT_VARIABLES_BY_TYPE[type].length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('receiptVariablesFor', () => {
+  it('devolve a lista do tipo pedido', () => {
+    expect(receiptVariablesFor(ReceiptType.RESIDENT_CONTRIBUTION).map((v) => v.key)).toContain(
+      '{{residentName}}',
+    );
+  });
+
+  it('tipo ausente/desconhecido cai no recibo do associado (o único que existia antes)', () => {
+    expect(receiptVariablesFor(null)).toEqual(
+      RECEIPT_VARIABLES_BY_TYPE[ReceiptType.ASSOCIATE_CONTRIBUTION],
+    );
+    expect(receiptVariablesFor(undefined)).toEqual(
+      RECEIPT_VARIABLES_BY_TYPE[ReceiptType.ASSOCIATE_CONTRIBUTION],
+    );
+    expect(receiptVariablesFor('RIFA')).toEqual(
+      RECEIPT_VARIABLES_BY_TYPE[ReceiptType.ASSOCIATE_CONTRIBUTION],
+    );
   });
 });
 
@@ -107,6 +183,22 @@ describe('filterVariables', () => {
 
   it('sem match → lista vazia', () => {
     expect(filterVariables('zzz_inexistente')).toEqual([]);
+  });
+
+  // Story 193 — o autocomplete filtra a lista DO TIPO do template aberto.
+  it('com a lista do acolhido, `acolhido` casa os tokens do filho', () => {
+    const source = RECEIPT_VARIABLES_BY_TYPE[ReceiptType.RESIDENT_CONTRIBUTION];
+    const keys = filterVariables('acolhido', source).map((v) => v.key);
+    expect(keys).toContain('{{residentName}}');
+    expect(keys).toContain('{{residentCpf}}');
+    // A lista do filho não tem tokens de gateway para casar.
+    expect(filterVariables('taxa', source)).toEqual([]);
+  });
+
+  it('com a lista do associado, `taxa` casa {{feeAmount}} e nada do filho', () => {
+    const source = RECEIPT_VARIABLES_BY_TYPE[ReceiptType.ASSOCIATE_CONTRIBUTION];
+    expect(filterVariables('taxa', source).map((v) => v.key)).toEqual(['{{feeAmount}}']);
+    expect(filterVariables('acolhido', source)).toEqual([]);
   });
 
   // Story 157 — quem procura pela palavra "foto" tem que achar a variável nova.

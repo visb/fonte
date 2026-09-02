@@ -22,10 +22,16 @@ function makeRepo(overrides: Record<string, jest.Mock> = {}) {
   };
 }
 
+// Story 193 — carnê do filho, consultado pelo dono da tabela.
+function makeReceivables(paid: unknown[] = []) {
+  return { findPaidByResident: jest.fn().mockResolvedValue(paid) };
+}
+
 function makeService(
   relativeRepo: ReturnType<typeof makeRepo>,
   userRepo = makeRepo(),
   followUp: Partial<ResidentFollowUpService> = { createAuto: jest.fn() },
+  receivables = makeReceivables(),
 ) {
   return new RelativeService(
     relativeRepo as unknown as Repository<Relative>,
@@ -34,6 +40,7 @@ function makeService(
     userRepo as unknown as Repository<User>,
     {} as StorageService,
     followUp as ResidentFollowUpService,
+    receivables as never,
   );
 }
 
@@ -133,6 +140,7 @@ function buildWithStorage(
     makeRepo() as unknown as Repository<User>,
     storage as StorageService,
     { createAuto: jest.fn() } as unknown as ResidentFollowUpService,
+    makeReceivables() as never,
   );
 }
 
@@ -280,6 +288,7 @@ describe('RelativeService.findByResident house scoping', () => {
       {} as never,                                // userRepository
       {} as never,                                // storageService
       {} as never,                                // followUpService
+      {} as never,                                // receivableService (story 193)
     );
   }
 
@@ -309,5 +318,40 @@ describe('RelativeService.findByResident house scoping', () => {
     );
     await expect(service.findByResident('res-1', { role: 'SERVANT', userId: 'u1' }))
       .rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
+
+// ─── Parcelas pagas do familiar (story 193) ───────────────────────────────────
+
+describe('RelativeService.findMyPaidReceivables', () => {
+  const paid = [
+    { id: 'rcv-1', referenceMonth: '2026-08-01', paidAmount: 500, paidAt: '2026-08-05', paymentMethod: 'PIX' },
+  ];
+
+  it('consulta o carnê do filho VINCULADO ao familiar do token', async () => {
+    const receivables = makeReceivables(paid);
+    const service = makeService(
+      makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'rel-1', residentId: 'res-9' }) }),
+      makeRepo(),
+      { createAuto: jest.fn() },
+      receivables,
+    );
+
+    await expect(service.findMyPaidReceivables('u-fam')).resolves.toEqual(paid);
+    // O id do filho NUNCA vem da requisição: sai do vínculo (decisão 10).
+    expect(receivables.findPaidByResident).toHaveBeenCalledWith('res-9');
+  });
+
+  it('usuário sem perfil de familiar → 404, sem tocar no carnê', async () => {
+    const receivables = makeReceivables();
+    const service = makeService(
+      makeRepo({ findOne: jest.fn().mockResolvedValue(null) }),
+      makeRepo(),
+      { createAuto: jest.fn() },
+      receivables,
+    );
+
+    await expect(service.findMyPaidReceivables('u-x')).rejects.toBeInstanceOf(NotFoundException);
+    expect(receivables.findPaidByResident).not.toHaveBeenCalled();
   });
 });

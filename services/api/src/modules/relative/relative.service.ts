@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, NotFoundException } 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { FollowUpType, Role } from '@fonte/types';
+import { FollowUpType, RelativePaidReceivable, Role } from '@fonte/types';
 import { Relative } from './relative.entity';
 import { CreateRelativeDto } from './dto/create-relative.dto';
 import { UpdateRelativeMeDto } from './dto/update-relative-me.dto';
@@ -11,6 +11,7 @@ import { Staff } from '../staff/staff.entity';
 import { User } from '../user/user.entity';
 import { StorageService } from '../storage/storage.service';
 import { ResidentFollowUpService } from '../resident-follow-up/resident-follow-up.service';
+import { ResidentReceivableService } from '../resident-receivable/resident-receivable.service';
 
 export interface RelativeMeView {
   id: string;
@@ -44,6 +45,9 @@ export class RelativeService {
     private userRepository: Repository<User>,
     private storageService: StorageService,
     private followUpService: ResidentFollowUpService,
+    // Story 193 — último parâmetro de propósito: os anteriores são contrato dos
+    // specs existentes deste service.
+    private receivableService: ResidentReceivableService,
   ) {}
 
   // LGPD art. 6/46 — escopo por casa: não-ADMIN só vê familiares de internos da
@@ -92,6 +96,20 @@ export class RelativeService {
       // Staff.phone virou whatsapp (story 97); o contrato do app.fonte mantém o nome.
       coordinatorPhone: coordinator?.whatsapp ?? null,
     };
+  }
+
+  /**
+   * Story 193 — parcelas PAGAS do filho do familiar logado.
+   *
+   * O escopo é o vínculo direto (decisão 10): `Relative` tem exatamente um
+   * `resident_id`, e a lista sai desse filho — nunca de um id vindo da URL. A
+   * consulta ao carnê é delegada ao `ResidentReceivableService`, dono da tabela:
+   * o módulo do familiar não fala com `resident_receivables` por conta própria.
+   */
+  async findMyPaidReceivables(userId: string): Promise<RelativePaidReceivable[]> {
+    const relative = await this.relativeRepository.findOne({ where: { userId } });
+    if (!relative) throw new NotFoundException('Perfil de familiar não encontrado');
+    return this.receivableService.findPaidByResident(relative.residentId);
   }
 
   async updateMe(userId: string, dto: UpdateRelativeMeDto): Promise<RelativeMeView> {

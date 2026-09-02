@@ -1,6 +1,9 @@
 import { useCallback, useState } from 'react';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+// Story 193 — o `<a download>` virou helper compartilhado quando o segundo
+// recibo (o do acolhido) precisou exatamente do mesmo caminho.
+import { triggerDownload } from '@/lib/download';
 
 /**
  * Story 178 — download do recibo de uma cobrança PAGA.
@@ -34,15 +37,4 @@ export function useChargeReceipt() {
     dismissError: useCallback(() => setError(null), []),
     download,
   };
-}
-
-function triggerDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }

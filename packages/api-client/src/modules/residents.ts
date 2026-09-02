@@ -139,6 +139,16 @@ export function createResidentsModule(http: AxiosInstance) {
     reopenReceivable: (id: string, receivableId: string): Promise<ResidentReceivable> =>
       http.post<ResidentReceivable>(`/residents/${id}/receivables/${receivableId}/reopen`, {}).then((r) => r.data),
 
+    /**
+     * Story 193 — PDF do recibo de uma parcela PAGA do carnê do filho. O arquivo
+     * é gerado na hora e nunca persistido; o número (sequencial por tipo) vem no
+     * `Content-Disposition`. ADMIN/COORDINATOR.
+     */
+    receivableReceipt: (id: string, receivableId: string): Promise<Blob> =>
+      http
+        .get<Blob>(`/residents/${id}/receivables/${receivableId}/receipt`, { responseType: 'blob' })
+        .then((r) => r.data),
+
     getProductContributions: (id: string, receivableId: string): Promise<ReceivableProductContribution[]> =>
       http
         .get<ReceivableProductContribution[]>(`/residents/${id}/receivables/${receivableId}/product-contributions`)

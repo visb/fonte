@@ -3,6 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DocumentTemplateModule } from '../document-template/document-template.module';
 import { ResidentFollowUpModule } from '../resident-follow-up/resident-follow-up.module';
 import { ResidentReceivableModule } from '../resident-receivable/resident-receivable.module';
+// Story 193 — o recibo da parcela é emitido pelo ReceiptService (módulo próprio
+// desde a 178, porque o sujeito do recibo é polimórfico).
+import { ReceiptModule } from '../receipt/receipt.module';
 import { NotificationModule } from '../notification/notification.module';
 import { StaffModule } from '../staff/staff.module';
 import { User } from '../user/user.entity';
@@ -35,6 +38,7 @@ import { ImportService } from './import.service';
     DocumentTemplateModule,
     ResidentFollowUpModule,
     ResidentReceivableModule,
+    ReceiptModule,
     NotificationModule,
     StaffModule,
   ],

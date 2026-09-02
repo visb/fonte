@@ -1,5 +1,16 @@
-import { FamilyInvestment, FollowUpAccessLevel, FollowUpType, Gender, MaritalStatus, PaymentMethod, ResidentStatus } from '@fonte/types';
+import { FamilyInvestment, FollowUpAccessLevel, FollowUpType, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import type { BadgeProps } from '@/components/ui/badge';
+
+/**
+ * Story 193 — os dicionários de forma de pagamento e de modalidade de
+ * contribuição subiram para `@fonte/types`: o recibo do acolhido (backend)
+ * imprime os MESMOS rótulos que estas telas, e dicionário duplicado é como
+ * "Cartão de Crédito" e "Cartão de crédito" passam a conviver.
+ *
+ * O reexport mantém o import de sempre (`../constants`) funcionando em todas as
+ * telas — nenhuma delas mudou de texto.
+ */
+export { PAYMENT_METHOD_LABELS, FAMILY_INVESTMENT_LABELS } from '@fonte/types';
 
 export const GENDER_LABELS: Record<Gender, string> = {
   [Gender.MALE]: 'Masculino',
@@ -72,27 +83,11 @@ export const RESIDENT_STATUS_VARIANT: Record<ResidentStatus, BadgeVariant> = {
   [ResidentStatus.ARCHIVED]: 'secondary',
 };
 
-export const FAMILY_INVESTMENT_LABELS: Record<FamilyInvestment, string> = {
-  [FamilyInvestment.BASKET_500]: 'R$ 500 + cestas',
-  [FamilyInvestment.PAYMENT_700]: 'R$ 700',
-  [FamilyInvestment.SOCIAL]: 'Social',
-  [FamilyInvestment.NEGOTIATED]: 'Negociado',
-};
-
 export const FAMILY_INVESTMENT_VARIANT: Record<FamilyInvestment, BadgeVariant> = {
   [FamilyInvestment.BASKET_500]: 'info',
   [FamilyInvestment.PAYMENT_700]: 'success',
   [FamilyInvestment.SOCIAL]: 'secondary',
   [FamilyInvestment.NEGOTIATED]: 'warning',
-};
-
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  [PaymentMethod.CASH]: 'Dinheiro',
-  [PaymentMethod.PIX]: 'PIX',
-  [PaymentMethod.CREDIT_CARD]: 'Cartão de Crédito',
-  [PaymentMethod.DEBIT_CARD]: 'Cartão de Débito',
-  [PaymentMethod.BASKET]: 'Cesta',
-  [PaymentMethod.OTHER]: 'Outro',
 };
 
 /** Valor canônico para modalidades fixas; NEGOTIATED usa familyInvestmentAmount */

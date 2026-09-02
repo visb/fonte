@@ -1,4 +1,4 @@
-import { FileText, RotateCcw } from 'lucide-react';
+import { FileText, Loader2, Receipt, RotateCcw } from 'lucide-react';
 import { ReceivableStatus } from '@fonte/types';
 import type { ResidentReceivable } from '@fonte/api-client';
 import { api } from '@/lib/api';
@@ -15,9 +15,20 @@ interface Props {
   catalog?: InventoryCatalogItem[];
   onPayClick: (r: ResidentReceivable) => void;
   onReopenClick: (r: ResidentReceivable) => void;
+  /** Story 193 — baixa o recibo da parcela paga. */
+  onDownloadReceipt?: (receivableId: string) => void;
+  isDownloadingReceipt?: boolean;
 }
 
-export function ReceivableRow({ receivable, canManage, catalog = [], onPayClick, onReopenClick }: Props) {
+export function ReceivableRow({
+  receivable,
+  canManage,
+  catalog = [],
+  onPayClick,
+  onReopenClick,
+  onDownloadReceipt,
+  isDownloadingReceipt = false,
+}: Props) {
   const badge = receivableBadge(receivable);
   const isPaid = receivable.status === ReceivableStatus.PAID;
   const attachment = receivable.attachmentUrl ? api.photoUrl(receivable.attachmentUrl) : null;
@@ -74,6 +85,25 @@ export function ReceivableRow({ receivable, canManage, catalog = [], onPayClick,
         {!isPaid && receivable.status === ReceivableStatus.PENDING && canManage && (
           <Button variant="outline" size="sm" onClick={() => onPayClick(receivable)}>
             Registrar pagamento
+          </Button>
+        )}
+        {/* Story 193 — recibo da parcela paga. NÃO depende de `canManage`:
+            baixar recibo é leitura, e o bloqueio do acolhimento encerrado é
+            sobre escrita (pagar, reabrir, declarar produto). */}
+        {isPaid && (
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Baixar recibo"
+            disabled={isDownloadingReceipt}
+            onClick={() => onDownloadReceipt?.(receivable.id)}
+          >
+            {isDownloadingReceipt ? (
+              <Loader2 size={14} className="mr-1.5 animate-spin" />
+            ) : (
+              <Receipt size={14} className="mr-1.5" />
+            )}
+            Recibo
           </Button>
         )}
         {isPaid && canManage && (

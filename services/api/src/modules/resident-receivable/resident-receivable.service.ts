@@ -7,6 +7,7 @@ import {
   NotificationType,
   PaymentMethod,
   ReceivableStatus,
+  RelativePaidReceivable,
   ResidentReceivableSummary,
   ResidentStatus,
   Role,
@@ -188,6 +189,50 @@ export class ResidentReceivableService {
       .getMany();
 
     return items.map((item) => toSummary(item));
+  }
+
+  /**
+   * Story 193 — recorte do carnê para o FAMILIAR: só as parcelas **PAGAS** do
+   * filho, e só o que a tela de recibos do `app.fonte` precisa (competência,
+   * valor pago, data e forma de pagamento).
+   *
+   * Projeção no repositório, pelo mesmo motivo do recorte do `ops.fonte`: campo
+   * que só some na saída volta a vazar no dia em que alguém reusar o método.
+   * Nada de plano, produtos ou anotação — e nada de parcela pendente/vencida:
+   * cobrar pelo app do familiar é decisão de produto que ninguém tomou
+   * (decisão 11).
+   *
+   * Não roda `ensureFutureOpen`: materializar carnê a partir de um GET do
+   * familiar seria escrita disparada por leitura — e parcela futura, pendente
+   * por definição, nem entraria nesta lista.
+   *
+   * `paidAmount` cai para `amount` quando nulo: é o mesmo valor que o recibo
+   * imprime (decisão 6), e a tela não pode discordar do PDF.
+   */
+  async findPaidByResident(residentId: string): Promise<RelativePaidReceivable[]> {
+    const items = await this.repo
+      .createQueryBuilder('rcv')
+      .select([
+        'rcv.id',
+        'rcv.referenceMonth',
+        'rcv.amount',
+        'rcv.paidAmount',
+        'rcv.paidAt',
+        'rcv.paymentMethod',
+      ])
+      .where('rcv.resident_id = :residentId', { residentId })
+      .andWhere('rcv.status = :status', { status: ReceivableStatus.PAID })
+      .andWhere('rcv.deleted_at IS NULL')
+      .orderBy('rcv.reference_month', 'DESC')
+      .getMany();
+
+    return items.map((item) => ({
+      id: item.id,
+      referenceMonth: String(item.referenceMonth).slice(0, 10),
+      paidAmount: item.paidAmount ?? item.amount,
+      paidAt: item.paidAt ? String(item.paidAt).slice(0, 10) : null,
+      paymentMethod: item.paymentMethod,
+    }));
   }
 
   /**

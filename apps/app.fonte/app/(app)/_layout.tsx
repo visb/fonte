@@ -56,6 +56,16 @@ export default function AppLayout() {
           ),
         }}
       />
+      {/* Story 193 — recibos da contribuição do filho, para o familiar. */}
+      <Tabs.Screen
+        name="contributions"
+        options={{
+          title: 'Contribuições',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cash-outline" size={size} color={color} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name="checkin"
         options={{

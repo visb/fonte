@@ -65,6 +65,52 @@ describe('ReceivableRow', () => {
     expect(screen.getByTitle('Ver comprovante')).toBeInTheDocument();
   });
 
+  // ── Story 193: recibo da parcela paga ─────────────────────────────────────
+  it('parcela PAGA mostra o botão de recibo e devolve o id da parcela', () => {
+    const onDownloadReceipt = vi.fn();
+    render(
+      <ReceivableRow
+        receivable={rec({ id: 'rc-9', status: ReceivableStatus.PAID, paidAt: '2026-02-05' })}
+        canManage
+        onPayClick={vi.fn()}
+        onReopenClick={vi.fn()}
+        onDownloadReceipt={onDownloadReceipt}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Recibo/ }));
+    expect(onDownloadReceipt).toHaveBeenCalledWith('rc-9');
+  });
+
+  it.each([ReceivableStatus.PENDING, ReceivableStatus.CANCELED])(
+    'parcela %s não mostra botão de recibo',
+    (status) => {
+      renderRow(rec({ status }));
+      expect(screen.queryByRole('button', { name: /Recibo/ })).not.toBeInTheDocument();
+    },
+  );
+
+  // Baixar recibo é LEITURA: o bloqueio do acolhimento encerrado (canManage
+  // false) é sobre escrita — pagar, reabrir, declarar produto.
+  it('acolhimento encerrado ainda mostra o recibo, mas não o botão de reabrir', () => {
+    renderRow(rec({ status: ReceivableStatus.PAID, paidAt: '2026-02-05' }), false);
+    expect(screen.getByRole('button', { name: /Recibo/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reabrir' })).not.toBeInTheDocument();
+  });
+
+  it('enquanto baixa, o botão fica desabilitado (nada de dois downloads)', () => {
+    render(
+      <ReceivableRow
+        receivable={rec({ status: ReceivableStatus.PAID, paidAt: '2026-02-05' })}
+        canManage
+        onPayClick={vi.fn()}
+        onReopenClick={vi.fn()}
+        onDownloadReceipt={vi.fn()}
+        isDownloadingReceipt
+      />,
+    );
+    expect(screen.getByRole('button', { name: /Recibo/ })).toBeDisabled();
+  });
+
   it('lista as contribuições em produto (catálogo + avulso com badge pendente)', () => {
     render(
       <ReceivableRow

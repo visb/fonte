@@ -121,6 +121,12 @@ export enum TemplateKind {
  */
 export enum ReceiptType {
   ASSOCIATE_CONTRIBUTION = 'ASSOCIATE_CONTRIBUTION',
+  /**
+   * Story 193 — contribuição mensal do acolhido (carnê `resident_receivables`).
+   * Segundo tipo com resolver, e a prova da aposta da 178: entrou como DADO,
+   * sem migration nem `ALTER TYPE`.
+   */
+  RESIDENT_CONTRIBUTION = 'RESIDENT_CONTRIBUTION',
   /** Declarado de propósito; o resolver entra numa story própria. */
   PIZZA_SALE = 'PIZZA_SALE',
   /** Declarado de propósito; o resolver entra numa story própria. */
@@ -130,17 +136,27 @@ export enum ReceiptType {
 /** Sujeito de um recibo emitido. Polimórfico para comportar pizza/pão. */
 export enum ReceiptSubjectType {
   ASSOCIATE_CHARGE = 'ASSOCIATE_CHARGE',
+  /**
+   * Story 193 — o sujeito é a PARCELA (`resident_receivables.id`), não o filho
+   * nem o par (filho, mês): é o que faz `ux_issued_receipts_subject` dar de
+   * graça o "um número por parcela".
+   */
+  RESIDENT_RECEIVABLE = 'RESIDENT_RECEIVABLE',
 }
 
 /**
  * Tipos de recibo com resolver implementado — o que a UI pode oferecer hoje.
  * Impede a tela de cadastrar um template cujo recibo ninguém sabe emitir.
  */
-export const IMPLEMENTED_RECEIPT_TYPES: ReceiptType[] = [ReceiptType.ASSOCIATE_CONTRIBUTION];
+export const IMPLEMENTED_RECEIPT_TYPES: ReceiptType[] = [
+  ReceiptType.ASSOCIATE_CONTRIBUTION,
+  ReceiptType.RESIDENT_CONTRIBUTION,
+];
 
 /** Rótulo em pt-BR de cada tipo de recibo (usado na tela e nas mensagens de erro). */
 export const RECEIPT_TYPE_LABELS: Record<ReceiptType, string> = {
   [ReceiptType.ASSOCIATE_CONTRIBUTION]: 'Contribuição mensal do associado',
+  [ReceiptType.RESIDENT_CONTRIBUTION]: 'Contribuição mensal do acolhido',
   [ReceiptType.PIZZA_SALE]: 'Venda de pizza',
   [ReceiptType.BREAD_SALE]: 'Venda de pão',
 };
@@ -504,6 +520,35 @@ export enum PaymentMethod {
   OTHER = 'OTHER',
 }
 
+/**
+ * Rótulo em pt-BR de cada forma de pagamento (story 193, decisão 12).
+ *
+ * Vivia só em `apps/adm.fonte/src/features/residents/constants.ts`, mas o
+ * resolver do recibo do acolhido (backend) imprime `{{paymentMethod}}` — e
+ * dicionário duplicado é como "Cartão de Crédito" e "Cartão de crédito" passam a
+ * conviver. O `adm.fonte` reexporta daqui: nenhuma tela mudou de texto.
+ */
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  [PaymentMethod.CASH]: 'Dinheiro',
+  [PaymentMethod.PIX]: 'PIX',
+  [PaymentMethod.CREDIT_CARD]: 'Cartão de Crédito',
+  [PaymentMethod.DEBIT_CARD]: 'Cartão de Débito',
+  [PaymentMethod.BASKET]: 'Cesta',
+  [PaymentMethod.OTHER]: 'Outro',
+};
+
+/**
+ * Rótulo em pt-BR da modalidade de contribuição da família (story 193). Mesmo
+ * motivo do mapa acima: o recibo do acolhido imprime `{{contributionPlan}}`, e
+ * o rótulo tem que ser o MESMO que a tela mostra.
+ */
+export const FAMILY_INVESTMENT_LABELS: Record<FamilyInvestment, string> = {
+  [FamilyInvestment.BASKET_500]: 'R$ 500 + cestas',
+  [FamilyInvestment.PAYMENT_700]: 'R$ 700',
+  [FamilyInvestment.SOCIAL]: 'Social',
+  [FamilyInvestment.NEGOTIATED]: 'Negociado',
+};
+
 export interface ResidentReceivable {
   id: string;
   residentId: string;
@@ -546,6 +591,26 @@ export interface ResidentReceivableSummary {
   id: string;
   referenceMonth: string; // YYYY-MM-01
   status: ReceivableStatus;
+}
+
+/**
+ * Story 193 — recorte do carnê para o FAMILIAR (`GET /relatives/me/receivables`).
+ *
+ * Só o que já foi PAGO, e só o necessário para localizar a parcela e baixar o
+ * recibo: competência, valor pago e forma de pagamento. Plano, produtos,
+ * pendências e vencimento ficam de fora — cobrar pelo app do familiar é decisão
+ * de produto que ninguém tomou (decisão 11), e a tela de recibo não é o lugar de
+ * tomá-la sozinha.
+ *
+ * **Não** estende `ResidentReceivable` de propósito, pelo mesmo motivo do
+ * `ResidentReceivableSummary`: campo novo do carnê não vaza para cá sem decisão.
+ */
+export interface RelativePaidReceivable {
+  id: string;
+  referenceMonth: string; // YYYY-MM-01
+  paidAmount: number;
+  paidAt: string | null; // YYYY-MM-DD
+  paymentMethod: PaymentMethod | null;
 }
 
 // ─── Receivable Product Contributions (story 112) ──────────────────────────────

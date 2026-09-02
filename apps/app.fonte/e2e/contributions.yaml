@@ -1,0 +1,30 @@
+appId: org.fonte.app
+---
+# Story 193 — o familiar abre as contribuições do filho e dispara o recibo.
+#
+# A asserção vai até o compartilhamento nativo: o Maestro não atravessa a folha
+# do sistema, então o fim do fluxo é o botão respondendo (o spinner some e a
+# linha continua na tela), não o PDF aberto.
+#
+# Pré-requisito de dados: o filho do familiar do seed precisa de ao menos uma
+# parcela PAGA. Sem nenhuma, a tela mostra o estado vazio — que este fluxo
+# também aceita, para não travar a suíte num banco recém-semeado.
+- runFlow: helpers/login.yaml
+- tapOn: "Contribuições"
+- waitForAnimationToEnd
+- assertVisible: "Baixe o recibo de cada contribuição já paga"
+- runFlow:
+    when:
+      visible: "Nenhuma contribuição registrada ainda."
+    commands:
+      - assertVisible: "Nenhuma contribuição registrada ainda."
+- runFlow:
+    when:
+      notVisible: "Nenhuma contribuição registrada ainda."
+    commands:
+      # accessibilityLabel do RN vira content-desc no Android, que o Maestro
+      # casa pelo seletor de texto.
+      - tapOn:
+          text: "Baixar recibo de.*"
+      - waitForAnimationToEnd
+      - assertVisible: "Baixe o recibo de cada contribuição já paga"

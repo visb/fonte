@@ -1008,3 +1008,77 @@ describe('ResidentReceivableService.findDeletedIdsSince (story 177)', () => {
     expect(repo.createQueryBuilder).not.toHaveBeenCalled();
   });
 });
+
+// ─── Recorte do familiar (story 193) ──────────────────────────────────────────
+
+describe('ResidentReceivableService.findPaidByResident (story 193)', () => {
+  it('filtra por PAGAS no repositório e ordena da mais recente para a mais antiga', async () => {
+    const qb = makeSnapshotQb([fullRow({ status: 'PAID' })]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo, {});
+
+    await service.findPaidByResident('res-1');
+
+    expect(qb.andWhere).toHaveBeenCalledWith('rcv.status = :status', { status: 'PAID' });
+    expect(qb.orderBy).toHaveBeenCalledWith('rcv.reference_month', 'DESC');
+    expect(qb.select).toHaveBeenCalledWith([
+      'rcv.id',
+      'rcv.referenceMonth',
+      'rcv.amount',
+      'rcv.paidAmount',
+      'rcv.paidAt',
+      'rcv.paymentMethod',
+    ]);
+  });
+
+  // A catraca do recorte: mesmo com a linha CHEIA vinda do banco, o familiar só
+  // recebe competência, valor pago, data e forma de pagamento.
+  it('nenhum item carrega plano, produto, anotação ou vencimento', async () => {
+    const qb = makeSnapshotQb([fullRow({ status: 'PAID' })]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo, {});
+
+    const [item] = await service.findPaidByResident('res-1');
+
+    expect(Object.keys(item).sort()).toEqual([
+      'id',
+      'paidAmount',
+      'paidAt',
+      'paymentMethod',
+      'referenceMonth',
+    ]);
+  });
+
+  it('paidAmount cai para amount quando nulo (o mesmo valor que o recibo imprime)', async () => {
+    const qb = makeSnapshotQb([fullRow({ status: 'PAID', paidAmount: null, amount: 500 })]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo, {});
+
+    const [item] = await service.findPaidByResident('res-1');
+    expect(item.paidAmount).toBe(500);
+  });
+
+  it('normaliza competência e data de pagamento para YYYY-MM-DD', async () => {
+    const qb = makeSnapshotQb([
+      fullRow({ status: 'PAID', referenceMonth: '2026-08-01T00:00:00.000Z', paidAt: null }),
+    ]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const service = makeService(repo, {});
+
+    const [item] = await service.findPaidByResident('res-1');
+    expect(item.referenceMonth).toBe('2026-08-01');
+    expect(item.paidAt).toBeNull();
+  });
+
+  // Leitura do familiar não pode materializar carnê (escrita disparada por GET).
+  it('não rola o carnê nem consulta o filho', async () => {
+    const qb = makeSnapshotQb([]);
+    const repo = makeRepo({ createQueryBuilder: jest.fn().mockReturnValue(qb) });
+    const residentRepo = { findOne: jest.fn() };
+    const service = makeService(repo, residentRepo);
+
+    await expect(service.findPaidByResident('res-1')).resolves.toEqual([]);
+    expect(residentRepo.findOne).not.toHaveBeenCalled();
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+});

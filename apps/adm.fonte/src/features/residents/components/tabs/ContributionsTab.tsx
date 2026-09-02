@@ -14,6 +14,7 @@ import { RegisterPaymentDialog } from '../RegisterPaymentDialog';
 import { ReopenReceivableDialog } from '../ReopenReceivableDialog';
 import { ChangeContributionPlanDialog } from '../ChangeContributionPlanDialog';
 import { useResidentReceivables } from '../../hooks/useResidentReceivables';
+import { useReceivableReceipt } from '../../hooks/useReceivableReceipt';
 import { useResidentAdmissions } from '../../hooks/useResidents';
 import { useInventoryCatalog } from '../../hooks/useProductContributions';
 
@@ -33,6 +34,9 @@ export function ContributionsTab({ resident }: Props) {
   const { data: receivables, isLoading, isError } = useResidentReceivables(resident.id, { enabled });
   const { data: admissions = [] } = useResidentAdmissions(resident.id, { enabled });
   const { data: catalog = [] } = useInventoryCatalog(houseId, { enabled });
+  // Story 193 — download do recibo da parcela paga (um estado para a aba, como
+  // no detalhe do associado: o erro aparece uma vez, acima da lista).
+  const receipt = useReceivableReceipt();
 
   const [planOpen, setPlanOpen] = useState(false);
   const [payTarget, setPayTarget] = useState<ResidentReceivable | null>(null);
@@ -113,6 +117,8 @@ export function ContributionsTab({ resident }: Props) {
         />
       ) : (
         <div className="space-y-2">
+          {/* O 404 de template ausente chega como a frase acionável do backend. */}
+          {receipt.error && <p className="text-sm text-destructive">{receipt.error}</p>}
           {visibleReceivables.map((r) => (
             <ReceivableRow
               key={r.id}
@@ -121,6 +127,8 @@ export function ContributionsTab({ resident }: Props) {
               catalog={catalog}
               onPayClick={setPayTarget}
               onReopenClick={setReopenTarget}
+              onDownloadReceipt={(receivableId) => void receipt.download(resident.id, receivableId)}
+              isDownloadingReceipt={receipt.downloadingId === r.id}
             />
           ))}
         </div>

@@ -1,3 +1,4 @@
+import { ReceiptType } from '@fonte/types';
 import { normalizeForSearch } from '@/lib/utils';
 
 // ─── templateVariables ────────────────────────────────────────────────────────
@@ -55,7 +56,12 @@ export const VARIABLES: TemplateVariable[] = [
 // {{name}}/{{residentPhoto}} no painel só convidaria a imprimir "não informado".
 // `{{signature}}` é a única compartilhada — recibo também é assinado por quem
 // emitiu. Nome/CNPJ/endereço da entidade vão DIGITADOS no corpo (decisão 7).
-export const RECEIPT_VARIABLES: TemplateVariable[] = [
+//
+// Story 193 — a lista virou uma POR TIPO (`RECEIPT_VARIABLES_BY_TYPE`): o
+// recibo do acolhido não pode oferecer `{{netAmount}}` (não há gateway no carnê
+// do filho) e o do associado não pode oferecer `{{residentName}}`. Uma lista só
+// para os dois voltaria a convidar o operador a imprimir token vazio.
+const ASSOCIATE_RECEIPT_VARIABLES: TemplateVariable[] = [
   { key: '{{receiptNumber}}',  label: 'Número do recibo',  description: 'Sequencial por tipo de recibo, com 6 dígitos (ex: 000123)' },
   { key: '{{payerName}}',      label: 'Pagador — nome',    description: 'Nome do associado que pagou a contribuição' },
   { key: '{{payerCpf}}',       label: 'Pagador — CPF',     description: 'CPF do pagador formatado (000.000.000-00)' },
@@ -70,6 +76,53 @@ export const RECEIPT_VARIABLES: TemplateVariable[] = [
   { key: '{{dateLong}}',       label: 'Data por extenso',  description: 'Data de emissão por extenso (ex: 1 de junho de 2026)' },
   { key: '{{signature}}',      label: 'Assinatura',        description: 'Assinatura do usuário que emitir o recibo' },
 ];
+
+// Recibo da contribuição mensal do ACOLHIDO (story 193). Pagador e acolhido são
+// tokens separados: a parcela é do filho, quem paga é a família (decisão 1).
+const RESIDENT_RECEIPT_VARIABLES: TemplateVariable[] = [
+  { key: '{{receiptNumber}}',     label: 'Número do recibo',      description: 'Sequencial por tipo de recibo, com 6 dígitos (ex: 000123)' },
+  { key: '{{payerName}}',         label: 'Pagador — nome',        description: 'Nome do familiar responsável; o nome do acolhido quando não houver responsável cadastrado' },
+  { key: '{{payerCpf}}',          label: 'Pagador — CPF',         description: 'CPF do familiar responsável, formatado (000.000.000-00)' },
+  { key: '{{payerRelationship}}', label: 'Pagador — parentesco',  description: 'Parentesco do responsável com o acolhido (ex: Mãe)' },
+  { key: '{{residentName}}',      label: 'Acolhido — nome',       description: 'Nome do acolhido a que a contribuição se refere' },
+  { key: '{{residentCpf}}',       label: 'Acolhido — CPF',        description: 'CPF do acolhido, formatado (000.000.000-00)' },
+  { key: '{{houseName}}',         label: 'Casa',                  description: 'Nome da casa onde o acolhido está' },
+  { key: '{{amount}}',            label: 'Valor pago',            description: 'Valor efetivamente pago pela família (ex: R$ 500,00)' },
+  { key: '{{amountInWords}}',     label: 'Valor por extenso',     description: 'Valor pago escrito por extenso (ex: quinhentos reais)' },
+  { key: '{{referenceMonth}}',    label: 'Competência',           description: 'Mês de referência da contribuição (ex: agosto/2026)' },
+  { key: '{{paymentDate}}',       label: 'Data do pagamento',     description: 'Data em que a parcela foi paga (dd/mm/aaaa)' },
+  { key: '{{dueDate}}',           label: 'Vencimento',            description: 'Data de vencimento da parcela (dd/mm/aaaa)' },
+  { key: '{{paymentMethod}}',     label: 'Forma de pagamento',    description: 'Dinheiro, PIX, Cesta… (vazio quando não informada)' },
+  { key: '{{contributionPlan}}',  label: 'Modalidade',            description: 'Modalidade de contribuição efetivamente paga (ex: R$ 500 + cestas)' },
+  { key: '{{date}}',              label: 'Data de hoje',          description: 'Data de emissão do recibo (dd/mm/aaaa)' },
+  { key: '{{dateLong}}',          label: 'Data por extenso',      description: 'Data de emissão por extenso (ex: 1 de junho de 2026)' },
+  { key: '{{signature}}',         label: 'Assinatura',            description: 'Assinatura do usuário que emitir o recibo' },
+];
+
+/**
+ * Catálogo de variáveis POR TIPO de recibo. Pizza e pão ainda não têm resolver
+ * (nem template cadastrável), mas o `Record` completo quebra o build se um tipo
+ * novo entrar no enum sem lista — de propósito, como o mapa de filename do
+ * backend.
+ */
+export const RECEIPT_VARIABLES_BY_TYPE: Record<ReceiptType, TemplateVariable[]> = {
+  [ReceiptType.ASSOCIATE_CONTRIBUTION]: ASSOCIATE_RECEIPT_VARIABLES,
+  [ReceiptType.RESIDENT_CONTRIBUTION]: RESIDENT_RECEIPT_VARIABLES,
+  [ReceiptType.PIZZA_SALE]: ASSOCIATE_RECEIPT_VARIABLES,
+  [ReceiptType.BREAD_SALE]: ASSOCIATE_RECEIPT_VARIABLES,
+};
+
+/**
+ * Lista do template de recibo em edição. Tipo ausente (template legado ou
+ * payload sem `receiptType`) cai no do associado — o único que existia antes da
+ * story 193, e portanto o único que um template sem tipo pode ser.
+ */
+export function receiptVariablesFor(
+  receiptType: ReceiptType | string | null | undefined,
+): TemplateVariable[] {
+  const list = receiptType ? RECEIPT_VARIABLES_BY_TYPE[receiptType as ReceiptType] : undefined;
+  return list ?? ASSOCIATE_RECEIPT_VARIABLES;
+}
 
 // Máximo de sugestões mostradas no popup do autocomplete inline (story 144).
 export const MAX_SUGGESTIONS = 8;

@@ -35,7 +35,7 @@ import { LinkBubbleMenu } from './LinkBubbleMenu';
 import { TableBlockMenu } from './TableBlockMenu';
 import { A4EditorFrame } from './A4EditorFrame';
 import { VariablesPanel } from './VariablesPanel';
-import { RECEIPT_VARIABLES, VARIABLES } from './templateVariables';
+import { receiptVariablesFor, VARIABLES } from './templateVariables';
 import { handleVariableDrop } from './templateDrop';
 import { SignaturePlaceholder } from './SignaturePlaceholder';
 import { ResidentPhotoPlaceholder } from './ResidentPhotoPlaceholder';
@@ -441,6 +441,10 @@ export function TemplateEditor({ template, onSaved }: Props) {
   // o dicionário de variáveis e os controles que fazem sentido. Template legado
   // (sem `kind`) é documento do acolhido.
   const isReceipt = template.kind === TemplateKind.RECEIPT;
+  // Story 193 — a lista de variáveis do recibo é a DO TIPO do template: o
+  // recibo do acolhido não oferece {{netAmount}}, e o do associado não oferece
+  // {{residentName}}.
+  const variables = isReceipt ? receiptVariablesFor(template.receiptType) : VARIABLES;
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
@@ -491,7 +495,7 @@ export function TemplateEditor({ template, onSaved }: Props) {
       // Story 178 — o catálogo do autocomplete acompanha o kind do template.
       VariableSuggestion.configure({
         onOpen: () => setVariablesOpen(true),
-        variables: isReceipt ? RECEIPT_VARIABLES : VARIABLES,
+        variables,
       }),
       ResizableImage.configure({ inline: false, allowBase64: false }),
       // Link visível (azul + sublinhado vêm do CSS compartilhado, não daqui, p/
@@ -807,7 +811,7 @@ export function TemplateEditor({ template, onSaved }: Props) {
         onInsert={insertVariable}
         open={variablesOpen}
         onOpenChange={setVariablesOpen}
-        variables={isReceipt ? RECEIPT_VARIABLES : VARIABLES}
+        variables={variables}
       />
 
       {updateMutation.isError && (

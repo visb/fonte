@@ -1780,7 +1780,27 @@
                 "reopen"
               ]
             },
-            "description": "Desfaz o pagamento de uma parcela (volta a PENDING e remove o comprovante). Correção sem estorno. Roles: ADMIN, COORDINATOR."
+            "description": "Desfaz o pagamento de uma parcela (volta a PENDING e remove o comprovante). Correção sem estorno. Roles: ADMIN, COORDINATOR.\n\nStory 193 — reabrir NÃO apaga o recibo já emitido: a linha em `issued_receipts` permanece e, se a parcela for repaga, o MESMO número volta (o sujeito é a parcela). Enquanto PENDING, a emissão do recibo responde 400."
+          }
+        },
+        {
+          "name": "Download Receivable Receipt (PDF, story 193)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "receivables",
+                "{{receivableId}}",
+                "receipt"
+              ]
+            },
+            "description": "Story 193 — PDF do recibo da contribuição mensal do ACOLHIDO (uma parcela PAGA do carnê), gerado sob demanda e NUNCA persistido: não vira anexo do filho nem vai para o bucket. O número é sequencial por tipo (`RESIDENT_CONTRIBUTION`, livro independente do recibo do associado) e idempotente por PARCELA: baixar duas vezes reusa o mesmo número.\n\nValor impresso = `paidAmount ?? amount` (o que a família pagou, não o que o plano dizia); competência = `referenceMonth` (não o vencimento); contribuição em produtos fica de fora. Sem responsável cadastrado, `{{payerName}}` cai para o nome do filho.\n\n400 se a parcela não estiver PAID; 404 se a parcela não existir/estiver apagada ou se não houver template do tipo cadastrado (mensagem acionável); 403 para SERVANT/RELATIVE. Roles: ADMIN, COORDINATOR."
           }
         },
         {
@@ -2176,6 +2196,44 @@
                 "photo"
               ]
             }
+          }
+        },
+        {
+          "name": "List My Paid Receivables (story 193)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/relatives/me/receivables",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relatives",
+                "me",
+                "receivables"
+              ]
+            },
+            "description": "Story 193 — parcelas PAGAS do filho do familiar logado, da mais recente para a mais antiga. Recorte deliberado: só `{ id, referenceMonth, paidAmount, paidAt, paymentMethod }` — sem plano, produtos, anotações ou vencimento, e sem parcela pendente/vencida (o app do familiar não cobra). `paidAmount` cai para `amount` quando nulo, para casar com o valor impresso no recibo.\n\nO filho vem do VÍNCULO do familiar, nunca da requisição. Roles: RELATIVE (STAFF recebe 403); usuário sem perfil de familiar → 404."
+          }
+        },
+        {
+          "name": "Download My Receivable Receipt (PDF, story 193)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/relatives/me/receivables/{{receivableId}}/receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relatives",
+                "me",
+                "receivables",
+                "{{receivableId}}",
+                "receipt"
+              ]
+            },
+            "description": "Story 193 — o familiar baixa o recibo da PRÓPRIA parcela paga (mesmo PDF da rota do adm.fonte, gerado sob demanda e nunca persistido).\n\nEscopo (decisão 10): a parcela tem que ser do filho vinculado ao familiar do token; parcela de outro filho responde **404**, não 403 — 403 confirmaria que ela existe. A checagem roda ANTES da alocação do número: tentativa negada não queima sequência.\n\n400 se a parcela não estiver PAID; 404 se a parcela não existir, for de outro filho, ou se não houver template do tipo cadastrado. Roles: RELATIVE."
           }
         },
         {
@@ -4491,7 +4549,7 @@
                 "document-templates"
               ]
             },
-            "description": "Um template ativo POR TIPO de recibo (índice único parcial). Tipos: ASSOCIATE_CONTRIBUTION (implementado), PIZZA_SALE e BREAD_SALE (declarados, sem resolver ainda). Variáveis do recibo: receiptNumber, payerName, payerCpf, amount, netAmount, feeAmount, amountInWords, referenceMonth, paymentDate, dueDate, date, dateLong e o bloco signature."
+            "description": "Um template ativo POR TIPO de recibo (índice único parcial). Tipos: ASSOCIATE_CONTRIBUTION e RESIDENT_CONTRIBUTION (implementados), PIZZA_SALE e BREAD_SALE (declarados, sem resolver ainda). Story 193 — o tipo novo entrou como DADO na coluna varchar: nenhuma migration.\n\nVariáveis do recibo do ASSOCIADO: receiptNumber, payerName, payerCpf, amount, netAmount, feeAmount, amountInWords, referenceMonth, paymentDate, dueDate, date, dateLong e o bloco signature.\n\nVariáveis do recibo do ACOLHIDO (story 193): receiptNumber, payerName, payerCpf, payerRelationship, residentName, residentCpf, houseName, amount, amountInWords, referenceMonth, paymentDate, dueDate, paymentMethod, contributionPlan, date, dateLong e o bloco signature. Sem netAmount/feeAmount — não há gateway no carnê do filho."
           }
         },
         {

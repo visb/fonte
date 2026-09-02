@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import {
   ChargeStatus,
+  ReceivableStatus,
   ReceiptSubjectType,
   ReceiptType,
   RECEIPT_TYPE_LABELS,
@@ -14,15 +15,25 @@ import {
   slugify,
   type DocumentVariableResolver,
 } from '../document-template/document-variables';
+import { Relative } from '../relative/relative.entity';
+import { Resident } from '../resident/resident.entity';
+import { ResidentReceivable } from '../resident-receivable/resident-receivable.entity';
 import { IssuedReceipt } from './issued-receipt.entity';
 import {
   AssociateContributionReceiptResolver,
   formatReceiptNumber,
 } from './associate-contribution-receipt.resolver';
+import { ResidentContributionReceiptResolver } from './resident-contribution-receipt.resolver';
 
-/** Prefixo do nome do arquivo baixado, por tipo de recibo. */
+/**
+ * Prefixo do nome do arquivo baixado, por tipo de recibo.
+ *
+ * `Record<ReceiptType, string>` de propósito (story 178): tipo novo sem entrada
+ * aqui QUEBRA O BUILD, em vez de sair um arquivo `undefined-000123.pdf`.
+ */
 const RECEIPT_FILENAME_PREFIX: Record<ReceiptType, string> = {
   [ReceiptType.ASSOCIATE_CONTRIBUTION]: 'recibo contribuicao',
+  [ReceiptType.RESIDENT_CONTRIBUTION]: 'recibo contribuicao acolhido',
   [ReceiptType.PIZZA_SALE]: 'recibo pizza',
   [ReceiptType.BREAD_SALE]: 'recibo pao',
 };
@@ -31,6 +42,15 @@ export interface GeneratedReceipt {
   buffer: Buffer;
   filename: string;
   number: number;
+}
+
+/**
+ * Story 193, decisão 10 — escopo do familiar. Quando presente, a parcela tem que
+ * ser do filho DAQUELE familiar; divergiu, é 404 (e não 403: 403 confirmaria que
+ * a parcela existe). A checagem roda ANTES da alocação do número.
+ */
+export interface ResidentReceivableReceiptScope {
+  relativeUserId: string;
 }
 
 /**
@@ -58,6 +78,15 @@ export class ReceiptService {
     private readonly associateRepo: Repository<Associate>,
     private readonly documentTemplateService: DocumentTemplateService,
     private readonly dataSource: DataSource,
+    // Story 193 — repositórios do recibo do acolhido. Injetados DEPOIS dos da
+    // 178 de propósito: a ordem dos parâmetros anteriores é contrato dos specs
+    // existentes, e um tipo novo de recibo não pode obrigar a reescrevê-los.
+    @InjectRepository(ResidentReceivable)
+    private readonly receivableRepo?: Repository<ResidentReceivable>,
+    @InjectRepository(Resident)
+    private readonly residentRepo?: Repository<Resident>,
+    @InjectRepository(Relative)
+    private readonly relativeRepo?: Repository<Relative>,
   ) {}
 
   /**
@@ -99,6 +128,87 @@ export class ReceiptService {
     const resolver: DocumentVariableResolver = new AssociateContributionReceiptResolver({
       charge,
       associate,
+      number: issued.number,
+      signer,
+    });
+    const html = await this.documentTemplateService.renderWithResolver(template, resolver);
+    const buffer = await this.documentTemplateService.htmlToPdf(html);
+    const filename = `${slugify(
+      `${RECEIPT_FILENAME_PREFIX[receiptType]} ${formatReceiptNumber(issued.number)}`,
+    )}.pdf`;
+    return { buffer, filename, number: issued.number };
+  }
+
+  /**
+   * Story 193 — recibo da contribuição mensal do ACOLHIDO (uma parcela do carnê).
+   *
+   * Irmão do `generateForAssociateCharge`, mesma ordem de passos e mesmo motor.
+   * O único passo a mais é o escopo do familiar (decisão 10), que roda ANTES da
+   * alocação: tentativa negada não pode queimar número da sequência.
+   *
+   * `scope` ausente = chamada de ADMIN/COORDINATOR pelo `adm.fonte`.
+   */
+  async generateForResidentReceivable(
+    receivableId: string,
+    issuedByUserId?: string,
+    scope?: ResidentReceivableReceiptScope,
+  ): Promise<GeneratedReceipt> {
+    const receiptType = ReceiptType.RESIDENT_CONTRIBUTION;
+    // 1. O template do tipo (decisão 2 da 178: o gerador ACHA, ninguém escolhe).
+    const template = await this.documentTemplateService.findByReceiptType(
+      receiptType,
+      RECEIPT_TYPE_LABELS[receiptType].toLowerCase(),
+    );
+
+    // 2. O sujeito: parcela existente (soft delete já sai fora do findOne) e PAGA.
+    const receivable = await this.receivableRepo!.findOne({ where: { id: receivableId } });
+    if (!receivable) throw new NotFoundException('Parcela não encontrada');
+    if (receivable.status !== ReceivableStatus.PAID) {
+      throw new BadRequestException('Recibo só é emitido para parcela paga');
+    }
+
+    // 3. Escopo do familiar (decisão 10) — ANTES do passo 5. Parcela de outro
+    //    filho responde 404, não 403: 403 confirmaria que a parcela existe.
+    if (scope) {
+      const relatives = await this.relativeRepo!.find({
+        where: { userId: scope.relativeUserId },
+      });
+      const inScope = relatives.some((r) => r.residentId === receivable.residentId);
+      if (!inScope) throw new NotFoundException('Parcela não encontrada');
+    }
+
+    const resident = await this.residentRepo!.findOne({
+      where: { id: receivable.residentId },
+      relations: ['house'],
+    });
+    if (!resident) throw new NotFoundException('Acolhido não encontrado');
+
+    // Decisão 9 — responsável determinístico: `is_responsible`, o mais ANTIGO
+    // quando houver mais de um (dado legado do import). Nenhum → o resolver cai
+    // para o nome do filho, sem exceção: recibo de dinheiro já recebido não pode
+    // falhar por cadastro incompleto.
+    const responsible = await this.relativeRepo!.findOne({
+      where: { residentId: receivable.residentId, isResponsible: true },
+      order: { createdAt: 'ASC' },
+    });
+
+    // 4. Aloca (ou recupera) o número — mesmo advisory lock por tipo, método
+    //    INALTERADO: o sujeito é a parcela, e `ux_issued_receipts_subject` já dá
+    //    de graça o "um número por parcela".
+    const issued = await this.allocateNumber(
+      receiptType,
+      ReceiptSubjectType.RESIDENT_RECEIVABLE,
+      receivableId,
+      issuedByUserId,
+    );
+
+    // 5. Mesma impressora do documento do filho e do recibo do associado.
+    const signer = await this.documentTemplateService.resolveSigner(issuedByUserId);
+    const resolver: DocumentVariableResolver = new ResidentContributionReceiptResolver({
+      receivable,
+      resident,
+      responsible: responsible ?? null,
+      houseName: resident.house?.name ?? '',
       number: issued.number,
       signer,
     });

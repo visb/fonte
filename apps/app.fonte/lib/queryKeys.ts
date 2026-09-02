@@ -11,4 +11,9 @@ export const queryKeys = {
   wishlist: {
     byResident: (residentId: string) => ['wishlist', residentId] as const,
   },
+  // Story 193 — contribuições PAGAS do filho (a lista de recibos do familiar).
+  // Sem parâmetro: o backend resolve o filho pelo vínculo do token.
+  contributions: {
+    myPaid: ['contributions', 'me', 'paid'] as const,
+  },
 } as const;

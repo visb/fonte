@@ -38,6 +38,10 @@ describe('queryKeys', () => {
     expect(queryKeys.wishlist.byResident('r1')).toEqual(['wishlist', 'r1']);
   });
 
+  it('chave estática das contribuições pagas do filho (story 193)', () => {
+    expect(queryKeys.contributions.myPaid).toEqual(['contributions', 'me', 'paid']);
+  });
+
   it('chaves de threads diferentes não colidem', () => {
     const a = queryKeys.messages.thread('r1', 'rel1');
     const b = queryKeys.messages.thread('r2', 'rel1');

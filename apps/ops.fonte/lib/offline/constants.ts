@@ -13,7 +13,7 @@ export const PERSIST_KEY = 'ops-fonte-query-cache';
  * cacheados mudar (troca de contrato, renomeio de campo, mudança de queryKey).
  * Deploy novo com formato novo descarta o cache antigo em vez de reidratar lixo.
  */
-export const PERSIST_BUSTER = 'v1';
+export const PERSIST_BUSTER = 'v2';
 
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 
@@ -52,8 +52,6 @@ export const RESIDENT_STORE_QUERY_PREFIXES = [
   'resident-attachments',
   'resident-consents',
   'resident-receivables',
-  // houses.ministries (ministério do filho)
-  'house-ministries',
 ] as const;
 
 /**
@@ -73,6 +71,10 @@ export const RESIDENT_STORE_QUERY_PREFIXES = [
 export const PERSISTED_QUERY_PREFIXES = [
   // houses.all
   'houses',
+  // houses.ministries — leitura de casa desde a story 197: sem filho como
+  // membro nem como líder, a resposta não tem mais nome de filho e a chave
+  // deixou de pertencer ao store local (que guarda dado pessoal até o logout).
+  'house-ministries',
   // inventory.catalog
   'inventory-catalog',
   // storeroom.items / storeroom.movements

@@ -15,11 +15,6 @@ export function createMinistriesModule(http: AxiosInstance) {
       http.patch<MinistryDetail>(`/ministries/${id}`, data).then((r) => r.data),
     delete: (id: string) => http.delete(`/ministries/${id}`),
 
-    addResident: (id: string, residentId: string) =>
-      http.post(`/ministries/${id}/residents`, { residentId }),
-    removeResident: (id: string, residentId: string) =>
-      http.delete(`/ministries/${id}/residents/${residentId}`),
-
     addStaff: (id: string, staffId: string) =>
       http.post(`/ministries/${id}/staff`, { staffId }),
     removeStaff: (id: string, staffId: string) =>

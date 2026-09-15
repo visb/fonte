@@ -10,9 +10,9 @@ vi.mock('@/lib/api', () => ({
       createRule: vi.fn(),
       deleteRule: vi.fn(),
     },
+    // Story 197: `addResident`/`removeResident` deixaram de existir no cliente.
     ministries: {
       update: vi.fn(),
-      addResident: vi.fn(),
       delete: vi.fn(),
     },
   },
@@ -40,33 +40,28 @@ describe('ministérios', () => {
     expect(api.houses.listMinistries).toHaveBeenCalledWith('h1');
   });
 
-  it('create cria, define líder e adiciona residentes, depois invalida', async () => {
+  // Decisão 7: sem os membros, o create encolheu para `addMinistry` + `update`
+  // do líder — o `Promise.all` de N chamadas sem transação foi embora junto.
+  it('create cria, define líder servo e invalida — sem chamada de membro', async () => {
     vi.mocked(api.houses.addMinistry).mockResolvedValue({ id: 'm1' } as never);
     vi.mocked(api.ministries.update).mockResolvedValue({} as never);
-    vi.mocked(api.ministries.addResident).mockResolvedValue({} as never);
 
     const { result, queryClient } = renderHookWithClient(() => useCreateHouseMinistry('h1'));
     const spy = vi.spyOn(queryClient, 'invalidateQueries');
-    result.current.mutate({
-      name: 'Cozinha',
-      leaderId: 's1',
-      leaderType: 'STAFF',
-      residentIds: ['r1', 'r2'],
-    });
+    result.current.mutate({ name: 'Cozinha', leaderId: 's1', leaderType: 'STAFF' });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.houses.addMinistry).toHaveBeenCalledWith('h1', { name: 'Cozinha' });
     expect(api.ministries.update).toHaveBeenCalledWith('m1', { leaderId: 's1', leaderType: 'STAFF' });
-    expect(api.ministries.addResident).toHaveBeenCalledTimes(2);
+    expect(api.ministries).not.toHaveProperty('addResident');
     expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.houses.ministries('h1') });
   });
 
-  it('create sem líder nem residentes só cria', async () => {
+  it('create sem líder só cria', async () => {
     vi.mocked(api.houses.addMinistry).mockResolvedValue({ id: 'm1' } as never);
     const { result } = renderHookWithClient(() => useCreateHouseMinistry('h1'));
     result.current.mutate({ name: 'Limpeza' });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.ministries.update).not.toHaveBeenCalled();
-    expect(api.ministries.addResident).not.toHaveBeenCalled();
   });
 
   it('updateLeader e remove invalidam ministérios', async () => {
@@ -74,9 +69,9 @@ describe('ministérios', () => {
     vi.mocked(api.ministries.delete).mockResolvedValue(undefined as never);
 
     const { result: u } = renderHookWithClient(() => useUpdateMinistryLeader('h1'));
-    u.current.mutate({ ministryId: 'm1', leaderId: 'r1', leaderType: 'RESIDENT' });
+    u.current.mutate({ ministryId: 'm1', leaderId: 's1', leaderType: 'STAFF' });
     await waitFor(() => expect(u.current.isSuccess).toBe(true));
-    expect(api.ministries.update).toHaveBeenCalledWith('m1', { leaderId: 'r1', leaderType: 'RESIDENT' });
+    expect(api.ministries.update).toHaveBeenCalledWith('m1', { leaderId: 's1', leaderType: 'STAFF' });
 
     const { result: r } = renderHookWithClient(() => useRemoveMinistry('h1'));
     r.current.mutate('m1');

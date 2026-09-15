@@ -11,12 +11,11 @@ jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(
 
 jest.mock('@/lib/api', () => ({
   api: {
-    houses: { addMinistry: jest.fn(), listStaff: jest.fn(), listResidents: jest.fn() },
+    houses: { addMinistry: jest.fn(), listStaff: jest.fn() },
     ministries: {
       update: jest.fn(),
-      addResident: jest.fn(),
-      removeResident: jest.fn(),
       addStaff: jest.fn(),
+      removeStaff: jest.fn(),
       listTasks: jest.fn(),
       createTask: jest.fn(),
       updateTask: jest.fn(),
@@ -43,18 +42,19 @@ function rc(ui: React.ReactElement) {
 beforeEach(() => jest.clearAllMocks());
 
 describe('MinistryCard', () => {
-  it('mostra nome, líder e contagens (plural)', () => {
-    render(<MinistryCard ministry={{ id: 'min1', name: 'Cozinha', leaderName: 'Servo X', filhoCount: 3, servoCount: 2 } as never} />);
+  it('mostra nome, líder e contagem de servos (plural)', () => {
+    render(<MinistryCard ministry={{ id: 'min1', name: 'Cozinha', leaderName: 'Servo X', servoCount: 2 } as never} />);
     expect(screen.getByText('Cozinha')).toBeTruthy();
     expect(screen.getByText('Líder: Servo X')).toBeTruthy();
-    expect(screen.getByText('3 filhos')).toBeTruthy();
     expect(screen.getByText('2 servos')).toBeTruthy();
   });
 
-  it('sem líder e contagens no singular; navega ao tocar', () => {
-    render(<MinistryCard ministry={{ id: 'min1', name: 'Horta', leaderName: null, filhoCount: 1, servoCount: 1 } as never} />);
+  // Story 197: o card não conta mais filhos — ministério é coisa de servo.
+  it('sem líder, contagem no singular e sem contagem de filhos; navega ao tocar', () => {
+    render(<MinistryCard ministry={{ id: 'min1', name: 'Horta', leaderName: null, servoCount: 1 } as never} />);
     expect(screen.getByText('Sem líder definido')).toBeTruthy();
-    expect(screen.getByText('1 filho')).toBeTruthy();
+    expect(screen.getByText('1 servo')).toBeTruthy();
+    expect(screen.queryByText('1 filho')).toBeNull();
     fireEvent.press(screen.getByText('Horta'));
     expect(mockPush).toHaveBeenCalledWith('/(app)/ministries/min1');
   });
@@ -89,7 +89,6 @@ describe('CreateMinistryModal', () => {
 
   it('Criar fica desabilitado sem nome; com nome cria o ministério', async () => {
     m.houses.listStaff.mockResolvedValue([]);
-    m.houses.listResidents.mockResolvedValue([]);
     m.houses.addMinistry.mockResolvedValue({ id: 'min1' });
     rc(<CreateMinistryModal {...props} />);
     await waitFor(() => expect(screen.getByText('Novo ministério')).toBeTruthy());
@@ -98,42 +97,42 @@ describe('CreateMinistryModal', () => {
     await waitFor(() => expect(m.houses.addMinistry).toHaveBeenCalledWith('h1', { name: 'Louvor' }));
   });
 
-  it('lista líderes (staff + residentes) e filtra residentes pela busca', async () => {
+  // Story 197: só servo aparece como opção de líder e não há lista de filhos.
+  it('lista só servos como líder — sem busca nem seleção de filhos', async () => {
     m.houses.listStaff.mockResolvedValue([{ id: 's1', name: 'Servo X' }]);
-    m.houses.listResidents.mockResolvedValue([{ id: 'r1', name: 'João' }, { id: 'r2', name: 'Pedro' }]);
     rc(<CreateMinistryModal {...props} />);
     await waitFor(() => expect(screen.getByText('Servo X')).toBeTruthy());
-    fireEvent.changeText(screen.getByPlaceholderText('Buscar filho...'), 'ped');
-    // Pedro permanece na lista filtrada de filhos; João some da lista de filhos
-    // (ambos continuam como opção de líder, por isso usamos getAllByText).
-    await waitFor(() => expect(screen.getAllByText('Pedro').length).toBeGreaterThan(0));
+    expect(screen.queryByPlaceholderText('Buscar filho...')).toBeNull();
+    expect(screen.queryByText(/Filhos/)).toBeNull();
   });
 
-  it('seleciona líder, marca filhos e cria com o contador atualizado', async () => {
+  it('seleciona líder servo e cria com leaderType STAFF', async () => {
     m.houses.listStaff.mockResolvedValue([{ id: 's1', name: 'Servo X' }]);
-    m.houses.listResidents.mockResolvedValue([{ id: 'r1', name: 'João' }]);
     m.houses.addMinistry.mockResolvedValue({ id: 'min1' });
+    m.ministries.update.mockResolvedValue({});
     const onSuccess = jest.fn();
     const onClose = jest.fn();
     rc(<CreateMinistryModal {...props} onSuccess={onSuccess} onClose={onClose} />);
     await waitFor(() => expect(screen.getByText('Servo X')).toBeTruthy());
     fireEvent.changeText(screen.getByPlaceholderText(/Ex: Cozinha/), 'Cozinha');
-    // seleciona o líder staff
     fireEvent.press(screen.getByText('Servo X'));
-    // marca o filho João (aparece como opção de líder e como checkbox de filho;
-    // o último é o item da lista de filhos)
-    const joaos = screen.getAllByText('João');
-    fireEvent.press(joaos[joaos.length - 1]);
-    expect(screen.getByText(/1 selecionados/)).toBeTruthy();
     fireEvent.press(screen.getByText('Criar'));
     await waitFor(() => expect(m.houses.addMinistry).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(m.ministries.update).toHaveBeenCalledWith('min1', { leaderId: 's1', leaderType: 'STAFF' }),
+    );
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('sem servo na casa mostra aviso', async () => {
+    m.houses.listStaff.mockResolvedValue([]);
+    rc(<CreateMinistryModal {...props} />);
+    await waitFor(() => expect(screen.getByText('Nenhum servo disponível.')).toBeTruthy());
+  });
+
   it('seleciona e desmarca "Sem líder"; Cancelar fecha o modal', async () => {
     m.houses.listStaff.mockResolvedValue([{ id: 's1', name: 'Servo X' }]);
-    m.houses.listResidents.mockResolvedValue([]);
     const onClose = jest.fn();
     rc(<CreateMinistryModal {...props} onClose={onClose} />);
     await waitFor(() => expect(screen.getByText('Servo X')).toBeTruthy());
@@ -145,7 +144,6 @@ describe('CreateMinistryModal', () => {
 
   it('Criar sem nome não muta', async () => {
     m.houses.listStaff.mockResolvedValue([]);
-    m.houses.listResidents.mockResolvedValue([]);
     rc(<CreateMinistryModal {...props} />);
     await waitFor(() => expect(screen.getByText('Novo ministério')).toBeTruthy());
     fireEvent.press(screen.getByText('Criar'));
@@ -210,6 +208,15 @@ describe('LeaderPickerModal', () => {
     await waitFor(() => expect(m.ministries.update).toHaveBeenCalledWith('min1', { leaderId: 's1', leaderType: 'STAFF' }));
   });
 
+  // Story 197: só servo lidera — a lista vem de listStaff e nada mais.
+  it('não oferece filho como líder', async () => {
+    m.houses.listStaff.mockResolvedValue([{ id: 's1', name: 'Servo X' }]);
+    rc(<LeaderPickerModal {...props} />);
+    await waitFor(() => expect(screen.getByText('Servo X')).toBeTruthy());
+    expect(m.houses.listResidents).toBeUndefined();
+    expect(screen.queryByText('Filho')).toBeNull();
+  });
+
   it('"Sem líder" muta com null', async () => {
     m.houses.listStaff.mockResolvedValue([]);
     m.ministries.update.mockResolvedValue({});
@@ -222,30 +229,55 @@ describe('LeaderPickerModal', () => {
 describe('MinistryOverviewTab', () => {
   const ministry = {
     leaderName: 'Servo X',
-    members: [
-      { id: 'r1', name: 'João', role: 'FILHO' },
-      { id: 's1', name: 'Servo Y', role: 'SERVO' },
-    ],
+    members: [{ id: 's1', name: 'Servo Y', role: 'SERVO' }],
   };
 
-  it('mostra líder, membros e botão de editar líder', async () => {
-    m.houses.listResidents.mockResolvedValue([]);
+  it('mostra líder, servos e botão de editar líder', async () => {
     m.houses.listStaff.mockResolvedValue([]);
     const onEditLeader = jest.fn();
     rc(<MinistryOverviewTab ministryId="min1" houseId="h1" ministry={ministry as never} onEditLeader={onEditLeader} />);
     await waitFor(() => expect(screen.getByText('Servo X')).toBeTruthy());
-    expect(screen.getByText('João')).toBeTruthy();
+    expect(screen.getByText('Servo Y')).toBeTruthy();
+    expect(screen.getByText('Servos (1)')).toBeTruthy();
     fireEvent.press(screen.getByText('Editar'));
     expect(onEditLeader).toHaveBeenCalled();
   });
 
-  it('remover um membro filho muta removeResident', async () => {
-    m.houses.listResidents.mockResolvedValue([]);
+  // Story 197: nem seção de filhos, nem filho na lista de membros.
+  it('não tem seção de filhos', async () => {
     m.houses.listStaff.mockResolvedValue([]);
-    m.ministries.removeResident.mockResolvedValue({});
     rc(<MinistryOverviewTab ministryId="min1" houseId="h1" ministry={ministry as never} onEditLeader={jest.fn()} />);
-    await waitFor(() => expect(screen.getByText('João')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Servo X')).toBeTruthy());
+    expect(screen.queryByText('Adicionar Filho')).toBeNull();
+    expect(screen.queryByPlaceholderText('Buscar filho...')).toBeNull();
+    expect(screen.queryByText('Filho')).toBeNull();
+  });
+
+  it('adiciona servo pela busca e remove servo da lista', async () => {
+    m.houses.listStaff.mockResolvedValue([{ id: 's2', name: 'Servo Novo' }]);
+    m.ministries.addStaff.mockResolvedValue({});
+    m.ministries.removeStaff.mockResolvedValue({});
+    rc(<MinistryOverviewTab ministryId="min1" houseId="h1" ministry={ministry as never} onEditLeader={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText('Servo X')).toBeTruthy());
+    fireEvent.changeText(screen.getByPlaceholderText('Buscar servo (staff)...'), 'novo');
+    await waitFor(() => expect(screen.getByText('Servo Novo')).toBeTruthy());
+    fireEvent.press(screen.getByText('Servo Novo'));
+    await waitFor(() => expect(m.ministries.addStaff).toHaveBeenCalledWith('min1', 's2'));
+
     fireEvent.press(screen.getAllByText('icon:remove-circle-outline')[0]);
-    await waitFor(() => expect(m.ministries.removeResident).toHaveBeenCalledWith('min1', 'r1'));
+    await waitFor(() => expect(m.ministries.removeStaff).toHaveBeenCalledWith('min1', 's1'));
+  });
+
+  it('ministério sem servo mostra vazio', async () => {
+    m.houses.listStaff.mockResolvedValue([]);
+    rc(
+      <MinistryOverviewTab
+        ministryId="min1"
+        houseId="h1"
+        ministry={{ leaderName: null, members: [] } as never}
+        onEditLeader={jest.fn()}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText('Nenhum servo adicionado.')).toBeTruthy());
   });
 });

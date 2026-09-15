@@ -18,7 +18,6 @@ jest.mock('@/lib/api', () => ({
 }));
 
 import { api } from '@/lib/api';
-import { ChangeMinistryModal } from './ChangeMinistryModal';
 import { ResidentAttachmentsTab } from './ResidentAttachmentsTab';
 import { ResidentPrivacyTab } from './ResidentPrivacyTab';
 
@@ -33,49 +32,6 @@ function renderWithClient(ui: React.ReactElement) {
 }
 
 beforeEach(() => jest.clearAllMocks());
-
-describe('ChangeMinistryModal', () => {
-  const props = {
-    visible: true,
-    onClose: jest.fn(),
-    residentId: 'r1',
-    houseId: 'h1',
-    currentMinistryId: null,
-  };
-
-  it('lista ministérios da casa + opção Nenhum', async () => {
-    m.houses.listMinistries.mockResolvedValue([
-      { id: 'min1', name: 'Cozinha' },
-      { id: 'min2', name: 'Limpeza' },
-    ]);
-    renderWithClient(<ChangeMinistryModal {...props} />);
-    await waitFor(() => expect(screen.getByText('Cozinha')).toBeTruthy());
-    expect(screen.getByText('Nenhum')).toBeTruthy();
-    expect(screen.getByText('Limpeza')).toBeTruthy();
-  });
-
-  it('confirmar sem mudança apenas fecha (não muta)', async () => {
-    const onClose = jest.fn();
-    m.houses.listMinistries.mockResolvedValue([]);
-    renderWithClient(<ChangeMinistryModal {...props} onClose={onClose} />);
-    await waitFor(() => expect(screen.getByText('Nenhum')).toBeTruthy());
-    fireEvent.press(screen.getByText('Confirmar'));
-    expect(m.residents.update).not.toHaveBeenCalled();
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  it('selecionar outro ministério e confirmar muta o residente', async () => {
-    m.houses.listMinistries.mockResolvedValue([{ id: 'min1', name: 'Cozinha' }]);
-    m.residents.update.mockResolvedValue({ id: 'r1' });
-    renderWithClient(<ChangeMinistryModal {...props} />);
-    await waitFor(() => expect(screen.getByText('Cozinha')).toBeTruthy());
-    fireEvent.press(screen.getByText('Cozinha'));
-    fireEvent.press(screen.getByText('Confirmar'));
-    await waitFor(() =>
-      expect(m.residents.update).toHaveBeenCalledWith('r1', { ministryId: 'min1' }),
-    );
-  });
-});
 
 describe('ResidentAttachmentsTab', () => {
   it('vazio mostra mensagem', async () => {

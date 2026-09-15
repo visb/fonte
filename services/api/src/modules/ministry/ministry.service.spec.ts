@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { MinistryService } from './ministry.service';
 import { Ministry } from './ministry.entity';
@@ -34,20 +34,40 @@ describe('MinistryService.findOne', () => {
     await expect(service.findOne('nope')).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('merges filhos and servos into members', async () => {
+  // Story 197: membro de ministério é sempre servo — filho deixou de ter vínculo.
+  it('devolve líder servo, servos e nenhum filho em members', async () => {
     const query = jest
       .fn()
-      .mockResolvedValueOnce([{ id: 'm1', name: 'Cozinha', house_id: 'h1', leader_id: null, leader_type: null, leader_name: null }])
-      .mockResolvedValueOnce([{ id: 'r1', name: 'Filho' }]) // filhos
+      .mockResolvedValueOnce([
+        { id: 'm1', name: 'Cozinha', house_id: 'h1', leader_id: 's9', leader_type: 'STAFF', leader_name: 'Líder Servo' },
+      ])
       .mockResolvedValueOnce([{ id: 's1', name: 'Servo' }]); // servos
     const repo = makeRepo({}, query);
     const service = makeService(repo);
 
     const result = await service.findOne('m1');
-    expect(result.members).toEqual([
-      { id: 'r1', name: 'Filho', role: 'FILHO' },
-      { id: 's1', name: 'Servo', role: 'SERVO' },
-    ]);
+    expect(result.leaderType).toBe('STAFF');
+    expect(result.leaderName).toBe('Líder Servo');
+    expect(result.members).toEqual([{ id: 's1', name: 'Servo', role: 'SERVO' }]);
+    expect(result.members.every((m) => m.role === 'SERVO')).toBe(true);
+    // Nenhuma consulta pergunta por filhos do ministério (só `ministry_staff`).
+    for (const [sql] of query.mock.calls) {
+      expect(String(sql)).not.toContain('residents');
+    }
+  });
+
+  // Decisão 3: a migration zerou o líder dos ministérios liderados por filho.
+  it('serializa ministério com líder zerado pela migration sem quebrar', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce([
+        { id: 'm1', name: 'Cozinha', house_id: 'h1', leader_id: null, leader_type: null, leader_name: null },
+      ])
+      .mockResolvedValueOnce([]);
+    const service = makeService(makeRepo({}, query));
+
+    const result = await service.findOne('m1');
+    expect(result).toMatchObject({ leaderId: null, leaderType: null, leaderName: null, members: [] });
   });
 });
 
@@ -58,29 +78,25 @@ describe('MinistryService.update', () => {
   });
 });
 
-describe('MinistryService.addResident', () => {
-  it('throws NotFound when the ministry is missing', async () => {
-    const service = makeService(makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
-    await expect(service.addResident('nope', 'res-1')).rejects.toBeInstanceOf(NotFoundException);
+// Story 197 (decisões 3 e 6): filho não entra nem sai de ministério — as duas
+// rotas de membro sumiram e o serviço não tem mais os métodos.
+describe('MinistryService — vínculo com filho removido (story 197)', () => {
+  it('não expõe addResident/removeResident', () => {
+    const service = makeService(makeRepo());
+    expect((service as unknown as Record<string, unknown>).addResident).toBeUndefined();
+    expect((service as unknown as Record<string, unknown>).removeResident).toBeUndefined();
   });
 
-  it('rejects a resident from a different house', async () => {
-    const query = jest.fn().mockResolvedValue([{ id: 'res-1', house_id: 'other-house' }]);
-    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'm1', houseId: 'h1' }) }, query);
-    const service = makeService(repo);
-    await expect(service.addResident('m1', 'res-1')).rejects.toBeInstanceOf(ConflictException);
-  });
-
-  it('attaches a resident from the same house', async () => {
-    const query = jest
-      .fn()
-      .mockResolvedValueOnce([{ id: 'res-1', house_id: 'h1' }]) // resident lookup
-      .mockResolvedValueOnce(undefined); // UPDATE
-    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'm1', houseId: 'h1' }) }, query);
+  it('recusa leaderType RESIDENT com 400 e não persiste nada', async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue({ id: 'm1', name: 'old' }) });
     const service = makeService(repo);
 
-    await service.addResident('m1', 'res-1');
-    expect(query).toHaveBeenLastCalledWith(expect.stringContaining('UPDATE residents SET ministry_id'), ['m1', 'res-1']);
+    await expect(
+      service.update('m1', { name: 'novo', leaderId: 'r1', leaderType: 'RESIDENT' } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(repo.save).not.toHaveBeenCalled();
+    expect(repo.findOne).not.toHaveBeenCalled();
   });
 });
 
@@ -139,6 +155,24 @@ describe('MinistryService.findByHouse', () => {
     expect(query).toHaveBeenCalledWith(expect.stringContaining('FROM ministries m'), ['h1']);
     expect(rows).toEqual([{ id: 'm1' }]);
   });
+
+  // Story 197: a contagem exibida é a de servos; filho não conta mais.
+  it('conta servos e não toca em residents', async () => {
+    const query = jest.fn().mockResolvedValue([
+      { id: 'm1', name: 'Cozinha', leaderId: 's1', leaderType: 'STAFF', leaderName: 'Servo', servoCount: 2 },
+      { id: 'm2', name: 'Limpeza', leaderId: null, leaderType: null, leaderName: null, servoCount: 0 },
+    ]);
+    const service = makeService(makeRepo({}, query));
+
+    const rows = await service.findByHouse('h1');
+    const [sql] = query.mock.calls[0];
+    expect(String(sql)).toContain('ms.staff_id');
+    expect(String(sql)).not.toContain('residents');
+    expect(String(sql)).not.toContain('filhoCount');
+    // Ministério sem servo nenhum → 0, não erro.
+    expect(rows.map((r) => r.servoCount)).toEqual([2, 0]);
+    expect(rows.every((r) => !('filhoCount' in r))).toBe(true);
+  });
 });
 
 describe('MinistryService.create', () => {
@@ -185,18 +219,6 @@ describe('MinistryService.remove', () => {
     const service = makeService(repo);
     await service.remove('m1');
     expect(repo.softDelete).toHaveBeenCalledWith('m1');
-  });
-});
-
-describe('MinistryService.removeResident', () => {
-  it('detaches the resident from the ministry', async () => {
-    const query = jest.fn().mockResolvedValue(undefined);
-    const service = makeService(makeRepo({}, query));
-    await service.removeResident('m1', 'res-1');
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('SET ministry_id = NULL'),
-      ['res-1', 'm1'],
-    );
   });
 });
 

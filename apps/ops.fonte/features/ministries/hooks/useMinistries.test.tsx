@@ -3,7 +3,6 @@ import { waitFor } from '@testing-library/react-native';
 jest.mock('@/lib/api', () => ({
   api: {
     houses: {
-      listResidents: jest.fn(),
       listStaff: jest.fn(),
       listMinistries: jest.fn(),
       addMinistry: jest.fn(),
@@ -13,8 +12,6 @@ jest.mock('@/lib/api', () => ({
       listTasks: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
-      addResident: jest.fn(),
-      removeResident: jest.fn(),
       addStaff: jest.fn(),
       removeStaff: jest.fn(),
       createTask: jest.fn(),
@@ -27,7 +24,6 @@ jest.mock('@/lib/api', () => ({
 import { api } from '@/lib/api';
 import { renderHookWithClient } from '@/lib/test/utils';
 import {
-  useHouseResidentsForMinistry,
   useHouseStaffForMinistry,
   useMinistries,
   useMinistryDetail,
@@ -35,8 +31,6 @@ import {
   useCreateMinistry,
   useUpdateMinistry,
   useDeleteMinistry,
-  useAddResident,
-  useRemoveResident,
   useAddStaff,
   useRemoveStaff,
   useCreateTask,
@@ -53,13 +47,12 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('useMinistries — queries', () => {
   it.each([
-    ['useHouseResidentsForMinistry', () => useHouseResidentsForMinistry('h1'), () => m.houses.listResidents],
     ['useHouseStaffForMinistry', () => useHouseStaffForMinistry('h1'), () => m.houses.listStaff],
     ['useMinistries', () => useMinistries('h1'), () => m.houses.listMinistries],
   ])('%s busca quando houseId presente', async (_n, hook, getFn) => {
     getFn().mockResolvedValue([]);
-    const { result } = renderHookWithClient(hook);
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const { result } = renderHookWithClient(hook as never);
+    await waitFor(() => expect((result.current as { isSuccess: boolean }).isSuccess).toBe(true));
     expect(getFn()).toHaveBeenCalledWith('h1');
   });
 
@@ -84,30 +77,33 @@ describe('useMinistries — queries', () => {
 });
 
 describe('useCreateMinistry', () => {
-  it('cria o ministério e, se houver líder/membros, faz os follow-ups', async () => {
+  it('cria o ministério e define o líder servo', async () => {
     m.houses.addMinistry.mockResolvedValue({ id: 'min1' });
     m.ministries.update.mockResolvedValue({});
-    m.ministries.addResident.mockResolvedValue({});
     const { result } = renderHookWithClient(() => useCreateMinistry('h1'));
     result.current.mutate({
       name: 'Cozinha',
       leaderId: 'staff-1',
       leaderType: 'STAFF',
-      residentIds: ['r1', 'r2'],
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(m.houses.addMinistry).toHaveBeenCalledWith('h1', { name: 'Cozinha' });
     expect(m.ministries.update).toHaveBeenCalledWith('min1', { leaderId: 'staff-1', leaderType: 'STAFF' });
-    expect(m.ministries.addResident).toHaveBeenCalledTimes(2);
   });
 
-  it('cria sem líder nem membros (só addMinistry)', async () => {
+  it('cria sem líder (só addMinistry)', async () => {
     m.houses.addMinistry.mockResolvedValue({ id: 'min1' });
     const { result } = renderHookWithClient(() => useCreateMinistry('h1'));
     result.current.mutate({ name: 'Limpeza' });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(m.ministries.update).not.toHaveBeenCalled();
-    expect(m.ministries.addResident).not.toHaveBeenCalled();
+  });
+
+  // Story 197: o vínculo filho↔ministério não existe mais — o api-client não
+  // expõe as rotas de membro filho.
+  it('o api-client não tem mais addResident/removeResident de ministério', () => {
+    expect(m.ministries.addResident).toBeUndefined();
+    expect(m.ministries.removeResident).toBeUndefined();
   });
 });
 
@@ -115,8 +111,6 @@ describe('useMinistries — mutations diretas', () => {
   it.each([
     ['useUpdateMinistry', () => useUpdateMinistry('min1', 'h1'), { name: 'novo' }, () => m.ministries.update, ['min1', { name: 'novo' }]],
     ['useDeleteMinistry', () => useDeleteMinistry('h1'), 'min1', () => m.ministries.delete, ['min1']],
-    ['useAddResident', () => useAddResident('min1'), 'r1', () => m.ministries.addResident, ['min1', 'r1']],
-    ['useRemoveResident', () => useRemoveResident('min1'), 'r1', () => m.ministries.removeResident, ['min1', 'r1']],
     ['useAddStaff', () => useAddStaff('min1'), 's1', () => m.ministries.addStaff, ['min1', 's1']],
     ['useRemoveStaff', () => useRemoveStaff('min1'), 's1', () => m.ministries.removeStaff, ['min1', 's1']],
     ['useDeleteTask', () => useDeleteTask('min1'), 't1', () => m.ministries.deleteTask, ['min1', 't1']],

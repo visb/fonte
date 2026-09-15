@@ -26,14 +26,12 @@ function SectionLabel({ children }: { children: string }) {
 
 interface Props {
   resident: Resident;
-  onChangeMinistry: () => void;
   onResetPassword: () => void;
   onDeclareProducts: () => void;
 }
 
 export function ResidentOverviewTab({
   resident,
-  onChangeMinistry,
   onResetPassword,
   onDeclareProducts,
 }: Props) {
@@ -50,15 +48,6 @@ export function ResidentOverviewTab({
         </Text>
         <Text className="text-sm text-blue-600">›</Text>
       </TouchableOpacity>
-
-      <SectionLabel>Ministério</SectionLabel>
-      <View className="py-2.5 border-b border-gray-100 flex-row items-center">
-        <Text className="text-sm text-gray-500 w-36">Atual</Text>
-        <Text className="text-sm text-gray-900 flex-1">{resident.ministry?.name ?? '—'}</Text>
-        <TouchableOpacity onPress={onChangeMinistry} className="ml-2">
-          <Text className="text-sm text-blue-600 font-medium">Alterar</Text>
-        </TouchableOpacity>
-      </View>
 
       <SectionLabel>Identificação</SectionLabel>
       <Row label="Nome" value={resident.name} />

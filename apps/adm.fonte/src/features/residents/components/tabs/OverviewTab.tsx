@@ -104,7 +104,6 @@ export function OverviewTab({ resident, canManage = false }: Props) {
       <SectionTitle>Admissão</SectionTitle>
       <InfoGrid>
         <InfoRow label="Casa" value={resident.house?.name ?? '—'} />
-        <InfoRow label="Ministério" value={resident.ministry?.name ?? '—'} />
         <InfoRow label="Data de entrada" value={formatDate(resident.entryDate)} />
         <InfoRow label="Data de saída" value={formatDate(resident.exitDate)} />
         <InfoRow label="Telefone" value={val(resident.contactPhone, maskPhone)} />

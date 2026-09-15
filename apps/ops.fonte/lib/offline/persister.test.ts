@@ -3,6 +3,7 @@ import type { Mutation, Query } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { OUTBOX_MUTATION_KEYS } from './outbox';
 import {
+  isPersistableQueryKey,
   isResidentStoreQueryKey,
   PERSIST_BUSTER,
   PERSIST_KEY,
@@ -41,6 +42,8 @@ describe('shouldDehydrateQuery — allowlist (LGPD)', () => {
     ['activities.detail', queryKeys.activities.detail('a1')],
     ['activities.comments', queryKeys.activities.comments('a1')],
     ['streetSales.byHouse', queryKeys.streetSales.byHouse('h1')],
+    // Story 197: ministério deixou de ter filho — virou leitura de casa.
+    ['houses.ministries', queryKeys.houses.ministries('h1')],
   ])('persiste %s (fluxo de campo)', (_label, key) => {
     expect(shouldDehydrateQuery(query(key))).toBe(true);
   });
@@ -66,7 +69,6 @@ describe('shouldDehydrateQuery — allowlist (LGPD)', () => {
     ['residents.followUps', queryKeys.residents.followUps('r1')],
     ['relatives.byResident', queryKeys.relatives.byResident('r1')],
     ['ministries.byHouse', queryKeys.ministries.byHouse('h1')],
-    ['houses.ministries', queryKeys.houses.ministries('h1')],
     ['events.internal', queryKeys.events.internal],
   ])('NÃO persiste %s (fora da allowlist)', (_label, key) => {
     expect(shouldDehydrateQuery(query(key))).toBe(false);
@@ -144,6 +146,7 @@ describe('store local × cache em blob (story 175)', () => {
   it('a allowlist do blob continua com o pacote de campo intacto', () => {
     expect([...PERSISTED_QUERY_PREFIXES]).toEqual([
       'houses',
+      'house-ministries',
       'inventory-catalog',
       'storeroom-items',
       'storeroom-movements',
@@ -159,9 +162,16 @@ describe('store local × cache em blob (story 175)', () => {
   it('isResidentStoreQueryKey decide por igualdade do primeiro segmento', () => {
     expect(isResidentStoreQueryKey(queryKeys.residents.detail('r1'))).toBe(true);
     expect(isResidentStoreQueryKey(queryKeys.residents.attachments('r1'))).toBe(true);
-    expect(isResidentStoreQueryKey(queryKeys.houses.ministries('h1'))).toBe(true);
     expect(isResidentStoreQueryKey(queryKeys.incidents.byHouse('h1'))).toBe(false);
     expect(isResidentStoreQueryKey([{ scope: 'resident' }])).toBe(false);
+  });
+
+  // Story 197 (decisão 8): sem membro filho, a resposta de `house-ministries`
+  // não tem mais nome de filho — a chave sai do store local (guardado até o
+  // logout) e passa para o blob de 24h, como as demais leituras de casa.
+  it('house-ministries mora no blob, não no store de filho', () => {
+    expect(isPersistableQueryKey(queryKeys.houses.ministries('h1'))).toBe(true);
+    expect(isResidentStoreQueryKey(queryKeys.houses.ministries('h1'))).toBe(false);
   });
 });
 
@@ -173,5 +183,12 @@ describe('constantes de persistência', () => {
 
   it('buster é versionado à mão', () => {
     expect(PERSIST_BUSTER).toMatch(/^v\d+$/);
+  });
+
+  // Story 197 (decisão 9): a forma do cache mudou (some o ministério do filho e
+  // a lista de filhos do ministério). Sem o bump, o app reidrata cache antigo e
+  // renderiza campo que não existe mais.
+  it('buster foi incrementado para v2 com a remoção do vínculo filho↔ministério', () => {
+    expect(PERSIST_BUSTER).toBe('v2');
   });
 });

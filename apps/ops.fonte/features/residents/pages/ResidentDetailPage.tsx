@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { useResidentById } from '../hooks/useResidents';
-import { ChangeMinistryModal } from '../components/ChangeMinistryModal';
 import { ResetResidentPasswordModal } from '../components/ResetResidentPasswordModal';
 import { ResidentOverviewTab } from '../components/ResidentOverviewTab';
 import { ResidentFamiliesTab } from '../components/ResidentFamiliesTab';
@@ -28,7 +27,6 @@ export function ResidentDetailPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<Tab>('Visão Geral');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [ministryModalOpen, setMinistryModalOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
 
   const { data: resident, isLoading, refetch } = useResidentById(id);
@@ -104,7 +102,6 @@ export function ResidentDetailPage() {
           {activeTab === 'Visão Geral' && (
             <ResidentOverviewTab
               resident={resident}
-              onChangeMinistry={() => setMinistryModalOpen(true)}
               onResetPassword={() => setResetPasswordOpen(true)}
               onDeclareProducts={() =>
                 router.push({
@@ -135,15 +132,6 @@ export function ResidentDetailPage() {
         </ScrollView>
       </View>
 
-      {resident.houseId && (
-        <ChangeMinistryModal
-          visible={ministryModalOpen}
-          onClose={() => setMinistryModalOpen(false)}
-          residentId={id!}
-          houseId={resident.houseId}
-          currentMinistryId={resident.ministryId}
-        />
-      )}
       {resident.userId && (
         <ResetResidentPasswordModal
           visible={resetPasswordOpen}

@@ -19,7 +19,7 @@ import { MinistryService } from './ministry.service';
 import { UpdateMinistryDto } from './dto/update-ministry.dto';
 import { CreateMinistryTaskDto } from './dto/create-ministry-task.dto';
 import { UpdateMinistryTaskDto } from './dto/update-ministry-task.dto';
-import { AddMinistryResidentDto, AddMinistryStaffDto } from './dto/add-ministry-member.dto';
+import { AddMinistryStaffDto } from './dto/add-ministry-member.dto';
 
 @Controller('ministries')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -46,28 +46,6 @@ export class MinistryController {
   @Roles(Role.ADMIN, Role.COORDINATOR)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.service.remove(id);
-  }
-
-  // â”€â”€â”€ Members: Residents (filhos) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-  @Post(':id/residents')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
-  addResident(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: AddMinistryResidentDto,
-  ): Promise<void> {
-    return this.service.addResident(id, dto.residentId);
-  }
-
-  @Delete(':id/residents/:residentId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
-  removeResident(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Param('residentId', ParseUUIDPipe) residentId: string,
-  ): Promise<void> {
-    return this.service.removeResident(id, residentId);
   }
 
   // â”€â”€â”€ Members: Staff (servos) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

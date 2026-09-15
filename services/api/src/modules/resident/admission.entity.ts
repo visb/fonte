@@ -32,9 +32,6 @@ export class Admission {
   @Column({ name: 'house_id', nullable: true, type: 'uuid' })
   houseId: string | null;
 
-  @Column({ name: 'ministry_id', nullable: true, type: 'uuid' })
-  ministryId: string | null;
-
   @Column({ name: 'entry_date', type: 'date', nullable: true })
   entryDate: Date | null;
 

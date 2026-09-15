@@ -3,9 +3,9 @@ import type { HouseMinistry } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { LeaderAutocomplete, type SelectedLeader, type LeaderType } from '../LeaderAutocomplete';
+import { LeaderAutocomplete, type SelectedLeader } from '../LeaderAutocomplete';
 import { useUpdateMinistryLeader } from '../../hooks/useHouseMinistries';
-import { useHouseStaff, useHouseResidents } from '../../hooks/useHouses';
+import { useHouseStaff } from '../../hooks/useHouses';
 
 interface Props {
   ministry: HouseMinistry | null;
@@ -13,16 +13,16 @@ interface Props {
   houseId: string;
 }
 
+// Story 197: só servo lidera ministério.
 export function EditMinistryLeaderDialog({ ministry, onClose, houseId }: Props) {
   const { data: staff = [] } = useHouseStaff(houseId, { enabled: !!ministry });
-  const { data: residents = [] } = useHouseResidents(houseId, { enabled: !!ministry });
   const [leader, setLeader] = useState<SelectedLeader | null>(null);
 
   useEffect(() => {
     if (ministry) {
       setLeader(
         ministry.leaderId && ministry.leaderType
-          ? { id: ministry.leaderId, type: ministry.leaderType as LeaderType }
+          ? { id: ministry.leaderId, type: ministry.leaderType }
           : null,
       );
     }
@@ -48,10 +48,8 @@ export function EditMinistryLeaderDialog({ ministry, onClose, houseId }: Props) 
           <Label>Responsável</Label>
           <LeaderAutocomplete
             selectedId={leader?.id ?? null}
-            selectedType={leader?.type ?? null}
             onSelect={(id, type) => setLeader(id && type ? { id, type } : null)}
             staff={staff}
-            residents={residents}
           />
         </div>
         <DialogFooter>

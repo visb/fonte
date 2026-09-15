@@ -198,6 +198,29 @@ describe('ImportService', () => {
       expect(result.resident.id).toBe('new-1');
     });
 
+    // Story 197 (decisão 10): o mapeamento de `ministryId` saiu do import. As
+    // fichas pendentes passam a ser importadas sem ministério — nada se perde,
+    // porque a coluna de destino deixou de existir.
+    it('ficha com ministério importa normalmente, ignorando o campo', async () => {
+      const dto = commitDto({
+        resident: { name: 'Maria', houseId: 'house-1', ministryId: 'min-1' } as never,
+      });
+
+      const result = await service.commit(dto, 'user-1');
+
+      expect(result.resident.id).toBe('new-1');
+      // O acolhimento gravado pelo import não tem para onde levar o ministério.
+      const admissions = admissionCreate.mock.calls.map(([row]) => row);
+      for (const row of admissions) {
+        expect(row).not.toHaveProperty('ministryId');
+      }
+      // A relação `ministry` também não é mais carregada na releitura do filho.
+      const relations = residentTxFindOne.mock.calls.flatMap(
+        ([opts]) => (opts as { relations?: string[] }).relations ?? [],
+      );
+      expect(relations).not.toContain('ministry');
+    });
+
     it('marca as competências da planilha como parcelas pagas do carnê, na transação', async () => {
       await service.commit(commitDto(), 'user-1');
 

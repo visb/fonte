@@ -453,7 +453,9 @@ describe('ResidentService.findPresentByHouse (story 177)', () => {
     await service.findPresentByHouse('house-1');
 
     const joined = qb.leftJoinAndSelect.mock.calls.map((call) => call[0]);
-    expect(joined).toEqual(['resident.house', 'resident.ministry']);
+    // Story 197: `resident.ministry` deixou de existir — o filho não tem mais
+    // vínculo com ministério, então o join sumiu junto com a coluna.
+    expect(joined).toEqual(['resident.house']);
   });
 });
 

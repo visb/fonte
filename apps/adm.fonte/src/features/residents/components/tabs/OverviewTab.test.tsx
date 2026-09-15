@@ -50,7 +50,7 @@ function res(over: Partial<Resident> = {}): Resident {
     religion: 'Evangélico', addiction: 'Álcool', healthIssues: null, continuousMedication: null,
     weight: 80, height: 175, familyInvestment: null, familyInvestmentAmount: null,
     contributionDueDay: 10, userId: null,
-    house: { name: 'Casa Belém' }, ministry: { name: 'Cozinha' },
+    house: { name: 'Casa Belém' },
     ...over,
   } as unknown as Resident;
 }
@@ -72,6 +72,13 @@ describe('OverviewTab', () => {
     expect(screen.getByText(/anos\)/)).toBeInTheDocument();
     expect(screen.getByText('Masculino')).toBeInTheDocument();
     expect(screen.getByText('Casa Belém')).toBeInTheDocument();
+  });
+
+  // Story 197: o filho não tem mais ministério — a linha saiu do bloco de
+  // admissão em vez de ficar exibindo um travessão eterno.
+  it('não mostra a linha "Ministério"', () => {
+    render(<OverviewTab resident={res()} />);
+    expect(screen.queryByText('Ministério')).not.toBeInTheDocument();
   });
 
   it('valores vazios viram travessão', () => {

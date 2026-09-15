@@ -50,7 +50,7 @@ Rodada de autorun **194–198** — aberta em 2026-09-15.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 197 — remover o vínculo filho↔ministério | PARCIAL | ops unit 1311/1311 verde; adm não rodou | — (não commitado) | |
+| 1 | 197 — remover o vínculo filho↔ministério | [OK] | api 1806 · e2e 623 · adm 1731 · ops 1311 | `1884270` | `6425b41` |
 | 2 | 194 — casas com múltiplos coordenadores | [ ] | | | |
 | 3 | 196 — remover filho da casa pela lista | [ ] | | | |
 | 4 | 195 — módulo de contribuição em produtos no ops | [ ] | | | |
@@ -59,14 +59,17 @@ Rodada de autorun **194–198** — aberta em 2026-09-15.
 ## Log
 
 ```
-[PARCIAL] 197 — testes: ops unit 1311/1311 verde; adm unit/test:api/e2e NÃO rodaram — commit: nenhum — 2026-09-15
-     Agent parou por limite de sessão (reseta 18:30). Trabalho está SOLTO no working tree da branch
-     refactor/story-197-remover-vinculo-filho-ministerio (38 arquivos + migration nova não rastreada
-     1783037800000-DropResidentMinistryLink.ts). RETOMAR essa branch, não recomeçar.
+[OK] 197 — testes: api 1806/1806 · e2e 623/623 · adm 1731/1731 · ops 1311/1311 · cov api 93.07%
+     (ministry 97.95%, resident 94.31%), adm 93.5%, ops 94.79% — commit: 1884270 — merge: 6425b41 — 2026-09-15
+     PENDENTE-MANUAL: `pnpm test:ops` (Maestro) não rodou — exige emulador API ≤34 + APK; o
+     `ministries.yaml` foi atualizado mas está por validar em aparelho.
 ```
 
-> **Atenção do próximo disparo:** o working tree também tem `docs/comunicacao/whatsapp-coordenadores-*.md`
-> modificados de **antes** da rodada — não são da story 197 e **não** entram no commit dela.
+> **Atenção do próximo disparo:** o working tree tem `docs/comunicacao/whatsapp-coordenadores-*.md`
+> modificados de **antes** da rodada — não são de story nenhuma e **não** entram em commit de story.
+>
+> **Antes de aplicar a 197 em produção:** a migration é destrutiva e o `down()` devolve as colunas
+> **vazias**. Backup do banco antes (skill `fonte-backup`) — o vínculo e o líder `RESIDENT` não voltam.
 
 ## Resumo final
 

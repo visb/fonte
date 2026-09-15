@@ -213,6 +213,20 @@ test.describe('Filhos (Residentes)', () => {
     await expect(page.getByText('João Testador').first()).toBeVisible();
   });
 
+  // Story 197: a ficha do filho não fala em ministério em lugar nenhum — nem na
+  // visão geral, nem no formulário de edição.
+  test('ficha do filho não mostra ministério', async ({ page }) => {
+    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'João Testador' }).first().click();
+    await expect(page).toHaveURL(/\/residents\/.+/);
+    await expect(page.getByRole('button', { name: 'Visão Geral' })).toBeVisible();
+    await expect(page.getByText('Ministério', { exact: true })).toHaveCount(0);
+
+    const detailUrl = page.url();
+    await page.goto(`${detailUrl}/edit`);
+    await expect(page.locator('input[name="name"]')).toBeVisible();
+    await expect(page.getByText('Ministério', { exact: true })).toHaveCount(0);
+  });
+
   test('edita residente existente', async ({ page }) => {
     // Cria residente próprio para não afetar dados do seed
     const name = `Residente Para Editar ${Date.now()}`;

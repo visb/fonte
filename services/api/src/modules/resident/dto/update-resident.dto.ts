@@ -139,8 +139,4 @@ export class UpdateResidentDto {
   @Min(1)
   @Max(31)
   contributionDueDay?: number | null;
-
-  @IsOptional()
-  @IsUUID()
-  ministryId?: string | null;
 }

@@ -2,14 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 
-export function useHouseResidentsForMinistry(houseId: string | null | undefined) {
-  return useQuery({
-    queryKey: queryKeys.ministries.houseResidents(houseId!),
-    queryFn: () => api.houses.listResidents(houseId!),
-    enabled: !!houseId,
-  });
-}
-
 export function useHouseStaffForMinistry(houseId: string | null | undefined) {
   return useQuery({
     queryKey: queryKeys.ministries.houseStaff(houseId!),
@@ -45,26 +37,20 @@ export function useMinistryTasks(id: string | undefined) {
 export function useCreateMinistry(houseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Story 197: sem membros para adicionar, sobra criar + definir o líder.
     mutationFn: async ({
       name,
       leaderId,
       leaderType,
-      residentIds = [],
     }: {
       name: string;
       leaderId?: string | null;
-      leaderType?: 'STAFF' | 'RESIDENT' | null;
-      residentIds?: string[];
+      leaderType?: 'STAFF' | null;
     }) => {
       const ministry = await api.houses.addMinistry(houseId, { name });
-      const followUps: Promise<unknown>[] = [];
       if (leaderId && leaderType) {
-        followUps.push(api.ministries.update(ministry.id, { leaderId, leaderType }));
+        await api.ministries.update(ministry.id, { leaderId, leaderType });
       }
-      for (const residentId of residentIds) {
-        followUps.push(api.ministries.addResident(ministry.id, residentId));
-      }
-      await Promise.all(followUps);
       return ministry;
     },
     onSuccess: () =>
@@ -75,7 +61,7 @@ export function useCreateMinistry(houseId: string) {
 export function useUpdateMinistry(ministryId: string, houseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name?: string; leaderId?: string | null; leaderType?: 'STAFF' | 'RESIDENT' | null }) =>
+    mutationFn: (data: { name?: string; leaderId?: string | null; leaderType?: 'STAFF' | null }) =>
       api.ministries.update(ministryId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.ministries.detail(ministryId) });
@@ -90,24 +76,6 @@ export function useDeleteMinistry(houseId: string) {
     mutationFn: (ministryId: string) => api.ministries.delete(ministryId),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: queryKeys.ministries.byHouse(houseId) }),
-  });
-}
-
-export function useAddResident(ministryId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (residentId: string) => api.ministries.addResident(ministryId, residentId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.ministries.detail(ministryId) }),
-  });
-}
-
-export function useRemoveResident(ministryId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (residentId: string) => api.ministries.removeResident(ministryId, residentId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.ministries.detail(ministryId) }),
   });
 }
 

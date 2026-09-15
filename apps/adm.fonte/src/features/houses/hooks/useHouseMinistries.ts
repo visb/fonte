@@ -16,22 +16,15 @@ export function useCreateHouseMinistry(houseId: string) {
       name,
       leaderId,
       leaderType,
-      residentIds = [],
     }: {
       name: string;
       leaderId?: string | null;
-      leaderType?: 'STAFF' | 'RESIDENT' | null;
-      residentIds?: string[];
+      leaderType?: 'STAFF' | null;
     }) => {
       const ministry = await api.houses.addMinistry(houseId, { name });
-      const followUps: Promise<unknown>[] = [];
       if (leaderId && leaderType) {
-        followUps.push(api.ministries.update(ministry.id, { leaderId, leaderType }));
+        await api.ministries.update(ministry.id, { leaderId, leaderType });
       }
-      for (const residentId of residentIds) {
-        followUps.push(api.ministries.addResident(ministry.id, residentId));
-      }
-      await Promise.all(followUps);
       return ministry;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.houses.ministries(houseId) }),
@@ -48,7 +41,7 @@ export function useUpdateMinistryLeader(houseId: string) {
     }: {
       ministryId: string;
       leaderId: string | null;
-      leaderType: 'STAFF' | 'RESIDENT' | null;
+      leaderType: 'STAFF' | null;
     }) => api.ministries.update(ministryId, { leaderId, leaderType }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.houses.ministries(houseId) }),
   });

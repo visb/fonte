@@ -321,9 +321,9 @@ export interface HouseMinistry {
   id: string;
   name: string;
   leaderId: string | null;
-  leaderType: 'STAFF' | 'RESIDENT' | null;
+  // Só servo lidera ministério desde a story 197.
+  leaderType: 'STAFF' | null;
   leaderName: string | null;
-  filhoCount: number;
   servoCount: number;
 }
 
@@ -488,8 +488,6 @@ export interface Resident {
   house: { id: string; name: string } | null;
   // Nulo só para ARCHIVED (import sem correspondência na planilha).
   houseId: string | null;
-  ministry: { id: string; name: string } | null;
-  ministryId: string | null;
 }
 
 export interface CreateResidentInput {
@@ -523,7 +521,6 @@ export interface CreateResidentInput {
   familyInvestment?: FamilyInvestment | null;
   familyInvestmentAmount?: number | null;
   contributionDueDay?: number | null;
-  ministryId?: string | null;
   // Histórico de acolhimentos do import em lote (story 121). Quando presente com
   // mais de um item, o backend cria um `Admission` por par entrada→saída; o topo
   // do resident reflete o mais recente. Opcional — ignorado no create normal.
@@ -601,7 +598,6 @@ export interface Admission {
   // Nullable desde a migration `AllowNullResidentHouse` (filho ARCHIVED sem casa).
   houseId: string | null;
   house: { id: string; name: string } | null;
-  ministryId: string | null;
   entryDate: string | null;
   exitDate: string | null;
   status: string;
@@ -780,10 +776,12 @@ export interface Ministry {
   name: string;
 }
 
+// Membro de ministério é sempre servo desde a story 197 — filho deixou de ter
+// vínculo com ministério.
 export interface MinistryMember {
   id: string;
   name: string;
-  role: 'FILHO' | 'SERVO';
+  role: 'SERVO';
 }
 
 export interface MinistryDetail {
@@ -791,7 +789,7 @@ export interface MinistryDetail {
   name: string;
   houseId: string;
   leaderId: string | null;
-  leaderType: 'STAFF' | 'RESIDENT' | null;
+  leaderType: 'STAFF' | null;
   leaderName: string | null;
   members: MinistryMember[];
 }
@@ -812,7 +810,7 @@ export interface CreateMinistryInput {
 export interface UpdateMinistryInput {
   name?: string;
   leaderId?: string | null;
-  leaderType?: 'STAFF' | 'RESIDENT' | null;
+  leaderType?: 'STAFF' | null;
 }
 
 export interface CreateMinistryTaskInput {

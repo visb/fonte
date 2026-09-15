@@ -39,8 +39,6 @@ export function MinistriesTab({ houseId }: { houseId: string }) {
                   <p className="text-xs text-muted-foreground">
                     Responsável: {hm.leaderName ?? 'Não definido'}
                     {' · '}
-                    {hm.filhoCount} {hm.filhoCount === 1 ? 'filho' : 'filhos'}
-                    {' · '}
                     {hm.servoCount} {hm.servoCount === 1 ? 'servo' : 'servos'}
                   </p>
                 </div>

@@ -34,7 +34,6 @@ const RESIDENT = {
 };
 
 const FICHA = {
-  ministry: { id: 'm1', name: 'Cozinha' },
   birthDate: '1990-03-10',
   contactPhone: '(31) 99999-0000',
   cpf: '111.222.333-44',
@@ -78,13 +77,15 @@ describe('ResidentDetailModal', () => {
     expect(screen.queryByText('Telefone')).toBeNull();
   });
 
-  it('com a ficha em mãos mostra ministério, nascimento e telefone', () => {
+  // Story 197: filho não tem ministério — a ficha do censo mostra nascimento e
+  // telefone, e a linha "Ministério" não existe mais.
+  it('com a ficha em mãos mostra nascimento e telefone, sem ministério', () => {
     mockUseResidentById.mockReturnValue({ data: FICHA, isLoading: false, error: null });
     open();
 
-    expect(screen.getByText('Cozinha')).toBeTruthy();
     expect(screen.getByText(/10\/03\/1990/)).toBeTruthy();
     expect(screen.getByText('(31) 99999-0000')).toBeTruthy();
+    expect(screen.queryByText('Ministério')).toBeNull();
   });
 
   it('não renderiza dado de saúde nem CPF', () => {

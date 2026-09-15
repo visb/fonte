@@ -73,7 +73,7 @@ export class ResidentService {
   private readonly logger = new Logger(ResidentService.name);
 
   private static readonly ADMISSION_FIELDS = new Set<string>([
-    'houseId', 'ministryId', 'entryDate', 'exitDate', 'status',
+    'houseId', 'entryDate', 'exitDate', 'status',
     'healthIssues', 'continuousMedication', 'weight', 'height',
     'familyInvestment', 'familyInvestmentAmount',
   ]);
@@ -124,7 +124,6 @@ export class ResidentService {
     const qb = this.residentRepository
       .createQueryBuilder('resident')
       .leftJoinAndSelect('resident.house', 'house')
-      .leftJoinAndSelect('resident.ministry', 'ministry')
       .leftJoinAndSelect('resident.user', 'user')
       // NULLS LAST: filho sem entry_date (ex.: ARCHIVED) vai para o fim nas
       // duas direções (decisão 4). Desempate por id garante paginação estável
@@ -198,7 +197,6 @@ export class ResidentService {
     const qb = this.residentRepository
       .createQueryBuilder('resident')
       .leftJoinAndSelect('resident.house', 'house')
-      .leftJoinAndSelect('resident.ministry', 'ministry')
       .where('resident.house_id = :houseId', { houseId })
       .andWhere('resident.status IN (:...statuses)', {
         statuses: [...PRESENT_RESIDENT_STATUSES],
@@ -272,7 +270,7 @@ export class ResidentService {
   async findOne(id: string): Promise<Resident> {
     const resident = await this.residentRepository.findOne({
       where: { id },
-      relations: ['house', 'ministry', 'user'],
+      relations: ['house', 'user'],
     });
     if (!resident) throw new NotFoundException(`Resident ${id} not found`);
     const map = await this.followUpService.getLastContributionDates([id]);
@@ -303,7 +301,6 @@ export class ResidentService {
       residentId: saved.id,
       // Sem casa (ARCHIVED do import): acolhimento registrado sem house.
       houseId: saved.houseId ?? null,
-      ministryId: saved.ministryId ?? null,
       entryDate: saved.entryDate,
       exitDate: saved.exitDate ?? null,
       status: saved.status,
@@ -349,10 +346,6 @@ export class ResidentService {
       await this.followUpService.createAuto(id, FollowUpType.EVASION, exitEventDate);
       await this.receivableService.cancelAfterExit(id, exitEventDate);
     }
-    if (dto.ministryId !== undefined && dto.ministryId !== before.ministryId) {
-      await this.followUpService.createAuto(id, FollowUpType.MINISTRY_CHANGE, today);
-    }
-
     // Acolhimento concluído: transição para ACTIVE.
     if (dto.status === ResidentStatus.ACTIVE && before.status !== ResidentStatus.ACTIVE) {
       await this.notifyAdmissionCreated(before);
@@ -477,7 +470,6 @@ export class ResidentService {
     const admission = this.admissionRepository.create({
       residentId: id,
       houseId: dto.houseId,
-      ministryId: null,
       entryDate: (dto.entryDate ?? today) as unknown as Date,
       exitDate: null,
       status: 'ACTIVE',
@@ -499,7 +491,6 @@ export class ResidentService {
       entryDate: (dto.entryDate ?? today) as unknown as Date,
       exitDate: null,
       status: ResidentStatus.ACTIVE as Resident['status'],
-      ministryId: null,
       userId: null,
       photoUrl: null,
       photoThumbUrl: null,

@@ -35,6 +35,17 @@ describe('TrackingEventItem', () => {
     expect(badges.length).toBeGreaterThan(1);
   });
 
+  // Story 197 (decisão 4): a emissão de MINISTRY_CHANGE morreu, mas o evento já
+  // gravado continua sendo histórico — renderiza com rótulo e ícone. Apagar
+  // reescreveria o passado de um acompanhamento que pode estar citado em relatório.
+  it('renderiza evento histórico de mudança de ministério com rótulo e ícone', () => {
+    const { container } = render(
+      <TrackingEventItem followUp={fu({ type: FollowUpType.MINISTRY_CHANGE })} />,
+    );
+    expect(screen.getByText('Mudança de ministério')).toBeInTheDocument();
+    expect(container.querySelector('svg')).not.toBeNull();
+  });
+
   it('nível ALL não mostra badge de acesso', () => {
     const { container } = render(<TrackingEventItem followUp={fu({ accessLevel: FollowUpAccessLevel.ALL })} />);
     expect(container.querySelectorAll('[class*="badge"]').length).toBe(0);

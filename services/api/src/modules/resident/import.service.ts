@@ -194,7 +194,7 @@ export class ImportService {
 
       const resident = (await manager
         .getRepository(Resident)
-        .findOne({ where: { id: created.id }, relations: ['house', 'ministry', 'user'] }))!;
+        .findOne({ where: { id: created.id }, relations: ['house', 'user'] }))!;
 
       return { resident, contributionsCreated };
     });
@@ -245,7 +245,6 @@ export class ImportService {
         admissionRepo.create({
           residentId: resident.id,
           houseId: resident.houseId,
-          ministryId: null,
           entryDate: adm.entryDate as unknown as Date,
           exitDate: (adm.exitDate ?? null) as unknown as Date | null,
           status,

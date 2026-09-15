@@ -12,7 +12,6 @@ import {
 import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { User } from '../user/user.entity';
 import { House } from '../house/house.entity';
-import { Ministry } from '../ministry/ministry.entity';
 
 @Entity('residents')
 export class Resident {
@@ -46,13 +45,6 @@ export class Resident {
   // demais status exigem casa via DTO.
   @Column({ name: 'house_id', nullable: true, type: 'uuid' })
   houseId: string | null;
-
-  @ManyToOne(() => Ministry, { eager: false, nullable: true })
-  @JoinColumn({ name: 'ministry_id' })
-  ministry: Ministry | null;
-
-  @Column({ name: 'ministry_id', nullable: true, type: 'uuid' })
-  ministryId: string | null;
 
   @Column({ name: 'entry_date', type: 'date', nullable: true })
   entryDate: Date | null;

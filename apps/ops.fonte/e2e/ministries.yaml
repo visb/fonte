@@ -8,6 +8,11 @@ appId: org.fonte.ops
 - waitForAnimationToEnd
 - assertVisible: "Visão Geral"
 - assertVisible: "Tarefas"
+# Story 197: ministério é organização de trabalho de servo — líder, servos e
+# tarefas. Não existe seção de filhos nem membro filho.
+- assertVisible: "Líder"
+- assertVisible: "Adicionar Servo"
+- assertNotVisible: "Filhos"
 - tapOn: "Tarefas"
 - waitForAnimationToEnd
 - assertVisible: "Nenhuma tarefa cadastrada."

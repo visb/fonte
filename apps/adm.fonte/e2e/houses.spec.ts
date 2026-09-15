@@ -166,6 +166,49 @@ test.describe('Casas', () => {
     await expect(row.locator('img')).toHaveCount(0);
   });
 
+  // ─── Ministérios sem filho (story 197) ────────────────────────────────────
+
+  test('cria ministério com líder servo e a casa o lista sem contagem de filhos', async ({
+    page,
+    request,
+  }) => {
+    const ministryName = `Ministério E2E ${Date.now()}`;
+
+    await page.getByText('Casa Teste').click();
+    await page.getByRole('button', { name: 'Ministérios' }).click();
+
+    await page.getByRole('button', { name: 'Novo ministério' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel('Nome *').fill(ministryName);
+
+    // Sem seleção de filhos em lugar nenhum do dialog.
+    await expect(dialog.getByPlaceholder('Buscar filho...')).toHaveCount(0);
+
+    // Líder é servo — o autocomplete só oferece servos, todos com o badge.
+    await dialog.getByText('Sem líder').click();
+    await dialog.getByText('Coordenador Teste').click({ position: { x: 5, y: 5 } });
+    await expect(dialog.getByText('Filho')).toHaveCount(0);
+
+    await dialog.getByRole('button', { name: 'Criar' }).click();
+
+    const row = page.locator('.rounded-lg.border').filter({ hasText: ministryName });
+    await expect(row).toBeVisible();
+    await expect(row).toContainText('servo');
+    await expect(row).not.toContainText('filho');
+
+    // Fixture própria, removida por id (story 182).
+    const headers = { Authorization: `Bearer ${await loginApi(request)}` };
+    const housesRes = await request.get(`${API_URL}/houses`, { headers });
+    const houses = (await housesRes.json()) as Array<{ id: string; name: string }>;
+    const house = houses.find((h) => h.name === 'Casa Teste') ?? houses[0];
+    const listRes = await request.get(`${API_URL}/houses/${house.id}/ministries`, { headers });
+    const created = ((await listRes.json()) as Array<{ id: string; name: string }>).find(
+      (m) => m.name === ministryName,
+    );
+    if (created) await request.delete(`${API_URL}/ministries/${created.id}`, { headers });
+  });
+
   test('aba Servos mostra o avatar do servo', async ({ page }) => {
     await page.getByText('Casa Teste').click();
     await page.getByRole('button', { name: 'Servos' }).click();

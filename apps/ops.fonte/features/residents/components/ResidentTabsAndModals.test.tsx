@@ -218,36 +218,42 @@ describe('ResidentOverviewTab', () => {
       healthIssues: null,
       continuousMedication: null,
       house: { name: 'Casa Bethel' },
-      ministry: { name: 'Cozinha' },
       userId: 'user-1',
       ...overrides,
     } as never;
   }
 
-  it('mostra ministério, identificação e botão de resetar senha quando há acesso', () => {
+  it('mostra identificação e botão de resetar senha quando há acesso', () => {
     const onResetPassword = jest.fn();
-    const onChangeMinistry = jest.fn();
     render(
       <ResidentOverviewTab
         resident={makeResident()}
-        onChangeMinistry={onChangeMinistry}
         onResetPassword={onResetPassword}
         onDeclareProducts={jest.fn()}
       />,
     );
-    expect(screen.getByText('Cozinha')).toBeTruthy();
     expect(screen.getByText('Masculino')).toBeTruthy();
-    fireEvent.press(screen.getByText('Alterar'));
-    expect(onChangeMinistry).toHaveBeenCalled();
     fireEvent.press(screen.getByText('Resetar senha'));
     expect(onResetPassword).toHaveBeenCalled();
+  });
+
+  // Story 197: filho não tem mais ministério — nem seção, nem botão de troca.
+  it('não mostra seção de ministério nem o botão Alterar', () => {
+    render(
+      <ResidentOverviewTab
+        resident={makeResident()}
+        onResetPassword={jest.fn()}
+        onDeclareProducts={jest.fn()}
+      />,
+    );
+    expect(screen.queryByText('Ministério')).toBeNull();
+    expect(screen.queryByText('Alterar')).toBeNull();
   });
 
   it('sem acesso digital mostra aviso (usa o adm)', () => {
     render(
       <ResidentOverviewTab
         resident={makeResident({ userId: null })}
-        onChangeMinistry={jest.fn()}
         onResetPassword={jest.fn()}
         onDeclareProducts={jest.fn()}
       />,
@@ -255,11 +261,10 @@ describe('ResidentOverviewTab', () => {
     expect(screen.getByText('Sem acesso gerado (use o adm)')).toBeTruthy();
   });
 
-  it('ministério ausente e gênero feminino', () => {
+  it('gênero feminino', () => {
     render(
       <ResidentOverviewTab
-        resident={makeResident({ ministry: null, gender: 'FEMALE' })}
-        onChangeMinistry={jest.fn()}
+        resident={makeResident({ gender: 'FEMALE' })}
         onResetPassword={jest.fn()}
         onDeclareProducts={jest.fn()}
       />,

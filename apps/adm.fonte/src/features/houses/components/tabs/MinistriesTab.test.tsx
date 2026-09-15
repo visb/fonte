@@ -39,21 +39,22 @@ describe('MinistriesTab', () => {
     expect(screen.getByText('Nenhum ministério cadastrado para esta casa.')).toBeInTheDocument();
   });
 
-  it('lista ministérios com responsável e contagens singular/plural', () => {
+  // Story 197: a contagem exibida é só a de servos — filho não é mais membro.
+  it('lista ministérios com responsável e contagem de servos singular/plural', () => {
     listState = {
       data: [
-        { id: 'm1', name: 'Cozinha', leaderName: 'João', filhoCount: 1, servoCount: 2 },
-        { id: 'm2', name: 'Limpeza', leaderName: null, filhoCount: 0, servoCount: 1 },
+        { id: 'm1', name: 'Cozinha', leaderName: 'João', servoCount: 2 },
+        { id: 'm2', name: 'Limpeza', leaderName: null, servoCount: 1 },
       ],
       isLoading: false,
     };
     render(<MinistriesTab houseId="h1" />);
     expect(screen.getByText('Cozinha')).toBeInTheDocument();
     expect(screen.getByText(/Responsável: João/)).toBeInTheDocument();
-    expect(screen.getByText(/1 filho/)).toBeInTheDocument();
     expect(screen.getByText(/2 servos/)).toBeInTheDocument();
     expect(screen.getByText(/Responsável: Não definido/)).toBeInTheDocument();
     expect(screen.getByText(/1 servo(?!s)/)).toBeInTheDocument();
+    expect(screen.queryByText(/filho/i)).not.toBeInTheDocument();
   });
 
   it('abre dialog de novo ministério', () => {
@@ -64,7 +65,7 @@ describe('MinistriesTab', () => {
 
   it('abre editar e remover responsável de um ministério', () => {
     listState = {
-      data: [{ id: 'm1', name: 'Cozinha', leaderName: 'João', filhoCount: 1, servoCount: 1 }],
+      data: [{ id: 'm1', name: 'Cozinha', leaderName: 'João', servoCount: 1 }],
       isLoading: false,
     };
     render(<MinistriesTab houseId="h1" />);

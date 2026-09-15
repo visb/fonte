@@ -105,7 +105,6 @@ function makeResident(overrides: Partial<Resident> = {}): Resident {
     name: 'Ana',
     status: ResidentStatus.ACTIVE,
     houseId: HOUSE_ID,
-    ministryId: null,
     entryDate: new Date('2024-01-01') as unknown as Date,
     exitDate: null,
     userId: null,
@@ -124,7 +123,6 @@ function makeAdmission(overrides: Partial<Admission> = {}): Admission {
     id: 'admission-uuid',
     residentId: RESIDENT_ID,
     houseId: HOUSE_ID,
-    ministryId: null,
     entryDate: new Date('2024-01-01') as unknown as Date,
     exitDate: null,
     status: ResidentStatus.ACTIVE,
@@ -706,6 +704,105 @@ describe('ResidentService.update', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Story 197 — o vínculo filho↔ministério morreu
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('ResidentService — vínculo com ministério removido (story 197)', () => {
+  function makeServiceWithFollowUps() {
+    const followUpService = {
+      createAuto: jest.fn().mockResolvedValue(undefined),
+      getLastContributionDates: jest.fn().mockResolvedValue(new Map()),
+    };
+    const { repo } = makeAdmissionRepo([makeAdmission()], {
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      create: jest.fn().mockImplementation((v) => v),
+      save: jest.fn().mockImplementation((v) => Promise.resolve({ id: 'adm-new', ...v })),
+    });
+    const service = makeService(
+      {
+        findOne: jest.fn().mockResolvedValue(makeResident()),
+        update: jest.fn().mockResolvedValue({ affected: 1 }),
+      },
+      repo as never,
+      {},
+      undefined,
+      followUpService,
+    );
+    return { service, followUpService };
+  }
+
+  // Decisão 5: o tipo do enum FICA (a linha do tempo antiga continua a renderizar),
+  // mas a EMISSÃO morreu. É este teste que prova que ela morreu.
+  it('update não emite mais follow-up MINISTRY_CHANGE', async () => {
+    const { service, followUpService } = makeServiceWithFollowUps();
+
+    await service.update(RESIDENT_ID, {
+      name: 'Outro Nome',
+      houseId: 'new-house',
+    } as Parameters<typeof service.update>[1]);
+
+    const emitted = followUpService.createAuto.mock.calls.map(([, type]) => type);
+    expect(emitted).not.toContain(FollowUpType.MINISTRY_CHANGE);
+  });
+
+  it('nem mesmo um dto que ainda mande ministryId dispara MINISTRY_CHANGE', async () => {
+    const { service, followUpService } = makeServiceWithFollowUps();
+
+    // Cliente velho: o ValidationPipe já barra na borda, mas o service também
+    // não tem mais para onde levar o campo.
+    await service.update(RESIDENT_ID, {
+      ministryId: 'ministry-uuid',
+    } as unknown as Parameters<typeof service.update>[1]);
+
+    expect(followUpService.createAuto).not.toHaveBeenCalled();
+  });
+
+  // O tipo continua existindo no enum — apagá-lo deixaria linha no banco com um
+  // tipo que o código não conhece (decisão 5).
+  it('FollowUpType.MINISTRY_CHANGE continua no enum para o histórico', () => {
+    expect(FollowUpType.MINISTRY_CHANGE).toBe('MINISTRY_CHANGE');
+  });
+
+  it('ministryId não é mais campo de acolhimento', () => {
+    const fields = (ResidentService as unknown as { ADMISSION_FIELDS: Set<string> }).ADMISSION_FIELDS;
+    expect(fields.has('ministryId')).toBe(false);
+    expect(fields.has('houseId')).toBe(true);
+  });
+
+  // Regressão da busca: o termo continua casando por nome e por CPF depois de o
+  // campo sair do serviço.
+  it('a busca de filho continua casando por nome e por CPF', async () => {
+    const qb = makeQb([], 0);
+    const service = makeService({ createQueryBuilder: jest.fn().mockReturnValue(qb) } as never);
+
+    await service.findAll({ page: 1, limit: 20, search: '123.456' } as ListResidentsDto);
+
+    const wheres = qb.andWhere.mock.calls.map(([sql]) => String(sql));
+    expect(wheres.some((w) => w.includes('resident.name') && w.includes('resident.cpf'))).toBe(true);
+    expect(wheres.some((w) => w.includes('ministry'))).toBe(false);
+  });
+
+  it('o create do filho não grava ministryId na admissão', async () => {
+    const saved = makeResident({ id: RESIDENT_ID, houseId: HOUSE_ID });
+    const admissionCreate = jest.fn().mockImplementation((v) => v);
+    const service = makeService(
+      {
+        create: jest.fn().mockReturnValue(saved),
+        save: jest.fn().mockResolvedValue(saved),
+        findOne: jest.fn().mockResolvedValue(saved),
+        update: jest.fn(),
+      },
+      { create: admissionCreate, save: jest.fn().mockResolvedValue(makeAdmission()) },
+    );
+
+    await service.create({ name: 'Ana', houseId: HOUSE_ID, status: 'PRE_ADMISSION' } as never);
+
+    expect(admissionCreate).toHaveBeenCalled();
+    expect(admissionCreate.mock.calls[0][0]).not.toHaveProperty('ministryId');
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
 // updateIdentity (story 147)
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -859,7 +956,6 @@ describe('ResidentService.readmit', () => {
         healthIssues: dto.healthIssues,
         weight: dto.weight,
         height: dto.height,
-        ministryId: null,
         exitDate: null,
       }),
     );
@@ -880,7 +976,6 @@ describe('ResidentService.readmit', () => {
     expect(resetCall![1]).toMatchObject({
       houseId: dto.houseId,
       status: ResidentStatus.ACTIVE,
-      ministryId: null,
       exitDate: null,
       photoUrl: null,
       userId: null,

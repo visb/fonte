@@ -21,12 +21,6 @@ export function MinistryCard({ ministry }: Props) {
       </Text>
       <View className="flex-row gap-4 mt-2">
         <View className="flex-row items-center gap-1">
-          <Ionicons name="person-outline" size={13} color="#6b7280" />
-          <Text className="text-xs text-gray-500">
-            {ministry.filhoCount} {ministry.filhoCount === 1 ? 'filho' : 'filhos'}
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-1">
           <Ionicons name="people-outline" size={13} color="#6b7280" />
           <Text className="text-xs text-gray-500">
             {ministry.servoCount} {ministry.servoCount === 1 ? 'servo' : 'servos'}

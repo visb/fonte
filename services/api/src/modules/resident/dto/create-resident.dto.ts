@@ -145,10 +145,6 @@ export class CreateResidentDto {
   @Max(31)
   contributionDueDay?: number | null;
 
-  @IsOptional()
-  @IsUUID()
-  ministryId?: string | null;
-
   // Histórico de acolhimentos do import em lote (story 121). Quando presente com
   // mais de um item, o `ImportService.commit` cria um `Admission` por par
   // entrada→saída; o topo do resident reflete o mais recente. Opcional — ignorado

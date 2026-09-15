@@ -843,6 +843,7 @@
           "name": "Get House Ministries",
           "request": {
             "method": "GET",
+            "description": "Ministérios da casa com líder (servo) e `servoCount`. Desde a story 197 não existe `filhoCount`: a contagem exibida é a de servos.",
             "url": {
               "raw": "{{baseUrl}}/houses/{{houseId}}/ministries",
               "host": [
@@ -2358,6 +2359,7 @@
           "name": "Get Ministry by ID",
           "request": {
             "method": "GET",
+            "description": "Detalhe do ministério: líder (sempre servo), `members` (só role SERVO) e tarefas. Desde a story 197 o ministério não tem filho como membro nem como líder — a resposta não traz `residents`.",
             "url": {
               "raw": "{{baseUrl}}/ministries/{{ministryId}}",
               "host": [
@@ -2374,6 +2376,7 @@
           "name": "Update Ministry",
           "request": {
             "method": "PATCH",
+            "description": "Atualiza nome e/ou líder. `leaderType` aceita apenas \"STAFF\" ou null: desde a story 197 ministério só é liderado por servo, e `\"leaderType\": \"RESIDENT\"` responde 400 (\"Ministério só pode ser liderado por um servo.\") sem persistir nada.",
             "header": [
               {
                 "key": "Content-Type",
@@ -2382,7 +2385,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Ministério Atualizado\"\n}"
+              "raw": "{\n  \"name\": \"Ministério Atualizado\",\n  \"leaderId\": \"{{staffId}}\",\n  \"leaderType\": \"STAFF\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/ministries/{{ministryId}}",
@@ -2408,51 +2411,6 @@
               "path": [
                 "ministries",
                 "{{ministryId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Add Resident to Ministry",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"residentId\": \"{{residentId}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/ministries/{{ministryId}}/residents",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "ministries",
-                "{{ministryId}}",
-                "residents"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Remove Resident from Ministry",
-          "request": {
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/ministries/{{ministryId}}/residents/{{residentId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "ministries",
-                "{{ministryId}}",
-                "residents",
-                "{{residentId}}"
               ]
             }
           }

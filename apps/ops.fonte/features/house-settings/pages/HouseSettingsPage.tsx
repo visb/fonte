@@ -16,8 +16,12 @@ export function HouseSettingsPage() {
   if (error) return <ErrorState onRetry={() => refetch()} />;
   if (!house || !staff) return <EmptyState message="Casa não encontrada." />;
 
+  // Story 194: a casa tem N coordenadores e o `coordinator_id` é só o titular,
+  // que NÃO ganha permissão extra (decisão 4). O gate é o vínculo — mesma regra
+  // que o `house-capacity-request.service` já aplica no backend pelo ramo
+  // `staff.houseId === houseId`.
   const isHouseCoordinator =
-    staff.user.role === Role.COORDINATOR && house.coordinatorId === staff.id;
+    staff.user.role === Role.COORDINATOR && staff.houseId === house.id;
 
   if (!isHouseCoordinator) {
     return <EmptyState message="Apenas o coordenador da casa pode acessar as configurações." />;

@@ -1,7 +1,11 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
-import { PRESENT_RESIDENT_STATUSES, ResidentStatus } from '@fonte/types';
-import { HouseService } from './house.service';
+import { PRESENT_RESIDENT_STATUSES, ResidentStatus, Role } from '@fonte/types';
+import {
+  HouseService,
+  INELIGIBLE_TITULAR_MESSAGE,
+  TITULAR_ON_CREATE_MESSAGE,
+} from './house.service';
 import { House } from './house.entity';
 import { HousePhoto } from './house-photo.entity';
 import { HouseRule } from './house-rule.entity';
@@ -179,6 +183,23 @@ describe('HouseService mutations', () => {
   });
 });
 
+/**
+ * Roteia as três queries do detalhe (filhos, contagem de servos e a lista de
+ * coordenadores da story 194). A lista é a única que faz JOIN em `users` — é a
+ * role que define quem é coordenador, e ela mora lá.
+ */
+function makeDetailQuery(rows: {
+  residents?: Array<{ houseId: string; count: string }>;
+  staffCount?: Array<{ count: string }>;
+  coordinators?: Array<Record<string, unknown>>;
+}) {
+  return jest.fn().mockImplementation((sql: string) => {
+    if (sql.includes('FROM residents')) return Promise.resolve(rows.residents ?? []);
+    if (sql.includes('JOIN users')) return Promise.resolve(rows.coordinators ?? []);
+    return Promise.resolve(rows.staffCount ?? []);
+  });
+}
+
 describe('HouseService.findOne', () => {
   it('throws NotFound when the house is missing', async () => {
     const houseRepo = makeHouseRepo({ findOne: jest.fn().mockResolvedValue(null) });
@@ -187,9 +208,9 @@ describe('HouseService.findOne', () => {
   });
 
   it('returns the house with counts read from the DB', async () => {
-    const query = jest.fn().mockImplementation((sql: string) => {
-      if (sql.includes('FROM residents')) return Promise.resolve([{ houseId: 'h1', count: '5' }]);
-      return Promise.resolve([{ count: '4' }]); // staff
+    const query = makeDetailQuery({
+      residents: [{ houseId: 'h1', count: '5' }],
+      staffCount: [{ count: '4' }],
     });
     const houseRepo = makeHouseRepo(
       { findOne: jest.fn().mockResolvedValue({ id: 'h1', photos: [] }) },
@@ -202,10 +223,7 @@ describe('HouseService.findOne', () => {
   });
 
   it('defaults to zero counts for a house with no residents and no staff', async () => {
-    const query = jest.fn().mockImplementation((sql: string) => {
-      if (sql.includes('FROM residents')) return Promise.resolve([]);
-      return Promise.resolve([]); // staff sem linha de agregado
-    });
+    const query = makeDetailQuery({});
     const houseRepo = makeHouseRepo(
       { findOne: jest.fn().mockResolvedValue({ id: 'h2', photos: [] }) },
       query,
@@ -214,6 +232,72 @@ describe('HouseService.findOne', () => {
 
     const result = await service.findOne('h2');
     expect(result).toMatchObject({ id: 'h2', activeResidentsCount: 0, staffCount: 0 });
+  });
+});
+
+// ─── Story 194 — lista de coordenadores derivada de Staff ─────────────────────
+
+describe('HouseService.findOne coordenadores (story 194)', () => {
+  function serviceWithCoordinators(coordinators: Array<Record<string, unknown>>) {
+    const query = makeDetailQuery({ coordinators });
+    const houseRepo = makeHouseRepo(
+      { findOne: jest.fn().mockResolvedValue({ id: 'h1', photos: [] }) },
+      query,
+    );
+    return { service: makeService(houseRepo), query };
+  }
+
+  it('devolve os coordenadores da casa ordenados por nome, com o titular junto', async () => {
+    const rows = [
+      { id: 's1', name: 'Ana', whatsapp: '62999990000', photoUrl: null },
+      { id: 's2', name: 'Bruno', whatsapp: null, photoUrl: null },
+    ];
+    const { service } = serviceWithCoordinators(rows);
+
+    const result = await service.findOne('h1');
+
+    expect(result.coordinators).toEqual(rows);
+    // O titular é um coordenador da casa, não uma categoria à parte: se `s1` for
+    // o `coordinator_id`, ele continua aparecendo dentro da lista.
+    expect(result.coordinators.map((c) => c.id)).toContain('s1');
+  });
+
+  it('filtra por casa, por role e por desligamento — e ordena por nome', async () => {
+    const { service, query } = serviceWithCoordinators([]);
+
+    await service.findOne('h1');
+
+    const call = query.mock.calls.find(([sql]: [string]) => sql.includes('JOIN users'));
+    const [sql, params] = call as [string, unknown[]];
+    expect(sql).toContain('s.house_id = $1');
+    expect(sql).toContain('u.role = $2');
+    expect(sql).toContain('s.deleted_at IS NULL');
+    expect(sql).toContain('ORDER BY s.name');
+    expect(params).toEqual(['h1', Role.COORDINATOR]);
+    // Servo da mesma casa, coordenador de outra casa e coordenador desligado
+    // ficam de fora por esse mesmo WHERE — não há filtro em memória depois.
+  });
+
+  it('casa sem nenhum coordenador devolve array vazio, nunca undefined', async () => {
+    const { service } = serviceWithCoordinators([]);
+
+    const result = await service.findOne('h1');
+
+    expect(result.coordinators).toEqual([]);
+    expect(result.coordinators).not.toBeUndefined();
+  });
+
+  // Minimização (LGPD art. 6): o detalhe da casa é lido por SERVANT, então a
+  // lista desce com as mesmas 4 colunas do resumo de /houses/:id/staff.
+  it('seleciona só as colunas do resumo, sem a ficha pessoal do servo', async () => {
+    const { service, query } = serviceWithCoordinators([]);
+
+    await service.findOne('h1');
+
+    const [sql] = query.mock.calls.find(([s]: [string]) => s.includes('JOIN users')) as [string];
+    expect(sql).toContain('s.photo_url AS "photoUrl"');
+    expect(sql).not.toContain('cpf');
+    expect(sql).not.toContain('rg');
   });
 });
 
@@ -249,6 +333,122 @@ describe('HouseService.update', () => {
     const houseRepo = makeHouseRepo({ count: jest.fn().mockResolvedValue(0) });
     const service = makeService(houseRepo);
     await expect(service.update('nope', {} as never)).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+// ─── Story 194 — o titular tem que pertencer à lista da casa ──────────────────
+
+describe('HouseService.create — titular recusado na criação (decisão 8)', () => {
+  it('recusa coordinatorId preenchido com 400 e não cria casa nenhuma', async () => {
+    const houseRepo = makeHouseRepo();
+    const service = makeService(houseRepo);
+
+    await expect(
+      service.create({ name: 'Casa Nova', coordinatorId: 'staff-1' } as never),
+    ).rejects.toThrow(TITULAR_ON_CREATE_MESSAGE);
+    await expect(
+      service.create({ name: 'Casa Nova', coordinatorId: 'staff-1' } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(houseRepo.save).not.toHaveBeenCalled();
+    expect(houseRepo.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it('aceita a criação sem o campo e com coordinatorId null', async () => {
+    const houseRepo = makeHouseRepo();
+    const service = makeService(houseRepo);
+
+    await service.create({ name: 'Sem titular' } as never);
+    await service.create({ name: 'Titular nulo', coordinatorId: null } as never);
+
+    expect(houseRepo.save).toHaveBeenCalledTimes(2);
+    expect(houseRepo.save.mock.calls[1][0].coordinatorId).toBeNull();
+  });
+});
+
+describe('HouseService.update — elegibilidade do titular (decisão 7)', () => {
+  /** Rota a checagem do titular (`WHERE s.id = $1`) separada da lista da casa. */
+  function makeTitularService(titular: Record<string, unknown> | undefined) {
+    const query = jest.fn().mockImplementation((sql: string) => {
+      if (sql.includes('"deletedAt"')) return Promise.resolve(titular ? [titular] : []);
+      if (sql.includes('FROM residents')) return Promise.resolve([]);
+      return Promise.resolve([]);
+    });
+    const houseRepo = makeHouseRepo(
+      { findOne: jest.fn().mockResolvedValue({ id: 'h1', photos: [] }) },
+      query,
+    );
+    return { service: makeService(houseRepo), houseRepo, query };
+  }
+
+  const eligible = {
+    id: 's1',
+    houseId: 'h1',
+    role: Role.COORDINATOR,
+    deletedAt: null,
+  };
+
+  it('aceita um coordenador lotado na própria casa', async () => {
+    const { service, houseRepo } = makeTitularService(eligible);
+
+    await service.update('h1', { coordinatorId: 's1' } as never);
+
+    expect(houseRepo.update).toHaveBeenCalledWith('h1', { coordinatorId: 's1' });
+  });
+
+  it('recusa coordenador de outra casa (400, não 404)', async () => {
+    const { service, houseRepo } = makeTitularService({ ...eligible, houseId: 'h2' });
+
+    await expect(service.update('h1', { coordinatorId: 's1' } as never)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(houseRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('recusa servo da própria casa', async () => {
+    const { service, houseRepo } = makeTitularService({ ...eligible, role: Role.SERVANT });
+
+    await expect(service.update('h1', { coordinatorId: 's1' } as never)).rejects.toThrow(
+      INELIGIBLE_TITULAR_MESSAGE,
+    );
+    expect(houseRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('recusa coordenador desligado (soft delete)', async () => {
+    const { service, houseRepo } = makeTitularService({ ...eligible, deletedAt: new Date() });
+
+    await expect(service.update('h1', { coordinatorId: 's1' } as never)).rejects.toThrow(
+      INELIGIBLE_TITULAR_MESSAGE,
+    );
+    expect(houseRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('recusa staff inexistente', async () => {
+    const { service, houseRepo } = makeTitularService(undefined);
+
+    await expect(service.update('h1', { coordinatorId: 's1' } as never)).rejects.toThrow(
+      INELIGIBLE_TITULAR_MESSAGE,
+    );
+    expect(houseRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('coordinatorId null limpa o titular sem validar nada (decisão 5)', async () => {
+    const { service, houseRepo, query } = makeTitularService(undefined);
+
+    await service.update('h1', { coordinatorId: null } as never);
+
+    expect(houseRepo.update).toHaveBeenCalledWith('h1', { coordinatorId: null });
+    expect(query.mock.calls.some(([sql]: [string]) => sql.includes('"deletedAt"'))).toBe(false);
+  });
+
+  // Regressão do `undefined` vs `null`: editar só o telefone não pode mexer na
+  // coluna nem disparar a checagem do titular.
+  it('dto sem coordinatorId deixa a coluna intacta', async () => {
+    const { service, houseRepo, query } = makeTitularService(undefined);
+
+    await service.update('h1', { phone: '6233334444' } as never);
+
+    expect(houseRepo.update).toHaveBeenCalledWith('h1', { phone: '6233334444' });
+    expect(query.mock.calls.some(([sql]: [string]) => sql.includes('"deletedAt"'))).toBe(false);
   });
 });
 

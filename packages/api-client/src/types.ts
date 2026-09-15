@@ -252,8 +252,15 @@ export interface House {
   address: string | null;
   city: string | null;
   state: string | null;
+  /** Coordenador titular — a referência/contato da casa (story 194). */
   coordinatorId: string | null;
   coordinator: { id: string; name: string; whatsapp?: string | null } | null;
+  /**
+   * Coordenadores da casa (story 194): lista derivada de `Staff` (house_id +
+   * role COORDINATOR + não desligado), com o titular incluído. Opcional porque
+   * só o detalhe (`GET /houses/:id`) popula — `findAll` não agrega.
+   */
+  coordinators?: HouseStaffSummary[];
   phone: string | null;
   isMotherHouse: boolean;
   thumbnailUrl: string | null;

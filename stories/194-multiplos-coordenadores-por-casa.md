@@ -155,11 +155,29 @@ documentados (regra do CLAUDE.md).
 - **`HouseCard`**: inalterado (decisão 10), só o rótulo passa a dizer titular.
 - Erros dos dois 400 exibidos via `getErrorMessage` (CLAUDE.md), nunca cast manual.
 
-### 7. `ops.fonte`
+### 7. `ops.fonte` — o gate das configurações da casa
 
-Inalterado. O escopo do operador já é `staff.house_id` — um segundo coordenador na casa sempre
-funcionou ali. Se alguma tela do `ops` exibir "coordenador da casa" como nome único, passa a exibir o
-titular; não há mudança de comportamento.
+Quase inalterado: o escopo do operador já é `staff.house_id`, então um segundo coordenador na casa
+sempre funcionou ali. **Uma** tela é exceção e precisa mudar —
+`features/house-settings/pages/HouseSettingsPage.tsx:20`:
+
+```ts
+// hoje — só o apontado em coordinator_id entra
+const isHouseCoordinator =
+  staff.user.role === Role.COORDINATOR && house.coordinatorId === staff.id;
+```
+
+Com a decisão 4 (titular **não** tem permissão extra), manter esse gate faria o oposto do que a story
+promete: dos N coordenadores da casa, só o titular configuraria capacidade e fotos. O gate passa a
+ser o vínculo, não a eleição:
+
+```ts
+const isHouseCoordinator =
+  staff.user.role === Role.COORDINATOR && staff.houseId === house.id;
+```
+
+É a mesma regra que `house-capacity-request.service.ts:52` já aplica no backend pelo ramo
+`staff.houseId === houseId` — a tela estava mais restritiva que o service que ela chama.
 
 ---
 
@@ -226,11 +244,18 @@ Estender o spec de casas: abrir casa com dois coordenadores → aba Visão geral
 eleger o titular pelo dialog → badge migra para o eleito → tentar eleger um servo (opção não deve
 sequer existir no select).
 
+### `ops.fonte` — unit (`pnpm test:ops:unit`)
+
+`HouseSettingsPage`: coordenador **não titular** lotado na casa **entra** (é a regressão que a
+decisão 4 exige); coordenador de outra casa continua barrado; `SERVANT` da própria casa continua
+barrado; casa sem titular nenhum não barra o coordenador lotado.
+
 ### Gate de cobertura (trava a story)
 
-Código novo sem teste não fecha a story. Rodar `pnpm test:api:cov` e `pnpm test:adm:unit` com
-cobertura; **não reduzir** a cobertura dos módulos `house` e `staff` do backend nem da feature
-`houses` do `adm.fonte`. Os caminhos da decisão 6 (as três transições + o negativo) e da decisão 7
+Código novo sem teste não fecha a story. Rodar `pnpm test:api:cov`, `pnpm test:adm:unit` e
+`pnpm test:ops:unit` com
+cobertura; **não reduzir** a cobertura dos módulos `house` e `staff` do backend, da feature `houses`
+do `adm.fonte` nem de `house-settings` do `ops.fonte`. Os caminhos da decisão 6 (as três transições + o negativo) e da decisão 7
 (cada motivo de recusa) são os que precisam estar 100% cobertos — é onde a story pode falhar em
 silêncio. Sem `skip`/`only`/`xfail` sem justificativa explícita no código (CLAUDE.md).
 

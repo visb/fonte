@@ -51,7 +51,7 @@ Rodada de autorun **194–198** — aberta em 2026-09-15.
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 197 — remover o vínculo filho↔ministério | [OK] | api 1806 · e2e 623 · adm 1731 · ops 1311 | `1884270` | `6425b41` |
-| 2 | 194 — casas com múltiplos coordenadores | [ ] | | | |
+| 2 | 194 — casas com múltiplos coordenadores | [OK] | api 1828 · e2e 634 · adm 1749 · ops 1322 | `2c06a59` | `736c9e9` |
 | 3 | 196 — remover filho da casa pela lista | [ ] | | | |
 | 4 | 195 — módulo de contribuição em produtos no ops | [ ] | | | |
 | 5 | 198 — criar produto na declaração de contribuição | [ ] | | | |
@@ -63,6 +63,11 @@ Rodada de autorun **194–198** — aberta em 2026-09-15.
      (ministry 97.95%, resident 94.31%), adm 93.5%, ops 94.79% — commit: 1884270 — merge: 6425b41 — 2026-09-15
      PENDENTE-MANUAL: `pnpm test:ops` (Maestro) não rodou — exige emulador API ≤34 + APK; o
      `ministries.yaml` foi atualizado mas está por validar em aparelho.
+
+[OK] 194 — testes: api 1828/1828 · e2e 634/634 · adm 1749/1749 · ops 1322/1322 · Playwright houses 12/12
+     cov api 93.12% (house 96.25%, staff 98.14%), adm features/houses 99.62% — commit: 2c06a59 — merge: 736c9e9 — 2026-09-15
+     Desvio consciente: `coordinators` é `HouseStaffSummary[]` (4 colunas), não `Staff[]` — a rota é
+     lida por SERVANT e a entidade exporia CPF/RG/endereço. `useMenuAccess` entrou no escopo (mesmo gate).
 ```
 
 > **Atenção do próximo disparo:** o working tree tem `docs/comunicacao/whatsapp-coordenadores-*.md`

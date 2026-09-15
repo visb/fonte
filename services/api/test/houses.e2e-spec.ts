@@ -14,6 +14,7 @@ describe('HouseController (e2e)', () => {
   let adminToken: string;
   let dataSource: DataSource;
   const createdIds: string[] = [];
+  const staffIds: string[] = [];
 
   beforeAll(async () => {
     app = await bootstrapApp();
@@ -23,6 +24,13 @@ describe('HouseController (e2e)', () => {
   });
 
   afterAll(async () => {
+    // Story 182: limpeza por id acumulado da fixture. Servos antes das casas —
+    // o delete tolera 404 (o desligamento pode já ter acontecido no teste).
+    for (const id of staffIds) {
+      await request(app.getHttpServer())
+        .delete(`${BASE}/staff/${id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+    }
     for (const id of createdIds) {
       await request(app.getHttpServer())
         .delete(`${BASE}/houses/${id}`)
@@ -178,6 +186,241 @@ describe('HouseController (e2e)', () => {
         .get(`${BASE}/houses/00000000-0000-0000-0000-000000000000/staff`)
         .set('Authorization', `Bearer ${token}`)
         .expect(404));
+  });
+
+  // ─── Coordenadores da casa (story 194) ────────────────────────────────────
+  //
+  // Fixtures próprias (story 182): casa + staff criados por API e removidos por
+  // id no afterAll. O seed é somente leitura — nenhum servo semeado muda de casa
+  // ou de role aqui.
+  describe('coordenadores da casa (story 194)', () => {
+    const stamp = Date.now();
+    let fixtureHouseId: string;
+    let otherHouseId: string;
+    let anaId: string;
+    let brunoId: string;
+    let servantId: string;
+    let dismissedId: string;
+
+    async function createStaff(
+      name: string,
+      role: 'COORDINATOR' | 'SERVANT',
+      houseId: string,
+    ): Promise<string> {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/staff`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          name,
+          email: `${name.split(' ')[0].toLowerCase()}.${stamp}@fonte.test`,
+          password: 'secret123',
+          role,
+          houseId,
+        })
+        .expect(201);
+      staffIds.push(res.body.id);
+      return res.body.id;
+    }
+
+    async function createHouse(name: string): Promise<string> {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/houses`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name })
+        .expect(201);
+      createdIds.push(res.body.id);
+      return res.body.id;
+    }
+
+    function detail(authToken: string, id = fixtureHouseId) {
+      return request(app.getHttpServer())
+        .get(`${BASE}/houses/${id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+    }
+
+    beforeAll(async () => {
+      fixtureHouseId = await createHouse(`Casa 194 ${stamp}`);
+      otherHouseId = await createHouse(`Casa 194 Vizinha ${stamp}`);
+      anaId = await createStaff('Ana194', 'COORDINATOR', fixtureHouseId);
+      brunoId = await createStaff('Bruno194', 'COORDINATOR', fixtureHouseId);
+      servantId = await createStaff('Servo194', 'SERVANT', fixtureHouseId);
+      // Coordenador desligado: entra na casa e sai, para provar que some da lista.
+      dismissedId = await createStaff('Desligado194', 'COORDINATOR', fixtureHouseId);
+      await request(app.getHttpServer())
+        .delete(`${BASE}/staff/${dismissedId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(204);
+    });
+
+    it('GET /houses/:id devolve os coordenadores da casa para ADMIN e COORDINATOR', async () => {
+      for (const authToken of [adminToken, token]) {
+        const res = await detail(authToken);
+        expect(Array.isArray(res.body.coordinators)).toBe(true);
+        expect(res.body.coordinators.map((c: { id: string }) => c.id)).toEqual([anaId, brunoId]);
+        // Servo da casa e coordenador desligado ficam de fora.
+        const ids = res.body.coordinators.map((c: { id: string }) => c.id);
+        expect(ids).not.toContain(servantId);
+        expect(ids).not.toContain(dismissedId);
+        // Só as colunas do resumo (minimização — a rota é lida por SERVANT).
+        expect(Object.keys(res.body.coordinators[0]).sort()).toEqual([
+          'id',
+          'name',
+          'photoUrl',
+          'whatsapp',
+        ]);
+      }
+    });
+
+    it('casa sem coordenador nenhum devolve lista vazia, não undefined', async () => {
+      const res = await detail(adminToken, otherHouseId);
+      expect(res.body.coordinators).toEqual([]);
+    });
+
+    it('GET /houses não popula coordinators (decisão 10)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/houses`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      const fixture = res.body.find((h: { id: string }) => h.id === fixtureHouseId);
+      expect(fixture.coordinators).toBeUndefined();
+    });
+
+    it('POST /houses com coordinatorId → 400 (decisão 8)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/houses`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `Casa 194 Recusada ${stamp}`, coordinatorId: anaId })
+        .expect(400);
+      expect(res.body.message).toContain('depois de cadastrar a casa');
+    });
+
+    it('PATCH /houses/:id recusa titular inelegível com 400 (decisão 7)', async () => {
+      const coordOfAnotherHouse = await createStaff('Vizinho194', 'COORDINATOR', otherHouseId);
+
+      for (const staffId of [servantId, coordOfAnotherHouse, dismissedId]) {
+        const res = await request(app.getHttpServer())
+          .patch(`${BASE}/houses/${fixtureHouseId}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ coordinatorId: staffId })
+          .expect(400);
+        expect(res.body.message).toBe(
+          'O coordenador titular precisa ser um coordenador lotado nesta casa.',
+        );
+      }
+
+      const after = await detail(adminToken);
+      expect(after.body.coordinatorId).toBeNull();
+    });
+
+    it('PATCH /houses/:id aceita um coordenador da casa e o detalhe reflete o titular', async () => {
+      await request(app.getHttpServer())
+        .patch(`${BASE}/houses/${fixtureHouseId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ coordinatorId: brunoId })
+        .expect(200);
+
+      const res = await detail(adminToken);
+      expect(res.body.coordinatorId).toBe(brunoId);
+      expect(res.body.coordinator.id).toBe(brunoId);
+      // O titular continua dentro da lista derivada.
+      expect(res.body.coordinators.map((c: { id: string }) => c.id)).toContain(brunoId);
+    });
+
+    it('PATCH /houses/:id com coordinatorId null limpa o titular', async () => {
+      await request(app.getHttpServer())
+        .patch(`${BASE}/houses/${fixtureHouseId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ coordinatorId: null })
+        .expect(200);
+
+      const res = await detail(adminToken);
+      expect(res.body.coordinatorId).toBeNull();
+    });
+
+    // Decisão 6 por HTTP: o titular muda de casa e a coluna NÃO pode continuar
+    // apontando para ele — `ON DELETE SET NULL` não cobre soft delete nem troca
+    // de lotação.
+    it('titular que muda de casa deixa a casa sem titular, e o outro coordenador segue na lista', async () => {
+      await request(app.getHttpServer())
+        .patch(`${BASE}/houses/${fixtureHouseId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ coordinatorId: anaId })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .patch(`${BASE}/staff/${anaId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ houseId: otherHouseId })
+        .expect(200);
+
+      const res = await detail(adminToken);
+      expect(res.body.coordinatorId).toBeNull();
+      expect(res.body.coordinator).toBeNull();
+      const ids = res.body.coordinators.map((c: { id: string }) => c.id);
+      expect(ids).toContain(brunoId);
+      expect(ids).not.toContain(anaId);
+
+      // E a casa nova não ganha titular automático.
+      const other = await detail(adminToken, otherHouseId);
+      expect(other.body.coordinatorId).toBeNull();
+      expect(other.body.coordinators.map((c: { id: string }) => c.id)).toContain(anaId);
+    });
+
+    it('titular desligado deixa a casa sem titular', async () => {
+      await request(app.getHttpServer())
+        .patch(`${BASE}/houses/${fixtureHouseId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ coordinatorId: brunoId })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .delete(`${BASE}/staff/${brunoId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(204);
+
+      const res = await detail(adminToken);
+      expect(res.body.coordinatorId).toBeNull();
+      expect(res.body.coordinators).toEqual([]);
+    });
+
+    it('titular que deixa de ser COORDINATOR deixa a casa sem titular', async () => {
+      const carlosId = await createStaff('Carlos194', 'COORDINATOR', fixtureHouseId);
+      await request(app.getHttpServer())
+        .patch(`${BASE}/houses/${fixtureHouseId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ coordinatorId: carlosId })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .patch(`${BASE}/staff/${carlosId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ role: 'SERVANT' })
+        .expect(200);
+
+      const res = await detail(adminToken);
+      expect(res.body.coordinatorId).toBeNull();
+      expect(res.body.coordinators).toEqual([]);
+    });
+
+    // O negativo: manutenção de cadastro do titular não derruba a coluna.
+    it('trocar o telefone do titular NÃO derruba o titular', async () => {
+      const dianaId = await createStaff('Diana194', 'COORDINATOR', fixtureHouseId);
+      await request(app.getHttpServer())
+        .patch(`${BASE}/houses/${fixtureHouseId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ coordinatorId: dianaId })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .patch(`${BASE}/staff/${dianaId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ whatsapp: '(62) 98888-1194', name: 'Diana194 Renomeada' })
+        .expect(200);
+
+      const res = await detail(adminToken);
+      expect(res.body.coordinatorId).toBe(dianaId);
+    });
   });
 
   describe('CRUD', () => {

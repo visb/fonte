@@ -330,6 +330,7 @@
           "name": "Update Staff",
           "request": {
             "method": "PATCH",
+            "description": "Atualiza o servo. Story 194 — efeito colateral: se este staff for o coordenador TITULAR de alguma casa (`houses.coordinator_id`) e a alteração o tirar da lista de coordenadores dela (mudar `houseId` ou sair de `role: COORDINATOR`), a coluna é zerada na MESMA transação. Alterar nome/telefone/e-mail do titular não mexe na casa.",
             "header": [
               {
                 "key": "Content-Type",
@@ -356,6 +357,7 @@
           "name": "Delete Staff",
           "request": {
             "method": "DELETE",
+            "description": "Desliga o servo (soft delete do staff + do user). Story 194 — se ele for o coordenador TITULAR de alguma casa, `houses.coordinator_id` é zerado na mesma transação: o `ON DELETE SET NULL` da FK só dispara em DELETE físico e o projeto usa `deleted_at`.",
             "url": {
               "raw": "{{baseUrl}}/staff/{{staffId}}",
               "host": [
@@ -528,6 +530,7 @@
           "name": "List Houses",
           "request": {
             "method": "GET",
+            "description": "Lista as casas com os agregados (`activeResidentsCount`, `staffCount`, `thumbnailUrl`) e o coordenador TITULAR resolvido em `coordinator`. Story 194 — a listagem NÃO traz `coordinators`: a lista derivada de coordenadores só existe no detalhe (`GET /houses/:id`). Roles: ADMIN, COORDINATOR, SERVANT.",
             "url": {
               "raw": "{{baseUrl}}/houses",
               "host": [
@@ -543,6 +546,7 @@
           "name": "Get House by ID",
           "request": {
             "method": "GET",
+            "description": "Detalhe da casa. Story 194 — a resposta traz DUAS coisas sobre coordenação: `coordinator`/`coordinatorId` (o coordenador TITULAR, referência/contato da casa, opcional) e `coordinators: Staff[]` — a lista DERIVADA de staff (`house_id` da casa + role COORDINATOR + não desligado), ordenada por nome, com as mesmas 4 colunas do resumo (`id`, `name`, `whatsapp`, `photoUrl`). O titular também aparece dentro de `coordinators`. Casa sem coordenador devolve `[]`. `GET /houses` NÃO popula o campo. Roles: ADMIN, COORDINATOR, SERVANT.",
             "url": {
               "raw": "{{baseUrl}}/houses/{{houseId}}",
               "host": [
@@ -602,6 +606,7 @@
           "name": "Create House",
           "request": {
             "method": "POST",
+            "description": "Cria a casa. Story 194 — `coordinatorId` PREENCHIDO aqui volta **400** (`\"Defina o coordenador titular depois de cadastrar a casa e lotar o coordenador nela.\"`): o titular tem que ser um coordenador lotado nesta casa, e o staff só ganha `house_id` depois que a casa existe. Enviar `null` (ou omitir) é o caminho válido; eleja o titular depois, por `PATCH /houses/:id`. Roles: ADMIN.",
             "header": [
               {
                 "key": "Content-Type",
@@ -627,6 +632,7 @@
           "name": "Update House",
           "request": {
             "method": "PATCH",
+            "description": "Atualiza a casa e é por AQUI que se elege o coordenador titular (story 194). `coordinatorId` ausente não mexe na coluna; `null` limpa o titular (casa sem titular é estado legítimo); um uuid tem que ser de um staff COORDINATOR lotado NESTA casa e não desligado — senão volta **400** (`\"O coordenador titular precisa ser um coordenador lotado nesta casa.\"`), nunca 404: o staff existe, o vínculo é que está errado. A coluna também é zerada automaticamente pelo `StaffService` quando o titular é desligado, muda de casa ou deixa de ser COORDINATOR. Roles: ADMIN, COORDINATOR (coordenador não altera capacidade — os campos são ignorados).",
             "header": [
               {
                 "key": "Content-Type",
@@ -635,7 +641,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Casa Esperança Atualizada\",\n  \"generalCapacity\": 25\n}"
+              "raw": "{\n  \"name\": \"Casa Esperança Atualizada\",\n  \"generalCapacity\": 25,\n  \"coordinatorId\": \"{{staffId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/houses/{{houseId}}",

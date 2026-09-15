@@ -97,6 +97,23 @@ describe('HouseCapacityRequestService.createRequest', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  // Story 194, decisão 4: o titular NÃO ganha permissão extra. Coordenador
+  // auxiliar (lotado na casa, mas não apontado em coordinator_id) abre pedido
+  // pelo ramo `staff.houseId === houseId` — que já existia e não muda.
+  it('aceita o coordenador auxiliar da casa, que não é o titular (story 194)', async () => {
+    const houseRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(HOUSE) });
+    const auxiliar = { id: 'staff-2', name: 'Auxiliar', userId: 'user-2', houseId: 'house-1' };
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(auxiliar) });
+    const { service, repo } = makeService(makeRepo(), houseRepo, staffRepo);
+
+    await service.createRequest('house-1', { generalCapacity: 12, staffCapacity: 6 }, 'user-2');
+
+    expect(HOUSE.coordinatorId).not.toBe(auxiliar.id);
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ houseId: 'house-1', requestedById: 'staff-2' }),
+    );
+  });
+
   it('still resolves when notification emission fails (best-effort)', async () => {
     const houseRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(HOUSE) });
     const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(STAFF) });

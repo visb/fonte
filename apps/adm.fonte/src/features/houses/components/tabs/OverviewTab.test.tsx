@@ -82,6 +82,26 @@ describe('houses OverviewTab', () => {
     expect(uploadMutate).toHaveBeenCalled();
   });
 
+  // Story 194: o rótulo do campo eleito passa a dizer titular, e a lista de
+  // coordenadores ganha bloco próprio.
+  it('mostra o bloco de coordenadores e chama o titular de titular', () => {
+    state.house = house({
+      coordinatorId: 's1',
+      coordinators: [{ id: 's1', name: 'Coord', whatsapp: null, photoUrl: null }],
+      coordinator: { id: 's1', name: 'Coord' },
+    } as Partial<House>);
+    render(<OverviewTab houseId="h1" />);
+
+    expect(screen.getByText('Coordenador titular')).toBeInTheDocument();
+    expect(screen.getByText('Coordenadores')).toBeInTheDocument();
+    expect(screen.getByText('Titular')).toBeInTheDocument();
+  });
+
+  it('casa sem coordenador cai no empty state do bloco', () => {
+    render(<OverviewTab houseId="h1" />);
+    expect(screen.getByText('Nenhum coordenador lotado nesta casa.')).toBeInTheDocument();
+  });
+
   it('editar abre o HouseDialog', () => {
     render(<OverviewTab houseId="h1" />);
     fireEvent.click(screen.getByRole('button', { name: /Editar/ }));

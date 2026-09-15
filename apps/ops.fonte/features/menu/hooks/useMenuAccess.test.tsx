@@ -67,14 +67,44 @@ describe('useMenuAccess', () => {
     );
   });
 
+  // Story 194: a casa tem N coordenadores; o titular (`coordinatorId`) não tem
+  // permissão extra. Coordenador auxiliar da casa vê as configurações.
+  it('coordenador auxiliar (não titular) da própria casa ganha configurações', () => {
+    mockAuth.mockReturnValue(auth({ staff: { user: { role: Role.COORDINATOR } } }));
+    mockHouseById.mockReturnValue({ data: { id: 'house-1', coordinatorId: 'outro-staff' } });
+
+    const { result } = renderHook(() => useMenuAccess());
+
+    expect(result.current.access.isHouseCoordinator).toBe(true);
+    expect(result.current.menuItems.map((item) => item.key)).toContain('houseSettings');
+  });
+
+  it('casa sem titular nenhum não barra o coordenador lotado', () => {
+    mockAuth.mockReturnValue(auth({ staff: { user: { role: Role.COORDINATOR } } }));
+    mockHouseById.mockReturnValue({ data: { id: 'house-1', coordinatorId: null } });
+
+    const { result } = renderHook(() => useMenuAccess());
+
+    expect(result.current.access.isHouseCoordinator).toBe(true);
+  });
+
   it('coordenador de outra casa não ganha configurações da casa', () => {
     mockAuth.mockReturnValue(auth({ staff: { user: { role: Role.COORDINATOR } } }));
-    mockHouseById.mockReturnValue({ data: { id: 'house-1', coordinatorId: 'outro' } });
+    mockHouseById.mockReturnValue({ data: { id: 'house-2', coordinatorId: 'staff-1' } });
 
     const { result } = renderHook(() => useMenuAccess());
 
     expect(result.current.access.isHouseCoordinator).toBe(false);
     expect(result.current.menuItems.map((item) => item.key)).not.toContain('houseSettings');
+  });
+
+  it('servo da casa, mesmo com a casa carregada, não é coordenador da casa', () => {
+    mockAuth.mockReturnValue(auth());
+    mockHouseById.mockReturnValue({ data: { id: 'house-1', coordinatorId: 'staff-1' } });
+
+    const { result } = renderHook(() => useMenuAccess());
+
+    expect(result.current.access.isHouseCoordinator).toBe(false);
   });
 
   it('servo sem casa é servo de grupo de apoio', () => {

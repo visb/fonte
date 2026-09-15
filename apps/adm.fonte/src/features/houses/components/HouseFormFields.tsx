@@ -2,15 +2,22 @@ import { type UseFormRegister } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BR_STATES, SELECT_CLASS, type HouseFormData } from '../constants';
-import type { Staff } from '@fonte/api-client';
+import type { HouseStaffSummary } from '@fonte/api-client';
 
 interface HouseFormFieldsProps {
   register: UseFormRegister<HouseFormData>;
   errors: Partial<Record<keyof HouseFormData, { message?: string }>>;
-  staffList: Staff[];
+  /**
+   * Coordenadores DESTA casa (story 194): o titular sai da lista derivada, não
+   * do staff inteiro da organização — a UI para de oferecer opção que o backend
+   * recusaria com 400.
+   */
+  coordinators: HouseStaffSummary[];
+  /** Na criação o titular ainda não pode existir (decisão 8): campo não renderizado. */
+  isEdit: boolean;
 }
 
-export function HouseFormFields({ register, errors, staffList }: HouseFormFieldsProps) {
+export function HouseFormFields({ register, errors, coordinators, isEdit }: HouseFormFieldsProps) {
   return (
     <div className="space-y-4 py-4">
       <div className="space-y-2">
@@ -56,15 +63,24 @@ export function HouseFormFields({ register, errors, staffList }: HouseFormFields
         <Input id="phone" {...register('phone')} placeholder="Ex: (11) 99999-9999" />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="coordinatorId">Coordenador</Label>
-        <select id="coordinatorId" {...register('coordinatorId')} className={SELECT_CLASS}>
-          <option value="">Sem coordenador</option>
-          {staffList.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-      </div>
+      {isEdit ? (
+        <div className="space-y-2">
+          <Label htmlFor="coordinatorId">Coordenador titular</Label>
+          <select id="coordinatorId" {...register('coordinatorId')} className={SELECT_CLASS}>
+            <option value="">Sem titular</option>
+            {coordinators.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Só coordenadores lotados nesta casa podem ser titulares.
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Defina o titular depois de lotar os coordenadores na casa.
+        </p>
+      )}
 
       <label htmlFor="isMotherHouse" className="flex items-center gap-2 cursor-pointer">
         <input

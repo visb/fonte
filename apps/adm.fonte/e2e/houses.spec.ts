@@ -209,6 +209,79 @@ test.describe('Casas', () => {
     if (created) await request.delete(`${API_URL}/ministries/${created.id}`, { headers });
   });
 
+  // ─── Coordenadores da casa (story 194) ────────────────────────────────────
+
+  test('casa com dois coordenadores: lista os dois e elege o titular pelo dialog', async ({
+    page,
+    request,
+  }) => {
+    const stamp = Date.now();
+    const headers = { Authorization: `Bearer ${await loginApi(request)}` };
+    const created: string[] = [];
+
+    const houseRes = await request.post(`${API_URL}/houses`, {
+      headers,
+      data: { name: `Casa 194 ${stamp}` },
+    });
+    expect(houseRes.status()).toBe(201);
+    const houseId = (await houseRes.json()).id as string;
+
+    async function createStaff(name: string, role: 'COORDINATOR' | 'SERVANT'): Promise<string> {
+      const res = await request.post(`${API_URL}/staff`, {
+        headers,
+        data: {
+          name,
+          email: `${name.replace(/\s/g, '').toLowerCase()}.${stamp}@fonte.test`,
+          password: 'secret123',
+          role,
+          houseId,
+        },
+      });
+      expect(res.status()).toBe(201);
+      const id = (await res.json()).id as string;
+      created.push(id);
+      return id;
+    }
+
+    const anaName = `Ana Coord ${stamp}`;
+    const brunoName = `Bruno Coord ${stamp}`;
+    const servoName = `Servo Comum ${stamp}`;
+    await createStaff(anaName, 'COORDINATOR');
+    await createStaff(brunoName, 'COORDINATOR');
+    await createStaff(servoName, 'SERVANT');
+
+    try {
+      await page.goto(`/houses/${houseId}`);
+
+      // Visão geral lista os dois coordenadores; ninguém é titular ainda.
+      await expect(page.getByText(anaName)).toBeVisible();
+      await expect(page.getByText(brunoName)).toBeVisible();
+      // `exact` para não casar com o rótulo "Coordenador titular" do bloco de
+      // informações — o badge é a palavra sozinha.
+      await expect(page.getByText('Titular', { exact: true })).toHaveCount(0);
+
+      await page.getByRole('button', { name: /Editar/ }).first().click();
+      const dialog = page.getByRole('dialog');
+      const select = dialog.getByLabel('Coordenador titular');
+
+      // O servo não é oferecido — a UI não propõe o que o backend recusa (400).
+      await expect(select.getByRole('option', { name: servoName })).toHaveCount(0);
+      await expect(select.getByRole('option', { name: anaName })).toHaveCount(1);
+
+      await select.selectOption({ label: anaName });
+      await dialog.getByRole('button', { name: 'Salvar' }).click();
+      await expect(dialog).not.toBeVisible();
+
+      // O badge migra para o eleito, e só para ele.
+      await expect(page.getByText('Titular', { exact: true })).toHaveCount(1);
+      await expect(page.locator('div').filter({ hasText: anaName }).last()).toContainText('Titular');
+    } finally {
+      // Fixture própria, removida por id (story 182).
+      for (const id of created) await request.delete(`${API_URL}/staff/${id}`, { headers });
+      await request.delete(`${API_URL}/houses/${houseId}`, { headers });
+    }
+  });
+
   test('aba Servos mostra o avatar do servo', async ({ page }) => {
     await page.getByText('Casa Teste').click();
     await page.getByRole('button', { name: 'Servos' }).click();

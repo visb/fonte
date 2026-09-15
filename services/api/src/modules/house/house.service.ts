@@ -1,10 +1,11 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PRESENT_RESIDENT_STATUSES } from '@fonte/types';
+import { PRESENT_RESIDENT_STATUSES, Role } from '@fonte/types';
 import { House } from './house.entity';
 import { HousePhoto } from './house-photo.entity';
 import { HouseRule } from './house-rule.entity';
@@ -12,6 +13,27 @@ import { CreateHouseDto } from './dto/create-house.dto';
 import { CreateHouseRuleDto } from './dto/create-house-rule.dto';
 import { UpdateHouseDto } from './dto/update-house.dto';
 import { StorageService } from '../storage/storage.service';
+
+/**
+ * Coordenador da casa no detalhe (story 194). Mesmas quatro colunas do resumo de
+ * `GET /houses/:id/staff`: o detalhe da casa é lido por SERVANT, então devolver a
+ * entidade `Staff` inteira (CPF, RG, endereço) ampliaria a superfície de dado
+ * pessoal sem necessidade (LGPD art. 6, minimização).
+ */
+export interface HouseCoordinatorSummary {
+  id: string;
+  name: string;
+  whatsapp: string | null;
+  photoUrl: string | null;
+}
+
+/** Decisão 7 da story 194 — o titular tem que pertencer à lista da casa. */
+export const INELIGIBLE_TITULAR_MESSAGE =
+  'O coordenador titular precisa ser um coordenador lotado nesta casa.';
+
+/** Decisão 8 da story 194 — no create é impossível satisfazer a invariante. */
+export const TITULAR_ON_CREATE_MESSAGE =
+  'Defina o coordenador titular depois de cadastrar a casa e lotar o coordenador nela.';
 
 @Injectable()
 export class HouseService {
@@ -80,8 +102,31 @@ export class HouseService {
     );
   }
 
-  async findOne(id: string): Promise<House & { activeResidentsCount: number; staffCount: number }> {
-    const [house, residentMap, staffCounts] = await Promise.all([
+  /**
+   * Lista de coordenadores da casa (story 194, decisão 1): derivada de `Staff`,
+   * sem tabela de junção — `house_id` + role COORDINATOR + não soft-deletado.
+   * A role mora em `users`, daí o join. O titular (`coordinator_id`) aparece
+   * aqui também: ele é um coordenador da casa, não uma categoria à parte.
+   */
+  private findCoordinators(houseId: string): Promise<HouseCoordinatorSummary[]> {
+    return this.houseRepository.manager.query<HouseCoordinatorSummary[]>(
+      `SELECT s.id, s.name, s.whatsapp, s.photo_url AS "photoUrl"
+       FROM staff s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.house_id = $1 AND u.role = $2 AND s.deleted_at IS NULL
+       ORDER BY s.name`,
+      [houseId, Role.COORDINATOR],
+    );
+  }
+
+  async findOne(id: string): Promise<
+    House & {
+      activeResidentsCount: number;
+      staffCount: number;
+      coordinators: HouseCoordinatorSummary[];
+    }
+  > {
+    const [house, residentMap, staffCounts, coordinators] = await Promise.all([
       this.houseRepository.findOne({
         where: { id },
         relations: ['coordinator', 'photos'],
@@ -91,6 +136,7 @@ export class HouseService {
         `SELECT COUNT(DISTINCT id)::int AS count FROM staff WHERE house_id = $1 AND deleted_at IS NULL`,
         [id],
       ),
+      this.findCoordinators(id),
     ]);
     if (!house) throw new NotFoundException(`House ${id} not found`);
     if (house.photos) {
@@ -99,10 +145,17 @@ export class HouseService {
     return Object.assign(house, {
       activeResidentsCount: residentMap[id] ?? 0,
       staffCount: Number(staffCounts[0]?.count ?? 0),
+      // Sempre array: a query devolve `[]` para casa sem coordenador nenhum, que
+      // é estado legítimo (decisão 5) — o cliente nunca recebe `undefined`.
+      coordinators,
     });
   }
 
   async create(dto: CreateHouseDto): Promise<House> {
+    // Story 194, decisão 8: o titular só pode ser eleito depois que a casa existe
+    // (o staff precisa ter `house_id` dela). Recusar é melhor que aceitar um
+    // vínculo que a invariante do update rejeitaria no request seguinte.
+    if (dto.coordinatorId) throw new BadRequestException(TITULAR_ON_CREATE_MESSAGE);
     // Clear before saving: partial unique index rejects two mother houses at once.
     if (dto.isMotherHouse) await this.clearOtherMotherHouses();
     const house = this.houseRepository.create(dto);
@@ -112,10 +165,33 @@ export class HouseService {
   async update(id: string, dto: UpdateHouseDto): Promise<House> {
     const count = await this.houseRepository.count({ where: { id } });
     if (!count) throw new NotFoundException(`House ${id} not found`);
+    // `undefined` não mexe na coluna; `null` limpa o titular (decisão 5).
+    if (dto.coordinatorId != null) await this.assertEligibleTitular(dto.coordinatorId, id);
     // Clear before updating: partial unique index rejects two mother houses at once.
     if (dto.isMotherHouse) await this.clearOtherMotherHouses(id);
     await this.houseRepository.update(id, dto);
     return this.findOne(id);
+  }
+
+  /**
+   * Story 194, decisão 7: o titular tem que estar na lista derivada da casa —
+   * coordenador, lotado NESTA casa, não desligado. Falha é 400, não 404: o staff
+   * existe, o vínculo é que está errado.
+   */
+  private async assertEligibleTitular(staffId: string, houseId: string): Promise<void> {
+    const [staff] = await this.houseRepository.manager.query<
+      Array<{ id: string; houseId: string | null; role: string; deletedAt: Date | null }>
+    >(
+      `SELECT s.id, s.house_id AS "houseId", u.role AS role, s.deleted_at AS "deletedAt"
+       FROM staff s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.id = $1`,
+      [staffId],
+    );
+    if (!staff) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
+    if (staff.deletedAt !== null) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
+    if (staff.role !== Role.COORDINATOR) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
+    if (staff.houseId !== houseId) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
   }
 
   /** Only one house can be the mother house; unmark all others. */

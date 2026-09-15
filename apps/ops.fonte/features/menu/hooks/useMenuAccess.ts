@@ -32,7 +32,10 @@ export function useMenuAccess(): {
 
   const { data: house } = useHouseById(staff?.houseId, { enabled: isCoordinator });
 
-  const isHouseCoordinator = !!isCoordinator && !!house && house.coordinatorId === staff?.id;
+  // Story 194: o gate é o vínculo com a casa, não a eleição de titular — dos N
+  // coordenadores da casa, todos configuram; o `coordinator_id` é só a
+  // referência/contato (decisão 4). Espelha o gate da HouseSettingsPage.
+  const isHouseCoordinator = !!isCoordinator && !!house && house.id === staff?.houseId;
 
   const access = useMemo<MenuAccess>(
     () => ({

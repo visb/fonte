@@ -4,11 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Role, ServantRank, StaffPermissionType } from '@fonte/types';
 import { Staff } from './staff.entity';
 import { StaffPermission } from './staff-permission.entity';
+import { House } from '../house/house.entity';
 import { User } from '../user/user.entity';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
@@ -124,16 +125,40 @@ export class StaffService {
     return this.staffRepository.save(staff);
   }
 
+  // ─── Coordenador titular da casa (story 194) ─────────────────────────────────
+
+  /**
+   * Zera `houses.coordinator_id` quando a transição tira este staff da lista de
+   * coordenadores da casa (story 194, decisão 6). O `ON DELETE SET NULL` da FK
+   * só dispara em DELETE físico e o projeto usa `deleted_at`, então quem limpa é
+   * o service — na mesma transação da alteração do staff.
+   *
+   * Só escreve se alguma casa de fato aponta para ele: staff comum não pode
+   * gerar UPDATE em `houses` a cada troca de casa.
+   */
+  private async clearTitular(staffId: string, manager: EntityManager): Promise<void> {
+    const holders = await manager.count(House, { where: { coordinatorId: staffId } });
+    if (!holders) return;
+    await manager.update(House, { coordinatorId: staffId }, { coordinatorId: null });
+  }
+
+  /**
+   * Repositórios da escrita: os injetados fora de transação; os do `manager`
+   * quando a mudança precisa ser atômica com a limpeza do titular.
+   */
+  private writers(manager?: EntityManager) {
+    return {
+      staff: manager ? manager.getRepository(Staff) : this.staffRepository,
+      user: manager ? manager.getRepository(User) : this.userRepository,
+    };
+  }
+
   async update(id: string, dto: UpdateStaffDto): Promise<Staff> {
     const staff = await this.findOne(id);
 
     const { email, role, password, ...staffFields } = dto;
     if (staffFields.whatsapp !== undefined) {
       staffFields.whatsapp = this.normalizeWhatsapp(staffFields.whatsapp);
-    }
-
-    if (Object.keys(staffFields).length) {
-      await this.staffRepository.update(id, staffFields);
     }
 
     const userUpdates: Partial<User> = {};
@@ -153,8 +178,27 @@ export class StaffService {
       userUpdates.mustChangePassword = true;
     }
 
-    if (Object.keys(userUpdates).length) {
-      await this.userRepository.update(staff.userId, userUpdates);
+    // Story 194, decisão 6: só duas transições do update tiram o staff da lista
+    // de coordenadores da casa — mudar de casa e deixar de ser COORDINATOR.
+    // Trocar telefone/nome/e-mail do titular NÃO pode derrubar a coluna.
+    const leavesHouse =
+      staffFields.houseId !== undefined && staffFields.houseId !== staff.houseId;
+    const leavesCoordinatorRole = role !== undefined && role !== Role.COORDINATOR;
+    const dropsTitular = leavesHouse || leavesCoordinatorRole;
+
+    const applyWrites = async (manager?: EntityManager) => {
+      const repos = this.writers(manager);
+      if (Object.keys(staffFields).length) await repos.staff.update(id, staffFields);
+      if (Object.keys(userUpdates).length) await repos.user.update(staff.userId, userUpdates);
+    };
+
+    if (dropsTitular) {
+      await this.staffRepository.manager.transaction(async (manager) => {
+        await applyWrites(manager);
+        await this.clearTitular(id, manager);
+      });
+    } else {
+      await applyWrites();
     }
 
     return this.findOne(id);
@@ -234,9 +278,15 @@ export class StaffService {
 
   async remove(id: string): Promise<void> {
     const staff = await this.findOne(id);
-    await this.userRepository.update(staff.userId, { isActive: false });
-    await this.userRepository.softDelete(staff.userId);
-    await this.staffRepository.softDelete(id);
+    // Story 194, decisão 6: o desligamento tira o staff da lista de
+    // coordenadores; a casa não pode continuar exibindo-o como titular.
+    await this.staffRepository.manager.transaction(async (manager) => {
+      const repos = this.writers(manager);
+      await repos.user.update(staff.userId, { isActive: false });
+      await repos.user.softDelete(staff.userId);
+      await repos.staff.softDelete(id);
+      await this.clearTitular(id, manager);
+    });
   }
 
   // ─── Permissions ─────────────────────────────────────────────────────────────

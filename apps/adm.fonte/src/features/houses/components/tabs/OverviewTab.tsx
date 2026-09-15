@@ -11,6 +11,7 @@ import {
 import { useHouseById, useUploadHousePhoto, useDeleteHousePhoto } from '../../hooks/useHouses';
 import { houseChildVacancies } from '../../utils';
 import { HouseDialog } from '../HouseDialog';
+import { HouseCoordinatorsCard } from './HouseCoordinatorsCard';
 import type { House } from '@fonte/api-client';
 
 type HousePhoto = House['photos'][number];
@@ -46,7 +47,7 @@ export function OverviewTab({ houseId }: { houseId: string }) {
           <span>{[house.city, house.state].filter(Boolean).join(' — ') || '—'}</span>
           <span className="text-muted-foreground">Telefone</span>
           <span>{house.phone || '—'}</span>
-          <span className="text-muted-foreground">Coordenador</span>
+          <span className="text-muted-foreground">Coordenador titular</span>
           <span>{house.coordinator?.name || '—'}</span>
           {hasCapacity && (
             <>
@@ -69,6 +70,8 @@ export function OverviewTab({ houseId }: { houseId: string }) {
           )}
         </div>
       </div>
+
+      <HouseCoordinatorsCard house={house} />
 
       <div className="rounded-lg border p-5 space-y-4">
         <div className="flex items-center justify-between">

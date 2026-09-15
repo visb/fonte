@@ -12,6 +12,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { StaffService } from './staff.service';
 import { Staff } from './staff.entity';
+import { House } from '../house/house.entity';
 import { StaffPermission } from './staff-permission.entity';
 import { User } from '../user/user.entity';
 import { StorageService } from '../storage/storage.service';
@@ -26,6 +27,7 @@ interface MockRepo {
   count: jest.Mock;
   delete: jest.Mock;
   softDelete: jest.Mock;
+  manager?: { transaction: jest.Mock };
 }
 
 function makeRepo(overrides: Partial<MockRepo> = {}): MockRepo {
@@ -43,6 +45,32 @@ function makeRepo(overrides: Partial<MockRepo> = {}): MockRepo {
   };
 }
 
+/**
+ * EntityManager transacional (story 194). As transições que tiram o staff da
+ * lista de coordenadores da casa escrevem staff, user e `houses` na MESMA
+ * transação — `getRepository` devolve os mesmos mocks injetados, então as
+ * asserções sobre `staffRepo`/`userRepo` valem dentro e fora da transação.
+ *
+ * `houseCount` responde ao "esta pessoa é titular de alguma casa?"; `houseUpdate`
+ * é a limpeza de `coordinator_id`.
+ */
+function attachManager(
+  staffRepo: MockRepo,
+  userRepo: MockRepo,
+  options: { isTitular?: boolean } = {},
+) {
+  const houseUpdate = jest.fn().mockResolvedValue({ affected: 1 });
+  const houseCount = jest.fn().mockResolvedValue(options.isTitular === false ? 0 : 1);
+  const entityManager = {
+    getRepository: (entity: unknown) => (entity === Staff ? staffRepo : userRepo),
+    count: houseCount,
+    update: houseUpdate,
+  };
+  const transaction = jest.fn((cb: (m: unknown) => Promise<unknown>) => cb(entityManager));
+  staffRepo.manager = { transaction };
+  return { houseUpdate, houseCount, transaction };
+}
+
 // Story 190: o serviço não injeta mais EventEmitter2 — o staffCount por casa é
 // lido direto do banco pelo HouseService. Se algum teste voltar a precisar do
 // provider aqui, sobrou injeção no serviço.
@@ -52,6 +80,7 @@ function makeService(
   permissionRepo: MockRepo,
   storage: Partial<StorageService> = {},
 ) {
+  if (!staffRepo.manager) attachManager(staffRepo, userRepo);
   return new StaffService(
     staffRepo as unknown as Repository<Staff>,
     userRepo as unknown as Repository<User>,
@@ -596,6 +625,129 @@ describe('StaffService mutations without EventEmitter2', () => {
     await service.updateMe('user-1', { whatsapp: '11999' } as never);
 
     expect(staffRepo.update).toHaveBeenCalled();
+  });
+});
+
+// ─── Story 194 — as três transições que derrubam o titular da casa ────────────
+//
+// `ON DELETE SET NULL` da FK só dispara em DELETE físico e o projeto usa
+// `deleted_at`: quem zera `houses.coordinator_id` é este service.
+describe('StaffService — coordenador titular da casa (story 194)', () => {
+  function titularService(staff: Record<string, unknown>, options: { isTitular?: boolean } = {}) {
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(staff) });
+    const userRepo = makeRepo();
+    const manager = attachManager(staffRepo, userRepo, options);
+    return { service: makeService(staffRepo, userRepo, makeRepo()), staffRepo, userRepo, ...manager };
+  }
+
+  const coordinator = {
+    id: 'staff-1',
+    userId: 'user-1',
+    houseId: 'house-1',
+    user: { id: 'user-1', role: 'COORDINATOR' },
+  };
+
+  it('soft delete zera o coordinator_id da casa, na mesma transação', async () => {
+    const { service, staffRepo, houseUpdate, houseCount, transaction } = titularService(coordinator);
+
+    await service.remove('staff-1');
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(staffRepo.softDelete).toHaveBeenCalledWith('staff-1');
+    expect(houseCount).toHaveBeenCalledWith(House, { where: { coordinatorId: 'staff-1' } });
+    expect(houseUpdate).toHaveBeenCalledWith(
+      House,
+      { coordinatorId: 'staff-1' },
+      { coordinatorId: null },
+    );
+  });
+
+  it('troca de casa zera o titular da casa ANTIGA e não eleva ninguém na nova', async () => {
+    const { service, staffRepo, houseUpdate, transaction } = titularService(coordinator);
+
+    await service.update('staff-1', { houseId: 'house-2' } as never);
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(staffRepo.update).toHaveBeenCalledWith('staff-1', { houseId: 'house-2' });
+    // A limpeza é pelo staff: só a casa que o apontava (a antiga) perde o titular.
+    expect(houseUpdate).toHaveBeenCalledWith(
+      House,
+      { coordinatorId: 'staff-1' },
+      { coordinatorId: null },
+    );
+    // Nenhuma escrita elege o staff como titular da casa nova.
+    expect(houseUpdate).toHaveBeenCalledTimes(1);
+    expect(houseUpdate.mock.calls[0][2]).toEqual({ coordinatorId: null });
+  });
+
+  it('deixar de ser COORDINATOR zera o titular', async () => {
+    const { service, userRepo, houseUpdate } = titularService(coordinator);
+
+    await service.update('staff-1', { role: 'SERVANT' } as never);
+
+    expect(userRepo.update).toHaveBeenCalledWith('user-1', { role: 'SERVANT' });
+    expect(houseUpdate).toHaveBeenCalled();
+  });
+
+  it('virar ADMIN também tira o staff da lista e zera o titular', async () => {
+    const { service, houseUpdate } = titularService(coordinator);
+
+    await service.update('staff-1', { role: 'ADMIN' } as never);
+
+    expect(houseUpdate).toHaveBeenCalled();
+  });
+
+  // O negativo que protege contra zelo excessivo: manutenção de cadastro do
+  // titular não pode derrubar a coluna.
+  it('trocar telefone, nome e e-mail do titular NÃO mexe na casa', async () => {
+    const { service, staffRepo, houseUpdate, transaction } = titularService(coordinator);
+
+    await service.update('staff-1', {
+      whatsapp: '(62) 99999-0000',
+      name: 'Coordenador Renomeado',
+      email: 'novo@fonte.com',
+    } as never);
+
+    expect(staffRepo.update).toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
+    expect(houseUpdate).not.toHaveBeenCalled();
+  });
+
+  it('reenviar o MESMO house_id não conta como troca de casa', async () => {
+    const { service, houseUpdate, transaction } = titularService(coordinator);
+
+    await service.update('staff-1', { houseId: 'house-1' } as never);
+
+    expect(transaction).not.toHaveBeenCalled();
+    expect(houseUpdate).not.toHaveBeenCalled();
+  });
+
+  it('continuar COORDINATOR na mesma casa não derruba nada', async () => {
+    const { service, houseUpdate, transaction } = titularService(coordinator);
+
+    await service.update('staff-1', { role: 'COORDINATOR', houseId: 'house-1' } as never);
+
+    expect(transaction).not.toHaveBeenCalled();
+    expect(houseUpdate).not.toHaveBeenCalled();
+  });
+
+  // Staff que não é titular de casa nenhuma: as três transições rodam, mas
+  // nenhuma delas dispara UPDATE em `houses`.
+  it('staff que não é titular de ninguém não gera UPDATE em houses', async () => {
+    const servant = { id: 'staff-9', userId: 'user-9', houseId: 'house-1' };
+
+    const onDelete = titularService(servant, { isTitular: false });
+    await onDelete.service.remove('staff-9');
+    expect(onDelete.houseCount).toHaveBeenCalled();
+    expect(onDelete.houseUpdate).not.toHaveBeenCalled();
+
+    const onMove = titularService(servant, { isTitular: false });
+    await onMove.service.update('staff-9', { houseId: 'house-2' } as never);
+    expect(onMove.houseUpdate).not.toHaveBeenCalled();
+
+    const onRole = titularService(servant, { isTitular: false });
+    await onRole.service.update('staff-9', { role: 'SERVANT' } as never);
+    expect(onRole.houseUpdate).not.toHaveBeenCalled();
   });
 });
 

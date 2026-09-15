@@ -10,11 +10,11 @@ export function useHouses(options?: { enabled?: boolean }) {
   });
 }
 
-export function useHouseById(id: string) {
+export function useHouseById(id: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.houses.detail(id),
     queryFn: () => api.houses.getById(id),
-    enabled: !!id,
+    enabled: !!id && (options?.enabled ?? true),
   });
 }
 

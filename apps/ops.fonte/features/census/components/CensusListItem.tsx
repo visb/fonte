@@ -13,7 +13,7 @@ interface Props {
   // Added during this census; awaiting ADM approval. Auto-confirmed (present).
   pending?: boolean;
   onConfirm: () => void;
-  onRemove: () => void;
+  onRemove?: () => void;
   // Story 179: dois alvos de toque na linha — a foto expande, o resto abre os
   // detalhes. Os botões de confirmar/remover ficam fora dos dois: mirar num
   // botão e cair no modal (ou pior, confirmar presença sem querer) estraga a
@@ -76,13 +76,13 @@ export function CensusListItem({
           <Ionicons name="checkmark" size={20} color={confirmed ? '#fff' : '#16a34a'} />
         </TouchableOpacity>
       )}
-      <TouchableOpacity
+      {onRemove && <TouchableOpacity
         accessibilityLabel={`Remover ${resident.name}`}
         className="w-10 h-10 rounded-full items-center justify-center bg-red-50"
         onPress={onRemove}
       >
         <Ionicons name="trash-outline" size={18} color="#dc2626" />
-      </TouchableOpacity>
+      </TouchableOpacity>}
     </View>
   );
 }

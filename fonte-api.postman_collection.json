@@ -1138,7 +1138,8 @@
                 "residents",
                 "{{residentId}}"
               ]
-            }
+            },
+            "description": "ADMIN e COORDINATOR (SERVANT recebe 403).\n\nStory 196 — guard de transição de saída: status DISCHARGED ou EVADED só é aceito a partir de ACTIVE, DISCIPLINE ou TEMP_LEAVE (REMOVABLE_RESIDENT_STATUSES). A partir de qualquer outro status (DISCHARGED, EVADED, ARCHIVED, PRE_ADMISSION, CENSUS_ADDED, REJECTED_CENSUS) a resposta é 400 com a mensagem por status de origem — ex.: `{ \"statusCode\": 400, \"message\": \"Filho já encerrado (evasão) não pode receber alta.\" }`. Nada é gravado e nenhum efeito (follow-up, cancelamento do carnê, notificação) é disparado.\n\nReenviar o MESMO status que o filho já tem continua 200 (reenvio idempotente da fila offline do ops). Mudar apenas `houseId` (transferência) não é restringido."
           }
         },
         {

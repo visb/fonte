@@ -6,6 +6,7 @@ export type {
   LoginResponse,
   ChangePasswordInput,
   House,
+  HouseStaffSummary,
   HousePhoto,
   CreateHouseInput,
   UpdateHouseInput,

@@ -27,7 +27,8 @@ jest.mock('@/lib/api', () => ({
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { registerMutationDefaults } from './mutationDefaults';
-import { useCensusAddResident, useEvadeResident } from '@/features/census/hooks/useCensus';
+import { useCensusAddResident } from '@/features/census/hooks/useCensus';
+import { useEvadeResident } from '@/features/residents/hooks/useResidentRemoval';
 import { useCreateIncident } from '@/features/incidents/hooks/useIncidents';
 import { useCreateMovement } from '@/features/storeroom/hooks/useStoreroom';
 import { useCreateSupplyItem } from '@/features/supply-room/hooks/useSupplyRoom';

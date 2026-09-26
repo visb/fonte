@@ -5,7 +5,7 @@ import * as bcrypt from 'bcrypt';
 // require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
 // emits an undefined default for sharp's CommonJS module.
 const sharp = require('sharp') as typeof import('sharp');
-import { ACTIVE_RESIDENT_STATUSES, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isTemplateAvailableForStatus, NotificationType, PRESENT_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability } from '@fonte/types';
+import { ACTIVE_RESIDENT_STATUSES, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isTemplateAvailableForStatus, NotificationType, PRESENT_RESIDENT_STATUSES, REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability } from '@fonte/types';
 import { Logger } from '@nestjs/common';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
@@ -329,9 +329,44 @@ export class ResidentService {
     return saved;
   }
 
+  /**
+   * Story 196 — guard das transições de SAÍDA (alta/evasão).
+   *
+   * Vem antes do `update` e de qualquer efeito: sem ele, dar alta em quem já
+   * evadiu gravaria o status, criaria follow-up, cancelaria o carnê de novo e
+   * notificaria — tudo a partir de um estado já encerrado. `BUSINESS_RULES.md`
+   * sempre afirmou que a regra existia; ela não existia.
+   *
+   * Escopo deliberadamente estreito: só as duas transições de saída que a lista
+   * de filhos torna alcançáveis. As demais continuam sem validação (dívida
+   * registrada na story). Reenvio idempotente (`dto.status === before.status`)
+   * passa — a rota é `@Idempotent()` por causa do censo offline e a segunda
+   * entrega da outbox não pode virar 400.
+   */
+  private assertExitTransitionAllowed(before: ResidentStatus, next: ResidentStatus): void {
+    if (before === next) return;
+    if (next !== ResidentStatus.DISCHARGED && next !== ResidentStatus.EVADED) return;
+    if (REMOVABLE_RESIDENT_STATUSES.includes(before)) return;
+
+    const action =
+      next === ResidentStatus.DISCHARGED ? 'receber alta' : 'ser registrado como evasão';
+    const subject = ResidentService.NON_REMOVABLE_SUBJECTS[before] ?? 'Filho neste status';
+    throw new BadRequestException(`${subject} não pode ${action}.`);
+  }
+
+  private static readonly NON_REMOVABLE_SUBJECTS: Partial<Record<ResidentStatus, string>> = {
+    [ResidentStatus.DISCHARGED]: 'Filho já encerrado (alta)',
+    [ResidentStatus.EVADED]: 'Filho já encerrado (evasão)',
+    [ResidentStatus.ARCHIVED]: 'Filho arquivado',
+    [ResidentStatus.PRE_ADMISSION]: 'Filho em pré-admissão',
+    [ResidentStatus.CENSUS_ADDED]: 'Filho aguardando aprovação da contagem',
+    [ResidentStatus.REJECTED_CENSUS]: 'Filho recusado na contagem',
+  };
+
   async update(id: string, dto: UpdateResidentDto): Promise<Resident> {
     this.resolveInvestmentAmount(dto);
     const before = await this.findOne(id);
+    if (dto.status) this.assertExitTransitionAllowed(before.status, dto.status);
     await this.residentRepository.update(id, dto);
 
     const today = new Date().toISOString().split('T')[0];

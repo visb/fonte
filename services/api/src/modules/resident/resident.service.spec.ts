@@ -18,6 +18,11 @@ jest.mock('@fonte/types', () => ({
     TEMP_LEAVE: 'TEMP_LEAVE',
     DISCHARGED: 'DISCHARGED',
     EVADED: 'EVADED',
+    // Story 196: o guard de transição mapeia mensagem por status de origem,
+    // então o stub precisa dos status "mortos" que o enum real tem.
+    CENSUS_ADDED: 'CENSUS_ADDED',
+    REJECTED_CENSUS: 'REJECTED_CENSUS',
+    ARCHIVED: 'ARCHIVED',
   },
   Role: {
     ADMIN: 'ADMIN',
@@ -1243,6 +1248,7 @@ describe('ResidentService.update exit events', () => {
     });
     const createAuto = jest.fn().mockResolvedValue(undefined);
     const cancelAfterExit = jest.fn().mockResolvedValue(undefined);
+    const notify = jest.fn().mockResolvedValue(undefined);
     const service = makeService(
       residentRepo,
       admissionRepo as never,
@@ -1256,8 +1262,9 @@ describe('ResidentService.update exit events', () => {
         cancelFuturePending: jest.fn().mockResolvedValue(undefined),
         cancelAfterExit,
       },
+      { create: notify },
     );
-    return { service, createAuto, cancelAfterExit, residentUpdate };
+    return { service, createAuto, cancelAfterExit, residentUpdate, notify };
   }
 
   it('dates the DISCHARGE follow-up and receivable cancel by the provided exitDate', async () => {
@@ -1298,6 +1305,130 @@ describe('ResidentService.update exit events', () => {
 
     expect(createAuto).toHaveBeenCalledWith(RESIDENT_ID, 'DISCHARGE', today);
     expect(cancelAfterExit).toHaveBeenCalledWith(RESIDENT_ID, today);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Story 196 — guard das transições de saída.
+  //
+  // `BUSINESS_RULES.md` sempre afirmou que "status de Resident só muda por
+  // transição validada em service"; até esta story, `update` só aplicava o dto.
+  // Com a ação de baixa saindo da contagem para a LISTA de filhos (que mostra
+  // DISCHARGED/EVADED/ARCHIVED), dar alta em quem já evadiu ficou a um toque.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  describe('guard de transição de saída', () => {
+    it.each([
+      [ResidentStatus.ACTIVE, ResidentStatus.DISCHARGED],
+      [ResidentStatus.DISCIPLINE, ResidentStatus.DISCHARGED],
+      [ResidentStatus.TEMP_LEAVE, ResidentStatus.EVADED],
+      [ResidentStatus.ACTIVE, ResidentStatus.EVADED],
+      [ResidentStatus.DISCIPLINE, ResidentStatus.EVADED],
+      [ResidentStatus.TEMP_LEAVE, ResidentStatus.DISCHARGED],
+    ])('permite %s → %s', async (before, next) => {
+      const { service, residentUpdate } = makeUpdateService(makeResident({ status: before }));
+
+      await service.update(RESIDENT_ID, { status: next, exitDate: '2026-06-23' } as never);
+
+      expect(residentUpdate).toHaveBeenCalledWith(
+        RESIDENT_ID,
+        expect.objectContaining({ status: next }),
+      );
+    });
+
+    it.each([
+      [ResidentStatus.EVADED, ResidentStatus.DISCHARGED, 'Filho já encerrado (evasão)'],
+      [ResidentStatus.DISCHARGED, ResidentStatus.EVADED, 'Filho já encerrado (alta)'],
+      [ResidentStatus.ARCHIVED, ResidentStatus.EVADED, 'Filho arquivado'],
+      [ResidentStatus.ARCHIVED, ResidentStatus.DISCHARGED, 'Filho arquivado'],
+      [ResidentStatus.PRE_ADMISSION, ResidentStatus.DISCHARGED, 'Filho em pré-admissão'],
+      [
+        ResidentStatus.CENSUS_ADDED,
+        ResidentStatus.DISCHARGED,
+        'Filho aguardando aprovação da contagem',
+      ],
+      [ResidentStatus.REJECTED_CENSUS, ResidentStatus.EVADED, 'Filho recusado na contagem'],
+    ])('recusa %s → %s com 400', async (before, next, subject) => {
+      const { service } = makeUpdateService(makeResident({ status: before }));
+
+      await expect(
+        service.update(RESIDENT_ID, { status: next, exitDate: '2026-06-23' } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      // Mensagem acionável, por status de origem (substring: o verbo muda com a
+      // ação — "receber alta" vs "ser registrado como evasão").
+      await expect(
+        service.update(RESIDENT_ID, { status: next, exitDate: '2026-06-23' } as never),
+      ).rejects.toThrow(`${subject} não pode `);
+    });
+
+    // O teste que justifica o guard: sem ele, `cancelAfterExit` e a notificação
+    // de alta rodariam de novo em cima de um filho já encerrado.
+    it('na recusa não aplica o update nem dispara efeito nenhum', async () => {
+      const { service, residentUpdate, createAuto, cancelAfterExit, notify } = makeUpdateService(
+        makeResident({ status: ResidentStatus.EVADED }),
+      );
+
+      await expect(
+        service.update(RESIDENT_ID, {
+          status: ResidentStatus.DISCHARGED,
+          exitDate: '2026-06-23',
+        } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(residentUpdate).not.toHaveBeenCalled();
+      expect(createAuto).not.toHaveBeenCalled();
+      expect(cancelAfterExit).not.toHaveBeenCalled();
+      expect(notify).not.toHaveBeenCalled();
+    });
+
+    // Reenvio da outbox (a rota é `@Idempotent()` por causa do censo offline):
+    // a segunda entrega do MESMO item não pode virar 400.
+    it.each([ResidentStatus.DISCHARGED, ResidentStatus.EVADED])(
+      'reenvio %s → %s (mesmo status) passa sem reaplicar efeitos',
+      async (status) => {
+        const { service, residentUpdate, createAuto, cancelAfterExit, notify } = makeUpdateService(
+          makeResident({ status }),
+        );
+
+        await service.update(RESIDENT_ID, { status, exitDate: '2026-06-23' } as never);
+
+        expect(residentUpdate).toHaveBeenCalled();
+        expect(createAuto).not.toHaveBeenCalled();
+        expect(cancelAfterExit).not.toHaveBeenCalled();
+        expect(notify).not.toHaveBeenCalled();
+      },
+    );
+
+    // O guard olha SÓ as duas transições de saída: a story fecha a porta que ela
+    // abre, não reescreve a máquina de estados.
+    it.each([
+      ResidentStatus.ARCHIVED,
+      ResidentStatus.EVADED,
+      ResidentStatus.PRE_ADMISSION,
+      ResidentStatus.ACTIVE,
+    ])('transferência de casa a partir de %s continua livre', async (before) => {
+      const { service, residentUpdate } = makeUpdateService(makeResident({ status: before }));
+
+      await service.update(RESIDENT_ID, { houseId: 'new-house' } as never);
+
+      expect(residentUpdate).toHaveBeenCalledWith(
+        RESIDENT_ID,
+        expect.objectContaining({ houseId: 'new-house' }),
+      );
+    });
+
+    it('transição que não é de saída (ex.: ARCHIVED → ACTIVE) continua sem restrição', async () => {
+      const { service, residentUpdate } = makeUpdateService(
+        makeResident({ status: ResidentStatus.ARCHIVED }),
+      );
+
+      await service.update(RESIDENT_ID, { status: ResidentStatus.ACTIVE } as never);
+
+      expect(residentUpdate).toHaveBeenCalledWith(
+        RESIDENT_ID,
+        expect.objectContaining({ status: ResidentStatus.ACTIVE }),
+      );
+    });
   });
 });
 

@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.test' });
 process.env.NODE_ENV = 'test';
 
+import { randomUUID } from 'crypto';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { ResidentStatus } from '@fonte/types';
@@ -222,6 +223,114 @@ describe('ResidentController (e2e)', () => {
         .send({ status: ResidentStatus.ACTIVE })
         .expect(200);
       expect(updated.body.status).toBe(ResidentStatus.ACTIVE);
+    });
+  });
+
+  // Story 196 — baixa de filho pela LISTA (mesma rota da contagem do ops).
+  // Fixtures criadas pela própria suíte e removidas por id no afterAll global
+  // (`createdIds`), conforme a story 182: o seed é somente leitura.
+  describe('baixa de filho (story 196)', () => {
+    const newResident = async (
+      status: ResidentStatus = ResidentStatus.ACTIVE,
+    ): Promise<string> => {
+      const created = await request(app.getHttpServer())
+        .post(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Baixa E2E ${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, houseId, status })
+        .expect(201);
+      createdIds.push(created.body.id);
+      return created.body.id;
+    };
+
+    it('COORDINATOR dá alta em filho ACTIVE → 200', async () => {
+      const id = await newResident();
+      const res = await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: ResidentStatus.DISCHARGED, exitDate: '2026-06-23' })
+        .expect(200);
+      expect(res.body.status).toBe(ResidentStatus.DISCHARGED);
+    });
+
+    // O gate que a UI espelha escondendo o `⋮` (decisão 4): sem ele, o servo
+    // lançaria na fila offline um item fadado ao 403.
+    it('SERVANT → 403 (a rota é ADMIN/COORDINATOR)', async () => {
+      const id = await newResident();
+      await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${id}`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .send({ status: ResidentStatus.DISCHARGED, exitDate: '2026-06-23' })
+        .expect(403);
+    });
+
+    it('alta em filho já EVADED → 400 com a mensagem do guard', async () => {
+      const id = await newResident();
+      await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: ResidentStatus.EVADED, exitDate: '2026-06-20' })
+        .expect(200);
+
+      const res = await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: ResidentStatus.DISCHARGED, exitDate: '2026-06-23' })
+        .expect(400);
+      expect(String(res.body.message)).toContain('não pode receber alta');
+    });
+
+    it('PRE_ADMISSION não recebe alta → 400', async () => {
+      const id = await newResident(ResidentStatus.PRE_ADMISSION);
+      await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: ResidentStatus.DISCHARGED, exitDate: '2026-06-23' })
+        .expect(400);
+    });
+
+    // Reenvio da outbox: a mesma chave devolve a resposta original e não cria um
+    // segundo follow-up de alta.
+    it('mesma Idempotency-Key não duplica o follow-up de alta', async () => {
+      const id = await newResident();
+      // O interceptor exige UUID no header (story 172).
+      const key = randomUUID();
+      const send = () =>
+        request(app.getHttpServer())
+          .patch(`${BASE}/residents/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .set('Idempotency-Key', key)
+          .send({ status: ResidentStatus.DISCHARGED, exitDate: '2026-06-23' })
+          .expect(200);
+
+      const first = await send();
+      const second = await send();
+      expect(second.body.id).toBe(first.body.id);
+      expect(second.body.status).toBe(ResidentStatus.DISCHARGED);
+
+      const followUps = await request(app.getHttpServer())
+        .get(`${BASE}/residents/${id}/follow-ups`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      const discharges = (followUps.body as Array<{ type: string }>).filter(
+        (f) => f.type === 'DISCHARGE',
+      );
+      expect(discharges).toHaveLength(1);
+    });
+
+    it('transferência de casa não é barrada pelo guard', async () => {
+      const id = await newResident();
+      const houses = await request(app.getHttpServer())
+        .get(`${BASE}/houses`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      const other = (houses.body as Array<{ id: string }>).find((h) => h.id !== houseId);
+      expect(other).toBeDefined();
+      const res = await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ houseId: other!.id })
+        .expect(200);
+      expect(res.body.houseId).toBe(other!.id);
     });
   });
 

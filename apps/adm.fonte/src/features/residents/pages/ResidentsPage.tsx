@@ -20,6 +20,7 @@ import { useDebounce } from '@/lib/useDebounce';
 import { usePreference } from '@/features/preferences/hooks/usePreference';
 import { useInfiniteResidents, useDeleteResident } from '../hooks/useResidents';
 import { ResidentCard } from '../components/ResidentCard';
+import { RemoveResidentDialog } from '../components/RemoveResidentDialog';
 import { ResidentsFilters } from '../components/ResidentsFilters';
 import { RESIDENT_SORT_PARAMS, toResidentSortOption } from '../constants';
 
@@ -28,6 +29,8 @@ const PERSISTED_FILTER_PARAMS = ['status', 'house', 'overdue', 'sort'] as const;
 
 export function ResidentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Resident | null>(null);
+  // Story 196: um diálogo de baixa por página, com o filho escolhido no menu.
+  const [removeTarget, setRemoveTarget] = useState<Resident | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -204,6 +207,7 @@ export function ResidentsPage() {
               key={resident.id}
               resident={resident}
               onDelete={() => setDeleteTarget(resident)}
+              onRemove={() => setRemoveTarget(resident)}
             />
           ))}
         </div>
@@ -214,6 +218,14 @@ export function ResidentsPage() {
           <Loader2 size={20} className="animate-spin text-muted-foreground" />
         )}
       </div>
+
+      {removeTarget && (
+        <RemoveResidentDialog
+          open
+          resident={removeTarget}
+          onClose={() => setRemoveTarget(null)}
+        />
+      )}
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

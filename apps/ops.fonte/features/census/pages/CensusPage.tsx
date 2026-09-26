@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ResidentStatus } from '@fonte/types';
+import { REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { useAuth } from '@/lib/auth';
 import { getErrorMessage } from '@/lib/errors';
@@ -13,7 +13,7 @@ import { useActiveResidentsByHouse, useConcludeCensus } from '../hooks/useCensus
 import { ResidentPhotoViewer } from '@/features/residents/components/ResidentPhotoViewer';
 import { CensusListItem } from '../components/CensusListItem';
 import { AddResidentModal } from '../components/AddResidentModal';
-import { RemoveResidentModal } from '../components/RemoveResidentModal';
+import { RemoveResidentModal } from '@/features/residents/components/RemoveResidentModal';
 import { ConcludeCensusModal } from '../components/ConcludeCensusModal';
 import { ResidentDetailModal } from '../components/ResidentDetailModal';
 
@@ -22,6 +22,7 @@ const isPending = (r: Resident) => r.status === ResidentStatus.CENSUS_ADDED;
 export function CensusPage() {
   const { staff } = useAuth();
   const houseId = staff?.houseId;
+  const canRemove = staff?.user?.role === Role.ADMIN || staff?.user?.role === Role.COORDINATOR;
 
   const { data: residents = [], isLoading, error, refetch } = useActiveResidentsByHouse(houseId);
   const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
@@ -102,7 +103,9 @@ export function CensusPage() {
             confirmed={isConfirmed(item)}
             pending={isPending(item)}
             onConfirm={() => toggleConfirm(item.id)}
-            onRemove={() => setRemoveTarget({ id: item.id, name: item.name })}
+            onRemove={canRemove && REMOVABLE_RESIDENT_STATUSES.includes(item.status)
+              ? () => setRemoveTarget({ id: item.id, name: item.name })
+              : undefined}
             onOpenDetails={() => setDetailTarget(item)}
             onOpenPhoto={() => setPhotoTarget(item)}
           />

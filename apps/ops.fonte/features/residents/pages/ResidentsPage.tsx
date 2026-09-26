@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { View, Text, FlatList, ActivityIndicator } from "react-native";
+import { View, FlatList } from "react-native";
+import { LoadingState } from "@/components/shared/LoadingState";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { ResidentStatus } from "@fonte/types";
 import { useAuth } from "@/lib/auth";
 import { normalizeForSearch } from "@/lib/searchUtils";
@@ -7,6 +10,8 @@ import { useResidentsByHouse } from "@/features/residents/hooks/useResidents";
 import { ResidentSearchBar } from "@/features/residents/components/ResidentSearchBar";
 import { ResidentStatusFilterModal } from "@/features/residents/components/ResidentStatusFilterModal";
 import { ResidentListItem } from "@/features/residents/components/ResidentListItem";
+import { ResidentRowMenuSheet } from "@/features/residents/components/ResidentRowMenuSheet";
+import { RemoveResidentModal } from "@/features/residents/components/RemoveResidentModal";
 import { LastSyncedAt } from "@/components/shared/LastSyncedAt";
 import { useLastSyncedAt } from "@/lib/offline/store/useLastSyncedAt";
 import {
@@ -22,8 +27,12 @@ export function ResidentsPage() {
     DEFAULT_RESIDENT_STATUS_FILTER,
   );
   const [filterOpen, setFilterOpen] = useState(false);
+  // Story 196: um menu e um modal POR PÁGINA — item de lista não instancia
+  // `Modal` (seriam N modais montados numa lista de casa cheia).
+  const [menuTarget, setMenuTarget] = useState<{ id: string; name: string } | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
 
-  const { data: residents = [], isLoading, refetch } = useResidentsByHouse(
+  const { data: residents = [], isLoading, error, refetch } = useResidentsByHouse(
     staff?.houseId,
   );
   // Story 175: a lista não some mais por idade — a tela diz de quando ela é.
@@ -68,9 +77,9 @@ export function ResidentsPage() {
       />
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#2563eb" />
-        </View>
+        <LoadingState />
+      ) : error && residents.length === 0 ? (
+        <ErrorState onRetry={refetch} />
       ) : (
         <FlatList
           data={filtered}
@@ -79,13 +88,36 @@ export function ResidentsPage() {
           refreshing={isRefreshing}
           onRefresh={handleRefresh}
           ListEmptyComponent={
-            <Text className="text-center text-gray-500 text-sm py-8">
-              Nenhum filho encontrado.
-            </Text>
+            <EmptyState message="Nenhum filho encontrado." />
           }
-          renderItem={({ item }) => <ResidentListItem item={item} />}
+          renderItem={({ item }) => (
+            <ResidentListItem
+              item={item}
+              onOpenMenu={(resident) =>
+                setMenuTarget({ id: resident.id, name: resident.name })
+              }
+            />
+          )}
         />
       )}
+
+      <ResidentRowMenuSheet
+        visible={!!menuTarget}
+        residentName={menuTarget?.name}
+        onClose={() => setMenuTarget(null)}
+        onRemove={() => {
+          setRemoveTarget(menuTarget);
+          setMenuTarget(null);
+        }}
+      />
+
+      <RemoveResidentModal
+        visible={!!removeTarget}
+        houseId={staff?.houseId ?? ""}
+        resident={removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        onSuccess={() => refetch()}
+      />
     </View>
   );
 }

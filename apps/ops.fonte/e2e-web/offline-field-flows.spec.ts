@@ -30,11 +30,15 @@ const INCIDENT_TEXT = `Ocorrência offline ${Date.now()}`;
 const CENSUS_RESIDENT = `Filho Offline ${Date.now()}`;
 /** Filho da fixture do modal de detalhes (story 179): a evasão acima o tiraria da lista. */
 const DETAIL_RESIDENT = `Filho Detalhe ${Date.now()}`;
+/** Story 196: baixa pela LISTA de filhos (fora da contagem) — fixture própria. */
+const LIST_RESIDENT = `Filho Lista ${Date.now()}`;
 
 let api: APIRequestContext;
 let authHeaders: Record<string, string>;
 let houseId: string;
 let censusResidentId: string;
+let listResidentId: string;
+const residentIds: string[] = [];
 
 test.beforeAll(async () => {
   // Sem `baseURL`: com caminho absoluto o Playwright descartaria o prefixo
@@ -61,6 +65,10 @@ test.beforeAll(async () => {
   });
   expect(created.ok(), 'fixture do filho da contagem').toBeTruthy();
   censusResidentId = (await created.json()).id;
+  residentIds.push(censusResidentId);
+  expect((await api.patch(`${API_BASE_URL}/residents/${censusResidentId}`, {
+    headers: authHeaders, data: { status: 'ACTIVE' },
+  })).ok()).toBeTruthy();
 
   const createdForDetail = await api.post(`${API_BASE_URL}/census/residents`, {
     headers: authHeaders,
@@ -72,9 +80,38 @@ test.beforeAll(async () => {
     },
   });
   expect(createdForDetail.ok(), 'fixture do filho do modal de detalhes').toBeTruthy();
+  residentIds.push((await createdForDetail.json()).id);
+
+  // Story 196: a baixa pela lista só é oferecida para filho EM ACOLHIMENTO, e
+  // `POST /census/residents` cria como CENSUS_ADDED — daí a criação por
+  // `POST /residents` com `status: ACTIVE`.
+  const createdForList = await api.post(`${API_BASE_URL}/residents`, {
+    headers: authHeaders,
+    data: {
+      name: LIST_RESIDENT,
+      houseId,
+      entryDate: new Date().toISOString().slice(0, 10),
+      gender: 'MALE',
+      status: 'ACTIVE',
+    },
+  });
+  expect(createdForList.ok(), 'fixture do filho da lista').toBeTruthy();
+  listResidentId = (await createdForList.json()).id;
+  residentIds.push(listResidentId);
 });
 
 test.afterAll(async () => {
+  if (api && residentIds.length) {
+    const admin = await api.post(`${API_BASE_URL}/auth/login`, {
+      data: { identifier: 'admin@fonte.com', password: 'admin123' },
+    });
+    expect(admin.ok()).toBeTruthy();
+    const headers = { Authorization: `Bearer ${(await admin.json()).accessToken}` };
+    for (const id of residentIds) {
+      const deleted = await api.delete(`${API_BASE_URL}/residents/${id}`, { headers });
+      expect([200, 204, 404]).toContain(deleted.status());
+    }
+  }
   await api?.dispose();
 });
 
@@ -269,6 +306,109 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
     await expect(page.getByText(/Network Error|Request failed|Erro ao carregar/)).toHaveCount(0);
 
     await context.setOffline(false);
+  });
+
+  // Story 196 — a mesma baixa, agora pela LISTA de filhos. O que se prova aqui
+  // é o que o unit não alcança: sem sinal o lançamento entra na fila, SOBREVIVE
+  // ao restart do app (ainda offline) e sobe uma vez só quando a rede volta.
+  test('lista de filhos: baixa sem sinal sobrevive ao restart e sobe uma vez só', async ({
+    page,
+    context,
+  }) => {
+    const patches: number[] = [];
+    page.on('response', (response) => {
+      const request_ = response.request();
+      if (request_.method() === 'PATCH' && request_.url().includes(`/residents/${listResidentId}`)) {
+        patches.push(response.status());
+      }
+    });
+
+    await login(page, COORDINATOR);
+    // Passagem com rede: é ela que enche o cache que a lista usa offline.
+    await visible(page, 'Filhos').click();
+    await expect(visible(page, LIST_RESIDENT)).toBeVisible({ timeout: 30_000 });
+
+    await goOffline(page, context);
+
+    await page.getByLabel(`Ações de ${LIST_RESIDENT}`).click();
+    await visible(page, 'Remover da casa').click();
+    await visible(page, 'Declarar alta').click();
+    await visible(page, 'Confirmar').click();
+
+    // Fecha na hora (o aviso "salvo no aparelho" é `Alert` nativo, que o
+    // react-native-web não desenha — coberto no unit da tela).
+    await expect(page.getByText('Remover filho').filter({ visible: true })).toHaveCount(0, {
+      timeout: 15_000,
+    });
+    expect(patches).toEqual([]);
+
+    // Export Expo não tem service worker: liberar somente assets no restart,
+    // mantendo API bloqueada e NetInfo offline antes do novo boot.
+    await page.waitForFunction((id) => Object.values(localStorage).some(
+      (value) => value.includes(id) && value.includes('mutations'),
+    ), listResidentId);
+    await page.route('**/api/v1/**', (route) => route.abort('internetdisconnected'));
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'onLine', { get: () => false, configurable: true });
+    });
+    await visible(page, 'Início').click();
+    await context.setOffline(false);
+    await page.reload();
+    await expect(page.getByTestId('sync-queue-badge').filter({ visible: true })).toHaveCount(1, {
+      timeout: 30_000,
+    });
+    expect(patches).toEqual([]);
+
+    await page.unroute('**/api/v1/**');
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'onLine', { get: () => true, configurable: true });
+      window.dispatchEvent(new Event('online'));
+    });
+
+    await expect(page.getByTestId('sync-queue-badge').filter({ visible: true })).toHaveCount(0, {
+      timeout: 60_000,
+    });
+    await expect.poll(() => patches, { timeout: 60_000 }).toEqual([200]);
+    await expect
+      .poll(
+        async () => {
+          const response = await api.get(`${API_BASE_URL}/residents/${listResidentId}`, {
+            headers: authHeaders,
+          });
+          return (await response.json()).status;
+        },
+        { timeout: 60_000 },
+      )
+      .toBe('DISCHARGED');
+  });
+
+  test('lista de filhos: baixa recusada fica em pendências com mensagem do backend', async ({ page, context }) => {
+    const name = `Filho Recusado ${Date.now()}`;
+    const created = await api.post(`${API_BASE_URL}/residents`, {
+      headers: authHeaders,
+      data: { name, houseId, gender: 'MALE', status: 'ACTIVE', entryDate: '2026-01-01' },
+    });
+    expect(created.ok()).toBeTruthy();
+    const id = (await created.json()).id;
+    residentIds.push(id);
+    await login(page, COORDINATOR);
+    await visible(page, 'Filhos').click();
+    await expect(visible(page, name)).toBeVisible({ timeout: 30_000 });
+    await goOffline(page, context);
+    await page.getByLabel(`Ações de ${name}`).click();
+    await visible(page, 'Remover da casa').click();
+    await visible(page, 'Declarar alta').click();
+    await visible(page, 'Confirmar').click();
+    // Outro operador encerrou o vínculo enquanto este aparelho estava offline.
+    expect((await api.patch(`${API_BASE_URL}/residents/${id}`, {
+      headers: authHeaders, data: { status: 'EVADED', exitDate: '2026-09-26' },
+    })).ok()).toBeTruthy();
+    await visible(page, 'Início').click();
+    await context.setOffline(false);
+    await page.getByTestId('sync-queue-badge').filter({ visible: true }).click();
+    await expect(visible(page, 'Não enviadas')).toBeVisible({ timeout: 30_000 });
+    await expect(visible(page, 'Filho já encerrado (evasão) não pode receber alta.')).toBeVisible();
+    await expect(page.getByText(/Network Error|Request failed/)).toHaveCount(0);
   });
 
   test('mensagens: sem sinal a ação é desabilitada com aviso, sem erro na tela', async ({

@@ -53,8 +53,8 @@ Rodada de autorun **194–198** — aberta em 2026-09-15.
 | 1 | 197 — remover o vínculo filho↔ministério | [OK] | api 1806 · e2e 623 · adm 1731 · ops 1311 | `1884270` | `6425b41` |
 | 2 | 194 — casas com múltiplos coordenadores | [OK] | api 1828 · e2e 634 · adm 1749 · ops 1322 | `2c06a59` | `736c9e9` |
 | 3 | 196 — remover filho da casa pela lista | [OK] | api 1849 · e2e 640 · adm 1770 · ops 1342 · offline 7 | `1aebb96` | `df316b3` |
-| 4 | 195 — módulo de contribuição em produtos no ops | in_progress | iniciada em 2026-09-26 | | |
-| 5 | 198 — criar produto na declaração de contribuição | [ ] | | | |
+| 4 | 195 — módulo de contribuição em produtos no ops | [OK] | api 1860 · e2e 645 · ops 1363 · web 6 · client 307 | `2d5ceb3` | `ad87ea3` |
+| 5 | 198 — criar produto na declaração de contribuição | in_progress | iniciada em 2026-09-27 | | |
 
 ## Log
 
@@ -81,5 +81,9 @@ Cobertura API 93.15%, adm 93.65%, ops 94.84%, api-client 97.98%; builds verdes �
 Nota: `tsc --noEmit` ops ainda acusa erros preexistentes em testes; build Expo e gates obrigatórios verdes.
 
 ## Resumo final
+
+[OK] 195 — api 1860 + e2e 645; ops 1363 + web 6; api-client 307; builds verdes — commit `2d5ceb3`, merge `ad87ea3` — 2026-09-27.
+Cobertura API 93.16%, ops 95.01% (feature 97.14%, offline 99.42%), api-client 97.99%.
+Maestro atualizado, opcional não executado; 198 precisa resolver IDs locais das linhas no envio, reutilizando outbox existente.
 
 <vazio até o fim da rodada>

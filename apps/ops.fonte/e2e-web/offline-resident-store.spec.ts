@@ -155,6 +155,8 @@ async function restartOffline(page: Page) {
 
 async function openResidentsTab(page: Page) {
   await visible(page, 'Filhos').click();
+  // A lista é virtualizada: buscar o alvo evita depender do tamanho do banco.
+  await page.getByPlaceholder('Buscar filho...').filter({ visible: true }).fill(RESIDENT_NAME);
   await expect(visible(page, RESIDENT_NAME)).toBeVisible({ timeout: 30_000 });
 }
 
@@ -189,7 +191,8 @@ test.describe('ops.fonte — store local dos filhos sem sinal', () => {
     // aparelho, porque a rede está bloqueada.
     await visible(page, RESIDENT_NAME).click();
     await expect(visible(page, 'Identificação')).toBeVisible({ timeout: 30_000 });
-    await expect(visible(page, 'Ministério')).toBeVisible();
+    // Story 197: ministério não integra mais a ficha do filho.
+    await expect(visible(page, 'Ministério')).toHaveCount(0);
 
     await visible(page, 'Acompanhamento').click();
     await expect(visible(page, FOLLOW_UP_TEXT)).toBeVisible({ timeout: 15_000 });

@@ -1,8 +1,6 @@
-import { useForm, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { router, useLocalSearchParams, Stack } from 'expo-router';
-import { getErrorMessage } from '@/lib/errors';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams, Stack } from 'expo-router';
+import { useProductContributionForm } from '../hooks/useProductContributionForm';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
@@ -10,20 +8,16 @@ import {
   useInventoryCatalog,
   useResidentReceivables,
   useResidentProductContributions,
-  useDeclareProductContribution,
 } from '../hooks/useProductContributions';
 import {
-  productContributionFormSchema,
   emptyProductLine,
-  toContributionLines,
-  type ProductContributionFormValues,
 } from '../lib/productContributions';
 import { currentReceivable, formatReferenceMonth } from '../lib/receivables';
 import { ProductContributionRow } from '../components/ProductContributionRow';
 import { ProductContributionList } from '../components/ProductContributionList';
 
 export function DeclareProductContributionPage() {
-  const { residentId, houseId } = useLocalSearchParams<{ residentId: string; houseId: string }>();
+  const { residentId, houseId, returnTo } = useLocalSearchParams<{ residentId: string; houseId: string; returnTo?: string }>();
 
   const {
     data: receivables,
@@ -38,34 +32,8 @@ export function DeclareProductContributionPage() {
   const { data: declared = [] } = useResidentProductContributions(residentId, receivable?.id, {
     enabled: !!receivable,
   });
-  const mutation = useDeclareProductContribution(residentId!);
-
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm<ProductContributionFormValues>({
-    resolver: zodResolver(productContributionFormSchema),
-    defaultValues: { products: [emptyProductLine()] },
-  });
-
-  const { fields, append, remove } = useFieldArray({ control, name: 'products' });
-
-  const onSubmit = (data: ProductContributionFormValues) => {
-    if (!receivable) return;
-    mutation.mutate(
-      { receivableId: receivable.id, lines: toContributionLines(data.products) },
-      {
-        onSuccess: () =>
-          Alert.alert('Sucesso', 'Contribuição em produtos declarada.', [
-            { text: 'OK', onPress: () => router.back() },
-          ]),
-        onError: (err) =>
-          Alert.alert('Erro', getErrorMessage(err, 'Não foi possível declarar a contribuição.')),
-      },
-    );
-  };
+  const { control, setValue, formState: { errors }, fields, append, remove, onSubmit, isPending } =
+    useProductContributionForm(residentId!, houseId!, receivable, returnTo);
 
   if (loadingReceivables) {
     return (
@@ -129,10 +97,10 @@ export function DeclareProductContributionPage() {
 
           <TouchableOpacity
             className="bg-blue-600 rounded-lg py-3.5 items-center"
-            onPress={handleSubmit(onSubmit)}
-            disabled={mutation.isPending}
+            onPress={onSubmit}
+            disabled={isPending}
           >
-            {mutation.isPending ? (
+            {isPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text className="text-white font-semibold text-base">Declarar contribuição</Text>

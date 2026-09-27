@@ -34,6 +34,7 @@ export type OutboxMutationKey = readonly [string, string];
  * aqui — por isso o catálogo é a fonte única, e o teste de catálogo cobre todas.
  */
 export const OUTBOX_MUTATION_KEYS = {
+  productContributionDeclare: ['productContributions', 'declare'],
   censusAddResident: ['census', 'addResident'],
   censusConclude: ['census', 'conclude'],
   /** Segunda etapa encadeada do `censusAddResident` (decisão 7): precisa do id criado. */
@@ -61,6 +62,7 @@ export const OUTBOX_MUTATION_KEY_LIST: readonly OutboxMutationKey[] =
  * o operador vê na tela, não o nome do módulo.
  */
 const OUTBOX_LABELS: Record<string, string> = {
+  'productContributions/declare': 'Contribuição em produtos',
   'census/addResident': 'Filho adicionado na contagem',
   'census/conclude': 'Conclusão da contagem',
   'residents/uploadPhoto': 'Foto do filho',

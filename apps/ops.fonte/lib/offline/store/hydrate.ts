@@ -49,6 +49,15 @@ function needsServerConfirmation(queryClient: QueryClient, queryKey: readonly un
 export async function hydrateResidentQueries(queryClient: QueryClient): Promise<void> {
   const dump = await readStoreDump();
 
+  for (const entry of dump.contributions ?? []) {
+    const key = queryKeys.houses.productContributions(entry.houseId, entry.month);
+    // Snapshot periódico não pode sobrescrever otimismo mais recente em memória.
+    if ((queryClient.getQueryState(key)?.dataUpdatedAt ?? 0) <= entry.updatedAt) {
+      seed(queryClient, key, entry.data, entry.updatedAt);
+      needsServerConfirmation(queryClient, key);
+    }
+  }
+
   for (const house of dump.houses) {
     const byHouse = queryKeys.residents.byHouse(house.houseId);
     const countByHouse = queryKeys.residents.countByHouse(house.houseId);

@@ -9,6 +9,8 @@ import { ReceivableProductContribution } from './receivable-product-contribution
 import { ResidentReceivable } from './resident-receivable.entity';
 import { Staff } from '../staff/staff.entity';
 import { DeclareProductContributionDto } from './dto/declare-product-contribution.dto';
+import { House } from '../house/house.entity';
+import type { HouseProductContributionView } from '@fonte/types';
 
 export interface ProductContributionView {
   id: string;
@@ -141,6 +143,38 @@ export class ReceivableProductContributionService {
       });
       return manager.getRepository(ReceivableProductContribution).save(contribution);
     });
+  }
+
+  /** Recorte operacional: somente produtos, sem valores do carnê. */
+  async listByHouseAndMonth(houseId: string, referenceMonth?: string): Promise<HouseProductContributionView[]> {
+    if (!(await this.dataSource.getRepository(House).existsBy({ id: houseId }))) {
+      throw new NotFoundException(`House ${houseId} not found`);
+    }
+    const now = new Date();
+    // PostgreSQL date é string: não converter YYYY-MM-01 para Date em fuso negativo.
+    const month = referenceMonth
+      ? `${referenceMonth.slice(0, 7)}-01`
+      : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const rows = await this.repo.createQueryBuilder('contribution')
+      .innerJoinAndSelect('contribution.receivable', 'receivable', 'receivable.deleted_at IS NULL')
+      .innerJoinAndSelect('receivable.resident', 'resident', 'resident.deleted_at IS NULL')
+      .leftJoinAndSelect('contribution.createdBy', 'staff')
+      .where('resident.house_id = :houseId', { houseId })
+      .andWhere('receivable.reference_month = :month', { month })
+      .andWhere('contribution.deleted_at IS NULL')
+      .orderBy('contribution.created_at', 'ASC')
+      .getMany();
+    const groups = new Map<string, HouseProductContributionView>();
+    for (const row of rows) {
+      const { resident } = row.receivable;
+      const group = groups.get(row.receivableId) ?? {
+        residentId: resident.id, residentName: resident.name,
+        receivableId: row.receivableId, referenceMonth: month, lines: [],
+      };
+      group.lines.push({ ...this.toView(row), createdAt: row.createdAt.toISOString() });
+      groups.set(row.receivableId, group);
+    }
+    return [...groups.values()].sort((a, b) => a.residentName.localeCompare(b.residentName, 'pt-BR'));
   }
 
   /** Lista as contribuições de produto de uma parcela. */

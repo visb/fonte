@@ -671,6 +671,15 @@ export interface ReceivableProductContribution {
   createdAt: string;
 }
 
+/** Contribuições da casa agrupadas por filho e parcela, sem valores financeiros. */
+export interface HouseProductContributionView {
+  residentId: string;
+  residentName: string;
+  receivableId: string;
+  referenceMonth: string;
+  lines: ReceivableProductContribution[];
+}
+
 /** Uma linha declarada: item (catálogo) XOR descrição (avulso). */
 export interface ProductContributionLineInput {
   inventoryItemId?: string;

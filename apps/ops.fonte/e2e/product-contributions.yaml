@@ -1,7 +1,7 @@
 appId: org.fonte.ops
-# Story 114 — declaração de contribuição em PRODUTOS de um filho.
-# Fluxo: detalhe do filho → "Declarar contribuição de produtos" → uma linha do
-# catálogo + uma avulsa → declarar → aparece listada na parcela como já declarada.
+# Stories 114/195 — declaração de contribuição em PRODUTOS de um filho.
+# Fluxo: Menu → Contribuições → Nova declaração → escolher filho → catálogo +
+# avulso → declarar → volta para a fila da casa.
 # Requer emulador/dispositivo + API de teste (schema 111+112) com catálogo
 # semeado na casa. Pré-requisitos de build/ambiente: story 184.
 #
@@ -26,19 +26,16 @@ appId: org.fonte.ops
 # família — a rota cheia segue ADMIN/COORDINATOR.
 ---
 - runFlow: helpers/login-operator.yaml
-- tapOn: "Filhos"
-- assertVisible: "João Testador"
-- tapOn: "Buscar filho..."
+- tapOn: "Menu"
+- tapOn: "Contribuições"
+- tapOn: "Nova declaração"
+- tapOn: "Buscar por nome"
 # Prefixo sem acento: o Maestro não digita fora do ASCII
 # (mobile-dev-inc/maestro#146).
 - inputText: "Marcelo"
 - assertVisible: "Marcelo Reacolhido"
 - hideKeyboard
 - tapOn: "Marcelo Reacolhido"
-- waitForAnimationToEnd
-- assertVisible: "Visão Geral"
-
-- tapOn: "Declarar contribuição de produtos"
 - waitForAnimationToEnd
 - assertVisible: "Parcela"
 
@@ -73,4 +70,4 @@ appId: org.fonte.ops
 - tapOn: "Declarar contribuição"
 - waitForAnimationToEnd
 - assertVisible: "Contribuição em produtos declarada."
-- tapOn: "OK"
+- assertVisible: "Cesta basica"

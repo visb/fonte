@@ -8,10 +8,12 @@
  * allowlist LGPD que decide o que pode ir para o disco.
  *
  * A hidratação (`hydrate.ts`) usa `setQueryData`, que o React Query marca como
- * `manual`: sem esse filtro o store se regravaria em loop com o que ele mesmo
- * acabou de servir.
+ * `manual`: o filtro evita regravar o que ele mesmo acabou de servir. A fila de
+ * produtos é exceção explícita: também persiste o otimismo e o rollback; seu
+ * putIfChanged evita regravar payload idêntico durante a hidratação.
  */
 import type { QueryClient } from '@tanstack/react-query';
+import type { HouseProductContributionView } from '@fonte/types';
 import type {
   ConsentStatus,
   HouseMinistry,
@@ -22,6 +24,7 @@ import type {
 } from '@fonte/api-client';
 import {
   saveHouseMinistries,
+  saveHouseProductContributions,
   saveResident,
   saveResidentDetail,
   saveResidentList,
@@ -29,6 +32,7 @@ import {
 import type { ResidentDetailKind } from './schema';
 
 export type WriteTarget =
+  | { table: 'contributions'; houseId: string; month: string }
   | { table: 'list'; houseId: string }
   | { table: 'resident'; residentId: string }
   | { table: 'detail'; residentId: string; kind: ResidentDetailKind }
@@ -53,6 +57,9 @@ export function residentStoreWriteTarget(queryKey: readonly unknown[]): WriteTar
     return { table: 'list', houseId: id };
   }
   if (resource === 'resident') return { table: 'resident', residentId: id };
+  if (resource === 'resident-product-contributions-house' && typeof queryKey[2] === 'string') {
+    return { table: 'contributions', houseId: id, month: queryKey[2] };
+  }
   if (resource === 'house-ministries') return { table: 'ministries', houseId: id };
 
   const kind = DETAIL_BY_RESOURCE[resource];
@@ -68,6 +75,9 @@ export async function writeQueryThrough(
   if (!target || data === undefined || data === null) return;
 
   switch (target.table) {
+    case 'contributions':
+      if (Array.isArray(data)) await saveHouseProductContributions(target.houseId, target.month, data as HouseProductContributionView[]);
+      return;
     case 'list':
       if (Array.isArray(data)) await saveResidentList(target.houseId, data as Resident[]);
       return;
@@ -95,7 +105,9 @@ export function attachResidentStoreWriteThrough(queryClient: QueryClient): () =>
   return queryClient.getQueryCache().subscribe((event) => {
     if (event.type !== 'updated') return;
     const action = event.action as { type: string; data?: unknown; manual?: boolean };
-    if (action.type !== 'success' || action.manual) return;
+    if (action.type !== 'success') return;
+    // A fila precisa persistir também setQueryData otimista e rollback (story 195).
+    if (action.manual && event.query.queryKey[0] !== 'resident-product-contributions-house') return;
 
     // Falha de gravação não pode derrubar a tela: o próximo snapshot da casa
     // reescreve o bloco inteiro.

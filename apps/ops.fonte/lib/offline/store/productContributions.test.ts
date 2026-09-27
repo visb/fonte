@@ -1,0 +1,43 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { QueryClient } from '@tanstack/react-query';
+import { waitFor } from '@testing-library/react-native';
+import { createWebDriver } from './driver.asyncStorage';
+import { setResidentStoreDriver } from './driver';
+import { attachResidentStoreWriteThrough, writeQueryThrough } from './writeThrough';
+import { hydrateResidentQueries } from './hydrate';
+import { purgeAll, readStoreDump, saveResidentList } from './residentStore';
+import { queryKeys } from '@/lib/queryKeys';
+import { STORE_VERSION } from './schema';
+
+const key = queryKeys.houses.productContributions('h', '2026-09-01');
+const data = [{ residentId: 'r', residentName: 'Ana', receivableId: 'rc', referenceMonth: '2026-09-01', lines: [{ id: 'outbox:pending' }] }];
+const client = () => new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
+beforeEach(async () => { await AsyncStorage.clear(); setResidentStoreDriver(createWebDriver()); });
+afterEach(() => setResidentStoreDriver(null));
+it('manual optimism survives restart, rollback persists and logout purges the new table', async () => {
+  const c = client();
+  const detach = attachResidentStoreWriteThrough(c);
+  c.setQueryData(key, data);
+  await waitFor(async () => expect((await readStoreDump()).contributions?.[0].data).toEqual(data));
+  const restarted = client();
+  await hydrateResidentQueries(restarted);
+  expect(restarted.getQueryData(key)).toEqual(data);
+  c.setQueryData(key, []);
+  await waitFor(async () => expect((await readStoreDump()).contributions?.[0].data).toEqual([]));
+  await purgeAll();
+  expect((await readStoreDump()).contributions).toEqual([]);
+  detach();
+});
+it('additive schema preserves existing resident data and ignores invalid/non-array payload', async () => {
+  expect(STORE_VERSION).toBe(1);
+  await saveResidentList('h', [{ id: 'r', name: 'Ana', houseId: 'h' }] as never);
+  setResidentStoreDriver(createWebDriver());
+  await writeQueryThrough(key, data);
+  await writeQueryThrough(key, {});
+  await writeQueryThrough(['resident-product-contributions-house', 'h'], data);
+  expect((await readStoreDump()).residents[0].data.name).toBe('Ana');
+  const c = client();
+  c.setQueryData(key, ['newer'], { updatedAt: Date.now() + 1000 });
+  await hydrateResidentQueries(c);
+  expect(c.getQueryData(key)).toEqual(['newer']);
+});

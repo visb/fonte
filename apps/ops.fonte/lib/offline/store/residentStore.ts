@@ -18,6 +18,7 @@ import type {
   ResidentReceivable,
 } from '@fonte/api-client';
 import { getResidentStoreDriver } from './driver';
+import type { HouseProductContributionView } from '@fonte/types';
 import {
   detailRowId,
   RESIDENT_DETAIL_KINDS,
@@ -55,6 +56,7 @@ export interface HouseStoreData {
 
 /** Leitura crua do store, usada para hidratar o cache no boot. */
 export interface StoreDump {
+  contributions?: { houseId: string; month: string; data: HouseProductContributionView[]; updatedAt: number }[];
   houses: { houseId: string; residents: Resident[]; updatedAt: number }[];
   residents: StoredEntry<Resident>[];
   details: {
@@ -150,6 +152,10 @@ export async function saveHouseMinistries(
   ministries: HouseMinistry[],
 ): Promise<void> {
   await putIfChanged('house_ministries', houseId, houseId, ministries);
+}
+
+export async function saveHouseProductContributions(houseId: string, month: string, data: HouseProductContributionView[]): Promise<void> {
+  await putIfChanged('house_product_contributions', `${houseId}:${month}`, houseId, data);
 }
 
 /** Remove filhos e **toda** a ficha deles (os quatro blocos de detalhe). */
@@ -250,10 +256,11 @@ export async function readHouseMinistries(
 /** Tudo que está no aparelho, para hidratar o cache do React Query no boot. */
 export async function readStoreDump(): Promise<StoreDump> {
   const driver = getResidentStoreDriver();
-  const [residentRows, detailRows, ministryRows] = await Promise.all([
+  const [residentRows, detailRows, ministryRows, contributionRows] = await Promise.all([
     driver.listAll('residents'),
     driver.listAll('resident_details'),
     driver.listAll('house_ministries'),
+    driver.listAll('house_product_contributions'),
   ]);
 
   const residents = residentRows
@@ -283,6 +290,10 @@ export async function readStoreDump(): Promise<StoreDump> {
   });
 
   return {
+    contributions: contributionRows.flatMap((row) => {
+      const entry = parse<HouseProductContributionView[]>(row);
+      return entry && row.houseId ? [{ houseId: row.houseId, month: row.id.slice(row.houseId.length + 1), ...entry }] : [];
+    }),
     houses: [...byHouse.entries()].map(([houseId, house]) => ({
       houseId,
       residents: [...house.residents].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),

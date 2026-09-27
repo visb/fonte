@@ -501,6 +501,7 @@ export class ResidentController {
 
   @Post(':id/receivables/:receivableId/product-contributions')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  @Idempotent()
   declareProductContributions(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('receivableId', ParseUUIDPipe) receivableId: string,

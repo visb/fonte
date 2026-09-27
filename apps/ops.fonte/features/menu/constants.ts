@@ -23,6 +23,7 @@ export const MENU_SECTIONS: { key: MenuSectionKey; label: string }[] = [
 ];
 
 export const MENU_ITEM_KEYS = [
+  'contributions',
   'residents',
   'incidents',
   'activities',
@@ -67,6 +68,11 @@ export interface MenuAccess {
 }
 
 export const MENU_ITEMS: AppMenuItem[] = [
+  {
+    key: 'contributions', label: 'Contribuições', icon: 'gift-outline',
+    route: '/(app)/contributions', section: 'casa', color: '#16a34a', bg: '#f0fdf4',
+    quickAction: { label: 'Nova declaração', route: '/(app)/contributions/pick-resident' },
+  },
   {
     key: 'residents',
     label: 'Filhos',
@@ -199,6 +205,7 @@ export const MENU_ITEMS: AppMenuItem[] = [
 
 /** Ordem dos atalhos do dashboard — subconjunto do catálogo, não lista paralela. */
 export const QUICK_ACTION_KEYS: MenuItemKey[] = [
+  'contributions',
   'incidents',
   'activities',
   'residents',

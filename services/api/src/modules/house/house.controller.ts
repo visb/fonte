@@ -12,6 +12,7 @@
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -35,6 +36,8 @@ import { HouseRule } from './house-rule.entity';
 import { HouseService } from './house.service';
 import { MinistryService } from '../ministry/ministry.service';
 import { CreateMinistryDto } from '../ministry/dto/create-ministry.dto';
+import { ReceivableProductContributionService } from '../resident-receivable/receivable-product-contribution.service';
+import { GetHouseProductContributionsDto } from './dto/get-house-product-contributions.dto';
 
 const photoOptions = {
   storage: memoryStorage(),
@@ -52,6 +55,7 @@ export class HouseController {
   constructor(
     private houseService: HouseService,
     private ministryService: MinistryService,
+    private productContributionService: ReceivableProductContributionService,
   ) {}
 
   @Get()
@@ -127,6 +131,15 @@ export class HouseController {
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   findResidents(@Param('id', ParseUUIDPipe) id: string) {
     return this.houseService.findResidents(id);
+  }
+
+  @Get(':id/product-contributions')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  productContributions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: GetHouseProductContributionsDto,
+  ) {
+    return this.productContributionService.listByHouseAndMonth(id, query.referenceMonth);
   }
 
   // â”€â”€â”€ Staff â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

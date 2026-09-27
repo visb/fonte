@@ -1,5 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ProductContributionLineInput } from '@fonte/api-client';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import type { ReceivableProductContribution } from '@fonte/api-client';
+import type { ProductContributionDeclareVariables } from '@/lib/offline/mutationDefaults';
+import { OUTBOX_MUTATION_KEYS } from '@/lib/offline/outbox';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 
@@ -77,22 +79,8 @@ export function useResidentProductContributions(
  * Independe do pagamento em dinheiro. Ao concluir, invalida o carnê, as
  * contribuições da parcela e o detalhe do filho.
  */
-export function useDeclareProductContribution(residentId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      receivableId,
-      lines,
-    }: {
-      receivableId: string;
-      lines: ProductContributionLineInput[];
-    }) => api.residents.declareProductContributions(residentId, receivableId, { lines }),
-    onSuccess: (_data, { receivableId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.residents.receivables(residentId) });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.residents.productContributions(residentId, receivableId),
-      });
-      queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(residentId) });
-    },
+export function useDeclareProductContribution() {
+  return useMutation<ReceivableProductContribution[], unknown, ProductContributionDeclareVariables>({
+    mutationKey: OUTBOX_MUTATION_KEYS.productContributionDeclare,
   });
 }

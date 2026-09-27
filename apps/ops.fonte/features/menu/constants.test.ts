@@ -52,6 +52,7 @@ describe('buildMenuItems por perfil', () => {
   it('servo com casa vê o pacote da casa, sem contagem nem configurações da casa', () => {
     const keys = keysOf(servant);
     expect(keys).toEqual([
+      'contributions',
       'residents',
       'incidents',
       'activities',
@@ -181,6 +182,7 @@ describe('buildQuickActions', () => {
   it('mantém os rótulos e as rotas de hoje a partir do catálogo', () => {
     const actions = buildQuickActions(servant);
     expect(actions.map((action) => action.label)).toEqual([
+      'Nova declaração',
       'Nova ocorrência',
       'Atividades',
       'Ver filhos',

@@ -107,6 +107,9 @@ const noDetail: DetailBuilder = () => null;
  * forma que a dead-letter guarda e a que a fila pendente expõe.
  */
 export const SYNC_ITEM_PRESENTATION: Record<string, SyncItemPresentation> = {
+  [serializeMutationKey(OUTBOX_MUTATION_KEYS.productContributionDeclare)]: {
+    icon: 'gift-outline', tint: '#16a34a', background: '#f0fdf4', detail: noDetail,
+  },
   [serializeMutationKey(OUTBOX_MUTATION_KEYS.censusAddResident)]: {
     icon: 'person-add-outline',
     tint: '#0d9488',

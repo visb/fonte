@@ -9,6 +9,8 @@
  */
 import type { MutationOptions, QueryClient } from '@tanstack/react-query';
 import { ActivityStatus, MovementType } from '@fonte/types';
+import type { ProductContributionLineInput, ReceivableProductContribution } from '@fonte/types';
+import { applyProductContribution, settleProductContribution } from './productContributions';
 import type {
   Activity,
   CensusConcludeInput,
@@ -51,6 +53,14 @@ import {
 export interface PickedPhoto {
   uri: string;
   type: string;
+}
+
+export interface ProductContributionDeclareVariables extends OutboxVariables {
+  residentId: string;
+  receivableId: string;
+  houseId: string;
+  referenceMonth: string;
+  lines: ProductContributionLineInput[];
 }
 
 export interface CensusAddResidentVariables extends OutboxVariables {
@@ -521,6 +531,24 @@ export function registerMutationDefaults(
   queryClient: QueryClient,
   options: RegisterMutationDefaultsOptions = {},
 ): void {
+  defineOutboxMutation<ProductContributionDeclareVariables, ReceivableProductContribution[]>(queryClient, {
+    key: OUTBOX_MUTATION_KEYS.productContributionDeclare,
+    prepare: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.houses.productContributions(variables.houseId, variables.referenceMonth) });
+    },
+    run: (variables) => api.residents.declareProductContributions(
+      variables.residentId, variables.receivableId, { lines: variables.lines },
+      { idempotencyKey: variables.idempotencyKey },
+    ),
+    optimistic: applyProductContribution,
+    settled: (client, variables, data) => {
+      settleProductContribution(client, variables, data);
+      void client.invalidateQueries({ queryKey: queryKeys.residents.productContributions(variables.residentId, variables.receivableId) });
+      void client.invalidateQueries({ queryKey: queryKeys.residents.receivables(variables.residentId) });
+      void client.invalidateQueries({ queryKey: queryKeys.residents.detail(variables.residentId) });
+      void client.invalidateQueries({ queryKey: queryKeys.houses.productContributions(variables.houseId, variables.referenceMonth) });
+    },
+  }, options);
   defineOutboxMutation<CensusAddResidentVariables, Resident>(
     queryClient,
     {

@@ -52,6 +52,8 @@ export const RESIDENT_STORE_QUERY_PREFIXES = [
   'resident-attachments',
   'resident-consents',
   'resident-receivables',
+  // Fila da casa contém nome de filho: store purgado no logout, nunca blob de 24h.
+  'resident-product-contributions-house',
 ] as const;
 
 /**

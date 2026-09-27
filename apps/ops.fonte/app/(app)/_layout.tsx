@@ -104,6 +104,7 @@ export default function AppLayout() {
             ),
           }}
         />
+        <Tabs.Screen name="contributions" options={{ title: 'Contribuições', headerShown: false, href: null }} />
         <Tabs.Screen
           name="activities"
           options={{

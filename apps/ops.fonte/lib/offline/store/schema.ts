@@ -27,6 +27,8 @@ export const STORE_VERSION = 1;
 
 /** Tabelas do store. `meta` guarda o carimbo do último sync por casa. */
 export const STORE_TABLES = [
+  // Adição compatível: criada no boot sem apagar cache/outbox existentes.
+  'house_product_contributions',
   'residents',
   'resident_details',
   'house_ministries',

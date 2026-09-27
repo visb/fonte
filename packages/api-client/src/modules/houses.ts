@@ -1,4 +1,5 @@
 import type { AxiosInstance } from 'axios';
+import type { HouseProductContributionView } from '@fonte/types';
 import type {
   House,
   CreateHouseInput,
@@ -17,6 +18,8 @@ import type {
 export function createHousesModule(http: AxiosInstance) {
   return {
     list: () => http.get<House[]>('/houses').then((r) => r.data),
+    productContributions: (id: string, params?: { referenceMonth?: string }) =>
+      http.get<HouseProductContributionView[]>(`/houses/${id}/product-contributions`, { params }).then((r) => r.data),
     getById: (id: string) => http.get<House>(`/houses/${id}`).then((r) => r.data),
     create: (data: CreateHouseInput) => http.post<House>('/houses', data).then((r) => r.data),
     update: (id: string, data: UpdateHouseInput) =>

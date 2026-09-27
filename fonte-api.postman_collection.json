@@ -828,6 +828,19 @@
           }
         },
         {
+          "name": "Get House Product Contributions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/houses/{{houseId}}/product-contributions?referenceMonth=2026-09-01",
+              "host": ["{{baseUrl}}"],
+              "path": ["houses", "{{houseId}}", "product-contributions"],
+              "query": [{"key": "referenceMonth", "value": "2026-09-01"}]
+            },
+            "description": "Story 195 — contribuições da casa agrupadas em {residentId,residentName,receivableId,referenceMonth,lines}. Lines reutiliza a view de produtos; nenhum valor financeiro é exposto. Mês opcional YYYY-MM-DD (padrão: corrente). Ignora contribuições/parcelas apagadas e filhos sem contribuição. Roles ADMIN, COORDINATOR, SERVANT. 400 data inválida; 404 casa inexistente."
+          }
+        },
+        {
           "name": "Get House Staff",
           "request": {
             "method": "GET",
@@ -1836,6 +1849,12 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "Opcional (story 195): UUID estável por declaração. Reutilize a MESMA chave no replay offline/resposta perdida para não duplicar linhas nem estoque.",
+                "disabled": true
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"

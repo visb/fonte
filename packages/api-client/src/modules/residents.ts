@@ -158,11 +158,13 @@ export function createResidentsModule(http: AxiosInstance) {
       id: string,
       receivableId: string,
       data: DeclareProductContributionInput,
+      options?: RequestOptions,
     ): Promise<ReceivableProductContribution[]> =>
       http
         .post<ReceivableProductContribution[]>(
           `/residents/${id}/receivables/${receivableId}/product-contributions`,
           data,
+          ...requestConfig(options),
         )
         .then((r) => r.data),
 

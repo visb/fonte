@@ -11,11 +11,13 @@ import { HouseCapacityRequestService } from './house-capacity-request.service';
 import { MinistryModule } from '../ministry/ministry.module';
 import { NotificationModule } from '../notification/notification.module';
 import { Staff } from '../staff/staff.entity';
+import { ResidentReceivableModule } from '../resident-receivable/resident-receivable.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([House, HousePhoto, HouseRule, HouseCapacityRequest, Staff]),
     MinistryModule,
+    ResidentReceivableModule,
     NotificationModule,
   ],
   controllers: [HouseController, HouseCapacityRequestController],

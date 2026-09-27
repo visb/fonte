@@ -1,5 +1,6 @@
 import { Role } from '@fonte/types';
 import { HouseController } from './house.controller';
+const products = { listByHouseAndMonth: jest.fn().mockResolvedValue([]) };
 
 function houseSvc() {
   return {
@@ -28,7 +29,7 @@ beforeEach(() => jest.clearAllMocks());
 describe('HouseController', () => {
   it('CRUD + photos + residents/staff/rules delegate', async () => {
     const s = houseSvc();
-    const c = new HouseController(s as never, ministrySvc as never);
+    const c = new HouseController(s as never, ministrySvc as never, products as never);
     await c.findAll();
     await c.findOne('h1');
     await c.create({ name: 'Casa' } as never);
@@ -47,20 +48,22 @@ describe('HouseController', () => {
 
   it('update keeps capacity fields for ADMIN', async () => {
     const s = houseSvc();
-    const c = new HouseController(s as never, ministrySvc as never);
+    const c = new HouseController(s as never, ministrySvc as never, products as never);
     await c.update('h1', { generalCapacity: 10, staffCapacity: 2 } as never, { role: Role.ADMIN } as never);
     expect(s.update).toHaveBeenCalledWith('h1', { generalCapacity: 10, staffCapacity: 2 });
   });
 
   it('update strips capacity fields for COORDINATOR', async () => {
     const s = houseSvc();
-    const c = new HouseController(s as never, ministrySvc as never);
+    const c = new HouseController(s as never, ministrySvc as never, products as never);
     await c.update('h1', { name: 'x', generalCapacity: 10, staffCapacity: 2 } as never, { role: Role.COORDINATOR } as never);
     expect(s.update).toHaveBeenCalledWith('h1', { name: 'x' });
   });
 
   it('ministry endpoints delegate to the ministry service', async () => {
-    const c = new HouseController(houseSvc() as never, ministrySvc as never);
+    const c = new HouseController(houseSvc() as never, ministrySvc as never, products as never);
+    await c.productContributions('h1', { referenceMonth: '2026-09-01' });
+    expect(products.listByHouseAndMonth).toHaveBeenCalledWith('h1', '2026-09-01');
     await c.findMinistries('h1');
     await c.createMinistry('h1', { name: 'Cozinha' } as never);
     expect(ministrySvc.findByHouse).toHaveBeenCalledWith('h1');

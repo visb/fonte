@@ -5,7 +5,7 @@ process.env.NODE_ENV = 'test';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
-import { FamilyInvestment, NotificationType, PaymentMethod, ReceivableStatus, Role } from '@fonte/types';
+import { FamilyInvestment, NotificationType, PaymentMethod, ReceivableStatus, ResidentStatus, Role } from '@fonte/types';
 import { AppModule } from '../src/app.module';
 import { NotificationService } from '../src/modules/notification/notification.service';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
@@ -239,6 +239,10 @@ describe('Resident receivables por acolhimento (e2e)', () => {
         entryDate: OLD_ENTRY,
         familyInvestment: FamilyInvestment.PAYMENT_700,
         contributionDueDay: 10,
+        // Story 196: a alta abaixo exige filho em acolhimento. Sem `status`, o
+        // filho nasceria PRE_ADMISSION — que o guard de transição recusa, com
+        // razão (quem nunca foi acolhido não recebe alta).
+        status: ResidentStatus.ACTIVE,
       })
       .expect(201);
     residentId = created.body.id;

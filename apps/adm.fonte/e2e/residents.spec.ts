@@ -643,4 +643,55 @@ test.describe('Filhos (Residentes)', () => {
     await expect(page.getByRole('button', { name: 'Reabrir' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Alterar plano' })).toHaveCount(0);
   });
+
+  // Story 196 — baixa pela LISTA. Fixture própria (o teste MUTA o status), criada
+  // via API e removida no afterAll; o seed continua somente leitura (story 182).
+  test.describe('remover da casa pela lista', () => {
+    let api: APIRequestContext;
+    let token: string;
+    let resident: ResidentFixture;
+
+    test.beforeAll(async () => {
+      api = await playwrightRequest.newContext();
+      token = await loginApi(api);
+      resident = await createResident(api, token, {
+        name: `Baixa Lista E2E ${Date.now()}`,
+        status: 'ACTIVE',
+      });
+    });
+
+    test.afterAll(async () => {
+      await deleteResident(api, token, resident.id);
+      await api.dispose();
+    });
+
+    test('⋮ → Remover da casa → alta tira o filho dos ativos e o mostra como Alta', async ({ page }) => {
+      await page.getByPlaceholder('Buscar por nome...').fill(resident.name);
+      const card = page.locator('.rounded-lg.border.bg-card').filter({ hasText: resident.name });
+      await expect(card).toBeVisible();
+      // A busca é debounced (400ms) e refaz a listagem: esperar a lista conter
+      // SÓ a fixture garante que o card não será remontado com o menu aberto
+      // (o item do menu se soltaria do DOM no meio do clique).
+      await expect(page.locator('.rounded-lg.border.bg-card')).toHaveCount(1);
+
+      await card.getByRole('button', { name: `Ações de ${resident.name}` }).click();
+      await page.getByRole('menuitem', { name: 'Remover da casa' }).click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByText('Remover da casa')).toBeVisible();
+      await dialog.locator('input[type="date"]').fill('2026-06-23');
+      await dialog.getByRole('button', { name: 'Confirmar' }).click();
+
+      // Listagem de ativos (filtro padrão da tela): o card sai.
+      await expect(card).toHaveCount(0);
+
+      // No filtro "Alta" ele reaparece, com o badge do status novo.
+      await page.locator('select').first().selectOption('DISCHARGED');
+      const discharged = page
+        .locator('.rounded-lg.border.bg-card')
+        .filter({ hasText: resident.name });
+      await expect(discharged).toBeVisible();
+      await expect(discharged.getByText('Alta')).toBeVisible();
+    });
+  });
 });

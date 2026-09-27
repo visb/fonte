@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { House } from '@fonte/api-client';
+import { RESIDENT_REMOVAL_LABELS, type ResidentRemovalAction } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { DatePickerModal } from '@/components/DatePickerModal';
@@ -19,9 +20,9 @@ import {
   useEvadeResident,
   useHouses,
   useTransferResident,
-} from '../hooks/useCensus';
+} from '../hooks/useResidentRemoval';
 
-type Action = 'discharge' | 'evade' | 'transfer';
+type Action = ResidentRemovalAction;
 
 function formatDate(iso: string): string {
   if (!iso) return '';
@@ -29,10 +30,12 @@ function formatDate(iso: string): string {
   return `${day}/${month}/${year}`;
 }
 
-const ACTIONS: { key: Action; label: string; description: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
-  { key: 'discharge', label: 'Declarar alta', description: 'Encerrar o acolhimento com alta.', icon: 'exit-outline', color: '#9333ea' },
-  { key: 'evade', label: 'Evasão', description: 'Registrar saída por evasão.', icon: 'walk-outline', color: '#dc2626' },
-  { key: 'transfer', label: 'Transferir para outra casa', description: 'Mover o filho para outra casa.', icon: 'swap-horizontal-outline', color: '#2563eb' },
+// Rótulo e descrição vêm de `@fonte/types` (story 196) — o `adm` mostra os
+// mesmos. Ícone e cor são do RN e ficam aqui.
+const ACTIONS: { key: Action; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
+  { key: 'discharge', icon: 'exit-outline', color: '#9333ea' },
+  { key: 'evade', icon: 'walk-outline', color: '#dc2626' },
+  { key: 'transfer', icon: 'swap-horizontal-outline', color: '#2563eb' },
 ];
 
 interface Props {
@@ -132,6 +135,7 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
             <Text className="text-sm text-gray-500">O que deseja fazer?</Text>
             {ACTIONS.map((action) => {
               const selected = selectedAction === action.key;
+              const { label, description } = RESIDENT_REMOVAL_LABELS[action.key];
               return (
                 <TouchableOpacity
                   key={action.key}
@@ -145,8 +149,8 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
                     <Ionicons name={action.icon} size={20} color={action.color} />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-semibold text-gray-900">{action.label}</Text>
-                    <Text className="text-xs text-gray-400">{action.description}</Text>
+                    <Text className="text-sm font-semibold text-gray-900">{label}</Text>
+                    <Text className="text-xs text-gray-400">{description}</Text>
                   </View>
                   {selected ? <Ionicons name="checkmark-circle" size={20} color="#2563eb" /> : null}
                 </TouchableOpacity>

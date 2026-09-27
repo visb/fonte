@@ -8,7 +8,6 @@ import type {
   CensusAddResidentVariables,
   CensusConcludeVariables,
   PickedPhoto,
-  ResidentUpdateStatusVariables,
 } from '@/lib/offline/mutationDefaults';
 
 // Census ("Contagem") is a rollout-only tool: it lists the active residents of a
@@ -32,13 +31,6 @@ export function useActiveResidentsByHouse(houseId: string | null | undefined) {
   });
 }
 
-export function useHouses() {
-  return useQuery({
-    queryKey: queryKeys.houses.all,
-    queryFn: () => api.houses.list(),
-  });
-}
-
 // Adds a resident during the census: created as CENSUS_ADDED (pending ADM approval)
 // and the ADM is notified. A foto vai numa segunda mutation encadeada (story 169,
 // decisão 7): o endpoint de foto precisa do id, que só existe depois do envio.
@@ -59,38 +51,7 @@ export function useConcludeCensus(houseId: string) {
   );
 }
 
-// Discharge ("alta"): status DISCHARGED + exit date = event date.
-export function useDischargeResident(houseId: string) {
-  return useOutboxMutation<
-    { residentId: string; exitDate: string },
-    ResidentUpdateStatusVariables
-  >(OUTBOX_MUTATION_KEYS.residentUpdateStatus, ({ residentId, exitDate }) => ({
-    houseId,
-    residentId,
-    data: { status: ResidentStatus.DISCHARGED, exitDate },
-  }));
-}
-
-// Evasion ("evasão"): status EVADED + exit date = event date.
-export function useEvadeResident(houseId: string) {
-  return useOutboxMutation<
-    { residentId: string; exitDate: string },
-    ResidentUpdateStatusVariables
-  >(OUTBOX_MUTATION_KEYS.residentUpdateStatus, ({ residentId, exitDate }) => ({
-    houseId,
-    residentId,
-    data: { status: ResidentStatus.EVADED, exitDate },
-  }));
-}
-
-// Transfer: move the resident to another house, keeping the ACTIVE status.
-export function useTransferResident(houseId: string) {
-  return useOutboxMutation<
-    { residentId: string; targetHouseId: string },
-    ResidentUpdateStatusVariables
-  >(OUTBOX_MUTATION_KEYS.residentUpdateStatus, ({ residentId, targetHouseId }) => ({
-    houseId,
-    residentId,
-    data: { houseId: targetHouseId },
-  }));
-}
+// Baixa de filho (alta/evasão/transferência) e a lista de casas de destino
+// moraram aqui até a story 196. Agora vivem em
+// `features/residents/hooks/useResidentRemoval.ts`, porque a ação também sai da
+// lista de filhos — a contagem deixou de ser o único caminho.

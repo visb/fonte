@@ -92,6 +92,41 @@ export const ACTIVE_RESIDENT_STATUSES: ResidentStatus[] = [
 ];
 
 /**
+ * Story 196 — status a partir dos quais o filho pode receber baixa
+ * (alta, evasão ou transferência). Fonte ÚNICA para os dois apps e para o
+ * backend: a lista gateia o menu `⋮` da lista de filhos (`ops` e `adm`) e o
+ * guard de transição de `ResidentService.update`.
+ *
+ * Quem já saiu (DISCHARGED/EVADED), quem é registro morto (ARCHIVED,
+ * REJECTED_CENSUS), quem ainda não entrou (PRE_ADMISSION) e quem aguarda
+ * aprovação da contagem (CENSUS_ADDED) não recebem baixa.
+ */
+export const REMOVABLE_RESIDENT_STATUSES: ResidentStatus[] = [
+  ResidentStatus.ACTIVE,
+  ResidentStatus.DISCIPLINE,
+  ResidentStatus.TEMP_LEAVE,
+];
+
+/** Ações de baixa de filho oferecidas pelo menu de remoção (story 196). */
+export type ResidentRemovalAction = 'discharge' | 'evade' | 'transfer';
+
+/**
+ * Rótulos das ações de baixa. Ficam aqui porque dois apps escrevendo
+ * "Declarar alta" por conta própria é como viram "Declarar Alta" e "Dar alta".
+ */
+export const RESIDENT_REMOVAL_LABELS: Record<
+  ResidentRemovalAction,
+  { label: string; description: string }
+> = {
+  discharge: { label: 'Declarar alta', description: 'Encerrar o acolhimento com alta.' },
+  evade: { label: 'Evasão', description: 'Registrar saída por evasão.' },
+  transfer: {
+    label: 'Transferir para outra casa',
+    description: 'Mover o filho para outra casa.',
+  },
+};
+
+/**
  * Disponibilidade de um template de documento por status do filho (story 160).
  * Ternário de propósito — configurar 9 status por template é granularidade que
  * ninguém pediu; se um dia precisar, ALL vira a lista completa sem quebrar dado.

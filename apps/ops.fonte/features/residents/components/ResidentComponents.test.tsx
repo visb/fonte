@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { FollowUpType, ResidentStatus } from '@fonte/types';
+import { FollowUpType, ResidentStatus, Role } from '@fonte/types';
 
 // @expo/vector-icons depende de fontes nativas: stub leve.
 jest.mock('@expo/vector-icons', () => {
@@ -10,6 +10,12 @@ jest.mock('@expo/vector-icons', () => {
 // expo-router: captura navegação.
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(...a) } }));
+
+// Story 196: o `⋮` da linha depende da role do staff logado.
+const mockAuth = jest.fn<{ staff: { user: { role: Role } } }, []>(() => ({
+  staff: { user: { role: Role.COORDINATOR } },
+}));
+jest.mock('@/lib/auth', () => ({ useAuth: () => mockAuth() }));
 
 import { ResidentListItem } from './ResidentListItem';
 import { ResidentSearchBar } from './ResidentSearchBar';
@@ -44,6 +50,64 @@ describe('ResidentListItem', () => {
     render(<ResidentListItem item={item} />);
     fireEvent.press(screen.getByText('João Silva'));
     expect(mockPush).toHaveBeenCalledWith('/(app)/residents/r1');
+  });
+
+  // Story 196 — o gate que impede o lançamento fadado ao 403 na fila offline.
+  describe('menu de linha (⋮)', () => {
+    const menuLabel = 'Ações de João Silva';
+
+    it('aparece para COORDINATOR com filho ACTIVE', () => {
+      mockAuth.mockReturnValue({ staff: { user: { role: Role.COORDINATOR } } });
+      render(<ResidentListItem item={item} onOpenMenu={jest.fn()} />);
+      expect(screen.getByLabelText(menuLabel)).toBeTruthy();
+    });
+
+    it('aparece para ADMIN', () => {
+      mockAuth.mockReturnValue({ staff: { user: { role: Role.ADMIN } } });
+      render(<ResidentListItem item={item} onOpenMenu={jest.fn()} />);
+      expect(screen.getByLabelText(menuLabel)).toBeTruthy();
+    });
+
+    // `PATCH /residents/:id` é ADMIN/COORDINATOR: o servo não pode. Se o botão
+    // existisse, o toque viraria item de fila morto em /sync com erro 403.
+    it('NÃO aparece para SERVANT', () => {
+      mockAuth.mockReturnValue({ staff: { user: { role: Role.SERVANT } } });
+      render(<ResidentListItem item={item} onOpenMenu={jest.fn()} />);
+      expect(screen.queryByLabelText(menuLabel)).toBeNull();
+    });
+
+    it.each([ResidentStatus.DISCHARGED, ResidentStatus.EVADED, ResidentStatus.ARCHIVED])(
+      'NÃO aparece para filho %s (quem já saiu não sai de novo)',
+      (status) => {
+        mockAuth.mockReturnValue({ staff: { user: { role: Role.COORDINATOR } } });
+        render(<ResidentListItem item={{ ...item, status }} onOpenMenu={jest.fn()} />);
+        expect(screen.queryByLabelText(menuLabel)).toBeNull();
+      },
+    );
+
+    it.each([ResidentStatus.DISCIPLINE, ResidentStatus.TEMP_LEAVE])(
+      'aparece para filho %s',
+      (status) => {
+        mockAuth.mockReturnValue({ staff: { user: { role: Role.COORDINATOR } } });
+        render(<ResidentListItem item={{ ...item, status }} onOpenMenu={jest.fn()} />);
+        expect(screen.getByLabelText(menuLabel)).toBeTruthy();
+      },
+    );
+
+    it('sem handler de menu não renderiza o ⋮', () => {
+      mockAuth.mockReturnValue({ staff: { user: { role: Role.COORDINATOR } } });
+      render(<ResidentListItem item={item} />);
+      expect(screen.queryByLabelText(menuLabel)).toBeNull();
+    });
+
+    it('tocar no ⋮ abre o menu e NÃO navega para a ficha', () => {
+      mockAuth.mockReturnValue({ staff: { user: { role: Role.COORDINATOR } } });
+      const onOpenMenu = jest.fn();
+      render(<ResidentListItem item={item} onOpenMenu={onOpenMenu} />);
+      fireEvent.press(screen.getByLabelText(menuLabel));
+      expect(onOpenMenu).toHaveBeenCalledWith(item);
+      expect(mockPush).not.toHaveBeenCalled();
+    });
   });
 });
 

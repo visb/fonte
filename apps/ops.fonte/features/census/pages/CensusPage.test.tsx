@@ -6,13 +6,15 @@
  * estado local da página) e cada handler leva o filho certo.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { ResidentStatus } from '@fonte/types';
+import { ResidentStatus, Role } from '@fonte/types';
+
+let mockRole = Role.COORDINATOR;
 
 jest.mock('@expo/vector-icons', () => {
   const { Text } = require('react-native');
   return { Ionicons: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
 });
-jest.mock('@/lib/auth', () => ({ useAuth: () => ({ staff: { houseId: 'h1' } }) }));
+jest.mock('@/lib/auth', () => ({ useAuth: () => ({ staff: { houseId: 'h1', user: { role: mockRole } } }) }));
 jest.mock('@/lib/offline/fieldSubmit', () => ({ useFieldSubmit: () => jest.fn() }));
 
 const mockResidents = [
@@ -37,7 +39,9 @@ jest.mock('../hooks/useCensus', () => ({
 }));
 
 jest.mock('../components/AddResidentModal', () => ({ AddResidentModal: () => null }));
-jest.mock('../components/RemoveResidentModal', () => ({ RemoveResidentModal: () => null }));
+jest.mock('@/features/residents/components/RemoveResidentModal', () => ({
+  RemoveResidentModal: () => null,
+}));
 jest.mock('../components/ConcludeCensusModal', () => ({ ConcludeCensusModal: () => null }));
 jest.mock('../components/ResidentDetailModal', () => {
   const { Text } = require('react-native');
@@ -57,6 +61,21 @@ jest.mock('@/features/residents/components/ResidentPhotoViewer', () => {
 import { CensusPage } from './CensusPage';
 
 describe('CensusPage — modais de consulta', () => {
+  beforeEach(() => { mockRole = Role.COORDINATOR; });
+
+  it('servo confirma presença, mas não pode remover filho pela contagem', () => {
+    mockRole = Role.SERVANT;
+    render(<CensusPage />);
+    expect(screen.queryByLabelText('Remover João')).toBeNull();
+    expect(screen.getByLabelText('Confirmar João')).toBeTruthy();
+  });
+
+  it.each([Role.ADMIN, Role.COORDINATOR])('%s pode remover filho ativo', (role) => {
+    mockRole = role;
+    render(<CensusPage />);
+    expect(screen.getByLabelText('Remover João')).toBeTruthy();
+  });
+
   it('abrir e fechar os detalhes não altera as confirmações', () => {
     render(<CensusPage />);
     expect(screen.getByText('0/2 confirmados')).toBeTruthy();

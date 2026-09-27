@@ -116,6 +116,12 @@ export interface ResidentFixtureInput {
   /** `FamilyInvestment`; default `PAYMENT_700` (plano pagante ⇒ gera parcelas). */
   familyInvestment?: string;
   contributionDueDay?: number;
+  /**
+   * `ResidentStatus`; default do backend é `PRE_ADMISSION`. Story 196: quem
+   * precisa de filho EM ACOLHIMENTO (para a ação de baixa aparecer) passa
+   * `ACTIVE` explicitamente.
+   */
+  status?: string;
 }
 
 export interface ResidentFixture {
@@ -148,6 +154,7 @@ export async function createResident(
       entryDate: data.entryDate ?? new Date().toISOString().slice(0, 10),
       familyInvestment: data.familyInvestment ?? 'PAYMENT_700',
       ...(data.contributionDueDay ? { contributionDueDay: data.contributionDueDay } : {}),
+      ...(data.status ? { status: data.status } : {}),
     },
   });
   if (!res.ok()) {

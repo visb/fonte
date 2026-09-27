@@ -1,11 +1,23 @@
 import { Link } from 'react-router-dom';
-import { Building2, CalendarDays, Pencil, Trash2 } from 'lucide-react';
-import { FamilyInvestment, ResidentStatus } from '@fonte/types';
+import { Building2, CalendarDays, LogOut, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import {
+  FamilyInvestment,
+  REMOVABLE_RESIDENT_STATUSES,
+  ResidentStatus,
+  Role,
+} from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import type { BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { PersonAvatar } from '@/components/shared/PersonAvatar';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { RESIDENT_STATUS_LABELS, RESIDENT_STATUS_VARIANT } from '../constants';
 
@@ -103,10 +115,22 @@ function computeAge(birthDate: string | null): number | null {
 interface Props {
   resident: Resident;
   onDelete: () => void;
+  /** Abre o diálogo de baixa (alta/evasão/transferência) — story 196. */
+  onRemove?: () => void;
 }
 
-export function ResidentCard({ resident, onDelete }: Props) {
+export function ResidentCard({ resident, onDelete, onRemove }: Props) {
+  const { role } = useAuth();
   const age = computeAge(resident.birthDate);
+
+  // Story 196 — `PATCH /residents/:id` é ADMIN/COORDINATOR e só faz sentido em
+  // quem ainda está acolhido: quem já saiu não sai de novo.
+  const canRemove =
+    !!onRemove &&
+    (role === Role.ADMIN || role === Role.COORDINATOR) &&
+    REMOVABLE_RESIDENT_STATUSES.includes(resident.status);
+  // `DELETE /residents/:id` (soft delete) é ADMIN-only.
+  const canDelete = role === Role.ADMIN;
 
   const paymentBadge = getPaymentBadge(
     resident.entryDate,
@@ -174,15 +198,33 @@ export function ResidentCard({ resident, onDelete }: Props) {
             <Pencil size={16} />
           </Link>
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-destructive hover:text-destructive"
-          onClick={onDelete}
-          title="Excluir"
-        >
-          <Trash2 size={16} />
-        </Button>
+        {/* Duas ações destrutivas de consequências opostas não ficam a um clique
+            uma da outra: "Remover da casa" e "Excluir" entram no mesmo menu,
+            rotuladas. Menu vazio não é renderizado. */}
+        {(canRemove || canDelete) && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" title="Ações" aria-label={`Ações de ${resident.name}`}>
+                <MoreVertical size={16} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {canRemove && (
+                <DropdownMenuItem onSelect={() => onRemove?.()}>
+                  <LogOut size={14} /> Remover da casa
+                </DropdownMenuItem>
+              )}
+              {canDelete && (
+                <DropdownMenuItem
+                  onSelect={onDelete}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 size={14} /> Excluir
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </div>
   );

@@ -14,12 +14,8 @@ import { api } from '@/lib/api';
 import { expectIdempotencyKey, renderHookWithClient } from '@/lib/test/utils';
 import {
   useActiveResidentsByHouse,
-  useHouses,
   useCensusAddResident,
   useConcludeCensus,
-  useDischargeResident,
-  useEvadeResident,
-  useTransferResident,
 } from './useCensus';
 
 const m = api as unknown as {
@@ -45,15 +41,6 @@ describe('useActiveResidentsByHouse', () => {
   it('não dispara sem casa', () => {
     renderHookWithClient(() => useActiveResidentsByHouse(null));
     expect(m.residents.listByHouse).not.toHaveBeenCalled();
-  });
-});
-
-describe('useHouses', () => {
-  it('lista as casas', async () => {
-    m.houses.list.mockResolvedValue([{ id: 'h1' }]);
-    const { result } = renderHookWithClient(() => useHouses());
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.houses.list).toHaveBeenCalled();
   });
 });
 
@@ -99,35 +86,7 @@ describe('mutations de transição de status', () => {
     expect(m.census.conclude).toHaveBeenCalledWith({ houseId: 'h1' }, expectIdempotencyKey);
   });
 
-  it('useDischargeResident atualiza para DISCHARGED + exitDate', async () => {
-    m.residents.update.mockResolvedValue({});
-    const { result } = renderHookWithClient(() => useDischargeResident('h1'));
-    result.current.mutate({ residentId: 'r1', exitDate: '2026-06-23' });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.residents.update).toHaveBeenCalledWith(
-      'r1',
-      { status: ResidentStatus.DISCHARGED, exitDate: '2026-06-23' },
-      expectIdempotencyKey,
-    );
-  });
-
-  it('useEvadeResident atualiza para EVADED + exitDate', async () => {
-    m.residents.update.mockResolvedValue({});
-    const { result } = renderHookWithClient(() => useEvadeResident('h1'));
-    result.current.mutate({ residentId: 'r1', exitDate: '2026-06-23' });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.residents.update).toHaveBeenCalledWith(
-      'r1',
-      { status: ResidentStatus.EVADED, exitDate: '2026-06-23' },
-      expectIdempotencyKey,
-    );
-  });
-
-  it('useTransferResident move para outra casa mantendo ACTIVE', async () => {
-    m.residents.update.mockResolvedValue({});
-    const { result } = renderHookWithClient(() => useTransferResident('h1'));
-    result.current.mutate({ residentId: 'r1', targetHouseId: 'h2' });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.residents.update).toHaveBeenCalledWith('r1', { houseId: 'h2' }, expectIdempotencyKey);
-  });
+  // Alta/evasão/transferência e `useHouses` migraram para
+  // `features/residents/hooks/useResidentRemoval.ts` (story 196) — os specs
+  // foram junto, em `useResidentRemoval.test.tsx`.
 });

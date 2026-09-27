@@ -1,21 +1,44 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { REMOVABLE_RESIDENT_STATUSES, Role, type ResidentStatus } from "@fonte/types";
 import { STATUS_CONFIG } from "@/lib/constants";
 import { resolveAssetUrl } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 type Props = {
   item: {
     id: string;
     name: string;
     status: string;
-    photoUrl?: string | null;
     photoThumbUrl?: string | null;
+    photoUrl?: string | null;
   };
+  /** Abre o menu de linha. Sem handler, o `⋮` não aparece. */
+  onOpenMenu?: (item: Props["item"]) => void;
 };
 
-export function ResidentListItem({ item }: Props) {
+/**
+ * Story 196 — quem pode dar baixa num filho.
+ *
+ * `PATCH /residents/:id` é `@Roles(ADMIN, COORDINATOR)`: o servo NÃO pode.
+ * Esconder (e não desabilitar) é deliberado — sem o gate, o servo tocaria,
+ * a mutation entraria na fila offline (que não conhece 403), o app diria
+ * "salvo no aparelho" e horas depois o item morreria em `/sync` com um erro
+ * de permissão que ele não tem como resolver.
+ */
+const REMOVAL_ROLES: Role[] = [Role.ADMIN, Role.COORDINATOR];
+
+export function ResidentListItem({ item, onOpenMenu }: Props) {
+  const { staff } = useAuth();
   const thumbUrl = resolveAssetUrl(item.photoThumbUrl ?? item.photoUrl);
+
+  const canRemove =
+    !!onOpenMenu &&
+    !!staff?.user?.role &&
+    REMOVAL_ROLES.includes(staff.user.role as Role) &&
+    REMOVABLE_RESIDENT_STATUSES.includes(item.status as ResidentStatus);
+
   return (
     <TouchableOpacity
       className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex-row items-center"
@@ -47,6 +70,21 @@ export function ResidentListItem({ item }: Props) {
           {STATUS_CONFIG[item.status]?.label ?? item.status}
         </Text>
       </View>
+      {canRemove ? (
+        <TouchableOpacity
+          accessibilityLabel={`Ações de ${item.name}`}
+          className="pl-2 py-1"
+          hitSlop={8}
+          // `stopPropagation`: sem ele o toque sobe para a linha e o menu abre
+          // junto com a navegação para a ficha.
+          onPress={(event) => {
+            event?.stopPropagation?.();
+            onOpenMenu?.(item);
+          }}
+        >
+          <Ionicons name="ellipsis-vertical" size={18} color="#6b7280" />
+        </TouchableOpacity>
+      ) : null}
     </TouchableOpacity>
   );
 }

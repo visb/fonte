@@ -52,8 +52,8 @@ Rodada de autorun **194–198** — aberta em 2026-09-15.
 | --- | --- | --- | --- | --- | --- |
 | 1 | 197 — remover o vínculo filho↔ministério | [OK] | api 1806 · e2e 623 · adm 1731 · ops 1311 | `1884270` | `6425b41` |
 | 2 | 194 — casas com múltiplos coordenadores | [OK] | api 1828 · e2e 634 · adm 1749 · ops 1322 | `2c06a59` | `736c9e9` |
-| 3 | 196 — remover filho da casa pela lista | [ ] | | | |
-| 4 | 195 — módulo de contribuição em produtos no ops | [ ] | | | |
+| 3 | 196 — remover filho da casa pela lista | [OK] | api 1849 · e2e 640 · adm 1770 · ops 1342 · offline 7 | `1aebb96` | `df316b3` |
+| 4 | 195 — módulo de contribuição em produtos no ops | in_progress | iniciada em 2026-09-26 | | |
 | 5 | 198 — criar produto na declaração de contribuição | [ ] | | | |
 
 ## Log
@@ -75,6 +75,10 @@ Rodada de autorun **194–198** — aberta em 2026-09-15.
 >
 > **Antes de aplicar a 197 em produção:** a migration é destrutiva e o `down()` devolve as colunas
 > **vazias**. Backup do banco antes (skill `fonte-backup`) — o vínculo e o líder `RESIDENT` não voltam.
+
+[OK] 196 — api 1849 + e2e 640; adm 1770 + e2e 32; ops 1342 + offline 7; api-client 305.
+Cobertura API 93.15%, adm 93.65%, ops 94.84%, api-client 97.98%; builds verdes — commit `1aebb96`, merge `df316b3` — 2026-09-26.
+Nota: `tsc --noEmit` ops ainda acusa erros preexistentes em testes; build Expo e gates obrigatórios verdes.
 
 ## Resumo final
 

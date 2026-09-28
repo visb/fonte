@@ -54,7 +54,7 @@ Rodada de autorun **194–198** — aberta em 2026-09-15.
 | 2 | 194 — casas com múltiplos coordenadores | [OK] | api 1828 · e2e 634 · adm 1749 · ops 1322 | `2c06a59` | `736c9e9` |
 | 3 | 196 — remover filho da casa pela lista | [OK] | api 1849 · e2e 640 · adm 1770 · ops 1342 · offline 7 | `1aebb96` | `df316b3` |
 | 4 | 195 — módulo de contribuição em produtos no ops | [OK] | api 1860 · e2e 645 · ops 1363 · web 6 · client 307 | `2d5ceb3` | `ad87ea3` |
-| 5 | 198 — criar produto na declaração de contribuição | in_progress | iniciada em 2026-09-27 | | |
+| 5 | 198 — criar produto na declaração de contribuição | [OK] | api 1860 · adm 1773 · ops 1374 · web 5 | `2ab7c7a` | `18e3f9f` |
 
 ## Log
 
@@ -80,10 +80,51 @@ Rodada de autorun **194–198** — aberta em 2026-09-15.
 Cobertura API 93.15%, adm 93.65%, ops 94.84%, api-client 97.98%; builds verdes — commit `1aebb96`, merge `df316b3` — 2026-09-26.
 Nota: `tsc --noEmit` ops ainda acusa erros preexistentes em testes; build Expo e gates obrigatórios verdes.
 
-## Resumo final
-
 [OK] 195 — api 1860 + e2e 645; ops 1363 + web 6; api-client 307; builds verdes — commit `2d5ceb3`, merge `ad87ea3` — 2026-09-27.
 Cobertura API 93.16%, ops 95.01% (feature 97.14%, offline 99.42%), api-client 97.99%.
 Maestro atualizado, opcional não executado; 198 precisa resolver IDs locais das linhas no envio, reutilizando outbox existente.
 
-<vazio até o fim da rodada>
+## Resumo final
+
+[OK] 198 — api 1860; adm 1773 + e2e 1; ops 1374 + e2e 4; builds verdes — commit `2ab7c7a`, merge `18e3f9f` — 2026-09-28.
+Cobertura adm 93.68% (residents 98.90%), ops 94.90% (residents 93.10%); novo código residents 100%, helper offline 91.42%.
+Correção final da mensagem de ID local: 32 testes focais + novo export + E2E de recusa/reload verdes; sem repetir as suítes completas após esse ajuste.
+
+Rodada **194–198 encerrada em 2026-09-28**: cinco stories implementadas e mergeadas na `main` local, planos arquivados. Sem push ou PR. Nenhuma story bloqueada.
+
+- 197: removido vínculo filho/ministério; 194: múltiplos coordenadores por casa.
+- 196: baixa pela lista com permissões e transições validadas; 195: fila mensal de contribuições e declaração persistida offline.
+- 198: criação de produto no formulário adm/ops, encadeamento offline com ID real e erro nomeado em `/sync`.
+- Pendência manual opcional: Maestro das stories 197/195 não executado; gates web passaram. Typecheck completo ops ainda tem erros legados em testes; source-only e export web passaram.
+- Baseline histórico da cobertura por feature não estava disponível na 198; percentuais atuais e cobertura de código novo foram medidos, sem afirmar comparação histórica.
+- Alterações preexistentes em `.gitignore`, documentação de comunicação, `stories/AUTORUN.md`, `AGENTS.md`, `.agents/` e `.codex/` preservadas fora dos commits da rodada.
+- API teste 3001 (CORS 5174/8083) e adm 5174 mantidos. Banco de teste reutilizado sem reseed. Produção não foi alterada.
+
+Branches preservadas (commits e merges na tabela):
+
+```text
+refactor/story-197-remover-vinculo-filho-ministerio
+feat/story-194-multiplos-coordenadores-por-casa
+feat/story-196-remover-filho-da-lista
+feat/story-195-contribuicoes-produtos-ops
+feat/story-198-criar-produto-na-declaracao
+```
+
+Reprodução dos gates principais, PowerShell na raiz (API teste e adm disponíveis; executar suítes pesadas em sequência):
+
+```powershell
+pnpm.cmd build:types
+pnpm.cmd build:api-client
+pnpm.cmd build:api
+pnpm.cmd test:api:cov --runInBand
+pnpm.cmd test:api:e2e --runInBand
+pnpm.cmd test:api-client:cov
+pnpm.cmd test:adm:unit:cov
+pnpm.cmd --filter adm.fonte build
+pnpm.cmd test:ops:unit:cov --runInBand
+pnpm.cmd --filter adm.fonte exec playwright test e2e/houses.spec.ts e2e/residents.spec.ts e2e/create-contribution-product.spec.ts --reporter=line
+pnpm.cmd exec cross-env EXPO_PUBLIC_API_URL=http://localhost:3001/api/v1 pnpm --filter ops.fonte exec expo export --platform web --max-workers 2
+pnpm.cmd --filter ops.fonte exec playwright test e2e-web/offline-field-flows.spec.ts e2e-web/offline-resident-store.spec.ts e2e-web/product-contributions.spec.ts e2e-web/create-contribution-product.spec.ts --reporter=line
+```
+
+Os comandos acima reproduzem os gates; os resultados registrados pertencem aos checkpoints de cada story, não a uma nova execução integral após o último merge. Detalhes e ajustes de escopo estão nos commits de implementação.

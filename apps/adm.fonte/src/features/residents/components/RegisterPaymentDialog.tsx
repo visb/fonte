@@ -266,6 +266,7 @@ export function RegisterPaymentDialog({
                 control={control}
                 setValue={setValue}
                 catalog={catalog}
+                houseId={houseId}
                 catalogLoading={catalogLoading}
                 errors={errors.products?.[index]}
                 onRemove={() => remove(index)}

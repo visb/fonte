@@ -11,6 +11,7 @@ import type { MutationOptions, QueryClient } from '@tanstack/react-query';
 import { ActivityStatus, MovementType } from '@fonte/types';
 import type { ProductContributionLineInput, ReceivableProductContribution } from '@fonte/types';
 import { applyProductContribution, settleProductContribution } from './productContributions';
+import { updateCatalogItem, snapshotCatalogNames, resolveContributionLines } from './catalogItems';
 import type {
   Activity,
   CensusConcludeInput,
@@ -61,6 +62,8 @@ export interface ProductContributionDeclareVariables extends OutboxVariables {
   houseId: string;
   referenceMonth: string;
   lines: ProductContributionLineInput[];
+  /** Nome local preservado para a pendência; nunca enviado à API. */
+  itemNames?: Record<string, string>;
 }
 
 export interface CensusAddResidentVariables extends OutboxVariables {
@@ -315,9 +318,10 @@ function rollbackIncident(queryClient: QueryClient, variables: IncidentCreateVar
 function applyLocalStoreroomItem(queryClient: QueryClient, variables: StoreroomItemVariables): void {
   if (!isLocalId(variables.localId)) return;
   const { data } = variables;
+  updateCatalogItem(queryClient, variables, 'storeroom', { ...data, id: variables.localId! });
 
-  queryClient.setQueriesData<StoreroomItem[]>({ queryKey: queryKeys.storeroom.allItems }, (items) => [
-    ...(items ?? []),
+  queryClient.setQueryData<StoreroomItem[]>(queryKeys.storeroom.items(data.houseId), (items) => [
+    ...(items ?? []).filter((item) => item.id !== variables.localId),
     {
       id: variables.localId!,
       name: data.name,
@@ -335,9 +339,10 @@ function applyLocalStoreroomItem(queryClient: QueryClient, variables: StoreroomI
 function applyLocalSupplyItem(queryClient: QueryClient, variables: SupplyItemVariables): void {
   if (!isLocalId(variables.localId)) return;
   const { data } = variables;
+  updateCatalogItem(queryClient, variables, 'supply', { ...data, id: variables.localId! });
 
-  queryClient.setQueriesData<SupplyRoomItem[]>({ queryKey: queryKeys.supplyRoom.allItems }, (items) => [
-    ...(items ?? []),
+  queryClient.setQueryData<SupplyRoomItem[]>(queryKeys.supplyRoom.items(data.houseId), (items) => [
+    ...(items ?? []).filter((item) => item.id !== variables.localId),
     {
       id: variables.localId!,
       name: data.name,
@@ -477,7 +482,10 @@ function defineOutboxMutation<TVariables extends OutboxVariables, TData>(
     // Escopo por recurso = replay **serial e em ordem** dentro do recurso. É o
     // que garante que o cadastro do item suba antes da movimentação que o
     // referencia (story 171, decisão 2) e o filho antes da foto dele.
-    scope: { id: definition.key[0] },
+    // Catálogo e declaração compartilham dependências: o id real precisa estar
+    // persistido antes de sair uma declaração que referencia o produto local.
+    scope: { id: ['storeroom', 'supplyRoom', 'productContributions'].includes(definition.key[0])
+      ? 'inventory' : definition.key[0] },
     retry: options.retry ?? outboxRetry,
     ...(options.retryDelay === undefined ? {} : { retryDelay: options.retryDelay }),
     mutationFn: (variables) => definition.run(variables),
@@ -534,10 +542,11 @@ export function registerMutationDefaults(
   defineOutboxMutation<ProductContributionDeclareVariables, ReceivableProductContribution[]>(queryClient, {
     key: OUTBOX_MUTATION_KEYS.productContributionDeclare,
     prepare: async (variables) => {
+      snapshotCatalogNames(queryClient, variables);
       await queryClient.cancelQueries({ queryKey: queryKeys.houses.productContributions(variables.houseId, variables.referenceMonth) });
     },
-    run: (variables) => api.residents.declareProductContributions(
-      variables.residentId, variables.receivableId, { lines: variables.lines },
+    run: async (variables) => api.residents.declareProductContributions(
+      variables.residentId, variables.receivableId, { lines: await resolveContributionLines(variables, queryClient) },
       { idempotencyKey: variables.idempotencyKey },
     ),
     optimistic: applyProductContribution,
@@ -677,6 +686,7 @@ export function registerMutationDefaults(
         // Antes de invalidar: a movimentação que espera este item resolve o id
         // pelo mapa, e o próximo item do escopo já pode estar pronto para sair.
         if (item?.id && variables.localId) await rememberLocalId(variables.localId, item.id);
+        updateCatalogItem(client, variables, 'storeroom', item);
         void client.invalidateQueries({ queryKey: queryKeys.storeroom.allItems });
       },
     },
@@ -713,6 +723,7 @@ export function registerMutationDefaults(
         rollbackLocalItem<SupplyRoomItem>(client, queryKeys.supplyRoom.allItems, variables.localId),
       settled: async (client, variables, item) => {
         if (item?.id && variables.localId) await rememberLocalId(variables.localId, item.id);
+        updateCatalogItem(client, variables, 'supply', item);
         void client.invalidateQueries({ queryKey: queryKeys.supplyRoom.allItems });
       },
     },

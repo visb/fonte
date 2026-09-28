@@ -553,7 +553,7 @@ describe('item de estoque criado offline (story 171, decisão 2)', () => {
       OUTBOX_MUTATION_KEYS.storeroomCreateMovement,
     );
 
-    expect(item.scope?.id).toBe('storeroom');
+    expect(item.scope?.id).toBe('inventory');
     expect(movement.scope?.id).toBe(item.scope?.id);
   });
 });

@@ -1,0 +1,35 @@
+import { act, renderHook } from '@testing-library/react-native';
+import { Alert } from 'react-native';
+import { SupplyRoomCategory } from '@fonte/types';
+jest.mock('@/features/storeroom/hooks/useStoreroom', () => ({ useCreateStoreroomItem: () => ({ mutate: mockStoreroom }) }));
+jest.mock('@/features/supply-room/hooks/useSupplyRoom', () => ({ useCreateSupplyItem: () => ({ mutate: mockSupply }) }));
+jest.mock('@/lib/offline/network', () => ({ useIsOnline: () => mockOnline }));
+jest.mock('@/lib/offline/localIds', () => ({ createLocalId: () => 'local:created' }));
+const mockStoreroom = jest.fn();
+const mockSupply = jest.fn();
+let mockOnline = true;
+import { useCreateCatalogItem } from './useCreateCatalogItem';
+beforeEach(() => { jest.clearAllMocks(); mockOnline = true; });
+it.each(['storeroom', 'supply'] as const)('routes %s to correct inventory and selects real id online', (target) => {
+  const selected = jest.fn();
+  const { result } = renderHook(() => useCreateCatalogItem('house'));
+  act(() => result.current.create(target === 'supply' ? { target, name: 'Sabão', unit: 'un', category: SupplyRoomCategory.CLEANING } : { target, name: 'Arroz', unit: 'kg' }, selected));
+  const mutation = target === 'supply' ? mockSupply : mockStoreroom;
+  expect(mutation).toHaveBeenCalledWith(expect.objectContaining({ houseId: 'house', localId: 'local:created' }), expect.any(Object));
+  if (target === 'supply') expect(mutation.mock.calls[0][0].category).toBe(SupplyRoomCategory.CLEANING);
+  else expect(mutation.mock.calls[0][0]).not.toHaveProperty('category');
+  act(() => mutation.mock.calls[0][1].onSuccess({ id: 'real', name: 'Produto', unit: 'un' }));
+  expect(selected).toHaveBeenCalledWith({ id: 'real', name: 'Produto', unit: 'un', source: target });
+});
+it('selects local id immediately offline, without declaring, and reports server rejection online', () => {
+  mockOnline = false;
+  const selected = jest.fn();
+  const { result, rerender } = renderHook(() => useCreateCatalogItem('house'));
+  act(() => result.current.create({ target: 'storeroom', name: 'Arroz', unit: 'kg' }, selected));
+  expect(selected).toHaveBeenCalledWith({ id: 'local:created', name: 'Arroz', unit: 'kg', source: 'storeroom' });
+  mockOnline = true; rerender({});
+  const alert = jest.spyOn(Alert, 'alert');
+  act(() => result.current.create({ target: 'storeroom', name: 'Arroz', unit: 'kg' }, selected));
+  act(() => mockStoreroom.mock.calls[1][1].onError({ response: { data: { message: 'Nome duplicado' } } }));
+  expect(alert).toHaveBeenCalledWith('Erro', 'Nome duplicado');
+});

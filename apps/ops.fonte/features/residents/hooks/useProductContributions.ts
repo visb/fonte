@@ -1,4 +1,5 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isLocalId } from '@/lib/offline/localIds';
 import type { ReceivableProductContribution } from '@fonte/api-client';
 import type { ProductContributionDeclareVariables } from '@/lib/offline/mutationDefaults';
 import { OUTBOX_MUTATION_KEYS } from '@/lib/offline/outbox';
@@ -14,10 +15,11 @@ export interface InventoryCatalogItem {
   id: string;
   name: string;
   unit: string;
+  source: 'storeroom' | 'supply';
 }
 
 /**
- * Catálogo unificado da casa: almoxarifado (`storeroom`) + dispensa (`supply`)
+ * Catálogo unificado da casa: dispensa (`storeroom`) + almoxarifado (`supply`)
  * num único array ordenado por nome. O backend guarda os dois em `inventory_items`
  * (story 111), então qualquer id é um `inventoryItemId` válido na declaração.
  */
@@ -25,6 +27,7 @@ export function useInventoryCatalog(
   houseId: string | null | undefined,
   options?: { enabled?: boolean },
 ) {
+  const client = useQueryClient();
   return useQuery({
     queryKey: queryKeys.inventory.catalog(houseId!),
     queryFn: async (): Promise<InventoryCatalogItem[]> => {
@@ -32,8 +35,9 @@ export function useInventoryCatalog(
         api.storeroom.listItems({ houseId: houseId! }),
         api.supplyRoom.listItems({ houseId: houseId! }),
       ]);
-      return [...storeroom, ...supply]
-        .map((i) => ({ id: i.id, name: i.name, unit: i.unit }))
+      const pending = client.getQueryData<InventoryCatalogItem[]>(queryKeys.inventory.catalog(houseId!))?.filter((item) => isLocalId(item.id)) ?? [];
+      return [...pending, ...storeroom.map((i) => ({ id: i.id, name: i.name, unit: i.unit, source: 'storeroom' as const })),
+        ...supply.map((i) => ({ id: i.id, name: i.name, unit: i.unit, source: 'supply' as const }))]
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     },
     enabled: (options?.enabled ?? true) && !!houseId,

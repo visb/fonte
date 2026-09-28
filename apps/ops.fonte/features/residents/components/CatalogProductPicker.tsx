@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import type { InventoryCatalogItem } from '../hooks/useProductContributions';
+import type { CreateCatalogItem } from '../hooks/useCreateCatalogItem';
+import { NewInventoryItemForm } from './NewInventoryItemForm';
 
 interface Props {
   /** Id do item atualmente selecionado (`inventoryItemId`). */
@@ -9,6 +11,8 @@ interface Props {
   loading?: boolean;
   error?: string;
   onSelect: (item: InventoryCatalogItem) => void;
+  onCreate?: CreateCatalogItem;
+  creating?: boolean;
 }
 
 /**
@@ -16,9 +20,10 @@ interface Props {
  * itens da casa. Ao escolher, devolve o item ao pai (que grava id + unidade no
  * form). Espelha o `<Select>` do adm num padrão RN (busca + lista tocável).
  */
-export function CatalogProductPicker({ value, items, loading, error, onSelect }: Props) {
+export function CatalogProductPicker({ value, items, loading, error, onSelect, onCreate, creating }: Props) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const selected = items.find((i) => i.id === value);
 
@@ -32,6 +37,7 @@ export function CatalogProductPicker({ value, items, loading, error, onSelect }:
     onSelect(item);
     setSearch('');
     setOpen(false);
+    setCreateOpen(false);
   }
 
   return (
@@ -67,6 +73,9 @@ export function CatalogProductPicker({ value, items, loading, error, onSelect }:
           {filtered.length === 0 ? (
             <View className="px-4 py-3">
               <Text className="text-sm text-gray-400">Nenhum produto encontrado.</Text>
+              {!!search.trim() && onCreate && <TouchableOpacity onPress={() => setCreateOpen(true)}>
+                <Text className="text-blue-600 py-2">Cadastrar «{search.trim()}»</Text>
+              </TouchableOpacity>}
             </View>
           ) : (
             filtered.map((item) => (
@@ -87,6 +96,8 @@ export function CatalogProductPicker({ value, items, loading, error, onSelect }:
           )}
         </View>
       )}
+      {createOpen && onCreate && <NewInventoryItemForm name={search.trim()} pending={creating}
+        onCancel={() => setCreateOpen(false)} onSubmit={(input) => onCreate(input, handleSelect)} />}
     </View>
   );
 }

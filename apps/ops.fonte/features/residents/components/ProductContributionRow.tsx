@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ProductContributionFormValues } from '../lib/productContributions';
 import type { InventoryCatalogItem } from '../hooks/useProductContributions';
 import { CatalogProductPicker } from './CatalogProductPicker';
+import type { CreateCatalogItem } from '../hooks/useCreateCatalogItem';
 
 interface LineErrors {
   inventoryItemId?: { message?: string };
@@ -19,6 +20,8 @@ interface Props {
   catalogLoading?: boolean;
   errors?: LineErrors;
   onRemove: () => void;
+  onCreate?: CreateCatalogItem;
+  creating?: boolean;
 }
 
 function ModeToggle({
@@ -54,6 +57,8 @@ export function ProductContributionRow({
   catalogLoading,
   errors,
   onRemove,
+  onCreate,
+  creating,
 }: Props) {
   const mode = useWatch({ control, name: `products.${index}.mode` });
   const unit = useWatch({ control, name: `products.${index}.unit` });
@@ -77,6 +82,8 @@ export function ProductContributionRow({
             name={`products.${index}.inventoryItemId`}
             render={({ field: { value } }) => (
               <CatalogProductPicker
+                onCreate={onCreate}
+                creating={creating}
                 value={value ?? ''}
                 items={catalog}
                 loading={catalogLoading}

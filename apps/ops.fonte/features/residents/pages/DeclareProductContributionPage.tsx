@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { useProductContributionForm } from '../hooks/useProductContributionForm';
+import { useCreateCatalogItem } from '../hooks/useCreateCatalogItem';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
@@ -26,6 +27,7 @@ export function DeclareProductContributionPage() {
     refetch: refetchReceivables,
   } = useResidentReceivables(residentId);
   const { data: catalog = [], isLoading: catalogLoading } = useInventoryCatalog(houseId);
+  const { create, isPending: creating } = useCreateCatalogItem(houseId!);
 
   const receivable = receivables ? currentReceivable(receivables) : null;
 
@@ -81,6 +83,8 @@ export function DeclareProductContributionPage() {
               control={control}
               setValue={setValue}
               catalog={catalog}
+              onCreate={create}
+              creating={creating}
               catalogLoading={catalogLoading}
               errors={errors.products?.[index]}
               onRemove={() => (fields.length > 1 ? remove(index) : undefined)}

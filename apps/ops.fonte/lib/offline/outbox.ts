@@ -210,7 +210,8 @@ export async function recordOutboxFailure(
     mutationKey: serializeMutationKey(mutationKey),
     label: outboxLabel(mutationKey),
     variables: mutation.state.variables,
-    error: getErrorMessage(error, 'Falha ao sincronizar o lançamento.'),
+    error: isUnresolvedLocalIdError(error) && error instanceof Error
+      ? error.message : getErrorMessage(error, 'Falha ao sincronizar o lançamento.'),
     failedAt: Date.now(),
   });
 }

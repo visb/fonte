@@ -1,0 +1,50 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { SupplyRoomCategory } from '@fonte/types';
+import { CatalogProductPicker } from './CatalogProductPicker';
+
+it('offers creation only for an unmatched term; prefills name, validates and strips hidden category', async () => {
+  const create = jest.fn();
+  render(<CatalogProductPicker value="" items={[{ id: 'rice', name: 'Arroz', unit: 'kg', source: 'storeroom' }]} onSelect={jest.fn()} onCreate={create} />);
+  const search = screen.getByPlaceholderText('Buscar produto...');
+  fireEvent.changeText(search, 'Arroz');
+  expect(screen.queryByText(/Cadastrar «/)).toBeNull();
+  fireEvent.changeText(search, '');
+  expect(screen.queryByText(/Cadastrar «/)).toBeNull();
+  fireEvent.changeText(search, 'Sabão');
+  fireEvent.press(screen.getByText('Cadastrar «Sabão»'));
+  expect(screen.getByLabelText('Nome do produto').props.value).toBe('Sabão');
+  fireEvent.press(screen.getByText('Cadastrar produto'));
+  expect(await screen.findByText('Informe a unidade')).toBeTruthy();
+  fireEvent.changeText(screen.getByLabelText('Nome do produto'), '');
+  fireEvent.changeText(screen.getByLabelText('Unidade do produto'), ' barra ');
+  fireEvent.press(screen.getByText('Cadastrar produto'));
+  expect(await screen.findByText('Informe o nome')).toBeTruthy();
+  fireEvent.changeText(screen.getByLabelText('Nome do produto'), ' Sabão ');
+  fireEvent.press(screen.getByText('Almoxarifado'));
+  fireEvent.press(screen.getByText('Cadastrar produto'));
+  expect(await screen.findByText('Informe a categoria')).toBeTruthy();
+  expect(create).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByText('Limpeza'));
+  fireEvent.press(screen.getByText('Dispensa'));
+  expect(screen.queryByText('Limpeza')).toBeNull();
+  fireEvent.press(screen.getByText('Cadastrar produto'));
+  await waitFor(() => expect(create).toHaveBeenCalledWith({ name: 'Sabão', unit: 'barra', target: 'storeroom' }, expect.any(Function)));
+});
+
+it('sends the supply category, selects returned item, closes form and can cancel', async () => {
+  const select = jest.fn();
+  const create = jest.fn((input, done) => done({ id: 'local:new', name: input.name, unit: input.unit, source: input.target }));
+  render(<CatalogProductPicker value="" items={[]} onSelect={select} onCreate={create} />);
+  fireEvent.changeText(screen.getByPlaceholderText('Buscar produto...'), 'Sabão');
+  fireEvent.press(screen.getByText('Cadastrar «Sabão»'));
+  fireEvent.press(screen.getByText('Cancelar cadastro'));
+  expect(screen.queryByText('Novo produto')).toBeNull();
+  fireEvent.press(screen.getByText('Cadastrar «Sabão»'));
+  fireEvent.changeText(screen.getByLabelText('Unidade do produto'), 'barra');
+  fireEvent.press(screen.getByText('Almoxarifado'));
+  fireEvent.press(screen.getByText('Limpeza'));
+  fireEvent.press(screen.getByText('Cadastrar produto'));
+  await waitFor(() => expect(create).toHaveBeenCalledWith({ name: 'Sabão', unit: 'barra', target: 'supply', category: SupplyRoomCategory.CLEANING }, expect.any(Function)));
+  expect(select).toHaveBeenCalledWith({ id: 'local:new', name: 'Sabão', unit: 'barra', source: 'supply' });
+  expect(screen.queryByText('Novo produto')).toBeNull();
+});

@@ -2,7 +2,7 @@ import { useWatch, type Control, type UseFormRegister, type UseFormSetValue } fr
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { CatalogProductPicker } from './CatalogProductPicker';
 import { cn } from '@/lib/utils';
 import type { PaymentFormValues } from './RegisterPaymentDialog';
 import type { InventoryCatalogItem } from '../hooks/useProductContributions';
@@ -22,6 +22,7 @@ interface Props {
   catalogLoading?: boolean;
   errors?: LineErrors;
   onRemove: () => void;
+  houseId?: string;
 }
 
 export function ProductContributionRow({
@@ -33,6 +34,7 @@ export function ProductContributionRow({
   catalogLoading,
   errors,
   onRemove,
+  houseId,
 }: Props) {
   const mode = useWatch({ control, name: `products.${index}.mode` });
   const unit = useWatch({ control, name: `products.${index}.unit` });
@@ -41,7 +43,7 @@ export function ProductContributionRow({
     setValue(`products.${index}.mode`, m, { shouldValidate: false });
   };
 
-  const itemField = register(`products.${index}.inventoryItemId`);
+  const itemId = useWatch({ control, name: `products.${index}.inventoryItemId` });
 
   return (
     <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
@@ -84,22 +86,11 @@ export function ProductContributionRow({
       {mode === 'catalog' ? (
         <div className="space-y-2">
           <div>
-            <Select
-              aria-label="Produto do catálogo"
-              {...itemField}
-              onChange={(e) => {
-                itemField.onChange(e);
-                const item = catalog.find((i) => i.id === e.target.value);
-                setValue(`products.${index}.unit`, item?.unit ?? '');
-              }}
-            >
-              <option value="">{catalogLoading ? 'Carregando catálogo...' : 'Selecione um produto'}</option>
-              {catalog.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} ({item.unit})
-                </option>
-              ))}
-            </Select>
+            <CatalogProductPicker value={itemId ?? ''} items={catalog} houseId={houseId} loading={catalogLoading}
+              onSelect={(item) => {
+                setValue(`products.${index}.inventoryItemId`, item.id, { shouldValidate: true });
+                setValue(`products.${index}.unit`, item.unit);
+              }} />
             {errors?.inventoryItemId?.message && (
               <p className="mt-1 text-xs text-destructive">{errors.inventoryItemId.message}</p>
             )}

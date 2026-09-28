@@ -44,8 +44,8 @@ describe('useInventoryCatalog', () => {
     expect(m.storeroom.listItems).toHaveBeenCalledWith({ houseId: 'h1' });
     expect(m.supplyRoom.listItems).toHaveBeenCalledWith({ houseId: 'h1' });
     expect(result.current.data).toEqual([
-      { id: 'd1', name: 'Arroz', unit: 'kg' },
-      { id: 's1', name: 'Feijão', unit: 'kg' },
+      { id: 'd1', name: 'Arroz', unit: 'kg', source: 'supply' },
+      { id: 's1', name: 'Feijão', unit: 'kg', source: 'storeroom' },
     ]);
   });
 

@@ -19,8 +19,8 @@ import { CatalogProductPicker } from './CatalogProductPicker';
 import { ResidentOverviewTab } from './ResidentOverviewTab';
 
 const catalog = [
-  { id: 'i1', name: 'Arroz', unit: 'kg' },
-  { id: 'i2', name: 'Feijão', unit: 'kg' },
+  { id: 'i1', name: 'Arroz', unit: 'kg', source: 'storeroom' as const },
+  { id: 'i2', name: 'Feijão', unit: 'kg', source: 'storeroom' as const },
 ];
 
 /** Harness que embrulha a Row num form real (RHF + zod + useFieldArray). */
@@ -142,7 +142,7 @@ describe('CatalogProductPicker', () => {
     fireEvent.changeText(screen.getByPlaceholderText('Buscar produto...'), 'fei');
     expect(screen.queryByText('Arroz (kg)')).toBeNull();
     fireEvent.press(screen.getByText('Feijão (kg)'));
-    expect(onSelect).toHaveBeenCalledWith({ id: 'i2', name: 'Feijão', unit: 'kg' });
+    expect(onSelect).toHaveBeenCalledWith({ id: 'i2', name: 'Feijão', unit: 'kg', source: 'storeroom' });
   });
 
   it('mostra o item selecionado e permite trocar', () => {
@@ -174,7 +174,7 @@ describe('CatalogProductPicker', () => {
     fireEvent.changeText(screen.getByPlaceholderText('Buscar produto...'), 'Arroz');
     fireEvent.press(screen.getByLabelText('Selecionar Arroz'));
     expect(onSelect).toHaveBeenCalledTimes(1);
-    expect(onSelect).toHaveBeenCalledWith({ id: 'i1', name: 'Arroz', unit: 'kg' });
+    expect(onSelect).toHaveBeenCalledWith({ id: 'i1', name: 'Arroz', unit: 'kg', source: 'storeroom' });
   });
 
   it('catálogo vazio não expõe nenhuma linha "Selecionar"', () => {

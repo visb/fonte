@@ -1,6 +1,5 @@
 # Backlog
 
-- no admin, criar seletor de data para inputs de data
 - na data de nascimento, validar e só permitir cadastro de filhos ou servos maiores de 18 anos
 - na data de entrada, no acolhimento, proibir datas futuras
 - na data de saida, permitir somente data de saida maior q a data de entrada

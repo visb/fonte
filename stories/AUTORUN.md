@@ -9,8 +9,10 @@ stories **sem intervenção humana**. As decisões já estão travadas em cada `
 > (codificar + gates + commit) é responsabilidade do agent **`fonte-implementer`** — este protocolo
 > só **orquestra**: escolhe a próxima story, dispara o agent, mergeia na main e atualiza o ledger.
 
-Forma de iniciar: skill **`/autorun`** (encapsula o loop) — ver `.claude/skills/autorun`. O texto
-abaixo é o protocolo que a skill executa; pode também ser colado num `/loop` manualmente.
+Forma de iniciar: skill **`/autorun`** (Claude Code, `.claude/skills/autorun`, via `/loop`) ou
+**`$autorun`** (Codex, `.agents/skills/autorun`, execução sequencial na sessão; retomar = invocar de
+novo). O texto abaixo é o protocolo que a skill executa. No Codex, "tool `Agent`" = subagente
+`.codex/agents/fonte-implementer.toml`; `Write`/`Edit` = `apply_patch`.
 
 ---
 

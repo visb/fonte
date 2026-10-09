@@ -8,6 +8,8 @@ coverage/
 todo.md
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+# Memória local do agente (Codex) — notas por máquina, podem citar infra de produção.
+.codex/memory/
 
 # Artefatos da bancada de flakiness da suíte Maestro (story 187):
 # saída do runner, debug do Maestro (screenshot + hierarquia de views) e logcat

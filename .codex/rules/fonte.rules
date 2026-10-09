@@ -1,0 +1,13 @@
+# Allowlist do projeto fonte — portada de .claude/settings.json (permissions.allow).
+# Comandos com estes prefixos rodam sem pedir aprovação.
+prefix_rule(pattern=["git"], decision="allow")
+prefix_rule(pattern=["pnpm"], decision="allow")
+prefix_rule(pattern=["npx"], decision="allow")
+prefix_rule(pattern=["node"], decision="allow")
+prefix_rule(pattern=["docker"], decision="allow")
+prefix_rule(pattern=["rtk"], decision="allow")
+
+# Destrutivos: sempre perguntar.
+prefix_rule(pattern=["git", "push", "--force"], decision="prompt")
+prefix_rule(pattern=["git", "reset", "--hard"], decision="prompt")
+prefix_rule(pattern=["pnpm", "docker:reset"], decision="prompt")

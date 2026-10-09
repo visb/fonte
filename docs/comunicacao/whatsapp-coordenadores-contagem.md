@@ -21,8 +21,6 @@ A Contagem é a sua conferência: você olha a lista da sua casa e diz o que est
 
 É uma tarefa de uma vez só. Feita a conferência, o dia a dia segue normal.
 
-⏱️ O melhor momento é o *café da tarde*, com os filhos reunidos: dá para conferir nome por nome de uma vez só, sem errar.
-
 ---
 
 ## Mensagem 2 — o passo a passo
@@ -57,7 +55,7 @@ _Escolha o motivo certo: é ele que fica no histórico do filho._
 
 _Sobre o sinal de internet_ 📶
 
-A Contagem provavelmente vai ser feita na hora do café da tarde, com os filhos reunidos. Aí vale prestar atenção em como você está usando o sistema:
+A Contagem pode ser feita em qualquer canto da casa, e nem sempre o sinal chega lá. Vale prestar atenção em como você está usando o sistema:
 
 🤖 *No app instalado no Android* — pode fazer sem sinal nenhum.
 ✅ Faça a Contagem normalmente.

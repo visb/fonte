@@ -1,6 +1,5 @@
 # Backlog
 
-- no app adm, no acolhimento, fazer salvamento automatico conforme o acolhimento progride, para proteger os dados ja preenchidos em caso de queda de energia
 - nao to conseguindo gerar recibos da contribuição mensal dos filhos, esta dando 404 no servidor:
   ```
   {

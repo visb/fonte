@@ -91,6 +91,56 @@ describe('ResidentCard', () => {
   });
 });
 
+// Story 206 — layout responsivo: um DOM só para mobile e desktop, botões por último.
+describe('ResidentCard — layout responsivo', () => {
+  const FOLLOWS = Node.DOCUMENT_POSITION_FOLLOWING;
+
+  it('badges e botões aparecem uma vez só no DOM (sem cópia por breakpoint)', () => {
+    renderCard(makeResident({ familyInvestment: FamilyInvestment.PAYMENT_700 }));
+    expect(screen.getAllByTestId('resident-card-badges')).toHaveLength(1);
+    expect(screen.getAllByTestId('resident-card-actions')).toHaveLength(1);
+    expect(screen.getAllByText('Ativo')).toHaveLength(1);
+    expect(screen.getAllByText(/Vence|Atrasado/)).toHaveLength(1);
+    expect(screen.getAllByTitle('Editar')).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Ações de Maria Interna' })).toHaveLength(1);
+  });
+
+  it('ordem no DOM: nome → metadados → badges → botões', () => {
+    renderCard(makeResident());
+    const name = screen.getByText('Maria Interna');
+    const meta = screen.getByText('Casa Belém');
+    const badges = screen.getByTestId('resident-card-badges');
+    const actions = screen.getByTestId('resident-card-actions');
+    expect(name.compareDocumentPosition(meta) & FOLLOWS).toBeTruthy();
+    expect(meta.compareDocumentPosition(badges) & FOLLOWS).toBeTruthy();
+    expect(badges.compareDocumentPosition(actions) & FOLLOWS).toBeTruthy();
+    // Nenhum elemento focável depois dos botões dentro do card.
+    expect(actions.nextElementSibling).toBeNull();
+  });
+
+  it('mobile empilha o conteúdo numa 2ª coluna; desktop (sm) volta a ser linha', () => {
+    renderCard(makeResident());
+    const card = screen.getByTestId('resident-card');
+    expect(card).toHaveClass('items-start', 'sm:items-center');
+    const content = screen.getByTestId('resident-card-info').parentElement!;
+    expect(content).toHaveClass('flex-col', 'sm:flex-row', 'flex-1', 'min-w-0');
+    expect(content.contains(screen.getByTestId('resident-card-badges'))).toBe(true);
+    expect(content.contains(screen.getByTestId('resident-card-actions'))).toBe(true);
+    expect(screen.getByTestId('resident-card-actions')).toHaveClass('self-end', 'sm:self-auto');
+  });
+
+  it('vencimento e editar ficam acima do stretched link (z-10)', () => {
+    renderCard(makeResident({ familyInvestment: FamilyInvestment.PAYMENT_700 }));
+    const due = screen.getByText(/Vence|Atrasado/).closest('a')!;
+    expect(due).toHaveAttribute('href', '/residents/r1?tab=contributions');
+    expect(due).toHaveClass('relative', 'z-10');
+    const edit = screen.getByTitle('Editar');
+    expect(edit).toHaveAttribute('href', '/residents/r1/edit');
+    expect(screen.getByTestId('resident-card-actions')).toHaveClass('relative', 'z-10');
+    expect(screen.getByRole('link', { name: 'Maria Interna' })).toHaveClass('absolute', 'inset-0');
+  });
+});
+
 // Story 196/200 — o `⋮` com "Declarar saída da comunidade" + "Transferir de casa" + "Excluir".
 describe('ResidentCard — menu de ações', () => {
   const MENU = 'Ações de Maria Interna';

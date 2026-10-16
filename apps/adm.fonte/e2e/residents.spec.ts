@@ -335,6 +335,51 @@ test.describe('Filhos (Residentes)', () => {
     await expect(page.getByText('João Testador').first()).toBeVisible();
   });
 
+  // ─── Card responsivo (story 206) ─────────────────────────────────────────────
+  // Somente leitura sobre o seed: busca o João Testador e mede o card.
+
+  async function seedCard(page: Page) {
+    await page.getByPlaceholder('Buscar por nome...').fill('João Testador');
+    const card = page.getByTestId('resident-card').filter({ hasText: 'João Testador' }).first();
+    await expect(card).toBeVisible();
+    return card;
+  }
+
+  test('mobile (390): card em 2 colunas, botões abaixo do nome e sem scroll horizontal', async ({ page }) => {
+    const card = await seedCard(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    const name = card.getByText('João Testador', { exact: true });
+    const actions = card.getByTestId('resident-card-actions');
+    await expect(actions).toBeVisible();
+    const nameBox = (await name.boundingBox())!;
+    const actionsBox = (await actions.boundingBox())!;
+    const cardBox = (await card.boundingBox())!;
+
+    // Botões por último: a caixa fica abaixo do nome, não na mesma linha.
+    expect(actionsBox.y).toBeGreaterThanOrEqual(nameBox.y + nameBox.height - 1);
+    // O card cabe na largura da tela.
+    expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(390 + 1);
+    const horizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(horizontalOverflow).toBeLessThanOrEqual(1);
+
+    // Editar continua acima do stretched link e navega para a edição.
+    await card.getByTitle('Editar').click();
+    await expect(page).toHaveURL(/\/residents\/.+\/edit/);
+  });
+
+  test('desktop (1280): botões do card na mesma linha do nome', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const card = await seedCard(page);
+
+    const nameBox = (await card.getByText('João Testador', { exact: true }).boundingBox())!;
+    const actionsBox = (await card.getByTestId('resident-card-actions').boundingBox())!;
+    expect(actionsBox.y).toBeLessThan(nameBox.y + nameBox.height);
+    expect(actionsBox.x).toBeGreaterThan(nameBox.x + nameBox.width);
+  });
+
   // Story 197: a ficha do filho não fala em ministério em lugar nenhum — nem na
   // visão geral, nem no formulário de edição.
   test('ficha do filho não mostra ministério', async ({ page }) => {

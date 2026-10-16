@@ -1,4 +1,7 @@
 jest.mock('@fonte/types', () => ({
+  // Story 202: os helpers de maioridade (`isAdultBirthDate`, `MIN_AGE_MESSAGE`…)
+  // precisam ser os reais; os enums abaixo seguem stubados.
+  ...jest.requireActual('@fonte/types'),
   Role: { ADMIN: 'ADMIN', COORDINATOR: 'COORDINATOR', SERVANT: 'SERVANT' },
   ServantRank: { ASPIRANTE: 'ASPIRANTE', CONSAGRADO: 'CONSAGRADO', ALIANCADO: 'ALIANCADO' },
   StaffPermissionType: { MANAGE_STOREROOM: 'MANAGE_STOREROOM' },
@@ -8,7 +11,8 @@ jest.mock('bcrypt', () => ({
   hash: jest.fn().mockResolvedValue('hashed'),
 }));
 
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { maxBirthDateFor, MIN_AGE_MESSAGE, todayInSaoPaulo } from '@fonte/types';
 import { Repository } from 'typeorm';
 import { StaffService } from './staff.service';
 import { Staff } from './staff.entity';
@@ -317,6 +321,80 @@ describe('StaffService.update', () => {
     const patch = userRepo.update.mock.calls[0][1];
     expect(patch.passwordHash).toBe('hashed');
     expect(patch.mustChangePassword).toBe(true);
+  });
+});
+
+describe('StaffService — maioridade no nascimento (story 202)', () => {
+  const MINOR = '2014-08-20';
+  const ADULT = '1975-08-20';
+  const base = { name: 'Servo', password: 'secret123', role: 'SERVANT' as never };
+
+  function makeEdit(storedBirthDate: string | null) {
+    const staffRepo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: 'staff-1', userId: 'user-1', birthDate: storedBirthDate }),
+    });
+    const userRepo = makeRepo();
+    return { service: makeService(staffRepo, userRepo, makeRepo()), staffRepo, userRepo };
+  }
+
+  it('create com 17 anos → 400 com a mensagem, sem criar User nem Staff', async () => {
+    const staffRepo = makeRepo();
+    const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });
+    const service = makeService(staffRepo, userRepo, makeRepo());
+
+    await expect(service.create({ ...base, birthDate: MINOR } as never)).rejects.toThrow(
+      MIN_AGE_MESSAGE,
+    );
+    await expect(service.create({ ...base, birthDate: MINOR } as never)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(userRepo.save).not.toHaveBeenCalled();
+    expect(staffRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('create com 18 anos completos hoje → passa', async () => {
+    const staffRepo = makeRepo();
+    const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });
+    const service = makeService(staffRepo, userRepo, makeRepo());
+    const birthDate = maxBirthDateFor(todayInSaoPaulo());
+
+    await service.create({ ...base, birthDate } as never);
+    expect(staffRepo.save.mock.calls[0][0].birthDate).toBe(birthDate);
+  });
+
+  it('create sem birthDate → passa', async () => {
+    const staffRepo = makeRepo();
+    const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });
+    const service = makeService(staffRepo, userRepo, makeRepo());
+
+    await service.create({ ...base, birthDate: null } as never);
+    expect(staffRepo.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('update com a mesma data de menor já gravada → passa', async () => {
+    const { service, staffRepo } = makeEdit(MINOR);
+
+    await service.update('staff-1', { name: 'Novo', birthDate: MINOR } as never);
+    expect(staffRepo.update).toHaveBeenCalledWith('staff-1', { name: 'Novo', birthDate: MINOR });
+  });
+
+  it('update alterando para menor → 400, sem gravar staff nem user', async () => {
+    const { service, staffRepo, userRepo } = makeEdit(ADULT);
+
+    await expect(
+      service.update('staff-1', { birthDate: MINOR, email: 'x@fonte.com' } as never),
+    ).rejects.toThrow(MIN_AGE_MESSAGE);
+    expect(staffRepo.update).not.toHaveBeenCalled();
+    expect(userRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('update sem birthDate numa ficha legada de menor → passa', async () => {
+    const { service, staffRepo } = makeEdit(MINOR);
+
+    await service.update('staff-1', { name: 'Novo' } as never);
+    expect(staffRepo.update).toHaveBeenCalledWith('staff-1', { name: 'Novo' });
   });
 });
 

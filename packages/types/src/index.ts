@@ -1566,6 +1566,76 @@ export interface ResidentsFiltersPreference {
 /** Chave canônica da preferência de filtros da listagem de filhos. */
 export const RESIDENTS_FILTERS_PREFERENCE_KEY = 'residents.filters';
 
+// ─── Maioridade na data de nascimento (story 202) ────────────────────────────
+
+/** Idade mínima (anos completos) de filho e servo no cadastro. */
+export const MIN_PERSON_AGE = 18;
+
+/** Mensagem única da recusa por idade — backend (400) e telas usam a mesma. */
+export const MIN_AGE_MESSAGE =
+  'A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.';
+
+/** Fuso da operação: "hoje" é a data civil daqui, não o dia UTC. */
+export const OPERATION_TIME_ZONE = 'America/Sao_Paulo';
+
+/**
+ * Fallback quando o runtime não tem `Intl` com fuso (Hermes antigo). O Brasil
+ * não tem horário de verão desde 2019, então UTC−3 é exato para São Paulo.
+ */
+const SAO_PAULO_UTC_OFFSET_MS = -3 * 60 * 60 * 1000;
+
+const ISO_DATE_PREFIX = /^(\d{4})-(\d{2})-(\d{2})/;
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** Data de hoje (`YYYY-MM-DD`) no fuso da operação (`America/Sao_Paulo`). */
+export function todayInSaoPaulo(now: Date = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: OPERATION_TIME_ZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(now);
+    const part = (type: string) => parts.find((p) => p.type === type)?.value;
+    const [year, month, day] = [part('year'), part('month'), part('day')];
+    if (year && month && day) return `${year}-${month}-${day}`;
+  } catch {
+    // Runtime sem suporte a `timeZone`: cai no deslocamento fixo abaixo.
+  }
+  return new Date(now.getTime() + SAO_PAULO_UTC_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+/**
+ * Maior data de nascimento (`YYYY-MM-DD`) de quem tem `MIN_PERSON_AGE` anos
+ * completos em `today`. 29/02 vira 28/02 quando o ano alvo não é bissexto
+ * (mesmo comportamento do `subYears` do date-fns).
+ */
+export function maxBirthDateFor(today: string): string {
+  const match = ISO_DATE_PREFIX.exec(today);
+  if (!match) throw new Error(`Data inválida: ${today}`);
+  const year = Number(match[1]) - MIN_PERSON_AGE;
+  const month = Number(match[2]);
+  let day = Number(match[3]);
+  if (month === 2 && day === 29 && !isLeapYear(year)) day = 28;
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+/**
+ * `true` quando quem nasceu em `birthDate` tem `MIN_PERSON_AGE` anos completos
+ * em `today` (ambos `YYYY-MM-DD`; um sufixo de hora é ignorado). Valor fora do
+ * formato não é julgado aqui (`true`): checar formato é papel do DTO/schema.
+ */
+export function isAdultBirthDate(birthDate: string, today: string): boolean {
+  const match = ISO_DATE_PREFIX.exec(birthDate);
+  if (!match) return true;
+  return match[0] <= maxBirthDateFor(today);
+}
+
 // ─── Offline snapshot da casa (story 177) ────────────────────────────────────
 
 /**

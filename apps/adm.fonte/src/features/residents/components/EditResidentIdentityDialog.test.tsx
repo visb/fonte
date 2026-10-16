@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
-import { Gender } from '@fonte/types';
+import { Gender, MIN_AGE_MESSAGE } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 
 const mutate = vi.fn();
@@ -91,6 +91,30 @@ describe('EditResidentIdentityDialog', () => {
     expect(arg.rg).toBeNull();
     expect(arg.birthDate).toBeNull();
     expect(arg.gender).toBeNull();
+  });
+
+  // Story 202 — nascimento só de maiores de 18, julgado apenas quando muda.
+  it('alterar o nascimento para menor de 18 mostra a mensagem e não muta', async () => {
+    render(<EditResidentIdentityDialog open onClose={vi.fn()} resident={resident()} />);
+    const minorYear = new Date().getFullYear() - 10;
+    fireEvent.change(screen.getByDisplayValue('10/05/1990'), {
+      target: { value: `01/01/${minorYear}` },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    expect(await screen.findByText(MIN_AGE_MESSAGE)).toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it('ficha legada com nascimento de menor salva quando a data não muda', async () => {
+    const minor = `${new Date().getFullYear() - 10}-02-03`;
+    render(
+      <EditResidentIdentityDialog open onClose={vi.fn()} resident={resident({ birthDate: minor })} />,
+    );
+    fireEvent.change(screen.getByDisplayValue('Fulano de Tal'), { target: { value: 'Outro Nome' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(mutate).toHaveBeenCalled());
+    expect(mutate.mock.calls[0][0].birthDate).toBe(minor);
+    expect(screen.queryByText(MIN_AGE_MESSAGE)).toBeNull();
   });
 
   it('mostra erro da mutation', () => {

@@ -74,7 +74,14 @@ jest.mock('@fonte/types', () => ({
 }));
 
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { FollowUpType, NotificationType, ResidentStatus } from '@fonte/types';
+import {
+  FollowUpType,
+  maxBirthDateFor,
+  MIN_AGE_MESSAGE,
+  NotificationType,
+  ResidentStatus,
+  todayInSaoPaulo,
+} from '@fonte/types';
 import { Repository } from 'typeorm';
 import { ResidentService } from './resident.service';
 import { Resident } from './resident.entity';
@@ -1229,6 +1236,131 @@ describe('ResidentService.promoteToServant', () => {
     expect(staffService.createFromResident).toHaveBeenCalledWith(
       expect.objectContaining({ promotedAt: '2026-01-15' }),
     );
+  });
+
+  // Story 202, decisão 8: promoção copia a ficha; nada foi informado agora.
+  it('promove filho legado com nascimento de menor sem revalidar a idade', async () => {
+    const { service, staffService } = makePromoteService({
+      userId: USER_ID,
+      birthDate: '2015-01-01' as unknown as Date,
+    });
+
+    await expect(service.promoteToServant(RESIDENT_ID, {})).resolves.toMatchObject({ id: 'staff-1' });
+    expect(staffService.createFromResident).toHaveBeenCalled();
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Story 202 — nascimento só de maiores de 18
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('ResidentService — maioridade no nascimento (story 202)', () => {
+  const MINOR = '2015-06-01';
+  const ADULT = '1985-06-01';
+
+  function makeCreateService() {
+    const saved = makeResident({ id: RESIDENT_ID, houseId: HOUSE_ID });
+    const residentSave = jest.fn().mockResolvedValue(saved);
+    const followUpService = {
+      createAuto: jest.fn().mockResolvedValue(undefined),
+      getLastContributionDates: jest.fn().mockResolvedValue(new Map()),
+    };
+    const service = makeService(
+      {
+        create: jest.fn().mockReturnValue(saved),
+        save: residentSave,
+        findOne: jest.fn().mockResolvedValue(saved),
+        update: jest.fn(),
+      },
+      { create: jest.fn().mockReturnValue(makeAdmission()), save: jest.fn().mockResolvedValue(makeAdmission()) },
+      undefined,
+      undefined,
+      followUpService,
+    );
+    return { service, residentSave, followUpService };
+  }
+
+  function makeEditService(storedBirthDate: string | null) {
+    const resident = makeResident({ birthDate: storedBirthDate as unknown as Date });
+    const residentUpdate = jest.fn().mockResolvedValue({ affected: 1 });
+    const followUpService = {
+      createAuto: jest.fn().mockResolvedValue(undefined),
+      getLastContributionDates: jest.fn().mockResolvedValue(new Map()),
+    };
+    const { repo } = makeAdmissionRepo([makeAdmission()], {
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    });
+    const service = makeService(
+      { findOne: jest.fn().mockResolvedValue(resident), update: residentUpdate },
+      repo as never,
+      {},
+      undefined,
+      followUpService,
+    );
+    return { service, residentUpdate, followUpService };
+  }
+
+  describe('create', () => {
+    it('17 anos → 400 com MIN_AGE_MESSAGE, nada persistido', async () => {
+      const { service, residentSave, followUpService } = makeCreateService();
+
+      await expect(
+        service.create({ name: 'Ana', houseId: HOUSE_ID, birthDate: MINOR } as never),
+      ).rejects.toThrow(MIN_AGE_MESSAGE);
+      expect(residentSave).not.toHaveBeenCalled();
+      expect(followUpService.createAuto).not.toHaveBeenCalled();
+    });
+
+    it('18 anos completos hoje → passa', async () => {
+      const { service, residentSave } = makeCreateService();
+      const birthDate = maxBirthDateFor(todayInSaoPaulo());
+
+      await service.create({ name: 'Ana', houseId: HOUSE_ID, birthDate } as never);
+      expect(residentSave).toHaveBeenCalledTimes(1);
+    });
+
+    it('sem birthDate → passa', async () => {
+      const { service, residentSave } = makeCreateService();
+
+      await service.create({ name: 'Ana', houseId: HOUSE_ID, birthDate: null } as never);
+      expect(residentSave).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe.each([
+    ['update', (s: ResidentService, dto: object) => s.update(RESIDENT_ID, dto as never)],
+    ['updateIdentity', (s: ResidentService, dto: object) => s.updateIdentity(RESIDENT_ID, dto as never)],
+  ])('%s', (_name, call) => {
+    it('ficha gravada com menor + mesma data no payload → passa', async () => {
+      const { service, residentUpdate } = makeEditService(MINOR);
+
+      await call(service, { name: 'Outro', birthDate: MINOR });
+      expect(residentUpdate).toHaveBeenCalled();
+    });
+
+    it('alterando para menor → 400, sem update e sem efeitos colaterais', async () => {
+      const { service, residentUpdate, followUpService } = makeEditService(ADULT);
+
+      await expect(
+        call(service, { birthDate: MINOR, status: ResidentStatus.DISCHARGED }),
+      ).rejects.toThrow(MIN_AGE_MESSAGE);
+      expect(residentUpdate).not.toHaveBeenCalled();
+      expect(followUpService.createAuto).not.toHaveBeenCalled();
+    });
+
+    it('payload sem birthDate (ficha legada menor) → passa', async () => {
+      const { service, residentUpdate } = makeEditService(MINOR);
+
+      await call(service, { name: 'Outro' });
+      expect(residentUpdate).toHaveBeenCalled();
+    });
+
+    it('alterando para adulto → passa', async () => {
+      const { service, residentUpdate } = makeEditService(MINOR);
+
+      await call(service, { birthDate: ADULT });
+      expect(residentUpdate).toHaveBeenCalled();
+    });
   });
 });
 

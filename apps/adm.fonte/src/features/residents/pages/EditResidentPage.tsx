@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useGoBack } from '@/lib/navigation';
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { useUpdateResident } from '../hooks/useResidents';
 import {
-  residentSchema,
+  makeResidentSchema,
   buildResidentPayload,
   residentToFormValues,
   type ResidentFormData,
@@ -26,6 +26,9 @@ export function EditResidentPage() {
 
   const { data: resident, isLoading: loadingResident } = useResidentById(id!);
   const { data: houses = [], isLoading: loadingHouses } = useHouses();
+  // Story 202: nascimento legado (menor) só é julgado se for alterado.
+  const initialBirthDate = resident?.birthDate ?? null;
+  const schema = useMemo(() => makeResidentSchema({ initialBirthDate }), [initialBirthDate]);
 
   const {
     register,
@@ -34,7 +37,7 @@ export function EditResidentPage() {
     reset,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<ResidentFormData>({ resolver: zodResolver(residentSchema) });
+  } = useForm<ResidentFormData>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
     if (resident && !loadingHouses) reset(residentToFormValues(resident));

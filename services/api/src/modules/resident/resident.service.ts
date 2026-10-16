@@ -57,6 +57,7 @@ import { UpdateResidentDto } from './dto/update-resident.dto';
 import { UpdateResidentIdentityDto } from './dto/update-resident-identity.dto';
 import { StorageService } from '../storage/storage.service';
 import { toDbTimestamp } from '../../common/lib/db-timestamp';
+import { assertAdultBirthDate } from '../../common/lib/birth-date';
 
 export interface ResidentMeView {
   id: string;
@@ -290,6 +291,8 @@ export class ResidentService {
   // do import em lote, story 103). Sem ele, cada repositório injetado auto-commita
   // como antes.
   async create(dto: CreateResidentDto, manager?: EntityManager): Promise<Resident> {
+    // Story 202: vale para acolhimento manual, contagem (ops) e import em lote.
+    assertAdultBirthDate(dto.birthDate);
     this.resolveInvestmentAmount(dto);
     const residentRepo = manager ? manager.getRepository(Resident) : this.residentRepository;
     const admissionRepo = manager ? manager.getRepository(Admission) : this.admissionRepository;
@@ -367,6 +370,8 @@ export class ResidentService {
     this.resolveInvestmentAmount(dto);
     const before = await this.findOne(id);
     if (dto.status) this.assertExitTransitionAllowed(before.status, dto.status);
+    // Story 202: só julga a data se ela veio e mudou (ficha legada continua salvável).
+    assertAdultBirthDate(dto.birthDate, before.birthDate);
     await this.residentRepository.update(id, dto);
 
     const today = new Date().toISOString().split('T')[0];
@@ -415,7 +420,8 @@ export class ResidentService {
   // rota é ADMIN-only (`@Roles(Role.ADMIN)`); aqui não há regra extra de status.
   async updateIdentity(id: string, dto: UpdateResidentIdentityDto): Promise<Resident> {
     // `findOne` valida a existência (lança NotFound) antes de gravar.
-    await this.findOne(id);
+    const before = await this.findOne(id);
+    assertAdultBirthDate(dto.birthDate, before.birthDate);
     await this.residentRepository.update(id, dto);
     return this.findOne(id);
   }

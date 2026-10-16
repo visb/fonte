@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SectionTitle, FormField } from "@/components/shared/FormField";
 import { ControlledDateInput } from "@/components/shared/ControlledDateInput";
 import { maskCPF, maskRG, maskPhone, withMask } from "@/lib/masks";
+import { maxBirthDate } from "@/lib/birthDate";
 
 // Campos pessoais compartilhados entre filho (resident) e servo (staff).
 // O formulário consumidor precisa expor estes nomes de campo:
@@ -82,7 +83,7 @@ export function PersonalDataFields<T extends FieldValues>({
           <Input {...f("nationality")} placeholder="Ex: Brasileira" />
         </FormField>
         <FormField label="Data de nascimento" error={errMsg("birthDate")}>
-          <ControlledDateInput control={control} name={"birthDate" as Path<T>} />
+          <ControlledDateInput control={control} name={"birthDate" as Path<T>} max={maxBirthDate()} />
         </FormField>
         <FormField label="Gênero">
           <Select {...f("gender")}>

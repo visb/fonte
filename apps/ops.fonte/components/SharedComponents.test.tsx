@@ -45,6 +45,47 @@ describe('DatePickerModal', () => {
     fireEvent.press(screen.getByText('icon:chevron-back'));
     expect(screen.getByText('Dezembro 2025')).toBeTruthy();
   });
+
+  it('sem valor e sem limite abre no mês atual', () => {
+    render(<DatePickerModal visible value="" onClose={jest.fn()} onChange={jest.fn()} />);
+    const now = new Date();
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto',
+      'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    expect(screen.getByText(`${months[now.getMonth()]} ${now.getFullYear()}`)).toBeTruthy();
+  });
+
+  // Story 202: o nascimento bloqueia datas depois de hoje − 18 anos.
+  describe('maximumDate', () => {
+    it('sem valor abre no mês do limite', () => {
+      render(
+        <DatePickerModal visible value="" maximumDate="2008-10-16" onClose={jest.fn()} onChange={jest.fn()} />,
+      );
+      expect(screen.getByText('Outubro 2008')).toBeTruthy();
+    });
+
+    it('dias depois do limite não selecionam; o próprio limite seleciona', () => {
+      const onChange = jest.fn();
+      render(
+        <DatePickerModal visible value="" maximumDate="2008-10-16" onClose={jest.fn()} onChange={onChange} />,
+      );
+      fireEvent.press(screen.getByText('17'));
+      expect(onChange).not.toHaveBeenCalled();
+      fireEvent.press(screen.getByText('16'));
+      expect(onChange).toHaveBeenCalledWith('2008-10-16');
+    });
+
+    it('não avança além do mês do limite', () => {
+      render(
+        <DatePickerModal visible value="2008-10-01" maximumDate="2008-10-16" onClose={jest.fn()} onChange={jest.fn()} />,
+      );
+      fireEvent.press(screen.getByLabelText('Próximo mês'));
+      expect(screen.getByText('Outubro 2008')).toBeTruthy();
+      fireEvent.press(screen.getByText('icon:chevron-back'));
+      expect(screen.getByText('Setembro 2008')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText('Próximo mês'));
+      expect(screen.getByText('Outubro 2008')).toBeTruthy();
+    });
+  });
 });
 
 describe('SuccessBanner', () => {

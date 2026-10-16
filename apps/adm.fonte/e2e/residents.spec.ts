@@ -257,6 +257,56 @@ test.describe('Filhos (Residentes)', () => {
     });
   });
 
+  // ─── Nascimento só de maiores de 18 (story 202) ──────────────────────────────
+  // Mesma limpeza por id do describe acima: o filho nasce pelo wizard.
+  test.describe('maioridade no nascimento', () => {
+    const createdIds: string[] = [];
+    const MIN_AGE_MESSAGE = 'A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.';
+    // "Hoje" no fuso da operação, como o backend e o form calculam.
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+    const yearsAgo = (n: number) =>
+      `${Number(today.slice(0, 4)) - n}${today.slice(4)}`.replace('-02-29', '-02-28');
+    const exactly18 = yearsAgo(18);
+    const age17 = yearsAgo(17);
+
+    test.afterAll(async () => {
+      const api = await playwrightRequest.newContext();
+      const token = await loginApi(api);
+      for (const id of createdIds) await deleteResident(api, token, id);
+      await api.dispose();
+    });
+
+    test('17 anos mostra o erro e não avança; 18 anos completos hoje salva', async ({ page }) => {
+      const name = `Residente Maioridade ${Date.now()}`;
+      await page.getByRole('link', { name: 'Novo acolhimento' }).click();
+      await page.getByRole('link', { name: /Primeiro acolhimento/ }).click();
+      await expect(page).toHaveURL('/residents/new');
+
+      await page.locator('input[name="name"]').fill(name);
+      const birth = page.locator('input[name="birthDate"]');
+      await fillDate(birth, age17);
+      await page.getByRole('button', { name: 'Avançar' }).click();
+      await expect(page.getByText(MIN_AGE_MESSAGE)).toBeVisible();
+      await expect(page.locator('select[name="houseId"]')).toHaveCount(0);
+
+      await fillDate(birth, exactly18);
+      await page.getByRole('button', { name: 'Avançar' }).click();
+      await expect(page.getByText(MIN_AGE_MESSAGE)).toHaveCount(0);
+      await page.locator('select[name="houseId"]').selectOption({ label: 'Casa Teste' });
+      await page.getByRole('button', { name: 'Avançar' }).click();
+      await expect(
+        page.getByText('Cadastre os familiares do acolhido. Você pode adicioná-los depois, se necessário.'),
+      ).toBeVisible();
+      await page.getByRole('button', { name: 'Avançar' }).click();
+      await page.getByRole('button', { name: 'Concluir acolhimento' }).click();
+      await expect(page).toHaveURL(/\/residents\/[^/]+\?tab=overview$/);
+      createdIds.push(new URL(page.url()).pathname.split('/').pop()!);
+
+      const [y, m, d] = exactly18.split('-');
+      await expect(page.getByText(`${d}/${m}/${y}`).first()).toBeVisible();
+    });
+  });
+
   // ─── Navegação e edição ──────────────────────────────────────────────────────
 
   test('navega para detalhe de residente', async ({ page }) => {

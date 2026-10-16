@@ -319,18 +319,30 @@ describe('ResidentController (e2e)', () => {
 
     it('transferência de casa não é barrada pelo guard', async () => {
       const id = await newResident();
-      const houses = await request(app.getHttpServer())
-        .get(`${BASE}/houses`)
+      // O seed tem uma casa só: a de destino é fixture deste teste (story 182).
+      const house = await request(app.getHttpServer())
+        .post(`${BASE}/houses`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .expect(200);
-      const other = (houses.body as Array<{ id: string }>).find((h) => h.id !== houseId);
-      expect(other).toBeDefined();
-      const res = await request(app.getHttpServer())
-        .patch(`${BASE}/residents/${id}`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ houseId: other!.id })
-        .expect(200);
-      expect(res.body.houseId).toBe(other!.id);
+        .send({ name: `Casa Transferência E2E ${Date.now()}` })
+        .expect(201);
+      const other = { id: house.body.id as string };
+      try {
+        const res = await request(app.getHttpServer())
+          .patch(`${BASE}/residents/${id}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ houseId: other.id })
+          .expect(200);
+        expect(res.body.houseId).toBe(other.id);
+      } finally {
+        // Devolve o filho e remove a casa criada aqui (o delete tolera falha).
+        await request(app.getHttpServer())
+          .patch(`${BASE}/residents/${id}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ houseId });
+        await request(app.getHttpServer())
+          .delete(`${BASE}/houses/${other.id}`)
+          .set('Authorization', `Bearer ${adminToken}`);
+      }
     });
   });
 

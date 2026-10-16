@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { Role, ServantRank } from '@fonte/types';
+import { MIN_AGE_MESSAGE, Role, ServantRank, todayInSaoPaulo } from '@fonte/types';
 import type { Staff } from '@fonte/api-client';
 import {
   newStaffSchema,
   editStaffSchema,
+  makeEditStaffSchema,
   buildStaffPayload,
   staffToFormValues,
   staffTabsWithError,
@@ -21,6 +22,31 @@ const baseValid: NewStaffFormData = {
   supportGroupId: '',
   password: 'secret',
 } as NewStaffFormData;
+
+describe('maioridade no nascimento (story 202)', () => {
+  const minor = `${Number(todayInSaoPaulo().slice(0, 4)) - 10}-06-01`;
+  const issueOn = (res: { success: boolean; error?: { issues: { path: (string | number)[]; message: string }[] } }) =>
+    res.error?.issues.find((i) => i.path.includes('birthDate'))?.message;
+
+  it('criação: menor reprova com a mensagem; adulto e vazio passam', () => {
+    expect(issueOn(newStaffSchema.safeParse({ ...baseValid, birthDate: minor }))).toBe(MIN_AGE_MESSAGE);
+    expect(newStaffSchema.safeParse({ ...baseValid, birthDate: '1980-06-01' }).success).toBe(true);
+    expect(newStaffSchema.safeParse({ ...baseValid, birthDate: '' }).success).toBe(true);
+  });
+
+  it('edição: valor carregado de menor e não alterado passa', () => {
+    const { password: _password, ...edit } = baseValid;
+    expect(makeEditStaffSchema(minor).safeParse({ ...edit, birthDate: minor }).success).toBe(true);
+  });
+
+  it('edição: alterar para menor reprova (sem valor inicial também)', () => {
+    const { password: _password, ...edit } = baseValid;
+    expect(issueOn(makeEditStaffSchema('1980-01-01').safeParse({ ...edit, birthDate: minor }))).toBe(
+      MIN_AGE_MESSAGE,
+    );
+    expect(issueOn(editStaffSchema.safeParse({ ...edit, birthDate: minor }))).toBe(MIN_AGE_MESSAGE);
+  });
+});
 
 describe('newStaffSchema', () => {
   it('aceita servo da casa com houseId', () => {

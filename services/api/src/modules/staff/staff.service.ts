@@ -15,6 +15,7 @@ import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { UpdateStaffMeDto } from './dto/update-staff-me.dto';
 import { StorageService } from '../storage/storage.service';
+import { assertAdultBirthDate } from '../../common/lib/birth-date';
 
 @Injectable()
 export class StaffService {
@@ -69,6 +70,8 @@ export class StaffService {
   }
 
   async create(dto: CreateStaffDto): Promise<Staff> {
+    // Story 202: antes de criar o User — recusa não deixa login órfão.
+    assertAdultBirthDate(dto.birthDate);
     const email = dto.email || null;
     if (email) {
       const existing = await this.userRepository.findOne({ where: { email } });
@@ -155,6 +158,7 @@ export class StaffService {
 
   async update(id: string, dto: UpdateStaffDto): Promise<Staff> {
     const staff = await this.findOne(id);
+    assertAdultBirthDate(dto.birthDate, staff.birthDate);
 
     const { email, role, password, ...staffFields } = dto;
     if (staffFields.whatsapp !== undefined) {

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Gender, MaritalStatus, Role, ServantRank } from '@fonte/types';
 import type { CreateStaffInput, Staff } from '@fonte/api-client';
 import { displayCpf, displayRg, maskPhone } from '@/lib/masks';
+import { birthDateField } from '@/lib/birthDate';
 
 // Campos comuns a criação e edição de servo, agrupados pelas abas do form
 // (story 96). SÓ a aba Sistema tem campos obrigatórios (name, role e — via
@@ -62,14 +63,22 @@ const houseRequired = (d: ServiceFields) => d.servesInGroup || !!d.houseId;
 const groupRequired = (d: ServiceFields) => !d.servesInGroup || !!d.supportGroupId;
 
 export const newStaffSchema = z
-  .object({ ...baseShape, password: z.string().min(6) })
+  .object({ ...baseShape, birthDate: birthDateField(), password: z.string().min(6) })
   .refine(houseRequired, { message: 'Casa é obrigatória para servos da casa', path: ['houseId'] })
   .refine(groupRequired, { message: 'Grupo de apoio é obrigatório', path: ['supportGroupId'] });
 
-export const editStaffSchema = z
-  .object(baseShape)
-  .refine(houseRequired, { message: 'Casa é obrigatória para servos da casa', path: ['houseId'] })
-  .refine(groupRequired, { message: 'Grupo de apoio é obrigatório', path: ['supportGroupId'] });
+/**
+ * Schema de edição. `initialBirthDate` é o nascimento carregado: a regra de
+ * maioridade (story 202) só vale quando a data muda — ficha legada continua
+ * salvável quando se edita outro campo.
+ */
+export const makeEditStaffSchema = (initialBirthDate?: string | null) =>
+  z
+    .object({ ...baseShape, birthDate: birthDateField(initialBirthDate) })
+    .refine(houseRequired, { message: 'Casa é obrigatória para servos da casa', path: ['houseId'] })
+    .refine(groupRequired, { message: 'Grupo de apoio é obrigatório', path: ['supportGroupId'] });
+
+export const editStaffSchema = makeEditStaffSchema();
 
 export type NewStaffFormData = z.infer<typeof newStaffSchema>;
 export type EditStaffFormData = z.infer<typeof editStaffSchema>;

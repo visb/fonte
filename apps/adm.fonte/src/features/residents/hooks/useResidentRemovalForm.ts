@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ResidentStatus } from '@fonte/types';
+import { ResidentStatus, type ResidentRowAction } from '@fonte/types';
 import { useRemoveResident } from './useResidentRemoval';
 
 const removalSchema = z.discriminatedUnion('action', [
@@ -11,13 +11,22 @@ const removalSchema = z.discriminatedUnion('action', [
 ]);
 
 type RemovalValues = z.infer<typeof removalSchema>;
-const removalDefaults = (): RemovalValues => ({ action: 'discharge', exitDate: new Date().toISOString().split('T')[0] });
 
-export function useResidentRemovalForm(resident: { id: string; houseId?: string | null }, onClose: () => void) {
+/** Story 200: o item do menu escolhido decide o ponto de partida do form. */
+export const removalDefaults = (mode: ResidentRowAction): RemovalValues =>
+  mode === 'transfer'
+    ? { action: 'transfer', targetHouseId: '' }
+    : { action: 'discharge', exitDate: new Date().toISOString().split('T')[0] };
+
+export function useResidentRemovalForm(
+  resident: { id: string; houseId?: string | null },
+  mode: ResidentRowAction,
+  onClose: () => void,
+) {
   const mutation = useRemoveResident(resident);
-  const form = useForm<RemovalValues>({ resolver: zodResolver(removalSchema), defaultValues: removalDefaults() });
+  const form = useForm<RemovalValues>({ resolver: zodResolver(removalSchema), defaultValues: removalDefaults(mode) });
   const handleClose = () => {
-    form.reset(removalDefaults());
+    form.reset(removalDefaults(mode));
     mutation.reset();
     onClose();
   };

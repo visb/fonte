@@ -3,7 +3,7 @@ import { View, FlatList } from "react-native";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { ResidentStatus } from "@fonte/types";
+import { ResidentStatus, type ResidentRowAction } from "@fonte/types";
 import { useAuth } from "@/lib/auth";
 import { normalizeForSearch } from "@/lib/searchUtils";
 import { useResidentsByHouse } from "@/features/residents/hooks/useResidents";
@@ -30,7 +30,11 @@ export function ResidentsPage() {
   // Story 196: um menu e um modal POR PÁGINA — item de lista não instancia
   // `Modal` (seriam N modais montados numa lista de casa cheia).
   const [menuTarget, setMenuTarget] = useState<{ id: string; name: string } | null>(null);
-  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
+  // Story 200: o modal abre no modo do item escolhido (saída ou transferência).
+  const [removeTarget, setRemoveTarget] = useState<{
+    resident: { id: string; name: string };
+    mode: ResidentRowAction;
+  } | null>(null);
 
   const { data: residents = [], isLoading, error, refetch } = useResidentsByHouse(
     staff?.houseId,
@@ -105,8 +109,8 @@ export function ResidentsPage() {
         visible={!!menuTarget}
         residentName={menuTarget?.name}
         onClose={() => setMenuTarget(null)}
-        onRemove={() => {
-          setRemoveTarget(menuTarget);
+        onSelect={(mode) => {
+          setRemoveTarget(menuTarget ? { resident: menuTarget, mode } : null);
           setMenuTarget(null);
         }}
       />
@@ -114,7 +118,8 @@ export function ResidentsPage() {
       <RemoveResidentModal
         visible={!!removeTarget}
         houseId={staff?.houseId ?? ""}
-        resident={removeTarget}
+        resident={removeTarget?.resident ?? null}
+        mode={removeTarget?.mode}
         onClose={() => setRemoveTarget(null)}
         onSuccess={() => refetch()}
       />

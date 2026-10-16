@@ -23,9 +23,13 @@ jest.mock('@/components/shared/LastSyncedAt', () => ({ LastSyncedAt: () => null 
 jest.mock('@/features/residents/components/RemoveResidentModal', () => {
   const { Text } = require('react-native');
   return {
-    RemoveResidentModal: (props: { visible: boolean; resident: { name: string } | null }) => {
+    RemoveResidentModal: (props: {
+      visible: boolean;
+      resident: { name: string } | null;
+      mode?: string;
+    }) => {
       mockRemoveModal(props);
-      return props.visible ? <Text>{`remover:${props.resident?.name}`}</Text> : null;
+      return props.visible ? <Text>{`remover:${props.resident?.name}:${props.mode}`}</Text> : null;
     },
   };
 });
@@ -49,19 +53,29 @@ function setup(role: Role = Role.COORDINATOR) {
 
 beforeEach(() => jest.clearAllMocks());
 
-describe('ResidentsPage — remover da casa', () => {
-  it('menu → Remover da casa abre o modal com o filho certo', () => {
+describe('ResidentsPage — saída da comunidade e transferência', () => {
+  it('menu → Declarar saída da comunidade abre o modal com o filho e mode exit', () => {
     setup();
     fireEvent.press(screen.getByLabelText('Ações de Pedro Alves'));
-    fireEvent.press(screen.getByText('Remover da casa'));
-    expect(screen.getByText('remover:Pedro Alves')).toBeTruthy();
+    fireEvent.press(screen.getByText('Declarar saída da comunidade'));
+    expect(screen.getByText('remover:Pedro Alves:exit')).toBeTruthy();
+    expect(mockRemoveModal).toHaveBeenLastCalledWith(
+      expect.objectContaining({ visible: true, resident: { id: 'r2', name: 'Pedro Alves' }, mode: 'exit' }),
+    );
+  });
+
+  it('menu → Transferir de casa abre o modal com o filho e mode transfer', () => {
+    setup();
+    fireEvent.press(screen.getByLabelText('Ações de João Silva'));
+    fireEvent.press(screen.getByText('Transferir de casa'));
+    expect(screen.getByText('remover:João Silva:transfer')).toBeTruthy();
   });
 
   it('fechar o menu sem escolher não abre o modal', () => {
     setup();
     fireEvent.press(screen.getByLabelText('Ações de João Silva'));
     fireEvent.press(screen.getByText('Cancelar'));
-    expect(screen.queryByText('remover:João Silva')).toBeNull();
+    expect(screen.queryByText(/remover:João Silva/)).toBeNull();
     expect(mockRemoveModal).toHaveBeenCalledWith(
       expect.objectContaining({ visible: false, resident: null }),
     );

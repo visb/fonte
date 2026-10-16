@@ -13,6 +13,7 @@ import {
   createStoreroomItem,
   deleteResident,
   deleteStoreroomItem,
+  API_URL,
   loginApi,
   type ResidentFixture,
   type StoreroomItemFixture,
@@ -644,41 +645,89 @@ test.describe('Filhos (Residentes)', () => {
     await expect(page.getByRole('button', { name: 'Alterar plano' })).toHaveCount(0);
   });
 
-  // Story 196 — baixa pela LISTA. Fixture própria (o teste MUTA o status), criada
-  // via API e removida no afterAll; o seed continua somente leitura (story 182).
-  test.describe('remover da casa pela lista', () => {
+  // Story 196/200 — baixa pela LISTA, com saída da comunidade e transferência
+  // como itens separados do `⋮`. Fixtures próprias (os testes MUTAM status/casa),
+  // criadas via API e removidas por id no afterAll; o seed continua somente
+  // leitura (story 182).
+  test.describe('saída da comunidade e transferência pela lista', () => {
     let api: APIRequestContext;
     let token: string;
     let resident: ResidentFixture;
+    let transferred: ResidentFixture;
+    let targetHouse: { id: string; name: string };
 
     test.beforeAll(async () => {
       api = await playwrightRequest.newContext();
       token = await loginApi(api);
+      const stamp = Date.now();
       resident = await createResident(api, token, {
-        name: `Baixa Lista E2E ${Date.now()}`,
+        name: `Baixa Lista E2E ${stamp}`,
         status: 'ACTIVE',
       });
+      transferred = await createResident(api, token, {
+        name: `Transferencia Lista E2E ${stamp}`,
+        status: 'ACTIVE',
+      });
+      // O seed tem uma casa só: a de destino é fixture desta suíte.
+      const houseName = `Casa Destino E2E ${stamp}`;
+      const houseRes = await api.post(`${API_URL}/houses`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { name: houseName },
+      });
+      if (!houseRes.ok()) {
+        throw new Error(`Falha ao criar casa (${houseRes.status()}): ${await houseRes.text()}`);
+      }
+      targetHouse = { id: (await houseRes.json()).id as string, name: houseName };
     });
 
     test.afterAll(async () => {
       await deleteResident(api, token, resident.id);
+      await deleteResident(api, token, transferred.id);
+      await api.delete(`${API_URL}/houses/${targetHouse.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       await api.dispose();
     });
 
-    test('⋮ → Remover da casa → alta tira o filho dos ativos e o mostra como Alta', async ({ page }) => {
-      await page.getByPlaceholder('Buscar por nome...').fill(resident.name);
-      const card = page.locator('.rounded-lg.border.bg-card').filter({ hasText: resident.name });
+    async function openMenuOf(page: Page, name: string) {
+      await page.getByPlaceholder('Buscar por nome...').fill(name);
+      const card = page.locator('.rounded-lg.border.bg-card').filter({ hasText: name });
       await expect(card).toBeVisible();
       // A busca é debounced (400ms) e refaz a listagem: esperar a lista conter
       // SÓ a fixture garante que o card não será remontado com o menu aberto
       // (o item do menu se soltaria do DOM no meio do clique).
       await expect(page.locator('.rounded-lg.border.bg-card')).toHaveCount(1);
+      await card.getByRole('button', { name: `Ações de ${name}` }).click();
+      return card;
+    }
 
-      await card.getByRole('button', { name: `Ações de ${resident.name}` }).click();
-      await page.getByRole('menuitem', { name: 'Remover da casa' }).click();
+    test('⋮ → Transferir de casa → o filho aparece na casa de destino', async ({ page }) => {
+      const card = await openMenuOf(page, transferred.name);
+      await expect(page.getByRole('menuitem', { name: 'Remover da casa' })).toHaveCount(0);
+      await page.getByRole('menuitem', { name: 'Transferir de casa' }).click();
 
       const dialog = page.getByRole('dialog');
-      await expect(dialog.getByText('Remover da casa')).toBeVisible();
+      await expect(dialog.getByText('Transferir de casa')).toBeVisible();
+      await expect(dialog.getByText('O que aconteceu?')).toHaveCount(0);
+      await dialog.locator('select').selectOption({ label: targetHouse.name });
+      await dialog.getByRole('button', { name: 'Confirmar' }).click();
+      await expect(dialog).toHaveCount(0);
+
+      // Segue ativo (transferência não é saída), agora na casa de destino.
+      await expect(card).toContainText(targetHouse.name);
+      await page.locator('select').nth(1).selectOption(targetHouse.id);
+      await expect(
+        page.locator('.rounded-lg.border.bg-card').filter({ hasText: transferred.name }),
+      ).toBeVisible();
+    });
+
+    test('⋮ → Declarar saída da comunidade → alta tira o filho dos ativos e o mostra como Alta', async ({ page }) => {
+      const card = await openMenuOf(page, resident.name);
+      await page.getByRole('menuitem', { name: 'Declarar saída da comunidade' }).click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByText('Declarar saída da comunidade')).toBeVisible();
+      await expect(dialog.getByRole('option', { name: 'Transferir para outra casa' })).toHaveCount(0);
       await dialog.locator('input[type="date"]').fill('2026-06-23');
       await dialog.getByRole('button', { name: 'Confirmar' }).click();
 

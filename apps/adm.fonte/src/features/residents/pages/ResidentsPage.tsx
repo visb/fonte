@@ -5,6 +5,7 @@ import {
   ResidentStatus,
   RESIDENTS_FILTERS_PREFERENCE_KEY,
   type ResidentsFiltersPreference,
+  type ResidentRowAction,
 } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
@@ -29,8 +30,11 @@ const PERSISTED_FILTER_PARAMS = ['status', 'house', 'overdue', 'sort'] as const;
 
 export function ResidentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Resident | null>(null);
-  // Story 196: um diálogo de baixa por página, com o filho escolhido no menu.
-  const [removeTarget, setRemoveTarget] = useState<Resident | null>(null);
+  // Story 196: um diálogo de baixa por página, com o filho escolhido no menu;
+  // story 200: e o item escolhido (saída da comunidade ou transferência).
+  const [removeTarget, setRemoveTarget] = useState<
+    { resident: Resident; mode: ResidentRowAction } | null
+  >(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -207,7 +211,7 @@ export function ResidentsPage() {
               key={resident.id}
               resident={resident}
               onDelete={() => setDeleteTarget(resident)}
-              onRemove={() => setRemoveTarget(resident)}
+              onRemove={(mode) => setRemoveTarget({ resident, mode })}
             />
           ))}
         </div>
@@ -222,7 +226,8 @@ export function ResidentsPage() {
       {removeTarget && (
         <RemoveResidentDialog
           open
-          resident={removeTarget}
+          resident={removeTarget.resident}
+          mode={removeTarget.mode}
           onClose={() => setRemoveTarget(null)}
         />
       )}

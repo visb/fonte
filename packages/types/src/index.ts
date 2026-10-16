@@ -127,6 +127,24 @@ export const RESIDENT_REMOVAL_LABELS: Record<
 };
 
 /**
+ * Itens do menu `⋮` da lista de filhos (story 200). A saída da comunidade
+ * (alta/evasão) e a transferência são ações separadas: quem é transferido
+ * continua na comunidade, só muda de casa.
+ */
+export type ResidentRowAction = 'exit' | 'transfer';
+
+export const RESIDENT_ROW_ACTION_LABELS: Record<ResidentRowAction, string> = {
+  exit: 'Declarar saída da comunidade',
+  transfer: 'Transferir de casa',
+};
+
+/** Quais ações de baixa cada item do menu oferece. */
+export const RESIDENT_ROW_ACTIONS: Record<ResidentRowAction, ResidentRemovalAction[]> = {
+  exit: ['discharge', 'evade'],
+  transfer: ['transfer'],
+};
+
+/**
  * Disponibilidade de um template de documento por status do filho (story 160).
  * Ternário de propósito — configurar 9 status por template é granularidade que
  * ninguém pediu; se um dia precisar, ALL vira a lista completa sem quebrar dado.

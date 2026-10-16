@@ -331,13 +331,13 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
     await goOffline(page, context);
 
     await page.getByLabel(`Ações de ${LIST_RESIDENT}`).click();
-    await visible(page, 'Remover da casa').click();
+    await visible(page, 'Declarar saída da comunidade').click();
     await visible(page, 'Declarar alta').click();
     await visible(page, 'Confirmar').click();
 
     // Fecha na hora (o aviso "salvo no aparelho" é `Alert` nativo, que o
     // react-native-web não desenha — coberto no unit da tela).
-    await expect(page.getByText('Remover filho').filter({ visible: true })).toHaveCount(0, {
+    await expect(page.getByText('Declarar saída da comunidade').filter({ visible: true })).toHaveCount(0, {
       timeout: 15_000,
     });
     expect(patches).toEqual([]);
@@ -396,7 +396,7 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
     await expect(visible(page, name)).toBeVisible({ timeout: 30_000 });
     await goOffline(page, context);
     await page.getByLabel(`Ações de ${name}`).click();
-    await visible(page, 'Remover da casa').click();
+    await visible(page, 'Declarar saída da comunidade').click();
     await visible(page, 'Declarar alta').click();
     await visible(page, 'Confirmar').click();
     // Outro operador encerrou o vínculo enquanto este aparelho estava offline.

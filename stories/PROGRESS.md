@@ -79,7 +79,7 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 | 1 | 200 — Declarar saída da comunidade / Transferir de casa | [OK] | adm unit 1778 + e2e 33; ops unit 1384 + e2e-web 26 | f2d2548 | a9fba41 |
 | 2 | 201 — `DateInput` próprio no adm | [OK] | adm unit 1820 + e2e 80 | b1f533b | eaa86dc |
 | 3 | 202 — Nascimento só de maiores de 18 | [OK] | api 1904 + e2e 655; adm 1836 + e2e 51; ops 1393 | 06dd07f | e60546f |
-| 4 | 203 — Coerência das datas de entrada e saída | [ ] | | | |
+| 4 | 203 — Coerência das datas de entrada e saída | [OK] | api 1948 + e2e 662; adm 1862; ops 1405 + e2e-web 7 | 922adb5 | d393515 |
 | 5 | 206 — Card de filho responsivo (adm) | [ ] | | | |
 | 6 | 204 — Listagem de servos no ops | [ ] | | | |
 | 7 | 205 — Restaurar vínculo filho↔ministério | [ ] | | | |
@@ -99,6 +99,8 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
   Nota: popover do calendário tem role="dialog" — spec novo usa `fillDate` (e2e/helpers/dates.ts) ou escopa `getByRole('dialog')`.
 - [OK] 202 — testes: api unit 1904 (94.8%), api e2e 655/655, adm unit 1836 (97.2%), adm e2e 51/51, ops unit 1393 (96.3%) — commit: 06dd07f — merge: e60546f — 2026-10-16 — Maestro PENDENTE-MANUAL.
   Nota: `MissingFieldsDialog` (adm) sem validação de 18+ na tela (só 400 do backend); fora do plano.
+- [OK] 203 — testes: api unit 1948, api e2e 662/662, adm unit 1862 (97.2%), adm e2e fluxos afetados 9/9 + bulk-import 5/5, ops unit 1405 (96.5%), ops e2e-web field-flows 7/7 — commit: 922adb5 — merge: d393515 — 2026-10-16 — Maestro PENDENTE-MANUAL.
+  Nota: `residents.spec` adm completo tem 8 falhas "João Testador" fora da pág. 1 — **pré-existente na main** (banco de teste poluído por suítes que não limpam: wizard adm, bible-courses e2e, census). Bug de isolamento (story 182), fora da rodada.
 
 ## Resumo final
 

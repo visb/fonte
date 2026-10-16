@@ -16,7 +16,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Gender } from '@fonte/types';
+import {
+  Gender,
+  isAdultBirthDate,
+  maxBirthDateFor,
+  MIN_AGE_MESSAGE,
+  todayInSaoPaulo,
+} from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { DatePickerModal } from '@/components/DatePickerModal';
@@ -25,7 +31,12 @@ import { useCensusAddResident } from '../hooks/useCensus';
 const schema = z.object({
   name: z.string().trim().min(1, 'Informe o nome'),
   entryDate: z.string().min(1, 'Informe a data de acolhimento'),
-  birthDate: z.string().optional(),
+  // Story 202: 18 anos completos hoje. Validado aqui para o lançamento não
+  // entrar na fila offline já condenado ao 400 do backend.
+  birthDate: z
+    .string()
+    .optional()
+    .refine((v) => !v || isAdultBirthDate(v, todayInSaoPaulo()), { message: MIN_AGE_MESSAGE }),
   cpf: z.string().optional(),
   rg: z.string().optional(),
   gender: z.nativeEnum(Gender),
@@ -211,7 +222,7 @@ export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props
                 control={control}
                 name="birthDate"
                 render={({ field: { value, onChange } }) => (
-                  <Field label="Data de nascimento">
+                  <Field label="Data de nascimento" error={errors.birthDate?.message}>
                     <TouchableOpacity
                       className="border border-gray-300 rounded-lg px-3 py-2.5 flex-row items-center justify-between"
                       onPress={() => setActiveDatePicker('birth')}
@@ -224,6 +235,7 @@ export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props
                     <DatePickerModal
                       visible={activeDatePicker === 'birth'}
                       value={value ?? ''}
+                      maximumDate={maxBirthDateFor(todayInSaoPaulo())}
                       onClose={() => setActiveDatePicker(null)}
                       onChange={onChange}
                     />

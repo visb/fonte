@@ -323,14 +323,15 @@
               "path": [
                 "staff"
               ]
-            }
+            },
+            "description": "Cria o servo (User + Staff).\n\nStory 202 — `birthDate`, quando informado, exige 18 anos completos HOJE (data no fuso America/Sao_Paulo). Menor → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`, antes de criar o User. Nulo/ausente passa (campo opcional)."
           }
         },
         {
           "name": "Update Staff",
           "request": {
             "method": "PATCH",
-            "description": "Atualiza o servo. Story 194 — efeito colateral: se este staff for o coordenador TITULAR de alguma casa (`houses.coordinator_id`) e a alteração o tirar da lista de coordenadores dela (mudar `houseId` ou sair de `role: COORDINATOR`), a coluna é zerada na MESMA transação. Alterar nome/telefone/e-mail do titular não mexe na casa.",
+            "description": "Atualiza o servo. Story 194 — efeito colateral: se este staff for o coordenador TITULAR de alguma casa (`houses.coordinator_id`) e a alteração o tirar da lista de coordenadores dela (mudar `houseId` ou sair de `role: COORDINATOR`), a coluna é zerada na MESMA transação. Alterar nome/telefone/e-mail do titular não mexe na casa.\n\nStory 202 — `birthDate` só é julgado quando vem no payload E difere do gravado: se a nova data não tem 18 anos completos hoje (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }` e nada é gravado. Ficha legada com nascimento de menor continua salvável editando outros campos (ou reenviando a mesma data).",
             "header": [
               {
                 "key": "Content-Type",
@@ -1119,7 +1120,7 @@
                 "residents"
               ]
             },
-            "description": "houseId é opcional quando status = ARCHIVED (import em lote de ficha fora da planilha, casa desconhecida); obrigatório para os demais status."
+            "description": "houseId é opcional quando status = ARCHIVED (import em lote de ficha fora da planilha, casa desconhecida); obrigatório para os demais status.\n\nStory 202 — `birthDate`, quando informado, exige 18 anos completos HOJE (data no fuso America/Sao_Paulo). Menor → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }` e nada é persistido. Nulo/ausente passa (campo opcional)."
           }
         },
         {
@@ -1152,7 +1153,7 @@
                 "{{residentId}}"
               ]
             },
-            "description": "ADMIN e COORDINATOR (SERVANT recebe 403).\n\nStory 196 — guard de transição de saída: status DISCHARGED ou EVADED só é aceito a partir de ACTIVE, DISCIPLINE ou TEMP_LEAVE (REMOVABLE_RESIDENT_STATUSES). A partir de qualquer outro status (DISCHARGED, EVADED, ARCHIVED, PRE_ADMISSION, CENSUS_ADDED, REJECTED_CENSUS) a resposta é 400 com a mensagem por status de origem — ex.: `{ \"statusCode\": 400, \"message\": \"Filho já encerrado (evasão) não pode receber alta.\" }`. Nada é gravado e nenhum efeito (follow-up, cancelamento do carnê, notificação) é disparado.\n\nReenviar o MESMO status que o filho já tem continua 200 (reenvio idempotente da fila offline do ops). Mudar apenas `houseId` (transferência) não é restringido."
+            "description": "ADMIN e COORDINATOR (SERVANT recebe 403).\n\nStory 196 — guard de transição de saída: status DISCHARGED ou EVADED só é aceito a partir de ACTIVE, DISCIPLINE ou TEMP_LEAVE (REMOVABLE_RESIDENT_STATUSES). A partir de qualquer outro status (DISCHARGED, EVADED, ARCHIVED, PRE_ADMISSION, CENSUS_ADDED, REJECTED_CENSUS) a resposta é 400 com a mensagem por status de origem — ex.: `{ \"statusCode\": 400, \"message\": \"Filho já encerrado (evasão) não pode receber alta.\" }`. Nada é gravado e nenhum efeito (follow-up, cancelamento do carnê, notificação) é disparado.\n\nReenviar o MESMO status que o filho já tem continua 200 (reenvio idempotente da fila offline do ops). Mudar apenas `houseId` (transferência) não é restringido.\n\nStory 202 — `birthDate` só é julgado quando vem no payload E difere do gravado: nova data sem 18 anos completos hoje (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`, sem gravar nem disparar efeitos. Ficha legada com nascimento de menor continua salvável editando outros campos (ou reenviando a mesma data)."
           }
         },
         {
@@ -1180,7 +1181,7 @@
                 "identity"
               ]
             },
-            "description": "Correção dos dados de identidade (nome, CPF, RG, nascimento, gênero) na reintrodução (story 147). Somente ADMIN; a resposta revela CPF/RG completos (RevealSensitive)."
+            "description": "Correção dos dados de identidade (nome, CPF, RG, nascimento, gênero) na reintrodução (story 147). Somente ADMIN; a resposta revela CPF/RG completos (RevealSensitive).\n\nStory 202 — `birthDate` alterado para quem não tem 18 anos completos hoje (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`. A mesma data já gravada (ficha legada) passa."
           }
         },
         {
@@ -2073,7 +2074,7 @@
                 "commit"
               ]
             },
-            "description": "Persiste o import aprovado de forma atômica (uma transação): revalida conflito por CPF (409 se já existir), cria o resident + relatives (≥1 obrigatório), anexa a foto (photoBase64 opcional) e cria as contribuições retroativas (contributionMonths ISO YYYY-MM-01). Retorna { resident, contributionsCreated: { created, skipped } }. Rollback não deixa nada persistido.\n\nStory 121 — múltiplos acolhimentos: `resident.admissions` (opcional) é o histórico de pares { entryDate, exitDate? } vindo da planilha. Quando há mais de um item, o commit cria um `Admission` por par (o topo do resident = acolhimento mais recente; os anteriores entram como histórico), cada um com status terminal derivado pela permanência entrada→saída (≥6 meses → DISCHARGED, <6 meses → EVADED; sem saída → ACTIVE). Um único acolhimento (ou campo ausente) mantém o comportamento anterior (só o topo). Roles: ADMIN, COORDINATOR.\n\nhouseId é opcional quando status = ARCHIVED (import em lote de ficha fora da planilha, casa desconhecida); obrigatório para os demais status. relatives pode ser vazio: a regra de ≥1 familiar vale só para o acolhimento manual."
+            "description": "Persiste o import aprovado de forma atômica (uma transação): revalida conflito por CPF (409 se já existir), cria o resident + relatives (≥1 obrigatório), anexa a foto (photoBase64 opcional) e cria as contribuições retroativas (contributionMonths ISO YYYY-MM-01). Retorna { resident, contributionsCreated: { created, skipped } }. Rollback não deixa nada persistido.\n\nStory 121 — múltiplos acolhimentos: `resident.admissions` (opcional) é o histórico de pares { entryDate, exitDate? } vindo da planilha. Quando há mais de um item, o commit cria um `Admission` por par (o topo do resident = acolhimento mais recente; os anteriores entram como histórico), cada um com status terminal derivado pela permanência entrada→saída (≥6 meses → DISCHARGED, <6 meses → EVADED; sem saída → ACTIVE). Um único acolhimento (ou campo ausente) mantém o comportamento anterior (só o topo). Roles: ADMIN, COORDINATOR.\n\nhouseId é opcional quando status = ARCHIVED (import em lote de ficha fora da planilha, casa desconhecida); obrigatório para os demais status. relatives pode ser vazio: a regra de ≥1 familiar vale só para o acolhimento manual.\n\nStory 202 — `resident.birthDate`, quando informado, exige 18 anos completos HOJE (America/Sao_Paulo). Ficha com nascimento de menor (data lida errada) → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }` antes de abrir a transação; nada é persistido. Corrigir a data na revisão e reenviar."
           }
         },
         {
@@ -2920,7 +2921,8 @@
                 "census",
                 "residents"
               ]
-            }
+            },
+            "description": "Coordenador adiciona um filho durante a contagem (status CENSUS_ADDED, aguardando aprovação do ADM).\n\nStory 202 — `birthDate`, quando informado, exige 18 anos completos HOJE (America/Sao_Paulo). Menor → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`. No ops.fonte o replay offline dessa recusa cai na tela de pendências (/sync); o app já valida antes de enfileirar."
           }
         },
         {

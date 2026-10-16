@@ -1,11 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { act, render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
+import { maxBirthDateFor, todayInSaoPaulo } from '@fonte/types';
 import { PersonalDataFields } from './PersonalDataFields';
 
-function Harness(props: { includeName?: boolean; nameLabel?: string; onBirth?: (v: string) => void }) {
+function Harness(props: {
+  includeName?: boolean;
+  nameLabel?: string;
+  onBirth?: (v: string) => void;
+  initialBirth?: string;
+}) {
   const { register, control, watch, formState: { errors } } = useForm({
-    defaultValues: { birthDate: '1980-01-31' },
+    defaultValues: { birthDate: props.initialBirth ?? '1980-01-31' },
   });
   props.onBirth?.(watch('birthDate'));
   return (
@@ -60,6 +66,23 @@ describe('PersonalDataFields', () => {
     fireEvent.change(input, { target: { value: '20051975' } });
     expect(input.value).toBe('20/05/1975');
     expect(birth).toBe('1975-05-20');
+  });
+
+  // Story 202: o calendário do nascimento bloqueia quem ainda não tem 18 anos.
+  it('calendário do nascimento tem max = hoje − 18 anos', async () => {
+    render(<Harness initialBirth="" />);
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    const input = document.querySelector('input[name="birthDate"]') as HTMLInputElement;
+    fireEvent.focus(input);
+    await screen.findByRole('grid');
+    const max = maxBirthDateFor(todayInSaoPaulo());
+    const day = (iso: string) =>
+      document.querySelector(`[data-day="${iso}"] button`) as HTMLButtonElement | null;
+    expect(day(max)).not.toBeDisabled();
+    const next = new Date(`${max}T12:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    const nextIso = next.toISOString().slice(0, 10);
+    if (day(nextIso)) expect(day(nextIso)).toBeDisabled();
   });
 
   it('aplica máscara de telefone ao digitar', () => {

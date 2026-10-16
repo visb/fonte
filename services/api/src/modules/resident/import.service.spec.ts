@@ -1,5 +1,5 @@
-import { ConflictException } from '@nestjs/common';
-import { ResidentStatus } from '@fonte/types';
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { MIN_AGE_MESSAGE, ResidentStatus } from '@fonte/types';
 import { ImportService } from './import.service';
 import { CommitImportDto } from './dto/commit-import.dto';
 
@@ -274,6 +274,32 @@ describe('ImportService', () => {
       const [, file] = uploadPhoto.mock.calls[0];
       expect(file.mimetype).toBe('image/jpeg');
       expect(file.originalname).toBe('import-photo.jpg');
+    });
+
+    // Story 202: data de nascimento lida errada da ficha (menor de 18 hoje).
+    it('ficha com nascimento de menor → 400 com a mensagem, nada persistido', async () => {
+      const dto = commitDto({
+        resident: { name: 'Maria', houseId: 'house-1', birthDate: '2015-03-03' } as never,
+      });
+
+      await expect(service.commit(dto, 'user-1')).rejects.toThrow(MIN_AGE_MESSAGE);
+      await expect(service.commit(dto, 'user-1')).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(transaction).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+      expect(relativeSave).not.toHaveBeenCalled();
+      expect(bulkCreateContributions).not.toHaveBeenCalled();
+    });
+
+    it('ficha adulta segue o commit normalmente', async () => {
+      const dto = commitDto({
+        resident: { name: 'Maria', houseId: 'house-1', birthDate: '1979-03-03' } as never,
+      });
+
+      const result = await service.commit(dto, 'user-1');
+
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(result.resident.id).toBe('new-1');
     });
 
     it('sem CPF na ficha não revalida conflito (segue o commit)', async () => {

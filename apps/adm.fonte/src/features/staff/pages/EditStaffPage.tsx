@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { AvatarUpload } from '@/components/AvatarUpload';
@@ -14,7 +14,7 @@ import { useUpdateStaff, useStaffById } from '../hooks/useStaff';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { useSupportGroups } from '@/features/support-groups/hooks/useSupportGroups';
 import { StaffFormSection } from '../components/StaffFormSection';
-import { editStaffSchema, buildStaffPayload, staffToFormValues, type EditStaffFormData } from '../lib/staffSchema';
+import { makeEditStaffSchema, buildStaffPayload, staffToFormValues, type EditStaffFormData } from '../lib/staffSchema';
 
 export function EditStaffPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,9 +24,12 @@ export function EditStaffPage() {
   const { data: houses = [], isLoading: loadingHouses } = useHouses();
   const { data: supportGroups = [], isLoading: loadingGroups } = useSupportGroups();
   const { data: staff, isLoading } = useStaffById(id!);
+  // Story 202: nascimento legado (menor) só é julgado se for alterado.
+  const initialBirthDate = staff?.birthDate ?? null;
+  const schema = useMemo(() => makeEditStaffSchema(initialBirthDate), [initialBirthDate]);
 
   const { register, control, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } =
-    useForm<EditStaffFormData>({ resolver: zodResolver(editStaffSchema) });
+    useForm<EditStaffFormData>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
     if (staff && !loadingHouses && !loadingGroups) reset(staffToFormValues(staff));

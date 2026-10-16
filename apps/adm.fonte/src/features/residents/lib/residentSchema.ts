@@ -2,13 +2,19 @@ import { z } from 'zod';
 import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { displayCpf, displayRg, maskPhone } from '@/lib/masks';
+import { birthDateField } from '@/lib/birthDate';
 
-export const residentSchema = z.object({
+/**
+ * Schema do filho. `initialBirthDate` é o nascimento carregado na edição: a
+ * regra de maioridade (story 202) só vale quando a data muda. Na criação
+ * (acolhimento, import) não há valor inicial e toda data informada é julgada.
+ */
+export const makeResidentSchema = (options: { initialBirthDate?: string | null } = {}) => z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   // Obrigatória para todo status exceto ARCHIVED (validado no superRefine).
   houseId: z.string().optional(),
   status: z.nativeEnum(ResidentStatus).optional(),
-  birthDate: z.string().optional(),
+  birthDate: birthDateField(options.initialBirthDate),
   cpf: z.string().optional(),
   rg: z.string().optional(),
   nationality: z.string().optional(),
@@ -62,6 +68,9 @@ export const residentSchema = z.object({
     });
   }
 });
+
+/** Schema de criação (acolhimento, import): toda data de nascimento é julgada. */
+export const residentSchema = makeResidentSchema();
 
 export type ResidentFormData = z.infer<typeof residentSchema>;
 

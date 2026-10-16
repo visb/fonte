@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { FamilyInvestment, Gender, ResidentStatus } from '@fonte/types';
+import { FamilyInvestment, Gender, MIN_AGE_MESSAGE, ResidentStatus, todayInSaoPaulo } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import {
+  makeResidentSchema,
   residentSchema,
   buildResidentPayload,
   residentToFormValues,
@@ -9,6 +10,27 @@ import {
   ADMISSAO_FIELDS,
   type ResidentFormData,
 } from './residentSchema';
+
+describe('maioridade no nascimento (story 202)', () => {
+  const minor = `${Number(todayInSaoPaulo().slice(0, 4)) - 10}-06-01`;
+  const birthIssue = (res: ReturnType<typeof residentSchema.safeParse>) =>
+    res.error?.issues.find((i) => i.path[0] === 'birthDate')?.message;
+
+  it('criação (acolhimento/import): menor reprova; adulto e vazio passam', () => {
+    expect(birthIssue(residentSchema.safeParse({ name: 'João', houseId: 'h1', birthDate: minor }))).toBe(
+      MIN_AGE_MESSAGE,
+    );
+    expect(residentSchema.safeParse({ name: 'João', houseId: 'h1', birthDate: '1980-06-01' }).success).toBe(true);
+    expect(residentSchema.safeParse({ name: 'João', houseId: 'h1', birthDate: '' }).success).toBe(true);
+  });
+
+  it('edição: valor carregado de menor e não alterado passa; alterado para menor reprova', () => {
+    const legacy = makeResidentSchema({ initialBirthDate: `${minor}T00:00:00.000Z` });
+    expect(legacy.safeParse({ name: 'João', houseId: 'h1', birthDate: minor }).success).toBe(true);
+    const adult = makeResidentSchema({ initialBirthDate: '1980-01-01' });
+    expect(birthIssue(adult.safeParse({ name: 'João', houseId: 'h1', birthDate: minor }))).toBe(MIN_AGE_MESSAGE);
+  });
+});
 
 describe('residentSchema', () => {
   it('exige nome e casa', () => {

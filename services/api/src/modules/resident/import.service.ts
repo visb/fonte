@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { CheckImportConflictResult, ImportConflict, ResidentStatus } from '@fonte/types';
 import { normalizeName } from '../../common/lib/normalize';
+import { assertAdultBirthDate } from '../../common/lib/birth-date';
 import { Resident } from './resident.entity';
 import { Admission } from './admission.entity';
 import { Relative } from '../relative/relative.entity';
@@ -143,6 +144,9 @@ export class ImportService {
     dto: CommitImportDto,
     actingUserId: string,
   ): Promise<{ resident: Resident; contributionsCreated: { created: number; skipped: number } }> {
+    // Story 202: data lida errada da ficha (menor de 18 hoje) volta 400 para a
+    // revisão antes de abrir a transação. O `create` repete a regra (defesa).
+    assertAdultBirthDate(dto.resident.birthDate);
     return this.dataSource.transaction(async (manager) => {
       await this.assertNoCpfConflict(manager, dto.resident.cpf);
 

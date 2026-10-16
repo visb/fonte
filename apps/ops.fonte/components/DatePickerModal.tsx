@@ -13,6 +13,8 @@ interface Props {
   value: string; // YYYY-MM-DD
   onClose: () => void;
   onChange: (date: string) => void;
+  /** Última data selecionável (YYYY-MM-DD). Dias depois dela ficam bloqueados. */
+  maximumDate?: string;
 }
 
 function parseDate(iso: string): { year: number; month: number } {
@@ -24,17 +26,24 @@ function parseDate(iso: string): { year: number; month: number } {
   return { year: y, month: m - 1 };
 }
 
-export function DatePickerModal({ visible, value, onClose, onChange }: Props) {
-  const [year, setYear] = useState(() => parseDate(value).year);
-  const [month, setMonth] = useState(() => parseDate(value).month);
+const monthKey = (year: number, month: number) =>
+  `${year}-${String(month + 1).padStart(2, '0')}`;
+
+export function DatePickerModal({ visible, value, onClose, onChange, maximumDate }: Props) {
+  // Sem valor, abre no mês do limite (ex.: nascimento → 18 anos atrás).
+  const initial = () => parseDate(value || maximumDate || '');
+  const [year, setYear] = useState(() => initial().year);
+  const [month, setMonth] = useState(() => initial().month);
 
   useEffect(() => {
     if (visible) {
-      const parsed = parseDate(value);
+      const parsed = parseDate(value || maximumDate || '');
       setYear(parsed.year);
       setMonth(parsed.month);
     }
-  }, [visible, value]);
+  }, [visible, value, maximumDate]);
+
+  const atMaxMonth = !!maximumDate && monthKey(year, month) >= maximumDate.slice(0, 7);
 
   const today = new Date().toISOString().split('T')[0];
   const firstDayOfWeek = new Date(year, month, 1).getDay();
@@ -51,6 +60,7 @@ export function DatePickerModal({ visible, value, onClose, onChange }: Props) {
   }
 
   function nextMonth() {
+    if (atMaxMonth) return;
     if (month === 11) { setMonth(0); setYear((y) => y + 1); }
     else setMonth((m) => m + 1);
   }
@@ -76,7 +86,13 @@ export function DatePickerModal({ visible, value, onClose, onChange }: Props) {
             <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
               {MONTH_NAMES[month]} {year}
             </Text>
-            <TouchableOpacity onPress={nextMonth} hitSlop={8}>
+            <TouchableOpacity
+              onPress={nextMonth}
+              hitSlop={8}
+              disabled={atMaxMonth}
+              accessibilityLabel="Próximo mês"
+              style={{ opacity: atMaxMonth ? 0.35 : 1 }}
+            >
               <Ionicons name="chevron-forward" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -97,6 +113,7 @@ export function DatePickerModal({ visible, value, onClose, onChange }: Props) {
               const iso = `${year}-${mm}-${dd}`;
               const isSelected = iso === value;
               const isToday = iso === today;
+              const isBlocked = !!maximumDate && iso > maximumDate;
               return (
                 <TouchableOpacity
                   key={day}
@@ -106,12 +123,13 @@ export function DatePickerModal({ visible, value, onClose, onChange }: Props) {
                     borderRadius: 18,
                     backgroundColor: isSelected ? '#2563eb' : 'transparent',
                   }}
+                  disabled={isBlocked}
                   onPress={() => selectDay(day)}
                 >
                   <Text style={{
                     fontSize: 13,
                     fontWeight: isSelected || isToday ? '700' : '400',
-                    color: isSelected ? '#fff' : isToday ? '#2563eb' : '#111827',
+                    color: isSelected ? '#fff' : isBlocked ? '#d1d5db' : isToday ? '#2563eb' : '#111827',
                   }}>
                     {day}
                   </Text>

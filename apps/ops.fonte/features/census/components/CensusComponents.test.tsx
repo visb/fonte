@@ -1,5 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { Modal } from 'react-native';
+import { maxBirthDateFor, MIN_AGE_MESSAGE, todayInSaoPaulo } from '@fonte/types';
 import { createTestQueryClient, expectIdempotencyKey } from '@/lib/test/utils';
 
 jest.mock('@expo/vector-icons', () => {
@@ -11,7 +13,19 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
   MediaTypeOptions: { Images: 'Images' },
 }));
-jest.mock('@/components/DatePickerModal', () => ({ DatePickerModal: () => null }));
+// Guarda as props de cada render do picker para o teste escolher uma data
+// (story 202: nascimento de menor/adulto) sem depender do calendário real.
+const mockPickerProps: Array<{
+  visible: boolean;
+  maximumDate?: string;
+  onChange: (date: string) => void;
+}> = [];
+jest.mock('@/components/DatePickerModal', () => ({
+  DatePickerModal: (props: (typeof mockPickerProps)[number]) => {
+    mockPickerProps.push(props);
+    return null;
+  },
+}));
 jest.mock('@/lib/api', () => ({
   api: {
     residents: { uploadPhoto: jest.fn(), update: jest.fn() },
@@ -215,6 +229,74 @@ describe('AddResidentModal', () => {
     await waitFor(() => expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalled());
     // continua mostrando o ícone da câmera (sem Image de preview)
     expect(screen.getByText('icon:camera-outline')).toBeTruthy();
+  });
+
+  // ── Story 202: nascimento só de maiores de 18 ───────────────────────────────
+
+  /** Abre o picker de nascimento e escolhe `date` nele. */
+  function pickBirthDate(date: string) {
+    fireEvent.press(screen.getAllByText('icon:calendar-outline')[1]);
+    const birthPicker = [...mockPickerProps].reverse().find((p) => p.visible && p.maximumDate);
+    expect(birthPicker).toBeDefined();
+    act(() => birthPicker!.onChange(date));
+    return birthPicker!;
+  }
+
+  it('picker de nascimento bloqueia datas depois de hoje − 18 anos', () => {
+    mockPickerProps.length = 0;
+    rc(<AddResidentModal {...props} />);
+    const picker = pickBirthDate('1980-01-01');
+    expect(picker.maximumDate).toBe(maxBirthDateFor(todayInSaoPaulo()));
+  });
+
+  it('nascimento de menor: erro no campo e nada enfileirado', async () => {
+    const client = createTestQueryClient();
+    render(
+      <QueryClientProvider client={client}>
+        <AddResidentModal {...props} />
+      </QueryClientProvider>,
+    );
+    fireEvent.changeText(screen.getByPlaceholderText('Nome completo'), 'Menor');
+    const minor = `${Number(todayInSaoPaulo().slice(0, 4)) - 10}-01-01`;
+    pickBirthDate(minor);
+    fireEvent.press(screen.getByText('Adicionar'));
+
+    await waitFor(() => expect(screen.getByText(MIN_AGE_MESSAGE)).toBeTruthy());
+    expect(m.census.addResident).not.toHaveBeenCalled();
+    expect(client.getMutationCache().getAll()).toHaveLength(0);
+  });
+
+  it('fechar os pickers, reabrir o modal e voltar ao gênero masculino', () => {
+    mockPickerProps.length = 0;
+    rc(<AddResidentModal {...props} />);
+    // abre e fecha cada picker (onClose dos dois campos de data)
+    fireEvent.press(screen.getAllByText('icon:calendar-outline')[0]);
+    fireEvent.press(screen.getAllByText('icon:calendar-outline')[1]);
+    for (const p of mockPickerProps.filter((x) => x.visible)) {
+      act(() => (p as unknown as { onClose: () => void }).onClose());
+    }
+    expect(mockPickerProps[mockPickerProps.length - 1].visible).toBe(false);
+    // onShow do Modal reinicia o formulário
+    fireEvent.press(screen.getByText('Feminino'));
+    fireEvent(screen.UNSAFE_getByType(Modal), 'show');
+    fireEvent.press(screen.getByText('Masculino'));
+    expect(screen.getByText('Masculino')).toBeTruthy();
+  });
+
+  it('nascimento de adulto: enfileira como hoje, com a data', async () => {
+    m.census.addResident.mockResolvedValue({ id: 'r1' });
+    rc(<AddResidentModal {...props} />);
+    fireEvent.changeText(screen.getByPlaceholderText('Nome completo'), 'Adulto');
+    pickBirthDate('1980-05-05');
+    fireEvent.press(screen.getByText('Adicionar'));
+
+    await waitFor(() =>
+      expect(m.census.addResident).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Adulto', birthDate: '1980-05-05' }),
+        expectIdempotencyKey,
+      ),
+    );
+    expect(screen.queryByText(MIN_AGE_MESSAGE)).toBeNull();
   });
 
   it('erro ao criar mostra Alert', async () => {

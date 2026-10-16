@@ -17,21 +17,24 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { maskCPF, maskRG, withMask } from '@/lib/masks';
+import { birthDateField, maxBirthDate } from '@/lib/birthDate';
 import { useUpdateResidentIdentity } from '../hooks/useResidents';
 
 // Correção dos "dados de identidade" na reintrodução (story 147). Só o ADMIN
 // abre este dialog (gate no banner + no backend). Pré-preenche com os valores
 // atuais que o ADMIN recebe completos (RevealSensitive) e usa as máscaras de
 // input já existentes — sem reaplicar formatador sobre valor redigido.
-const schema = z.object({
-  name: z.string().min(1, 'Nome é obrigatório'),
-  cpf: z.string().optional(),
-  rg: z.string().optional(),
-  birthDate: z.string().optional(),
-  gender: z.nativeEnum(Gender).or(z.literal('')).optional(),
-});
+// Story 202: o nascimento carregado só é julgado (18+) se for alterado.
+const makeSchema = (initialBirthDate?: string | null) =>
+  z.object({
+    name: z.string().min(1, 'Nome é obrigatório'),
+    cpf: z.string().optional(),
+    rg: z.string().optional(),
+    birthDate: birthDateField(initialBirthDate),
+    gender: z.nativeEnum(Gender).or(z.literal('')).optional(),
+  });
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof makeSchema>>;
 
 interface Props {
   open: boolean;
@@ -54,7 +57,7 @@ export function EditResidentIdentityDialog({ open, onClose, resident }: Props) {
     reset,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(makeSchema(resident.birthDate)),
     defaultValues: {
       name: resident.name ?? '',
       cpf: resident.cpf ? maskCPF(onlyDigits(resident.cpf)) : '',
@@ -106,7 +109,7 @@ export function EditResidentIdentityDialog({ open, onClose, resident }: Props) {
           </FormField>
 
           <FormField label="Data de nascimento" error={errors.birthDate?.message}>
-            <ControlledDateInput control={control} name="birthDate" />
+            <ControlledDateInput control={control} name="birthDate" max={maxBirthDate()} />
           </FormField>
 
           <FormField label="Gênero">

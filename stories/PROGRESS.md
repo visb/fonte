@@ -78,7 +78,7 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 | --- | --- | --- | --- | --- | --- |
 | 1 | 200 — Declarar saída da comunidade / Transferir de casa | [OK] | adm unit 1778 + e2e 33; ops unit 1384 + e2e-web 26 | f2d2548 | a9fba41 |
 | 2 | 201 — `DateInput` próprio no adm | [OK] | adm unit 1820 + e2e 80 | b1f533b | eaa86dc |
-| 3 | 202 — Nascimento só de maiores de 18 | [ ] | | | |
+| 3 | 202 — Nascimento só de maiores de 18 | [OK] | api 1904 + e2e 655; adm 1836 + e2e 51; ops 1393 | 06dd07f | e60546f |
 | 4 | 203 — Coerência das datas de entrada e saída | [ ] | | | |
 | 5 | 206 — Card de filho responsivo (adm) | [ ] | | | |
 | 6 | 204 — Listagem de servos no ops | [ ] | | | |
@@ -97,6 +97,8 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
   Nota de ambiente: `.env.test` liberou CORS p/ 5176/8083 (d7226d8); reiniciar `dev:api:test` a partir da `main` (env só é lido no boot). `build:web:test` usa sintaxe POSIX — no Windows exportar `EXPO_PUBLIC_API_URL` antes.
 - [OK] 201 — testes: adm unit 1820/1820 (lines 97.2%, código novo 95–100%), adm e2e 80/80, tsc limpo — commit: b1f533b — merge: eaa86dc — 2026-10-16.
   Nota: popover do calendário tem role="dialog" — spec novo usa `fillDate` (e2e/helpers/dates.ts) ou escopa `getByRole('dialog')`.
+- [OK] 202 — testes: api unit 1904 (94.8%), api e2e 655/655, adm unit 1836 (97.2%), adm e2e 51/51, ops unit 1393 (96.3%) — commit: 06dd07f — merge: e60546f — 2026-10-16 — Maestro PENDENTE-MANUAL.
+  Nota: `MissingFieldsDialog` (adm) sem validação de 18+ na tela (só 400 do backend); fora do plano.
 
 ## Resumo final
 

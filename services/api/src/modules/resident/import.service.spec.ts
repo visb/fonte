@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { MIN_AGE_MESSAGE, ResidentStatus } from '@fonte/types';
+import { ADMISSION_DATE_MESSAGES, MIN_AGE_MESSAGE, ResidentStatus } from '@fonte/types';
 import { ImportService } from './import.service';
 import { CommitImportDto } from './dto/commit-import.dto';
 
@@ -300,6 +300,87 @@ describe('ImportService', () => {
 
       expect(create).toHaveBeenCalledTimes(1);
       expect(result.resident.id).toBe('new-1');
+    });
+
+    // Story 203 (decisão 7): cada passagem e o par da ficha seguem as regras.
+    describe('datas de entrada e saída (story 203)', () => {
+      const expectNothingPersisted = () => {
+        expect(transaction).not.toHaveBeenCalled();
+        expect(create).not.toHaveBeenCalled();
+        expect(admissionSave).not.toHaveBeenCalled();
+        expect(bulkCreateContributions).not.toHaveBeenCalled();
+      };
+
+      it('passagem com saída < entrada → 400 com a mensagem, nada persistido', async () => {
+        const dto = commitDto({
+          resident: {
+            name: 'Maria',
+            houseId: 'house-1',
+            entryDate: '2023-01-01',
+            exitDate: '2023-06-01',
+            admissions: [
+              { entryDate: '2020-05-10', exitDate: '2020-05-09' },
+              { entryDate: '2023-01-01', exitDate: '2023-06-01' },
+            ],
+          } as never,
+        });
+
+        await expect(service.commit(dto, 'user-1')).rejects.toThrow(
+          ADMISSION_DATE_MESSAGES.exitBeforeEntry('2020-05-10'),
+        );
+        expectNothingPersisted();
+      });
+
+      it('passagem futura → 400, nada persistido', async () => {
+        const dto = commitDto({
+          resident: {
+            name: 'Maria',
+            houseId: 'house-1',
+            entryDate: '2999-01-01',
+            admissions: [{ entryDate: '2999-01-01', exitDate: null }],
+          } as never,
+        });
+
+        await expect(service.commit(dto, 'user-1')).rejects.toThrow(
+          ADMISSION_DATE_MESSAGES.entryFuture,
+        );
+        expectNothingPersisted();
+      });
+
+      it('ficha (sem histórico) com saída futura → 400', async () => {
+        const dto = commitDto({
+          resident: {
+            name: 'Maria',
+            houseId: 'house-1',
+            entryDate: '2023-01-01',
+            exitDate: '2999-01-01',
+          } as never,
+        });
+
+        await expect(service.commit(dto, 'user-1')).rejects.toThrow(
+          ADMISSION_DATE_MESSAGES.exitFuture,
+        );
+        expectNothingPersisted();
+      });
+
+      it('histórico válido (saída = entrada inclusive) segue igual', async () => {
+        const dto = commitDto({
+          resident: {
+            name: 'Maria',
+            houseId: 'house-1',
+            entryDate: '2023-01-01',
+            exitDate: '2023-01-01',
+            admissions: [
+              { entryDate: '2020-01-01', exitDate: '2020-08-01' },
+              { entryDate: '2023-01-01', exitDate: '2023-01-01' },
+            ],
+          } as never,
+        });
+
+        await service.commit(dto, 'user-1');
+        expect(create).toHaveBeenCalledTimes(1);
+        expect(admissionSave).toHaveBeenCalledTimes(1);
+      });
     });
 
     it('sem CPF na ficha não revalida conflito (segue o commit)', async () => {

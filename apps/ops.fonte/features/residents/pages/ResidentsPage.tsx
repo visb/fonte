@@ -19,6 +19,8 @@ import {
   RESIDENT_STATUS_FILTER_OPTIONS,
 } from "@/features/residents/constants";
 
+type RemovalTarget = { id: string; name: string; entryDate: string | null };
+
 export function ResidentsPage() {
   const { staff } = useAuth();
   const [search, setSearch] = useState("");
@@ -29,10 +31,11 @@ export function ResidentsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   // Story 196: um menu e um modal POR PÁGINA — item de lista não instancia
   // `Modal` (seriam N modais montados numa lista de casa cheia).
-  const [menuTarget, setMenuTarget] = useState<{ id: string; name: string } | null>(null);
+  // Story 203: `entryDate` segue para o modal (limite da saída), do cache da lista.
+  const [menuTarget, setMenuTarget] = useState<RemovalTarget | null>(null);
   // Story 200: o modal abre no modo do item escolhido (saída ou transferência).
   const [removeTarget, setRemoveTarget] = useState<{
-    resident: { id: string; name: string };
+    resident: RemovalTarget;
     mode: ResidentRowAction;
   } | null>(null);
 
@@ -98,7 +101,11 @@ export function ResidentsPage() {
             <ResidentListItem
               item={item}
               onOpenMenu={(resident) =>
-                setMenuTarget({ id: resident.id, name: resident.name })
+                setMenuTarget({
+                  id: resident.id,
+                  name: resident.name,
+                  entryDate: resident.entryDate ?? null,
+                })
               }
             />
           )}

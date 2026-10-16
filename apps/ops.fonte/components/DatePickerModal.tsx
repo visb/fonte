@@ -15,6 +15,8 @@ interface Props {
   onChange: (date: string) => void;
   /** Última data selecionável (YYYY-MM-DD). Dias depois dela ficam bloqueados. */
   maximumDate?: string;
+  /** Primeira data selecionável (YYYY-MM-DD). Dias antes dela ficam bloqueados. */
+  minimumDate?: string;
 }
 
 function parseDate(iso: string): { year: number; month: number } {
@@ -29,7 +31,14 @@ function parseDate(iso: string): { year: number; month: number } {
 const monthKey = (year: number, month: number) =>
   `${year}-${String(month + 1).padStart(2, '0')}`;
 
-export function DatePickerModal({ visible, value, onClose, onChange, maximumDate }: Props) {
+export function DatePickerModal({
+  visible,
+  value,
+  onClose,
+  onChange,
+  maximumDate,
+  minimumDate,
+}: Props) {
   // Sem valor, abre no mês do limite (ex.: nascimento → 18 anos atrás).
   const initial = () => parseDate(value || maximumDate || '');
   const [year, setYear] = useState(() => initial().year);
@@ -44,6 +53,7 @@ export function DatePickerModal({ visible, value, onClose, onChange, maximumDate
   }, [visible, value, maximumDate]);
 
   const atMaxMonth = !!maximumDate && monthKey(year, month) >= maximumDate.slice(0, 7);
+  const atMinMonth = !!minimumDate && monthKey(year, month) <= minimumDate.slice(0, 7);
 
   const today = new Date().toISOString().split('T')[0];
   const firstDayOfWeek = new Date(year, month, 1).getDay();
@@ -55,6 +65,7 @@ export function DatePickerModal({ visible, value, onClose, onChange, maximumDate
   ];
 
   function prevMonth() {
+    if (atMinMonth) return;
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }
     else setMonth((m) => m - 1);
   }
@@ -80,7 +91,13 @@ export function DatePickerModal({ visible, value, onClose, onChange, maximumDate
       >
         <Pressable style={{ backgroundColor: '#fff', borderRadius: 16, width: 288, overflow: 'hidden' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#2563eb' }}>
-            <TouchableOpacity onPress={prevMonth} hitSlop={8}>
+            <TouchableOpacity
+              onPress={prevMonth}
+              hitSlop={8}
+              disabled={atMinMonth}
+              accessibilityLabel="Mês anterior"
+              style={{ opacity: atMinMonth ? 0.35 : 1 }}
+            >
               <Ionicons name="chevron-back" size={20} color="#fff" />
             </TouchableOpacity>
             <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
@@ -113,7 +130,8 @@ export function DatePickerModal({ visible, value, onClose, onChange, maximumDate
               const iso = `${year}-${mm}-${dd}`;
               const isSelected = iso === value;
               const isToday = iso === today;
-              const isBlocked = !!maximumDate && iso > maximumDate;
+              const isBlocked =
+                (!!maximumDate && iso > maximumDate) || (!!minimumDate && iso < minimumDate);
               return (
                 <TouchableOpacity
                   key={day}

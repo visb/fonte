@@ -39,8 +39,12 @@ jest.mock('../hooks/useCensus', () => ({
 }));
 
 jest.mock('../components/AddResidentModal', () => ({ AddResidentModal: () => null }));
+const mockRemoveModal = jest.fn();
 jest.mock('@/features/residents/components/RemoveResidentModal', () => ({
-  RemoveResidentModal: () => null,
+  RemoveResidentModal: (props: unknown) => {
+    mockRemoveModal(props);
+    return null;
+  },
 }));
 jest.mock('../components/ConcludeCensusModal', () => ({ ConcludeCensusModal: () => null }));
 jest.mock('../components/ResidentDetailModal', () => {
@@ -74,6 +78,18 @@ describe('CensusPage — modais de consulta', () => {
     mockRole = role;
     render(<CensusPage />);
     expect(screen.getByLabelText('Remover João')).toBeTruthy();
+  });
+
+  // Story 203: a entrada do filho (cache da contagem) limita a data de saída.
+  it('remover leva a entrada do filho ao modal de baixa', () => {
+    render(<CensusPage />);
+    fireEvent.press(screen.getByLabelText('Remover Maria'));
+    expect(mockRemoveModal).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        visible: true,
+        resident: { id: 'r2', name: 'Maria', entryDate: '2026-02-10' },
+      }),
+    );
   });
 
   it('abrir e fechar os detalhes não altera as confirmações', () => {

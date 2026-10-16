@@ -2,6 +2,7 @@ import {
   RESIDENT_REMOVAL_LABELS,
   RESIDENT_ROW_ACTION_LABELS,
   RESIDENT_ROW_ACTIONS,
+  todayInSaoPaulo,
   type ResidentRemovalAction,
   type ResidentRowAction,
 } from '@fonte/types';
@@ -90,7 +91,12 @@ export function RemoveResidentDialog({ open, onClose, resident, mode }: Props) {
               label="Data do acontecimento"
               error={'exitDate' in errors ? errors.exitDate?.message : undefined}
             >
-              <ControlledDateInput control={control} name="exitDate" />
+              <ControlledDateInput
+                control={control}
+                name="exitDate"
+                min={resident.entryDate ? resident.entryDate.slice(0, 10) : undefined}
+                max={todayInSaoPaulo()}
+              />
             </FormField>
           )}
 

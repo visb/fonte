@@ -86,6 +86,32 @@ describe('DatePickerModal', () => {
       expect(screen.getByText('Outubro 2008')).toBeTruthy();
     });
   });
+
+  // Story 203: a saída bloqueia datas antes da entrada.
+  describe('minimumDate', () => {
+    it('dias antes do limite não selecionam; o próprio limite seleciona', () => {
+      const onChange = jest.fn();
+      render(
+        <DatePickerModal visible value="2026-03-20" minimumDate="2026-03-10" onClose={jest.fn()} onChange={onChange} />,
+      );
+      fireEvent.press(screen.getByText('9'));
+      expect(onChange).not.toHaveBeenCalled();
+      fireEvent.press(screen.getByText('10'));
+      expect(onChange).toHaveBeenCalledWith('2026-03-10');
+    });
+
+    it('não volta antes do mês do limite', () => {
+      render(
+        <DatePickerModal visible value="2026-03-20" minimumDate="2026-03-10" onClose={jest.fn()} onChange={jest.fn()} />,
+      );
+      fireEvent.press(screen.getByLabelText('Mês anterior'));
+      expect(screen.getByText('Março 2026')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText('Próximo mês'));
+      expect(screen.getByText('Abril 2026')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText('Mês anterior'));
+      expect(screen.getByText('Março 2026')).toBeTruthy();
+    });
+  });
 });
 
 describe('SuccessBanner', () => {

@@ -5,7 +5,7 @@ import * as bcrypt from 'bcrypt';
 // require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
 // emits an undefined default for sharp's CommonJS module.
 const sharp = require('sharp') as typeof import('sharp');
-import { ACTIVE_RESIDENT_STATUSES, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isTemplateAvailableForStatus, NotificationType, PRESENT_RESIDENT_STATUSES, REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability } from '@fonte/types';
+import { ACTIVE_RESIDENT_STATUSES, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isTemplateAvailableForStatus, NotificationType, PRESENT_RESIDENT_STATUSES, REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability, todayInSaoPaulo } from '@fonte/types';
 import { Logger } from '@nestjs/common';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
@@ -58,6 +58,7 @@ import { UpdateResidentIdentityDto } from './dto/update-resident-identity.dto';
 import { StorageService } from '../storage/storage.service';
 import { toDbTimestamp } from '../../common/lib/db-timestamp';
 import { assertAdultBirthDate } from '../../common/lib/birth-date';
+import { assertAdmissionDates } from './admission-dates';
 
 export interface ResidentMeView {
   id: string;
@@ -293,6 +294,8 @@ export class ResidentService {
   async create(dto: CreateResidentDto, manager?: EntityManager): Promise<Resident> {
     // Story 202: vale para acolhimento manual, contagem (ops) e import em lote.
     assertAdultBirthDate(dto.birthDate);
+    // Story 203: entrada não futura; saída, se vier, ≥ entrada e não futura.
+    assertAdmissionDates({ entryDate: dto.entryDate, exitDate: dto.exitDate });
     this.resolveInvestmentAmount(dto);
     const residentRepo = manager ? manager.getRepository(Resident) : this.residentRepository;
     const admissionRepo = manager ? manager.getRepository(Admission) : this.admissionRepository;
@@ -372,6 +375,12 @@ export class ResidentService {
     if (dto.status) this.assertExitTransitionAllowed(before.status, dto.status);
     // Story 202: só julga a data se ela veio e mudou (ficha legada continua salvável).
     assertAdultBirthDate(dto.birthDate, before.birthDate);
+    // Story 203: par resultante (gravado ∪ payload), só se entrada/saída mudou —
+    // antes do update, do follow-up, do `cancelAfterExit` e da notificação.
+    assertAdmissionDates(
+      { entryDate: dto.entryDate, exitDate: dto.exitDate },
+      { previous: { entryDate: before.entryDate, exitDate: before.exitDate } },
+    );
     await this.residentRepository.update(id, dto);
 
     const today = new Date().toISOString().split('T')[0];
@@ -500,6 +509,13 @@ export class ResidentService {
       );
     }
 
+    // Story 203 (decisão 6): entrada nova não futura e não anterior à saída da
+    // passagem anterior — sem isso o histórico ganha passagens sobrepostas.
+    assertAdmissionDates(
+      { entryDate: dto.entryDate ?? todayInSaoPaulo() },
+      { previousExitDate: await this.findLastExitDate(resident) },
+    );
+
     // Revogar acesso digital do acolhimento anterior
     if (resident.userId) {
       await this.residentRepository.update(id, { userId: null });
@@ -601,6 +617,29 @@ export class ResidentService {
    */
   async findCurrentAdmission(residentId: string): Promise<Admission | null> {
     return this.orderedAdmissionsQuery(residentId).limit(1).getOne();
+  }
+
+  /**
+   * Saída da última passagem encerrada (story 203, readmissão): a maior
+   * `exit_date` entre as admissões e o espelho no `Resident` (ficha antiga pode
+   * ter só um dos dois). `null` quando nenhuma passagem tem saída registrada.
+   */
+  private async findLastExitDate(resident: Resident): Promise<string | null> {
+    const lastClosed = await this.admissionRepository
+      .createQueryBuilder('adm')
+      .where('adm.resident_id = :residentId', { residentId: resident.id })
+      .andWhere('adm.deleted_at IS NULL')
+      .andWhere('adm.exit_date IS NOT NULL')
+      .orderBy('adm.exit_date', 'DESC')
+      .limit(1)
+      .getOne();
+    const candidates = [lastClosed?.exitDate, resident.exitDate]
+      .filter((value): value is Date => !!value)
+      .map((value) =>
+        value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10),
+      )
+      .sort();
+    return candidates.length ? candidates[candidates.length - 1] : null;
   }
 
   async findAdmissions(residentId: string): Promise<Admission[]> {

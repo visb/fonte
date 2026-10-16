@@ -30,7 +30,9 @@ jest.mock('@/lib/api', () => ({
   resolveAssetUrl: (u: string | null) => u,
 }));
 
+import { ADMISSION_DATE_MESSAGES, todayInSaoPaulo } from '@fonte/types';
 import { api } from '@/lib/api';
+import { OUTBOX_MUTATION_KEYS } from '@/lib/offline/outbox';
 import { RemoveResidentModal } from './RemoveResidentModal';
 
 const m = api as unknown as {
@@ -232,6 +234,87 @@ describe('RemoveResidentModal', () => {
     expect(screen.queryByText('Data do acontecimento *')).toBeNull();
     fireEvent.press(screen.getByText('Confirmar'));
     expect(m.residents.update).not.toHaveBeenCalled();
+  });
+
+  // ─── Story 203: saída entre a entrada do filho e hoje ──────────────────────
+  describe('limites da data de saída (story 203)', () => {
+    const withEntry = { ...props, resident: { id: 'r1', name: 'João', entryDate: '2026-03-10T00:00:00.000Z' } };
+    const pickDate = (iso: string) => act(() => lastDatePicker().onChange(iso));
+
+    it('DatePickerModal recebe minimumDate = entrada e maximumDate = hoje', () => {
+      m.houses.list.mockResolvedValue([]);
+      rc(<RemoveResidentModal {...withEntry} mode="exit" />);
+      fireEvent.press(screen.getByText('Declarar alta'));
+      const picker = lastDatePicker() as DatePickerProps & {
+        minimumDate?: string;
+        maximumDate?: string;
+      };
+      expect(picker.minimumDate).toBe('2026-03-10');
+      expect(picker.maximumDate).toBe(todayInSaoPaulo());
+    });
+
+    it('saída antes da entrada → mensagem, Confirmar desabilitado e nada enfileirado', () => {
+      mockOnline = false;
+      m.houses.list.mockResolvedValue([]);
+      const client = createTestQueryClient();
+      render(
+        <QueryClientProvider client={client}>
+          <RemoveResidentModal {...withEntry} mode="exit" />
+        </QueryClientProvider>,
+      );
+      fireEvent.press(screen.getByText('Declarar alta'));
+      pickDate('2026-03-09');
+      expect(
+        screen.getByText(ADMISSION_DATE_MESSAGES.exitBeforeEntry('2026-03-10')),
+      ).toBeTruthy();
+      fireEvent.press(screen.getByText('Confirmar'));
+      expect(client.getMutationCache().getAll()).toHaveLength(0);
+      expect(m.residents.update).not.toHaveBeenCalled();
+    });
+
+    it('saída futura → mensagem e nada enviado', () => {
+      m.houses.list.mockResolvedValue([]);
+      rc(<RemoveResidentModal {...withEntry} mode="exit" />);
+      fireEvent.press(screen.getByText('Evasão'));
+      pickDate('2999-01-01');
+      expect(screen.getByText(ADMISSION_DATE_MESSAGES.exitFuture)).toBeTruthy();
+      fireEvent.press(screen.getByText('Confirmar'));
+      expect(m.residents.update).not.toHaveBeenCalled();
+    });
+
+    it('data válida (mesmo dia da entrada) enfileira com a mesma mutationKey e payload', async () => {
+      const { Alert } = require('react-native');
+      jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+      mockOnline = false;
+      m.houses.list.mockResolvedValue([]);
+      const client = createTestQueryClient();
+      render(
+        <QueryClientProvider client={client}>
+          <RemoveResidentModal {...withEntry} mode="exit" />
+        </QueryClientProvider>,
+      );
+      fireEvent.press(screen.getByText('Declarar alta'));
+      pickDate('2026-03-10');
+      fireEvent.press(screen.getByText('Confirmar'));
+      await waitFor(() => expect(client.getMutationCache().getAll()).toHaveLength(1));
+      const mutation = client.getMutationCache().getAll()[0];
+      expect(mutation.options.mutationKey).toEqual(OUTBOX_MUTATION_KEYS.residentUpdateStatus);
+      expect(mutation.state.variables).toMatchObject({
+        houseId: 'h1',
+        residentId: 'r1',
+        data: { status: 'DISCHARGED', exitDate: '2026-03-10' },
+      });
+    });
+
+    it('sem entrada conhecida (contagem antiga) só vale o limite de hoje', () => {
+      m.houses.list.mockResolvedValue([]);
+      rc(<RemoveResidentModal {...props} mode="exit" />);
+      fireEvent.press(screen.getByText('Declarar alta'));
+      const picker = lastDatePicker() as DatePickerProps & { minimumDate?: string };
+      expect(picker.minimumDate).toBeUndefined();
+      pickDate('2001-01-01');
+      expect(screen.queryByText(/não pode/)).toBeNull();
+    });
   });
 
   it('erro na ação mostra Alert', async () => {

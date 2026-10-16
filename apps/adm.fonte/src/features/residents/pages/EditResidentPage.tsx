@@ -28,7 +28,17 @@ export function EditResidentPage() {
   const { data: houses = [], isLoading: loadingHouses } = useHouses();
   // Story 202: nascimento legado (menor) só é julgado se for alterado.
   const initialBirthDate = resident?.birthDate ?? null;
-  const schema = useMemo(() => makeResidentSchema({ initialBirthDate }), [initialBirthDate]);
+  // Story 203: entrada/saída legadas incoerentes só são julgadas se alteradas.
+  const initialEntryDate = resident?.entryDate ?? null;
+  const initialExitDate = resident?.exitDate ?? null;
+  const schema = useMemo(
+    () =>
+      makeResidentSchema({
+        initialBirthDate,
+        initialAdmissionDates: { entryDate: initialEntryDate, exitDate: initialExitDate },
+      }),
+    [initialBirthDate, initialEntryDate, initialExitDate],
+  );
 
   const {
     register,

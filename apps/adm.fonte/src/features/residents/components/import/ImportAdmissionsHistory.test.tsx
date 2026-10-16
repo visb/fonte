@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
+import { ADMISSION_DATE_MESSAGES } from '@fonte/types';
 import type { ImportAdmission } from '@fonte/api-client';
 import { ImportAdmissionsHistory } from './ImportAdmissionsHistory';
 
@@ -45,6 +46,22 @@ describe('ImportAdmissionsHistory', () => {
     );
     expect(container).toBeEmptyDOMElement();
     expect(screen.queryByText('Acolhimentos detectados')).not.toBeInTheDocument();
+  });
+
+  // Story 203 (decisão 7): passagem inválida marcada na própria linha.
+  it('marca na linha a passagem com saída antes da entrada ou data futura', () => {
+    const admissions: ImportAdmission[] = [
+      { entryDate: '2020-05-10', exitDate: '2020-05-01' },
+      { entryDate: '2023-01-01', exitDate: '2023-06-01' },
+      { entryDate: '2999-01-01', exitDate: null },
+    ];
+    render(<ImportAdmissionsHistory admissions={admissions} />);
+
+    const items = screen.getAllByRole('listitem');
+    expect(items[0]).toHaveTextContent(ADMISSION_DATE_MESSAGES.exitBeforeEntry('2020-05-10'));
+    expect(items[0]).toHaveAttribute('aria-invalid', 'true');
+    expect(items[1]).not.toHaveAttribute('aria-invalid');
+    expect(items[2]).toHaveTextContent(ADMISSION_DATE_MESSAGES.entryFuture);
   });
 
   it('não renderiza nada quando não há acolhimentos', () => {

@@ -75,6 +75,7 @@ jest.mock('@fonte/types', () => ({
 
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import {
+  ADMISSION_DATE_MESSAGES,
   FollowUpType,
   maxBirthDateFor,
   MIN_AGE_MESSAGE,
@@ -155,6 +156,7 @@ type OrderSpec = { column: string; direction: 'ASC' | 'DESC'; nulls?: string };
 const ADMISSION_COLUMNS: Record<string, keyof Admission> = {
   'adm.entry_date': 'entryDate',
   'adm.created_at': 'createdAt',
+  'adm.exit_date': 'exitDate',
 };
 
 function compareValues(a: unknown, b: unknown, spec: OrderSpec): number {
@@ -860,7 +862,10 @@ describe('ResidentService.readmit', () => {
     height: 175,
   };
 
-  function makeReadmitService(residentOverrides: Partial<Resident> = {}) {
+  function makeReadmitService(
+    residentOverrides: Partial<Resident> = {},
+    closedAdmissions: Admission[] = [],
+  ) {
     const resident = makeResident(residentOverrides);
     const updatedResident = makeResident({ ...residentOverrides, status: ResidentStatus.ACTIVE });
 
@@ -878,7 +883,8 @@ describe('ResidentService.readmit', () => {
 
     const service = makeService(
       { findOne: residentFindOne, update: residentUpdate },
-      { create: admissionCreate, save: admissionSave },
+      makeAdmissionRepo(closedAdmissions, { create: admissionCreate, save: admissionSave })
+        .repo as never,
       { softDelete: userSoftDelete },
       undefined,
       { createAuto, getLastContributionDates: jest.fn().mockResolvedValue(new Map()) },
@@ -1079,6 +1085,267 @@ describe('ResidentService.readmit', () => {
     expect(resetCall![1]).toMatchObject({ familyInvestment: null });
     // O carnê é pedido, mas sem plano `generateSchedule` não materializa parcela.
     expect(generateSchedule).toHaveBeenCalledWith(RESIDENT_ID);
+  });
+
+  // ─── Story 203 (decisão 6): entrada nova vs. hoje e vs. última saída ────────
+  describe('datas (story 203)', () => {
+    const closed = (exitDate: string, entryDate = '2024-01-01') =>
+      makeAdmission({
+        entryDate: entryDate as unknown as Date,
+        exitDate: exitDate as unknown as Date,
+        status: ResidentStatus.DISCHARGED,
+      });
+
+    it('entrada futura → 400, nada persistido', async () => {
+      const { service, admissionSave, residentUpdate, createAuto } = makeReadmitService({
+        status: ResidentStatus.DISCHARGED,
+      });
+
+      await expect(
+        service.readmit(RESIDENT_ID, { houseId: 'h', entryDate: '2999-01-01' }),
+      ).rejects.toThrow(ADMISSION_DATE_MESSAGES.entryFuture);
+      expect(admissionSave).not.toHaveBeenCalled();
+      expect(residentUpdate).not.toHaveBeenCalled();
+      expect(createAuto).not.toHaveBeenCalled();
+    });
+
+    it('entrada antes da última saída (admissões) → 400', async () => {
+      const { service, admissionSave } = makeReadmitService(
+        { status: ResidentStatus.DISCHARGED },
+        [closed('2025-03-01', '2024-01-01'), closed('2025-08-10', '2025-05-01')],
+      );
+
+      await expect(
+        service.readmit(RESIDENT_ID, { houseId: 'h', entryDate: '2025-08-09' }),
+      ).rejects.toThrow(ADMISSION_DATE_MESSAGES.entryBeforePreviousExit('2025-08-10'));
+      expect(admissionSave).not.toHaveBeenCalled();
+    });
+
+    it('entrada = última saída → ok', async () => {
+      const { service, admissionSave } = makeReadmitService(
+        { status: ResidentStatus.EVADED },
+        [closed('2025-08-10')],
+      );
+
+      await service.readmit(RESIDENT_ID, { houseId: 'h', entryDate: '2025-08-10' });
+      expect(admissionSave).toHaveBeenCalledTimes(1);
+    });
+
+    it('usa a saída espelhada no Resident quando é a mais recente', async () => {
+      const { service } = makeReadmitService(
+        {
+          status: ResidentStatus.DISCHARGED,
+          exitDate: new Date('2025-09-01T00:00:00Z') as unknown as Date,
+        },
+        [closed('2025-08-10')],
+      );
+
+      await expect(
+        service.readmit(RESIDENT_ID, { houseId: 'h', entryDate: '2025-08-20' }),
+      ).rejects.toThrow(ADMISSION_DATE_MESSAGES.entryBeforePreviousExit('2025-09-01'));
+    });
+
+    it('sem entryDate usa hoje (nunca antes de uma saída passada)', async () => {
+      const { service, admissionSave } = makeReadmitService(
+        { status: ResidentStatus.DISCHARGED, exitDate: '2025-01-01' as unknown as Date },
+      );
+
+      await service.readmit(RESIDENT_ID, { houseId: 'h' });
+      expect(admissionSave).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Story 203 — coerência das datas de entrada e saída (create/update)
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('ResidentService — datas de entrada e saída (story 203)', () => {
+  const TODAY = todayInSaoPaulo();
+  const TOMORROW = (() => {
+    const d = new Date(`${TODAY}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  function makeCreateService() {
+    const saved = makeResident({ id: RESIDENT_ID, houseId: HOUSE_ID });
+    const residentSave = jest.fn().mockResolvedValue(saved);
+    const createAuto = jest.fn().mockResolvedValue(undefined);
+    const service = makeService(
+      {
+        create: jest.fn().mockReturnValue(saved),
+        save: residentSave,
+        findOne: jest.fn().mockResolvedValue(saved),
+      },
+      { create: jest.fn().mockReturnValue(makeAdmission()), save: jest.fn().mockResolvedValue(makeAdmission()) },
+      undefined,
+      undefined,
+      { createAuto, getLastContributionDates: jest.fn().mockResolvedValue(new Map()) },
+    );
+    return { service, residentSave, createAuto };
+  }
+
+  function makeUpdateService(before: Resident) {
+    const residentUpdate = jest.fn().mockResolvedValue(undefined);
+    const { repo: admissionRepo } = makeAdmissionRepo([makeAdmission()], {
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+    const createAuto = jest.fn().mockResolvedValue(undefined);
+    const cancelAfterExit = jest.fn().mockResolvedValue(undefined);
+    const notify = jest.fn().mockResolvedValue(undefined);
+    const service = makeService(
+      { findOne: jest.fn().mockResolvedValue(before), update: residentUpdate },
+      admissionRepo as never,
+      {},
+      undefined,
+      { createAuto, getLastContributionDates: jest.fn().mockResolvedValue(new Map()) },
+      {
+        getLastPaidDates: jest.fn().mockResolvedValue(new Map()),
+        generateSchedule: jest.fn().mockResolvedValue(undefined),
+        recalcFuturePending: jest.fn().mockResolvedValue(undefined),
+        cancelFuturePending: jest.fn().mockResolvedValue(undefined),
+        cancelAfterExit,
+      },
+      { create: notify },
+    );
+    return { service, residentUpdate, createAuto, cancelAfterExit, notify };
+  }
+
+  describe('create', () => {
+    it('entrada amanhã → 400, nada persistido', async () => {
+      const { service, residentSave, createAuto } = makeCreateService();
+      await expect(
+        service.create({ name: 'Ana', houseId: HOUSE_ID, entryDate: TOMORROW } as never),
+      ).rejects.toThrow(ADMISSION_DATE_MESSAGES.entryFuture);
+      expect(residentSave).not.toHaveBeenCalled();
+      expect(createAuto).not.toHaveBeenCalled();
+    });
+
+    it('entrada hoje → ok', async () => {
+      const { service, residentSave } = makeCreateService();
+      await service.create({ name: 'Ana', houseId: HOUSE_ID, entryDate: TODAY } as never);
+      expect(residentSave).toHaveBeenCalledTimes(1);
+    });
+
+    it('saída < entrada → 400; saída = entrada → ok; saída amanhã → 400', async () => {
+      const { service, residentSave } = makeCreateService();
+      await expect(
+        service.create({
+          name: 'Ana',
+          houseId: HOUSE_ID,
+          entryDate: '2025-05-10',
+          exitDate: '2025-05-09',
+        } as never),
+      ).rejects.toThrow(ADMISSION_DATE_MESSAGES.exitBeforeEntry('2025-05-10'));
+      await expect(
+        service.create({
+          name: 'Ana',
+          houseId: HOUSE_ID,
+          entryDate: '2025-05-10',
+          exitDate: TOMORROW,
+        } as never),
+      ).rejects.toThrow(ADMISSION_DATE_MESSAGES.exitFuture);
+      expect(residentSave).not.toHaveBeenCalled();
+
+      await service.create({
+        name: 'Ana',
+        houseId: HOUSE_ID,
+        entryDate: '2025-05-10',
+        exitDate: '2025-05-10',
+      } as never);
+      expect(residentSave).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('update', () => {
+    const stored = { entryDate: '2025-05-10' as unknown as Date, exitDate: null };
+
+    it('alta com saída < entrada gravada → 400, sem cancelAfterExit nem notificação', async () => {
+      const { service, residentUpdate, createAuto, cancelAfterExit, notify } = makeUpdateService(
+        makeResident({ ...stored, status: ResidentStatus.ACTIVE }),
+      );
+
+      await expect(
+        service.update(RESIDENT_ID, {
+          status: ResidentStatus.DISCHARGED,
+          exitDate: '2025-05-09',
+        } as never),
+      ).rejects.toThrow(ADMISSION_DATE_MESSAGES.exitBeforeEntry('2025-05-10'));
+      expect(residentUpdate).not.toHaveBeenCalled();
+      expect(createAuto).not.toHaveBeenCalled();
+      expect(cancelAfterExit).not.toHaveBeenCalled();
+      expect(notify).not.toHaveBeenCalled();
+    });
+
+    it('evasão com saída futura → 400', async () => {
+      const { service, cancelAfterExit } = makeUpdateService(
+        makeResident({ ...stored, status: ResidentStatus.ACTIVE }),
+      );
+
+      await expect(
+        service.update(RESIDENT_ID, { status: ResidentStatus.EVADED, exitDate: TOMORROW } as never),
+      ).rejects.toThrow(ADMISSION_DATE_MESSAGES.exitFuture);
+      expect(cancelAfterExit).not.toHaveBeenCalled();
+    });
+
+    it('alterar entrada para depois da saída gravada → 400', async () => {
+      const { service, residentUpdate } = makeUpdateService(
+        makeResident({
+          entryDate: '2025-01-01' as unknown as Date,
+          exitDate: '2025-05-01' as unknown as Date,
+          status: ResidentStatus.DISCHARGED,
+        }),
+      );
+
+      await expect(
+        service.update(RESIDENT_ID, { entryDate: '2025-06-01' } as never),
+      ).rejects.toThrow(ADMISSION_DATE_MESSAGES.exitBeforeEntry('2025-06-01'));
+      expect(residentUpdate).not.toHaveBeenCalled();
+    });
+
+    it('ficha legada incoerente + payload sem datas → ok', async () => {
+      const { service, residentUpdate } = makeUpdateService(
+        makeResident({
+          entryDate: '2062-01-01' as unknown as Date,
+          exitDate: '2020-01-01' as unknown as Date,
+          status: ResidentStatus.DISCHARGED,
+        }),
+      );
+
+      await service.update(RESIDENT_ID, { name: 'Outro' } as never);
+      expect(residentUpdate).toHaveBeenCalled();
+    });
+
+    it('reenvio idempotente da alta (mesmo status e mesma saída gravada) → ok', async () => {
+      const { service, residentUpdate, cancelAfterExit } = makeUpdateService(
+        makeResident({
+          entryDate: '2025-05-10' as unknown as Date,
+          exitDate: '2025-05-09' as unknown as Date, // legado incoerente
+          status: ResidentStatus.DISCHARGED,
+        }),
+      );
+
+      await service.update(RESIDENT_ID, {
+        status: ResidentStatus.DISCHARGED,
+        exitDate: '2025-05-09',
+      } as never);
+      expect(residentUpdate).toHaveBeenCalled();
+      expect(cancelAfterExit).not.toHaveBeenCalled();
+    });
+
+    it('guard de transição (story 196) vem antes da data', async () => {
+      const { service } = makeUpdateService(
+        makeResident({ ...stored, status: ResidentStatus.EVADED }),
+      );
+
+      await expect(
+        service.update(RESIDENT_ID, {
+          status: ResidentStatus.DISCHARGED,
+          exitDate: '2025-05-09',
+        } as never),
+      ).rejects.toThrow('Filho já encerrado (evasão) não pode ');
+    });
   });
 });
 

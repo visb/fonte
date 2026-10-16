@@ -615,7 +615,9 @@ describe('BibleCourseController (e2e)', () => {
       await request(app.getHttpServer())
         .patch(`${BASE}/residents/${residentId}`)
         .set('Authorization', `Bearer ${token}`)
-        .send({ status: 'DISCHARGED', exitDate: '2026-01-01' })
+        // Story 203: a readmissão não pode começar antes da saída anterior; a
+        // saída no mesmo dia da entrada mantém a entrada antiga na readmissão.
+        .send({ status: 'DISCHARGED', exitDate: '2020-01-01' })
         .expect(200);
 
       await request(app.getHttpServer())

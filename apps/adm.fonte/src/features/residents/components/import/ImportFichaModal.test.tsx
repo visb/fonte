@@ -254,6 +254,38 @@ describe('ImportFichaModal', () => {
     expect(screen.getByRole('button', { name: 'Aprovar' })).toBeDisabled();
   });
 
+  // Story 203: passagem do histórico com saída antes da entrada bloqueia a aprovação.
+  it('desabilita Aprovar quando um acolhimento detectado tem datas inválidas', async () => {
+    await renderModal({
+      resident: {
+        name: 'João Silva',
+        cpf: '12345678900',
+        entryDate: '2023-03-01',
+        exitDate: '2023-05-01',
+        admissions: [
+          { entryDate: '2022-01-10', exitDate: '2022-01-01' },
+          { entryDate: '2023-03-01', exitDate: '2023-05-01' },
+        ],
+      },
+    });
+    await waitFor(() => expect(api.residents.checkImportConflict).toHaveBeenCalled());
+    const approve = screen.getByRole('button', { name: 'Aprovar' });
+    expect(approve).toBeDisabled();
+    expect(approve).toHaveAttribute('title', 'Corrija as datas dos acolhimentos detectados.');
+  });
+
+  it('ficha com saída antes da entrada mostra o erro no campo de saída e não envia', async () => {
+    await renderModal({
+      resident: { name: 'João Silva', cpf: '12345678900', entryDate: '2023-01-10', exitDate: '2023-01-09' },
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));
+    expect(
+      await screen.findByText('A data de saída não pode ser anterior à data de entrada (10/01/2023).'),
+    ).toBeInTheDocument();
+    expect(api.residents.commitImport).not.toHaveBeenCalled();
+  });
+
   it('desabilita Aprovar quando há conflito de sessão', async () => {
     await renderModal(undefined, { sessionConflictName: 'João Silva' });
     await waitFor(() =>

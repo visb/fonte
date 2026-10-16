@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
-import { FollowUpType, FollowUpAccessLevel, ResidentStatus } from '@fonte/types';
+import { FollowUpType, FollowUpAccessLevel, ResidentStatus, todayInSaoPaulo } from '@fonte/types';
 import { api } from '@/lib/api';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { useDocumentTemplates } from '@/features/settings/hooks/useDocumentTemplates';
@@ -34,7 +34,8 @@ import { RelativesTab } from '../components/tabs/RelativesTab';
 import { AttachmentsTab } from '../components/tabs/AttachmentsTab';
 
 const STEPS = ['Ficha de cadastro', 'Admissão', 'Familiares', 'Documentos'];
-const today = new Date().toISOString().split('T')[0];
+// Story 203: "hoje" no fuso da operação — é o `max` da entrada.
+const today = todayInSaoPaulo();
 
 export function AdmissionWizardPage() {
   const navigate = useNavigate();

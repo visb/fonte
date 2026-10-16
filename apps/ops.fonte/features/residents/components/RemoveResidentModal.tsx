@@ -15,6 +15,8 @@ import {
   RESIDENT_REMOVAL_LABELS,
   RESIDENT_ROW_ACTION_LABELS,
   RESIDENT_ROW_ACTIONS,
+  findAdmissionDatesIssue,
+  todayInSaoPaulo,
   type ResidentRemovalAction,
   type ResidentRowAction,
 } from '@fonte/types';
@@ -47,7 +49,11 @@ const ACTIONS: { key: Action; icon: keyof typeof Ionicons.glyphMap; color: strin
 interface Props {
   visible: boolean;
   houseId: string;
-  resident: { id: string; name: string } | null;
+  /**
+   * `entryDate` (story 203) limita a data de saída: vem do objeto da lista ou da
+   * contagem, que já está no cache offline — nada de buscar aqui.
+   */
+  resident: { id: string; name: string; entryDate?: string | null } | null;
   onClose: () => void;
   onSuccess: () => void;
   /**
@@ -70,7 +76,8 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
         : null;
   const title = mode ? RESIDENT_ROW_ACTION_LABELS[mode] : 'Remover filho';
   const [targetHouseId, setTargetHouseId] = useState<string | null>(null);
-  const [exitDate, setExitDate] = useState(() => new Date().toISOString().split('T')[0]);
+  // "Hoje" no fuso da operação (story 203): é o limite máximo da saída.
+  const [exitDate, setExitDate] = useState(() => todayInSaoPaulo());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const { data: houses = [] } = useHouses();
@@ -87,7 +94,7 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
   function handleOpen() {
     setSelectedAction(null);
     setTargetHouseId(null);
-    setExitDate(new Date().toISOString().split('T')[0]);
+    setExitDate(todayInSaoPaulo());
   }
 
   function done() {
@@ -115,7 +122,7 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
   };
 
   function handleConfirm() {
-    if (!resident || !selectedAction) return;
+    if (!resident || !selectedAction || confirmDisabled) return;
     if (selectedAction === 'discharge') {
       submitDischarge({ residentId: resident.id, exitDate }, handlers);
     } else if (selectedAction === 'evade') {
@@ -126,11 +133,22 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
   }
 
   const needsExitDate = selectedAction === 'discharge' || selectedAction === 'evade';
+  // Story 203: saída entre a entrada e hoje. Validado aqui para o lançamento não
+  // entrar na fila offline já condenado ao 400 do backend.
+  const today = todayInSaoPaulo();
+  const entryDate = resident?.entryDate ? resident.entryDate.slice(0, 10) : undefined;
+  const exitDateError = needsExitDate
+    ? findAdmissionDatesIssue(
+        { entryDate, exitDate },
+        { today, check: { entryDate: false, exitDate: true } },
+      )?.message
+    : undefined;
   const confirmDisabled =
     isPending ||
     !selectedAction ||
     (selectedAction === 'transfer' && !targetHouseId) ||
-    (needsExitDate && !exitDate);
+    (needsExitDate && !exitDate) ||
+    !!exitDateError;
 
   return (
     <>
@@ -192,6 +210,9 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
                   </Text>
                   <Ionicons name="calendar-outline" size={18} color="#6b7280" />
                 </TouchableOpacity>
+                {exitDateError ? (
+                  <Text className="text-xs text-red-600 mt-1">{exitDateError}</Text>
+                ) : null}
               </View>
             ) : null}
 
@@ -247,6 +268,8 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
     <DatePickerModal
       visible={datePickerOpen}
       value={exitDate}
+      minimumDate={entryDate}
+      maximumDate={today}
       onClose={() => setDatePickerOpen(false)}
       onChange={setExitDate}
     />

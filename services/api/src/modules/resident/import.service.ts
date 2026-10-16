@@ -4,6 +4,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { CheckImportConflictResult, ImportConflict, ResidentStatus } from '@fonte/types';
 import { normalizeName } from '../../common/lib/normalize';
 import { assertAdultBirthDate } from '../../common/lib/birth-date';
+import { assertAdmissionDates } from './admission-dates';
 import { Resident } from './resident.entity';
 import { Admission } from './admission.entity';
 import { Relative } from '../relative/relative.entity';
@@ -147,6 +148,12 @@ export class ImportService {
     // Story 202: data lida errada da ficha (menor de 18 hoje) volta 400 para a
     // revisão antes de abrir a transação. O `create` repete a regra (defesa).
     assertAdultBirthDate(dto.resident.birthDate);
+    // Story 203 (decisão 7): cada passagem do histórico e o par da ficha seguem
+    // as regras de entrada/saída. Sobreposição entre passagens não é julgada.
+    for (const admission of dto.resident.admissions ?? []) {
+      assertAdmissionDates({ entryDate: admission.entryDate, exitDate: admission.exitDate });
+    }
+    assertAdmissionDates({ entryDate: dto.resident.entryDate, exitDate: dto.resident.exitDate });
     return this.dataSource.transaction(async (manager) => {
       await this.assertNoCpfConflict(manager, dto.resident.cpf);
 

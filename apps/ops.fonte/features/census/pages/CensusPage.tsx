@@ -27,7 +27,12 @@ export function CensusPage() {
   const { data: residents = [], isLoading, error, refetch } = useActiveResidentsByHouse(houseId);
   const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
   const [addOpen, setAddOpen] = useState(false);
-  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
+  // Story 203: `entryDate` limita a data de saída no modal (vem do cache da contagem).
+  const [removeTarget, setRemoveTarget] = useState<{
+    id: string;
+    name: string;
+    entryDate: string | null;
+  } | null>(null);
   const [concludeOpen, setConcludeOpen] = useState(false);
   // Story 179: consulta, não ação. Nenhum dos dois mexe em `confirmedIds` —
   // abrir a ficha no pátio não pode confirmar (nem desconfirmar) presença.
@@ -104,7 +109,8 @@ export function CensusPage() {
             pending={isPending(item)}
             onConfirm={() => toggleConfirm(item.id)}
             onRemove={canRemove && REMOVABLE_RESIDENT_STATUSES.includes(item.status)
-              ? () => setRemoveTarget({ id: item.id, name: item.name })
+              ? () =>
+                  setRemoveTarget({ id: item.id, name: item.name, entryDate: item.entryDate ?? null })
               : undefined}
             onOpenDetails={() => setDetailTarget(item)}
             onOpenPhoto={() => setPhotoTarget(item)}

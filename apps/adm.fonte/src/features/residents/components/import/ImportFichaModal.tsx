@@ -23,6 +23,7 @@ import {
   relativesFromPreview,
   resolveHouseId,
 } from '../../lib/importCommit';
+import { importAdmissionsIssues } from '../../lib/admissionDates';
 import { IMPORT_TEXTS, warningsToList } from '../../constants';
 import { ResidentFormSections } from '../ResidentFormSections';
 import { ImportConflictAlert } from './ImportConflictAlert';
@@ -115,11 +116,16 @@ export function ImportFichaModal({
   const namedRelatives = relatives.filter((r) => r.name.trim());
   // Sem exigência de familiar no import (diferente do acolhimento manual):
   // ficha histórica pode não ter familiar conhecido.
+  // Story 203: passagem com data inválida (marcada na linha) bloqueia a aprovação.
+  // Só o histórico com mais de uma passagem vai no commit (`buildCommitPayload`).
+  const invalidAdmission = admissions.length > 1 && importAdmissionsIssues(admissions).some(Boolean);
   const blockedReason = conflicts.length > 0
     ? IMPORT_TEXTS.conflictReason
     : sessionConflictName
       ? IMPORT_TEXTS.sessionConflictReason
-      : null;
+      : invalidAdmission
+        ? IMPORT_TEXTS.admissionDatesReason
+        : null;
 
   const onSubmit = (values: ResidentFormData) => {
     const payload = buildCommitPayload(values, {

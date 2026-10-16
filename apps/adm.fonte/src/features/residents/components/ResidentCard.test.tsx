@@ -91,11 +91,16 @@ describe('ResidentCard', () => {
   });
 });
 
-// Story 196 — o `⋮` com "Remover da casa" + "Excluir".
+// Story 196/200 — o `⋮` com "Declarar saída da comunidade" + "Transferir de casa" + "Excluir".
 describe('ResidentCard — menu de ações', () => {
   const MENU = 'Ações de Maria Interna';
+  const EXIT = 'Declarar saída da comunidade';
+  const TRANSFER = 'Transferir de casa';
 
-  function renderWithMenu(resident: Resident, handlers: { onDelete?: () => void; onRemove?: () => void } = {}) {
+  function renderWithMenu(
+    resident: Resident,
+    handlers: { onDelete?: () => void; onRemove?: (mode: 'exit' | 'transfer') => void } = {},
+  ) {
     return render(
       <MemoryRouter>
         <ResidentCard
@@ -107,31 +112,37 @@ describe('ResidentCard — menu de ações', () => {
     );
   }
 
-  it('ADMIN vê Remover da casa e Excluir', async () => {
+  it('ADMIN vê Declarar saída, Transferir e Excluir', async () => {
     const user = userEvent.setup();
     renderWithMenu(makeResident());
     await user.click(screen.getByRole('button', { name: MENU }));
-    expect(await screen.findByText('Remover da casa')).toBeInTheDocument();
+    expect(await screen.findByText(EXIT)).toBeInTheDocument();
+    expect(screen.getByText(TRANSFER)).toBeInTheDocument();
     expect(screen.getByText('Excluir')).toBeInTheDocument();
+    expect(screen.queryByText('Remover da casa')).not.toBeInTheDocument();
     expect(screen.getByTitle('Editar')).toBeInTheDocument();
   });
 
-  it('COORDINATOR vê só Remover da casa (Excluir é ADMIN-only)', async () => {
+  it('COORDINATOR vê Declarar saída e Transferir (Excluir é ADMIN-only)', async () => {
     auth.role = Role.COORDINATOR;
     const user = userEvent.setup();
     renderWithMenu(makeResident());
     await user.click(screen.getByRole('button', { name: MENU }));
-    expect(await screen.findByText('Remover da casa')).toBeInTheDocument();
+    expect(await screen.findByText(EXIT)).toBeInTheDocument();
+    expect(screen.getByText(TRANSFER)).toBeInTheDocument();
     expect(screen.queryByText('Excluir')).not.toBeInTheDocument();
   });
 
-  it('escolher Remover da casa dispara onRemove', async () => {
+  it.each([
+    [EXIT, 'exit'],
+    [TRANSFER, 'transfer'],
+  ])('escolher %s dispara onRemove com mode %s', async (label, mode) => {
     const onRemove = vi.fn();
     const user = userEvent.setup();
     renderWithMenu(makeResident(), { onRemove });
     await user.click(screen.getByRole('button', { name: MENU }));
-    await user.click(await screen.findByText('Remover da casa'));
-    expect(onRemove).toHaveBeenCalled();
+    await user.click(await screen.findByText(label));
+    expect(onRemove).toHaveBeenCalledWith(mode);
   });
 
   it('escolher Excluir dispara onDelete (confirmação fica na página)', async () => {
@@ -144,12 +155,12 @@ describe('ResidentCard — menu de ações', () => {
   });
 
   it.each([ResidentStatus.DISCHARGED, ResidentStatus.EVADED, ResidentStatus.ARCHIVED])(
-    'filho %s não oferece Remover da casa',
+    'filho %s não oferece saída nem transferência',
     async (status) => {
       auth.role = Role.COORDINATOR;
       const user = userEvent.setup();
       renderWithMenu(makeResident({ status }));
-      // COORDINATOR não pode excluir: sem "Remover", o menu fica vazio e some.
+      // COORDINATOR não pode excluir: sem saída/transferência, o menu fica vazio e some.
       expect(screen.queryByRole('button', { name: MENU })).not.toBeInTheDocument();
       // ADMIN ainda vê o menu, mas só com Excluir.
       cleanup();
@@ -157,7 +168,8 @@ describe('ResidentCard — menu de ações', () => {
       renderWithMenu(makeResident({ status }));
       await user.click(screen.getByRole('button', { name: MENU }));
       expect(await screen.findByText('Excluir')).toBeInTheDocument();
-      expect(screen.queryByText('Remover da casa')).not.toBeInTheDocument();
+      expect(screen.queryByText(EXIT)).not.toBeInTheDocument();
+      expect(screen.queryByText(TRANSFER)).not.toBeInTheDocument();
     },
   );
 
@@ -177,6 +189,7 @@ describe('ResidentCard — menu de ações', () => {
     );
     await user.click(screen.getByRole('button', { name: MENU }));
     expect(await screen.findByText('Excluir')).toBeInTheDocument();
-    expect(screen.queryByText('Remover da casa')).not.toBeInTheDocument();
+    expect(screen.queryByText(EXIT)).not.toBeInTheDocument();
+    expect(screen.queryByText(TRANSFER)).not.toBeInTheDocument();
   });
 });

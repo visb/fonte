@@ -1,6 +1,9 @@
 import {
   RESIDENT_REMOVAL_LABELS,
+  RESIDENT_ROW_ACTION_LABELS,
+  RESIDENT_ROW_ACTIONS,
   type ResidentRemovalAction,
+  type ResidentRowAction,
 } from '@fonte/types';
 import type { House, Resident } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
@@ -22,9 +25,11 @@ interface Props {
   open: boolean;
   onClose: () => void;
   resident: Resident;
+  /** Item do menu escolhido (story 200): saída da comunidade ou transferência. */
+  mode: ResidentRowAction;
 }
 
-export function RemoveResidentDialog({ open, onClose, resident }: Props) {
+export function RemoveResidentDialog({ open, onClose, resident, mode }: Props) {
   // Autossuficiente (CLAUDE.md): busca as casas por conta própria, só enquanto
   // aberto — nada de prop drilling de lista de casas pela listagem de filhos.
   const { data: houses = [] } = useHouses({ enabled: open });
@@ -35,27 +40,31 @@ export function RemoveResidentDialog({ open, onClose, resident }: Props) {
     handleClose,
     onSubmit,
     formState: { errors },
-  } = useResidentRemovalForm(resident, onClose);
+  } = useResidentRemovalForm(resident, mode, onClose);
+  const actions = RESIDENT_ROW_ACTIONS[mode];
   const otherHouses = houses.filter((h: House) => h.id !== resident.houseId);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Remover da casa</DialogTitle>
+          <DialogTitle>{RESIDENT_ROW_ACTION_LABELS[mode]}</DialogTitle>
           <DialogDescription>{resident.name}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-3">
-          <FormField label="O que aconteceu?" error={errors.action?.message}>
-            <Select {...register('action')}>
-              {(Object.keys(RESIDENT_REMOVAL_LABELS) as ResidentRemovalAction[]).map((key) => (
-                <option key={key} value={key}>
-                  {RESIDENT_REMOVAL_LABELS[key].label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
+          {/* Transferência tem uma ação só: nada a escolher, vai direto à casa. */}
+          {actions.length > 1 && (
+            <FormField label="O que aconteceu?" error={errors.action?.message}>
+              <Select {...register('action')}>
+                {actions.map((key: ResidentRemovalAction) => (
+                  <option key={key} value={key}>
+                    {RESIDENT_REMOVAL_LABELS[key].label}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          )}
 
           <p className="text-xs text-muted-foreground">
             {RESIDENT_REMOVAL_LABELS[action]?.description}
@@ -66,7 +75,7 @@ export function RemoveResidentDialog({ open, onClose, resident }: Props) {
               label="Casa de destino"
               error={'targetHouseId' in errors ? errors.targetHouseId?.message : undefined}
             >
-              <Select {...register('targetHouseId')} defaultValue="">
+              <Select {...register('targetHouseId')}>
                 <option value="">Selecione...</option>
                 {otherHouses.map((house: House) => (
                   <option key={house.id} value={house.id}>

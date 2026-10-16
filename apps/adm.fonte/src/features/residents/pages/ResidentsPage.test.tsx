@@ -22,6 +22,20 @@ vi.mock('@/features/preferences/hooks/usePreference', () => ({
   usePreference: () => [prefState.saved, setPreferenceValue],
 }));
 
+// Story 200: o `⋮` do card depende da role; o diálogo de baixa é mockado para
+// expor o filho e o `mode` com que a página o abriu.
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ role: 'ADMIN' }) }));
+vi.mock('@/lib/api', () => ({ api: { photoUrl: (u: string | null) => u } }));
+vi.mock('../components/RemoveResidentDialog', () => ({
+  RemoveResidentDialog: (props: { resident: { name: string }; mode: string; onClose: () => void }) => (
+    <div role="dialog">
+      {`baixa:${props.resident.name}:${props.mode}`}
+      <button onClick={props.onClose}>fechar</button>
+    </div>
+  ),
+}));
+
+import userEvent from '@testing-library/user-event';
 import { useInfiniteResidents, useDeleteResident } from '../hooks/useResidents';
 import { ResidentsPage } from './ResidentsPage';
 
@@ -72,6 +86,57 @@ function renderAtStrict(url: string) {
     </StrictMode>,
   );
 }
+
+describe('ResidentsPage — menu ⋮ abre o diálogo no modo certo (story 200)', () => {
+  function withResident() {
+    infinite.mockReturnValue({
+      data: {
+        pages: [
+          {
+            data: [
+              {
+                id: 'r1',
+                name: 'Maria Interna',
+                status: 'ACTIVE',
+                houseId: 'h1',
+                house: { id: 'h1', name: 'Casa Belém' },
+                birthDate: null,
+                entryDate: null,
+                familyInvestment: null,
+                lastContributionDate: null,
+                contributionDueDay: null,
+                photoUrl: null,
+                photoThumbUrl: null,
+              },
+            ],
+            total: 1,
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+    } as unknown as ReturnType<typeof useInfiniteResidents>);
+  }
+
+  it.each([
+    ['Declarar saída da comunidade', 'exit'],
+    ['Transferir de casa', 'transfer'],
+  ])('%s abre o diálogo com mode %s e fecha', async (label, mode) => {
+    withResident();
+    const user = userEvent.setup();
+    renderAt('/residents');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ações de Maria Interna' }));
+    await user.click(await screen.findByText(label));
+    expect(await screen.findByText(`baixa:Maria Interna:${mode}`)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'fechar' }));
+    expect(screen.queryByText(`baixa:Maria Interna:${mode}`)).not.toBeInTheDocument();
+  });
+});
 
 describe('ResidentsPage — ordenação (story 129)', () => {
   it('sem sort na URL usa o default da tela (entryDate/desc)', () => {

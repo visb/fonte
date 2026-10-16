@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
-import { ResidentStatus } from '@fonte/types';
+import {
+  RESIDENT_ROW_ACTIONS,
+  ResidentStatus,
+  type ResidentRemovalAction,
+  type ResidentRowAction,
+} from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 
 const mutate = vi.fn();
@@ -20,6 +25,7 @@ vi.mock('@/features/houses/hooks/useHouses', () => ({
 }));
 
 import { RemoveResidentDialog } from './RemoveResidentDialog';
+import { removalDefaults } from '../hooks/useResidentRemovalForm';
 
 function resident(overrides: Partial<Resident> = {}): Resident {
   return {
@@ -31,8 +37,8 @@ function resident(overrides: Partial<Resident> = {}): Resident {
   } as Resident;
 }
 
-function open() {
-  return render(<RemoveResidentDialog open onClose={vi.fn()} resident={resident()} />);
+function open(mode: ResidentRowAction = 'exit', onClose = vi.fn()) {
+  return render(<RemoveResidentDialog open onClose={onClose} resident={resident()} mode={mode} />);
 }
 
 function chooseAction(action: string) {
@@ -45,17 +51,42 @@ beforeEach(() => {
 });
 afterEach(() => cleanup());
 
-describe('RemoveResidentDialog', () => {
-  it('abre com as três ações e o nome do filho', () => {
-    open();
-    expect(screen.getByText('Maria Interna')).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Declarar alta' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Evasão' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Transferir para outra casa' })).toBeInTheDocument();
+// Story 200: cada item do menu cobre uma ação de baixa, sem sobreposição.
+describe('RESIDENT_ROW_ACTIONS', () => {
+  it('cobre alta, evasão e transferência exatamente uma vez', () => {
+    const all = Object.values(RESIDENT_ROW_ACTIONS).flat().sort();
+    const expected: ResidentRemovalAction[] = ['discharge', 'evade', 'transfer'];
+    expect(all).toEqual(expected);
+  });
+});
+
+describe('removalDefaults', () => {
+  it('exit parte de alta com a data de hoje', () => {
+    expect(removalDefaults('exit')).toEqual({
+      action: 'discharge',
+      exitDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
   });
 
-  it('alta exige data: sem ela o submit é bloqueado', async () => {
-    open();
+  it('transfer parte da transferência sem casa escolhida', () => {
+    expect(removalDefaults('transfer')).toEqual({ action: 'transfer', targetHouseId: '' });
+  });
+});
+
+describe('RemoveResidentDialog — mode="exit"', () => {
+  it('título é Declarar saída da comunidade e o select só tem alta e evasão', () => {
+    open('exit');
+    expect(screen.getByText('Declarar saída da comunidade')).toBeInTheDocument();
+    expect(screen.getByText('Maria Interna')).toBeInTheDocument();
+    expect(screen.queryByText('Remover da casa')).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Declarar alta' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Evasão' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Transferir para outra casa' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Casa de destino')).not.toBeInTheDocument();
+  });
+
+  it('a data é obrigatória: sem ela o submit é bloqueado', async () => {
+    open('exit');
     const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
     expect(dateInput).toBeTruthy();
     fireEvent.change(dateInput, { target: { value: '' } });
@@ -64,10 +95,10 @@ describe('RemoveResidentDialog', () => {
     expect(mutate).not.toHaveBeenCalled();
   });
 
-  it('alta com data muta para DISCHARGED e fecha', async () => {
+  it('alta com data muta para DISCHARGED + exitDate e fecha', async () => {
     const onClose = vi.fn();
     mutate.mockImplementation((_data, opts) => opts.onSuccess());
-    render(<RemoveResidentDialog open onClose={onClose} resident={resident()} />);
+    open('exit', onClose);
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
     await waitFor(() => expect(mutate).toHaveBeenCalled());
     expect(mutate.mock.calls[0][0]).toEqual({
@@ -78,41 +109,50 @@ describe('RemoveResidentDialog', () => {
   });
 
   it('evasão muta para EVADED', async () => {
-    open();
+    open('exit');
     chooseAction('evade');
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
     await waitFor(() => expect(mutate).toHaveBeenCalled());
     expect(mutate.mock.calls[0][0]).toMatchObject({ status: ResidentStatus.EVADED });
   });
+});
 
-  it('transferência não pede data e exige casa de destino', async () => {
-    open();
-    chooseAction('transfer');
+describe('RemoveResidentDialog — mode="transfer"', () => {
+  it('título é Transferir de casa, sem select de ação nem data', () => {
+    open('transfer');
+    expect(screen.getAllByText('Transferir de casa').length).toBeGreaterThan(0);
+    expect(screen.queryByText('O que aconteceu?')).not.toBeInTheDocument();
     expect(screen.queryByText('Data do acontecimento')).not.toBeInTheDocument();
+    expect(screen.getByText('Casa de destino')).toBeInTheDocument();
+    expect(screen.getAllByRole('combobox')).toHaveLength(1);
+  });
+
+  it('casa de destino é obrigatória', async () => {
+    open('transfer');
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
     expect(await screen.findByText('Selecione a casa de destino')).toBeInTheDocument();
     expect(mutate).not.toHaveBeenCalled();
   });
 
-  it('transferência não oferece a casa atual', () => {
-    open();
-    chooseAction('transfer');
+  it('não oferece a casa atual', () => {
+    open('transfer');
     expect(screen.getByRole('option', { name: 'Casa Bethel' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'Casa Atual' })).not.toBeInTheDocument();
   });
 
-  it('transferência muta só o houseId de destino', async () => {
-    open();
-    chooseAction('transfer');
-    fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: 'h2' } });
+  it('muta só o houseId de destino', async () => {
+    open('transfer');
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'h2' } });
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
     await waitFor(() => expect(mutate).toHaveBeenCalled());
     expect(mutate.mock.calls[0][0]).toEqual({ houseId: 'h2' });
   });
+});
 
+describe('RemoveResidentDialog — comum', () => {
   it('cancelar fecha sem mutar', () => {
     const onClose = vi.fn();
-    render(<RemoveResidentDialog open onClose={onClose} resident={resident()} />);
+    open('exit', onClose);
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
     expect(onClose).toHaveBeenCalled();
     expect(mutate).not.toHaveBeenCalled();

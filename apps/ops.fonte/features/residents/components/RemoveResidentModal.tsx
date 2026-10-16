@@ -11,7 +11,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { House } from '@fonte/api-client';
-import { RESIDENT_REMOVAL_LABELS, type ResidentRemovalAction } from '@fonte/types';
+import {
+  RESIDENT_REMOVAL_LABELS,
+  RESIDENT_ROW_ACTION_LABELS,
+  RESIDENT_ROW_ACTIONS,
+  type ResidentRemovalAction,
+  type ResidentRowAction,
+} from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { DatePickerModal } from '@/components/DatePickerModal';
@@ -44,10 +50,25 @@ interface Props {
   resident: { id: string; name: string } | null;
   onClose: () => void;
   onSuccess: () => void;
+  /**
+   * Item do menu da lista (story 200): restringe as ações e dá o título. Sem
+   * `mode` (contagem), as três ações e o título "Remover filho" de sempre.
+   */
+  mode?: ResidentRowAction;
 }
 
-export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuccess }: Props) {
-  const [selectedAction, setSelectedAction] = useState<Action | null>(null);
+export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuccess, mode }: Props) {
+  const [chosenAction, setSelectedAction] = useState<Action | null>(null);
+  const actions = mode ? ACTIONS.filter((a) => RESIDENT_ROW_ACTIONS[mode].includes(a.key)) : ACTIONS;
+  // Escolha que não pertence ao modo atual (sobra de uma abertura anterior) não
+  // vale; com uma ação só (transferência) ela já vem selecionada.
+  const selectedAction: Action | null =
+    chosenAction && actions.some((a) => a.key === chosenAction)
+      ? chosenAction
+      : actions.length === 1
+        ? actions[0].key
+        : null;
+  const title = mode ? RESIDENT_ROW_ACTION_LABELS[mode] : 'Remover filho';
   const [targetHouseId, setTargetHouseId] = useState<string | null>(null);
   const [exitDate, setExitDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -119,7 +140,7 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
         <View className="bg-white rounded-t-3xl" style={{ maxHeight: '85%' }}>
           <View className="px-5 pt-5 pb-3 border-b border-gray-100 flex-row items-center">
             <View className="flex-1">
-              <Text className="text-base font-semibold text-gray-900">Remover filho</Text>
+              <Text className="text-base font-semibold text-gray-900">{title}</Text>
               {resident ? <Text className="text-xs text-gray-400 mt-0.5">{resident.name}</Text> : null}
             </View>
             <Pressable onPress={onClose}>
@@ -132,8 +153,10 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
             contentContainerStyle={{ paddingVertical: 16, gap: 12 }}
             keyboardShouldPersistTaps="handled"
           >
-            <Text className="text-sm text-gray-500">O que deseja fazer?</Text>
-            {ACTIONS.map((action) => {
+            {actions.length > 1 ? (
+              <Text className="text-sm text-gray-500">O que deseja fazer?</Text>
+            ) : null}
+            {actions.length > 1 && actions.map((action) => {
               const selected = selectedAction === action.key;
               const { label, description } = RESIDENT_REMOVAL_LABELS[action.key];
               return (

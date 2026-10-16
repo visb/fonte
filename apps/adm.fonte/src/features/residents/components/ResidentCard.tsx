@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Building2, CalendarDays, LogOut, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, Building2, CalendarDays, LogOut, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import {
   FamilyInvestment,
   REMOVABLE_RESIDENT_STATUSES,
+  RESIDENT_ROW_ACTION_LABELS,
   ResidentStatus,
   Role,
+  type ResidentRowAction,
 } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { Badge, badgeVariants } from '@/components/ui/badge';
@@ -115,8 +117,11 @@ function computeAge(birthDate: string | null): number | null {
 interface Props {
   resident: Resident;
   onDelete: () => void;
-  /** Abre o diálogo de baixa (alta/evasão/transferência) — story 196. */
-  onRemove?: () => void;
+  /**
+   * Abre o diálogo de baixa (story 196) no modo do item escolhido: saída da
+   * comunidade (alta/evasão) ou transferência de casa (story 200).
+   */
+  onRemove?: (mode: ResidentRowAction) => void;
 }
 
 export function ResidentCard({ resident, onDelete, onRemove }: Props) {
@@ -198,9 +203,10 @@ export function ResidentCard({ resident, onDelete, onRemove }: Props) {
             <Pencil size={16} />
           </Link>
         </Button>
-        {/* Duas ações destrutivas de consequências opostas não ficam a um clique
-            uma da outra: "Remover da casa" e "Excluir" entram no mesmo menu,
-            rotuladas. Menu vazio não é renderizado. */}
+        {/* Ações de consequências opostas não ficam a um clique uma da outra:
+            "Declarar saída da comunidade", "Transferir de casa" (story 200) e
+            "Excluir" entram no mesmo menu, rotuladas. Menu vazio não é
+            renderizado. */}
         {(canRemove || canDelete) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -208,11 +214,16 @@ export function ResidentCard({ resident, onDelete, onRemove }: Props) {
                 <MoreVertical size={16} />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-64">
               {canRemove && (
-                <DropdownMenuItem onSelect={() => onRemove?.()}>
-                  <LogOut size={14} /> Remover da casa
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem onSelect={() => onRemove?.('exit')}>
+                    <LogOut size={14} /> {RESIDENT_ROW_ACTION_LABELS.exit}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => onRemove?.('transfer')}>
+                    <ArrowLeftRight size={14} /> {RESIDENT_ROW_ACTION_LABELS.transfer}
+                  </DropdownMenuItem>
+                </>
               )}
               {canDelete && (
                 <DropdownMenuItem

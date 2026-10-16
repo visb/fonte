@@ -29,7 +29,7 @@ export function NewStaffPage() {
   const { data: houses = [] } = useHouses();
   const { data: supportGroups = [] } = useSupportGroups();
 
-  const { register, handleSubmit, setValue, getValues, watch, formState: { errors, isSubmitting } } =
+  const { register, control, handleSubmit, setValue, getValues, watch, formState: { errors, isSubmitting } } =
     useForm<NewStaffFormData>({
       resolver: zodResolver(newStaffSchema),
       defaultValues: { servesInGroup: false, rank: undefined },
@@ -91,6 +91,7 @@ export function NewStaffPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <StaffFormSection
           register={register}
+          control={control}
           errors={errors}
           role={role as Role | undefined}
           servesInGroup={servesInGroup}

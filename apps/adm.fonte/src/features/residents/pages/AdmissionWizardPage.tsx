@@ -52,6 +52,7 @@ export function AdmissionWizardPage() {
 
   const {
     register,
+    control,
     trigger,
     getValues,
     watch,
@@ -172,13 +173,14 @@ export function AdmissionWizardPage() {
             <div className="flex justify-center pb-2">
               <AvatarUpload onBlobChange={(blob) => { pendingPhotoRef.current = blob; }} />
             </div>
-            <ResidentFichaSections register={register} errors={errors} />
+            <ResidentFichaSections register={register} control={control} errors={errors} />
           </>
         )}
 
         {step === 1 && (
           <ResidentAdmissionSections
             register={register}
+            control={control}
             errors={errors}
             houses={houses}
             watchFamilyInvestment={watch('familyInvestment')}

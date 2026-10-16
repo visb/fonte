@@ -84,6 +84,20 @@ describe('RegisterPaymentDialog', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
+  it('data do pagamento pelo DateInput: digitada vai como YYYY-MM-DD; vazia é barrada (story 201)', async () => {
+    renderDialog();
+    const date = screen.getByPlaceholderText('dd/mm/aaaa');
+    fireEvent.change(date, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    expect(await screen.findByText('Informe a data')).toBeInTheDocument();
+    expect(payMutateAsync).not.toHaveBeenCalled();
+
+    fireEvent.change(date, { target: { value: '08/05/2026' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await waitFor(() => expect(payMutateAsync).toHaveBeenCalled());
+    expect(payMutateAsync.mock.calls[0][0].paidAt).toBe('2026-05-08');
+  });
+
   it('anexar comprovante mostra o nome', () => {
     renderDialog();
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;

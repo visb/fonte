@@ -9,7 +9,7 @@ import { newStaffSchema, type NewStaffFormData } from '../lib/staffSchema';
 // Harness com react-hook-form real: valida a integração das abas (story 96) —
 // render de cada aba, preservação de valores ao navegar e sinalização de erro.
 function Harness() {
-  const { register, handleSubmit, setValue, watch, formState: { errors } } =
+  const { register, control, handleSubmit, setValue, watch, formState: { errors } } =
     useForm<NewStaffFormData>({
       resolver: zodResolver(newStaffSchema),
       defaultValues: { servesInGroup: false, password: 'secret123' },
@@ -20,6 +20,7 @@ function Harness() {
     <form onSubmit={handleSubmit(() => {})}>
       <StaffFormSection
         register={register}
+        control={control}
         errors={errors}
         role={role as Role | undefined}
         servesInGroup={!!servesInGroup}
@@ -77,6 +78,15 @@ describe('StaffFormSection', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Pessoal' }));
     expect(screen.getByPlaceholderText('000.000.000-00')).toHaveValue('123.456.789-01');
+  });
+
+  it('nascimento na aba Pessoal usa o DateInput com máscara (story 201)', () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Pessoal' }));
+    const birth = document.querySelector('input[name="birthDate"]') as HTMLInputElement;
+    expect(birth).toHaveAttribute('placeholder', 'dd/mm/aaaa');
+    fireEvent.change(birth, { target: { value: '15081975' } });
+    expect(birth.value).toBe('15/08/1975');
   });
 
   it('sinaliza apenas a aba Sistema quando os obrigatórios faltam', async () => {

@@ -8,6 +8,7 @@ import {
 import { login } from './helpers/auth';
 import { createResidentViaWizard, openResidentFromList } from './helpers/residents';
 import { resetResidentsFilters } from './helpers/preferences';
+import { fillDate } from './helpers/dates';
 import {
   createResident,
   createStoreroomItem,
@@ -204,6 +205,56 @@ test.describe('Filhos (Residentes)', () => {
     await expect(
       page.getByText('Gere e anexe os documentos assinados. Você pode concluir agora e anexá-los depois.'),
     ).toBeVisible();
+  });
+
+  // ─── Seletor de data (story 201) ─────────────────────────────────────────────
+  // O filho nasce pelo wizard (não há como pegar o id antes); a limpeza é por
+  // esse id, lido da URL do detalhe, no afterAll (story 182).
+  test.describe('seletor de data no acolhimento', () => {
+    const createdIds: string[] = [];
+
+    test.afterAll(async () => {
+      const api = await playwrightRequest.newContext();
+      const token = await loginApi(api);
+      for (const id of createdIds) await deleteResident(api, token, id);
+      await api.dispose();
+    });
+
+    test('calendário abre no foco, troca ano/mês nos dropdowns e a data aparece na ficha', async ({ page }) => {
+      const name = `Residente Calendario ${Date.now()}`;
+      await page.getByRole('link', { name: 'Novo acolhimento' }).click();
+      await page.getByRole('link', { name: /Primeiro acolhimento/ }).click();
+      await expect(page).toHaveURL('/residents/new');
+
+      // Ficha: nascimento digitado com a máscara.
+      await page.locator('input[name="name"]').fill(name);
+      await fillDate(page.locator('input[name="birthDate"]'), '1975-08-20');
+      await expect(page.locator('input[name="birthDate"]')).toHaveValue('20/08/1975');
+      await page.getByRole('button', { name: 'Avançar' }).click();
+
+      // Admissão: entrada escolhida no calendário, aberto pelo foco.
+      await page.locator('select[name="houseId"]').selectOption({ label: 'Casa Teste' });
+      const entry = page.locator('input[name="entryDate"]');
+      await entry.click();
+      const calendar = page.getByRole('dialog').filter({ has: page.getByRole('grid') });
+      await expect(calendar).toBeVisible();
+      await calendar.getByRole('combobox', { name: 'Escolha o ano' }).selectOption('2025');
+      await calendar.getByRole('combobox', { name: 'Escolha o mês' }).selectOption({ label: 'março' });
+      await calendar.getByRole('button', { name: /15 de março de 2025/ }).click();
+      await expect(calendar).toHaveCount(0);
+      await expect(entry).toHaveValue('15/03/2025');
+      await page.getByRole('button', { name: 'Avançar' }).click();
+
+      await expect(
+        page.getByText('Cadastre os familiares do acolhido. Você pode adicioná-los depois, se necessário.'),
+      ).toBeVisible();
+      await page.getByRole('button', { name: 'Avançar' }).click();
+      await page.getByRole('button', { name: 'Concluir acolhimento' }).click();
+      await expect(page).toHaveURL(/\/residents\/[^/]+\?tab=overview$/);
+      createdIds.push(new URL(page.url()).pathname.split('/').pop()!);
+
+      await expect(page.getByText('15/03/2025').first()).toBeVisible();
+    });
   });
 
   // ─── Navegação e edição ──────────────────────────────────────────────────────
@@ -728,7 +779,7 @@ test.describe('Filhos (Residentes)', () => {
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByText('Declarar saída da comunidade')).toBeVisible();
       await expect(dialog.getByRole('option', { name: 'Transferir para outra casa' })).toHaveCount(0);
-      await dialog.locator('input[type="date"]').fill('2026-06-23');
+      await fillDate(dialog.getByPlaceholder('dd/mm/aaaa'), '2026-06-23');
       await dialog.getByRole('button', { name: 'Confirmar' }).click();
 
       // Listagem de ativos (filtro padrão da tela): o card sai.

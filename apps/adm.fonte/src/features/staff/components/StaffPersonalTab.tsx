@@ -1,18 +1,26 @@
-import { type FieldErrors, type FieldValues, type Path, type UseFormRegister } from 'react-hook-form';
+import {
+  type Control,
+  type FieldErrors,
+  type FieldValues,
+  type Path,
+  type UseFormRegister,
+} from 'react-hook-form';
 import { Gender, MaritalStatus } from '@fonte/types';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/shared/FormField';
+import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import { maskCPF, maskRG, withMask } from '@/lib/masks';
 
 interface Props<T extends FieldValues> {
   register: UseFormRegister<T>;
+  control: Control<T>;
   errors: FieldErrors<T>;
 }
 
 // Aba Pessoal do form de servo (story 96): documentos e perfil social. Todos os
 // campos são opcionais — nada aqui bloqueia o cadastro.
-export function StaffPersonalTab<T extends FieldValues>({ register, errors }: Props<T>) {
+export function StaffPersonalTab<T extends FieldValues>({ register, control, errors }: Props<T>) {
   const f = (name: string) => register(name as Path<T>);
   const errMsg = (name: string): string | undefined =>
     (errors as Record<string, { message?: string } | undefined>)[name]?.message;
@@ -29,7 +37,7 @@ export function StaffPersonalTab<T extends FieldValues>({ register, errors }: Pr
         <Input {...f('nationality')} placeholder="Ex: Brasileira" />
       </FormField>
       <FormField label="Data de nascimento" error={errMsg('birthDate')}>
-        <Input type="date" {...f('birthDate')} />
+        <ControlledDateInput control={control} name={'birthDate' as Path<T>} />
       </FormField>
       <FormField label="Gênero" error={errMsg('gender')}>
         <Select {...f('gender')}>

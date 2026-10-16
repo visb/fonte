@@ -61,10 +61,31 @@ describe('BibleClassDialog', () => {
   it('mudar início recalcula término', () => {
     render(<BibleClassDialog open klass={null} onClose={vi.fn()} />);
     const start = screen.getByLabelText('Início *') as HTMLInputElement;
-    fireEvent.change(start, { target: { value: '2026-06-01' } });
+    // DateInput (story 201): digita dd/mm/aaaa e exibe dd/mm/aaaa.
+    fireEvent.change(start, { target: { value: '01/06/2026' } });
     const end = screen.getByLabelText('Término *') as HTMLInputElement;
     // 2026-06-01 + 75 dias = 2026-08-15
-    expect(end.value).toBe('2026-08-15');
+    expect(end.value).toBe('15/08/2026');
+  });
+
+  it('início incompleto não recalcula o término', () => {
+    render(<BibleClassDialog open klass={klass()} onClose={vi.fn()} />);
+    const end = screen.getByLabelText('Término *') as HTMLInputElement;
+    const before = end.value;
+    fireEvent.change(screen.getByLabelText('Início *'), { target: { value: '01/06' } });
+    expect(end.value).toBe(before);
+  });
+
+  it('submit envia início e término em YYYY-MM-DD', async () => {
+    render(<BibleClassDialog open klass={null} onClose={vi.fn()} />);
+    fireEvent.input(screen.getByLabelText('Nome *'), { target: { value: 'Turma Y' } });
+    fireEvent.change(screen.getByLabelText('Início *'), { target: { value: '01/06/2026' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+    await waitFor(() => expect(createMutate).toHaveBeenCalled());
+    expect(createMutate.mock.calls[0][0]).toMatchObject({
+      startDate: '2026-06-01',
+      endDate: '2026-08-15',
+    });
   });
 
   it('submit inválido (sem nome) não muta', async () => {

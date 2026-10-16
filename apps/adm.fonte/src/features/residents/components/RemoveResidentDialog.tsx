@@ -7,9 +7,9 @@ import {
 } from '@fonte/types';
 import type { House, Resident } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/shared/FormField';
+import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,7 @@ export function RemoveResidentDialog({ open, onClose, resident, mode }: Props) {
   const { data: houses = [] } = useHouses({ enabled: open });
   const {
     register,
+    control,
     action,
     isPending,
     handleClose,
@@ -89,7 +90,7 @@ export function RemoveResidentDialog({ open, onClose, resident, mode }: Props) {
               label="Data do acontecimento"
               error={'exitDate' in errors ? errors.exitDate?.message : undefined}
             >
-              <Input type="date" {...register('exitDate')} />
+              <ControlledDateInput control={control} name="exitDate" />
             </FormField>
           )}
 

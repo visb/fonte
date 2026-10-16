@@ -58,7 +58,8 @@ describe('ImportReviewStep', () => {
     renderStep({ initialValues: { name: 'Filho A', exitDate: '2023-08-10' } });
     expect(screen.getByText('Data de saída')).toBeInTheDocument();
     const exitInput = document.querySelector('input[name="exitDate"]') as HTMLInputElement;
-    expect(exitInput.value).toBe('2023-08-10');
+    // DateInput (story 201) exibe dd/mm/aaaa; o valor do form segue YYYY-MM-DD.
+    expect(exitInput.value).toBe('10/08/2023');
   });
 
   it('assume UF "PR" quando a extração não trouxe estado', () => {

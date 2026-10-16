@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from 'react';
-import { type FieldErrors, type FieldValues, type UseFormRegister } from 'react-hook-form';
+import { type Control, type FieldErrors, type FieldValues, type UseFormRegister } from 'react-hook-form';
 import { Role } from '@fonte/types';
 import { StaffFormTabs, type StaffTabDef } from './StaffFormTabs';
 import { StaffSystemTab } from './StaffSystemTab';
@@ -9,6 +9,7 @@ import { staffTabsWithError, type StaffTabId } from '../lib/staffSchema';
 
 interface Props<T extends FieldValues> {
   register: UseFormRegister<T>;
+  control: Control<T>;
   errors: FieldErrors<T>;
   role: Role | undefined;
   servesInGroup: boolean;
@@ -24,6 +25,7 @@ interface Props<T extends FieldValues> {
 // preserva valores ao trocar de aba (todas montadas). Story 96.
 export function StaffFormSection<T extends FieldValues>({
   register,
+  control,
   errors,
   role,
   servesInGroup,
@@ -59,7 +61,7 @@ export function StaffFormSection<T extends FieldValues>({
       id: 'personal',
       label: 'Pessoal',
       hasError: tabErrors.personal,
-      content: <StaffPersonalTab register={register} errors={errors} />,
+      content: <StaffPersonalTab register={register} control={control} errors={errors} />,
     },
     {
       id: 'address',

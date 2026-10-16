@@ -104,6 +104,16 @@ describe('ReadmissionForm', () => {
     expect(createFollowUp).not.toHaveBeenCalled();
   });
 
+  it('data de entrada digitada no DateInput vai como YYYY-MM-DD (story 201)', async () => {
+    readmitState.mutate.mockImplementation((_v, opts) => opts.onSuccess({ id: 'r1' }));
+    renderForm();
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'h1' } });
+    fireEvent.change(screen.getByPlaceholderText('dd/mm/aaaa'), { target: { value: '03/09/2026' } });
+    fireEvent.click(screen.getByRole('button', { name: /Reintroduzir acolhido/ }));
+    await waitFor(() => expect(readmitState.mutate).toHaveBeenCalled());
+    expect(readmitState.mutate.mock.calls[0][0].data.entryDate).toBe('2026-09-03');
+  });
+
   it('investimento NEGOTIATED revela o campo de valor e o checkbox de 1ª mensalidade', () => {
     renderForm();
     const selects = screen.getAllByRole('combobox');

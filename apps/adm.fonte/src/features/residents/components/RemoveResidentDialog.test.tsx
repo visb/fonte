@@ -87,12 +87,22 @@ describe('RemoveResidentDialog — mode="exit"', () => {
 
   it('a data é obrigatória: sem ela o submit é bloqueado', async () => {
     open('exit');
-    const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
-    expect(dateInput).toBeTruthy();
+    const dateInput = screen.getByPlaceholderText('dd/mm/aaaa') as HTMLInputElement;
     fireEvent.change(dateInput, { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
     expect(await screen.findByText('Informe a data do acontecimento')).toBeInTheDocument();
     expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it('data digitada dd/mm/aaaa vai como YYYY-MM-DD no payload (story 201)', async () => {
+    open('exit');
+    fireEvent.change(screen.getByPlaceholderText('dd/mm/aaaa'), { target: { value: '23/06/2026' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await waitFor(() => expect(mutate).toHaveBeenCalled());
+    expect(mutate.mock.calls[0][0]).toEqual({
+      status: ResidentStatus.DISCHARGED,
+      exitDate: '2026-06-23',
+    });
   });
 
   it('alta com data muta para DISCHARGED + exitDate e fecha', async () => {

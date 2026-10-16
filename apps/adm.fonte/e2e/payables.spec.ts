@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { login } from './helpers/auth';
+import { fillDate } from './helpers/dates';
 
 test.describe('Contas a Pagar (Financeiro)', () => {
   const ts = () => Date.now();
@@ -31,7 +32,7 @@ test.describe('Contas a Pagar (Financeiro)', () => {
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.getByLabel('Descrição *').fill(description);
     await page.getByLabel('Valor (R$) *').fill(amount);
-    await page.getByLabel('Vencimento *').fill(dueDate);
+    await fillDate(page.getByLabel('Vencimento *'), dueDate);
     await page.getByLabel('Categoria *').selectOption('UTILITIES');
     await page.getByRole('button', { name: 'Criar' }).click();
     await expect(page.getByRole('dialog')).not.toBeVisible();

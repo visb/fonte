@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/shared/FormField';
+import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import {
   Dialog,
   DialogContent,
@@ -181,7 +182,7 @@ export function RegisterPaymentDialog({
           {registerMoney && (
             <div className="space-y-3 rounded-lg border p-3">
               <FormField label="Data do pagamento" error={errors.paidAt?.message}>
-                <Input type="date" {...register('paidAt')} />
+                <ControlledDateInput control={control} name="paidAt" />
               </FormField>
 
               <FormField label="Forma de pagamento" error={errors.paymentMethod?.message}>

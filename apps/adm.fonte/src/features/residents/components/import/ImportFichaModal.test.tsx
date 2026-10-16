@@ -147,7 +147,8 @@ describe('ImportFichaModal', () => {
     });
     expect(screen.getByText('Data de saída')).toBeInTheDocument();
     const exitInput = document.querySelector('input[name="exitDate"]') as HTMLInputElement;
-    expect(exitInput.value).toBe('2023-08-10');
+    // DateInput (story 201) exibe dd/mm/aaaa; o payload segue YYYY-MM-DD (abaixo).
+    expect(exitInput.value).toBe('10/08/2023');
   });
 
   it('envia a exitDate no payload do commit (backend deriva ALTA/EVASÃO)', async () => {

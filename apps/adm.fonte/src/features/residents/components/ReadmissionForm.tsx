@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionTitle, FormField } from '@/components/shared/FormField';
+import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import { getErrorMessage } from '@/lib/errors';
 import { maskPhone, displayCpf, displayRg, withMask } from '@/lib/masks';
 import { FAMILY_INVESTMENT_LABELS } from '../constants';
@@ -65,6 +66,7 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
@@ -208,8 +210,8 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
               ))}
             </Select>
           </FormField>
-          <FormField label="Data de entrada">
-            <Input type="date" {...register('entryDate')} />
+          <FormField label="Data de entrada" error={errors.entryDate?.message}>
+            <ControlledDateInput control={control} name="entryDate" />
           </FormField>
         </div>
 

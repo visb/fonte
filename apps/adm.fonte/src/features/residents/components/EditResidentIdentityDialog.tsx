@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/shared/FormField';
+import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import {
   Dialog,
   DialogContent,
@@ -48,6 +49,7 @@ export function EditResidentIdentityDialog({ open, onClose, resident }: Props) {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -103,8 +105,8 @@ export function EditResidentIdentityDialog({ open, onClose, resident }: Props) {
             <Input {...withMask(register('rg'), maskRG)} placeholder="00.000.000-0" />
           </FormField>
 
-          <FormField label="Data de nascimento">
-            <Input type="date" {...register('birthDate')} />
+          <FormField label="Data de nascimento" error={errors.birthDate?.message}>
+            <ControlledDateInput control={control} name="birthDate" />
           </FormField>
 
           <FormField label="Gênero">

@@ -5,6 +5,7 @@ import type { BibleCourseClass } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { useCreateBibleClass, useUpdateBibleClass } from '../hooks/useBibleCourses';
@@ -25,7 +26,7 @@ export function BibleClassDialog({ open, klass, defaultStartDate, onClose }: Pro
   const createMutation = useCreateBibleClass();
   const updateMutation = useUpdateBibleClass();
 
-  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } =
+  const { register, control, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } =
     useForm<BibleClassFormData>({ resolver: zodResolver(bibleClassSchema) });
 
   useEffect(() => {
@@ -50,9 +51,8 @@ export function BibleClassDialog({ open, klass, defaultStartDate, onClose }: Pro
     }
   }, [open, klass, defaultStartDate, motherHouse?.id, reset]);
 
-  const handleStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const start = e.target.value;
-    setValue('startDate', start);
+  // O `ControlledDateInput` já grava o início; aqui só recalcula o término.
+  const handleStartChange = (start: string) => {
     if (start) setValue('endDate', addDays(start, CLASS_DURATION_DAYS));
   };
 
@@ -109,12 +109,17 @@ export function BibleClassDialog({ open, klass, defaultStartDate, onClose }: Pro
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="bc-start">Início *</Label>
-                <Input id="bc-start" type="date" {...register('startDate')} onChange={handleStartChange} />
+                <ControlledDateInput
+                  control={control}
+                  name="startDate"
+                  id="bc-start"
+                  onValueChange={handleStartChange}
+                />
                 {errors.startDate && <p className="text-xs text-destructive">{errors.startDate.message}</p>}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="bc-end">Término *</Label>
-                <Input id="bc-end" type="date" {...register('endDate')} />
+                <ControlledDateInput control={control} name="endDate" id="bc-end" />
                 {errors.endDate && <p className="text-xs text-destructive">{errors.endDate.message}</p>}
               </div>
             </div>

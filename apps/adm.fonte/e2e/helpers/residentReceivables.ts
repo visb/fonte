@@ -51,7 +51,8 @@ export async function createResidentWithPaidReceivable(
     data: {
       name,
       houseId: house.id,
-      entryDate: new Date().toISOString().slice(0, 10),
+      // Hoje em São Paulo: a API recusa entrada futura (story 203).
+      entryDate: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()),
       familyInvestment: 'PAYMENT_700',
       contributionDueDay: 10,
     },

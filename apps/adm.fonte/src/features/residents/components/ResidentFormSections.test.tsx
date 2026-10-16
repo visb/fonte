@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
-import { FamilyInvestment } from '@fonte/types';
+import { FamilyInvestment, todayInSaoPaulo } from '@fonte/types';
 import type { House } from '@fonte/api-client';
 import {
   ResidentFichaSections,
@@ -25,11 +25,12 @@ function FichaHarness() {
 
 type AdmissionProps = Partial<Parameters<typeof ResidentAdmissionSections>[0]> & {
   onSubmit?: (values: Record<string, unknown>) => void;
+  defaults?: { entryDate: string; exitDate: string };
 };
 
-function AdmissionHarness({ onSubmit, ...props }: AdmissionProps) {
+function AdmissionHarness({ onSubmit, defaults, ...props }: AdmissionProps) {
   const { register, control, handleSubmit, formState: { errors } } = useForm({
-    defaultValues: { entryDate: '2026-01-10', exitDate: '' },
+    defaultValues: defaults ?? { entryDate: '2026-01-10', exitDate: '' },
   });
   return (
     <form onSubmit={handleSubmit((v) => onSubmit?.(v))}>
@@ -103,6 +104,37 @@ describe('ResidentAdmissionSections', () => {
     expect(onSubmit.mock.calls[0][0]).toMatchObject({
       entryDate: '2026-02-05',
       exitDate: '2026-03-20',
+    });
+  });
+
+  // Story 203: entrada até hoje; saída entre a entrada e hoje.
+  describe('limites do calendário (story 203)', () => {
+    const dayButton = (iso: string) =>
+      document.querySelector(`[data-day="${iso}"] button`) as HTMLButtonElement | null;
+    const openCalendar = async (name: string) => {
+      await act(() => new Promise((r) => setTimeout(r, 0)));
+      fireEvent.focus(document.querySelector(`input[name="${name}"]`) as HTMLInputElement);
+      await screen.findByRole('grid');
+    };
+
+    it('saída: dias antes da entrada ficam desabilitados', async () => {
+      render(<AdmissionHarness showExitDate defaults={{ entryDate: '2026-01-10', exitDate: '2026-01-15' }} />);
+      await openCalendar('exitDate');
+      expect(dayButton('2026-01-09')).toBeDisabled();
+      expect(dayButton('2026-01-10')).toBeEnabled();
+    });
+
+    it('entrada: amanhã fica desabilitado, hoje não', async () => {
+      const today = todayInSaoPaulo();
+      const d = new Date(`${today}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + 1);
+      const tomorrow = d.toISOString().slice(0, 10);
+      render(<AdmissionHarness defaults={{ entryDate: today, exitDate: '' }} />);
+      await openCalendar('entryDate');
+      expect(dayButton(today)).toBeEnabled();
+      if (tomorrow.slice(0, 7) === today.slice(0, 7)) {
+        expect(dayButton(tomorrow)).toBeDisabled();
+      }
     });
   });
 

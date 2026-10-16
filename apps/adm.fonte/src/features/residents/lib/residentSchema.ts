@@ -3,13 +3,20 @@ import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/
 import type { Resident } from '@fonte/api-client';
 import { displayCpf, displayRg, maskPhone } from '@/lib/masks';
 import { birthDateField } from '@/lib/birthDate';
+import { refineAdmissionDates } from './admissionDates';
 
 /**
  * Schema do filho. `initialBirthDate` é o nascimento carregado na edição: a
  * regra de maioridade (story 202) só vale quando a data muda. Na criação
  * (acolhimento, import) não há valor inicial e toda data informada é julgada.
  */
-export const makeResidentSchema = (options: { initialBirthDate?: string | null } = {}) => z.object({
+export const makeResidentSchema = (
+  options: {
+    initialBirthDate?: string | null;
+    /** Story 203: par entrada/saída carregado na edição (só julga o que mudar). */
+    initialAdmissionDates?: { entryDate?: string | null; exitDate?: string | null };
+  } = {},
+) => z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   // Obrigatória para todo status exceto ARCHIVED (validado no superRefine).
   houseId: z.string().optional(),
@@ -67,6 +74,8 @@ export const makeResidentSchema = (options: { initialBirthDate?: string | null }
       message: 'Casa é obrigatória',
     });
   }
+  // Story 203: entrada/saída não futuras e saída ≥ entrada.
+  refineAdmissionDates(data, ctx, { initial: options.initialAdmissionDates });
 });
 
 /** Schema de criação (acolhimento, import): toda data de nascimento é julgada. */

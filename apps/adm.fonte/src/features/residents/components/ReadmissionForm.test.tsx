@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
-import { FamilyInvestment } from '@fonte/types';
+import { ADMISSION_DATE_MESSAGES, FamilyInvestment } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 
 vi.mock('@/features/houses/hooks/useHouses', () => ({
@@ -9,9 +9,12 @@ vi.mock('@/features/houses/hooks/useHouses', () => ({
 
 const readmitState = { mutate: vi.fn(), isPending: false, isError: false, error: null as unknown };
 const identityState = { mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false, error: null as unknown };
+// Story 203: histórico de passagens (a última saída limita a nova entrada).
+let admissionsData: Array<{ exitDate: string | null }> | undefined = [];
 vi.mock('../hooks/useResidents', () => ({
   useReadmitResident: () => readmitState,
   useUpdateResidentIdentity: () => identityState,
+  useResidentAdmissions: () => ({ data: admissionsData }),
 }));
 
 let authRole: string | null = 'COORDINATOR';
@@ -48,6 +51,7 @@ function renderForm() {
 beforeEach(() => {
   vi.clearAllMocks();
   authRole = 'COORDINATOR';
+  admissionsData = [];
   readmitState.mutate = vi.fn();
   readmitState.isPending = false;
   readmitState.isError = false;
@@ -112,6 +116,60 @@ describe('ReadmissionForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /Reintroduzir acolhido/ }));
     await waitFor(() => expect(readmitState.mutate).toHaveBeenCalled());
     expect(readmitState.mutate.mock.calls[0][0].data.entryDate).toBe('2026-09-03');
+  });
+
+  describe('datas (story 203)', () => {
+    const typeEntry = (value: string) =>
+      fireEvent.change(screen.getByPlaceholderText('dd/mm/aaaa'), { target: { value } });
+    const submit = () => {
+      fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'h1' } });
+      fireEvent.click(screen.getByRole('button', { name: /Reintroduzir acolhido/ }));
+    };
+
+    it('entrada antes da última saída → erro na entrada, sem mutation', async () => {
+      admissionsData = [{ exitDate: '2025-03-01' }, { exitDate: '2026-02-10T00:00:00.000Z' }];
+      renderForm();
+      typeEntry('09/02/2026');
+      submit();
+      expect(
+        await screen.findByText(ADMISSION_DATE_MESSAGES.entryBeforePreviousExit('2026-02-10')),
+      ).toBeInTheDocument();
+      expect(readmitState.mutate).not.toHaveBeenCalled();
+    });
+
+    it('entrada = última saída passa', async () => {
+      admissionsData = [{ exitDate: '2026-02-10' }];
+      renderForm();
+      typeEntry('10/02/2026');
+      submit();
+      await waitFor(() => expect(readmitState.mutate).toHaveBeenCalled());
+    });
+
+    it('entrada futura → erro', async () => {
+      admissionsData = undefined;
+      renderForm();
+      typeEntry('01/01/2999');
+      submit();
+      expect(await screen.findByText(ADMISSION_DATE_MESSAGES.entryFuture)).toBeInTheDocument();
+      expect(readmitState.mutate).not.toHaveBeenCalled();
+    });
+
+    it('usa a saída da ficha quando o histórico ainda não carregou', async () => {
+      admissionsData = undefined;
+      const onSuccess = vi.fn();
+      render(
+        <ReadmissionForm
+          resident={{ ...(resident as object), exitDate: '2026-05-05' } as unknown as Resident}
+          onBack={vi.fn()}
+          onSuccess={onSuccess}
+        />,
+      );
+      typeEntry('04/05/2026');
+      submit();
+      expect(
+        await screen.findByText(ADMISSION_DATE_MESSAGES.entryBeforePreviousExit('2026-05-05')),
+      ).toBeInTheDocument();
+    });
   });
 
   it('investimento NEGOTIATED revela o campo de valor e o checkbox de 1ª mensalidade', () => {

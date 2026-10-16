@@ -17,8 +17,10 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
+  ADMISSION_DATE_MESSAGES,
   Gender,
   isAdultBirthDate,
+  isFutureDate,
   maxBirthDateFor,
   MIN_AGE_MESSAGE,
   todayInSaoPaulo,
@@ -30,7 +32,13 @@ import { useCensusAddResident } from '../hooks/useCensus';
 
 const schema = z.object({
   name: z.string().trim().min(1, 'Informe o nome'),
-  entryDate: z.string().min(1, 'Informe a data de acolhimento'),
+  // Story 203: entrada não pode ser futura (mesma regra do backend).
+  entryDate: z
+    .string()
+    .min(1, 'Informe a data de acolhimento')
+    .refine((v) => !isFutureDate(v, todayInSaoPaulo()), {
+      message: ADMISSION_DATE_MESSAGES.entryFuture,
+    }),
   // Story 202: 18 anos completos hoje. Validado aqui para o lançamento não
   // entrar na fila offline já condenado ao 400 do backend.
   birthDate: z
@@ -45,7 +53,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-const todayIso = () => new Date().toISOString().split('T')[0];
+const todayIso = () => todayInSaoPaulo();
 
 const buildDefaults = (): FormValues => ({
   name: '',
@@ -211,6 +219,7 @@ export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props
                     <DatePickerModal
                       visible={activeDatePicker === 'entry'}
                       value={value ?? ''}
+                      maximumDate={todayInSaoPaulo()}
                       onClose={() => setActiveDatePicker(null)}
                       onChange={onChange}
                     />

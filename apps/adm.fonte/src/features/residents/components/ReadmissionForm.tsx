@@ -1,8 +1,16 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FamilyInvestment, FollowUpType, FollowUpAccessLevel, Gender, MaritalStatus, Role } from '@fonte/types';
+import {
+  FamilyInvestment,
+  FollowUpType,
+  FollowUpAccessLevel,
+  Gender,
+  MaritalStatus,
+  Role,
+  todayInSaoPaulo,
+} from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,10 +25,12 @@ import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import { getErrorMessage } from '@/lib/errors';
 import { maskPhone, displayCpf, displayRg, withMask } from '@/lib/masks';
 import { FAMILY_INVESTMENT_LABELS } from '../constants';
-import { useReadmitResident } from '../hooks/useResidents';
+import { useReadmitResident, useResidentAdmissions } from '../hooks/useResidents';
+import { lastExitDate, refineAdmissionDates } from '../lib/admissionDates';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 
-const readmitSchema = z.object({
+// Story 203 (decisão 6): entrada não futura e não anterior à última saída.
+export const makeReadmitSchema = (previousExitDate: string | null) => z.object({
   houseId: z.string().min(1, 'Casa é obrigatória'),
   entryDate: z.string().optional(),
   address: z.string().optional(),
@@ -38,11 +48,13 @@ const readmitSchema = z.object({
   height: z.string().optional(),
   familyInvestment: z.nativeEnum(FamilyInvestment).or(z.literal('')).optional().nullable(),
   familyInvestmentAmount: z.coerce.number().int().min(0).optional().nullable(),
+}).superRefine((data, ctx) => {
+  refineAdmissionDates({ entryDate: data.entryDate }, ctx, { previousExitDate });
 });
 
-type ReadmitFormData = z.infer<typeof readmitSchema>;
+type ReadmitFormData = z.infer<ReturnType<typeof makeReadmitSchema>>;
 
-const today = new Date().toISOString().split('T')[0];
+const today = todayInSaoPaulo();
 
 const genderLabel: Record<string, string> = {
   [Gender.MALE]: 'Masculino',
@@ -63,6 +75,9 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
   const canEditIdentity = role === Role.ADMIN;
   const { data: houses = [] } = useHouses();
   const mutation = useReadmitResident(resident.id);
+  const { data: admissions } = useResidentAdmissions(resident.id);
+  const previousExitDate = lastExitDate(admissions, resident.exitDate);
+  const readmitSchema = useMemo(() => makeReadmitSchema(previousExitDate), [previousExitDate]);
 
   const {
     register,
@@ -211,7 +226,12 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
             </Select>
           </FormField>
           <FormField label="Data de entrada" error={errors.entryDate?.message}>
-            <ControlledDateInput control={control} name="entryDate" />
+            <ControlledDateInput
+              control={control}
+              name="entryDate"
+              min={previousExitDate ?? undefined}
+              max={today}
+            />
           </FormField>
         </div>
 

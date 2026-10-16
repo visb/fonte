@@ -1,8 +1,9 @@
 import { type ReactNode } from "react";
-import { type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
+import { useWatch, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
 import {
   FamilyInvestment,
   ResidentStatus,
+  todayInSaoPaulo,
 } from "@fonte/types";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -61,6 +62,9 @@ export function ResidentAdmissionSections({
     showFirstPayment &&
     watchFamilyInvestment &&
     watchFamilyInvestment !== FamilyInvestment.SOCIAL;
+  // Story 203: entrada e saída até hoje; saída a partir da entrada.
+  const today = todayInSaoPaulo();
+  const entryDate = useWatch({ control, name: "entryDate" });
   return (
     <>
       <SectionTitle>Investimento</SectionTitle>
@@ -132,11 +136,16 @@ export function ResidentAdmissionSections({
           </Select>
         </FormField>
         <FormField label="Data de entrada" error={errors.entryDate?.message}>
-          <ControlledDateInput control={control} name="entryDate" />
+          <ControlledDateInput control={control} name="entryDate" max={today} />
         </FormField>
         {showExitDate && (
           <FormField label="Data de saída" error={errors.exitDate?.message}>
-            <ControlledDateInput control={control} name="exitDate" />
+            <ControlledDateInput
+              control={control}
+              name="exitDate"
+              min={entryDate || undefined}
+              max={today}
+            />
             <p className="text-xs text-muted-foreground mt-1">
               Preencha para importar um filho que já saiu — o status Alta/Evasão
               é definido pela permanência.

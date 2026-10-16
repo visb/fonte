@@ -1636,6 +1636,93 @@ export function isAdultBirthDate(birthDate: string, today: string): boolean {
   return match[0] <= maxBirthDateFor(today);
 }
 
+// ─── Coerência das datas de entrada e saída (story 203) ──────────────────────
+
+/** `YYYY-MM-DD` → `dd/mm/aaaa` (sufixo de hora ignorado; fora do formato volta igual). */
+export function formatIsoDateBr(date: string): string {
+  const match = ISO_DATE_PREFIX.exec(date);
+  if (!match) return date;
+  return `${match[3]}/${match[2]}/${match[1]}`;
+}
+
+/**
+ * `true` quando `date` é depois de `today` (ambos `YYYY-MM-DD`; sufixo de hora
+ * ignorado). Comparação em string: a ordem lexicográfica é a cronológica.
+ * Hoje não é futuro. Valor fora do formato não é julgado aqui (`false`).
+ */
+export function isFutureDate(date: string, today: string): boolean {
+  const match = ISO_DATE_PREFIX.exec(date);
+  if (!match) return false;
+  return match[0] > today.slice(0, 10);
+}
+
+/**
+ * `true` quando `later` é anterior a `earlier` (ex.: saída antes da entrada).
+ * Mesmo dia passa. Valor fora do formato não é julgado aqui (`false`).
+ */
+export function isDateBefore(later: string, earlier: string): boolean {
+  const a = ISO_DATE_PREFIX.exec(later);
+  const b = ISO_DATE_PREFIX.exec(earlier);
+  if (!a || !b) return false;
+  return a[0] < b[0];
+}
+
+/** Mensagens únicas da story 203 — backend (400) e telas usam as mesmas. */
+export const ADMISSION_DATE_MESSAGES = {
+  entryFuture: 'A data de entrada não pode ser no futuro.',
+  exitBeforeEntry: (entryDate: string) =>
+    `A data de saída não pode ser anterior à data de entrada (${formatIsoDateBr(entryDate)}).`,
+  exitFuture: 'A data de saída não pode ser no futuro.',
+  entryBeforePreviousExit: (previousExitDate: string) =>
+    `A data de entrada não pode ser anterior à saída do acolhimento anterior (${formatIsoDateBr(previousExitDate)}).`,
+} as const;
+
+/** Qual campo a mensagem acusa — as telas põem o erro no campo certo. */
+export interface AdmissionDatesIssue {
+  field: 'entryDate' | 'exitDate';
+  message: string;
+}
+
+/**
+ * Regras da story 203 sobre um par entrada/saída (`YYYY-MM-DD`; vazio = não
+ * informado). `check` limita o que é julgado (decisão 4: só a data informada
+ * ou alterada) — por padrão julga tudo. A coerência do par (`exit >= entry`)
+ * vale sempre que qualquer uma das duas é julgada.
+ */
+export function findAdmissionDatesIssue(
+  dates: { entryDate?: string | null; exitDate?: string | null },
+  options: {
+    today: string;
+    previousExitDate?: string | null;
+    check?: { entryDate?: boolean; exitDate?: boolean };
+  },
+): AdmissionDatesIssue | null {
+  const entry = dates.entryDate || null;
+  const exit = dates.exitDate || null;
+  const checkEntry = options.check?.entryDate ?? true;
+  const checkExit = options.check?.exitDate ?? true;
+
+  if (checkEntry && entry) {
+    if (isFutureDate(entry, options.today)) {
+      return { field: 'entryDate', message: ADMISSION_DATE_MESSAGES.entryFuture };
+    }
+    const previousExit = options.previousExitDate || null;
+    if (previousExit && isDateBefore(entry, previousExit)) {
+      return {
+        field: 'entryDate',
+        message: ADMISSION_DATE_MESSAGES.entryBeforePreviousExit(previousExit),
+      };
+    }
+  }
+  if (checkExit && exit && isFutureDate(exit, options.today)) {
+    return { field: 'exitDate', message: ADMISSION_DATE_MESSAGES.exitFuture };
+  }
+  if ((checkEntry || checkExit) && entry && exit && isDateBefore(exit, entry)) {
+    return { field: 'exitDate', message: ADMISSION_DATE_MESSAGES.exitBeforeEntry(entry) };
+  }
+  return null;
+}
+
 // ─── Offline snapshot da casa (story 177) ────────────────────────────────────
 
 /**

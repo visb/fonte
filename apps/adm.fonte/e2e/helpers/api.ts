@@ -151,7 +151,11 @@ export async function createResident(
     data: {
       name: data.name,
       houseId,
-      entryDate: data.entryDate ?? new Date().toISOString().slice(0, 10),
+      // "Hoje" no fuso da operação: a API recusa entrada futura (story 203) e,
+      // depois das 21h, o dia UTC já é amanhã em São Paulo.
+      entryDate:
+        data.entryDate ??
+        new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()),
       familyInvestment: data.familyInvestment ?? 'PAYMENT_700',
       ...(data.contributionDueDay ? { contributionDueDay: data.contributionDueDay } : {}),
       ...(data.status ? { status: data.status } : {}),

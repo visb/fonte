@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Modal } from 'react-native';
-import { maxBirthDateFor, MIN_AGE_MESSAGE, todayInSaoPaulo } from '@fonte/types';
+import { ADMISSION_DATE_MESSAGES, maxBirthDateFor, MIN_AGE_MESSAGE, todayInSaoPaulo } from '@fonte/types';
 import { createTestQueryClient, expectIdempotencyKey } from '@/lib/test/utils';
 
 jest.mock('@expo/vector-icons', () => {
@@ -262,6 +262,27 @@ describe('AddResidentModal', () => {
     fireEvent.press(screen.getByText('Adicionar'));
 
     await waitFor(() => expect(screen.getByText(MIN_AGE_MESSAGE)).toBeTruthy());
+    expect(m.census.addResident).not.toHaveBeenCalled();
+    expect(client.getMutationCache().getAll()).toHaveLength(0);
+  });
+
+  // ── Story 203: data de acolhimento não pode ser futura ────────────────────
+  it('picker de acolhimento limita a hoje; data futura → erro e nada enfileirado', async () => {
+    mockPickerProps.length = 0;
+    const client = createTestQueryClient();
+    render(
+      <QueryClientProvider client={client}>
+        <AddResidentModal {...props} />
+      </QueryClientProvider>,
+    );
+    fireEvent.changeText(screen.getByPlaceholderText('Nome completo'), 'Futuro');
+    fireEvent.press(screen.getAllByText('icon:calendar-outline')[0]);
+    const entryPicker = [...mockPickerProps].reverse().find((p) => p.visible)!;
+    expect(entryPicker.maximumDate).toBe(todayInSaoPaulo());
+    act(() => entryPicker.onChange('2999-01-01'));
+    fireEvent.press(screen.getByText('Adicionar'));
+
+    await waitFor(() => expect(screen.getByText(ADMISSION_DATE_MESSAGES.entryFuture)).toBeTruthy());
     expect(m.census.addResident).not.toHaveBeenCalled();
     expect(client.getMutationCache().getAll()).toHaveLength(0);
   });

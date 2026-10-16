@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { FamilyInvestment, Gender, MIN_AGE_MESSAGE, ResidentStatus, todayInSaoPaulo } from '@fonte/types';
+import {
+  ADMISSION_DATE_MESSAGES,
+  FamilyInvestment,
+  Gender,
+  MIN_AGE_MESSAGE,
+  ResidentStatus,
+  todayInSaoPaulo,
+} from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import {
   makeResidentSchema,
@@ -29,6 +36,50 @@ describe('maioridade no nascimento (story 202)', () => {
     expect(legacy.safeParse({ name: 'João', houseId: 'h1', birthDate: minor }).success).toBe(true);
     const adult = makeResidentSchema({ initialBirthDate: '1980-01-01' });
     expect(birthIssue(adult.safeParse({ name: 'João', houseId: 'h1', birthDate: minor }))).toBe(MIN_AGE_MESSAGE);
+  });
+});
+
+describe('datas de entrada e saída (story 203)', () => {
+  const issueAt = (res: ReturnType<typeof residentSchema.safeParse>, field: string) =>
+    res.error?.issues.find((i) => i.path[0] === field)?.message;
+  const base = { name: 'João', houseId: 'h1' };
+
+  it('criação: entrada futura → erro na entrada; hoje passa', () => {
+    expect(issueAt(residentSchema.safeParse({ ...base, entryDate: '2999-01-01' }), 'entryDate')).toBe(
+      ADMISSION_DATE_MESSAGES.entryFuture,
+    );
+    expect(residentSchema.safeParse({ ...base, entryDate: todayInSaoPaulo() }).success).toBe(true);
+  });
+
+  it('criação: saída antes da entrada → erro no campo de saída; mesmo dia passa', () => {
+    const res = residentSchema.safeParse({ ...base, entryDate: '2025-05-10', exitDate: '2025-05-09' });
+    expect(issueAt(res, 'exitDate')).toBe(ADMISSION_DATE_MESSAGES.exitBeforeEntry('2025-05-10'));
+    expect(
+      residentSchema.safeParse({ ...base, entryDate: '2025-05-10', exitDate: '2025-05-10' }).success,
+    ).toBe(true);
+  });
+
+  it('criação: saída futura → erro na saída', () => {
+    const res = residentSchema.safeParse({ ...base, entryDate: '2025-05-10', exitDate: '2999-01-01' });
+    expect(issueAt(res, 'exitDate')).toBe(ADMISSION_DATE_MESSAGES.exitFuture);
+  });
+
+  it('edição: ficha legada incoerente sem alteração de data → submit liberado', () => {
+    const legacy = makeResidentSchema({
+      initialAdmissionDates: { entryDate: '2062-01-01T00:00:00.000Z', exitDate: '2020-01-01' },
+    });
+    expect(
+      legacy.safeParse({ ...base, entryDate: '2062-01-01', exitDate: '2020-01-01', occupation: 'X' })
+        .success,
+    ).toBe(true);
+  });
+
+  it('edição: só a entrada muda e passa da saída gravada → erro na entrada', () => {
+    const schema = makeResidentSchema({
+      initialAdmissionDates: { entryDate: '2025-01-01', exitDate: '2025-05-01' },
+    });
+    const res = schema.safeParse({ ...base, entryDate: '2025-06-01', exitDate: '2025-05-01' });
+    expect(issueAt(res, 'entryDate')).toBe(ADMISSION_DATE_MESSAGES.exitBeforeEntry('2025-06-01'));
   });
 });
 

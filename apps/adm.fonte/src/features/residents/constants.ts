@@ -262,6 +262,8 @@ export const IMPORT_TEXTS = {
   imported: 'Filho importado com sucesso.',
   conflictReason: 'Resolva o conflito antes de aprovar.',
   sessionConflictReason: 'Já importado nesta sessão.',
+  // Story 203: passagem do histórico com data futura ou saída antes da entrada.
+  admissionDatesReason: 'Corrija as datas dos acolhimentos detectados.',
   commitError: 'Não foi possível aprovar a importação.',
   // Aprovação em lote de todas as fichas prontas.
   approveAll: 'Aprovar todos',

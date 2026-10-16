@@ -13,6 +13,8 @@ type Props = {
     status: string;
     photoThumbUrl?: string | null;
     photoUrl?: string | null;
+    /** Story 203: repassada ao modal de baixa (limite da data de saída). */
+    entryDate?: string | null;
   };
   /** Abre o menu de linha. Sem handler, o `⋮` não aparece. */
   onOpenMenu?: (item: Props["item"]) => void;

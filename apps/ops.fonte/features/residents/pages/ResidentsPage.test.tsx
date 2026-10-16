@@ -38,7 +38,7 @@ import { ResidentsPage } from './ResidentsPage';
 
 const RESIDENTS = [
   { id: 'r1', name: 'João Silva', status: ResidentStatus.ACTIVE },
-  { id: 'r2', name: 'Pedro Alves', status: ResidentStatus.ACTIVE },
+  { id: 'r2', name: 'Pedro Alves', status: ResidentStatus.ACTIVE, entryDate: '2026-02-10' },
 ];
 
 function setup(role: Role = Role.COORDINATOR) {
@@ -60,7 +60,21 @@ describe('ResidentsPage — saída da comunidade e transferência', () => {
     fireEvent.press(screen.getByText('Declarar saída da comunidade'));
     expect(screen.getByText('remover:Pedro Alves:exit')).toBeTruthy();
     expect(mockRemoveModal).toHaveBeenLastCalledWith(
-      expect.objectContaining({ visible: true, resident: { id: 'r2', name: 'Pedro Alves' }, mode: 'exit' }),
+      // Story 203: a entrada vai junto (do cache da lista) para limitar a saída.
+      expect.objectContaining({
+        visible: true,
+        resident: { id: 'r2', name: 'Pedro Alves', entryDate: '2026-02-10' },
+        mode: 'exit',
+      }),
+    );
+  });
+
+  it('filho sem entrada registrada vai ao modal com entryDate null', () => {
+    setup();
+    fireEvent.press(screen.getByLabelText('Ações de João Silva'));
+    fireEvent.press(screen.getByText('Declarar saída da comunidade'));
+    expect(mockRemoveModal).toHaveBeenLastCalledWith(
+      expect.objectContaining({ resident: { id: 'r1', name: 'João Silva', entryDate: null } }),
     );
   });
 

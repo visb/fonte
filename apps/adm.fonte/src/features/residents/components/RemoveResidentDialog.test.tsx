@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import {
+  ADMISSION_DATE_MESSAGES,
   RESIDENT_ROW_ACTIONS,
   ResidentStatus,
+  todayInSaoPaulo,
   type ResidentRemovalAction,
   type ResidentRowAction,
 } from '@fonte/types';
@@ -124,6 +126,58 @@ describe('RemoveResidentDialog — mode="exit"', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
     await waitFor(() => expect(mutate).toHaveBeenCalled());
     expect(mutate.mock.calls[0][0]).toMatchObject({ status: ResidentStatus.EVADED });
+  });
+});
+
+// Story 203: a saída não pode ser futura nem anterior à entrada do filho.
+describe('RemoveResidentDialog — datas (story 203)', () => {
+  const openWithEntry = (entryDate: string | null) =>
+    render(
+      <RemoveResidentDialog
+        open
+        onClose={vi.fn()}
+        resident={resident({ entryDate } as Partial<Resident>)}
+        mode="exit"
+      />,
+    );
+  const typeExit = (value: string) =>
+    fireEvent.change(screen.getByPlaceholderText('dd/mm/aaaa'), { target: { value } });
+
+  it('saída antes da entrada → erro, sem mutation', async () => {
+    openWithEntry('2026-03-10T00:00:00.000Z');
+    typeExit('09/03/2026');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    expect(
+      await screen.findByText(ADMISSION_DATE_MESSAGES.exitBeforeEntry('2026-03-10')),
+    ).toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it('saída futura → erro, sem mutation', async () => {
+    openWithEntry('2026-03-10');
+    typeExit('01/01/2999');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    expect(await screen.findByText(ADMISSION_DATE_MESSAGES.exitFuture)).toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it('saída no mesmo dia da entrada passa', async () => {
+    openWithEntry('2026-03-10');
+    typeExit('10/03/2026');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await waitFor(() => expect(mutate).toHaveBeenCalled());
+    expect(mutate.mock.calls[0][0]).toMatchObject({ exitDate: '2026-03-10' });
+  });
+
+  it('sem entrada conhecida só vale a regra do futuro', async () => {
+    openWithEntry(null);
+    typeExit('01/01/2001');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await waitFor(() => expect(mutate).toHaveBeenCalled());
+  });
+
+  it('alta e evasão partem de hoje em São Paulo', () => {
+    expect(removalDefaults('exit')).toMatchObject({ exitDate: todayInSaoPaulo() });
   });
 });
 

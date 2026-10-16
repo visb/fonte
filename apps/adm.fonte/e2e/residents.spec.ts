@@ -307,6 +307,26 @@ test.describe('Filhos (Residentes)', () => {
     });
   });
 
+  // ─── Datas de entrada e saída (story 203) ────────────────────────────────────
+  // Nada é criado: a entrada futura trava o passo de Admissão antes do POST.
+  test('acolhimento com entrada futura mostra o erro e não salva', async ({ page }) => {
+    await page.getByRole('link', { name: 'Novo acolhimento' }).click();
+    await page.getByRole('link', { name: /Primeiro acolhimento/ }).click();
+    await expect(page).toHaveURL('/residents/new');
+
+    await page.locator('input[name="name"]').fill(`Residente Entrada Futura ${Date.now()}`);
+    await page.getByRole('button', { name: 'Avançar' }).click();
+    await page.locator('select[name="houseId"]').selectOption({ label: 'Casa Teste' });
+    await fillDate(page.locator('input[name="entryDate"]'), '2999-01-01');
+    await page.getByRole('button', { name: 'Avançar' }).click();
+
+    await expect(page.getByText('A data de entrada não pode ser no futuro.')).toBeVisible();
+    await expect(
+      page.getByText('Cadastre os familiares do acolhido. Você pode adicioná-los depois, se necessário.'),
+    ).toHaveCount(0);
+    await expect(page).toHaveURL('/residents/new');
+  });
+
   // ─── Navegação e edição ──────────────────────────────────────────────────────
 
   test('navega para detalhe de residente', async ({ page }) => {
@@ -755,15 +775,24 @@ test.describe('Filhos (Residentes)', () => {
     let token: string;
     let resident: ResidentFixture;
     let transferred: ResidentFixture;
+    let lateEntry: ResidentFixture;
     let targetHouse: { id: string; name: string };
 
     test.beforeAll(async () => {
       api = await playwrightRequest.newContext();
       token = await loginApi(api);
       const stamp = Date.now();
+      // Entrada antiga: a alta abaixo (23/06/2026) não pode ser anterior a ela
+      // (story 203).
       resident = await createResident(api, token, {
         name: `Baixa Lista E2E ${stamp}`,
         status: 'ACTIVE',
+        entryDate: '2026-01-10',
+      });
+      lateEntry = await createResident(api, token, {
+        name: `Baixa Datas E2E ${stamp}`,
+        status: 'ACTIVE',
+        entryDate: '2026-03-10',
       });
       transferred = await createResident(api, token, {
         name: `Transferencia Lista E2E ${stamp}`,
@@ -784,6 +813,7 @@ test.describe('Filhos (Residentes)', () => {
     test.afterAll(async () => {
       await deleteResident(api, token, resident.id);
       await deleteResident(api, token, transferred.id);
+      await deleteResident(api, token, lateEntry.id);
       await api.delete(`${API_URL}/houses/${targetHouse.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -842,6 +872,24 @@ test.describe('Filhos (Residentes)', () => {
         .filter({ hasText: resident.name });
       await expect(discharged).toBeVisible();
       await expect(discharged.getByText('Alta')).toBeVisible();
+    });
+
+    // Story 203: a saída não pode ser anterior à entrada do filho.
+    test('⋮ → alta com data anterior à entrada mostra o erro e não salva', async ({ page }) => {
+      const card = await openMenuOf(page, lateEntry.name);
+      await page.getByRole('menuitem', { name: 'Declarar saída da comunidade' }).click();
+
+      const dialog = page.getByRole('dialog');
+      await fillDate(dialog.getByPlaceholder('dd/mm/aaaa'), '2026-03-09');
+      await dialog.getByRole('button', { name: 'Confirmar' }).click();
+      await expect(
+        dialog.getByText('A data de saída não pode ser anterior à data de entrada (10/03/2026).'),
+      ).toBeVisible();
+
+      await dialog.getByRole('button', { name: 'Cancelar' }).click();
+      await expect(dialog).toHaveCount(0);
+      // Continua ativo: o card segue na listagem de ativos.
+      await expect(card).toBeVisible();
     });
   });
 });

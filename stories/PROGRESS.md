@@ -77,7 +77,7 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 200 — Declarar saída da comunidade / Transferir de casa | [OK] | adm unit 1778 + e2e 33; ops unit 1384 + e2e-web 26 | f2d2548 | a9fba41 |
-| 2 | 201 — `DateInput` próprio no adm | [ ] | | | |
+| 2 | 201 — `DateInput` próprio no adm | [OK] | adm unit 1820 + e2e 80 | b1f533b | eaa86dc |
 | 3 | 202 — Nascimento só de maiores de 18 | [ ] | | | |
 | 4 | 203 — Coerência das datas de entrada e saída | [ ] | | | |
 | 5 | 206 — Card de filho responsivo (adm) | [ ] | | | |
@@ -95,6 +95,8 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 
 - [OK] 200 — testes: adm unit 1778/1778 (93.7%), adm e2e residents 33/33, ops unit 1384/1384 (96.0%), ops e2e-web 26 (2 de contribuições flakam sob carga, 4/4 isoladas) — commit: f2d2548 — merge: a9fba41 — 2026-10-16 — Maestro PENDENTE-MANUAL.
   Nota de ambiente: `.env.test` liberou CORS p/ 5176/8083 (d7226d8); reiniciar `dev:api:test` a partir da `main` (env só é lido no boot). `build:web:test` usa sintaxe POSIX — no Windows exportar `EXPO_PUBLIC_API_URL` antes.
+- [OK] 201 — testes: adm unit 1820/1820 (lines 97.2%, código novo 95–100%), adm e2e 80/80, tsc limpo — commit: b1f533b — merge: eaa86dc — 2026-10-16.
+  Nota: popover do calendário tem role="dialog" — spec novo usa `fillDate` (e2e/helpers/dates.ts) ou escopa `getByRole('dialog')`.
 
 ## Resumo final
 

@@ -25,7 +25,7 @@ export function EditStaffPage() {
   const { data: supportGroups = [], isLoading: loadingGroups } = useSupportGroups();
   const { data: staff, isLoading } = useStaffById(id!);
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } =
+  const { register, control, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } =
     useForm<EditStaffFormData>({ resolver: zodResolver(editStaffSchema) });
 
   useEffect(() => {
@@ -70,6 +70,7 @@ export function EditStaffPage() {
 
         <StaffFormSection
           register={register}
+          control={control}
           errors={errors}
           role={role as Role | undefined}
           servesInGroup={servesInGroup}

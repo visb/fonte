@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 import { FamilyInvestment } from '@fonte/types';
 import type { House } from '@fonte/api-client';
@@ -11,20 +11,36 @@ import {
 const houses = [{ id: 'h1', name: 'Casa Belém' }] as House[];
 
 function FichaHarness() {
-  const { register, formState: { errors } } = useForm();
-  return <form><ResidentFichaSections register={register as never} errors={errors as never} /></form>;
-}
-
-function AdmissionHarness(props: Partial<Parameters<typeof ResidentAdmissionSections>[0]>) {
-  const { register, formState: { errors } } = useForm();
+  const { register, control, formState: { errors } } = useForm();
   return (
     <form>
+      <ResidentFichaSections
+        register={register as never}
+        control={control as never}
+        errors={errors as never}
+      />
+    </form>
+  );
+}
+
+type AdmissionProps = Partial<Parameters<typeof ResidentAdmissionSections>[0]> & {
+  onSubmit?: (values: Record<string, unknown>) => void;
+};
+
+function AdmissionHarness({ onSubmit, ...props }: AdmissionProps) {
+  const { register, control, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: { entryDate: '2026-01-10', exitDate: '' },
+  });
+  return (
+    <form onSubmit={handleSubmit((v) => onSubmit?.(v))}>
       <ResidentAdmissionSections
         register={register as never}
+        control={control as never}
         errors={errors as never}
         houses={houses}
         {...props}
       />
+      <button type="submit">Salvar</button>
     </form>
   );
 }
@@ -71,6 +87,23 @@ describe('ResidentAdmissionSections', () => {
     render(<AdmissionHarness showExitDate />);
     expect(screen.getByText('Data de saída')).toBeInTheDocument();
     expect(screen.getByText(/o status Alta\/Evasão/)).toBeInTheDocument();
+  });
+
+  it('datas de entrada e saída pelo DateInput enviam YYYY-MM-DD (story 201)', async () => {
+    const onSubmit = vi.fn();
+    render(<AdmissionHarness showExitDate onSubmit={onSubmit} />);
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    const entry = document.querySelector('input[name="entryDate"]') as HTMLInputElement;
+    const exit = document.querySelector('input[name="exitDate"]') as HTMLInputElement;
+    expect(entry.value).toBe('10/01/2026');
+    fireEvent.change(entry, { target: { value: '05/02/2026' } });
+    fireEvent.change(exit, { target: { value: '20/03/2026' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({
+      entryDate: '2026-02-05',
+      exitDate: '2026-03-20',
+    });
   });
 
   it('first payment: mostra checkbox e dispara onFirstPaymentChange', () => {

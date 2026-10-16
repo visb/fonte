@@ -43,6 +43,14 @@ describe('PayPayableDialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('data do pagamento digitada vai como YYYY-MM-DD (story 201)', async () => {
+    render(<PayPayableDialog open payable={payable()} onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Data do pagamento'), { target: { value: '05/07/2026' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pagamento' }));
+    await waitFor(() => expect(payMutate).toHaveBeenCalled());
+    expect(payMutate.mock.calls[0][0].paidAt).toBe('2026-07-05');
+  });
+
   it('anexar comprovante mostra o nome e permite limpar', () => {
     render(<PayPayableDialog open payable={payable()} onClose={vi.fn()} />);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;

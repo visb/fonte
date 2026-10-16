@@ -10,6 +10,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import {
   Dialog,
   DialogContent,
@@ -30,15 +31,19 @@ function generatePassword(len = 12) {
   return Array.from({ length: len }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join('');
 }
 
+const TODAY = new Date().toISOString().split('T')[0];
+
 const schema = z.object({
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
   houseId: z.string().min(1, 'Casa é obrigatória'),
   rank: z.nativeEnum(ServantRank),
-  date: z.string().min(1, 'Data é obrigatória'),
+  // `max={TODAY}` do calendário bloqueia o clique; a digitação cai aqui (story 201).
+  date: z
+    .string()
+    .min(1, 'Data é obrigatória')
+    .refine((v) => v <= TODAY, 'A data não pode ser futura'),
 });
 type FormData = z.infer<typeof schema>;
-
-const TODAY = new Date().toISOString().split('T')[0];
 
 interface Props {
   open: boolean;
@@ -56,7 +61,7 @@ export function PromoteToServantDialog({ open, onClose, resident }: Props) {
   const { data: houses = [] } = useHouses();
   const mutation = usePromoteResidentToServant(resident?.id ?? '');
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, control, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     values: {
       email: '',
@@ -119,7 +124,7 @@ export function PromoteToServantDialog({ open, onClose, resident }: Props) {
 
             <div className="space-y-2">
               <Label htmlFor="promote-date">Data da promoção</Label>
-              <Input id="promote-date" type="date" max={TODAY} {...register('date')} />
+              <ControlledDateInput control={control} name="date" id="promote-date" max={TODAY} />
               {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
             </div>
 

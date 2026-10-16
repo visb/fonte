@@ -37,7 +37,16 @@ describe('EditResidentIdentityDialog', () => {
     expect(screen.getByDisplayValue('Fulano de Tal')).toBeInTheDocument();
     expect(screen.getByDisplayValue('123.456.789-00')).toBeInTheDocument();
     expect(screen.getByDisplayValue('12.345.6')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('1990-05-10')).toBeInTheDocument();
+    // DateInput (story 201) exibe dd/mm/aaaa; o payload segue YYYY-MM-DD.
+    expect(screen.getByDisplayValue('10/05/1990')).toBeInTheDocument();
+  });
+
+  it('nascimento corrigido pelo DateInput vai como YYYY-MM-DD', async () => {
+    render(<EditResidentIdentityDialog open onClose={vi.fn()} resident={resident()} />);
+    fireEvent.change(screen.getByDisplayValue('10/05/1990'), { target: { value: '02/03/1988' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(mutate).toHaveBeenCalled());
+    expect(mutate.mock.calls[0][0].birthDate).toBe('1988-03-02');
   });
 
   it('valida nome obrigatório e não muta', async () => {

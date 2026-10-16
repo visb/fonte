@@ -1,9 +1,16 @@
-import { type FieldErrors, type FieldValues, type Path, type UseFormRegister } from "react-hook-form";
+import {
+  type Control,
+  type FieldErrors,
+  type FieldValues,
+  type Path,
+  type UseFormRegister,
+} from "react-hook-form";
 import { Gender, MaritalStatus } from "@fonte/types";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionTitle, FormField } from "@/components/shared/FormField";
+import { ControlledDateInput } from "@/components/shared/ControlledDateInput";
 import { maskCPF, maskRG, maskPhone, withMask } from "@/lib/masks";
 
 // Campos pessoais compartilhados entre filho (resident) e servo (staff).
@@ -34,6 +41,7 @@ export interface PersonalDataFormValues {
 
 interface Props<T extends FieldValues> {
   register: UseFormRegister<T>;
+  control: Control<T>;
   errors: FieldErrors<T>;
   /** Renderiza o campo Nome dentro da seção de identificação. */
   includeName?: boolean;
@@ -43,6 +51,7 @@ interface Props<T extends FieldValues> {
 
 export function PersonalDataFields<T extends FieldValues>({
   register,
+  control,
   errors,
   includeName = true,
   nameLabel = "Nome completo *",
@@ -72,8 +81,8 @@ export function PersonalDataFields<T extends FieldValues>({
         <FormField label="Nacionalidade">
           <Input {...f("nationality")} placeholder="Ex: Brasileira" />
         </FormField>
-        <FormField label="Data de nascimento">
-          <Input type="date" {...f("birthDate")} />
+        <FormField label="Data de nascimento" error={errMsg("birthDate")}>
+          <ControlledDateInput control={control} name={"birthDate" as Path<T>} />
         </FormField>
         <FormField label="Gênero">
           <Select {...f("gender")}>

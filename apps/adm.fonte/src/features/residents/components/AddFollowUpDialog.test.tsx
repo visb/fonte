@@ -46,6 +46,20 @@ describe('AddFollowUpDialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('data digitada no DateInput vai como YYYY-MM-DD; vazia é barrada (story 201)', async () => {
+    render(<AddFollowUpDialog open residentId="res1" onClose={vi.fn()} />);
+    const date = screen.getByLabelText('Data *');
+    fireEvent.change(date, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    expect(await screen.findByText('Data é obrigatória')).toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
+
+    fireEvent.change(date, { target: { value: '12/04/2026' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(mutate).toHaveBeenCalled());
+    expect(mutate.mock.calls[0][0].date).toBe('2026-04-12');
+  });
+
   it('cancelar dispara onClose', () => {
     const onClose = vi.fn();
     render(<AddFollowUpDialog open residentId="res1" onClose={onClose} />);

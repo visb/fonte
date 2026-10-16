@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { type FieldErrors, type UseFormRegister } from "react-hook-form";
+import { type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
 import {
   FamilyInvestment,
   ResidentStatus,
@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { SectionTitle, FormField } from "@/components/shared/FormField";
 import { PersonalDataFields } from "@/components/shared/PersonalDataFields";
+import { ControlledDateInput } from "@/components/shared/ControlledDateInput";
 import { FAMILY_INVESTMENT_LABELS } from "../constants";
 import type { ResidentFormData } from "../lib/residentSchema";
 import type { House } from "@fonte/api-client";
 
 interface ResidentFormSectionsProps {
   register: UseFormRegister<ResidentFormData>;
+  control: Control<ResidentFormData>;
   errors: FieldErrors<ResidentFormData>;
   houses: House[];
   showStatus?: boolean;
@@ -25,23 +27,26 @@ interface ResidentFormSectionsProps {
   firstPaymentSlot?: ReactNode;
 }
 
-type FichaSectionsProps = Pick<ResidentFormSectionsProps, "register" | "errors">;
+type FormBindings = "register" | "control" | "errors";
+type FichaSectionsProps = Pick<ResidentFormSectionsProps, FormBindings>;
 
-export function ResidentFichaSections({ register, errors }: FichaSectionsProps) {
+export function ResidentFichaSections({ register, control, errors }: FichaSectionsProps) {
   return (
     <PersonalDataFields
       register={register}
+      control={control}
       errors={errors}
       namePlaceholder="Nome do acolhido"
     />
   );
 }
 
-type AdmissionSectionsProps = Omit<ResidentFormSectionsProps, "register" | "errors"> &
-  Pick<ResidentFormSectionsProps, "register" | "errors">;
+type AdmissionSectionsProps = Omit<ResidentFormSectionsProps, FormBindings> &
+  Pick<ResidentFormSectionsProps, FormBindings>;
 
 export function ResidentAdmissionSections({
   register,
+  control,
   errors,
   houses,
   showStatus = false,
@@ -126,12 +131,12 @@ export function ResidentAdmissionSections({
             ))}
           </Select>
         </FormField>
-        <FormField label="Data de entrada">
-          <Input type="date" {...register("entryDate")} />
+        <FormField label="Data de entrada" error={errors.entryDate?.message}>
+          <ControlledDateInput control={control} name="entryDate" />
         </FormField>
         {showExitDate && (
-          <FormField label="Data de saída">
-            <Input type="date" {...register("exitDate")} />
+          <FormField label="Data de saída" error={errors.exitDate?.message}>
+            <ControlledDateInput control={control} name="exitDate" />
             <p className="text-xs text-muted-foreground mt-1">
               Preencha para importar um filho que já saiu — o status Alta/Evasão
               é definido pela permanência.
@@ -161,7 +166,11 @@ export function ResidentAdmissionSections({
 export function ResidentFormSections(props: ResidentFormSectionsProps) {
   return (
     <>
-      <ResidentFichaSections register={props.register} errors={props.errors} />
+      <ResidentFichaSections
+        register={props.register}
+        control={props.control}
+        errors={props.errors}
+      />
       <ResidentAdmissionSections {...props} />
     </>
   );

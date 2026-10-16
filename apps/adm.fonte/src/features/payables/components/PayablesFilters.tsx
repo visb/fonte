@@ -2,7 +2,7 @@ import type { ListPayablesParams } from '@fonte/api-client';
 import { PayableCategory, PayableStatus } from '@fonte/types';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/shared/DateInput';
 import {
   PAYABLE_CATEGORIES,
   PAYABLE_CATEGORY_LABELS,
@@ -58,21 +58,19 @@ export function PayablesFilters({ filters, onChange }: Props) {
 
       <div className="space-y-1">
         <Label htmlFor="filter-from">Vencimento de</Label>
-        <Input
+        <DateInput
           id="filter-from"
-          type="date"
           value={filters.from ?? ''}
-          onChange={(e) => update({ from: e.target.value || undefined })}
+          onChange={(v) => update({ from: v || undefined })}
         />
       </div>
 
       <div className="space-y-1">
         <Label htmlFor="filter-to">Vencimento até</Label>
-        <Input
+        <DateInput
           id="filter-to"
-          type="date"
           value={filters.to ?? ''}
-          onChange={(e) => update({ to: e.target.value || undefined })}
+          onChange={(v) => update({ to: v || undefined })}
         />
       </div>
     </div>

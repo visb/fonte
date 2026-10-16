@@ -4,8 +4,8 @@ import { z } from 'zod';
 import { FollowUpAccessLevel, FollowUpType } from '@fonte/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { FOLLOW_UP_ACCESS_LABELS, FOLLOW_UP_TYPE_LABELS } from '../constants';
@@ -30,7 +30,7 @@ export function AddFollowUpDialog({ open, onClose, residentId }: Props) {
 
   const today = new Date().toISOString().split('T')[0];
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
+  const { register, control, handleSubmit, reset, formState: { errors, isSubmitting } } =
     useForm<FormData>({
       resolver: zodResolver(schema),
       defaultValues: {
@@ -60,7 +60,7 @@ export function AddFollowUpDialog({ open, onClose, residentId }: Props) {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="fu-date">Data *</Label>
-              <Input id="fu-date" type="date" {...register('date')} />
+              <ControlledDateInput control={control} name="date" id="fu-date" />
               {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
             </div>
 

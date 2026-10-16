@@ -77,6 +77,7 @@ export function ImportFichaModal({
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     getValues,
@@ -157,6 +158,7 @@ export function ImportFichaModal({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <ResidentFormSections
             register={register}
+            control={control}
             errors={errors}
             houses={houses}
             showStatus

@@ -29,6 +29,7 @@ export function EditResidentPage() {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     watch,
@@ -72,6 +73,7 @@ export function EditResidentPage() {
 
         <ResidentFormSections
           register={register}
+          control={control}
           errors={errors}
           houses={houses}
           showStatus

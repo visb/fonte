@@ -41,9 +41,17 @@ describe('PayablesFilters', () => {
 
   it('datas de vencimento propagam', () => {
     const onChange = renderFilters();
-    fireEvent.change(screen.getByLabelText('Vencimento de'), { target: { value: '2026-01-01' } });
+    // DateInput (story 201): digita dd/mm/aaaa, o filtro recebe YYYY-MM-DD.
+    fireEvent.change(screen.getByLabelText('Vencimento de'), { target: { value: '01/01/2026' } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ from: '2026-01-01' }));
-    fireEvent.change(screen.getByLabelText('Vencimento até'), { target: { value: '2026-12-31' } });
+    fireEvent.change(screen.getByLabelText('Vencimento até'), { target: { value: '31/12/2026' } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ to: '2026-12-31' }));
+  });
+
+  it('data incompleta não filtra (manda undefined) e o valor salvo aparece formatado', () => {
+    const onChange = renderFilters({ from: '2026-03-07' });
+    expect(screen.getByLabelText('Vencimento de')).toHaveValue('07/03/2026');
+    fireEvent.change(screen.getByLabelText('Vencimento de'), { target: { value: '07/03' } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ from: undefined }));
   });
 });

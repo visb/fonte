@@ -9,8 +9,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DateInput } from '@/components/shared/DateInput';
 import { getErrorMessage } from '@/lib/errors';
 import { usePayPayable } from '../hooks/usePayables';
 import { formatCents } from '../lib/money';
@@ -74,12 +74,7 @@ export function PayPayableDialog({ open, payable, onClose }: Props) {
           )}
           <div className="space-y-1">
             <Label htmlFor="pay-paid-at">Data do pagamento</Label>
-            <Input
-              id="pay-paid-at"
-              type="date"
-              value={paidAt}
-              onChange={(e) => setPaidAt(e.target.value)}
-            />
+            <DateInput id="pay-paid-at" value={paidAt} onChange={setPaidAt} />
           </div>
 
           <div className="space-y-1">

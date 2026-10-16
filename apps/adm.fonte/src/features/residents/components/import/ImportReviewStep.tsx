@@ -47,6 +47,7 @@ export function ImportReviewStep({
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     reset,
@@ -126,6 +127,7 @@ export function ImportReviewStep({
 
       <ResidentFormSections
         register={register}
+        control={control}
         errors={errors}
         houses={houses}
         showExitDate

@@ -6,6 +6,7 @@ import type { Payable } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { DialogFooter } from '@/components/ui/dialog';
@@ -38,6 +39,7 @@ export function PayableForm({ payable, isPending, error, onSubmit, onCancel }: P
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
@@ -108,7 +110,7 @@ export function PayableForm({ payable, isPending, error, onSubmit, onCancel }: P
           </div>
           <div className="space-y-1">
             <Label htmlFor="pay-due-date">Vencimento *</Label>
-            <Input id="pay-due-date" type="date" {...register('dueDate')} />
+            <ControlledDateInput control={control} name="dueDate" id="pay-due-date" />
             {errors.dueDate && <p className="text-xs text-destructive">{errors.dueDate.message}</p>}
           </div>
         </div>

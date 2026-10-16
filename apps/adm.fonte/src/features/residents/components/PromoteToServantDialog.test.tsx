@@ -63,6 +63,22 @@ describe('PromoteToServantDialog', () => {
     expect(promoteMutate.mock.calls[0][0].password).toBeUndefined();
   });
 
+  it('data pelo DateInput: digitada vai como YYYY-MM-DD; futura é barrada (max = hoje, story 201)', async () => {
+    render(<PromoteToServantDialog open onClose={vi.fn()} resident={resident({ userId: 'u1' })} />);
+    const date = screen.getByLabelText('Data da promoção') as HTMLInputElement;
+    expect(date.value).toMatch(/^\d{2}\/\d{2}\/\d{4}$/);
+
+    fireEvent.change(date, { target: { value: '01/01/2999' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tornar Servo' }));
+    expect(await screen.findByText('A data não pode ser futura')).toBeInTheDocument();
+    expect(promoteMutate).not.toHaveBeenCalled();
+
+    fireEvent.change(date, { target: { value: '10/02/2024' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tornar Servo' }));
+    await waitFor(() => expect(promoteMutate).toHaveBeenCalled());
+    expect(promoteMutate.mock.calls[0][0].date).toBe('2024-02-10');
+  });
+
   it('pending desabilita o submit', () => {
     promoteState = { isPending: true, isError: false, error: null };
     render(<PromoteToServantDialog open onClose={vi.fn()} resident={resident()} />);

@@ -69,12 +69,14 @@ describe('PayableForm', () => {
     const { onSubmit } = renderForm();
     fireEvent.input(screen.getByLabelText('Descrição *'), { target: { value: 'Água' } });
     fireEvent.input(screen.getByLabelText('Valor (R$) *'), { target: { value: '99.90' } });
-    fireEvent.input(screen.getByLabelText('Vencimento *'), { target: { value: '2026-08-01' } });
+    // DateInput (story 201): digita dd/mm/aaaa, o form recebe YYYY-MM-DD.
+    fireEvent.input(screen.getByLabelText('Vencimento *'), { target: { value: '01/08/2026' } });
     fireEvent.change(screen.getByLabelText('Categoria *'), { target: { value: 'UTILITIES' } });
     fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     const arg = onSubmit.mock.calls[0][0] as PayableSubmit;
     expect(arg.data.description).toBe('Água');
+    expect(arg.data.dueDate).toBe('2026-08-01');
     expect(arg.file).toBeNull();
     expect(arg.removeAttachment).toBe(false);
   });

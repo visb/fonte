@@ -321,7 +321,7 @@ export class ResidentService {
 
     const admissionDate = saved.entryDate
       ? new Date(saved.entryDate).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0];
+      : todayInSaoPaulo();
     await this.followUpService.createAuto(saved.id, FollowUpType.ADMISSION, admissionDate, manager);
 
     await this.receivableService.generateSchedule(saved.id, manager);
@@ -383,7 +383,8 @@ export class ResidentService {
     );
     await this.residentRepository.update(id, dto);
 
-    const today = new Date().toISOString().split('T')[0];
+    // "Hoje" no fuso da operação (story 203): o dia UTC já é amanhã após 21h BRT.
+    const today = todayInSaoPaulo();
     // Exit-driven events (discharge/evasion) are dated by the actual exit date
     // when provided, falling back to today.
     const exitEventDate = (dto.exitDate as string | undefined) ?? today;
@@ -523,7 +524,9 @@ export class ResidentService {
     }
 
     // Criar novo registro de acolhimento
-    const today = new Date().toISOString().split('T')[0];
+    // Mesmo "hoje" (São Paulo) que a validação acima usou — com o dia UTC, após
+    // 21h BRT a passagem nova seria gravada com a data de amanhã.
+    const today = todayInSaoPaulo();
     const admission = this.admissionRepository.create({
       residentId: id,
       houseId: dto.houseId,
@@ -539,7 +542,7 @@ export class ResidentService {
     });
     await this.admissionRepository.save(admission);
 
-    const readmitDate = dto.entryDate ?? new Date().toISOString().split('T')[0];
+    const readmitDate = dto.entryDate ?? today;
     await this.followUpService.createAuto(id, FollowUpType.READMISSION, readmitDate as string);
 
     // Resetar campos de admissão no Resident (backward compat)

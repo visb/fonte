@@ -5,7 +5,7 @@ process.env.NODE_ENV = 'test';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
-import { FamilyInvestment, PaymentMethod } from '@fonte/types';
+import { FamilyInvestment, PaymentMethod, todayInSaoPaulo } from '@fonte/types';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
 
 /**
@@ -45,7 +45,7 @@ describe('Resident contribution receipts (e2e)', () => {
   const createdUserIds: string[] = [];
 
   async function createResident(name: string): Promise<string> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayInSaoPaulo();
     const res = await request(app.getHttpServer())
       .post(`${BASE}/residents`)
       .set('Authorization', `Bearer ${coordToken}`)

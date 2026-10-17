@@ -5,7 +5,7 @@ process.env.NODE_ENV = 'test';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
-import { FamilyInvestment, MovementType } from '@fonte/types';
+import { FamilyInvestment, MovementType, todayInSaoPaulo } from '@fonte/types';
 import { bootstrapApp, login, BASE } from './helpers/e2e-app';
 
 /**
@@ -307,7 +307,7 @@ describe('StoreroomController (e2e)', () => {
     it('limpa item referenciado por contribuição de catálogo sem violar o XOR', async () => {
       // Reproduz de propósito o cenário que derrubava a suíte: uma contribuição
       // em produtos apontando para o item da fixture.
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayInSaoPaulo();
       const resident = await request(app.getHttpServer())
         .post(`${BASE}/residents`)
         .set('Authorization', `Bearer ${coordToken}`)

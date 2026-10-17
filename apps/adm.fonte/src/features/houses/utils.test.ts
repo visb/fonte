@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { House } from '@fonte/api-client';
-import { houseChildVacancies } from './utils';
+import { houseChildVacancies, ministryEligibleResidents } from './utils';
+
+describe('ministryEligibleResidents (story 205)', () => {
+  it('mantém só filhos em acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE)', () => {
+    const all = ['ACTIVE', 'DISCIPLINE', 'TEMP_LEAVE', 'DISCHARGED', 'EVADED', 'ARCHIVED', 'PRE_ADMISSION'].map(
+      (status, i) => ({ id: `r${i}`, status }),
+    );
+    expect(ministryEligibleResidents(all).map((r) => r.status)).toEqual(['ACTIVE', 'DISCIPLINE', 'TEMP_LEAVE']);
+  });
+});
 
 function makeHouse(overrides: Partial<House> = {}): House {
   return {

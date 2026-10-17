@@ -33,11 +33,13 @@ describe('MinistryController', () => {
     expect(s.updateTask).toHaveBeenCalledWith('m1', 't1', { title: 'U' });
   });
 
-  // Story 197 (decisão 6): as rotas de membro filho foram removidas, não
-  // esvaziadas — rota que aceita e ignora faz o cliente achar que gravou.
-  it('não expõe mais handler de membro filho', () => {
-    const c = new MinistryController(svc() as never) as unknown as Record<string, unknown>;
-    expect(c.addResident).toBeUndefined();
-    expect(c.removeResident).toBeUndefined();
+  // Story 205 (decisão 11): as rotas de membro filho voltam com o contrato pré-197.
+  it('rotas de membro filho delegam ao service', async () => {
+    const s = { ...svc(), addResident: jest.fn().mockResolvedValue(undefined), removeResident: jest.fn().mockResolvedValue(undefined) };
+    const c = new MinistryController(s as never);
+    await c.addResident('m1', { residentId: 'r1' } as never);
+    await c.removeResident('m1', 'r1');
+    expect(s.addResident).toHaveBeenCalledWith('m1', 'r1');
+    expect(s.removeResident).toHaveBeenCalledWith('m1', 'r1');
   });
 });

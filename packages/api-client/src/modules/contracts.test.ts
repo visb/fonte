@@ -695,9 +695,14 @@ describe('ministries module', () => {
     await m.delete('mi1');
     expect(http.delete).toHaveBeenCalledWith('/ministries/mi1');
   });
-  it('não expõe vínculos de filhos removidos na story 197', () => {
-    expect(m).not.toHaveProperty('addResident');
-    expect(m).not.toHaveProperty('removeResident');
+  // Story 205: os vínculos de filho voltam com o contrato pré-197.
+  it('addResident posta residentId no body', async () => {
+    await m.addResident('mi1', 'r1');
+    expect(http.post).toHaveBeenCalledWith('/ministries/mi1/residents', { residentId: 'r1' });
+  });
+  it('removeResident chama DELETE', async () => {
+    await m.removeResident('mi1', 'r1');
+    expect(http.delete).toHaveBeenCalledWith('/ministries/mi1/residents/r1');
   });
   it('addStaff posta staffId no body', async () => {
     await m.addStaff('mi1', 's1');

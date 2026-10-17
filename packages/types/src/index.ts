@@ -107,6 +107,26 @@ export const REMOVABLE_RESIDENT_STATUSES: ResidentStatus[] = [
   ResidentStatus.TEMP_LEAVE,
 ];
 
+/**
+ * Story 205 — vínculo filho↔ministério só existe para filho **em acolhimento**
+ * (`REMOVABLE_RESIDENT_STATUSES`) **na mesma casa** do ministério. Fonte única
+ * para o backend (guard de `addResident`, líder e ficha) e para as telas
+ * ("Adicionar filho", seletor de líder) do `adm` e do `ops`.
+ */
+export function isMinistryEligibleResident(
+  resident: { status: ResidentStatus | string; houseId: string | null },
+  ministryHouseId: string,
+): boolean {
+  return (
+    resident.houseId === ministryHouseId &&
+    REMOVABLE_RESIDENT_STATUSES.includes(resident.status as ResidentStatus)
+  );
+}
+
+/** Mensagem do 400 quando o filho não pode participar do ministério (story 205). */
+export const MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE =
+  'Só filho em acolhimento nesta casa pode participar do ministério.';
+
 /** Ações de baixa de filho oferecidas pelo menu de remoção (story 196). */
 export type ResidentRemovalAction = 'discharge' | 'evade' | 'transfer';
 

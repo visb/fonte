@@ -380,18 +380,42 @@ test.describe('Filhos (Residentes)', () => {
     expect(actionsBox.x).toBeGreaterThan(nameBox.x + nameBox.width);
   });
 
-  // Story 197: a ficha do filho não fala em ministério em lugar nenhum — nem na
-  // visão geral, nem no formulário de edição.
-  test('ficha do filho não mostra ministério', async ({ page }) => {
-    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: 'João Testador' }).first().click();
-    await expect(page).toHaveURL(/\/residents\/.+/);
-    await expect(page.getByRole('button', { name: 'Visão Geral' })).toBeVisible();
-    await expect(page.getByText('Ministério', { exact: true })).toHaveCount(0);
+  // Story 205 (inverte a 197): a ficha mostra o ministério do filho e o
+  // formulário de edição tem o campo, com os ministérios da casa.
+  test('ficha do filho mostra ministério e a edição tem o campo', async ({ page, request }) => {
+    const token = await loginApi(request);
+    const headers = { Authorization: `Bearer ${token}` };
+    const stamp = Date.now();
+    const resident = await createResident(request, token, {
+      name: `Filho Com Ministério ${stamp}`,
+      status: 'ACTIVE',
+    });
+    const ministryRes = await request.post(`${API_URL}/houses/${resident.houseId}/ministries`, {
+      headers,
+      data: { name: `Horta E2E ${stamp}` },
+    });
+    expect(ministryRes.status()).toBe(201);
+    const ministryId = (await ministryRes.json()).id as string;
 
-    const detailUrl = page.url();
-    await page.goto(`${detailUrl}/edit`);
-    await expect(page.locator('input[name="name"]')).toBeVisible();
-    await expect(page.getByText('Ministério', { exact: true })).toHaveCount(0);
+    try {
+      const add = await request.post(`${API_URL}/ministries/${ministryId}/residents`, {
+        headers,
+        data: { residentId: resident.id },
+      });
+      expect(add.status()).toBe(204);
+
+      await page.goto(`/residents/${resident.id}`);
+      await expect(page.getByRole('button', { name: 'Visão Geral' })).toBeVisible();
+      await expect(page.getByText('Ministério', { exact: true })).toBeVisible();
+      await expect(page.getByText(`Horta E2E ${stamp}`)).toBeVisible();
+
+      await page.goto(`/residents/${resident.id}/edit`);
+      await expect(page.locator('input[name="name"]')).toBeVisible();
+      await expect(page.getByLabel('Ministério')).toHaveValue(ministryId);
+    } finally {
+      await request.delete(`${API_URL}/ministries/${ministryId}`, { headers });
+      await deleteResident(request, token, resident.id);
+    }
   });
 
   test('edita residente existente', async ({ page }) => {

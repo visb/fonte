@@ -10,9 +10,9 @@ export class UpdateMinistryDto {
   @IsOptional()
   leaderId?: string | null;
 
-  // Story 197: ministério é liderado só por servo. `'RESIDENT'` é recusado aqui
-  // (400 do ValidationPipe) e de novo no service, com mensagem de domínio.
-  @IsIn(['STAFF'])
+  // Story 205: filho volta a poder liderar (`'RESIDENT'`), desde que esteja em
+  // acolhimento na casa do ministério — o service valida e devolve 400.
+  @IsIn(['STAFF', 'RESIDENT'])
   @IsOptional()
-  leaderType?: 'STAFF' | null;
+  leaderType?: 'STAFF' | 'RESIDENT' | null;
 }

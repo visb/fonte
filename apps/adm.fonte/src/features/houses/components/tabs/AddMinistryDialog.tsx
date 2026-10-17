@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LeaderAutocomplete, type SelectedLeader } from '../LeaderAutocomplete';
-import { useCreateHouseMinistry } from '../../hooks/useHouseMinistries';
+import { useCreateHouseMinistry, useMinistryEligibleResidents } from '../../hooks/useHouseMinistries';
 import { useHouseStaff } from '../../hooks/useHouses';
 
 interface Props {
@@ -13,13 +13,15 @@ interface Props {
   houseId: string;
 }
 
-// Story 197: ministério é organização de trabalho de servo — não há mais
-// seleção de filhos aqui, nem filho como líder.
+// Story 205: o líder pode ser servo ou filho em acolhimento na casa. Os filhos
+// membros entram depois, pelo dialog "Filhos" do ministério (sem `Promise.all`
+// de N chamadas fora de transação na criação).
 export function AddMinistryDialog({ open, onClose, houseId }: Props) {
   const [name, setName] = useState('');
   const [leader, setLeader] = useState<SelectedLeader | null>(null);
 
   const { data: staff = [] } = useHouseStaff(houseId, { enabled: open });
+  const { data: residents = [] } = useMinistryEligibleResidents(houseId, { enabled: open });
   const mutation = useCreateHouseMinistry(houseId);
 
   function handleClose() {
@@ -67,9 +69,14 @@ export function AddMinistryDialog({ open, onClose, houseId }: Props) {
             <Label>Líder (opcional)</Label>
             <LeaderAutocomplete
               selectedId={leader?.id ?? null}
+              selectedType={leader?.type ?? null}
               onSelect={(id, type) => setLeader(id && type ? { id, type } : null)}
               staff={staff}
+              residents={residents}
             />
+            <p className="text-xs text-muted-foreground">
+              Os filhos do ministério são adicionados depois, em "Filhos".
+            </p>
           </div>
         </div>
 

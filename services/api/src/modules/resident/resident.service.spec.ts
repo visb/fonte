@@ -118,6 +118,7 @@ function makeResident(overrides: Partial<Resident> = {}): Resident {
     name: 'Ana',
     status: ResidentStatus.ACTIVE,
     houseId: HOUSE_ID,
+    ministryId: null,
     entryDate: new Date('2024-01-01') as unknown as Date,
     exitDate: null,
     userId: null,
@@ -718,10 +719,10 @@ describe('ResidentService.update', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Story 197 — o vínculo filho↔ministério morreu
+// Story 205 — o vínculo filho↔ministério volta (regressão do spec da 197)
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe('ResidentService — vínculo com ministério removido (story 197)', () => {
+describe('ResidentService — vínculo com ministério restaurado (story 205)', () => {
   function makeServiceWithFollowUps() {
     const followUpService = {
       createAuto: jest.fn().mockResolvedValue(undefined),
@@ -745,9 +746,7 @@ describe('ResidentService — vínculo com ministério removido (story 197)', ()
     return { service, followUpService };
   }
 
-  // Decisão 5: o tipo do enum FICA (a linha do tempo antiga continua a renderizar),
-  // mas a EMISSÃO morreu. É este teste que prova que ela morreu.
-  it('update não emite mais follow-up MINISTRY_CHANGE', async () => {
+  it('update sem ministério nem liderança não emite MINISTRY_CHANGE', async () => {
     const { service, followUpService } = makeServiceWithFollowUps();
 
     await service.update(RESIDENT_ID, {
@@ -759,33 +758,13 @@ describe('ResidentService — vínculo com ministério removido (story 197)', ()
     expect(emitted).not.toContain(FollowUpType.MINISTRY_CHANGE);
   });
 
-  it('nem mesmo um dto que ainda mande ministryId dispara MINISTRY_CHANGE', async () => {
-    const { service, followUpService } = makeServiceWithFollowUps();
-
-    // Cliente velho: o ValidationPipe já barra na borda, mas o service também
-    // não tem mais para onde levar o campo.
-    await service.update(RESIDENT_ID, {
-      ministryId: 'ministry-uuid',
-    } as unknown as Parameters<typeof service.update>[1]);
-
-    expect(followUpService.createAuto).not.toHaveBeenCalled();
-  });
-
-  // O tipo continua existindo no enum — apagá-lo deixaria linha no banco com um
-  // tipo que o código não conhece (decisão 5).
-  it('FollowUpType.MINISTRY_CHANGE continua no enum para o histórico', () => {
-    expect(FollowUpType.MINISTRY_CHANGE).toBe('MINISTRY_CHANGE');
-  });
-
-  it('ministryId não é mais campo de acolhimento', () => {
+  it('ministryId volta a ser campo de acolhimento', () => {
     const fields = (ResidentService as unknown as { ADMISSION_FIELDS: Set<string> }).ADMISSION_FIELDS;
-    expect(fields.has('ministryId')).toBe(false);
+    expect(fields.has('ministryId')).toBe(true);
     expect(fields.has('houseId')).toBe(true);
   });
 
-  // Regressão da busca: o termo continua casando por nome e por CPF depois de o
-  // campo sair do serviço.
-  it('a busca de filho continua casando por nome e por CPF', async () => {
+  it('findAll volta a trazer o ministério e a busca segue por nome e CPF', async () => {
     const qb = makeQb([], 0);
     const service = makeService({ createQueryBuilder: jest.fn().mockReturnValue(qb) } as never);
 
@@ -793,10 +772,10 @@ describe('ResidentService — vínculo com ministério removido (story 197)', ()
 
     const wheres = qb.andWhere.mock.calls.map(([sql]) => String(sql));
     expect(wheres.some((w) => w.includes('resident.name') && w.includes('resident.cpf'))).toBe(true);
-    expect(wheres.some((w) => w.includes('ministry'))).toBe(false);
+    expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('resident.ministry', 'ministry');
   });
 
-  it('o create do filho não grava ministryId na admissão', async () => {
+  it('o create sem ministério grava ministryId nulo na admissão', async () => {
     const saved = makeResident({ id: RESIDENT_ID, houseId: HOUSE_ID });
     const admissionCreate = jest.fn().mockImplementation((v) => v);
     const service = makeService(
@@ -811,8 +790,246 @@ describe('ResidentService — vínculo com ministério removido (story 197)', ()
 
     await service.create({ name: 'Ana', houseId: HOUSE_ID, status: 'PRE_ADMISSION' } as never);
 
-    expect(admissionCreate).toHaveBeenCalled();
-    expect(admissionCreate.mock.calls[0][0]).not.toHaveProperty('ministryId');
+    expect(admissionCreate.mock.calls[0][0]).toMatchObject({ ministryId: null });
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Story 205 — guard (decisão 6) e limpeza na saída (decisão 7)
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('ResidentService — vínculo com ministério (story 205)', () => {
+  const MINISTRY_ID = 'ministry-uuid';
+  const ELIGIBLE = ['ACTIVE', 'DISCIPLINE', 'TEMP_LEAVE'];
+  const INELIGIBLE = ['DISCHARGED', 'EVADED', 'ARCHIVED', 'PRE_ADMISSION', 'CENSUS_ADDED', 'REJECTED_CENSUS'];
+
+  interface Setup {
+    resident?: Partial<Resident>;
+    ministryHouse?: string | null; // null = ministério não existe
+    led?: string[];
+  }
+
+  function setup({ resident = {}, ministryHouse = HOUSE_ID, led = [] }: Setup = {}) {
+    const before = makeResident({ ministryId: null, ...resident } as Partial<Resident>);
+    const residentUpdate = jest.fn().mockResolvedValue({ affected: 1 });
+    const txResidentUpdate = jest.fn().mockResolvedValue({ affected: 1 });
+    const txQuery = jest.fn().mockResolvedValue([]);
+    const dataSource = {
+      query: jest.fn(async (sql: string) => {
+        if (sql.includes('FROM ministries WHERE id')) {
+          return ministryHouse === null ? [] : [{ house_id: ministryHouse }];
+        }
+        if (sql.includes("leader_type = 'RESIDENT' AND leader_id")) return led.map((id) => ({ id }));
+        return [];
+      }),
+      transaction: jest.fn(async (fn: (m: unknown) => Promise<void>) =>
+        fn({ getRepository: () => ({ update: txResidentUpdate }), query: txQuery }),
+      ),
+    };
+    const followUpService = {
+      createAuto: jest.fn().mockResolvedValue(undefined),
+      getLastContributionDates: jest.fn().mockResolvedValue(new Map()),
+    };
+    const receivableService = {
+      cancelAfterExit: jest.fn().mockResolvedValue(undefined),
+      recalcFuturePending: jest.fn().mockResolvedValue(undefined),
+      generateSchedule: jest.fn().mockResolvedValue(undefined),
+    };
+    const admissionUpdate = jest.fn().mockResolvedValue({ affected: 1 });
+    const { repo: admissionRepo } = makeAdmissionRepo([makeAdmission()], {
+      update: admissionUpdate,
+      create: jest.fn().mockImplementation((v) => v),
+      save: jest.fn().mockImplementation((v) => Promise.resolve({ id: 'adm-new', ...v })),
+    });
+    const residentRepo = {
+      findOne: jest.fn().mockResolvedValue(before),
+      update: residentUpdate,
+      create: jest.fn().mockImplementation((v) => ({ id: RESIDENT_ID, ...v })),
+      save: jest.fn().mockImplementation((v) => Promise.resolve(v)),
+    };
+    const service = new ResidentService(
+      residentRepo as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      admissionRepo as never,
+      {} as never,
+      followUpService as never,
+      receivableService as never,
+      {} as never,
+      dataSource as never,
+      { create: jest.fn().mockResolvedValue(undefined) } as never,
+    );
+    const emitted = () => followUpService.createAuto.mock.calls.map(([, type]) => type);
+    return { service, residentUpdate, txResidentUpdate, txQuery, dataSource, admissionUpdate, emitted, residentRepo };
+  }
+
+  // ── guard (decisão 6) na ficha ────────────────────────────────────────────
+
+  it.each(ELIGIBLE)('filho %s da casa entra no ministério pela ficha e emite MINISTRY_CHANGE', async (status) => {
+    const s = setup({ resident: { status: status as ResidentStatus } });
+    await s.service.update(RESIDENT_ID, { ministryId: MINISTRY_ID });
+    expect(s.residentUpdate).toHaveBeenCalledWith(RESIDENT_ID, { ministryId: MINISTRY_ID });
+    expect(s.admissionUpdate).toHaveBeenCalledWith('admission-uuid', { ministryId: MINISTRY_ID });
+    expect(s.emitted()).toEqual([FollowUpType.MINISTRY_CHANGE]);
+  });
+
+  it.each(INELIGIBLE)('filho %s → 400 e nada é gravado', async (status) => {
+    const s = setup({ resident: { status: status as ResidentStatus } });
+    await expect(s.service.update(RESIDENT_ID, { ministryId: MINISTRY_ID })).rejects.toThrow(
+      'Só filho em acolhimento nesta casa pode participar do ministério.',
+    );
+    expect(s.residentUpdate).not.toHaveBeenCalled();
+    expect(s.emitted()).toEqual([]);
+  });
+
+  it('ministério de outra casa → 400', async () => {
+    const s = setup({ ministryHouse: 'other-house' });
+    await expect(s.service.update(RESIDENT_ID, { ministryId: MINISTRY_ID })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('ministério inexistente/excluído → 400', async () => {
+    const s = setup({ ministryHouse: null });
+    await expect(s.service.update(RESIDENT_ID, { ministryId: MINISTRY_ID })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('valida contra o estado resultante: transferência + ministério da casa nova passa', async () => {
+    const s = setup({ ministryHouse: 'new-house', resident: { ministryId: 'old-min' } as Partial<Resident> });
+    await s.service.update(RESIDENT_ID, { houseId: 'new-house', ministryId: MINISTRY_ID });
+    expect(s.residentUpdate).toHaveBeenCalledWith(RESIDENT_ID, { houseId: 'new-house', ministryId: MINISTRY_ID });
+  });
+
+  it('alta com ministryId no mesmo payload → 400', async () => {
+    const s = setup();
+    await expect(
+      s.service.update(RESIDENT_ID, { status: ResidentStatus.DISCHARGED, ministryId: MINISTRY_ID }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('tirar do ministério (ministryId null) não valida e emite MINISTRY_CHANGE', async () => {
+    const s = setup({ resident: { ministryId: 'old-min' } as Partial<Resident> });
+    await s.service.update(RESIDENT_ID, { ministryId: null });
+    expect(s.dataSource.query).not.toHaveBeenCalled();
+    expect(s.emitted()).toEqual([FollowUpType.MINISTRY_CHANGE]);
+  });
+
+  it('mandar o mesmo ministério de novo não emite evento', async () => {
+    const s = setup({ resident: { ministryId: MINISTRY_ID } as Partial<Resident> });
+    await s.service.update(RESIDENT_ID, { ministryId: MINISTRY_ID });
+    expect(s.emitted()).toEqual([]);
+  });
+
+  // ── limpeza na saída (decisão 7) ──────────────────────────────────────────
+
+  it.each([
+    ['alta', ResidentStatus.DISCHARGED, FollowUpType.DISCHARGE],
+    ['evasão', ResidentStatus.EVADED, FollowUpType.EVASION],
+  ])('%s zera ministry_id, limpa a liderança na mesma transação e emite MINISTRY_CHANGE', async (_l, status, exitEvent) => {
+    const s = setup({ resident: { ministryId: MINISTRY_ID } as Partial<Resident>, led: ['led-1'] });
+    await s.service.update(RESIDENT_ID, { status });
+
+    expect(s.dataSource.transaction).toHaveBeenCalledTimes(1);
+    expect(s.txResidentUpdate).toHaveBeenCalledWith(RESIDENT_ID, { status, ministryId: null });
+    expect(s.txQuery).toHaveBeenCalledWith(
+      'UPDATE ministries SET leader_id = NULL, leader_type = NULL WHERE id = ANY($1::uuid[])',
+      [['led-1']],
+    );
+    expect(s.residentUpdate).not.toHaveBeenCalled();
+    expect(s.admissionUpdate).toHaveBeenCalledWith('admission-uuid', { status, ministryId: null });
+    expect(s.emitted()).toEqual(expect.arrayContaining([FollowUpType.MINISTRY_CHANGE, exitEvent]));
+  });
+
+  it('alta de membro que não lidera nada: zera ministry_id sem transação', async () => {
+    const s = setup({ resident: { ministryId: MINISTRY_ID } as Partial<Resident> });
+    await s.service.update(RESIDENT_ID, { status: ResidentStatus.DISCHARGED });
+    expect(s.dataSource.transaction).not.toHaveBeenCalled();
+    expect(s.residentUpdate).toHaveBeenCalledWith(RESIDENT_ID, {
+      status: ResidentStatus.DISCHARGED,
+      ministryId: null,
+    });
+    expect(s.emitted()).toContain(FollowUpType.MINISTRY_CHANGE);
+  });
+
+  it('líder que não é membro: alta limpa a liderança e emite MINISTRY_CHANGE', async () => {
+    const s = setup({ led: ['led-1'] });
+    await s.service.update(RESIDENT_ID, { status: ResidentStatus.EVADED });
+    expect(s.txResidentUpdate).toHaveBeenCalledWith(RESIDENT_ID, { status: ResidentStatus.EVADED });
+    expect(s.txQuery).toHaveBeenCalled();
+    expect(s.emitted()).toContain(FollowUpType.MINISTRY_CHANGE);
+  });
+
+  it('transferência de casa zera ministério e liderança', async () => {
+    const s = setup({ resident: { ministryId: MINISTRY_ID } as Partial<Resident>, led: ['led-1'] });
+    await s.service.update(RESIDENT_ID, { houseId: 'new-house' });
+    expect(s.txResidentUpdate).toHaveBeenCalledWith(RESIDENT_ID, { houseId: 'new-house', ministryId: null });
+    expect(s.txQuery).toHaveBeenCalled();
+    expect(s.emitted()).toEqual([FollowUpType.MINISTRY_CHANGE]);
+  });
+
+  it('mudança dentro do acolhimento (ACTIVE → DISCIPLINE) não limpa nada', async () => {
+    const s = setup({ resident: { ministryId: MINISTRY_ID } as Partial<Resident>, led: ['led-1'] });
+    await s.service.update(RESIDENT_ID, { status: ResidentStatus.DISCIPLINE });
+    expect(s.residentUpdate).toHaveBeenCalledWith(RESIDENT_ID, { status: ResidentStatus.DISCIPLINE });
+    expect(s.dataSource.query).not.toHaveBeenCalled();
+    expect(s.emitted()).toEqual([]);
+  });
+
+  it('transição recusada pelo guard da 196 não limpa nada', async () => {
+    const s = setup({
+      resident: { status: ResidentStatus.EVADED, ministryId: MINISTRY_ID } as Partial<Resident>,
+      led: ['led-1'],
+    });
+    await expect(s.service.update(RESIDENT_ID, { status: ResidentStatus.DISCHARGED })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(s.dataSource.query).not.toHaveBeenCalled();
+    expect(s.dataSource.transaction).not.toHaveBeenCalled();
+    expect(s.residentUpdate).not.toHaveBeenCalled();
+    expect(s.emitted()).toEqual([]);
+  });
+
+  it('reenvio idempotente da mesma alta não limpa de novo', async () => {
+    const s = setup({ resident: { status: ResidentStatus.DISCHARGED } });
+    await s.service.update(RESIDENT_ID, { status: ResidentStatus.DISCHARGED });
+    expect(s.dataSource.query).not.toHaveBeenCalled();
+  });
+
+  // ── create (acolhimento) ──────────────────────────────────────────────────
+
+  it('acolhimento ACTIVE com ministério da casa grava o vínculo no filho e na admissão', async () => {
+    const s = setup();
+    await s.service.create({
+      name: 'Ana',
+      houseId: HOUSE_ID,
+      status: ResidentStatus.ACTIVE,
+      ministryId: MINISTRY_ID,
+    } as never);
+    expect(s.residentRepo.create).toHaveBeenCalledWith(expect.objectContaining({ ministryId: MINISTRY_ID }));
+  });
+
+  it('acolhimento em pré-admissão com ministério → 400', async () => {
+    const s = setup();
+    await expect(
+      s.service.create({ name: 'Ana', houseId: HOUSE_ID, ministryId: MINISTRY_ID } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(s.residentRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('acolhimento dentro de transação valida pelo manager', async () => {
+    const s = setup();
+    const managerQuery = jest.fn().mockResolvedValue([{ house_id: 'other-house' }]);
+    await expect(
+      s.service.create(
+        { name: 'Ana', houseId: HOUSE_ID, status: ResidentStatus.ACTIVE, ministryId: MINISTRY_ID } as never,
+        { query: managerQuery } as never,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(managerQuery).toHaveBeenCalled();
+    expect(s.dataSource.query).not.toHaveBeenCalled();
   });
 });
 
@@ -974,6 +1191,8 @@ describe('ResidentService.readmit', () => {
         healthIssues: dto.healthIssues,
         weight: dto.weight,
         height: dto.height,
+        // Story 205: readmissão volta sem ministério.
+        ministryId: null,
         exitDate: null,
       }),
     );
@@ -994,6 +1213,7 @@ describe('ResidentService.readmit', () => {
     expect(resetCall![1]).toMatchObject({
       houseId: dto.houseId,
       status: ResidentStatus.ACTIVE,
+      ministryId: null,
       exitDate: null,
       photoUrl: null,
       userId: null,
@@ -1488,6 +1708,20 @@ describe('ResidentService.promoteToServant', () => {
       expect.objectContaining({ status: 'DISCHARGED' }),
     );
     expect(createAuto).toHaveBeenCalledWith(RESIDENT_ID, 'PROMOTED_TO_SERVANT', expect.any(String));
+  });
+
+  // Story 205 (decisão 7): promoção é alta — tira do ministério e da liderança.
+  it('tira o filho promovido do ministério e da liderança', async () => {
+    const { service, residentUpdate } = makePromoteService({ userId: USER_ID });
+
+    await service.promoteToServant(RESIDENT_ID, {});
+
+    expect(residentUpdate).toHaveBeenCalledWith(RESIDENT_ID, expect.objectContaining({ ministryId: null }));
+    const dataSource = (service as unknown as { dataSource: { query: jest.Mock } }).dataSource;
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.stringContaining("WHERE leader_type = 'RESIDENT' AND leader_id = $1"),
+      [RESIDENT_ID],
+    );
   });
 
   it('uses the provided date for exit, timeline and staff promotedAt', async () => {

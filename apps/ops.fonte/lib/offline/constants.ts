@@ -13,7 +13,7 @@ export const PERSIST_KEY = 'ops-fonte-query-cache';
  * cacheados mudar (troca de contrato, renomeio de campo, mudança de queryKey).
  * Deploy novo com formato novo descarta o cache antigo em vez de reidratar lixo.
  */
-export const PERSIST_BUSTER = 'v2';
+export const PERSIST_BUSTER = 'v3';
 
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 
@@ -54,6 +54,10 @@ export const RESIDENT_STORE_QUERY_PREFIXES = [
   'resident-receivables',
   // Fila da casa contém nome de filho: store purgado no logout, nunca blob de 24h.
   'resident-product-contributions-house',
+  // houses.ministries — story 205 (decisão 9): filho volta a ser líder, então a
+  // resposta volta a carregar nome de filho (`leaderName`) e a chave volta para
+  // o store de filho, desfazendo a decisão 8 da story 197.
+  'house-ministries',
 ] as const;
 
 /**
@@ -73,10 +77,6 @@ export const RESIDENT_STORE_QUERY_PREFIXES = [
 export const PERSISTED_QUERY_PREFIXES = [
   // houses.all
   'houses',
-  // houses.ministries — leitura de casa desde a story 197: sem filho como
-  // membro nem como líder, a resposta não tem mais nome de filho e a chave
-  // deixou de pertencer ao store local (que guarda dado pessoal até o logout).
-  'house-ministries',
   // staff.byHouse (story 204) — nome, foto, papel, ministérios liderados e
   // WhatsApp dos servos da casa: contato interno, já lido pelos mesmos papéis
   // online. Nenhum dado de filho.

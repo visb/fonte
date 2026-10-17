@@ -10,8 +10,11 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useCreateMinistry } from '../hooks/useMinistries';
+import { useCreateMinistry, useMinistryEligibleResidents } from '../hooks/useMinistries';
 import { useHouseStaff } from '@/features/staff/hooks/useHouseStaff';
+import { OfflineNotice } from '@/components/shared/OfflineNotice';
+import { useIsOnline } from '@/lib/offline/network';
+import { LeaderOptions, type LeaderChoice } from './LeaderOptions';
 
 interface Props {
   visible: boolean;
@@ -20,18 +23,20 @@ interface Props {
   onSuccess: () => void;
 }
 
-// Story 197: ministério é coisa de servo — sem seleção de filhos e só servo
-// pode ser líder.
+// Story 205: líder pode ser servo ou filho em acolhimento na casa. Os filhos
+// membros entram depois, pela tela do ministério. Criar exige rede.
 export function CreateMinistryModal({ visible, houseId, onClose, onSuccess }: Props) {
   const [name, setName] = useState('');
-  const [leaderId, setLeaderId] = useState<string | null>(null);
+  const [leader, setLeader] = useState<LeaderChoice | null>(null);
+  const isOnline = useIsOnline();
 
   const { data: allStaff = [] } = useHouseStaff(visible ? houseId : undefined);
+  const { data: residents = [] } = useMinistryEligibleResidents(visible ? houseId : undefined);
   const createMutation = useCreateMinistry(houseId);
 
   function resetForm() {
     setName('');
-    setLeaderId(null);
+    setLeader(null);
   }
 
   function handleClose() {
@@ -42,7 +47,7 @@ export function CreateMinistryModal({ visible, houseId, onClose, onSuccess }: Pr
   function handleCreate() {
     if (!name.trim()) return;
     createMutation.mutate(
-      { name: name.trim(), leaderId, leaderType: leaderId ? 'STAFF' : null },
+      { name: name.trim(), leaderId: leader?.id ?? null, leaderType: leader?.type ?? null },
       {
         onSuccess: () => {
           resetForm();
@@ -70,6 +75,7 @@ export function CreateMinistryModal({ visible, houseId, onClose, onSuccess }: Pr
             contentContainerStyle={{ paddingVertical: 20, gap: 20 }}
             keyboardShouldPersistTaps="handled"
           >
+            {!isOnline && <OfflineNotice message="Precisa de conexão para criar um ministério." />}
             <View>
               <Text className="text-sm font-medium text-gray-700 mb-1.5">Nome *</Text>
               <TextInput
@@ -83,40 +89,7 @@ export function CreateMinistryModal({ visible, houseId, onClose, onSuccess }: Pr
 
             <View>
               <Text className="text-sm font-medium text-gray-700 mb-1.5">Líder (opcional)</Text>
-              {allStaff.length === 0 ? (
-                <Text className="text-sm text-gray-400">Nenhum servo disponível.</Text>
-              ) : (
-                <View className="border border-gray-200 rounded-xl overflow-hidden">
-                  <TouchableOpacity
-                    className={`px-4 py-3 flex-row items-center border-b border-gray-100 ${leaderId === null ? 'bg-blue-50' : 'bg-white'}`}
-                    onPress={() => setLeaderId(null)}
-                  >
-                    <View className={`w-4 h-4 rounded-full border-2 mr-3 items-center justify-center ${leaderId === null ? 'border-blue-500' : 'border-gray-300'}`}>
-                      {leaderId === null && <View className="w-2 h-2 rounded-full bg-blue-500" />}
-                    </View>
-                    <Text className="text-sm text-gray-500">— Sem líder</Text>
-                  </TouchableOpacity>
-
-                  {allStaff.map((s) => {
-                    const selected = leaderId === s.id;
-                    return (
-                      <TouchableOpacity
-                        key={`STAFF-${s.id}`}
-                        className={`px-4 py-3 flex-row items-center border-b border-gray-100 ${selected ? 'bg-blue-50' : 'bg-white'}`}
-                        onPress={() => setLeaderId(s.id)}
-                      >
-                        <View className={`w-4 h-4 rounded-full border-2 mr-3 items-center justify-center ${selected ? 'border-blue-500' : 'border-gray-300'}`}>
-                          {selected && <View className="w-2 h-2 rounded-full bg-blue-500" />}
-                        </View>
-                        <Text className="flex-1 text-sm text-gray-900">{s.name}</Text>
-                        <View className="px-2 py-0.5 rounded bg-blue-100">
-                          <Text className="text-xs font-medium text-blue-700">Servo</Text>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
+              <LeaderOptions staff={allStaff} residents={residents} selected={leader} onSelect={setLeader} />
             </View>
           </ScrollView>
 
@@ -131,7 +104,7 @@ export function CreateMinistryModal({ visible, houseId, onClose, onSuccess }: Pr
             <TouchableOpacity
               className="flex-1 bg-blue-600 rounded-xl py-3 items-center"
               onPress={handleCreate}
-              disabled={!name.trim() || createMutation.isPending}
+              disabled={!isOnline || !name.trim() || createMutation.isPending}
             >
               {createMutation.isPending ? (
                 <ActivityIndicator color="#fff" size="small" />

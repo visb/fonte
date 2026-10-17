@@ -32,6 +32,11 @@ export class Admission {
   @Column({ name: 'house_id', nullable: true, type: 'uuid' })
   houseId: string | null;
 
+  // Story 205: ministério do filho nesta passagem (migration
+  // `RestoreResidentMinistryLink`). Zerado na saída/transferência.
+  @Column({ name: 'ministry_id', nullable: true, type: 'uuid' })
+  ministryId: string | null;
+
   @Column({ name: 'entry_date', type: 'date', nullable: true })
   entryDate: Date | null;
 

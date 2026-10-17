@@ -1,7 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { CheckImportConflictResult, ImportConflict, ResidentStatus } from '@fonte/types';
+import { CheckImportConflictResult, ImportConflict, REMOVABLE_RESIDENT_STATUSES, ResidentStatus } from '@fonte/types';
 import { normalizeName } from '../../common/lib/normalize';
 import { assertAdultBirthDate } from '../../common/lib/birth-date';
 import { assertAdmissionDates } from './admission-dates';
@@ -160,6 +160,9 @@ export class ImportService {
       // Filho que já saiu não pode entrar ATIVO: deriva ALTA/EVASÃO pela
       // permanência (story 120) antes de reusar a regra de criação.
       this.applyExitStatus(dto.resident);
+      // Story 205 (decisão 6): ficha fora de acolhimento (ARCHIVED, alta,
+      // evasão...) é importada SEM ministério em vez de recusada.
+      this.dropIneligibleMinistry(dto.resident);
 
       // Reusa a regra de criação (resident + admissão do topo + carnê), na
       // transação. O topo é o acolhimento mais recente (status já derivado acima).
@@ -205,7 +208,7 @@ export class ImportService {
 
       const resident = (await manager
         .getRepository(Resident)
-        .findOne({ where: { id: created.id }, relations: ['house', 'user'] }))!;
+        .findOne({ where: { id: created.id }, relations: ['house', 'ministry', 'user'] }))!;
 
       return { resident, contributionsCreated };
     });
@@ -228,6 +231,12 @@ export class ImportService {
       status === ResidentStatus.PRE_ADMISSION;
     if (!isDefaultStatus) return;
     resident.status = deriveExitStatus(entryDate, exitDate);
+  }
+
+  private dropIneligibleMinistry(resident: CreateResidentDto): void {
+    if (!resident.ministryId) return;
+    const status = resident.status ?? ResidentStatus.PRE_ADMISSION;
+    if (!REMOVABLE_RESIDENT_STATUSES.includes(status)) resident.ministryId = null;
   }
 
   /**
@@ -256,6 +265,8 @@ export class ImportService {
         admissionRepo.create({
           residentId: resident.id,
           houseId: resident.houseId,
+          // Passagens anteriores já se encerraram: sem ministério.
+          ministryId: null,
           entryDate: adm.entryDate as unknown as Date,
           exitDate: (adm.exitDate ?? null) as unknown as Date | null,
           status,

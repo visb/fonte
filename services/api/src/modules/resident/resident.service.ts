@@ -5,7 +5,7 @@ import * as bcrypt from 'bcrypt';
 // require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
 // emits an undefined default for sharp's CommonJS module.
 const sharp = require('sharp') as typeof import('sharp');
-import { ACTIVE_RESIDENT_STATUSES, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isTemplateAvailableForStatus, NotificationType, PRESENT_RESIDENT_STATUSES, REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability, todayInSaoPaulo } from '@fonte/types';
+import { ACTIVE_RESIDENT_STATUSES, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isMinistryEligibleResident, isTemplateAvailableForStatus, MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE, NotificationType, PRESENT_RESIDENT_STATUSES, REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability, todayInSaoPaulo } from '@fonte/types';
 import { Logger } from '@nestjs/common';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
@@ -75,7 +75,7 @@ export class ResidentService {
   private readonly logger = new Logger(ResidentService.name);
 
   private static readonly ADMISSION_FIELDS = new Set<string>([
-    'houseId', 'entryDate', 'exitDate', 'status',
+    'houseId', 'ministryId', 'entryDate', 'exitDate', 'status',
     'healthIssues', 'continuousMedication', 'weight', 'height',
     'familyInvestment', 'familyInvestmentAmount',
   ]);
@@ -126,6 +126,7 @@ export class ResidentService {
     const qb = this.residentRepository
       .createQueryBuilder('resident')
       .leftJoinAndSelect('resident.house', 'house')
+      .leftJoinAndSelect('resident.ministry', 'ministry')
       .leftJoinAndSelect('resident.user', 'user')
       // NULLS LAST: filho sem entry_date (ex.: ARCHIVED) vai para o fim nas
       // duas direções (decisão 4). Desempate por id garante paginação estável
@@ -199,6 +200,8 @@ export class ResidentService {
     const qb = this.residentRepository
       .createQueryBuilder('resident')
       .leftJoinAndSelect('resident.house', 'house')
+      // Story 205: a ficha offline do `ops` mostra o ministério do filho.
+      .leftJoinAndSelect('resident.ministry', 'ministry')
       .where('resident.house_id = :houseId', { houseId })
       .andWhere('resident.status IN (:...statuses)', {
         statuses: [...PRESENT_RESIDENT_STATUSES],
@@ -272,7 +275,7 @@ export class ResidentService {
   async findOne(id: string): Promise<Resident> {
     const resident = await this.residentRepository.findOne({
       where: { id },
-      relations: ['house', 'user'],
+      relations: ['house', 'ministry', 'user'],
     });
     if (!resident) throw new NotFoundException(`Resident ${id} not found`);
     const map = await this.followUpService.getLastContributionDates([id]);
@@ -297,6 +300,15 @@ export class ResidentService {
     // Story 203: entrada não futura; saída, se vier, ≥ entrada e não futura.
     assertAdmissionDates({ entryDate: dto.entryDate, exitDate: dto.exitDate });
     this.resolveInvestmentAmount(dto);
+    // Story 205 (decisão 6): ministério no acolhimento só para filho em
+    // acolhimento na casa do ministério.
+    if (dto.ministryId) {
+      await this.assertMinistryEligible(
+        dto.ministryId,
+        { status: dto.status ?? ResidentStatus.PRE_ADMISSION, houseId: dto.houseId ?? null },
+        manager,
+      );
+    }
     const residentRepo = manager ? manager.getRepository(Resident) : this.residentRepository;
     const admissionRepo = manager ? manager.getRepository(Admission) : this.admissionRepository;
 
@@ -307,6 +319,7 @@ export class ResidentService {
       residentId: saved.id,
       // Sem casa (ARCHIVED do import): acolhimento registrado sem house.
       houseId: saved.houseId ?? null,
+      ministryId: saved.ministryId ?? null,
       entryDate: saved.entryDate,
       exitDate: saved.exitDate ?? null,
       status: saved.status,
@@ -369,6 +382,36 @@ export class ResidentService {
     [ResidentStatus.REJECTED_CENSUS]: 'Filho recusado na contagem',
   };
 
+  /**
+   * Story 205 (decisão 6): o filho só entra num ministério se estiver em
+   * acolhimento (`REMOVABLE_RESIDENT_STATUSES`) na casa do ministério. Valida o
+   * estado **resultante** (status/casa depois da gravação), antes de persistir.
+   */
+  private async assertMinistryEligible(
+    ministryId: string,
+    resident: { status: ResidentStatus; houseId: string | null },
+    manager?: EntityManager,
+  ): Promise<void> {
+    const runner = manager ?? this.dataSource;
+    const [ministry] = await runner.query<Array<{ house_id: string }>>(
+      `SELECT house_id FROM ministries WHERE id = $1 AND deleted_at IS NULL`,
+      [ministryId],
+    );
+    if (!ministry || !isMinistryEligibleResident(resident, ministry.house_id)) {
+      throw new BadRequestException(MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE);
+    }
+  }
+
+  /** Ministérios (não excluídos) liderados pelo filho — story 205, decisão 7. */
+  private async findLedMinistryIds(residentId: string): Promise<string[]> {
+    const rows = await this.dataSource.query<Array<{ id: string }>>(
+      `SELECT id FROM ministries
+        WHERE leader_type = 'RESIDENT' AND leader_id = $1 AND deleted_at IS NULL`,
+      [residentId],
+    );
+    return rows.map((row) => row.id);
+  }
+
   async update(id: string, dto: UpdateResidentDto): Promise<Resident> {
     this.resolveInvestmentAmount(dto);
     const before = await this.findOne(id);
@@ -381,10 +424,48 @@ export class ResidentService {
       { entryDate: dto.entryDate, exitDate: dto.exitDate },
       { previous: { entryDate: before.entryDate, exitDate: before.exitDate } },
     );
-    await this.residentRepository.update(id, dto);
+
+    // Story 205 — vínculo com ministério. Roda DEPOIS dos guards de transição
+    // (196) e de data (203): transição recusada não valida nem limpa nada.
+    const nextStatus = dto.status ?? before.status;
+    const nextHouseId = dto.houseId !== undefined ? dto.houseId : before.houseId;
+    if (dto.ministryId) {
+      await this.assertMinistryEligible(dto.ministryId, { status: nextStatus, houseId: nextHouseId });
+    }
+    // Decisão 7: saída da comunidade (status fora de acolhimento) ou
+    // transferência de casa desfaz o vínculo e a liderança.
+    const leavesCare =
+      dto.status !== undefined &&
+      dto.status !== before.status &&
+      !REMOVABLE_RESIDENT_STATUSES.includes(dto.status);
+    const transfers = dto.houseId !== undefined && dto.houseId !== before.houseId;
+    const departs = leavesCare || transfers;
+    const effective: UpdateResidentDto = { ...dto };
+    if (departs && dto.ministryId === undefined && before.ministryId) effective.ministryId = null;
+    const ledMinistryIds = departs ? await this.findLedMinistryIds(id) : [];
+
+    if (ledMinistryIds.length > 0) {
+      // Mesma transação da mudança de status/casa: o filho não fica liderando
+      // um ministério da casa que deixou.
+      await this.dataSource.transaction(async (manager) => {
+        await manager.getRepository(Resident).update(id, effective);
+        await manager.query(
+          `UPDATE ministries SET leader_id = NULL, leader_type = NULL WHERE id = ANY($1::uuid[])`,
+          [ledMinistryIds],
+        );
+      });
+    } else {
+      await this.residentRepository.update(id, effective);
+    }
 
     // "Hoje" no fuso da operação (story 203): o dia UTC já é amanhã após 21h BRT.
     const today = todayInSaoPaulo();
+    const ministryChanged =
+      effective.ministryId !== undefined &&
+      (effective.ministryId ?? null) !== (before.ministryId ?? null);
+    if (ministryChanged || ledMinistryIds.length > 0) {
+      await this.followUpService.createAuto(id, FollowUpType.MINISTRY_CHANGE, today);
+    }
     // Exit-driven events (discharge/evasion) are dated by the actual exit date
     // when provided, falling back to today.
     const exitEventDate = (dto.exitDate as string | undefined) ?? today;
@@ -412,7 +493,7 @@ export class ResidentService {
     }
 
     const admissionUpdate = Object.fromEntries(
-      Object.entries(dto).filter(([key]) => ResidentService.ADMISSION_FIELDS.has(key)),
+      Object.entries(effective).filter(([key]) => ResidentService.ADMISSION_FIELDS.has(key)),
     );
     if (Object.keys(admissionUpdate).length > 0) {
       const currentAdmission = await this.findCurrentAdmission(id);
@@ -530,6 +611,8 @@ export class ResidentService {
     const admission = this.admissionRepository.create({
       residentId: id,
       houseId: dto.houseId,
+      // Story 205: readmissão volta sem ministério.
+      ministryId: null,
       entryDate: (dto.entryDate ?? today) as unknown as Date,
       exitDate: null,
       status: 'ACTIVE',
@@ -551,6 +634,7 @@ export class ResidentService {
       entryDate: (dto.entryDate ?? today) as unknown as Date,
       exitDate: null,
       status: ResidentStatus.ACTIVE as Resident['status'],
+      ministryId: null,
       userId: null,
       photoUrl: null,
       photoThumbUrl: null,
@@ -752,11 +836,18 @@ export class ResidentService {
       promotedAt,
     });
 
-    // Arquiva o filho: alta + evento na timeline na data da promoção.
+    // Arquiva o filho: alta + evento na timeline na data da promoção. Alta tira
+    // o filho do ministério e da liderança (story 205, decisão 7).
     await this.residentRepository.update(id, {
       status: ResidentStatus.DISCHARGED,
       exitDate: promotedAt as unknown as Date,
+      ministryId: null,
     });
+    await this.dataSource.query(
+      `UPDATE ministries SET leader_id = NULL, leader_type = NULL
+        WHERE leader_type = 'RESIDENT' AND leader_id = $1`,
+      [id],
+    );
     await this.followUpService.createAuto(id, FollowUpType.PROMOTED_TO_SERVANT, promotedAt);
 
     // Recarrega com as relações (user/house) para a resposta.

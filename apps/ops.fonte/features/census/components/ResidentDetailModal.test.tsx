@@ -77,15 +77,19 @@ describe('ResidentDetailModal', () => {
     expect(screen.queryByText('Telefone')).toBeNull();
   });
 
-  // Story 197: filho não tem ministério — a ficha do censo mostra nascimento e
-  // telefone, e a linha "Ministério" não existe mais.
-  it('com a ficha em mãos mostra nascimento e telefone, sem ministério', () => {
-    mockUseResidentById.mockReturnValue({ data: FICHA, isLoading: false, error: null });
+  // Story 205: a linha "Ministério" volta à ficha do censo.
+  it('com a ficha em mãos mostra ministério, nascimento e telefone', () => {
+    mockUseResidentById.mockReturnValue({
+      data: { ...FICHA, ministry: { id: 'm1', name: 'Cozinha' } },
+      isLoading: false,
+      error: null,
+    });
     open();
 
+    expect(screen.getByText('Ministério')).toBeTruthy();
+    expect(screen.getByText('Cozinha')).toBeTruthy();
     expect(screen.getByText(/10\/03\/1990/)).toBeTruthy();
     expect(screen.getByText('(31) 99999-0000')).toBeTruthy();
-    expect(screen.queryByText('Ministério')).toBeNull();
   });
 
   it('não renderiza dado de saúde nem CPF', () => {

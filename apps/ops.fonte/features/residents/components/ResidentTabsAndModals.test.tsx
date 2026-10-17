@@ -218,57 +218,61 @@ describe('ResidentOverviewTab', () => {
       healthIssues: null,
       continuousMedication: null,
       house: { name: 'Casa Bethel' },
+      houseId: 'h1',
+      status: 'ACTIVE',
+      ministry: null,
       userId: 'user-1',
       ...overrides,
     } as never;
   }
 
-  it('mostra identificação e botão de resetar senha quando há acesso', () => {
-    const onResetPassword = jest.fn();
-    render(
+  function renderTab(overrides = {}, handlers: Record<string, jest.Mock> = {}) {
+    return render(
       <ResidentOverviewTab
-        resident={makeResident()}
-        onResetPassword={onResetPassword}
+        resident={makeResident(overrides)}
+        onChangeMinistry={handlers.onChangeMinistry ?? jest.fn()}
+        onResetPassword={handlers.onResetPassword ?? jest.fn()}
         onDeclareProducts={jest.fn()}
       />,
     );
+  }
+
+  it('mostra identificação e botão de resetar senha quando há acesso', () => {
+    const onResetPassword = jest.fn();
+    renderTab({}, { onResetPassword });
     expect(screen.getByText('Masculino')).toBeTruthy();
     fireEvent.press(screen.getByText('Resetar senha'));
     expect(onResetPassword).toHaveBeenCalled();
   });
 
-  // Story 197: filho não tem mais ministério — nem seção, nem botão de troca.
-  it('não mostra seção de ministério nem o botão Alterar', () => {
-    render(
-      <ResidentOverviewTab
-        resident={makeResident()}
-        onResetPassword={jest.fn()}
-        onDeclareProducts={jest.fn()}
-      />,
-    );
-    expect(screen.queryByText('Ministério')).toBeNull();
+  // Story 205: a seção "Ministério" volta com o botão de troca.
+  it('mostra o ministério atual e "Alterar" para filho em acolhimento', () => {
+    const onChangeMinistry = jest.fn();
+    renderTab({ ministry: { id: 'm1', name: 'Cozinha' } }, { onChangeMinistry });
+    expect(screen.getByText('Ministério')).toBeTruthy();
+    expect(screen.getByText('Cozinha')).toBeTruthy();
+    fireEvent.press(screen.getByText('Alterar'));
+    expect(onChangeMinistry).toHaveBeenCalled();
+  });
+
+  it.each(['DISCHARGED', 'EVADED', 'PRE_ADMISSION'])('filho %s não tem o botão Alterar', (status) => {
+    renderTab({ status });
+    expect(screen.getByText('Ministério')).toBeTruthy();
+    expect(screen.queryByText('Alterar')).toBeNull();
+  });
+
+  it('filho sem casa não tem o botão Alterar', () => {
+    renderTab({ houseId: null });
     expect(screen.queryByText('Alterar')).toBeNull();
   });
 
   it('sem acesso digital mostra aviso (usa o adm)', () => {
-    render(
-      <ResidentOverviewTab
-        resident={makeResident({ userId: null })}
-        onResetPassword={jest.fn()}
-        onDeclareProducts={jest.fn()}
-      />,
-    );
+    renderTab({ userId: null });
     expect(screen.getByText('Sem acesso gerado (use o adm)')).toBeTruthy();
   });
 
   it('gênero feminino', () => {
-    render(
-      <ResidentOverviewTab
-        resident={makeResident({ gender: 'FEMALE' })}
-        onResetPassword={jest.fn()}
-        onDeclareProducts={jest.fn()}
-      />,
-    );
+    renderTab({ gender: 'FEMALE' });
     expect(screen.getByText('Feminino')).toBeTruthy();
   });
 });

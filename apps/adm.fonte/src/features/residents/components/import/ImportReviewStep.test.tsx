@@ -7,6 +7,10 @@ let housesResult: { data: unknown[]; isLoading: boolean } = { data: [], isLoadin
 vi.mock('@/features/houses/hooks/useHouses', () => ({
   useHouses: () => housesResult,
 }));
+// Story 205: o campo de ministério busca os ministérios da casa.
+vi.mock('@/features/houses/hooks/useHouseMinistries', () => ({
+  useHouseMinistriesList: () => ({ data: [], isSuccess: true }),
+}));
 vi.mock('@/components/AvatarUpload', () => ({
   AvatarUpload: () => <div data-testid="avatar-upload" />,
 }));

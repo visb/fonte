@@ -111,6 +111,7 @@ export function ResidentDetailModal({ visible, resident, onClose }: Props) {
                 <Row label="Entrada" value={formatDate(resident?.entryDate)} />
                 {data ? (
                   <>
+                    <Row label="Ministério" value={data.ministry?.name} />
                     <Row label="Nascimento" value={formatBirthDate(data.birthDate)} />
                     <Row label="Telefone" value={data.contactPhone} />
                   </>

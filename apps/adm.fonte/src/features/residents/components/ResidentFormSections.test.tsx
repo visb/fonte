@@ -3,12 +3,27 @@ import { act, render, screen, cleanup, fireEvent, waitFor } from '@testing-libra
 import { useForm } from 'react-hook-form';
 import { FamilyInvestment, todayInSaoPaulo } from '@fonte/types';
 import type { House } from '@fonte/api-client';
+
+// Story 205: ministérios da casa para o campo "Ministério".
+const ministriesByHouse: Record<string, { id: string; name: string }[]> = {
+  h1: [{ id: 'm1', name: 'Cozinha' }],
+  h2: [{ id: 'm2', name: 'Horta' }],
+};
+const ministryHook = vi.fn((houseId: string, options?: { enabled?: boolean }) =>
+  options?.enabled === false
+    ? { data: undefined, isSuccess: false }
+    : { data: ministriesByHouse[houseId] ?? [], isSuccess: true },
+);
+vi.mock('@/features/houses/hooks/useHouseMinistries', () => ({
+  useHouseMinistriesList: (houseId: string, options?: { enabled?: boolean }) => ministryHook(houseId, options),
+}));
+
 import {
   ResidentFichaSections,
   ResidentAdmissionSections,
 } from './ResidentFormSections';
 
-const houses = [{ id: 'h1', name: 'Casa Belém' }] as House[];
+const houses = [{ id: 'h1', name: 'Casa Belém' }, { id: 'h2', name: 'Casa Sião' }] as House[];
 
 function FichaHarness() {
   const { register, control, formState: { errors } } = useForm();
@@ -25,7 +40,7 @@ function FichaHarness() {
 
 type AdmissionProps = Partial<Parameters<typeof ResidentAdmissionSections>[0]> & {
   onSubmit?: (values: Record<string, unknown>) => void;
-  defaults?: { entryDate: string; exitDate: string };
+  defaults?: Record<string, string>;
 };
 
 function AdmissionHarness({ onSubmit, defaults, ...props }: AdmissionProps) {
@@ -150,6 +165,66 @@ describe('ResidentAdmissionSections', () => {
     const checkbox = screen.getByRole('checkbox');
     fireEvent.click(checkbox);
     expect(onChange).toHaveBeenCalledWith(true);
+  });
+
+  // ── Story 205: campo "Ministério" no acolhimento ──────────────────────────
+  describe('campo Ministério (story 205)', () => {
+    const ministrySelect = () => screen.queryByLabelText('Ministério') as HTMLSelectElement | null;
+
+    it('sem casa escolhida, o campo não aparece', () => {
+      render(<AdmissionHarness />);
+      expect(ministrySelect()).toBeNull();
+    });
+
+    it('lista só os ministérios da casa e envia o ministryId', async () => {
+      const onSubmit = vi.fn();
+      render(<AdmissionHarness defaults={{ entryDate: '2026-01-10', exitDate: '', houseId: 'h1' }} onSubmit={onSubmit} />);
+      const select = ministrySelect()!;
+      expect(Array.from(select.options).map((o) => o.textContent)).toEqual(['Sem ministério', 'Cozinha']);
+      fireEvent.change(select, { target: { value: 'm1' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(onSubmit.mock.calls[0][0]).toMatchObject({ houseId: 'h1', ministryId: 'm1' });
+    });
+
+    it('trocar a casa limpa o ministério da casa anterior', async () => {
+      const onSubmit = vi.fn();
+      render(
+        <AdmissionHarness
+          defaults={{ entryDate: '2026-01-10', exitDate: '', houseId: 'h1', ministryId: 'm1' }}
+          onSubmit={onSubmit}
+        />,
+      );
+      expect(ministrySelect()!.value).toBe('m1');
+      fireEvent.change(screen.getByDisplayValue('Casa Belém'), { target: { value: 'h2' } });
+      await waitFor(() => expect(ministrySelect()!.value).toBe(''));
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(onSubmit.mock.calls[0][0]).toMatchObject({ houseId: 'h2', ministryId: '' });
+    });
+
+    it('filho fora de acolhimento (alta) não tem o campo e o valor é limpo', async () => {
+      const onSubmit = vi.fn();
+      render(
+        <AdmissionHarness
+          showStatus
+          defaults={{ entryDate: '2026-01-10', exitDate: '', houseId: 'h1', ministryId: 'm1', status: 'DISCHARGED' }}
+          onSubmit={onSubmit}
+        />,
+      );
+      expect(ministrySelect()).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(onSubmit.mock.calls[0][0]).toMatchObject({ ministryId: '' });
+      expect(ministryHook).toHaveBeenCalledWith('h1', { enabled: false });
+    });
+
+    it.each(['ACTIVE', 'DISCIPLINE', 'TEMP_LEAVE'])('status %s mostra o campo', (status) => {
+      render(
+        <AdmissionHarness showStatus defaults={{ entryDate: '2026-01-10', exitDate: '', houseId: 'h1', status }} />,
+      );
+      expect(ministrySelect()).not.toBeNull();
+    });
   });
 
   it('first payment pago exibe o slot fornecido', () => {

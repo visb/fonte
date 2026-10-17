@@ -1,7 +1,11 @@
-import { Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useUpdateMinistry } from '../hooks/useMinistries';
+import type { MinistryLeaderType } from '@fonte/api-client';
+import { useMinistryEligibleResidents, useUpdateMinistry } from '../hooks/useMinistries';
 import { useHouseStaff } from '@/features/staff/hooks/useHouseStaff';
+import { OfflineNotice } from '@/components/shared/OfflineNotice';
+import { useIsOnline } from '@/lib/offline/network';
+import { LeaderOptions, type LeaderChoice } from './LeaderOptions';
 
 interface Props {
   visible: boolean;
@@ -9,14 +13,27 @@ interface Props {
   ministryId: string;
   houseId: string;
   currentLeaderId: string | null;
+  currentLeaderType?: MinistryLeaderType | null;
 }
 
-export function LeaderPickerModal({ visible, onClose, ministryId, houseId, currentLeaderId }: Props) {
+// Story 205: filho em acolhimento da casa volta a poder liderar. Trocar o líder
+// exige rede (decisão 9).
+export function LeaderPickerModal({
+  visible, onClose, ministryId, houseId, currentLeaderId, currentLeaderType = null,
+}: Props) {
   const { data: allStaff = [] } = useHouseStaff(houseId);
+  const { data: residents = [] } = useMinistryEligibleResidents(visible ? houseId : undefined);
   const updateMinistry = useUpdateMinistry(ministryId, houseId);
+  const isOnline = useIsOnline();
 
-  function handleSelect(leaderId: string | null, leaderType: 'STAFF' | null) {
-    updateMinistry.mutate({ leaderId, leaderType }, { onSuccess: onClose });
+  const selected: LeaderChoice | null =
+    currentLeaderId && currentLeaderType ? { id: currentLeaderId, type: currentLeaderType } : null;
+
+  function handleSelect(choice: LeaderChoice | null) {
+    updateMinistry.mutate(
+      { leaderId: choice?.id ?? null, leaderType: choice?.type ?? null },
+      { onSuccess: onClose },
+    );
   }
 
   return (
@@ -31,21 +48,14 @@ export function LeaderPickerModal({ visible, onClose, ministryId, houseId, curre
             </Pressable>
           </View>
           <ScrollView className="px-5" contentContainerClassName="py-4 gap-2">
-            <TouchableOpacity
-              className="py-3 px-4 rounded-xl border border-gray-200"
-              onPress={() => handleSelect(null, null)}
-            >
-              <Text className="text-sm text-gray-500">— Sem líder</Text>
-            </TouchableOpacity>
-            {allStaff.map((s) => (
-              <TouchableOpacity
-                key={s.id}
-                className={`py-3 px-4 rounded-xl border ${currentLeaderId === s.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}
-                onPress={() => handleSelect(s.id, 'STAFF')}
-              >
-                <Text className="text-sm text-gray-900">{s.name}</Text>
-              </TouchableOpacity>
-            ))}
+            {!isOnline && <OfflineNotice message="Precisa de conexão para trocar o líder." />}
+            <LeaderOptions
+              staff={allStaff}
+              residents={residents}
+              selected={selected}
+              onSelect={handleSelect}
+              disabled={!isOnline || updateMinistry.isPending}
+            />
           </ScrollView>
         </View>
       </View>

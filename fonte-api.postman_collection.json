@@ -863,7 +863,7 @@
           "name": "Get House Ministries",
           "request": {
             "method": "GET",
-            "description": "Ministérios da casa com líder (servo) e `servoCount`. Desde a story 197 não existe `filhoCount`: a contagem exibida é a de servos.",
+            "description": "Ministérios da casa com líder (servo ou filho: `leaderType`, `leaderName`) e contagens separadas `servoCount` e `filhoCount` (story 205). `filhoCount` conta só filhos em acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE) na casa do ministério.",
             "url": {
               "raw": "{{baseUrl}}/houses/{{houseId}}/ministries",
               "host": [
@@ -1120,7 +1120,7 @@
                 "residents"
               ]
             },
-            "description": "houseId é opcional quando status = ARCHIVED (import em lote de ficha fora da planilha, casa desconhecida); obrigatório para os demais status.\n\nStory 202 — `birthDate`, quando informado, exige 18 anos completos HOJE (data no fuso America/Sao_Paulo). Menor → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }` e nada é persistido. Nulo/ausente passa (campo opcional).\n\nStory 203 — datas de entrada e saída (\"hoje\" no fuso America/Sao_Paulo; hoje é permitido): `entryDate` futura → 400 `{ \"statusCode\": 400, \"message\": \"A data de entrada não pode ser no futuro.\" }`; `exitDate` antes da entrada → 400 `\"A data de saída não pode ser anterior à data de entrada (dd/mm/aaaa).\"` (mesmo dia passa); `exitDate` futura → 400 `\"A data de saída não pode ser no futuro.\"`. Nada é persistido. Vale também para a contagem do ops (`POST /census/residents`)."
+            "description": "houseId é opcional quando status = ARCHIVED (import em lote de ficha fora da planilha, casa desconhecida); obrigatório para os demais status.\n\nStory 202 — `birthDate`, quando informado, exige 18 anos completos HOJE (data no fuso America/Sao_Paulo). Menor → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }` e nada é persistido. Nulo/ausente passa (campo opcional).\n\nStory 203 — datas de entrada e saída (\"hoje\" no fuso America/Sao_Paulo; hoje é permitido): `entryDate` futura → 400 `{ \"statusCode\": 400, \"message\": \"A data de entrada não pode ser no futuro.\" }`; `exitDate` antes da entrada → 400 `\"A data de saída não pode ser anterior à data de entrada (dd/mm/aaaa).\"` (mesmo dia passa); `exitDate` futura → 400 `\"A data de saída não pode ser no futuro.\"`. Nada é persistido. Vale também para a contagem do ops (`POST /census/residents`).\n\nStory 205 — `ministryId` (UUID, opcional) grava o ministério no filho e no acolhimento. Só vale para filho em acolhimento (status ACTIVE/DISCIPLINE/TEMP_LEAVE; ausente = PRE_ADMISSION) na casa do ministério; caso contrário 400 `\"Só filho em acolhimento nesta casa pode participar do ministério.\"`. No import em lote (`POST /residents/import/commit`), ficha fora de acolhimento (ARCHIVED, alta, evasão) é importada SEM ministério em vez de recusada."
           }
         },
         {
@@ -1153,7 +1153,7 @@
                 "{{residentId}}"
               ]
             },
-            "description": "ADMIN e COORDINATOR (SERVANT recebe 403).\n\nStory 196 — guard de transição de saída: status DISCHARGED ou EVADED só é aceito a partir de ACTIVE, DISCIPLINE ou TEMP_LEAVE (REMOVABLE_RESIDENT_STATUSES). A partir de qualquer outro status (DISCHARGED, EVADED, ARCHIVED, PRE_ADMISSION, CENSUS_ADDED, REJECTED_CENSUS) a resposta é 400 com a mensagem por status de origem — ex.: `{ \"statusCode\": 400, \"message\": \"Filho já encerrado (evasão) não pode receber alta.\" }`. Nada é gravado e nenhum efeito (follow-up, cancelamento do carnê, notificação) é disparado.\n\nReenviar o MESMO status que o filho já tem continua 200 (reenvio idempotente da fila offline do ops). Mudar apenas `houseId` (transferência) não é restringido.\n\nStory 202 — `birthDate` só é julgado quando vem no payload E difere do gravado: nova data sem 18 anos completos hoje (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`, sem gravar nem disparar efeitos. Ficha legada com nascimento de menor continua salvável editando outros campos (ou reenviando a mesma data).\n\nStory 203 — `entryDate`/`exitDate` só são julgadas quando vêm no payload E diferem das gravadas; aí o par resultante (gravado ∪ payload) é checado: entrada futura → 400 `\"A data de entrada não pode ser no futuro.\"`; saída (alta/evasão) antes da entrada → 400 `\"A data de saída não pode ser anterior à data de entrada (dd/mm/aaaa).\"`; saída futura → 400 `\"A data de saída não pode ser no futuro.\"`. A recusa vem antes de gravar, do follow-up, do `cancelAfterExit` e da notificação. O guard de transição (story 196) é avaliado primeiro. Reenvio idempotente com as mesmas datas e ficha legada sem datas no payload → 200."
+            "description": "ADMIN e COORDINATOR (SERVANT recebe 403).\n\nStory 196 — guard de transição de saída: status DISCHARGED ou EVADED só é aceito a partir de ACTIVE, DISCIPLINE ou TEMP_LEAVE (REMOVABLE_RESIDENT_STATUSES). A partir de qualquer outro status (DISCHARGED, EVADED, ARCHIVED, PRE_ADMISSION, CENSUS_ADDED, REJECTED_CENSUS) a resposta é 400 com a mensagem por status de origem — ex.: `{ \"statusCode\": 400, \"message\": \"Filho já encerrado (evasão) não pode receber alta.\" }`. Nada é gravado e nenhum efeito (follow-up, cancelamento do carnê, notificação) é disparado.\n\nReenviar o MESMO status que o filho já tem continua 200 (reenvio idempotente da fila offline do ops). Mudar apenas `houseId` (transferência) não é restringido.\n\nStory 202 — `birthDate` só é julgado quando vem no payload E difere do gravado: nova data sem 18 anos completos hoje (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`, sem gravar nem disparar efeitos. Ficha legada com nascimento de menor continua salvável editando outros campos (ou reenviando a mesma data).\n\nStory 203 — `entryDate`/`exitDate` só são julgadas quando vêm no payload E diferem das gravadas; aí o par resultante (gravado ∪ payload) é checado: entrada futura → 400 `\"A data de entrada não pode ser no futuro.\"`; saída (alta/evasão) antes da entrada → 400 `\"A data de saída não pode ser anterior à data de entrada (dd/mm/aaaa).\"`; saída futura → 400 `\"A data de saída não pode ser no futuro.\"`. A recusa vem antes de gravar, do follow-up, do `cancelAfterExit` e da notificação. O guard de transição (story 196) é avaliado primeiro. Reenvio idempotente com as mesmas datas e ficha legada sem datas no payload → 200.\n\nStory 205 — ministério na ficha: `ministryId` (UUID ou null) troca/tira o ministério e emite `MINISTRY_CHANGE` na linha do tempo. O estado resultante é validado: filho fora de acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE) ou ministério de outra casa/excluído → 400 `\"Só filho em acolhimento nesta casa pode participar do ministério.\"`. Saída da comunidade (status fora de acolhimento, ex.: alta/evasão) ou transferência (`houseId` novo) zera `ministryId` (filho e acolhimento) e a liderança de ministério, na mesma transação, e emite `MINISTRY_CHANGE`. Transição recusada pelo guard da 196/203 não limpa nada. Readmissão volta sem ministério."
           }
         },
         {
@@ -2386,7 +2386,7 @@
           "name": "Get Ministry by ID",
           "request": {
             "method": "GET",
-            "description": "Detalhe do ministério: líder (sempre servo), `members` (só role SERVO) e tarefas. Desde a story 197 o ministério não tem filho como membro nem como líder — a resposta não traz `residents`.",
+            "description": "Detalhe do ministério: líder (`leaderType` \"STAFF\" ou \"RESIDENT\", com `leaderName`) e `members` com role FILHO ou SERVO. Story 205: só aparecem como FILHO os filhos em acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE) na casa do ministério.",
             "url": {
               "raw": "{{baseUrl}}/ministries/{{ministryId}}",
               "host": [
@@ -2403,7 +2403,7 @@
           "name": "Update Ministry",
           "request": {
             "method": "PATCH",
-            "description": "Atualiza nome e/ou líder. `leaderType` aceita apenas \"STAFF\" ou null: desde a story 197 ministério só é liderado por servo, e `\"leaderType\": \"RESIDENT\"` responde 400 (\"Ministério só pode ser liderado por um servo.\") sem persistir nada.",
+            "description": "Atualiza nome e/ou líder. `leaderType` aceita \"STAFF\", \"RESIDENT\" ou null. Story 205: filho só lidera se estiver em acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE) na casa do ministério — caso contrário responde 400 (\"Só filho em acolhimento nesta casa pode participar do ministério.\") sem persistir nada; filho inexistente → 404. Alta, evasão ou transferência do filho zeram a liderança automaticamente.",
             "header": [
               {
                 "key": "Content-Type",
@@ -2427,9 +2427,20 @@
           }
         },
         {
-          "name": "Delete Ministry",
+          "name": "Update Ministry — leader RESIDENT",
           "request": {
-            "method": "DELETE",
+            "method": "PATCH",
+            "description": "Story 205: define um filho em acolhimento na casa do ministério como líder. Filho fora de acolhimento (DISCHARGED, EVADED, ARCHIVED, PRE_ADMISSION...) ou de outra casa → 400 \"Só filho em acolhimento nesta casa pode participar do ministério.\".",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leaderId\": \"{{residentId}}\",\n  \"leaderType\": \"RESIDENT\"\n}"
+            },
             "url": {
               "raw": "{{baseUrl}}/ministries/{{ministryId}}",
               "host": [
@@ -2438,6 +2449,70 @@
               "path": [
                 "ministries",
                 "{{ministryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Ministry",
+          "request": {
+            "method": "DELETE",
+            "description": "Soft delete do ministério (ADMIN, COORDINATOR). Story 205: os filhos que estavam nele ficam sem ministério (`residents.ministry_id` zerado).",
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Resident to Ministry",
+          "request": {
+            "method": "POST",
+            "description": "Story 205 (contrato pré-197): coloca o filho no ministério (ADMIN, COORDINATOR, SERVANT). 204 sem corpo. Só filho em acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE) na casa do ministério; caso contrário 400 \"Só filho em acolhimento nesta casa pode participar do ministério.\". Ministério ou filho inexistente → 404. `residentId` não-UUID → 400.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"residentId\": \"{{residentId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}/residents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}",
+                "residents"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove Resident from Ministry",
+          "request": {
+            "method": "DELETE",
+            "description": "Story 205 (contrato pré-197): tira o filho do ministério (ADMIN, COORDINATOR, SERVANT). 204 sem corpo; idempotente (filho que não está no ministério não é alterado).",
+            "url": {
+              "raw": "{{baseUrl}}/ministries/{{ministryId}}/residents/{{residentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ministries",
+                "{{ministryId}}",
+                "residents",
+                "{{residentId}}"
               ]
             }
           }

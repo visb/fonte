@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 
 const mutate = vi.fn();
-let mutState = { isPending: false };
+let mutState: { isPending: boolean; isError?: boolean; error?: unknown } = { isPending: false };
 
 const leaderProps: Record<string, unknown>[] = [];
 
@@ -14,8 +14,8 @@ vi.mock('../LeaderAutocomplete', () => ({
 }));
 vi.mock('../../hooks/useHouseMinistries', () => ({
   useUpdateMinistryLeader: () => ({ mutate, ...mutState }),
+  useMinistryEligibleResidents: () => ({ data: [{ id: 'r1', name: 'Filho Ana', status: 'ACTIVE' }] }),
 }));
-// Story 197: o dialog não busca mais filhos — só servo lidera ministério.
 vi.mock('../../hooks/useHouses', () => ({
   useHouseStaff: () => ({ data: [{ id: 's1', name: 'Servo João' }] }),
 }));
@@ -49,17 +49,33 @@ describe('EditMinistryLeaderDialog', () => {
     render(<EditMinistryLeaderDialog ministry={ministry} houseId="h1" onClose={onClose} />);
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     await waitFor(() => expect(mutate).toHaveBeenCalled());
-    expect(mutate.mock.calls[0][0].ministryId).toBe('m1');
+    expect(mutate.mock.calls[0][0]).toMatchObject({ ministryId: 'm1', leaderId: 's1', leaderType: 'STAFF' });
     expect(onClose).toHaveBeenCalled();
   });
 
-  // Decisão 3: nenhum caminho para escolher filho como líder.
-  it('oferece só servos ao autocomplete de líder', () => {
-    render(<EditMinistryLeaderDialog ministry={ministry} houseId="h1" onClose={vi.fn()} />);
+  // Story 205: filho em acolhimento volta a poder liderar.
+  it('oferece servos e filhos elegíveis ao autocomplete e preserva o tipo do líder', () => {
+    render(
+      <EditMinistryLeaderDialog
+        ministry={{ id: 'm1', name: 'Cozinha', leaderId: 'r1', leaderType: 'RESIDENT' } as never}
+        houseId="h1"
+        onClose={vi.fn()}
+      />,
+    );
     const props = leaderProps.at(-1)!;
     expect(props.staff).toEqual([{ id: 's1', name: 'Servo João' }]);
-    expect(props).not.toHaveProperty('residents');
-    expect(props).not.toHaveProperty('selectedType');
+    expect(props.residents).toEqual([{ id: 'r1', name: 'Filho Ana', status: 'ACTIVE' }]);
+    expect(props.selectedType).toBe('RESIDENT');
+  });
+
+  it('erro do backend (400 de filho fora de acolhimento) aparece no dialog', () => {
+    mutState = {
+      isPending: false,
+      isError: true,
+      error: { response: { data: { message: 'Só filho em acolhimento nesta casa pode participar do ministério.' } } },
+    };
+    render(<EditMinistryLeaderDialog ministry={ministry} houseId="h1" onClose={vi.fn()} />);
+    expect(screen.getByText(/Só filho em acolhimento nesta casa/)).toBeInTheDocument();
   });
 
   it('cancelar dispara onClose', () => {

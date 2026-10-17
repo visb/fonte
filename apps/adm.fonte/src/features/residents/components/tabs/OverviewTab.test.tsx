@@ -74,11 +74,16 @@ describe('OverviewTab', () => {
     expect(screen.getByText('Casa Belém')).toBeInTheDocument();
   });
 
-  // Story 197: o filho não tem mais ministério — a linha saiu do bloco de
-  // admissão em vez de ficar exibindo um travessão eterno.
-  it('não mostra a linha "Ministério"', () => {
-    render(<OverviewTab resident={res()} />);
-    expect(screen.queryByText('Ministério')).not.toBeInTheDocument();
+  // Story 205: a linha "Ministério" volta ao bloco de admissão.
+  it('mostra a linha "Ministério" com o nome do ministério', () => {
+    render(<OverviewTab resident={res({ ministry: { id: 'm1', name: 'Cozinha' } } as never)} />);
+    expect(screen.getByText('Ministério')).toBeInTheDocument();
+    expect(screen.getByText('Cozinha')).toBeInTheDocument();
+  });
+
+  it('filho sem ministério mostra travessão na linha "Ministério"', () => {
+    render(<OverviewTab resident={res({ ministry: null } as never)} />);
+    expect(screen.getByText('Ministério')).toBeInTheDocument();
   });
 
   it('valores vazios viram travessão', () => {

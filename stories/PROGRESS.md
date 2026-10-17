@@ -86,7 +86,7 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 | 8 | 207 — Nível do servo no ops | [OK] | api 2010 + e2e 674; ops 1477 + e2e-web 28; api-client 308 | c545d17 | c035470 |
 | 9 | 208 — Atividades em colunas no ops | [OK] | ops 1502 + e2e-web 29 | 63f2302 | a78aa78 |
 | 10 | 209 — Campos de data digitáveis no ops | [OK] | ops 1567 + e2e-web 30 | 05e1616 | f4c3ef1 |
-| 11 | 210 — Estado civil: união estável e viúvo(a) | [ ] | | | |
+| 11 | 210 — Estado civil: união estável e viúvo(a) | [OK] | api 2060 + e2e 680; adm 1931 + e2e 59/66 (7 pré-existentes) | 9b42731 | 59dacad |
 | 12 | 211 — Rascunho automático do acolhimento | [ ] | | | |
 | 13 | 212 — Tipo do template de recibo + nome do arquivo | [ ] | | | |
 | 14 | 199 — Auditoria de ações dos usuários | [ ] | | | |
@@ -110,6 +110,8 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 - [OK] 207 — testes: api unit 2010 (93.3%), api e2e 674/674, api-client 308, ops unit 1477 (95.5%), ops e2e-web 28/28 — commit: c545d17 — merge: c035470 — 2026-10-17 — Maestro `dashboard.yaml` PENDENTE-MANUAL (exige `pnpm test:setup`: seed-test agora dá rank CONSAGRADO ao Operador).
 - [OK] 208 — testes: ops unit 1502 (código novo 100% linhas), ops e2e-web 29/29 — commit: 63f2302 — merge: a78aa78 — 2026-10-17 — Maestro `activities.yaml` PENDENTE-MANUAL (nunca executado; usa http do Maestro em 10.0.2.2:3001).
 - [OK] 209 — testes: ops unit 1567 (97.0% lines; código novo 98–100%), ops e2e-web 30/30 (inclui contagem offline digitando datas); payloads/mutationKey da fila inalterados — commit: 05e1616 — merge: f4c3ef1 — 2026-10-17 — Maestro `census.yaml`/`storeroom.yaml` PENDENTE-MANUAL.
+- [OK] 210 — testes: api unit 2060 (94.9%), api e2e 680/680, adm unit 1931 (97.3%), adm e2e residents 33/40 (7 = pré-existentes João Testador) + staff/doc-templates 26/26; migration up/revert/up só no test — commit: 9b42731 — merge: 59dacad — 2026-10-17.
+  Nota: `ADD VALUE` ficou na transação padrão (PG16 ok se o valor não é usado na mesma tx) — se uma migration futura usar os valores novos no mesmo `migration:run` de prod, quebra; `down` zera os valores novos para NULL.
 
 ## Resumo final
 

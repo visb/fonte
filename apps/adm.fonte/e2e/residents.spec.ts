@@ -418,6 +418,34 @@ test.describe('Filhos (Residentes)', () => {
     }
   });
 
+  // Story 210: estado civil "União estável" — escolhido na edição, salvo e
+  // rotulado na ficha. Fixture própria via API, removida no finally (story 182).
+  test('edição grava estado civil "União estável" e a ficha mostra o rótulo', async ({ page, request }) => {
+    const token = await loginApi(request);
+    const resident = await createResident(request, token, {
+      name: `Filho União Estável ${Date.now()}`,
+      status: 'ACTIVE',
+    });
+
+    try {
+      await page.goto(`/residents/${resident.id}/edit`);
+      const marital = page.locator('select[name="maritalStatus"]');
+      await expect(marital).toBeVisible();
+      await expect(marital.locator('option')).toHaveText([
+        'Selecione', 'Solteiro(a)', 'Casado(a)', 'União estável', 'Divorciado(a)', 'Viúvo(a)',
+      ]);
+      await marital.selectOption({ label: 'União estável' });
+      await page.getByRole('button', { name: 'Salvar' }).click();
+      await expect(page).not.toHaveURL(/\/edit$/);
+
+      await page.goto(`/residents/${resident.id}`);
+      await expect(page.getByRole('button', { name: 'Visão Geral' })).toBeVisible();
+      await expect(page.getByText('União estável', { exact: true })).toBeVisible();
+    } finally {
+      await deleteResident(request, token, resident.id);
+    }
+  });
+
   test('edita residente existente', async ({ page }) => {
     // Cria residente próprio para não afetar dados do seed
     const name = `Residente Para Editar ${Date.now()}`;

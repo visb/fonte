@@ -537,6 +537,20 @@ describe('DocumentTemplateService.renderForResident', () => {
     expect(html).toContain('Resp: Maria (Mãe)');
   });
 
+  it.each([
+    ['STABLE_UNION', 'União estável'],
+    ['WIDOWED', 'Viúvo(a)'],
+  ])('maps marital status %s to "%s" (story 210)', async (status, label) => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: 'Estado: {{maritalStatus}}' }),
+    });
+    const service = makeService(repo, makeRepo({ findOne: jest.fn().mockResolvedValue(null) }));
+
+    const resident = { id: 'res-1', name: 'João', maritalStatus: status } as unknown as Resident;
+    const html = await service.renderForResident('tpl-1', resident);
+    expect(html).toContain(`Estado: ${label}`);
+  });
+
   it('falls back to "não informado" for missing fields', async () => {
     const repo = makeRepo({
       findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: 'RG: {{rg}}' }),

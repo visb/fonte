@@ -68,6 +68,15 @@ describe('ReadmissionForm', () => {
     expect(screen.getByTestId('avatar-upload')).toBeInTheDocument();
   });
 
+  // Story 210 — o select de estado civil traz as 5 opções na ordem de exibição.
+  it('select de estado civil lista as 5 opções em ordem', () => {
+    renderForm();
+    const select = document.querySelector('select[name="maritalStatus"]') as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.text)).toEqual([
+      'Selecione', 'Solteiro(a)', 'Casado(a)', 'União estável', 'Divorciado(a)', 'Viúvo(a)',
+    ]);
+  });
+
   it('mostra o CPF completo formatado quando o backend entrega o dígito cru (ADMIN/COORDINATOR)', () => {
     renderForm();
     // resident.cpf = '12345678900' → displayCpf → formatado, nunca truncado

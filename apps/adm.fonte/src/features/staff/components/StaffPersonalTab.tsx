@@ -5,7 +5,8 @@ import {
   type Path,
   type UseFormRegister,
 } from 'react-hook-form';
-import { Gender, MaritalStatus } from '@fonte/types';
+import { Gender } from '@fonte/types';
+import { MARITAL_STATUS_OPTIONS } from '@/lib/maritalStatus';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/shared/FormField';
@@ -50,9 +51,9 @@ export function StaffPersonalTab<T extends FieldValues>({ register, control, err
       <FormField label="Estado civil" error={errMsg('maritalStatus')}>
         <Select {...f('maritalStatus')}>
           <option value="">Selecione</option>
-          <option value={MaritalStatus.SINGLE}>Solteiro(a)</option>
-          <option value={MaritalStatus.MARRIED}>Casado(a)</option>
-          <option value={MaritalStatus.DIVORCED}>Divorciado(a)</option>
+          {MARITAL_STATUS_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
         </Select>
       </FormField>
       <FormField label="Filhos" error={errMsg('children')}>

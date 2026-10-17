@@ -5,7 +5,7 @@ import * as mammoth from 'mammoth';
 // jszip is CommonJS and the project does not enable esModuleInterop, so a default
 // import resolves to `undefined` at runtime — use a namespace import instead.
 import * as JSZip from 'jszip';
-import { ImportAdmission } from '@fonte/types';
+import { ImportAdmission, MaritalStatus } from '@fonte/types';
 
 // Image media types the vision model accepts. EMF/WMF and other vector formats
 // embedded by Word are skipped.
@@ -40,7 +40,7 @@ export interface ParseDocxResident {
   city: string | null;
   state: string | null;
   address: string | null;
-  maritalStatus: 'SINGLE' | 'MARRIED' | 'DIVORCED' | null;
+  maritalStatus: MaritalStatus | null;
   children: string | null;
   occupation: string | null;
   education: string | null;
@@ -99,7 +99,7 @@ Retorne um JSON com esta estrutura exata:
     "city": "string | null",
     "state": "string | null (sigla UF, ex: SP)",
     "address": "string | null",
-    "maritalStatus": "SINGLE | MARRIED | DIVORCED | null",
+    "maritalStatus": "SINGLE | MARRIED | STABLE_UNION | DIVORCED | WIDOWED | null",
     "children": "string | null (número como string)",
     "occupation": "string | null",
     "education": "string | null",
@@ -142,7 +142,8 @@ Mapeamento de campos (modelo "FICHA DE ACOLHIMENTO - FILHO|RESIDENTE"):
     state = sigla UF de 2 letras no final (ex: SC); city = município antes da UF (ex: Balneário Camboriú);
     address = logradouro/número/complemento (sem cidade e UF).
   Se houver linhas separadas "CIDADE"/"MUNICÍPIO" e "UF"/"ESTADO", use-as diretamente.
-- "ESTADO CIVIL" (Solteiro→SINGLE, Casado→MARRIED, Divorciado/Separado→DIVORCED) → maritalStatus
+- "ESTADO CIVIL" (Solteiro→SINGLE, Casado→MARRIED, União estável/Amasiado/Convivente/Companheiro→STABLE_UNION,
+  Divorciado/Separado→DIVORCED, Viúvo→WIDOWED) → maritalStatus
 - "FILHOS" → children (número como string)
 - "PROFISSÃO" ou "PROF" → occupation
 - "TELEFONE DE CONTATO" ou "TELEFONE" → relatives + contactPhone. Múltiplos separados por "/" ou "|".
@@ -309,8 +310,42 @@ export class DocxParserService {
     const photoBase64 = photo ? `data:${photo.mime};base64,${photo.base64}` : null;
 
     delete parsed.photoImageIndex;
-    return { ...parsed, warnings: sanitizeWarnings(parsed.warnings), rawText, photoBase64 };
+    const resident = parsed.resident ?? {};
+    if ('maritalStatus' in resident) {
+      resident.maritalStatus = normalizeMaritalStatus(resident.maritalStatus);
+    }
+    return { ...parsed, resident, warnings: sanitizeWarnings(parsed.warnings), rawText, photoBase64 };
   }
+}
+
+// Ordem importa: "união estável" antes de "casad" (nada colide hoje, mas o
+// mais específico vem primeiro) e "separad" cai em DIVORCED (story 210).
+const MARITAL_STATUS_PATTERNS: Array<[RegExp, MaritalStatus]> = [
+  [/uniao estavel|amasiad|convivente|companheir/, MaritalStatus.STABLE_UNION],
+  [/viuv/, MaritalStatus.WIDOWED],
+  [/divorciad|separad/, MaritalStatus.DIVORCED],
+  [/casad/, MaritalStatus.MARRIED],
+  [/solteir/, MaritalStatus.SINGLE],
+];
+
+/**
+ * Rede de segurança do estado civil vindo da IA: aceita o código do enum ou o
+ * texto da ficha ("União estável", "Amasiado", "Viúva"...) e devolve o valor
+ * do `MaritalStatus`. Texto não reconhecido vira `null` — nunca um valor que o
+ * banco rejeitaria no commit do import.
+ */
+export function normalizeMaritalStatus(value: unknown): MaritalStatus | null {
+  if (typeof value !== 'string') return null;
+  const raw = value.trim();
+  if (!raw) return null;
+  const upper = raw.toUpperCase();
+  if ((Object.values(MaritalStatus) as string[]).includes(upper)) return upper as MaritalStatus;
+  const text = raw
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+  const hit = MARITAL_STATUS_PATTERNS.find(([pattern]) => pattern.test(text));
+  return hit ? hit[1] : null;
 }
 
 /**

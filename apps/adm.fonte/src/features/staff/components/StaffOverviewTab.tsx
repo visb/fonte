@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { ExternalLink } from 'lucide-react';
-import { Gender, MaritalStatus, Role } from '@fonte/types';
+import { Gender, Role } from '@fonte/types';
 import type { Staff } from '@fonte/api-client';
 import { cn } from '@/lib/utils';
+import { maritalStatusLabel } from '@/lib/maritalStatus';
 import { Badge } from '@/components/ui/badge';
 import { displayCpf, displayRg, maskPhone } from '@/lib/masks';
 import { SERVANT_RANK_LABELS, SERVANT_RANK_VARIANT } from '../constants';
@@ -16,12 +17,6 @@ const ROLE_LABELS: Record<string, string> = {
 const GENDER_LABELS: Record<string, string> = {
   [Gender.MALE]: 'Masculino',
   [Gender.FEMALE]: 'Feminino',
-};
-
-const MARITAL_LABELS: Record<string, string> = {
-  [MaritalStatus.SINGLE]: 'Solteiro(a)',
-  [MaritalStatus.MARRIED]: 'Casado(a)',
-  [MaritalStatus.DIVORCED]: 'Divorciado(a)',
 };
 
 function formatDate(iso: string | null): string {
@@ -108,7 +103,7 @@ export function StaffOverviewTab({ staff }: Props) {
       <InfoGrid>
         <InfoRow
           label="Estado civil"
-          value={staff.maritalStatus ? (MARITAL_LABELS[staff.maritalStatus] ?? staff.maritalStatus) : '—'}
+          value={maritalStatusLabel(staff.maritalStatus)}
         />
         <InfoRow label="Filhos" value={String(staff.children ?? 0)} />
         <InfoRow label="Ocupação" value={val(staff.occupation)} />

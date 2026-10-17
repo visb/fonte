@@ -108,4 +108,13 @@ describe('StaffOverviewTab', () => {
     renderTab(makeStaff({ cpf: '98765432100' }));
     expect(screen.getByText('987.654.321-00')).toBeInTheDocument();
   });
+
+  // Story 210 — rótulos novos do estado civil.
+  it.each([
+    [MaritalStatus.STABLE_UNION, 'União estável'],
+    [MaritalStatus.WIDOWED, 'Viúvo(a)'],
+  ])('estado civil %s aparece como "%s"', (maritalStatus, label) => {
+    renderTab(makeStaff({ maritalStatus }));
+    expect(screen.getByText(label)).toBeInTheDocument();
+  });
 });

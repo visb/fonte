@@ -12,7 +12,8 @@ jest.mock('mammoth', () => ({ extractRawText: (...a: unknown[]) => extractRawTex
 const loadAsync = jest.fn();
 jest.mock('jszip', () => ({ loadAsync: (...a: unknown[]) => loadAsync(...a) }));
 
-import { DocxParserService } from './docx-parser.service';
+import { MaritalStatus } from '@fonte/types';
+import { DocxParserService, normalizeMaritalStatus } from './docx-parser.service';
 
 function makeService(apiKey: string | null = 'key') {
   const config = { get: jest.fn().mockReturnValue(apiKey ?? undefined) };
@@ -110,6 +111,18 @@ describe('DocxParserService.parseDocx', () => {
     expect(out.warnings.weight).not.toContain('null');
   });
 
+  it('normalizes the marital status returned by the model (story 210)', async () => {
+    modelReturns({ resident: { maritalStatus: 'União estável' }, relatives: [], warnings: {}, houseName: 'C' });
+    const out = await makeService().parseDocx(Buffer.from('x'));
+    expect(out.resident.maritalStatus).toBe(MaritalStatus.STABLE_UNION);
+  });
+
+  it('keeps resident without maritalStatus key untouched', async () => {
+    modelReturns({ resident: { name: 'Ana' }, relatives: [], warnings: {}, houseName: 'C' });
+    const out = await makeService().parseDocx(Buffer.from('x'));
+    expect('maritalStatus' in out.resident).toBe(false);
+  });
+
   it('returns no images when the zip is corrupt', async () => {
     loadAsync.mockRejectedValue(new Error('bad zip'));
     modelReturns({ resident: {}, relatives: [], warnings: {}, houseName: 'C', photoImageIndex: 0 });
@@ -117,5 +130,31 @@ describe('DocxParserService.parseDocx', () => {
     const out = await service.parseDocx(Buffer.from('x'));
     // no images extracted => index 0 is out of range => no photo
     expect(out.photoBase64).toBeNull();
+  });
+});
+
+describe('normalizeMaritalStatus (story 210)', () => {
+  it.each([
+    ['União estável', MaritalStatus.STABLE_UNION],
+    ['UNIAO ESTAVEL', MaritalStatus.STABLE_UNION],
+    ['Amasiado', MaritalStatus.STABLE_UNION],
+    ['amasiada', MaritalStatus.STABLE_UNION],
+    ['Convivente', MaritalStatus.STABLE_UNION],
+    ['Companheira', MaritalStatus.STABLE_UNION],
+    ['Viúvo', MaritalStatus.WIDOWED],
+    ['viuva', MaritalStatus.WIDOWED],
+    ['Solteiro', MaritalStatus.SINGLE],
+    ['Casado', MaritalStatus.MARRIED],
+    ['Divorciado', MaritalStatus.DIVORCED],
+    ['Separado', MaritalStatus.DIVORCED],
+    ['STABLE_UNION', MaritalStatus.STABLE_UNION],
+    ['widowed', MaritalStatus.WIDOWED],
+    ['SINGLE', MaritalStatus.SINGLE],
+  ])('maps %p to %p', (input, expected) => {
+    expect(normalizeMaritalStatus(input)).toBe(expected);
+  });
+
+  it.each([[null], [undefined], [''], ['   '], ['Desconhecido'], [42]])('returns null for %p', (input) => {
+    expect(normalizeMaritalStatus(input)).toBeNull();
   });
 });

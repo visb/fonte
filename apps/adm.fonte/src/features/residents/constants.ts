@@ -1,4 +1,4 @@
-import { FamilyInvestment, FollowUpAccessLevel, FollowUpType, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
+import { FamilyInvestment, FollowUpAccessLevel, FollowUpType, Gender, ResidentStatus } from '@fonte/types';
 import type { BadgeProps } from '@/components/ui/badge';
 
 /**
@@ -17,11 +17,8 @@ export const GENDER_LABELS: Record<Gender, string> = {
   [Gender.FEMALE]: 'Feminino',
 };
 
-export const MARITAL_STATUS_LABELS: Record<MaritalStatus, string> = {
-  [MaritalStatus.SINGLE]: 'Solteiro(a)',
-  [MaritalStatus.MARRIED]: 'Casado(a)',
-  [MaritalStatus.DIVORCED]: 'Divorciado(a)',
-};
+// Story 210 — fonte única em `@/lib/maritalStatus`; reexport mantém o import antigo.
+export { MARITAL_STATUS_LABELS } from '@/lib/maritalStatus';
 
 export const RESIDENT_STATUS_LABELS: Record<ResidentStatus, string> = {
   [ResidentStatus.PRE_ADMISSION]: 'Pré-admissão',

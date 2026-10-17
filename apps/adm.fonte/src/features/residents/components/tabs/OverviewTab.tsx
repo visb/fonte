@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { KeyRound } from 'lucide-react';
-import { FamilyInvestment, Gender, MaritalStatus } from '@fonte/types';
+import { FamilyInvestment, Gender } from '@fonte/types';
 import { RESIDENT_APP_ENABLED } from '@/config/features';
+import { maritalStatusLabel } from '@/lib/maritalStatus';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { displayCpf, displayRg, maskPhone } from '@/lib/masks';
@@ -15,12 +16,6 @@ import type { Resident } from '@fonte/api-client';
 const GENDER_LABELS: Record<string, string> = {
   [Gender.MALE]: 'Masculino',
   [Gender.FEMALE]: 'Feminino',
-};
-
-const MARITAL_LABELS: Record<string, string> = {
-  [MaritalStatus.SINGLE]: 'Solteiro(a)',
-  [MaritalStatus.MARRIED]: 'Casado(a)',
-  [MaritalStatus.DIVORCED]: 'Divorciado(a)',
 };
 
 function formatDate(iso: string | null): string {
@@ -134,7 +129,7 @@ export function OverviewTab({ resident, canManage = false }: Props) {
       <InfoGrid>
         <InfoRow
           label="Estado civil"
-          value={resident.maritalStatus ? (MARITAL_LABELS[resident.maritalStatus] ?? resident.maritalStatus) : '—'}
+          value={maritalStatusLabel(resident.maritalStatus)}
         />
         <InfoRow label="Filhos" value={String(resident.children ?? 0)} />
         <InfoRow label="Ocupação" value={val(resident.occupation)} />

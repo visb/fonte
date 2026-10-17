@@ -24,7 +24,7 @@ export const VARIABLES: TemplateVariable[] = [
   { key: '{{state}}',         label: 'UF',                 description: 'Estado (sigla) de residência do acolhido' },
   { key: '{{birthDate}}',     label: 'Data de nascimento', description: 'Data de nascimento no formato dd/mm/aaaa' },
   { key: '{{age}}',           label: 'Idade',              description: 'Idade atual calculada em anos' },
-  { key: '{{maritalStatus}}', label: 'Estado civil',       description: 'Solteiro(a), Casado(a) ou Divorciado(a)' },
+  { key: '{{maritalStatus}}', label: 'Estado civil',       description: 'Solteiro(a), Casado(a), União estável, Divorciado(a) ou Viúvo(a)' },
   { key: '{{address}}',       label: 'Endereço',           description: 'Endereço residencial do acolhido' },
   { key: '{{phone}}',         label: 'Telefone',           description: 'Telefone de contato do acolhido' },
   { key: '{{house}}',         label: 'Nome da casa',       description: 'Nome da unidade de acolhimento' },

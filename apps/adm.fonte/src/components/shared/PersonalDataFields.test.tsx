@@ -85,6 +85,20 @@ describe('PersonalDataFields', () => {
     if (day(nextIso)) expect(day(nextIso)).toBeDisabled();
   });
 
+  // Story 210 — o select de estado civil traz as 5 opções na ordem de exibição.
+  it('select de estado civil lista as 5 opções em ordem', () => {
+    render(<Harness />);
+    const select = document.querySelector('select[name="maritalStatus"]') as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => [o.value, o.text])).toEqual([
+      ['', 'Selecione'],
+      ['SINGLE', 'Solteiro(a)'],
+      ['MARRIED', 'Casado(a)'],
+      ['STABLE_UNION', 'União estável'],
+      ['DIVORCED', 'Divorciado(a)'],
+      ['WIDOWED', 'Viúvo(a)'],
+    ]);
+  });
+
   it('aplica máscara de telefone ao digitar', () => {
     render(<Harness />);
     const phone = screen.getByPlaceholderText('(00) 00000-0000') as HTMLInputElement;

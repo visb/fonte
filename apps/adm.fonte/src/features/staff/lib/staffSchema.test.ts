@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MIN_AGE_MESSAGE, Role, ServantRank, todayInSaoPaulo } from '@fonte/types';
+import { MaritalStatus, MIN_AGE_MESSAGE, Role, ServantRank, todayInSaoPaulo } from '@fonte/types';
 import type { Staff } from '@fonte/api-client';
 import {
   newStaffSchema,
@@ -22,6 +22,22 @@ const baseValid: NewStaffFormData = {
   supportGroupId: '',
   password: 'secret',
 } as NewStaffFormData;
+
+describe('estado civil (story 210)', () => {
+  it.each(Object.values(MaritalStatus))('aceita %s', (maritalStatus) => {
+    expect(newStaffSchema.safeParse({ ...baseValid, maritalStatus }).success).toBe(true);
+  });
+
+  it('reprova valor fora do enum', () => {
+    expect(newStaffSchema.safeParse({ ...baseValid, maritalStatus: 'SEPARATED' }).success).toBe(false);
+  });
+
+  it('o payload leva STABLE_UNION como veio', () => {
+    expect(buildStaffPayload({ ...baseValid, maritalStatus: MaritalStatus.STABLE_UNION }).maritalStatus).toBe(
+      MaritalStatus.STABLE_UNION,
+    );
+  });
+});
 
 describe('maioridade no nascimento (story 202)', () => {
   const minor = `${Number(todayInSaoPaulo().slice(0, 4)) - 10}-06-01`;

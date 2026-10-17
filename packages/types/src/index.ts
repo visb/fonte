@@ -347,7 +347,9 @@ export enum Gender {
 export enum MaritalStatus {
   SINGLE = 'SINGLE',
   MARRIED = 'MARRIED',
+  STABLE_UNION = 'STABLE_UNION',
   DIVORCED = 'DIVORCED',
+  WIDOWED = 'WIDOWED',
 }
 
 export enum IncidentSeverity {

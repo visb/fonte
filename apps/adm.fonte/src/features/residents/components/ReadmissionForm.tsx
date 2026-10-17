@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SectionTitle, FormField } from '@/components/shared/FormField';
 import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import { getErrorMessage } from '@/lib/errors';
+import { MARITAL_STATUS_OPTIONS } from '@/lib/maritalStatus';
 import { maskPhone, displayCpf, displayRg, withMask } from '@/lib/masks';
 import { FAMILY_INVESTMENT_LABELS } from '../constants';
 import { useReadmitResident, useResidentAdmissions } from '../hooks/useResidents';
@@ -253,9 +254,9 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
           <FormField label="Estado civil">
             <Select {...register('maritalStatus')}>
               <option value="">Selecione</option>
-              <option value={MaritalStatus.SINGLE}>Solteiro(a)</option>
-              <option value={MaritalStatus.MARRIED}>Casado(a)</option>
-              <option value={MaritalStatus.DIVORCED}>Divorciado(a)</option>
+              {MARITAL_STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
             </Select>
           </FormField>
           <FormField label="Filhos">

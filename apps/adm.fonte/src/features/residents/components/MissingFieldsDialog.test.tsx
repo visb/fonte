@@ -6,6 +6,8 @@ const updateMutation = { mutate: vi.fn(), isPending: false };
 vi.mock('../hooks/useResidents', () => ({ useUpdateResident: () => updateMutation }));
 
 import { MissingFieldsDialog } from './MissingFieldsDialog';
+import { findMissingFields } from '../lib/documentFields';
+import type { Resident } from '@fonte/api-client';
 
 const fields: MissingField[] = [
   { residentField: 'cpf', label: 'CPF', inputType: 'text' },
@@ -46,6 +48,20 @@ describe('MissingFieldsDialog', () => {
     expect(updateMutation.mutate).toHaveBeenCalledWith({ data: { cpf: '12345678900' } }, expect.any(Object));
     expect(onSaved).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
+  });
+
+  // Story 210 — o campo de documento usa as opções reais do estado civil.
+  it('estado civil do documento oferece "União estável" e "Viúvo(a)" e salva o valor', () => {
+    const [marital] = findMissingFields(['maritalStatus'], { id: 'r1' } as Resident);
+    renderDialog([marital]);
+    expect(screen.getByText('União estável')).toBeInTheDocument();
+    expect(screen.getByText('Viúvo(a)')).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'STABLE_UNION' } });
+    fireEvent.click(screen.getByRole('button', { name: /Salvar e gerar/ }));
+    expect(updateMutation.mutate).toHaveBeenCalledWith(
+      { data: { maritalStatus: 'STABLE_UNION' } },
+      expect.any(Object),
+    );
   });
 
   it('cancelar limpa e fecha', () => {

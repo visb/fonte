@@ -64,6 +64,8 @@ describe('formatters de campo', () => {
   it('estado civil mapeia para o label', () => {
     const fmt = fieldFormat('maritalStatus')!;
     expect(fmt(MaritalStatus.SINGLE, ctx)).toBeTruthy();
+    expect(fmt(MaritalStatus.STABLE_UNION, ctx)).toBe('União estável');
+    expect(fmt(MaritalStatus.WIDOWED, ctx)).toBe('Viúvo(a)');
     expect(fmt('xx', ctx)).toBe('');
   });
 

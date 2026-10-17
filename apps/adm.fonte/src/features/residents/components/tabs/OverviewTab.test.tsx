@@ -110,6 +110,15 @@ describe('OverviewTab', () => {
     expect(screen.queryByText('Dia de vencimento da contribuição')).not.toBeInTheDocument();
   });
 
+  // Story 210 — rótulos novos do estado civil.
+  it.each([
+    ['SINGLE', 'Solteiro(a)'],
+    ['STABLE_UNION', 'União estável'],
+    ['WIDOWED', 'Viúvo(a)'],
+  ])('estado civil %s aparece como "%s"', (maritalStatus, label) => {
+    render(<OverviewTab resident={res({ maritalStatus } as Partial<Resident>)} />);
+    expect(screen.getByText(label)).toBeInTheDocument();
+  });
 });
 
 // Story 149: acesso do interno (RESIDENT) só aparece quando o `resident.fonte`

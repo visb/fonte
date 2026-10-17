@@ -35,7 +35,9 @@ export class ResidentVariablesResolver implements DocumentVariableResolver {
   private static readonly MARITAL_PT: Record<string, string> = {
     SINGLE: 'Solteiro(a)',
     MARRIED: 'Casado(a)',
+    STABLE_UNION: 'União estável',
     DIVORCED: 'Divorciado(a)',
+    WIDOWED: 'Viúvo(a)',
   };
 
   /**

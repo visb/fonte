@@ -79,7 +79,11 @@ describe('findMissingFields', () => {
   it('estado civil vem com as opções do select', () => {
     const missing = findMissingFields(['maritalStatus'], resident());
     expect(missing[0].options?.map((o) => o.value)).toEqual([
-      MaritalStatus.SINGLE, MaritalStatus.MARRIED, MaritalStatus.DIVORCED,
+      MaritalStatus.SINGLE, MaritalStatus.MARRIED, MaritalStatus.STABLE_UNION,
+      MaritalStatus.DIVORCED, MaritalStatus.WIDOWED,
+    ]);
+    expect(missing[0].options?.map((o) => o.label)).toEqual([
+      'Solteiro(a)', 'Casado(a)', 'União estável', 'Divorciado(a)', 'Viúvo(a)',
     ]);
   });
 

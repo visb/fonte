@@ -1,4 +1,4 @@
-import { MaritalStatus } from '@fonte/types';
+import { MARITAL_STATUS_OPTIONS } from '@/lib/maritalStatus';
 import type { MissingField } from '../components/MissingFieldsDialog';
 import type { Resident, UpdateResidentInput } from '@fonte/api-client';
 
@@ -50,11 +50,7 @@ const VAR_TO_FIELD: Record<string, VarMapping> = {
     residentField: 'maritalStatus',
     label: 'Estado civil',
     inputType: 'select',
-    options: [
-      { value: MaritalStatus.SINGLE,   label: 'Solteiro(a)' },
-      { value: MaritalStatus.MARRIED,  label: 'Casado(a)' },
-      { value: MaritalStatus.DIVORCED, label: 'Divorciado(a)' },
-    ],
+    options: MARITAL_STATUS_OPTIONS.map((o) => ({ ...o })),
     isEmpty: (r) => !r.maritalStatus,
   },
   address: { residentField: 'address',      label: 'Endereço', inputType: 'text', isEmpty: (r) => !r.address },

@@ -88,7 +88,7 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 | 10 | 209 — Campos de data digitáveis no ops | [OK] | ops 1567 + e2e-web 30 | 05e1616 | f4c3ef1 |
 | 11 | 210 — Estado civil: união estável e viúvo(a) | [OK] | api 2060 + e2e 680; adm 1931 + e2e 59/66 (7 pré-existentes) | 9b42731 | 59dacad |
 | 12 | 211 — Rascunho automático do acolhimento | [OK] | adm 1991 + e2e 36/43 (7 pré-existentes) | bc4d306 | 5ac56ac |
-| 13 | 212 — Tipo do template de recibo + nome do arquivo | [ ] | | | |
+| 13 | 212 — Tipo do template de recibo + nome do arquivo | [OK] | api 2072 + e2e 681; adm 2031 + e2e 66/73 (7 pré-existentes); app 168 | 2ddd3d5 | cf58283 |
 | 14 | 199 — Auditoria de ações dos usuários | [ ] | | | |
 
 ## Log
@@ -114,6 +114,8 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
   Nota: `ADD VALUE` ficou na transação padrão (PG16 ok se o valor não é usado na mesma tx) — se uma migration futura usar os valores novos no mesmo `migration:run` de prod, quebra; `down` zera os valores novos para NULL.
 - [OK] 211 — testes: adm unit 1991 (97.3%; código novo 99–100%), tsc limpo, adm e2e admission-draft 3/3 (2x) + residents 33/40 (7 = pré-existentes) — commit: bc4d306 — merge: 5ac56ac — 2026-10-17.
   Nota: 401 de sessão expirada NÃO limpa o rascunho (só logout explícito); gap registrado em DIAGNOSTICO_LGPD §2.3.
+- [OK] 212 — testes: api unit 2072 (94.9%), api e2e 681/681, adm unit 2031 (97.4%; tocados 100% linhas), adm e2e receipts/templates/associates 29/29 + residents 37/44 (7 pré-existentes), app unit 168 — commit: 2ddd3d5 — merge: cf58283 — 2026-10-17 — Maestro app PENDENTE-MANUAL.
+  Nota: funções < 90 em `ContributionsTab` (57%)/`AssociateDetailDialog` (67%) — linhas 100%; `receipts.spec` ainda tem `clearReceiptTemplates()` por categoria (story 178).
 
 ## Resumo final
 

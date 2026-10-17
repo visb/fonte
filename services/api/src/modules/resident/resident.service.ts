@@ -5,7 +5,7 @@ import * as bcrypt from 'bcrypt';
 // require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
 // emits an undefined default for sharp's CommonJS module.
 const sharp = require('sharp') as typeof import('sharp');
-import { ACTIVE_RESIDENT_STATUSES, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isMinistryEligibleResident, isTemplateAvailableForStatus, MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE, NotificationType, PRESENT_RESIDENT_STATUSES, REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability, todayInSaoPaulo } from '@fonte/types';
+import { ACTIVE_RESIDENT_STATUSES, AuditAction, AuditTargetType, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isMinistryEligibleResident, isTemplateAvailableForStatus, MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE, NotificationType, PRESENT_RESIDENT_STATUSES, REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability, todayInSaoPaulo } from '@fonte/types';
 import { Logger } from '@nestjs/common';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
@@ -59,6 +59,13 @@ import { StorageService } from '../storage/storage.service';
 import { toDbTimestamp } from '../../common/lib/db-timestamp';
 import { assertAdultBirthDate } from '../../common/lib/birth-date';
 import { assertAdmissionDates } from './admission-dates';
+import { AuditService, loadById, TrackOptions } from '../audit/audit.service';
+import {
+  RESIDENT_ATTACHMENT_AUDIT_FIELDS,
+  RESIDENT_AUDIT_FIELDS,
+  RESIDENT_DELETE_AUDIT_FIELDS,
+  RESIDENT_DOCUMENT_AUDIT_FIELDS,
+} from '../audit/audit-fields';
 
 export interface ResidentMeView {
   id: string;
@@ -97,7 +104,28 @@ export class ResidentService {
     private staffService: StaffService,
     private dataSource: DataSource,
     private notifications: NotificationService,
+    // Story 199 — último de propósito: os anteriores são contrato dos specs.
+    private audit: AuditService,
   ) {}
+
+  /** Story 199 — escrita na ficha do filho com antes/depois na mesma transação. */
+  private trackResident<R>(
+    id: string | undefined,
+    action: string,
+    write: (manager: EntityManager) => Promise<R>,
+    extra: Partial<TrackOptions<R>> = {},
+  ): Promise<R> {
+    return this.audit.track<R>({
+      action,
+      targetType: AuditTargetType.RESIDENT,
+      targetId: id,
+      fields: RESIDENT_AUDIT_FIELDS,
+      load: loadById(Resident),
+      lockTable: id ? 'residents' : undefined,
+      write,
+      ...extra,
+    });
+  }
 
   async findAll(
     dto: ListResidentsDto,
@@ -294,7 +322,12 @@ export class ResidentService {
   // evento de acolhimento + carnê) dentro de uma transação externa (ex.: commit
   // do import em lote, story 103). Sem ele, cada repositório injetado auto-commita
   // como antes.
-  async create(dto: CreateResidentDto, manager?: EntityManager): Promise<Resident> {
+  async create(
+    dto: CreateResidentDto,
+    manager?: EntityManager,
+    // Story 199: a contagem e o import gravam a criação com a própria ação.
+    options: { auditAction?: string } = {},
+  ): Promise<Resident> {
     // Story 202: vale para acolhimento manual, contagem (ops) e import em lote.
     assertAdultBirthDate(dto.birthDate);
     // Story 203: entrada não futura; saída, se vier, ≥ entrada e não futura.
@@ -309,11 +342,17 @@ export class ResidentService {
         manager,
       );
     }
-    const residentRepo = manager ? manager.getRepository(Resident) : this.residentRepository;
     const admissionRepo = manager ? manager.getRepository(Admission) : this.admissionRepository;
 
-    const resident = residentRepo.create(dto);
-    const saved = await residentRepo.save(resident);
+    const saved = await this.trackResident(
+      undefined,
+      options.auditAction ?? AuditAction.RESIDENT_CREATE,
+      (m) => {
+        const repo = m.getRepository(Resident);
+        return repo.save(repo.create(dto));
+      },
+      { manager, resolveId: (r) => r.id },
+    );
 
     const admission = admissionRepo.create({
       residentId: saved.id,
@@ -412,7 +451,12 @@ export class ResidentService {
     return rows.map((row) => row.id);
   }
 
-  async update(id: string, dto: UpdateResidentDto): Promise<Resident> {
+  async update(
+    id: string,
+    dto: UpdateResidentDto,
+    // Story 199: a aprovação da contagem reusa esta transição com ação própria.
+    options: { auditAction?: string } = {},
+  ): Promise<Resident> {
     this.resolveInvestmentAmount(dto);
     const before = await this.findOne(id);
     if (dto.status) this.assertExitTransitionAllowed(before.status, dto.status);
@@ -444,19 +488,18 @@ export class ResidentService {
     if (departs && dto.ministryId === undefined && before.ministryId) effective.ministryId = null;
     const ledMinistryIds = departs ? await this.findLedMinistryIds(id) : [];
 
-    if (ledMinistryIds.length > 0) {
-      // Mesma transação da mudança de status/casa: o filho não fica liderando
-      // um ministério da casa que deixou.
-      await this.dataSource.transaction(async (manager) => {
-        await manager.getRepository(Resident).update(id, effective);
+    // Mesma transação da mudança de status/casa: o filho não fica liderando
+    // um ministério da casa que deixou — e o evento de auditoria (story 199)
+    // entra junto, com o antes/depois persistido.
+    await this.trackResident(id, options.auditAction ?? AuditAction.RESIDENT_UPDATE, async (manager) => {
+      await manager.getRepository(Resident).update(id, effective);
+      if (ledMinistryIds.length > 0) {
         await manager.query(
           `UPDATE ministries SET leader_id = NULL, leader_type = NULL WHERE id = ANY($1::uuid[])`,
           [ledMinistryIds],
         );
-      });
-    } else {
-      await this.residentRepository.update(id, effective);
-    }
+      }
+    });
 
     // "Hoje" no fuso da operação (story 203): o dia UTC já é amanhã após 21h BRT.
     const today = todayInSaoPaulo();
@@ -513,7 +556,9 @@ export class ResidentService {
     // `findOne` valida a existência (lança NotFound) antes de gravar.
     const before = await this.findOne(id);
     assertAdultBirthDate(dto.birthDate, before.birthDate);
-    await this.residentRepository.update(id, dto);
+    await this.trackResident(id, AuditAction.RESIDENT_IDENTITY_UPDATE, (m) =>
+      m.getRepository(Resident).update(id, dto),
+    );
     return this.findOne(id);
   }
 
@@ -657,7 +702,9 @@ export class ResidentService {
     if (dto.addiction !== undefined) residentUpdate.addiction = dto.addiction;
     if (dto.contributionDueDay !== undefined) residentUpdate.contributionDueDay = dto.contributionDueDay;
 
-    await this.residentRepository.update(id, residentUpdate);
+    await this.trackResident(id, AuditAction.RESIDENT_READMIT, (m) =>
+      m.getRepository(Resident).update(id, residentUpdate),
+    );
 
     // Reintrodução entra direto como ACTIVE: dispara a mesma notificação de
     // "acolhimento concluído" do fluxo normal PRE→ACTIVE. Best-effort — a falha
@@ -678,14 +725,18 @@ export class ResidentService {
         : (CANONICAL_AMOUNTS[dto.familyInvestment] ?? null);
     if (dto.contributionDueDay !== undefined) update.contributionDueDay = dto.contributionDueDay;
 
-    await this.residentRepository.update(id, update);
+    await this.trackResident(id, AuditAction.RESIDENT_CONTRIBUTION_PLAN, (m) =>
+      m.getRepository(Resident).update(id, update),
+    );
     await this.receivableService.recalcFuturePending(id);
     return this.findOne(id);
   }
 
   async setContributionExempt(id: string, exempt: boolean): Promise<Resident> {
     await this.findOne(id);
-    await this.residentRepository.update(id, { contributionExempt: exempt });
+    await this.trackResident(id, AuditAction.RESIDENT_CONTRIBUTION_EXEMPT, (m) =>
+      m.getRepository(Resident).update(id, { contributionExempt: exempt }),
+    );
     if (exempt) {
       await this.receivableService.cancelFuturePending(id);
     } else {
@@ -748,7 +799,14 @@ export class ResidentService {
 
   async remove(id: string): Promise<void> {
     await this.findOne(id);
-    await this.residentRepository.softDelete(id);
+    // Exclusão (soft delete) registra só o vínculo: a ficha continua no banco e
+    // o nome sai por id na consulta — sem cópia da ficha inteira no log.
+    await this.trackResident(
+      id,
+      AuditAction.RESIDENT_DELETE,
+      (m) => m.getRepository(Resident).softDelete(id),
+      { fields: RESIDENT_DELETE_AUDIT_FIELDS },
+    );
   }
 
   async findMe(userId: string): Promise<ResidentMeView> {
@@ -838,15 +896,23 @@ export class ResidentService {
 
     // Arquiva o filho: alta + evento na timeline na data da promoção. Alta tira
     // o filho do ministério e da liderança (story 205, decisão 7).
-    await this.residentRepository.update(id, {
-      status: ResidentStatus.DISCHARGED,
-      exitDate: promotedAt as unknown as Date,
-      ministryId: null,
-    });
-    await this.dataSource.query(
-      `UPDATE ministries SET leader_id = NULL, leader_type = NULL
-        WHERE leader_type = 'RESIDENT' AND leader_id = $1`,
-      [id],
+    await this.trackResident(
+      id,
+      AuditAction.RESIDENT_PROMOTE,
+      async (m) => {
+        await m.getRepository(Resident).update(id, {
+          status: ResidentStatus.DISCHARGED,
+          exitDate: promotedAt as unknown as Date,
+          ministryId: null,
+        });
+        await m.query(
+          `UPDATE ministries SET leader_id = NULL, leader_type = NULL
+            WHERE leader_type = 'RESIDENT' AND leader_id = $1`,
+          [id],
+        );
+      },
+      // Servo criado na promoção: referência por id (sem cópia de dados).
+      { scope: ({ before }) => ({ houseId: (before?.houseId as string | null) ?? null, context: { staffId: staff.id } }) },
     );
     await this.followUpService.createAuto(id, FollowUpType.PROMOTED_TO_SERVANT, promotedAt);
 
@@ -914,7 +980,12 @@ export class ResidentService {
     const thumbFilename = this.storageService.uniqueFilename('thumb.jpg', 'thumb_');
     const thumbUrl = await this.storageService.upload('residents', thumbFilename, thumbBuffer, 'image/jpeg');
 
-    await repo.update(residentId, { photoUrl: url, photoThumbUrl: thumbUrl });
+    await this.trackResident(
+      residentId,
+      AuditAction.RESIDENT_PHOTO_UPDATE,
+      (m) => m.getRepository(Resident).update(residentId, { photoUrl: url, photoThumbUrl: thumbUrl }),
+      { manager },
+    );
     return manager ? ((await repo.findOne({ where: { id: residentId } }))!) : this.findOne(residentId);
   }
 
@@ -994,13 +1065,25 @@ export class ResidentService {
     const filename = this.storageService.uniqueFilename(file.originalname, 'signed_');
     const signedFileUrl = await this.storageService.upload('documents', filename, file.buffer, file.mimetype);
 
-    if (existing) {
-      await this.docRepository.update(existing.id, { signedFileUrl });
-      return this.docRepository.findOne({ where: { id: existing.id } }) as Promise<ResidentDocument>;
-    }
-
-    const doc = this.docRepository.create({ residentId, templateId, signedFileUrl });
-    return this.docRepository.save(doc);
+    // Upload já aconteceu (storage não é transacional); o evento acompanha a
+    // gravação do vínculo no banco. Sem bytes nem URL no log.
+    return this.audit.track<ResidentDocument>({
+      action: AuditAction.RESIDENT_DOCUMENT_SIGNED,
+      targetType: AuditTargetType.RESIDENT_DOCUMENT,
+      targetId: existing?.id,
+      fields: RESIDENT_DOCUMENT_AUDIT_FIELDS,
+      load: loadById(ResidentDocument),
+      resolveId: (doc) => doc.id,
+      scope: () => ({ parentType: AuditTargetType.RESIDENT, parentId: residentId }),
+      write: async (m) => {
+        const repo = m.getRepository(ResidentDocument);
+        if (existing) {
+          await repo.update(existing.id, { signedFileUrl });
+          return (await repo.findOne({ where: { id: existing.id } })) as ResidentDocument;
+        }
+        return repo.save(repo.create({ residentId, templateId, signedFileUrl }));
+      },
+    });
   }
 
   findAttachments(residentId: string): Promise<ResidentAttachment[]> {
@@ -1019,8 +1102,18 @@ export class ResidentService {
     const displayName = this.storageService.decodeOriginalName(originalFilename);
     const filename = this.storageService.uniqueFilename(displayName);
     const fileUrl = await this.storageService.upload('attachments', filename, file.buffer, file.mimetype);
-    const attachment = this.attachmentRepository.create({ residentId, filename: displayName, fileUrl });
-    const saved = await this.attachmentRepository.save(attachment);
+    const saved = await this.audit.track<ResidentAttachment>({
+      action: AuditAction.RESIDENT_ATTACHMENT_ADD,
+      targetType: AuditTargetType.RESIDENT_ATTACHMENT,
+      fields: RESIDENT_ATTACHMENT_AUDIT_FIELDS,
+      load: loadById(ResidentAttachment),
+      resolveId: (a) => a.id,
+      scope: () => ({ parentType: AuditTargetType.RESIDENT, parentId: residentId }),
+      write: (m) => {
+        const repo = m.getRepository(ResidentAttachment);
+        return repo.save(repo.create({ residentId, filename: displayName, fileUrl }));
+      },
+    });
     await this.followUpService.createAuto(residentId, FollowUpType.DOCUMENT_ATTACHED);
     return saved;
   }
@@ -1031,7 +1124,15 @@ export class ResidentService {
     });
     if (!attachment) throw new NotFoundException(`Attachment ${attachmentId} not found`);
     await this.storageService.delete(attachment.fileUrl);
-    await this.attachmentRepository.delete(attachmentId);
+    await this.audit.track({
+      action: AuditAction.RESIDENT_ATTACHMENT_REMOVE,
+      targetType: AuditTargetType.RESIDENT_ATTACHMENT,
+      targetId: attachmentId,
+      fields: RESIDENT_ATTACHMENT_AUDIT_FIELDS,
+      load: loadById(ResidentAttachment),
+      scope: () => ({ parentType: AuditTargetType.RESIDENT, parentId: residentId }),
+      write: (m) => m.getRepository(ResidentAttachment).delete(attachmentId),
+    });
   }
 
   async getContributionsReport(dto: GetContributionsReportDto): Promise<ContributionsReportResponse> {

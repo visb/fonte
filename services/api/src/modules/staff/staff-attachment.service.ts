@@ -6,7 +6,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { StaffAttachment as StaffAttachmentDto } from '@fonte/types';
+import { AuditAction, AuditTargetType, StaffAttachment as StaffAttachmentDto } from '@fonte/types';
+import { AuditService, loadById } from '../audit/audit.service';
+import { STAFF_ATTACHMENT_AUDIT_FIELDS } from '../audit/audit-fields';
 import { StaffAttachment } from './staff-attachment.entity';
 import { Staff } from './staff.entity';
 import { StorageService } from '../storage/storage.service';
@@ -28,6 +30,7 @@ export class StaffAttachmentService {
     @InjectRepository(Staff)
     private staffRepo: Repository<Staff>,
     private storage: StorageService,
+    private audit: AuditService,
   ) {}
 
   // Servo precisa existir e não estar soft-deletado (find padrão do TypeORM já
@@ -61,16 +64,28 @@ export class StaffAttachmentService {
       file.mimetype,
     );
 
-    const saved = await this.repo.save(
-      this.repo.create({
-        staffId,
-        fileUrl,
-        fileName,
-        mimeType: file.mimetype,
-        sizeBytes: file.size,
-        createdByUserId: userId,
-      }),
-    );
+    // Story 199: evento com tipo/tamanho (nunca nome, URL ou conteúdo do arquivo).
+    const saved = await this.audit.track<StaffAttachment>({
+      action: AuditAction.STAFF_ATTACHMENT_ADD,
+      targetType: AuditTargetType.STAFF_ATTACHMENT,
+      fields: STAFF_ATTACHMENT_AUDIT_FIELDS,
+      load: loadById(StaffAttachment),
+      resolveId: (a) => a.id,
+      scope: () => ({ parentType: AuditTargetType.STAFF, parentId: staffId }),
+      write: (m) => {
+        const repo = m.getRepository(StaffAttachment);
+        return repo.save(
+          repo.create({
+            staffId,
+            fileUrl,
+            fileName,
+            mimeType: file.mimetype,
+            sizeBytes: file.size,
+            createdByUserId: userId,
+          }),
+        );
+      },
+    });
     return this.toView(saved);
   }
 
@@ -102,7 +117,15 @@ export class StaffAttachmentService {
         `Failed to delete staff attachment object ${attachment.fileUrl}: ${(err as Error).message}`,
       );
     }
-    await this.repo.softRemove(attachment);
+    await this.audit.track({
+      action: AuditAction.STAFF_ATTACHMENT_REMOVE,
+      targetType: AuditTargetType.STAFF_ATTACHMENT,
+      targetId: attachment.id,
+      fields: STAFF_ATTACHMENT_AUDIT_FIELDS,
+      load: loadById(StaffAttachment),
+      scope: () => ({ parentType: AuditTargetType.STAFF, parentId: staffId }),
+      write: (m) => m.getRepository(StaffAttachment).softRemove(attachment),
+    });
   }
 
   private toView(a: StaffAttachment): StaffAttachmentDto {

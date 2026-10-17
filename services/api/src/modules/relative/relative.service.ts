@@ -1,8 +1,10 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { FollowUpType, RelativePaidReceivable, Role } from '@fonte/types';
+import { AuditAction, AuditTargetType, FollowUpType, RelativePaidReceivable, Role } from '@fonte/types';
+import { AuditService, loadById } from '../audit/audit.service';
+import { RELATIVE_AUDIT_FIELDS } from '../audit/audit-fields';
 import { Relative } from './relative.entity';
 import { CreateRelativeDto } from './dto/create-relative.dto';
 import { UpdateRelativeMeDto } from './dto/update-relative-me.dto';
@@ -48,6 +50,8 @@ export class RelativeService {
     // Story 193 — último parâmetro de propósito: os anteriores são contrato dos
     // specs existentes deste service.
     private receivableService: ResidentReceivableService,
+    // Story 199 — idem: último para não quebrar os specs existentes.
+    private audit: AuditService,
   ) {}
 
   // LGPD art. 6/46 — escopo por casa: não-ADMIN só vê familiares de internos da
@@ -131,9 +135,39 @@ export class RelativeService {
     return this.findMe(userId);
   }
 
+  /** Story 199 — vínculo familiar alterado pela ficha do filho (antes/depois). */
+  private trackRelative<R>(
+    id: string | undefined,
+    action: string,
+    write: (manager: EntityManager) => Promise<R>,
+    resolveId?: (result: R) => string,
+  ): Promise<R> {
+    return this.audit.track<R>({
+      action,
+      targetType: AuditTargetType.RESIDENT_RELATIVE,
+      targetId: id,
+      fields: RELATIVE_AUDIT_FIELDS,
+      load: loadById(Relative),
+      lockTable: id ? 'relatives' : undefined,
+      resolveId,
+      scope: ({ before, after }) => ({
+        parentType: AuditTargetType.RESIDENT,
+        parentId: ((after ?? before)?.residentId as string | undefined) ?? null,
+      }),
+      write,
+    });
+  }
+
   async create(dto: CreateRelativeDto): Promise<Relative> {
-    const relative = this.relativeRepository.create(dto);
-    const saved = await this.relativeRepository.save(relative);
+    const saved = await this.trackRelative(
+      undefined,
+      AuditAction.RESIDENT_RELATIVE_CREATE,
+      (m) => {
+        const repo = m.getRepository(Relative);
+        return repo.save(repo.create(dto));
+      },
+      (r) => r.id,
+    );
     if (dto.isResponsible) await this.setResponsible(saved.id);
     await this.followUpService.createAuto(dto.residentId, FollowUpType.RELATIVE_ADDED);
     return saved;
@@ -143,18 +177,20 @@ export class RelativeService {
   async setResponsible(id: string): Promise<Relative> {
     const relative = await this.relativeRepository.findOne({ where: { id } });
     if (!relative) throw new NotFoundException(`Relative ${id} not found`);
-    await this.relativeRepository.update(
-      { residentId: relative.residentId },
-      { isResponsible: false },
-    );
-    await this.relativeRepository.update(id, { isResponsible: true });
+    await this.trackRelative(id, AuditAction.RESIDENT_RELATIVE_RESPONSIBLE, async (m) => {
+      const repo = m.getRepository(Relative);
+      await repo.update({ residentId: relative.residentId }, { isResponsible: false });
+      await repo.update(id, { isResponsible: true });
+    });
     return this.relativeRepository.findOne({ where: { id } }) as Promise<Relative>;
   }
 
   async remove(id: string): Promise<void> {
     const count = await this.relativeRepository.count({ where: { id } });
     if (!count) throw new NotFoundException(`Relative ${id} not found`);
-    await this.relativeRepository.softDelete(id);
+    await this.trackRelative(id, AuditAction.RESIDENT_RELATIVE_DELETE, (m) =>
+      m.getRepository(Relative).softDelete(id),
+    );
   }
 
   async generateAccess(id: string, email: string, password: string): Promise<Relative> {

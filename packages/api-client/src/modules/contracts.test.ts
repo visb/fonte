@@ -151,6 +151,42 @@ describe('audit module', () => {
     expect(await m.byTarget('RESIDENT', 'r1')).toBe(sentinel);
     expect(http.get).toHaveBeenCalledWith('/audit/RESIDENT/r1');
   });
+
+  // Story 199
+  it('list serializa filtros e cursor, sem mandar campo vazio', async () => {
+    const http = createHttpMock();
+    const m = createAuditModule(asHttp(http));
+    const sentinel = { items: [], nextCursor: 'c2' };
+    http.get.mockResolvedValueOnce({ data: sentinel });
+    const result = await m.list({
+      from: '2026-10-01T03:00:00.000Z',
+      houseId: 'h1',
+      action: '',
+      targetId: undefined,
+      outcome: 'FAILURE' as never,
+      cursor: 'c1',
+      limit: 50,
+    });
+    expect(result).toBe(sentinel);
+    expect(http.get).toHaveBeenCalledWith('/audit', {
+      params: { from: '2026-10-01T03:00:00.000Z', houseId: 'h1', outcome: 'FAILURE', cursor: 'c1', limit: 50 },
+    });
+  });
+
+  it('list sem filtros manda params vazio', async () => {
+    const http = createHttpMock();
+    await createAuditModule(asHttp(http)).list();
+    expect(http.get).toHaveBeenCalledWith('/audit', { params: {} });
+  });
+
+  it('event busca o detalhe por id e desserializa', async () => {
+    const http = createHttpMock();
+    const m = createAuditModule(asHttp(http));
+    const sentinel = { id: 'e1', changes: [{ field: 'name', before: 'A', after: 'B', redacted: false }] };
+    http.get.mockResolvedValueOnce({ data: sentinel });
+    expect(await m.event('e1')).toBe(sentinel);
+    expect(http.get).toHaveBeenCalledWith('/audit/events/e1');
+  });
 });
 
 // ── auth ─────────────────────────────────────────────────────────────────────────

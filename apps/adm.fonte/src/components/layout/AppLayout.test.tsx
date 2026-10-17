@@ -157,6 +157,17 @@ describe('AppLayout — sidebar com scroll próprio (story 158)', () => {
     ).not.toBeInTheDocument();
   });
 
+  // Story 199 — a trilha de auditoria é exclusiva de ADMIN.
+  it('ADMIN vê o link Auditoria; COORDINATOR não', () => {
+    renderLayout();
+    expect(screen.getByRole('link', { name: 'Auditoria' })).toHaveAttribute('href', '/auditoria');
+    cleanup();
+
+    useAuthMock.mockReturnValue({ role: 'COORDINATOR', logout });
+    renderLayout();
+    expect(screen.queryByRole('link', { name: 'Auditoria' })).not.toBeInTheDocument();
+  });
+
   it('com os dois submenus abertos, o rodapé segue fora da <nav>', async () => {
     const user = userEvent.setup();
     const { container } = renderLayout();

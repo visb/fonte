@@ -4,6 +4,8 @@ import { MinistryService } from './ministry.service';
 import { Ministry } from './ministry.entity';
 import { MinistryStaff } from './ministry-staff.entity';
 import { MinistryTask } from './ministry-task.entity';
+import { Resident } from '../resident/resident.entity';
+import { createAuditHarness, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
 function makeRepo(overrides: Record<string, jest.Mock> = {}, queryImpl?: jest.Mock) {
   return {
@@ -19,13 +21,31 @@ function makeRepo(overrides: Record<string, jest.Mock> = {}, queryImpl?: jest.Mo
   };
 }
 
-function makeService(repo: ReturnType<typeof makeRepo>, staffRepo = makeRepo(), taskRepo = makeRepo()) {
+function makeService(
+  repo: ReturnType<typeof makeRepo>,
+  staffRepo = makeRepo(),
+  taskRepo = makeRepo(),
+  residentRepo: Record<string, jest.Mock> = { findOne: jest.fn().mockResolvedValue(null) },
+) {
+  // Story 199 — AuditService real; as consultas cruas da transação caem no
+  // mesmo `repo.manager.query` que os asserts já observam.
+  lastAudit = createAuditHarness(
+    repoMap([
+      [Ministry, repo],
+      [MinistryStaff, staffRepo],
+      [Resident, residentRepo],
+    ]),
+    repo.manager.query as jest.Mock,
+  );
   return new MinistryService(
     repo as unknown as Repository<Ministry>,
     staffRepo as unknown as Repository<MinistryStaff>,
     taskRepo as unknown as Repository<MinistryTask>,
+    lastAudit.audit,
   );
 }
+
+let lastAudit: ReturnType<typeof createAuditHarness>;
 
 describe('MinistryService.findOne', () => {
   it('throws NotFound when no row matches', async () => {
@@ -223,7 +243,8 @@ describe('MinistryService.update — líder filho (story 205)', () => {
       query,
     );
     await makeService(repo).update('m1', { name: 'Horta' });
-    expect(query).not.toHaveBeenCalled();
+    // Só o lock da auditoria (story 199) — nenhuma consulta de elegibilidade.
+    expect(query).not.toHaveBeenCalledWith(expect.stringContaining('FROM residents'), expect.anything());
     expect(repo.save).toHaveBeenCalled();
   });
 });

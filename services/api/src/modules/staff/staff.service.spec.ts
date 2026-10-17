@@ -20,6 +20,8 @@ import { House } from '../house/house.entity';
 import { StaffPermission } from './staff-permission.entity';
 import { User } from '../user/user.entity';
 import { StorageService } from '../storage/storage.service';
+import { AuditService } from '../audit/audit.service';
+import { AuditLog } from '../audit/audit-log.entity';
 
 interface MockRepo {
   find: jest.Mock;
@@ -61,18 +63,32 @@ function makeRepo(overrides: Partial<MockRepo> = {}): MockRepo {
 function attachManager(
   staffRepo: MockRepo,
   userRepo: MockRepo,
-  options: { isTitular?: boolean } = {},
+  options: { isTitular?: boolean; permissionRepo?: MockRepo } = {},
 ) {
   const houseUpdate = jest.fn().mockResolvedValue({ affected: 1 });
   const houseCount = jest.fn().mockResolvedValue(options.isTitular === false ? 0 : 1);
+  // Story 199: a transação é a do AuditService — o evento (audit_logs) entra nela.
+  const auditInsert = jest.fn().mockResolvedValue(undefined);
   const entityManager = {
-    getRepository: (entity: unknown) => (entity === Staff ? staffRepo : userRepo),
+    getRepository: (entity: unknown) => {
+      if (entity === AuditLog) return { insert: auditInsert };
+      if (entity === StaffPermission) return options.permissionRepo;
+      return entity === Staff ? staffRepo : userRepo;
+    },
     count: houseCount,
     update: houseUpdate,
+    query: jest.fn().mockResolvedValue([]),
   };
   const transaction = jest.fn((cb: (m: unknown) => Promise<unknown>) => cb(entityManager));
   staffRepo.manager = { transaction };
-  return { houseUpdate, houseCount, transaction };
+  return { houseUpdate, houseCount, transaction, auditInsert };
+}
+
+/** Linhas de auditoria gravadas pela transação do staffRepo (story 199). */
+function auditRows(staffRepo: MockRepo): Array<Record<string, unknown>> {
+  return ((staffRepo as MockRepo & { auditInsert?: jest.Mock }).auditInsert?.mock.calls ?? []).map(
+    ([row]) => row as Record<string, unknown>,
+  );
 }
 
 // Story 190: o serviço não injeta mais EventEmitter2 — o staffCount por casa é
@@ -84,12 +100,20 @@ function makeService(
   permissionRepo: MockRepo,
   storage: Partial<StorageService> = {},
 ) {
-  if (!staffRepo.manager) attachManager(staffRepo, userRepo);
+  if (!staffRepo.manager) {
+    const { auditInsert } = attachManager(staffRepo, userRepo, { permissionRepo });
+    Object.assign(staffRepo, { auditInsert });
+  }
+  const audit = new AuditService(
+    {} as never,
+    { transaction: staffRepo.manager!.transaction, query: jest.fn().mockResolvedValue([]) } as never,
+  );
   return new StaffService(
     staffRepo as unknown as Repository<Staff>,
     userRepo as unknown as Repository<User>,
     permissionRepo as unknown as Repository<StaffPermission>,
     storage as StorageService,
+    audit,
   );
 }
 
@@ -787,7 +811,9 @@ describe('StaffService — coordenador titular da casa (story 194)', () => {
     } as never);
 
     expect(staffRepo.update).toHaveBeenCalled();
-    expect(transaction).not.toHaveBeenCalled();
+    // Story 199: a escrita sempre roda na transação da auditoria; o que importa
+    // aqui é a casa intacta.
+    expect(transaction).toHaveBeenCalledTimes(1);
     expect(houseUpdate).not.toHaveBeenCalled();
   });
 
@@ -796,7 +822,9 @@ describe('StaffService — coordenador titular da casa (story 194)', () => {
 
     await service.update('staff-1', { houseId: 'house-1' } as never);
 
-    expect(transaction).not.toHaveBeenCalled();
+    // Story 199: a escrita sempre roda na transação da auditoria; o que importa
+    // aqui é a casa intacta.
+    expect(transaction).toHaveBeenCalledTimes(1);
     expect(houseUpdate).not.toHaveBeenCalled();
   });
 
@@ -805,7 +833,9 @@ describe('StaffService — coordenador titular da casa (story 194)', () => {
 
     await service.update('staff-1', { role: 'COORDINATOR', houseId: 'house-1' } as never);
 
-    expect(transaction).not.toHaveBeenCalled();
+    // Story 199: a escrita sempre roda na transação da auditoria; o que importa
+    // aqui é a casa intacta.
+    expect(transaction).toHaveBeenCalledTimes(1);
     expect(houseUpdate).not.toHaveBeenCalled();
   });
 

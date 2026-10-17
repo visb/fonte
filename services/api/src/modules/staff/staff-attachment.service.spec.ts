@@ -4,6 +4,7 @@ import { StaffAttachmentService } from './staff-attachment.service';
 import { StaffAttachment } from './staff-attachment.entity';
 import { Staff } from './staff.entity';
 import { StorageService } from '../storage/storage.service';
+import { createAuditHarness, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
 function pdfFile(
   overrides: Partial<Express.Multer.File> = {},
@@ -54,12 +55,16 @@ function makeService(
   staffRepo: ReturnType<typeof makeStaffRepo> = makeStaffRepo(),
   storage: ReturnType<typeof makeStorage> = makeStorage(),
 ) {
+  lastAudit = createAuditHarness(repoMap([[StaffAttachment, repo]]));
   return new StaffAttachmentService(
     repo as unknown as Repository<StaffAttachment>,
     staffRepo as unknown as Repository<Staff>,
     storage as unknown as StorageService,
+    lastAudit.audit, // story 199
   );
 }
+
+let lastAudit: ReturnType<typeof createAuditHarness>;
 
 function attachment(partial: Partial<StaffAttachment> = {}): StaffAttachment {
   return {

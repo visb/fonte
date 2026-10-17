@@ -4,6 +4,7 @@ import { ReceivableProductContributionService } from './receivable-product-contr
 import { ReceivableProductContribution } from './receivable-product-contribution.entity';
 import { ResidentReceivable } from './resident-receivable.entity';
 import { Staff } from '../staff/staff.entity';
+import { AuditService } from '../audit/audit.service';
 
 /**
  * Stateful mock do repositório de contribuições: `save` atribui id e guarda a
@@ -26,6 +27,8 @@ function makeStoreRepo() {
     }),
     find: jest.fn(async () => rows.filter((r) => !r.deletedAt)),
     findOne: jest.fn(),
+    // Story 199: o manager fake devolve este repo para tudo, inclusive audit_logs.
+    insert: jest.fn().mockResolvedValue(undefined),
     softDelete: jest.fn(async (id: string) => {
       const row = rows.find((r) => r.id === id);
       if (row) row.deletedAt = new Date();
@@ -94,6 +97,7 @@ function makeService(opts: {
     receivableRepo,
     staffRepo,
     opts.dataSource,
+    new AuditService({} as never, opts.dataSource),
   );
 }
 

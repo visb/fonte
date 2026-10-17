@@ -10,6 +10,7 @@ import { House } from './house.entity';
 import { HousePhoto } from './house-photo.entity';
 import { HouseRule } from './house-rule.entity';
 import { StorageService } from '../storage/storage.service';
+import { createAuditHarness, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
 function makeHouseRepo(overrides: Record<string, jest.Mock> = {}, queryImpl?: jest.Mock) {
   const query = queryImpl ?? jest.fn().mockResolvedValue([]);
@@ -48,13 +49,24 @@ function makeService(
   ruleRepo = makeSimpleRepo(),
   storage: Partial<StorageService> = {},
 ) {
+  // Story 199 — AuditService real; as escritas passam pelos mesmos mocks.
+  lastAudit = createAuditHarness(
+    repoMap([
+      [House, houseRepo],
+      [HousePhoto, photoRepo],
+      [HouseRule, ruleRepo],
+    ]),
+  );
   return new HouseService(
     houseRepo as unknown as Repository<House>,
     photoRepo as unknown as Repository<HousePhoto>,
     ruleRepo as unknown as Repository<HouseRule>,
     storage as StorageService,
+    lastAudit.audit,
   );
 }
+
+let lastAudit: ReturnType<typeof createAuditHarness>;
 
 // Roteia por SQL para não depender da ordem de resolução dentro do Promise.all.
 function makeAggregateQuery(rows: {

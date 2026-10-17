@@ -4,7 +4,8 @@ jest.mock('bcrypt', () => ({
 }));
 
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { ProfileType, Role } from '@fonte/types';
+import { LoginFailureReason, ProfileType, Role } from '@fonte/types';
+import { AuditRequestContext, auditContext } from '../audit/audit-context';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
@@ -23,6 +24,62 @@ function makeService(userServiceOverrides: Partial<UserService> = {}, sign = jes
   const jwtService = { sign } as unknown as JwtService;
   return { service: new AuthService(userService, jwtService), userService, sign };
 }
+
+// Story 199 — o motivo da falha vai só para o contexto de auditoria; a resposta
+// ao cliente segue "Credenciais inválidas" em todos os casos.
+describe('AuthService.login — anotação para a auditoria (story 199)', () => {
+  beforeEach(() => compare.mockReset());
+
+  async function attempt(
+    overrides: Partial<UserService>,
+    identifier: string,
+  ): Promise<{ login: AuditRequestContext['login']; error: unknown }> {
+    const ctx: AuditRequestContext = {
+      requestId: 'r',
+      userId: null,
+      role: null,
+      ipAddress: null,
+      httpMethod: 'POST',
+      path: '/api/v1/auth/login',
+    };
+    const { service } = makeService(overrides);
+    let error: unknown = null;
+    await auditContext.run(ctx, () =>
+      service.login({ identifier, password: 'p' } as never).catch((e) => {
+        error = e;
+      }),
+    );
+    return { login: ctx.login, error };
+  }
+
+  const active = { id: 'u1', isActive: true, passwordHash: 'h', role: Role.SERVANT, mustChangePassword: false };
+
+  it.each([
+    ['e-mail inexistente', { findByEmail: jest.fn().mockResolvedValue(null) }, 'x@y.com', LoginFailureReason.UNKNOWN_IDENTIFIER],
+    ['identificador sem dígitos', {}, 'abc', LoginFailureReason.UNKNOWN_IDENTIFIER],
+    ['telefone inexistente', {}, '11000000000', LoginFailureReason.UNKNOWN_IDENTIFIER],
+    ['telefone ambíguo', { findActiveUserIdsByPhone: jest.fn().mockResolvedValue(['a', 'b']) }, '11999990000', LoginFailureReason.AMBIGUOUS_IDENTIFIER],
+    ['usuário inativo', { findByEmail: jest.fn().mockResolvedValue({ ...active, isActive: false }) }, 'x@y.com', LoginFailureReason.INACTIVE_USER],
+  ])('%s → %s, mesma mensagem externa', async (_label, overrides, identifier, reason) => {
+    const { login, error } = await attempt(overrides as Partial<UserService>, identifier);
+    expect(error).toBeInstanceOf(UnauthorizedException);
+    expect((error as Error).message).toBe('Credenciais inválidas');
+    expect(login).toEqual({ userId: null, role: null, reason });
+  });
+
+  it('senha errada → INVALID_CREDENTIALS, sem atribuir o usuário digitado', async () => {
+    compare.mockResolvedValue(false);
+    const { login } = await attempt({ findByEmail: jest.fn().mockResolvedValue(active) }, 'x@y.com');
+    expect(login).toEqual({ userId: null, role: null, reason: LoginFailureReason.INVALID_CREDENTIALS });
+  });
+
+  it('sucesso anota o usuário resolvido pelo auth', async () => {
+    compare.mockResolvedValue(true);
+    const { login, error } = await attempt({ findByEmail: jest.fn().mockResolvedValue(active) }, 'x@y.com');
+    expect(error).toBeNull();
+    expect(login).toEqual({ userId: 'u1', role: Role.SERVANT, reason: null });
+  });
+});
 
 describe('AuthService.login', () => {
   beforeEach(() => compare.mockReset());

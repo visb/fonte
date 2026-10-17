@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { StorageService } from '../storage/storage.service';
+import { AuditService } from '../audit/audit.service';
 
 // LGPD art. 18/19/20 — direitos do titular: portabilidade (export) e
 // eliminação/anonimização ("esquecimento"), preservando o que a lei obriga a
@@ -13,6 +14,7 @@ export class DataRightsService {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly storageService: StorageService,
+    private readonly audit: AuditService,
   ) {}
 
   private async safeQuery(sql: string, params: unknown[]): Promise<Record<string, unknown>[]> {
@@ -115,6 +117,10 @@ export class DataRightsService {
         [residentId],
       );
       await manager.query('DELETE FROM resident_attachments WHERE resident_id = $1', [residentId]);
+
+      // Story 199: os diffs da trilha de auditoria ligados ao titular perdem os
+      // valores (fica só QUE campo mudou) — nenhuma cópia sobrevive à anonimização.
+      await this.audit.redactForResident(manager, residentId);
 
       // Apaga o corpo/anexo das mensagens (texto livre com PII) e soft-delete.
       await manager.query(

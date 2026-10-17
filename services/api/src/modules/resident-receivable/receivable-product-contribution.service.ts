@@ -10,7 +10,11 @@ import { ResidentReceivable } from './resident-receivable.entity';
 import { Staff } from '../staff/staff.entity';
 import { DeclareProductContributionDto } from './dto/declare-product-contribution.dto';
 import { House } from '../house/house.entity';
+import { AuditAction, AuditTargetType } from '@fonte/types';
 import type { HouseProductContributionView } from '@fonte/types';
+import { AuditService, loadById } from '../audit/audit.service';
+import { AuditSnapshot, diffSnapshots } from '../audit/audit-diff';
+import { PRODUCT_CONTRIBUTION_AUDIT_FIELDS } from '../audit/audit-fields';
 
 export interface ProductContributionView {
   id: string;
@@ -35,6 +39,8 @@ export class ReceivableProductContributionService {
     @InjectRepository(Staff)
     private staffRepo: Repository<Staff>,
     private dataSource: DataSource,
+    // Story 199 — último de propósito: os anteriores são contrato dos specs.
+    private audit: AuditService,
   ) {}
 
   /**
@@ -55,8 +61,7 @@ export class ReceivableProductContributionService {
 
     const staff = await this.staffRepo.findOne({ where: { userId: staffUserId } });
 
-    const created: ReceivableProductContribution[] = [];
-
+    // Validação inteira ANTES de gravar: linha inválida não deixa lote pela metade.
     for (const line of dto.lines) {
       const hasItem = line.inventoryItemId != null && line.inventoryItemId !== '';
       const hasDescription = line.description != null && line.description !== '';
@@ -67,7 +72,6 @@ export class ReceivableProductContributionService {
           'Cada linha deve ter item (catálogo) OU descrição (avulso), nunca ambos.',
         );
       }
-
       if (hasItem) {
         if (!(typeof line.quantity === 'number' && line.quantity > 0)) {
           throw new BadRequestException('Quantidade deve ser maior que zero no modo catálogo.');
@@ -75,41 +79,66 @@ export class ReceivableProductContributionService {
         if (!staff) {
           throw new BadRequestException('Staff responsável não encontrado para lançar o movimento.');
         }
-        created.push(
-          await this.createCatalogContribution(receivableId, line.inventoryItemId!, line.quantity, staff),
-        );
-      } else {
-        created.push(
-          await this.repo.save(
-            this.repo.create({
-              receivableId,
-              inventoryItemId: null,
-              inventoryMovementId: null,
-              description: line.description!,
-              quantity: typeof line.quantity === 'number' ? line.quantity : null,
-              unit: line.unit ?? null,
-              pendingDetailing: true,
-              createdById: staff?.id ?? null,
-            }),
-          ),
-        );
       }
     }
+
+    // Story 199: todas as linhas, movimentos de estoque e eventos numa transação
+    // só — um evento por linha declarada (parcela, filho, produto, quantidade).
+    const created = await this.audit.inTransaction(async (m) => {
+      const rows: ReceivableProductContribution[] = [];
+      for (const line of dto.lines) {
+        const row = line.inventoryItemId
+          ? await this.createCatalogContribution(m, receivableId, line.inventoryItemId, line.quantity!, staff!)
+          : await m.getRepository(ReceivableProductContribution).save(
+              m.getRepository(ReceivableProductContribution).create({
+                receivableId,
+                inventoryItemId: null,
+                inventoryMovementId: null,
+                description: line.description!,
+                quantity: typeof line.quantity === 'number' ? line.quantity : null,
+                unit: line.unit ?? null,
+                pendingDetailing: true,
+                createdById: staff?.id ?? null,
+              }),
+            );
+        rows.push(row);
+        await this.audit.recordChange(m, {
+          action: AuditAction.PRODUCT_CONTRIBUTION_DECLARE,
+          targetType: AuditTargetType.PRODUCT_CONTRIBUTION,
+          targetId: row.id,
+          parentType: AuditTargetType.RESIDENT,
+          parentId: residentId,
+          houseId: await this.residentHouse(m, residentId),
+          changes: diffSnapshots(PRODUCT_CONTRIBUTION_AUDIT_FIELDS, null, row as unknown as AuditSnapshot),
+        });
+      }
+      return rows;
+    });
 
     return this.loadViews(created.map((c) => c.id));
   }
 
+  private async residentHouse(m: EntityManager, residentId: string): Promise<string | null> {
+    const rows = await m.query<Array<{ house_id: string | null }>>(
+      'SELECT house_id FROM residents WHERE id = $1',
+      [residentId],
+    );
+    return rows?.[0]?.house_id ?? null;
+  }
+
   /**
-   * Modo catálogo: numa transação, sobe o estoque do item, cria o movimento IN
-   * e grava a linha de contribuição com o vínculo `inventoryMovementId`.
+   * Modo catálogo: na transação da declaração (story 199 — uma só para todas as
+   * linhas e os eventos de auditoria), sobe o estoque do item, cria o movimento
+   * IN e grava a linha de contribuição com o vínculo `inventoryMovementId`.
    */
   private async createCatalogContribution(
+    manager: EntityManager,
     receivableId: string,
     inventoryItemId: string,
     quantity: number,
     staff: Staff,
   ): Promise<ReceivableProductContribution> {
-    return this.dataSource.transaction(async (manager) => {
+    {
       const item = await this.lockItem(manager, inventoryItemId);
 
       const newQty = Number(item.current_quantity) + quantity;
@@ -142,7 +171,7 @@ export class ReceivableProductContributionService {
         createdById: staff.id,
       });
       return manager.getRepository(ReceivableProductContribution).save(contribution);
-    });
+    }
   }
 
   /** Recorte operacional: somente produtos, sem valores do carnê. */
@@ -212,19 +241,30 @@ export class ReceivableProductContributionService {
 
     const staff = await this.staffRepo.findOne({ where: { userId: staffUserId } });
 
-    if (contribution.inventoryItemId && contribution.quantity != null) {
-      await this.correctCatalogContribution(contribution, staff);
-    } else {
-      await this.repo.softDelete(contribution.id);
-    }
+    await this.audit.track({
+      action: AuditAction.PRODUCT_CONTRIBUTION_REMOVE,
+      targetType: AuditTargetType.PRODUCT_CONTRIBUTION,
+      targetId: contribution.id,
+      fields: PRODUCT_CONTRIBUTION_AUDIT_FIELDS,
+      load: loadById(ReceivableProductContribution),
+      scope: () => ({ parentType: AuditTargetType.RESIDENT, parentId: residentId }),
+      write: async (m) => {
+        if (contribution.inventoryItemId && contribution.quantity != null) {
+          await this.correctCatalogContribution(m, contribution, staff);
+        } else {
+          await m.getRepository(ReceivableProductContribution).softDelete(contribution.id);
+        }
+      },
+    });
   }
 
   /** Correção sem estorno: movimento OUT do mesmo valor + soft delete da linha. */
   private async correctCatalogContribution(
+    manager: EntityManager,
     contribution: ReceivableProductContribution,
     staff: Staff | null,
   ): Promise<void> {
-    await this.dataSource.transaction(async (manager) => {
+    {
       const item = await this.lockItem(manager, contribution.inventoryItemId!);
 
       const newQty = Number(item.current_quantity) - Number(contribution.quantity);
@@ -247,7 +287,7 @@ export class ReceivableProductContributionService {
       );
 
       await manager.getRepository(ReceivableProductContribution).softDelete(contribution.id);
-    });
+    }
   }
 
   /** Batch: contribuições agrupadas por parcela — alimenta a view do carnê. */

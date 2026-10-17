@@ -162,6 +162,7 @@ describe('ImportService', () => {
       }),
     };
     const transaction = jest.fn(async (cb: (m: unknown) => unknown) => cb(managerMock));
+    const IMPORT_AUDIT = { auditAction: 'resident.import' };
 
     beforeEach(() => {
       jest.clearAllMocks();
@@ -183,7 +184,8 @@ describe('ImportService', () => {
       const result = await service.commit(commitDto(), 'user-1');
 
       expect(transaction).toHaveBeenCalledTimes(1);
-      expect(create).toHaveBeenCalledWith(commitDto().resident, managerMock);
+      // Story 199: a efetivação grava `resident.import` na transação do commit.
+      expect(create).toHaveBeenCalledWith(commitDto().resident, managerMock, IMPORT_AUDIT);
       expect(relativeSave).toHaveBeenCalledTimes(1);
       expect(relativeSave).toHaveBeenCalledWith(
         expect.objectContaining({ residentId: 'new-1', name: 'Pai da Maria', phone: '11999998888' }),
@@ -207,7 +209,7 @@ describe('ImportService', () => {
       const result = await service.commit(dto, 'user-1');
 
       expect(result.resident.id).toBe('new-1');
-      expect(create).toHaveBeenCalledWith(expect.objectContaining({ ministryId: 'min-1' }), managerMock);
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ ministryId: 'min-1' }), managerMock, IMPORT_AUDIT);
       const relations = residentTxFindOne.mock.calls.flatMap(
         ([opts]) => (opts as { relations?: string[] }).relations ?? [],
       );
@@ -224,7 +226,7 @@ describe('ImportService', () => {
 
         await service.commit(dto, 'user-1');
 
-        expect(create).toHaveBeenCalledWith(expect.objectContaining({ ministryId: null }), managerMock);
+        expect(create).toHaveBeenCalledWith(expect.objectContaining({ ministryId: null }), managerMock, IMPORT_AUDIT);
       },
     );
 
@@ -233,7 +235,7 @@ describe('ImportService', () => {
         resident: { name: 'Maria', houseId: 'house-1', ministryId: 'min-1' } as never,
       });
       await service.commit(dto, 'user-1');
-      expect(create).toHaveBeenCalledWith(expect.objectContaining({ ministryId: null }), managerMock);
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ ministryId: null }), managerMock, IMPORT_AUDIT);
     });
 
     it('ficha que saiu (exitDate deriva alta) perde o ministério', async () => {
@@ -251,6 +253,7 @@ describe('ImportService', () => {
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({ status: ResidentStatus.DISCHARGED, ministryId: null }),
         managerMock,
+        IMPORT_AUDIT,
       );
     });
 

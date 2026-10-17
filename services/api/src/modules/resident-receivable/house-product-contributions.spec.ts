@@ -17,7 +17,7 @@ describe('House product contributions', () => {
     query.getMany.mockResolvedValue(rows);
     existsBy.mockResolvedValue(true);
     service = new ReceivableProductContributionService({ createQueryBuilder: () => query } as never, {} as never, {} as never,
-      { getRepository: () => ({ existsBy }) } as never);
+      { getRepository: () => ({ existsBy }) } as never, {} as never);
   });
   it('groups ordered lines, sorts names in pt-BR and never exposes money', async () => {
     const result = await service.listByHouseAndMonth('h1', '2026-09-01');

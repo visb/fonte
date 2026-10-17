@@ -132,6 +132,7 @@
       "/database/restore.*\\.ts$",
       "\\.dto\\.ts$",
       "\\.entity\\.ts$",
+      "-spec\\.ts$",
       "\\.d\\.ts$"
     ],
     "coverageDirectory": "../coverage",

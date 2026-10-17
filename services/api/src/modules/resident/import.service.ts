@@ -1,7 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { CheckImportConflictResult, ImportConflict, REMOVABLE_RESIDENT_STATUSES, ResidentStatus } from '@fonte/types';
+import { AuditAction, CheckImportConflictResult, ImportConflict, REMOVABLE_RESIDENT_STATUSES, ResidentStatus } from '@fonte/types';
 import { normalizeName } from '../../common/lib/normalize';
 import { assertAdultBirthDate } from '../../common/lib/birth-date';
 import { assertAdmissionDates } from './admission-dates';
@@ -166,7 +166,10 @@ export class ImportService {
 
       // Reusa a regra de criação (resident + admissão do topo + carnê), na
       // transação. O topo é o acolhimento mais recente (status já derivado acima).
-      const created = await this.residentService.create(dto.resident, manager);
+      // Story 199: efetivação do import grava `resident.import` na transação do commit.
+      const created = await this.residentService.create(dto.resident, manager, {
+        auditAction: AuditAction.RESIDENT_IMPORT,
+      });
 
       // Histórico de acolhimentos (story 121): quando a planilha trouxe vários
       // pares entrada→saída, os anteriores ao mais recente viram `Admission`

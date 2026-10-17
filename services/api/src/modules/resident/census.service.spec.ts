@@ -7,6 +7,7 @@ import { ResidentService } from './resident.service';
 import { House } from '../house/house.entity';
 import { Staff } from '../staff/staff.entity';
 import { NotificationService } from '../notification/notification.service';
+import { createAuditHarness, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
 function makeRepo(overrides: Record<string, jest.Mock> = {}) {
   return {
@@ -28,14 +29,17 @@ function makeService(
   },
   notifications: Partial<NotificationService> = { create: jest.fn().mockResolvedValue({}) },
 ) {
+  // Story 199 — AuditService real sobre manager fake.
+  const audit = createAuditHarness(repoMap([[Resident, residentRepo]]));
   const service = new CensusService(
     residentRepo as unknown as Repository<Resident>,
     houseRepo as unknown as Repository<House>,
     staffRepo as unknown as Repository<Staff>,
     residentService as ResidentService,
     notifications as NotificationService,
+    audit.audit,
   );
-  return { service, residentRepo, houseRepo, staffRepo, residentService, notifications };
+  return { service, residentRepo, houseRepo, staffRepo, residentService, notifications, audit };
 }
 
 const HOUSE = { id: 'house-1', name: 'Casa Esperança' };
@@ -64,6 +68,9 @@ describe('CensusService.addResident', () => {
 
     expect(residentService.create).toHaveBeenCalledWith(
       expect.objectContaining({ status: ResidentStatus.CENSUS_ADDED, houseId: 'house-1' }),
+      undefined,
+      // Story 199: a criação entra na trilha como inclusão na contagem.
+      { auditAction: 'census.resident.add' },
     );
     expect(notifications.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -98,7 +105,7 @@ describe('CensusService.conclude', () => {
     const houseRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(HOUSE) });
     const residentRepo = makeRepo({ count: jest.fn().mockResolvedValue(2) });
     const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(STAFF) });
-    const { service, notifications } = makeService(residentRepo, houseRepo, staffRepo);
+    const { service, notifications, audit } = makeService(residentRepo, houseRepo, staffRepo);
 
     const result = await service.conclude(
       { houseId: 'house-1', confirmedCount: 5, total: 5 },
@@ -106,6 +113,17 @@ describe('CensusService.conclude', () => {
     );
 
     expect(result.addedCount).toBe(2);
+    // Story 199: conclusão é evento sem diff, com os números da contagem.
+    expect(audit.inserted).toEqual([
+      expect.objectContaining({
+        action: 'census.conclude',
+        targetType: 'house',
+        targetId: 'house-1',
+        houseId: 'house-1',
+        changes: null,
+        context: { confirmedCount: 5, total: 5, addedCount: 2 },
+      }),
+    ]);
     expect(notifications.create).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.CENSUS_CONCLUDED,
@@ -127,24 +145,33 @@ describe('CensusService.approveAll', () => {
     const result = await service.approveAll('house-1');
 
     expect(result.approved).toBe(2);
-    expect(residentService.update).toHaveBeenCalledWith('r1', {
-      status: ResidentStatus.ACTIVE,
-    });
-    expect(residentService.update).toHaveBeenCalledWith('r2', {
-      status: ResidentStatus.ACTIVE,
-    });
+    // Story 199: um evento `census.approve` por filho (correlação = a requisição).
+    expect(residentService.update).toHaveBeenCalledWith(
+      'r1',
+      { status: ResidentStatus.ACTIVE },
+      { auditAction: 'census.approve' },
+    );
+    expect(residentService.update).toHaveBeenCalledWith(
+      'r2',
+      { status: ResidentStatus.ACTIVE },
+      { auditAction: 'census.approve' },
+    );
   });
 });
 
 describe('CensusService.reject', () => {
   it('sets the resident to REJECTED_CENSUS', async () => {
+    const pending = { id: 'r1', status: ResidentStatus.CENSUS_ADDED, houseId: 'house-1' };
+    const rejected = { ...pending, status: ResidentStatus.REJECTED_CENSUS };
     const residentRepo = makeRepo({
       findOne: jest
         .fn()
-        .mockResolvedValueOnce({ id: 'r1', status: ResidentStatus.CENSUS_ADDED })
-        .mockResolvedValueOnce({ id: 'r1', status: ResidentStatus.REJECTED_CENSUS }),
+        .mockResolvedValueOnce(pending) // checagem do service
+        .mockResolvedValueOnce(pending) // antes (auditoria)
+        .mockResolvedValueOnce(rejected) // depois (auditoria)
+        .mockResolvedValueOnce(rejected), // resposta
     });
-    const { service } = makeService(residentRepo);
+    const { service, audit } = makeService(residentRepo);
 
     const result = await service.reject('r1');
 
@@ -152,6 +179,15 @@ describe('CensusService.reject', () => {
       status: ResidentStatus.REJECTED_CENSUS,
     });
     expect(result.status).toBe(ResidentStatus.REJECTED_CENSUS);
+    expect(audit.inserted).toEqual([
+      expect.objectContaining({
+        action: 'census.reject',
+        targetType: 'resident',
+        targetId: 'r1',
+        houseId: 'house-1',
+        changes: [{ field: 'status', before: 'CENSUS_ADDED', after: 'REJECTED_CENSUS', redacted: false }],
+      }),
+    ]);
   });
 
   it('throws Conflict when the resident is not CENSUS_ADDED', async () => {

@@ -301,11 +301,34 @@ describe('ResidentController', () => {
       Role.COORDINATOR,
       Role.SERVANT,
     ]);
-    expect(Reflect.getMetadata(AUDIT_KEY, ResidentController.prototype.downloadCombinedPdf)).toEqual({
+    const meta = Reflect.getMetadata(AUDIT_KEY, ResidentController.prototype.downloadCombinedPdf);
+    expect(meta).toMatchObject({
       action: 'resident.document.combined-pdf',
       targetType: 'resident',
       targetParam: 'id',
     });
+    // Story 199: ids dos templates, formato e quantidade — nunca o conteúdo.
+    expect(meta.context({ body: { templateIds: ['t1', 't2', 3] } })).toEqual({
+      templateIds: ['t1', 't2'],
+      format: 'pdf',
+      count: 2,
+    });
+  });
+
+  it('documento individual e renderização auditam template e formato (story 199)', () => {
+    const proto = ResidentController.prototype;
+    const pdf = Reflect.getMetadata(AUDIT_KEY, proto.downloadPdf);
+    const html = Reflect.getMetadata(AUDIT_KEY, proto.renderDocument);
+    expect(pdf.context({ params: { templateId: 't9' } })).toEqual({ templateIds: ['t9'], format: 'pdf', count: 1 });
+    expect(html.action).toBe('resident.document.render');
+    expect(html.context({})).toEqual({ templateIds: [], format: 'html', count: 0 });
+  });
+
+  it('escritas da ficha não usam @Audit (evento transacional no service, sem duplicar)', () => {
+    const proto = ResidentController.prototype;
+    expect(Reflect.getMetadata(AUDIT_KEY, proto.update)).toBeUndefined();
+    expect(Reflect.getMetadata(AUDIT_KEY, proto.updateIdentity)).toBeUndefined();
+    expect(Reflect.getMetadata(AUDIT_KEY, proto.remove)).toBeUndefined();
   });
 
   // ── Story 193: recibo da parcela paga ──────────────────────────────────────
@@ -332,11 +355,16 @@ describe('ResidentController', () => {
         Role.ADMIN,
         Role.COORDINATOR,
       ]);
-      expect(Reflect.getMetadata(AUDIT_KEY, proto.downloadReceivableReceipt)).toEqual({
+      const meta = Reflect.getMetadata(AUDIT_KEY, proto.downloadReceivableReceipt);
+      expect(meta).toMatchObject({
         action: 'resident.receivable.receipt',
         targetType: 'resident-receivable',
         targetParam: 'receivableId',
+        // Story 199: o filho entra como recurso principal (filtro por filho/casa).
+        parentType: 'resident',
+        parentParam: 'id',
       });
+      expect(meta.context()).toEqual({ format: 'pdf', count: 1 });
     });
   });
 });

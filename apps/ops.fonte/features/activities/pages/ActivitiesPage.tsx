@@ -1,41 +1,45 @@
-import { useState } from 'react';
-import { View, Text, SectionList, TouchableOpacity } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { View, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityStatus } from '@fonte/types';
+import type { ActivityStatus } from '@fonte/types';
 import type { Activity } from '@fonte/api-client';
 import { useAuth } from '@/lib/auth';
 import { useIsOnline } from '@/lib/offline/network';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import {
   useActivities,
   useChangeActivityStatus,
 } from '@/features/activities/hooks/useActivities';
-import { ActivityCard } from '@/features/activities/components/ActivityCard';
-import { QuickAddCard } from '@/features/activities/components/QuickAddCard';
-import { canQuickAddInStatus } from '@/features/activities/constants';
+import { ActivityBoard } from '@/features/activities/components/ActivityBoard';
+import { ActivityColumn } from '@/features/activities/components/ActivityColumn';
+import {
+  groupActivitiesByStatus,
+  initialActivityTab,
+} from '@/features/activities/lib/columns';
 
-/** Ordem fixa das seções (colunas do board), igual ao backend. */
-const SECTION_ORDER: { status: ActivityStatus; title: string }[] = [
-  { status: ActivityStatus.DRAFT, title: 'Rascunhos' },
-  { status: ActivityStatus.REQUESTED, title: 'Solicitações' },
-  { status: ActivityStatus.TODO, title: 'A fazer' },
-  { status: ActivityStatus.DOING, title: 'Fazendo' },
-  { status: ActivityStatus.BLOCKED, title: 'Impedimento' },
-  { status: ActivityStatus.DONE, title: 'Concluídas' },
-];
-
+/**
+ * Atividades da casa em colunas (story 208): abas por status, uma coluna por
+ * vez. A page só orquestra hooks, agrupamento e a aba ativa.
+ */
 export function ActivitiesPage() {
   const { staff } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selected, setSelected] = useState<ActivityStatus | null>(null);
 
-  const { data: activities = [], isLoading, error, refetch } = useActivities(
-    staff?.houseId,
-  );
+  const { data, isLoading, error, refetch } = useActivities(staff?.houseId);
   const changeStatus = useChangeActivityStatus();
   const isOnline = useIsOnline();
+
+  const columns = useMemo(() => groupActivitiesByStatus(data ?? []), [data]);
+  const active = selected ?? initialActivityTab(columns);
+
+  // A aba inicial é fixada quando os dados chegam: depois disso, mudar o status
+  // de um card não troca de aba (decisão 6), nem na atualização otimista.
+  useEffect(() => {
+    if (!isLoading && selected === null) setSelected(initialActivityTab(columns));
+  }, [isLoading, selected, columns]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -44,20 +48,11 @@ export function ActivitiesPage() {
   };
 
   const handleChangeStatus = (activity: Activity, status: ActivityStatus) => {
+    setSelected(active);
     changeStatus.mutate({ id: activity.id, data: { status } });
   };
 
   const role = staff?.user?.role ?? null;
-
-  const sections = SECTION_ORDER.map((s) => ({
-    status: s.status,
-    title: s.title,
-    data: activities.filter((a) => a.status === s.status),
-  })).filter(
-    // Mostra seções com itens; mantém a seção de rascunho mesmo vazia para
-    // exibir o quick-add (criação inline da primeira atividade).
-    (s) => s.data.length > 0 || canQuickAddInStatus(s.status, role),
-  );
 
   if (isLoading) return <LoadingState />;
   if (error) {
@@ -66,38 +61,25 @@ export function ActivitiesPage() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16, gap: 8 }}
-        refreshing={isRefreshing}
-        onRefresh={handleRefresh}
-        renderSectionHeader={({ section: { title } }) => (
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-3 mb-1">
-            {title}
-          </Text>
-        )}
-        renderItem={({ item }) => (
-          <ActivityCard
-            item={item}
+      <ActivityBoard
+        columns={columns}
+        active={active}
+        onSelect={setSelected}
+        renderColumn={(column, width) => (
+          <ActivityColumn
+            column={column}
+            width={width}
+            role={role}
+            houseId={staff?.houseId}
             currentUserId={staff?.userId}
             onChangeStatus={handleChangeStatus}
-            onPress={(activity) =>
-              router.push(`/(app)/activities/${activity.id}`)
-            }
+            onPressActivity={(activity) => router.push(`/(app)/activities/${activity.id}`)}
             pending={changeStatus.isPending}
             isOnline={isOnline}
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
           />
         )}
-        renderSectionFooter={({ section }) =>
-          canQuickAddInStatus(section.status, role) ? (
-            <QuickAddCard
-              status={section.status}
-              houseId={staff?.houseId}
-            />
-          ) : null
-        }
-        ListEmptyComponent={<EmptyState message="Nenhuma atividade registrada." />}
       />
 
       <TouchableOpacity

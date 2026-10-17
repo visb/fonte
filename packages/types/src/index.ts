@@ -234,6 +234,46 @@ export const RECEIPT_TYPE_LABELS: Record<ReceiptType, string> = {
   [ReceiptType.BREAD_SALE]: 'Venda de pão',
 };
 
+/**
+ * Story 212 — `code` do 404 de "nenhum template cadastrado para o tipo". Vai no
+ * corpo junto com a `message` e o `receiptType`, para o cliente distinguir esse
+ * 404 do de "parcela/cobrança inexistente" e oferecer o atalho de cadastro.
+ */
+export const RECEIPT_TEMPLATE_MISSING_CODE = 'RECEIPT_TEMPLATE_MISSING';
+
+/** Slug de nome de arquivo: minúsculas, sem acento, tudo que não é [a-z0-9] vira `-`. */
+export function filenameSlug(value: string | null | undefined): string {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Story 212 — nome do arquivo do recibo da contribuição do filho:
+ * `recibo-{nome-do-filho}-{MM}-{AAAA}.pdf`. Mês/ano saem da COMPETÊNCIA
+ * (`reference_month`, `YYYY-MM-DD` ou `Date` de coluna `date`), não do
+ * pagamento. Partes vazias somem sem deixar hífen duplo.
+ */
+export function residentReceiptFilename(
+  residentName: string | null | undefined,
+  referenceMonth: string | Date | null | undefined,
+): string {
+  let monthYear = '';
+  if (referenceMonth instanceof Date) {
+    if (!Number.isNaN(referenceMonth.getTime())) {
+      monthYear = `${pad2(referenceMonth.getUTCMonth() + 1)}-${referenceMonth.getUTCFullYear()}`;
+    }
+  } else if (referenceMonth) {
+    const match = /^(\d{4})-(\d{1,2})/.exec(referenceMonth);
+    if (match) monthYear = `${pad2(Number(match[2]))}-${match[1]}`;
+  }
+  const parts = ['recibo', filenameSlug(residentName), monthYear].filter(Boolean);
+  return `${parts.join('-')}.pdf`;
+}
+
 export function isResidentStatusActive(status: ResidentStatus | null | undefined): boolean {
   return !!status && ACTIVE_RESIDENT_STATUSES.includes(status);
 }

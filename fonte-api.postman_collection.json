@@ -1822,8 +1822,25 @@
                 "receipt"
               ]
             },
-            "description": "Story 193 — PDF do recibo da contribuição mensal do ACOLHIDO (uma parcela PAGA do carnê), gerado sob demanda e NUNCA persistido: não vira anexo do filho nem vai para o bucket. O número é sequencial por tipo (`RESIDENT_CONTRIBUTION`, livro independente do recibo do associado) e idempotente por PARCELA: baixar duas vezes reusa o mesmo número.\n\nValor impresso = `paidAmount ?? amount` (o que a família pagou, não o que o plano dizia); competência = `referenceMonth` (não o vencimento); contribuição em produtos fica de fora. Sem responsável cadastrado, `{{payerName}}` cai para o nome do filho.\n\n400 se a parcela não estiver PAID; 404 se a parcela não existir/estiver apagada ou se não houver template do tipo cadastrado (mensagem acionável); 403 para SERVANT/RELATIVE. Roles: ADMIN, COORDINATOR."
-          }
+            "description": "Story 193 — PDF do recibo da contribuição mensal do ACOLHIDO (uma parcela PAGA do carnê), gerado sob demanda e NUNCA persistido: não vira anexo do filho nem vai para o bucket. O número é sequencial por tipo (`RESIDENT_CONTRIBUTION`, livro independente do recibo do associado) e idempotente por PARCELA: baixar duas vezes reusa o mesmo número.\n\nValor impresso = `paidAmount ?? amount` (o que a família pagou, não o que o plano dizia); competência = `referenceMonth` (não o vencimento); contribuição em produtos fica de fora. Sem responsável cadastrado, `{{payerName}}` cai para o nome do filho.\n\n400 se a parcela não estiver PAID; 404 se a parcela não existir/estiver apagada ou se não houver template do tipo cadastrado (mensagem acionável); 403 para SERVANT/RELATIVE. Roles: ADMIN, COORDINATOR.\n\nStory 212 — o arquivo vem como `Content-Disposition: attachment; filename=\"recibo-{nome-do-filho}-{MM}-{AAAA}.pdf\"` (slug do nome + competência, ex.: `recibo-joao-da-silva-10-2026.pdf`; o número continua impresso no PDF). O 404 de template ausente leva `code: \"RECEIPT_TEMPLATE_MISSING\"` + `receiptType` no corpo (ver exemplo); o 404 de parcela inexistente NÃO leva `code`."
+          },
+          "response": [
+            {
+              "name": "404 — template de recibo ausente (story 212)",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/receipt",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}", "receivables", "{{receivableId}}", "receipt"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"Nenhum template de recibo cadastrado para contribuição mensal do acolhido. Cadastre em Configurações → Templates.\",\n  \"code\": \"RECEIPT_TEMPLATE_MISSING\",\n  \"receiptType\": \"RESIDENT_CONTRIBUTION\"\n}"
+            }
+          ]
         },
         {
           "name": "List Receivable Product Contributions",
@@ -2261,7 +2278,7 @@
                 "receipt"
               ]
             },
-            "description": "Story 193 — o familiar baixa o recibo da PRÓPRIA parcela paga (mesmo PDF da rota do adm.fonte, gerado sob demanda e nunca persistido).\n\nEscopo (decisão 10): a parcela tem que ser do filho vinculado ao familiar do token; parcela de outro filho responde **404**, não 403 — 403 confirmaria que ela existe. A checagem roda ANTES da alocação do número: tentativa negada não queima sequência.\n\n400 se a parcela não estiver PAID; 404 se a parcela não existir, for de outro filho, ou se não houver template do tipo cadastrado. Roles: RELATIVE."
+            "description": "Story 193 — o familiar baixa o recibo da PRÓPRIA parcela paga (mesmo PDF da rota do adm.fonte, gerado sob demanda e nunca persistido).\n\nEscopo (decisão 10): a parcela tem que ser do filho vinculado ao familiar do token; parcela de outro filho responde **404**, não 403 — 403 confirmaria que ela existe. A checagem roda ANTES da alocação do número: tentativa negada não queima sequência.\n\n400 se a parcela não estiver PAID; 404 se a parcela não existir, for de outro filho, ou se não houver template do tipo cadastrado. Roles: RELATIVE.\n\nStory 212 — mesmo `Content-Disposition` da rota do adm (`recibo-{nome-do-filho}-{MM}-{AAAA}.pdf`, pela competência) e mesmo 404 com `code: \"RECEIPT_TEMPLATE_MISSING\"` + `receiptType: \"RESIDENT_CONTRIBUTION\"` quando falta o template; parcela inexistente/de outro filho responde 404 sem `code`."
           }
         },
         {
@@ -5193,8 +5210,25 @@
                 "receipt"
               ]
             },
-            "description": "ADMIN/COORDINATOR. PDF do recibo da contribuição de uma cobrança PAGA, gerado sob demanda e NUNCA persistido (nada vai para o bucket nem para os anexos do filho). O número é sequencial por tipo de recibo e idempotente por cobrança: baixar duas vezes reusa o mesmo número. 400 se a cobrança não estiver PAID; 404 se a cobrança não existir ou se não houver template do tipo cadastrado (mensagem acionável); 403 para SERVANT/RELATIVE."
-          }
+            "description": "ADMIN/COORDINATOR. PDF do recibo da contribuição de uma cobrança PAGA, gerado sob demanda e NUNCA persistido (nada vai para o bucket nem para os anexos do filho). O número é sequencial por tipo de recibo e idempotente por cobrança: baixar duas vezes reusa o mesmo número. 400 se a cobrança não estiver PAID; 404 se a cobrança não existir ou se não houver template do tipo cadastrado (mensagem acionável); 403 para SERVANT/RELATIVE.\n\nStory 212 — o 404 de template ausente leva `code: \"RECEIPT_TEMPLATE_MISSING\"` + `receiptType: \"ASSOCIATE_CONTRIBUTION\"` no corpo (ver exemplo); cobrança inexistente responde 404 sem `code`. O nome do arquivo do associado não mudou."
+          },
+          "response": [
+            {
+              "name": "404 — template de recibo ausente (story 212)",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/associates/charges/{{chargeId}}/receipt",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["associates", "charges", "{{chargeId}}", "receipt"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"Nenhum template de recibo cadastrado para contribuição mensal do associado. Cadastre em Configurações → Templates.\",\n  \"code\": \"RECEIPT_TEMPLATE_MISSING\",\n  \"receiptType\": \"ASSOCIATE_CONTRIBUTION\"\n}"
+            }
+          ]
         },
         {
           "name": "Public — Get Associate by token",

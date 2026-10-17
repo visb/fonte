@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { ReceiptErrorAlert } from '@/components/shared/ReceiptErrorAlert';
 import { ContributionAdmissionSelector } from '../ContributionAdmissionSelector';
 import { ContributionPlanCard } from '../ContributionPlanCard';
 import { ContributionsEmptyState } from '../ContributionsEmptyState';
@@ -117,8 +118,14 @@ export function ContributionsTab({ resident }: Props) {
         />
       ) : (
         <div className="space-y-2">
-          {/* O 404 de template ausente chega como a frase acionável do backend. */}
-          {receipt.error && <p className="text-sm text-destructive">{receipt.error}</p>}
+          {/* O 404 de template ausente chega como a frase acionável do backend,
+              com o atalho "Cadastrar template" (story 212). */}
+          {receipt.error && (
+            <ReceiptErrorAlert
+              message={receipt.error}
+              missingTemplateType={receipt.missingTemplateType}
+            />
+          )}
           {visibleReceivables.map((r) => (
             <ReceivableRow
               key={r.id}
@@ -127,7 +134,12 @@ export function ContributionsTab({ resident }: Props) {
               catalog={catalog}
               onPayClick={setPayTarget}
               onReopenClick={setReopenTarget}
-              onDownloadReceipt={(receivableId) => void receipt.download(resident.id, receivableId)}
+              onDownloadReceipt={(receivableId) =>
+                void receipt.download(resident.id, receivableId, {
+                  residentName: resident.name,
+                  referenceMonth: r.referenceMonth,
+                })
+              }
               isDownloadingReceipt={receipt.downloadingId === r.id}
             />
           ))}

@@ -186,6 +186,31 @@ describe('update — invariantes de kind (story 178)', () => {
     });
   });
 
+  // Story 212, decisão 3 — o editor do adm troca o tipo pelo PATCH existente.
+  it('trocar o receiptType para um tipo LIVRE grava o tipo novo', async () => {
+    const repo = makeRepo({
+      findOne: jest
+        .fn()
+        // findOne(id) do update
+        .mockResolvedValueOnce({
+          id: 'tpl-1',
+          name: 'Recibo',
+          content: '',
+          kind: TemplateKind.RECEIPT,
+          receiptType: ReceiptType.ASSOCIATE_CONTRIBUTION,
+        })
+        // checagem de conflito: ninguém usa o tipo novo
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue({ id: 'tpl-1', name: 'Recibo', content: '' }),
+    });
+    const service = makeService(repo);
+    await service.update('tpl-1', { receiptType: ReceiptType.RESIDENT_CONTRIBUTION });
+    expect(repo.update.mock.calls[0][1]).toMatchObject({
+      kind: TemplateKind.RECEIPT,
+      receiptType: ReceiptType.RESIDENT_CONTRIBUTION,
+    });
+  });
+
   it('update que não menciona kind nem receiptType não mexe em nenhum dos dois', async () => {
     const repo = makeRepo({
       findOne: jest.fn().mockResolvedValue({ id: 'tpl-1', name: 'Termo', content: '', kind: TemplateKind.RESIDENT }),
@@ -232,6 +257,28 @@ describe('findByReceiptType (story 178)', () => {
     await expect(
       service.findByReceiptType(ReceiptType.ASSOCIATE_CONTRIBUTION, 'contribuição mensal'),
     ).rejects.toThrow('Configurações → Templates');
+  });
+
+  // Story 212, decisão 7 — `code` legível por máquina + o tipo pedido no corpo.
+  it('o 404 leva code RECEIPT_TEMPLATE_MISSING e o receiptType, mantendo a mensagem', async () => {
+    const service = makeService(makeRepo());
+    const error = await service
+      .findByReceiptType(ReceiptType.RESIDENT_CONTRIBUTION, 'contribuição mensal do acolhido')
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(NotFoundException);
+    const nf = error as NotFoundException;
+    expect(nf.getStatus()).toBe(404);
+    expect(nf.getResponse()).toEqual({
+      statusCode: 404,
+      error: 'Not Found',
+      message:
+        'Nenhum template de recibo cadastrado para contribuição mensal do acolhido. Cadastre em Configurações → Templates.',
+      code: 'RECEIPT_TEMPLATE_MISSING',
+      receiptType: ReceiptType.RESIDENT_CONTRIBUTION,
+    });
+    expect(nf.message).toBe(
+      'Nenhum template de recibo cadastrado para contribuição mensal do acolhido. Cadastre em Configurações → Templates.',
+    );
   });
 
   it('acha o template pelo tipo (o operador não escolhe template ao emitir)', async () => {

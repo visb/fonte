@@ -29,6 +29,8 @@ export interface PaidReceivableFixture {
   residentId: string;
   residentName: string;
   receivableId: string;
+  /** Competência da parcela paga (`YYYY-MM-DD`) — dá nome ao arquivo (story 212). */
+  referenceMonth: string;
 }
 
 /**
@@ -63,7 +65,8 @@ export async function createResidentWithPaidReceivable(
   const residentId = (await created.json()).id as string;
 
   const list = await request.get(`${API_URL}/residents/${residentId}/receivables`, { headers });
-  const receivableId = ((await list.json()) as { id: string }[])[0]?.id;
+  const first = ((await list.json()) as { id: string; referenceMonth: string }[])[0];
+  const receivableId = first?.id;
   if (!receivableId) throw new Error('O carnê do filho de teste nasceu vazio.');
 
   const paid = await request.post(
@@ -71,7 +74,8 @@ export async function createResidentWithPaidReceivable(
     {
       headers,
       multipart: {
-        paidAt: new Date().toISOString().slice(0, 10),
+        // Hoje em São Paulo (não o dia UTC): pagamento "no futuro" é recusado.
+        paidAt: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()),
         paymentMethod: 'PIX',
         paidAmount: '700',
       },
@@ -81,7 +85,7 @@ export async function createResidentWithPaidReceivable(
     throw new Error(`Falha ao registrar o pagamento (${paid.status()}): ${await paid.text()}`);
   }
 
-  return { residentId, residentName: name, receivableId };
+  return { residentId, residentName: name, receivableId, referenceMonth: first.referenceMonth };
 }
 
 /** Remove o filho da fixture e o registro de recibo emitido da parcela. */

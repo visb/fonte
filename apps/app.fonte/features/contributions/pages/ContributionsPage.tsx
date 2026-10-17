@@ -44,7 +44,12 @@ export function ContributionsPage() {
           renderItem={({ item }) => (
             <PaidReceivableRow
               receivable={item}
-              onDownloadReceipt={(id) => void receipt.download(id)}
+              onDownloadReceipt={(id) =>
+                void receipt.download(id, {
+                  residentName: relative?.residentName,
+                  referenceMonth: item.referenceMonth,
+                })
+              }
               isDownloading={receipt.downloadingId === item.id}
             />
           )}

@@ -5,6 +5,7 @@ import type { Browser } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
 import { DOCUMENT_PRINT_CSS, A4_MARGIN_TOP_PX, A4_MARGIN_X_PX } from '@fonte/doc-styles';
 import {
+  RECEIPT_TEMPLATE_MISSING_CODE,
   ReceiptType,
   TemplateAvailability,
   TemplateKind,
@@ -270,9 +271,15 @@ export class DocumentTemplateService implements OnModuleDestroy {
       where: { receiptType, kind: TemplateKind.RECEIPT },
     });
     if (!template) {
-      throw new NotFoundException(
-        `Nenhum template de recibo cadastrado para ${label}. Cadastre em Configurações → Templates.`,
-      );
+      // Story 212 — `code` + `receiptType` no corpo: o cliente distingue este
+      // 404 do de "parcela inexistente" e oferece o atalho de cadastro.
+      throw new NotFoundException({
+        statusCode: 404,
+        error: 'Not Found',
+        message: `Nenhum template de recibo cadastrado para ${label}. Cadastre em Configurações → Templates.`,
+        code: RECEIPT_TEMPLATE_MISSING_CODE,
+        receiptType,
+      });
     }
     return this.signContent(template);
   }

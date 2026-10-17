@@ -32,6 +32,8 @@ const PAID = [
   },
 ];
 
+const FILE = { residentName: 'João da Silva', referenceMonth: '2026-08-01' };
+
 beforeEach(() => {
   jest.clearAllMocks();
   writeAsStringAsync.mockResolvedValue(undefined);
@@ -58,18 +60,21 @@ describe('useReceivableReceipt (story 193)', () => {
     const { result } = renderHookWithClient(() => useReceivableReceipt());
 
     await act(async () => {
-      await result.current.download('rcv-1');
+      await result.current.download('rcv-1', FILE);
     });
 
     // RN não tem Blob utilizável para escrever arquivo — daí o arraybuffer.
     expect(mockApi.relatives.receivableReceipt).toHaveBeenCalledWith('rcv-1', {
       responseType: 'arraybuffer',
     });
-    expect(writeAsStringAsync).toHaveBeenCalledWith('/tmp/recibo-rcv-1.pdf', 'JVBERg==', {
-      encoding: 'base64',
-    });
+    // Story 212 — o arquivo gravado e compartilhado tem o nome do filho e a competência.
+    expect(writeAsStringAsync).toHaveBeenCalledWith(
+      '/tmp/recibo-joao-da-silva-08-2026.pdf',
+      'JVBERg==',
+      { encoding: 'base64' },
+    );
     expect(shareAsync).toHaveBeenCalledWith(
-      '/tmp/recibo-rcv-1.pdf',
+      '/tmp/recibo-joao-da-silva-08-2026.pdf',
       expect.objectContaining({ mimeType: 'application/pdf' }),
     );
     expect(result.current.error).toBeNull();
@@ -87,7 +92,7 @@ describe('useReceivableReceipt (story 193)', () => {
 
     const { result } = renderHookWithClient(() => useReceivableReceipt());
     await act(async () => {
-      await result.current.download('rcv-1');
+      await result.current.download('rcv-1', FILE);
     });
 
     expect(result.current.error).toContain('Cadastre em Configurações → Templates.');
@@ -99,7 +104,7 @@ describe('useReceivableReceipt (story 193)', () => {
     const { result } = renderHookWithClient(() => useReceivableReceipt());
 
     await act(async () => {
-      await result.current.download('rcv-1');
+      await result.current.download('rcv-1', FILE);
     });
     expect(result.current.error).toMatch(/Falha ao gerar o recibo/);
 
@@ -118,7 +123,7 @@ describe('useReceivableReceipt (story 193)', () => {
 
     let pending!: Promise<void>;
     act(() => {
-      pending = result.current.download('rcv-9');
+      pending = result.current.download('rcv-9', FILE);
     });
     await waitFor(() => expect(result.current.downloadingId).toBe('rcv-9'));
 

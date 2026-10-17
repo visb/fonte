@@ -7,6 +7,7 @@ import {
   ReceiptSubjectType,
   ReceiptType,
   RECEIPT_TYPE_LABELS,
+  residentReceiptFilename,
 } from '@fonte/types';
 import { Associate } from '../associate/associate.entity';
 import { AssociateCharge } from '../associate/associate-charge.entity';
@@ -30,6 +31,10 @@ import { ResidentContributionReceiptResolver } from './resident-contribution-rec
  *
  * `Record<ReceiptType, string>` de propósito (story 178): tipo novo sem entrada
  * aqui QUEBRA O BUILD, em vez de sair um arquivo `undefined-000123.pdf`.
+ *
+ * Story 212 — o recibo do ACOLHIDO não usa mais este prefixo: o arquivo sai
+ * como `recibo-{filho}-{MM}-{AAAA}.pdf` (`residentReceiptFilename`). A entrada
+ * fica porque o `Record` exige todos os tipos.
  */
 const RECEIPT_FILENAME_PREFIX: Record<ReceiptType, string> = {
   [ReceiptType.ASSOCIATE_CONTRIBUTION]: 'recibo contribuicao',
@@ -214,9 +219,9 @@ export class ReceiptService {
     });
     const html = await this.documentTemplateService.renderWithResolver(template, resolver);
     const buffer = await this.documentTemplateService.htmlToPdf(html);
-    const filename = `${slugify(
-      `${RECEIPT_FILENAME_PREFIX[receiptType]} ${formatReceiptNumber(issued.number)}`,
-    )}.pdf`;
+    // Story 212, decisão 6 — `recibo-{filho}-{MM}-{AAAA}.pdf` pela competência.
+    // O número sai do nome do arquivo, mas continua impresso no PDF.
+    const filename = residentReceiptFilename(resident.name, receivable.referenceMonth);
     return { buffer, filename, number: issued.number };
   }
 

@@ -29,6 +29,7 @@ import type { DocumentTemplate } from '@fonte/api-client';
 import { TemplateAvailability, TemplateKind } from '@fonte/types';
 import { useUpdateDocumentTemplate } from '../hooks/useDocumentTemplates';
 import { TemplateAvailabilityField } from './TemplateAvailabilityField';
+import { ReceiptTypeField } from './ReceiptTypeField';
 import { TableToolbar } from './TableToolbar';
 import { LinkToolbar } from './LinkToolbar';
 import { LinkBubbleMenu } from './LinkBubbleMenu';
@@ -675,6 +676,8 @@ export function TemplateEditor({ template, onSaved }: Props) {
         {/* Story 178 — os três controles abaixo são do mundo do acolhido:
             recibo não é documento de acolhimento nem tem status de filho a
             respeitar (o backend força os valores de qualquer forma). */}
+        {/* Story 212, decisão 3 — o tipo do recibo é editável aqui. */}
+        {isReceipt && <ReceiptTypeField template={template} onChanged={onSaved} />}
         {!isReceipt && (
           <>
             <div className="flex items-center gap-2 pt-5">

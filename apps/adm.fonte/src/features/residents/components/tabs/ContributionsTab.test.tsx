@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import { FamilyInvestment, Role } from '@fonte/types';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { FamilyInvestment, ReceiptType, Role } from '@fonte/types';
 import type { Admission, Resident, ResidentReceivable } from '@fonte/api-client';
 
 const auth = { role: Role.ADMIN as Role };
@@ -29,6 +31,7 @@ vi.mock('../RegisterPaymentDialog', () => ({ RegisterPaymentDialog: ({ open }: {
 const receiptState = {
   downloadingId: null as string | null,
   error: null as string | null,
+  missingTemplateType: null as ReceiptType | null,
   dismissError: vi.fn(),
   download: vi.fn(),
 };
@@ -43,6 +46,22 @@ vi.mock('../ReceivableRow', () => ({ ReceivableRow: ({ receivable, canManage, on
 ) }));
 
 import { ContributionsTab } from './ContributionsTab';
+
+function LocationProbe() {
+  const location = useLocation();
+  return <span data-testid="location">{location.pathname + location.search}</span>;
+}
+
+/** Story 212 — o atalho "Cadastrar template" navega: a aba precisa de router. */
+function renderTab(ui: ReactElement) {
+  return render(
+    <MemoryRouter initialEntries={['/residents/r1']}>
+      <Routes>
+        <Route path="*" element={<>{ui}<LocationProbe /></>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
 
 const resident = { id: 'r1', name: 'Fulano', houseId: 'h1', familyInvestment: 'BASKET_500', contributionExempt: false, contributionDueDay: 10 } as unknown as Resident;
 
@@ -77,19 +96,20 @@ beforeEach(() => {
   admissionsState.data = [];
   receiptState.downloadingId = null;
   receiptState.error = null;
+  receiptState.missingTemplateType = null;
 });
 afterEach(() => cleanup());
 
 describe('ContributionsTab', () => {
   it('sem permissão mostra mensagem e nada mais', () => {
     auth.role = Role.SERVANT;
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
     expect(screen.getByText('Sem permissão para ver a contribuição.')).toBeInTheDocument();
   });
 
   it('sem casa (houseId null) mostra estado vazio coerente e não consulta o catálogo', () => {
     const semCasa = { ...resident, houseId: null } as unknown as Resident;
-    render(<ContributionsTab resident={semCasa} />);
+    renderTab(<ContributionsTab resident={semCasa} />);
     expect(screen.getByText('Sem carnê de contribuição.')).toBeInTheDocument();
     // o card de plano e as parcelas não renderizam sem casa
     expect(screen.queryByText('Plano')).not.toBeInTheDocument();
@@ -100,33 +120,33 @@ describe('ContributionsTab', () => {
   });
 
   it('sem parcelas mostra empty state e o card de plano', () => {
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
     expect(screen.getByText('Nenhuma parcela gerada.')).toBeInTheDocument();
     expect(screen.getByText('Plano')).toBeInTheDocument();
   });
 
   it('erro mostra ErrorState', () => {
     recState.isError = true;
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
     expect(screen.getByText('Erro ao carregar o carnê.')).toBeInTheDocument();
   });
 
   it('carregando mostra LoadingState', () => {
     recState.isLoading = true;
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
     expect(screen.queryByText('Nenhuma parcela gerada.')).not.toBeInTheDocument();
   });
 
   it('lista parcelas e abrir reabrir confirma a mutation', () => {
     recState.data = [receivable({ id: 'rc1' })];
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
     fireEvent.click(screen.getByTestId('rec-rc1'));
     fireEvent.click(screen.getByRole('button', { name: 'Reabrir' }));
     expect(reopenMutation.mutate).toHaveBeenCalledWith('rc1', expect.any(Object));
   });
 
   it('alterar plano abre o diálogo', () => {
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
     fireEvent.click(screen.getByRole('button', { name: /Alterar plano/ }));
     expect(screen.getByTestId('plan-dialog')).toBeInTheDocument();
   });
@@ -137,7 +157,7 @@ describe('ContributionsTab', () => {
     admissionsState.data = [CURRENT];
     recState.data = [receivable({ id: 'rc1', admissionId: 'ad-atual' })];
 
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
 
     expect(screen.queryByLabelText('Acolhimento')).not.toBeInTheDocument();
     expect(screen.getByTestId('rec-rc1')).toBeInTheDocument();
@@ -150,7 +170,7 @@ describe('ContributionsTab', () => {
       receivable({ id: 'atual', admissionId: 'ad-atual' }),
     ];
 
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
 
     expect(screen.getByTestId('rec-atual')).toBeInTheDocument();
     expect(screen.queryByTestId('rec-antiga')).not.toBeInTheDocument();
@@ -162,7 +182,7 @@ describe('ContributionsTab', () => {
     recState.data = [receivable({ id: 'antiga', admissionId: 'ad-antigo' })];
     const semPlano = { ...resident, familyInvestment: null } as unknown as Resident;
 
-    render(<ContributionsTab resident={semPlano} />);
+    renderTab(<ContributionsTab resident={semPlano} />);
 
     expect(screen.getByText('Plano de contribuição não definido.')).toBeInTheDocument();
     expect(screen.queryByTestId('rec-antiga')).not.toBeInTheDocument();
@@ -181,7 +201,7 @@ describe('ContributionsTab', () => {
       receivable({ id: 'atual', admissionId: 'ad-atual' }),
     ];
 
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
     fireEvent.change(screen.getByLabelText('Acolhimento'), { target: { value: 'ad-antigo' } });
 
     expect(screen.getByTestId('rec-antiga')).toBeInTheDocument();
@@ -197,7 +217,7 @@ describe('ContributionsTab', () => {
     admissionsState.data = [CURRENT, PREVIOUS];
     recState.data = [receivable({ id: 'atual', admissionId: 'ad-atual' })];
 
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
     fireEvent.change(screen.getByLabelText('Acolhimento'), { target: { value: 'ad-antigo' } });
 
     expect(screen.getByText('Nenhuma parcela neste acolhimento.')).toBeInTheDocument();
@@ -208,7 +228,7 @@ describe('ContributionsTab', () => {
     admissionsState.data = [CURRENT, PREVIOUS];
     recState.data = [receivable({ id: 'orfa', admissionId: null })];
 
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
     expect(screen.queryByTestId('rec-orfa')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Acolhimento'), { target: { value: 'ad-antigo' } });
@@ -219,7 +239,7 @@ describe('ContributionsTab', () => {
     admissionsState.data = [CURRENT];
     const social = { ...resident, familyInvestment: FamilyInvestment.SOCIAL } as unknown as Resident;
 
-    render(<ContributionsTab resident={social} />);
+    renderTab(<ContributionsTab resident={social} />);
 
     expect(screen.getByText('Plano social ou acolhido isento não geram parcelas.')).toBeInTheDocument();
     expect(screen.queryByText('Plano de contribuição não definido.')).not.toBeInTheDocument();
@@ -229,7 +249,7 @@ describe('ContributionsTab', () => {
     admissionsState.data = [CURRENT];
     const isento = { ...resident, familyInvestment: null, contributionExempt: true } as unknown as Resident;
 
-    render(<ContributionsTab resident={isento} />);
+    renderTab(<ContributionsTab resident={isento} />);
 
     expect(screen.getByText('Plano social ou acolhido isento não geram parcelas.')).toBeInTheDocument();
   });
@@ -238,30 +258,52 @@ describe('ContributionsTab', () => {
     admissionsState.data = [];
     recState.data = [receivable({ id: 'orfa', admissionId: null })];
 
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
 
     expect(screen.getByTestId('rec-orfa')).toBeInTheDocument();
     expect(screen.queryByLabelText('Acolhimento')).not.toBeInTheDocument();
   });
 
   // ── Story 193: recibo da parcela ──────────────────────────────────────────
-  it('o download do recibo leva o filho E a parcela', () => {
+  it('o download do recibo leva o filho, a parcela e o nome/competência do arquivo (story 212)', () => {
     admissionsState.data = [CURRENT];
-    recState.data = [receivable({ id: 'rc-paga', admissionId: 'ad-atual' })];
+    recState.data = [
+      receivable({ id: 'rc-paga', admissionId: 'ad-atual', referenceMonth: '2026-10-01' }),
+    ];
 
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
     fireEvent.click(screen.getByTestId('receipt-rc-paga'));
 
-    expect(receiptState.download).toHaveBeenCalledWith('r1', 'rc-paga');
+    expect(receiptState.download).toHaveBeenCalledWith('r1', 'rc-paga', {
+      residentName: 'Fulano',
+      referenceMonth: '2026-10-01',
+    });
   });
 
-  it('erro do recibo aparece uma vez, acima da lista, com a frase do backend', () => {
+  it('erro do recibo aparece uma vez, acima da lista, com a frase do backend e SEM atalho', () => {
+    admissionsState.data = [CURRENT];
+    recState.data = [receivable({ id: 'rc-paga', admissionId: 'ad-atual' })];
+    receiptState.error = 'Parcela não encontrada';
+
+    renderTab(<ContributionsTab resident={resident} />);
+
+    expect(screen.getByText('Parcela não encontrada')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cadastrar template' })).not.toBeInTheDocument();
+  });
+
+  // Story 212, decisão 4 — atalho no erro de template ausente.
+  it('template ausente ganha "Cadastrar template", que abre Templates com o tipo do acolhido', () => {
     admissionsState.data = [CURRENT];
     recState.data = [receivable({ id: 'rc-paga', admissionId: 'ad-atual' })];
     receiptState.error = 'Nenhum template de recibo cadastrado. Cadastre em Configurações → Templates.';
+    receiptState.missingTemplateType = ReceiptType.RESIDENT_CONTRIBUTION;
 
-    render(<ContributionsTab resident={resident} />);
+    renderTab(<ContributionsTab resident={resident} />);
 
     expect(screen.getByText(/Cadastre em Configurações → Templates/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cadastrar template' }));
+    expect(screen.getByTestId('location').textContent).toBe(
+      '/settings/templates?newReceipt=RESIDENT_CONTRIBUTION',
+    );
   });
 });

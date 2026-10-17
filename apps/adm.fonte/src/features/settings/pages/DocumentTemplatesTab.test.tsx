@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { DocumentTemplate } from '@fonte/api-client';
 import { ReceiptType, TemplateAvailability, TemplateKind } from '@fonte/types';
 
@@ -32,6 +33,30 @@ vi.mock('../components/TemplateEditor', () => ({
 
 import { DocumentTemplatesTab } from './DocumentTemplatesTab';
 
+function LocationProbe() {
+  const location = useLocation();
+  return <span data-testid="search">{location.search}</span>;
+}
+
+/** A aba lê `?newReceipt=` (story 212): precisa de router. */
+function renderTab(url = '/settings/templates') {
+  return render(
+    <MemoryRouter initialEntries={[url]}>
+      <Routes>
+        <Route
+          path="/settings/templates"
+          element={
+            <>
+              <DocumentTemplatesTab />
+              <LocationProbe />
+            </>
+          }
+        />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 function template(overrides: Partial<DocumentTemplate> = {}): DocumentTemplate {
   return {
     id: 't1',
@@ -62,6 +87,13 @@ const RESIDENT_RECEIPT_TEMPLATE = template({
   receiptType: ReceiptType.RESIDENT_CONTRIBUTION,
 });
 
+function typeOptions(dialog: HTMLElement): string[] {
+  const select = within(dialog).getByLabelText(/Tipo de recibo/i) as HTMLSelectElement;
+  return Array.from(select.options)
+    .map((o) => o.value)
+    .filter(Boolean);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   templatesByKind[TemplateKind.RESIDENT] = [template()];
@@ -71,7 +103,7 @@ afterEach(() => cleanup());
 
 describe('DocumentTemplatesTab — dois grupos (story 178)', () => {
   it('renderiza a seção de documentos do acolhido e a de recibos', () => {
-    render(<DocumentTemplatesTab />);
+    renderTab();
     expect(screen.getByText('Documentos do acolhido')).toBeInTheDocument();
     expect(screen.getByText('Recibos')).toBeInTheDocument();
     expect(screen.getByText('Termo de Acolhimento')).toBeInTheDocument();
@@ -80,7 +112,7 @@ describe('DocumentTemplatesTab — dois grupos (story 178)', () => {
 
   it('cada grupo lista só os seus templates', () => {
     templatesByKind[TemplateKind.RECEIPT] = [RECEIPT_TEMPLATE];
-    render(<DocumentTemplatesTab />);
+    renderTab();
     expect(screen.getByText('Recibo de contribuição')).toBeInTheDocument();
     expect(screen.queryByText('Nenhum template de recibo cadastrado.')).not.toBeInTheDocument();
   });
@@ -88,7 +120,7 @@ describe('DocumentTemplatesTab — dois grupos (story 178)', () => {
 
 describe('DocumentTemplatesTab — criação (story 178)', () => {
   it('criar documento do acolhido NÃO pede tipo de recibo', async () => {
-    render(<DocumentTemplatesTab />);
+    renderTab();
     fireEvent.click(screen.getByRole('button', { name: /^Novo template$/ }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).queryByLabelText(/Tipo de recibo/i)).not.toBeInTheDocument();
@@ -107,15 +139,18 @@ describe('DocumentTemplatesTab — criação (story 178)', () => {
     });
   });
 
-  it('criar recibo pede o tipo e o envia junto do kind', async () => {
-    render(<DocumentTemplatesTab />);
+  it('criar recibo pede o tipo ESCOLHIDO e o envia junto do kind (story 212)', async () => {
+    renderTab();
     fireEvent.click(screen.getByRole('button', { name: /Novo recibo/ }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByLabelText(/Tipo de recibo/i)).toBeInTheDocument();
+    const select = within(dialog).getByLabelText(/Tipo de recibo/i) as HTMLSelectElement;
+    // Decisão 2 — começa vazio, sem pré-seleção.
+    expect(select.value).toBe('');
 
     fireEvent.change(within(dialog).getByLabelText(/Nome do documento/i), {
       target: { value: 'Recibo mensal' },
     });
+    fireEvent.change(select, { target: { value: ReceiptType.RESIDENT_CONTRIBUTION } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Criar' }));
 
     await waitFor(() => expect(createMutate).toHaveBeenCalled());
@@ -124,18 +159,29 @@ describe('DocumentTemplatesTab — criação (story 178)', () => {
       content: '',
       isRequired: false,
       kind: TemplateKind.RECEIPT,
-      receiptType: ReceiptType.ASSOCIATE_CONTRIBUTION,
+      receiptType: ReceiptType.RESIDENT_CONTRIBUTION,
     });
+  });
+
+  it('recibo sem tipo escolhido não cria (story 212)', async () => {
+    renderTab();
+    fireEvent.click(screen.getByRole('button', { name: /Novo recibo/ }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(/Nome do documento/i), {
+      target: { value: 'Recibo mensal' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Criar' }));
+    expect(await within(dialog).findByText('Selecione o tipo de recibo')).toBeInTheDocument();
+    expect(createMutate).not.toHaveBeenCalled();
   });
 
   // Story 193 — o tipo do acolhido entrou em IMPLEMENTED_RECEIPT_TYPES; pizza e
   // pão continuam fora (declarados no enum, sem resolver).
   it('só os tipos COM resolver são oferecidos (pizza/pão continuam fora)', async () => {
-    render(<DocumentTemplatesTab />);
+    renderTab();
     fireEvent.click(screen.getByRole('button', { name: /Novo recibo/ }));
     const dialog = await screen.findByRole('dialog');
-    const select = within(dialog).getByLabelText(/Tipo de recibo/i) as HTMLSelectElement;
-    const values = Array.from(select.options).map((o) => o.value);
+    const values = typeOptions(dialog);
     expect(values).toEqual([
       ReceiptType.ASSOCIATE_CONTRIBUTION,
       ReceiptType.RESIDENT_CONTRIBUTION,
@@ -146,18 +192,15 @@ describe('DocumentTemplatesTab — criação (story 178)', () => {
 
   it('tipo JÁ cadastrado some da lista; o outro continua oferecido', async () => {
     templatesByKind[TemplateKind.RECEIPT] = [RECEIPT_TEMPLATE];
-    render(<DocumentTemplatesTab />);
+    renderTab();
     fireEvent.click(screen.getByRole('button', { name: /Novo recibo/ }));
     const dialog = await screen.findByRole('dialog');
-    const select = within(dialog).getByLabelText(/Tipo de recibo/i) as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.value)).toEqual([
-      ReceiptType.RESIDENT_CONTRIBUTION,
-    ]);
+    expect(typeOptions(dialog)).toEqual([ReceiptType.RESIDENT_CONTRIBUTION]);
   });
 
   it('com os dois tipos cadastrados não sobra tipo livre — e não dá para criar', async () => {
     templatesByKind[TemplateKind.RECEIPT] = [RECEIPT_TEMPLATE, RESIDENT_RECEIPT_TEMPLATE];
-    render(<DocumentTemplatesTab />);
+    renderTab();
     fireEvent.click(screen.getByRole('button', { name: /Novo recibo/ }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument();
@@ -168,7 +211,7 @@ describe('DocumentTemplatesTab — criação (story 178)', () => {
   });
 
   it('nome em branco não cria (zod barra antes do request)', async () => {
-    render(<DocumentTemplatesTab />);
+    renderTab();
     fireEvent.click(screen.getByRole('button', { name: /^Novo template$/ }));
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Criar' }));
@@ -179,22 +222,67 @@ describe('DocumentTemplatesTab — criação (story 178)', () => {
   });
 });
 
+// Story 212, decisão 8 — atalho vindo do erro do gerador.
+describe('DocumentTemplatesTab — ?newReceipt= (story 212)', () => {
+  it('?newReceipt=RESIDENT_CONTRIBUTION abre o dialog de recibo com o tipo e limpa o param', async () => {
+    renderTab('/settings/templates?newReceipt=RESIDENT_CONTRIBUTION');
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Novo template de recibo')).toBeInTheDocument();
+    const select = within(dialog).getByLabelText(/Tipo de recibo/i) as HTMLSelectElement;
+    await waitFor(() => expect(select.value).toBe(ReceiptType.RESIDENT_CONTRIBUTION));
+    await waitFor(() => expect(screen.getByTestId('search').textContent).toBe(''));
+  });
+
+  it('param inválido abre o dialog sem seleção', async () => {
+    renderTab('/settings/templates?newReceipt=XPTO');
+    const dialog = await screen.findByRole('dialog');
+    const select = within(dialog).getByLabelText(/Tipo de recibo/i) as HTMLSelectElement;
+    expect(select.value).toBe('');
+  });
+
+  it('tipo já tomado abre sem seleção', async () => {
+    templatesByKind[TemplateKind.RECEIPT] = [RESIDENT_RECEIPT_TEMPLATE];
+    renderTab('/settings/templates?newReceipt=RESIDENT_CONTRIBUTION');
+    const dialog = await screen.findByRole('dialog');
+    const select = within(dialog).getByLabelText(/Tipo de recibo/i) as HTMLSelectElement;
+    expect(select.value).toBe('');
+  });
+
+  it('fechar o dialog descarta a pré-seleção', async () => {
+    renderTab('/settings/templates?newReceipt=RESIDENT_CONTRIBUTION');
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Novo recibo/ }));
+    const reopened = await screen.findByRole('dialog');
+    const select = within(reopened).getByLabelText(/Tipo de recibo/i) as HTMLSelectElement;
+    expect(select.value).toBe('');
+  });
+});
+
 describe('DocumentTemplatesTab — edição e exclusão', () => {
   it('clicar num card abre o editor', () => {
-    render(<DocumentTemplatesTab />);
+    renderTab();
     fireEvent.click(screen.getByText('Termo de Acolhimento'));
     expect(screen.getByTestId('template-editor')).toBeInTheDocument();
   });
 
-  it('recibo em edição ganha a badge Recibo', () => {
+  it('recibo em edição ganha a badge Recibo e a do TIPO (story 212)', () => {
     templatesByKind[TemplateKind.RECEIPT] = [RECEIPT_TEMPLATE];
-    render(<DocumentTemplatesTab />);
+    renderTab();
     fireEvent.click(screen.getByText('Recibo de contribuição'));
     expect(screen.getByText('Recibo')).toBeInTheDocument();
+    expect(screen.getByText('Contribuição mensal do associado')).toBeInTheDocument();
+  });
+
+  it('documento do acolhido em edição não ganha badge de tipo', () => {
+    renderTab();
+    fireEvent.click(screen.getByText('Termo de Acolhimento'));
+    expect(screen.queryByText(/Contribuição mensal/)).not.toBeInTheDocument();
   });
 
   it('excluir confirma antes de chamar a mutation', async () => {
-    render(<DocumentTemplatesTab />);
+    renderTab();
     const card = screen.getByText('Termo de Acolhimento').closest('div[class*="cursor-pointer"]');
     fireEvent.click(within(card as HTMLElement).getByRole('button'));
     const confirm = await screen.findByRole('alertdialog');

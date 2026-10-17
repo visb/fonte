@@ -1,4 +1,5 @@
 import { test, expect, request, type APIRequestContext, type Page } from '@playwright/test';
+import { todayInSaoPaulo } from '@fonte/types';
 
 const BASE = 'http://localhost:3001/api/v1';
 const name = `Produtos offline ${Date.now()}`;
@@ -16,7 +17,7 @@ test.beforeAll(async () => {
   const me = await api.get(`${BASE}/staff/me`, { headers: { Authorization: `Bearer ${(await operator.json()).accessToken}` } });
   houseId = (await me.json()).houseId;
   const resident = await api.post(`${BASE}/residents`, { headers, data: { name, houseId,
-    entryDate: new Date().toISOString().slice(0, 10), familyInvestment: 'PAYMENT_700', contributionDueDay: 10 } });
+    entryDate: todayInSaoPaulo(), familyInvestment: 'PAYMENT_700', contributionDueDay: 10 } });
   expect(resident.ok()).toBeTruthy(); residentId = (await resident.json()).id;
   const receivables = await api.get(`${BASE}/residents/${residentId}/receivables`, { headers });
   receivableId = (await receivables.json())[0].id;

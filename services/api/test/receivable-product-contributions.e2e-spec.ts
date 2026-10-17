@@ -5,7 +5,7 @@ process.env.NODE_ENV = 'test';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
-import { FamilyInvestment } from '@fonte/types';
+import { FamilyInvestment, todayInSaoPaulo } from '@fonte/types';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
 
 /**
@@ -32,7 +32,7 @@ describe('Receivable product contributions (e2e)', () => {
     servantToken = await login(app, 'operator@fonte.com', 'operator123');
     adminToken = await login(app, 'admin@fonte.com', 'admin123');
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayInSaoPaulo();
     const resident = await request(app.getHttpServer())
       .post(`${BASE}/residents`)
       .set('Authorization', `Bearer ${coordToken}`)

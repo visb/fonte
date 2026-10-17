@@ -5,7 +5,7 @@ process.env.NODE_ENV = 'test';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
-import { FamilyInvestment, NotificationType, PaymentMethod, ReceivableStatus, ResidentStatus, Role } from '@fonte/types';
+import { FamilyInvestment, NotificationType, PaymentMethod, ReceivableStatus, ResidentStatus, Role, todayInSaoPaulo } from '@fonte/types';
 import { AppModule } from '../src/app.module';
 import { NotificationService } from '../src/modules/notification/notification.service';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
@@ -22,7 +22,7 @@ describe('Resident receivables (e2e)', () => {
     ({ token, houseId } = await loginCoordinator(app));
     adminToken = await login(app, 'admin@fonte.com', 'admin123');
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayInSaoPaulo();
     const created = await request(app.getHttpServer())
       .post(`${BASE}/residents`)
       .set('Authorization', `Bearer ${token}`)
@@ -349,7 +349,7 @@ describe('Recorte do carnê — GET :id/receivables/summary (e2e)', () => {
       .send({
         name: `Recorte E2E ${Date.now()}`,
         houseId,
-        entryDate: new Date().toISOString().slice(0, 10),
+        entryDate: todayInSaoPaulo(),
         familyInvestment: FamilyInvestment.PAYMENT_700,
         contributionDueDay: 10,
       })
@@ -549,7 +549,7 @@ describe('Payment notification is best-effort (e2e)', () => {
     ({ token, houseId } = await loginCoordinator(app));
     adminToken = await login(app, 'admin@fonte.com', 'admin123');
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayInSaoPaulo();
     const created = await request(app.getHttpServer())
       .post(`${BASE}/residents`)
       .set('Authorization', `Bearer ${token}`)

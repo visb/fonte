@@ -1,4 +1,5 @@
 import { test, expect, request, type APIRequestContext, type Page } from '@playwright/test';
+import { todayInSaoPaulo } from '@fonte/types';
 
 // e2e web dos fluxos de campo offline (story 171): o motor da fila (169/170) já
 // existe; aqui o que se prova é que as **telas** funcionam sem sinal.
@@ -59,7 +60,7 @@ test.beforeAll(async () => {
     data: {
       name: CENSUS_RESIDENT,
       houseId,
-      entryDate: new Date().toISOString().slice(0, 10),
+      entryDate: todayInSaoPaulo(),
       gender: 'MALE',
     },
   });
@@ -75,7 +76,7 @@ test.beforeAll(async () => {
     data: {
       name: DETAIL_RESIDENT,
       houseId,
-      entryDate: new Date().toISOString().slice(0, 10),
+      entryDate: todayInSaoPaulo(),
       gender: 'MALE',
     },
   });
@@ -90,7 +91,7 @@ test.beforeAll(async () => {
     data: {
       name: LIST_RESIDENT,
       houseId,
-      entryDate: new Date().toISOString().slice(0, 10),
+      entryDate: todayInSaoPaulo(),
       gender: 'MALE',
       status: 'ACTIVE',
     },

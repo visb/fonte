@@ -87,7 +87,7 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 | 9 | 208 — Atividades em colunas no ops | [OK] | ops 1502 + e2e-web 29 | 63f2302 | a78aa78 |
 | 10 | 209 — Campos de data digitáveis no ops | [OK] | ops 1567 + e2e-web 30 | 05e1616 | f4c3ef1 |
 | 11 | 210 — Estado civil: união estável e viúvo(a) | [OK] | api 2060 + e2e 680; adm 1931 + e2e 59/66 (7 pré-existentes) | 9b42731 | 59dacad |
-| 12 | 211 — Rascunho automático do acolhimento | [ ] | | | |
+| 12 | 211 — Rascunho automático do acolhimento | [OK] | adm 1991 + e2e 36/43 (7 pré-existentes) | bc4d306 | 5ac56ac |
 | 13 | 212 — Tipo do template de recibo + nome do arquivo | [ ] | | | |
 | 14 | 199 — Auditoria de ações dos usuários | [ ] | | | |
 
@@ -112,6 +112,8 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 - [OK] 209 — testes: ops unit 1567 (97.0% lines; código novo 98–100%), ops e2e-web 30/30 (inclui contagem offline digitando datas); payloads/mutationKey da fila inalterados — commit: 05e1616 — merge: f4c3ef1 — 2026-10-17 — Maestro `census.yaml`/`storeroom.yaml` PENDENTE-MANUAL.
 - [OK] 210 — testes: api unit 2060 (94.9%), api e2e 680/680, adm unit 1931 (97.3%), adm e2e residents 33/40 (7 = pré-existentes João Testador) + staff/doc-templates 26/26; migration up/revert/up só no test — commit: 9b42731 — merge: 59dacad — 2026-10-17.
   Nota: `ADD VALUE` ficou na transação padrão (PG16 ok se o valor não é usado na mesma tx) — se uma migration futura usar os valores novos no mesmo `migration:run` de prod, quebra; `down` zera os valores novos para NULL.
+- [OK] 211 — testes: adm unit 1991 (97.3%; código novo 99–100%), tsc limpo, adm e2e admission-draft 3/3 (2x) + residents 33/40 (7 = pré-existentes) — commit: bc4d306 — merge: 5ac56ac — 2026-10-17.
+  Nota: 401 de sessão expirada NÃO limpa o rascunho (só logout explícito); gap registrado em DIAGNOSTICO_LGPD §2.3.
 
 ## Resumo final
 

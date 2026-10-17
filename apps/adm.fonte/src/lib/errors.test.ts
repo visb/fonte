@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getErrorMessage } from './errors';
+import { getErrorMessage, isNotFoundError } from './errors';
 
 describe('getErrorMessage', () => {
   it('extrai a mensagem string do shape de erro da API', () => {
@@ -23,5 +23,14 @@ describe('getErrorMessage', () => {
   it('usa o fallback customizado quando informado', () => {
     expect(getErrorMessage(new Error('boom'), 'Erro ao salvar')).toBe('Erro ao salvar');
     expect(getErrorMessage({ response: {} }, 'Erro ao salvar')).toBe('Erro ao salvar');
+  });
+});
+
+describe('isNotFoundError', () => {
+  it('reconhece só o 404 da API', () => {
+    expect(isNotFoundError({ response: { status: 404 } })).toBe(true);
+    expect(isNotFoundError({ response: { status: 500 } })).toBe(false);
+    expect(isNotFoundError(new Error('rede'))).toBe(false);
+    expect(isNotFoundError(null)).toBe(false);
   });
 });

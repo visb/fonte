@@ -1,5 +1,7 @@
 import { Text, TouchableOpacity, View } from 'react-native';
 import type { MinistryLeaderType } from '@fonte/api-client';
+import type { ServantRank } from '@fonte/types';
+import { ServantRankBadge } from '@/components/shared/ServantRankBadge';
 
 export interface LeaderChoice {
   id: string;
@@ -9,6 +11,8 @@ export interface LeaderChoice {
 interface Person {
   id: string;
   name: string;
+  /** Story 207: nível do servo (filho não tem). */
+  rank?: ServantRank | null;
 }
 
 interface Props {
@@ -69,6 +73,11 @@ export function LeaderOptions({ staff, residents, selected, onSelect, disabled }
           >
             <Radio selected={isSelected} />
             <Text className="flex-1 text-sm text-gray-900">{o.name}</Text>
+            {o.type === 'STAFF' ? (
+              <View className="mr-2">
+                <ServantRankBadge rank={o.rank} />
+              </View>
+            ) : null}
             <View className={`px-2 py-0.5 rounded ${badge.bg}`}>
               <Text className={`text-xs font-medium ${badge.text}`}>{badge.label}</Text>
             </View>

@@ -121,6 +121,40 @@ describe('MenuProfileCard', () => {
 
     expect(screen.getByText('—')).toBeTruthy();
   });
+
+  // Story 207: badge do nível do servo logado.
+  it('servo com nível mostra o badge', () => {
+    mockAuth.mockReturnValue({
+      staff: { name: 'Servo X', house: { name: 'Casa Bethel' }, photoUrl: null, rank: 'CONSAGRADO' },
+      resident: null,
+      isResident: false,
+      logout: mockLogout,
+    });
+    render(<MenuProfileCard />);
+    expect(screen.getByText('Consagrado')).toBeTruthy();
+  });
+
+  it('sem nível (coordenador) não mostra badge', () => {
+    mockAuth.mockReturnValue({
+      staff: { name: 'Coord', house: { name: 'Casa Bethel' }, photoUrl: null, rank: null },
+      resident: null,
+      isResident: false,
+      logout: mockLogout,
+    });
+    render(<MenuProfileCard />);
+    expect(screen.queryByTestId(/^servant-rank-/)).toBeNull();
+  });
+
+  it('modo Resident não mostra badge mesmo com staff carregado', () => {
+    mockAuth.mockReturnValue({
+      staff: { name: 'Servo X', photoUrl: null, rank: 'ALIANCADO' },
+      resident: { name: 'Filho X', photoUrl: null },
+      isResident: true,
+      logout: mockLogout,
+    });
+    render(<MenuProfileCard />);
+    expect(screen.queryByTestId(/^servant-rank-/)).toBeNull();
+  });
 });
 
 describe('MenuLogoutRow', () => {

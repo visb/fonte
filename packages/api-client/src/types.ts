@@ -331,6 +331,8 @@ export interface HouseMinistry {
   // Story 205: filho em acolhimento na casa volta a poder liderar.
   leaderType: MinistryLeaderType | null;
   leaderName: string | null;
+  // Story 207: nível do líder servo; líder filho ou sem líder → null.
+  leaderRank: ServantRank | null;
   // Só filhos em acolhimento na casa do ministério (story 205, decisão 8).
   filhoCount: number;
   servoCount: number;
@@ -415,6 +417,8 @@ export interface LedMinistrySummary {
  */
 export interface HouseStaffMember extends HouseStaffSummary {
   role: Role;
+  /** Story 207: nível do servo; `null` para coordenador/admin ou servo sem nível. */
+  rank: ServantRank | null;
   ledMinistries: LedMinistrySummary[];
 }
 
@@ -438,6 +442,9 @@ export interface StaffMe {
   house: { id: string; name: string } | null;
   supportGroupId: string | null;
   supportGroup: { id: string; name: string } | null;
+  // Story 207: nível do servo (a rota sempre devolveu; o tipo passa a declarar).
+  // Opcional: o staff persistido de login antigo pode não ter o campo.
+  rank?: ServantRank | null;
   user: { email: string; role: Role };
   permissions: StaffPermissionType[];
 }
@@ -825,6 +832,8 @@ export interface MinistryDetail {
   leaderId: string | null;
   leaderType: MinistryLeaderType | null;
   leaderName: string | null;
+  // Story 207: nível do líder servo; líder filho ou sem líder → null.
+  leaderRank: ServantRank | null;
   members: MinistryMember[];
 }
 

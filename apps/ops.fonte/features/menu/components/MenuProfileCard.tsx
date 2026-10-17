@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { resolveAssetUrl } from '@/lib/api';
+import { ServantRankBadge } from '@/components/shared/ServantRankBadge';
 
 /**
  * Cabeçalho do menu: quem está logado + o caminho para a tela de perfil, que
@@ -15,6 +16,8 @@ export function MenuProfileCard() {
   const subtitle = isResident
     ? 'Filho'
     : (staff?.house?.name ?? staff?.supportGroup?.name ?? '');
+  // Story 207: nível do servo logado; no modo Resident não aparece.
+  const rank = isResident ? null : (staff?.rank ?? null);
   const photoUri = resolveAssetUrl(
     (isResident ? resident?.photoUrl : staff?.photoUrl) ?? null,
   );
@@ -35,6 +38,11 @@ export function MenuProfileCard() {
         )}
         <View className="flex-1">
           <Text className="text-xl font-bold text-white">{name}</Text>
+          {rank ? (
+            <View className="mt-1">
+              <ServantRankBadge rank={rank} />
+            </View>
+          ) : null}
           {!!subtitle && <Text className="text-sm text-white/70 mt-0.5">{subtitle}</Text>}
         </View>
       </View>

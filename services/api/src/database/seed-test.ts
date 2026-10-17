@@ -116,9 +116,10 @@ async function seed() {
 
   // Operator staff linked to house (com whatsapp — login por whatsapp)
   const [operatorStaff] = await ds.query<{ id: string }[]>(
-    `INSERT INTO staff (id, name, user_id, house_id, whatsapp)
-     VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING id`,
-    ['Operador Teste', operatorUser.id, house.id, '11977771000'],
+    // Story 207: servo do seed com nível, para o Maestro assertar o badge.
+    `INSERT INTO staff (id, name, user_id, house_id, whatsapp, rank)
+     VALUES (gen_random_uuid(), $1, $2, $3, $4, $5) RETURNING id`,
+    ['Operador Teste', operatorUser.id, house.id, '11977771000', 'CONSAGRADO'],
   );
 
   // Operator permissions: send messages + moderate

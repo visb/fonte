@@ -111,4 +111,13 @@ describe('ProfileHeader', () => {
     render(<ProfileHeader displayName="Servo X" photoUrl={null} isPhotoUploading onPickPhoto={jest.fn()} />);
     expect(screen.queryByText('icon:camera')).toBeNull();
   });
+
+  // Story 207: nível do servo logado.
+  it('com nível mostra o badge; sem nível, não', () => {
+    render(<ProfileHeader displayName="Servo X" photoUrl={null} rank={'ASPIRANTE' as never} isPhotoUploading={false} onPickPhoto={jest.fn()} />);
+    expect(screen.getByText('Aspirante')).toBeTruthy();
+    screen.unmount();
+    render(<ProfileHeader displayName="Coord" photoUrl={null} rank={null} isPhotoUploading={false} onPickPhoto={jest.fn()} />);
+    expect(screen.queryByTestId(/^servant-rank-/)).toBeNull();
+  });
 });

@@ -520,13 +520,28 @@ describe('HouseService.findStaffForHouse', () => {
     expect(sql).toContain('s.house_id = $1');
   });
 
-  it('propaga photoUrl com valor e com null sem mexer no resto do payload', async () => {
+  // Story 207: nível do servo vem na mesma linha.
+  it('seleciona o rank do servo (story 207)', async () => {
+    const query = jest.fn().mockResolvedValue([]);
+    const houseRepo = makeHouseRepo({ count: jest.fn().mockResolvedValue(1) }, query);
+    const service = makeService(houseRepo);
+
+    await service.findStaffForHouse('h1');
+
+    const [sql] = query.mock.calls[0];
+    expect(sql).toContain('s.rank');
+  });
+
+  it('propaga photoUrl e rank (servo com nível, coordenador null) sem mexer no resto', async () => {
     const rows = [
       {
         id: 's1', name: 'Ana', whatsapp: '62999990000', photoUrl: '/uploads/staff/ana.jpg',
-        role: 'COORDINATOR', ledMinistries: [{ id: 'm1', name: 'Cozinha' }],
+        role: 'COORDINATOR', rank: null, ledMinistries: [{ id: 'm1', name: 'Cozinha' }],
       },
-      { id: 's2', name: 'Bruno', whatsapp: null, photoUrl: null, role: 'SERVANT', ledMinistries: [] },
+      {
+        id: 's2', name: 'Bruno', whatsapp: null, photoUrl: null, role: 'SERVANT',
+        rank: 'CONSAGRADO', ledMinistries: [],
+      },
     ];
     const query = jest.fn().mockResolvedValue(rows);
     const houseRepo = makeHouseRepo({ count: jest.fn().mockResolvedValue(1) }, query);

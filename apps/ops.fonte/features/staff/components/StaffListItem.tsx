@@ -2,6 +2,7 @@ import { Image, Linking, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { HouseStaffMember } from '@fonte/api-client';
 import { resolveAssetUrl } from '@/lib/api';
+import { ServantRankBadge } from '@/components/shared/ServantRankBadge';
 import { STAFF_ROLE_BADGE, staffRoleLabel, whatsappUrl } from '../constants';
 
 interface Props {
@@ -48,6 +49,7 @@ export function StaffListItem({ item, isSelf }: Props) {
               {staffRoleLabel(item.role)}
             </Text>
           </View>
+          <ServantRankBadge rank={item.rank} />
         </View>
         {ministries ? (
           <Text className="text-xs text-gray-500">Lidera: {ministries}</Text>

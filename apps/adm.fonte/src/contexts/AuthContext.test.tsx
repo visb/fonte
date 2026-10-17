@@ -106,6 +106,18 @@ describe('AuthContext', () => {
     expect(readPreferences()).toEqual({});
   });
 
+  it('logout apaga os rascunhos de acolhimento do usuário (story 211)', () => {
+    localStorage.setItem('fonte_token', jwt({ role: 'ADMIN', sub: 'u1' }));
+    localStorage.setItem('fonte:admission-draft:u1', '{}');
+    localStorage.setItem('fonte:admission-draft:u1:readmission:r1', '{}');
+    localStorage.setItem('fonte:admission-draft:u2', '{}');
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    act(() => result.current.logout());
+    expect(localStorage.getItem('fonte:admission-draft:u1')).toBeNull();
+    expect(localStorage.getItem('fonte:admission-draft:u1:readmission:r1')).toBeNull();
+    expect(localStorage.getItem('fonte:admission-draft:u2')).toBe('{}');
+  });
+
   it('onPasswordChanged troca o token', () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
     act(() => result.current.onPasswordChanged(jwt({ role: 'ADMIN', sub: 'u2', mustChangePassword: false })));

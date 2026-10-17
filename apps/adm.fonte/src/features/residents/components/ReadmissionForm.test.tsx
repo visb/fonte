@@ -18,12 +18,15 @@ vi.mock('../hooks/useResidents', () => ({
 }));
 
 let authRole: string | null = 'COORDINATOR';
+let authUserId: string | null = null;
 vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ role: authRole }),
+  useAuth: () => ({ role: authRole, userId: authUserId }),
 }));
 
 vi.mock('@/components/AvatarUpload', () => ({
-  AvatarUpload: () => <div data-testid="avatar-upload" />,
+  AvatarUpload: ({ onBlobChange }: { onBlobChange: (b: Blob) => void }) => (
+    <div data-testid="avatar-upload" onClick={() => onBlobChange(new Blob(['x']))} />
+  ),
 }));
 
 const createFollowUp = vi.fn();
@@ -35,6 +38,12 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import { ReadmissionForm } from './ReadmissionForm';
+import {
+  admissionDraftKey,
+  readAdmissionDraft,
+  writeAdmissionDraft,
+  type AdmissionDraftData,
+} from '../lib/admissionDraft';
 
 const resident = {
   id: 'r1', name: 'Fulano de Tal', cpf: '12345678900', rg: '123456', birthDate: '1990-05-10',
@@ -50,7 +59,9 @@ function renderForm() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   authRole = 'COORDINATOR';
+  authUserId = null;
   admissionsData = [];
   readmitState.mutate = vi.fn();
   readmitState.isPending = false;
@@ -239,5 +250,81 @@ describe('ReadmissionForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
     fireEvent.click(screen.getByRole('button', { name: /Voltar/ }));
     expect(onBack).toHaveBeenCalledTimes(2);
+  });
+
+  describe('rascunho (story 211)', () => {
+    const KEY = admissionDraftKey('u1', 'r1');
+    const seed = (overrides: Partial<AdmissionDraftData> = {}) =>
+      writeAdmissionDraft(KEY, {
+        values: { houseId: 'h1', occupation: 'Pedreiro', healthIssues: 'Asma' },
+        step: 0,
+        residentId: null,
+        firstPaymentPaid: false,
+        firstPaymentMethod: '',
+        hadPhoto: false,
+        hadProof: false,
+        ...overrides,
+      });
+    const field = (name: string) => document.querySelector(`[name="${name}"]`) as HTMLInputElement;
+
+    beforeEach(() => {
+      authUserId = 'u1';
+    });
+
+    it('rascunho do filho é oferecido e restaurado', async () => {
+      seed({ hadPhoto: true });
+      renderForm();
+      expect(screen.getByRole('region', { name: 'Rascunho de acolhimento' })).toHaveTextContent('Fulano de Tal');
+      fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+      await waitFor(() => expect(field('occupation').value).toBe('Pedreiro'));
+      expect(field('healthIssues').value).toBe('Asma');
+      expect(field('houseId').value).toBe('h1');
+      expect(screen.getByText('A foto não fica no rascunho. Anexe-a novamente.')).toBeInTheDocument();
+    });
+
+    it('rascunho de outro filho não aparece', () => {
+      writeAdmissionDraft(admissionDraftKey('u1', 'outro'), {
+        values: {}, step: 0, residentId: null, firstPaymentPaid: false,
+        firstPaymentMethod: '', hadPhoto: false, hadProof: false,
+      });
+      renderForm();
+      expect(screen.queryByRole('region', { name: 'Rascunho de acolhimento' })).not.toBeInTheDocument();
+    });
+
+    it('Descartar apaga e mostra o form com os dados da ficha', () => {
+      seed();
+      renderForm();
+      fireEvent.click(screen.getByRole('button', { name: 'Descartar' }));
+      expect(readAdmissionDraft(KEY)).toBeNull();
+      expect(field('occupation').value).toBe('');
+    });
+
+    it('concluir a reintrodução apaga o rascunho', async () => {
+      seed({ firstPaymentPaid: true });
+      readmitState.mutate.mockImplementation((_v, opts) => opts.onSuccess({ id: 'r1' }));
+      const { onSuccess } = renderForm();
+      fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+      await waitFor(() => expect(field('houseId').value).toBe('h1'));
+      fireEvent.click(screen.getByRole('button', { name: /Reintroduzir acolhido/ }));
+      await waitFor(() => expect(onSuccess).toHaveBeenCalledWith('r1'));
+      expect(readAdmissionDraft(KEY)).toBeNull();
+    });
+
+    it('digitar salva; Cancelar com dados confirma e apaga', async () => {
+      const { onBack } = renderForm();
+      fireEvent.click(screen.getByTestId('avatar-upload'));
+      fireEvent.change(field('occupation'), { target: { value: 'Padeiro' } });
+      await waitFor(() => expect(readAdmissionDraft(KEY)?.values).toMatchObject({ occupation: 'Padeiro' }), {
+        timeout: 2500,
+      });
+      expect(readAdmissionDraft(KEY)?.hadPhoto).toBe(true);
+      expect(screen.getByText(/Rascunho salvo às/)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+      expect(onBack).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Descartar e sair' }));
+      expect(onBack).toHaveBeenCalled();
+      expect(readAdmissionDraft(KEY)).toBeNull();
+    });
   });
 });

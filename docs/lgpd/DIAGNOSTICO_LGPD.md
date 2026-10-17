@@ -67,6 +67,19 @@ Categorias: **P** = dado pessoal; **S** = dado pessoal sensível (art. 11).
   - **Minimização no carnê (story 186)**: o aparelho passou a receber e **persistir** mês de referência e status de parcela por filho, para toda role de staff — é dado pessoal, ainda que não financeiro, e por isso fica registrado aqui. O que **não** trafega nem é gravado: valor, valor pago, forma de pagamento, data de pagamento, comprovante e observações. A leitura do carnê cheio continua restrita a `ADMIN`/`COORDINATOR` e só existe no `adm.fonte` (web, sem cópia local).
 - **Gaps remanescentes:** (1) **sem criptografia em repouso** do banco local (SQLCipher) — aparelho comprometido/roubado expõe a ficha até o logout; (2) não há **purga remota** ou por inatividade se o aparelho nunca mais abrir o app. Ver `ROADMAP_LGPD.md`.
 
+### 2.3 Rascunho do acolhimento no navegador (`adm.fonte`)
+
+> Origem: story 211 (salvamento automático do acolhimento). Decisões de escopo tomadas pelo responsável pelo produto.
+
+- **Dado:** os campos digitados no wizard de **primeiro acolhimento** (ficha de cadastro e admissão: nome, CPF, RG, nascimento, contato, endereço, perfil social, **saúde, medicação contínua, religião, dependência química**, casa, entrada, investimento familiar) e no formulário de **reintrodução**; mais o passo atual, o id do filho já criado e a forma do 1º pagamento. **Arquivos não entram** (foto e comprovante): só uma flag de que tinham sido escolhidos, para pedir que sejam reanexados.
+- **Titular:** interno (**Resident**) em acolhimento.
+- **Categoria:** dado pessoal (**P**) e **sensível** (**S**).
+- **Onde:** `localStorage` do navegador do computador onde o acolhimento está sendo feito, chave `fonte:admission-draft:<userId>` (primeiro acolhimento) e `fonte:admission-draft:<userId>:readmission:<residentId>` (reintrodução). Código em `apps/adm.fonte/src/features/residents/lib/admissionDraft.ts`.
+- **Finalidade:** proteger o que já foi preenchido contra queda de energia, recarga ou aba fechada durante o acolhimento, e impedir que o filho seja criado em duplicidade ao retomar. Base legal acompanha a do processo de origem (§5): o acolhimento.
+- **Retenção:** **temporário**. Expira em **7 dias** (descartado na leitura) e é apagado ao **concluir** o acolhimento/reintrodução, ao **Descartar**, ao **Cancelar** e no **logout**.
+- **Mitigações:** chave por `userId` (outro usuário no mesmo navegador não vê o rascunho de quem preencheu); sem arquivos; sem envio a servidor (o rascunho nunca sai do navegador); leitura/escrita em `try/catch` (storage bloqueado só desliga o rascunho).
+- **Gaps remanescentes:** (1) **sem criptografia** no `localStorage` — quem tem acesso ao perfil do navegador (DevTools) lê o rascunho até ele expirar ou ser apagado; (2) **sessão expirada não apaga** o rascunho (só o logout explícito), para que o usuário retome após novo login — fica limitado pelos 7 dias.
+
 ## 3. Mapa de gaps
 
 | Gap | Risco | Artigo LGPD | Arquivo(s) | Pilar |

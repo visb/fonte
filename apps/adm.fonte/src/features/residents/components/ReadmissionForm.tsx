@@ -6,7 +6,6 @@ import {
   FamilyInvestment,
   FollowUpType,
   FollowUpAccessLevel,
-  Gender,
   MaritalStatus,
   Role,
   todayInSaoPaulo,
@@ -15,7 +14,10 @@ import type { Resident } from '@fonte/api-client';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { EditResidentIdentityDialog } from './EditResidentIdentityDialog';
-import { AvatarUpload } from '@/components/AvatarUpload';
+import { ReadmissionIdentityCard } from './ReadmissionIdentityCard';
+import { DraftResumeBanner } from './wizard/DraftResumeBanner';
+import { DraftSavedIndicator } from './wizard/DraftSavedIndicator';
+import { DiscardDraftDialog } from './wizard/DiscardDraftDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -24,10 +26,12 @@ import { SectionTitle, FormField } from '@/components/shared/FormField';
 import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import { getErrorMessage } from '@/lib/errors';
 import { MARITAL_STATUS_OPTIONS } from '@/lib/maritalStatus';
-import { maskPhone, displayCpf, displayRg, withMask } from '@/lib/masks';
+import { maskPhone, withMask } from '@/lib/masks';
 import { FAMILY_INVESTMENT_LABELS } from '../constants';
 import { useReadmitResident, useResidentAdmissions } from '../hooks/useResidents';
+import { useAdmissionDraft } from '../hooks/useAdmissionDraft';
 import { lastExitDate, refineAdmissionDates } from '../lib/admissionDates';
+import { admissionDraftKey } from '../lib/admissionDraft';
 import { useHouses } from '@/features/houses/hooks/useHouses';
 
 // Story 203 (decisão 6): entrada não futura e não anterior à última saída.
@@ -57,10 +61,26 @@ type ReadmitFormData = z.infer<ReturnType<typeof makeReadmitSchema>>;
 
 const today = todayInSaoPaulo();
 
-const genderLabel: Record<string, string> = {
-  [Gender.MALE]: 'Masculino',
-  [Gender.FEMALE]: 'Feminino',
-};
+function readmitDefaults(resident: Resident): ReadmitFormData {
+  return {
+    houseId: '',
+    entryDate: today,
+    address: resident.address ?? '',
+    contactPhone: maskPhone(resident.contactPhone ?? ''),
+    email: resident.email ?? '',
+    maritalStatus: (resident.maritalStatus as MaritalStatus) ?? '',
+    children: resident.children != null ? String(resident.children) : '0',
+    occupation: resident.occupation ?? '',
+    education: resident.education ?? '',
+    religion: resident.religion ?? '',
+    addiction: resident.addiction ?? '',
+    healthIssues: '',
+    continuousMedication: '',
+    weight: '',
+    height: '',
+    familyInvestment: '',
+  };
+}
 
 interface ReadmissionFormProps {
   resident: Resident;
@@ -72,7 +92,9 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
   const pendingPhotoRef = useRef<Blob | null>(null);
   const [firstPaymentPaid, setFirstPaymentPaid] = useState(false);
   const [editIdentityOpen, setEditIdentityOpen] = useState(false);
-  const { role } = useAuth();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const { role, userId } = useAuth();
   const canEditIdentity = role === Role.ADMIN;
   const { data: houses = [] } = useHouses();
   const mutation = useReadmitResident(resident.id);
@@ -85,28 +107,42 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
     control,
     handleSubmit,
     watch,
+    getValues,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<ReadmitFormData>({
     resolver: zodResolver(readmitSchema),
-    defaultValues: {
-      houseId: '',
-      entryDate: today,
-      address: resident.address ?? '',
-      contactPhone: maskPhone(resident.contactPhone ?? ''),
-      email: resident.email ?? '',
-      maritalStatus: (resident.maritalStatus as MaritalStatus) ?? '',
-      children: resident.children != null ? String(resident.children) : '0',
-      occupation: resident.occupation ?? '',
-      education: resident.education ?? '',
-      religion: resident.religion ?? '',
-      addiction: resident.addiction ?? '',
-      healthIssues: '',
-      continuousMedication: '',
-      weight: '',
-      height: '',
-      familyInvestment: '',
-    },
+    defaultValues: readmitDefaults(resident),
   });
+
+  // Story 211: rascunho local por filho reintroduzido (chave inclui o residentId).
+  const draft = useAdmissionDraft<ReadmitFormData>({
+    storageKey: userId ? admissionDraftKey(userId, resident.id) : null,
+    watch,
+    snapshot: () => ({
+      values: getValues(),
+      step: 0,
+      residentId: null,
+      firstPaymentPaid,
+      firstPaymentMethod: '',
+      hadPhoto: !!pendingPhotoRef.current,
+      hadProof: false,
+    }),
+    saveImmediatelyOn: [firstPaymentPaid],
+  });
+
+  const handleResume = () => {
+    const saved = draft.resume();
+    if (!saved) return;
+    reset({ ...readmitDefaults(resident), ...saved.values });
+    setFirstPaymentPaid(saved.firstPaymentPaid);
+    if (saved.hadPhoto) setNotice('A foto não fica no rascunho. Anexe-a novamente.');
+  };
+
+  const handleCancel = () => {
+    if (draft.hasData()) setCancelOpen(true);
+    else onBack();
+  };
 
   const onSubmit = (data: ReadmitFormData) => {
     const toNullable = (v?: string) => (v && v.trim() !== '' ? v.trim() : null);
@@ -147,74 +183,50 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
               // non-critical
             }
           }
+          draft.clear();
           onSuccess(updated.id);
         },
       },
     );
   };
 
+  const header = (
+    <div className="flex items-center gap-3 mb-6">
+      <Button type="button" variant="ghost" size="sm" onClick={onBack}>
+        ← Voltar
+      </Button>
+      <h1 className="text-2xl font-bold">Reintrodução de acolhido</h1>
+    </div>
+  );
+
+  // Story 211 (decisão 6): rascunho anterior desta reintrodução aguardando escolha.
+  if (draft.pendingDraft) {
+    return (
+      <div className="max-w-2xl">
+        {header}
+        <DraftResumeBanner
+          name={resident.name}
+          savedAt={draft.pendingDraft.savedAt}
+          onContinue={handleResume}
+          onDiscard={draft.clear}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl">
-      <div className="flex items-center gap-3 mb-6">
-        <Button type="button" variant="ghost" size="sm" onClick={onBack}>
-          ← Voltar
-        </Button>
-        <h1 className="text-2xl font-bold">Reintrodução de acolhido</h1>
-      </div>
+      {header}
+
+      {notice && <p className="text-sm text-amber-600 pb-4">{notice}</p>}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
-        {/* Banner de identidade imutável */}
-        <div className="rounded-lg border bg-muted/40 p-4 mb-2">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-              Dados de identificação
-            </p>
-            {canEditIdentity && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditIdentityOpen(true)}
-              >
-                Editar
-              </Button>
-            )}
-          </div>
-          <div className="flex items-start gap-4">
-            <AvatarUpload
-              currentUrl={resident.photoUrl ? api.photoUrl(resident.photoUrl) : null}
-              onBlobChange={(blob) => { pendingPhotoRef.current = blob; }}
-            />
-            <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm flex-1">
-              <span className="text-muted-foreground">Nome</span>
-              <span className="font-medium">{resident.name}</span>
-              {resident.cpf && (
-                <>
-                  <span className="text-muted-foreground">CPF</span>
-                  <span>{displayCpf(resident.cpf)}</span>
-                </>
-              )}
-              {resident.rg && (
-                <>
-                  <span className="text-muted-foreground">RG</span>
-                  <span>{displayRg(resident.rg)}</span>
-                </>
-              )}
-              {resident.birthDate && (
-                <>
-                  <span className="text-muted-foreground">Nascimento</span>
-                  <span>{new Date(resident.birthDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
-                </>
-              )}
-              {resident.gender && (
-                <>
-                  <span className="text-muted-foreground">Gênero</span>
-                  <span>{genderLabel[resident.gender] ?? resident.gender}</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <ReadmissionIdentityCard
+          resident={resident}
+          canEditIdentity={canEditIdentity}
+          onEditIdentity={() => setEditIdentityOpen(true)}
+          onPhotoChange={(blob) => { pendingPhotoRef.current = blob; }}
+        />
 
         <SectionTitle>Nova admissão</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -332,14 +344,26 @@ export function ReadmissionForm({ resident, onBack, onSuccess }: ReadmissionForm
         )}
 
         <div className="flex justify-end gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={onBack}>
+          <Button type="button" variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
           <Button type="submit" disabled={isSubmitting || mutation.isPending}>
             {isSubmitting || mutation.isPending ? 'Salvando...' : 'Reintroduzir acolhido'}
           </Button>
         </div>
+        <div className="flex justify-end">
+          <DraftSavedIndicator savedAt={draft.savedAt} />
+        </div>
       </form>
+
+      <DiscardDraftDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        onConfirm={() => {
+          draft.clear();
+          onBack();
+        }}
+      />
 
       {canEditIdentity && (
         <EditResidentIdentityDialog

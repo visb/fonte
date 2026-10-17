@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useState } from 'react';
 import { api, TOKEN_STORAGE_KEY } from '@/lib/api';
 import { clearPreferences, writePreferences } from '@/lib/preferences';
+import { clearUserAdmissionDrafts } from '@/features/residents/lib/admissionDraft';
 
 interface AuthContextValue {
   token: string | null;
@@ -52,6 +53,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    // Story 211 (LGPD): rascunhos de acolhimento têm dado pessoal/de saúde e
+    // não podem sobrar num computador compartilhado após o logout.
+    const current = localStorage.getItem(TOKEN_STORAGE_KEY);
+    clearUserAdmissionDrafts(current ? decodeToken(current).sub : null);
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     // Máquina compartilhada: sem isso o próximo usuário herdaria os filtros do
     // anterior (decisão 9).

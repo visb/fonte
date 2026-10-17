@@ -147,6 +147,7 @@ describe('store local × cache em blob (story 175)', () => {
     expect([...PERSISTED_QUERY_PREFIXES]).toEqual([
       'houses',
       'house-ministries',
+      'house-staff',
       'inventory-catalog',
       'storeroom-items',
       'storeroom-movements',
@@ -172,6 +173,13 @@ describe('store local × cache em blob (story 175)', () => {
   it('house-ministries mora no blob, não no store de filho', () => {
     expect(isPersistableQueryKey(queryKeys.houses.ministries('h1'))).toBe(true);
     expect(isResidentStoreQueryKey(queryKeys.houses.ministries('h1'))).toBe(false);
+  });
+
+  // Story 204 (decisão 3): a lista de servos funciona offline — blob de 24h,
+  // sem dado de filho.
+  it('staff.byHouse está na allowlist do blob e fora do store de filho', () => {
+    expect(isPersistableQueryKey(queryKeys.staff.byHouse('h1'))).toBe(true);
+    expect(isResidentStoreQueryKey(queryKeys.staff.byHouse('h1'))).toBe(false);
   });
 });
 

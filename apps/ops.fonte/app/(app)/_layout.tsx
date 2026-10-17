@@ -132,6 +132,17 @@ export default function AppLayout() {
           }}
         />
         <Tabs.Screen
+          name="staff"
+          options={{
+            title: "Servos",
+            headerShown: false,
+            href: null,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="id-card-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="storeroom"
           options={{
             title: "Dispensa",

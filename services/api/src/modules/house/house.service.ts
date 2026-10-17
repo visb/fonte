@@ -27,6 +27,16 @@ export interface HouseCoordinatorSummary {
   photoUrl: string | null;
 }
 
+/** Linha de `GET /houses/:id/staff` (story 181 + campos da story 204). */
+export interface HouseStaffMember {
+  id: string;
+  name: string;
+  whatsapp: string | null;
+  photoUrl: string | null;
+  role: Role;
+  ledMinistries: Array<{ id: string; name: string }>;
+}
+
 /** Decisão 7 da story 194 — o titular tem que pertencer à lista da casa. */
 export const INELIGIBLE_TITULAR_MESSAGE =
   'O coordenador titular precisa ser um coordenador lotado nesta casa.';
@@ -265,14 +275,27 @@ export class HouseService {
    * enxuto de propósito — a rota é lida por SERVANT e devolver o registro
    * completo (e-mail, rank, ex-filho) ampliaria a superfície de dado pessoal sem
    * necessidade (LGPD art. 6, minimização).
+   *
+   * Story 204: soma `role` (do `User` ligado) e `ledMinistries` (ministérios não
+   * excluídos que o servo lidera) para a lista de servos do `ops`. Aditivo — os
+   * consumidores antigos ignoram os campos novos.
    */
-  async findStaffForHouse(houseId: string): Promise<
-    Array<{ id: string; name: string; whatsapp: string | null; photoUrl: string | null }>
-  > {
+  async findStaffForHouse(houseId: string): Promise<HouseStaffMember[]> {
     await this.assertHouseExists(houseId);
     return this.houseRepository.manager.query(
-      `SELECT id, name, whatsapp, photo_url AS "photoUrl" FROM staff
-       WHERE house_id = $1 AND deleted_at IS NULL ORDER BY name`,
+      `SELECT s.id, s.name, s.whatsapp, s.photo_url AS "photoUrl", u.role,
+              COALESCE(
+                json_agg(json_build_object('id', m.id, 'name', m.name) ORDER BY m.name)
+                  FILTER (WHERE m.id IS NOT NULL),
+                '[]'
+              ) AS "ledMinistries"
+       FROM staff s
+       JOIN users u ON u.id = s.user_id
+       LEFT JOIN ministries m
+         ON m.leader_type = 'STAFF' AND m.leader_id = s.id AND m.deleted_at IS NULL
+       WHERE s.house_id = $1 AND s.deleted_at IS NULL
+       GROUP BY s.id, u.role
+       ORDER BY s.name`,
       [houseId],
     );
   }

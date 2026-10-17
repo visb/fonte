@@ -28,7 +28,13 @@ export const queryKeys = {
     byHouse: (houseId: string) => ['ministries', houseId] as const,
     detail: (id: string) => ['ministry', id] as const,
     tasks: (id: string) => ['ministry-tasks', id] as const,
-    houseStaff: (houseId: string) => ['house-staff-for-ministry', houseId] as const,
+  },
+  /**
+   * Servos da casa (story 204): uma key só para a lista *Servos* e para os
+   * seletores de líder dos ministérios — cache compartilhado, inclusive offline.
+   */
+  staff: {
+    byHouse: (houseId: string) => ['house-staff', houseId] as const,
   },
   incidents: {
     all: ['incidents'] as const,

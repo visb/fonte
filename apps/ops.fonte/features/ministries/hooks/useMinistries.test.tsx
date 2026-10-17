@@ -22,9 +22,9 @@ jest.mock('@/lib/api', () => ({
 }));
 
 import { api } from '@/lib/api';
-import { renderHookWithClient } from '@/lib/test/utils';
+import { createTestQueryClient, renderHookWithClient } from '@/lib/test/utils';
+import { queryKeys } from '@/lib/queryKeys';
 import {
-  useHouseStaffForMinistry,
   useMinistries,
   useMinistryDetail,
   useMinistryTasks,
@@ -47,7 +47,6 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('useMinistries — queries', () => {
   it.each([
-    ['useHouseStaffForMinistry', () => useHouseStaffForMinistry('h1'), () => m.houses.listStaff],
     ['useMinistries', () => useMinistries('h1'), () => m.houses.listMinistries],
   ])('%s busca quando houseId presente', async (_n, hook, getFn) => {
     getFn().mockResolvedValue([]);
@@ -128,6 +127,22 @@ describe('useMinistries — mutations diretas', () => {
     result.current.mutate({ title: 'Lavar', repetition: 'DAILY' });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(m.ministries.createTask).toHaveBeenCalledWith('min1', { title: 'Lavar', repetition: 'DAILY' });
+  });
+
+  // Story 204: a lista de servos traz os ministérios liderados — mexer em
+  // ministério invalida `staff.byHouse` da casa.
+  it.each([
+    ['useCreateMinistry', () => useCreateMinistry('h1'), { name: 'Horta' }, () => m.houses.addMinistry],
+    ['useUpdateMinistry', () => useUpdateMinistry('min1', 'h1'), { leaderId: 's1', leaderType: 'STAFF' }, () => m.ministries.update],
+    ['useDeleteMinistry', () => useDeleteMinistry('h1'), 'min1', () => m.ministries.delete],
+  ])('%s invalida os servos da casa', async (_n, hook, arg, getFn) => {
+    getFn().mockResolvedValue({ id: 'min1' });
+    const client = createTestQueryClient();
+    const spy = jest.spyOn(client, 'invalidateQueries');
+    const { result } = renderHookWithClient(hook as never, client);
+    (result.current as { mutate: (a: unknown) => void }).mutate(arg);
+    await waitFor(() => expect((result.current as { isSuccess: boolean }).isSuccess).toBe(true));
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.staff.byHouse('h1') });
   });
 
   it('useUpdateTask atualiza a tarefa', async () => {

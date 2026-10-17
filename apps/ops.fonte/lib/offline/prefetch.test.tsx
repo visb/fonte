@@ -9,6 +9,7 @@ jest.mock('@/lib/api', () => ({
     supplyRoom: { listItems: jest.fn() },
     incidents: { list: jest.fn() },
     activities: { list: jest.fn() },
+    houses: { listStaff: jest.fn() },
   },
 }));
 
@@ -59,6 +60,20 @@ describe('warmHouseCache', () => {
     expect(m.storeroom.listItems).toHaveBeenCalledWith({ houseId: 'h1' });
     expect(m.supplyRoom.listItems).toHaveBeenCalledWith({ houseId: 'h1' });
     expect(m.incidents.list).toHaveBeenCalledWith({ houseId: 'h1' });
+    expect(m.houses.listStaff).toHaveBeenCalledWith('h1');
+  });
+
+  // Story 204: a lista *Servos* abre sem sinal no primeiro uso.
+  it('pré-carrega os servos da casa na key compartilhada e persistível', async () => {
+    const client = createClient();
+    const staff = [{ id: 's1', name: 'Ana', role: 'SERVANT', ledMinistries: [] }];
+    m.houses.listStaff.mockResolvedValue(staff);
+
+    await warmHouseCache(client, 'h1');
+
+    expect(client.getQueryData(queryKeys.staff.byHouse('h1'))).toEqual(staff);
+    expect(warmedQueryKeys('h1')).toContainEqual([...queryKeys.staff.byHouse('h1')]);
+    expect(isPersistableQueryKey(queryKeys.staff.byHouse('h1'))).toBe(true);
   });
 
   it('a ficha dos filhos vem do snapshot da casa — UM request, não N (story 175)', async () => {

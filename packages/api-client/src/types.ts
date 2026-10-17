@@ -398,6 +398,22 @@ export interface HouseStaffSummary {
   photoUrl: string | null;
 }
 
+/** Ministério liderado por um servo, como vem em `HouseStaffMember.ledMinistries`. */
+export interface LedMinistrySummary {
+  id: string;
+  name: string;
+}
+
+/**
+ * Linha de `GET /houses/:id/staff` (story 204): o resumo da 181 mais o papel do
+ * usuário e os ministérios (não excluídos) que o servo lidera. Aditivo — quem só
+ * lê as quatro colunas do resumo segue funcionando.
+ */
+export interface HouseStaffMember extends HouseStaffSummary {
+  role: Role;
+  ledMinistries: LedMinistrySummary[];
+}
+
 export interface PromoteToServantInput {
   email?: string;
   password?: string;

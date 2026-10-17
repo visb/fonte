@@ -77,6 +77,10 @@ export const PERSISTED_QUERY_PREFIXES = [
   // membro nem como líder, a resposta não tem mais nome de filho e a chave
   // deixou de pertencer ao store local (que guarda dado pessoal até o logout).
   'house-ministries',
+  // staff.byHouse (story 204) — nome, foto, papel, ministérios liderados e
+  // WhatsApp dos servos da casa: contato interno, já lido pelos mesmos papéis
+  // online. Nenhum dado de filho.
+  'house-staff',
   // inventory.catalog
   'inventory-catalog',
   // storeroom.items / storeroom.movements

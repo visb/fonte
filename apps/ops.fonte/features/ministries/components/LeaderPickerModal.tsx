@@ -1,6 +1,7 @@
 import { Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useHouseStaffForMinistry, useUpdateMinistry } from '../hooks/useMinistries';
+import { useUpdateMinistry } from '../hooks/useMinistries';
+import { useHouseStaff } from '@/features/staff/hooks/useHouseStaff';
 
 interface Props {
   visible: boolean;
@@ -11,7 +12,7 @@ interface Props {
 }
 
 export function LeaderPickerModal({ visible, onClose, ministryId, houseId, currentLeaderId }: Props) {
-  const { data: allStaff = [] } = useHouseStaffForMinistry(houseId);
+  const { data: allStaff = [] } = useHouseStaff(houseId);
   const updateMinistry = useUpdateMinistry(ministryId, houseId);
 
   function handleSelect(leaderId: string | null, leaderType: 'STAFF' | null) {

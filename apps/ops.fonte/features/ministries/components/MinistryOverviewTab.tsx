@@ -2,11 +2,8 @@ import { useMemo, useState } from 'react';
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { MinistryDetail } from '@fonte/api-client';
-import {
-  useAddStaff,
-  useRemoveStaff,
-  useHouseStaffForMinistry,
-} from '../hooks/useMinistries';
+import { useAddStaff, useRemoveStaff } from '../hooks/useMinistries';
+import { useHouseStaff } from '@/features/staff/hooks/useHouseStaff';
 import { normalizeForSearch } from '@/lib/searchUtils';
 
 function SectionLabel({ children }: { children: string }) {
@@ -29,7 +26,7 @@ interface Props {
 export function MinistryOverviewTab({ ministryId, houseId, ministry, onEditLeader }: Props) {
   const [staffSearch, setStaffSearch] = useState('');
 
-  const { data: allStaff = [] } = useHouseStaffForMinistry(houseId);
+  const { data: allStaff = [] } = useHouseStaff(houseId);
 
   const addStaff = useAddStaff(ministryId);
   const removeStaff = useRemoveStaff(ministryId);

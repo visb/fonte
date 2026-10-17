@@ -82,7 +82,7 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 | 4 | 203 — Coerência das datas de entrada e saída | [OK] | api 1948 + e2e 662; adm 1862; ops 1405 + e2e-web 7 | 922adb5 | d393515 |
 | 5 | 206 — Card de filho responsivo (adm) | [OK] | adm unit 1883 + e2e residents 31/39 (8 pré-existentes) | e25fe8a | 1ed680e |
 | 6 | 204 — Listagem de servos no ops | [OK] | api 1949 + e2e 665; ops 1433 + e2e-web 28; api-client 307 | da82541 | 0362f1c |
-| 7 | 205 — Restaurar vínculo filho↔ministério | [ ] | | | |
+| 7 | 205 — Restaurar vínculo filho↔ministério | [OK] | api 2006 + e2e 670; adm 1909; ops 1459 + e2e-web 28 | 0d8f671 | d814f6c |
 | 8 | 207 — Nível do servo no ops | [ ] | | | |
 | 9 | 208 — Atividades em colunas no ops | [ ] | | | |
 | 10 | 209 — Campos de data digitáveis no ops | [ ] | | | |
@@ -105,6 +105,8 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 - [FIX] 203 — fixtures e2e usavam dia UTC como "hoje" → 400 entre 21h–0h BRT (~96 falhas api e2e + 3 e2e-web). Trocado por `todayInSaoPaulo()`; também readmit/alta/admission em `resident.service.ts` gravavam dia UTC — corrigido — commit: 9d1f12d — merge: 498bf9e.
   Restam dia UTC em prod (fora da rodada): resident-session (limite 25 min/dia), promotedAt, follow-up padrão, payable/associate "hoje".
 - [OK] 204 — testes: api unit 1949, api e2e 665/665 e ops e2e-web 28/28 (ambos 21:31 BRT, com o fix), ops unit 1433 (95.4%), api-client 307 — commit: da82541 — merge: 0362f1c — 2026-10-16 — Maestro PENDENTE-MANUAL.
+- [OK] 205 — testes: api unit 2006 (93.3%), api e2e 670/670, api-client 308, adm unit 1909, adm e2e houses 12/12 + residents 32/39 (7 = pré-existentes João Testador), ops unit 1459 (95.5%), ops e2e-web 28/28; migration up/revert/up só no test — commit: 0d8f671 — merge: d814f6c — 2026-10-17 — Maestro `ministries.yaml` PENDENTE-MANUAL.
+  Nota: `PERSIST_BUSTER` → v3; BUSINESS_RULES.md (Ministérios) atualizado.
 
 ## Resumo final
 

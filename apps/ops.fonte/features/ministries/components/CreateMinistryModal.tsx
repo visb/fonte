@@ -10,7 +10,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useCreateMinistry, useHouseStaffForMinistry } from '../hooks/useMinistries';
+import { useCreateMinistry } from '../hooks/useMinistries';
+import { useHouseStaff } from '@/features/staff/hooks/useHouseStaff';
 
 interface Props {
   visible: boolean;
@@ -25,7 +26,7 @@ export function CreateMinistryModal({ visible, houseId, onClose, onSuccess }: Pr
   const [name, setName] = useState('');
   const [leaderId, setLeaderId] = useState<string | null>(null);
 
-  const { data: allStaff = [] } = useHouseStaffForMinistry(visible ? houseId : undefined);
+  const { data: allStaff = [] } = useHouseStaff(visible ? houseId : undefined);
   const createMutation = useCreateMinistry(houseId);
 
   function resetForm() {

@@ -7,6 +7,8 @@ export type {
   ChangePasswordInput,
   House,
   HouseStaffSummary,
+  HouseStaffMember,
+  LedMinistrySummary,
   HousePhoto,
   CreateHouseInput,
   UpdateHouseInput,

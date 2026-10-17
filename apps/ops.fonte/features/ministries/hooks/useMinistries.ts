@@ -1,13 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 
-export function useHouseStaffForMinistry(houseId: string | null | undefined) {
-  return useQuery({
-    queryKey: queryKeys.ministries.houseStaff(houseId!),
-    queryFn: () => api.houses.listStaff(houseId!),
-    enabled: !!houseId,
-  });
+/**
+ * Story 204: a lista de servos da casa (`staff.byHouse`) traz os ministérios
+ * que cada um lidera — mudar líder/criar/excluir ministério a deixa velha.
+ */
+function invalidateHouseStaff(queryClient: QueryClient, houseId: string) {
+  return queryClient.invalidateQueries({ queryKey: queryKeys.staff.byHouse(houseId) });
 }
 
 export function useMinistries(houseId: string | null | undefined) {
@@ -53,8 +53,10 @@ export function useCreateMinistry(houseId: string) {
       }
       return ministry;
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.ministries.byHouse(houseId) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.ministries.byHouse(houseId) });
+      invalidateHouseStaff(queryClient, houseId);
+    },
   });
 }
 
@@ -66,6 +68,7 @@ export function useUpdateMinistry(ministryId: string, houseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.ministries.detail(ministryId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.ministries.byHouse(houseId) });
+      invalidateHouseStaff(queryClient, houseId);
     },
   });
 }
@@ -74,8 +77,10 @@ export function useDeleteMinistry(houseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (ministryId: string) => api.ministries.delete(ministryId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.ministries.byHouse(houseId) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.ministries.byHouse(houseId) });
+      invalidateHouseStaff(queryClient, houseId);
+    },
   });
 }
 

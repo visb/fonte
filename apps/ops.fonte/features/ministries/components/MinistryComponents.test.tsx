@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createTestQueryClient } from '@/lib/test/utils';
+import { queryKeys } from '@/lib/queryKeys';
 
 jest.mock('@expo/vector-icons', () => {
   const { Text } = require('react-native');
@@ -215,6 +216,21 @@ describe('LeaderPickerModal', () => {
     await waitFor(() => expect(screen.getByText('Servo X')).toBeTruthy());
     expect(m.houses.listResidents).toBeUndefined();
     expect(screen.queryByText('Filho')).toBeNull();
+  });
+
+  // Story 204: seletor e lista *Servos* compartilham `staff.byHouse` — com o
+  // cache já populado (ex.: aquecimento offline), o seletor lista sem rede.
+  it('lista os servos a partir da key compartilhada staff.byHouse', async () => {
+    const client = createTestQueryClient();
+    client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
+    client.setQueryData(queryKeys.staff.byHouse('h1'), [{ id: 's9', name: 'Servo do Cache' }]);
+    render(
+      <QueryClientProvider client={client}>
+        <LeaderPickerModal {...props} />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText('Servo do Cache')).toBeTruthy();
+    expect(m.houses.listStaff).not.toHaveBeenCalled();
   });
 
   it('"Sem líder" muta com null', async () => {

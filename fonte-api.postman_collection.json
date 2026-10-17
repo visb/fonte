@@ -845,7 +845,7 @@
           "name": "Get House Staff",
           "request": {
             "method": "GET",
-            "description": "Resumo dos servos da casa (ADMIN | COORDINATOR | SERVANT). Não devolve a entidade Staff inteira — só as colunas do resumo, por minimização de dado pessoal. Story 181: passa a incluir `photoUrl` (foto do servo; `staff` não tem thumb). Resposta 200: [ { \"id\": \"uuid\", \"name\": \"Coordenador Teste\", \"whatsapp\": \"11977773000\", \"photoUrl\": \"/uploads/staff/foto.jpg\" }, { \"id\": \"uuid\", \"name\": \"Operador Teste\", \"whatsapp\": \"11977771000\", \"photoUrl\": null } ]",
+            "description": "Resumo dos servos da casa (ADMIN | COORDINATOR | SERVANT). Não devolve a entidade Staff inteira — só as colunas do resumo, por minimização de dado pessoal. Story 181: passa a incluir `photoUrl` (foto do servo; `staff` não tem thumb). Story 204: inclui `role` (do User ligado: COORDINATOR | SERVANT | ADMIN) e `ledMinistries` (ministérios não excluídos com leader_type STAFF liderados pelo servo, ordenados por nome; `[]` quando não lidera nenhum) — usados pela lista de servos do ops. Ordem: nome. RELATIVE/RESIDENT → 403; casa inexistente → 404. Resposta 200: [ { \"id\": \"uuid\", \"name\": \"Coordenador Teste\", \"whatsapp\": \"11977773000\", \"photoUrl\": \"/uploads/staff/foto.jpg\", \"role\": \"COORDINATOR\", \"ledMinistries\": [ { \"id\": \"uuid\", \"name\": \"Cozinha\" } ] }, { \"id\": \"uuid\", \"name\": \"Operador Teste\", \"whatsapp\": \"11977771000\", \"photoUrl\": null, \"role\": \"SERVANT\", \"ledMinistries\": [] } ]",
             "url": {
               "raw": "{{baseUrl}}/houses/{{houseId}}/staff",
               "host": [

@@ -25,6 +25,7 @@ export const MENU_SECTIONS: { key: MenuSectionKey; label: string }[] = [
 export const MENU_ITEM_KEYS = [
   'contributions',
   'residents',
+  'staff',
   'incidents',
   'activities',
   'ministries',
@@ -82,6 +83,17 @@ export const MENU_ITEMS: AppMenuItem[] = [
     color: '#9333ea',
     bg: '#faf5ff',
     quickAction: { label: 'Ver filhos' },
+  },
+  {
+    // Story 204: lista de servos da casa (somente leitura + WhatsApp). Sem ação
+    // rápida no dashboard; o gate é o default `isHouseStaff`.
+    key: 'staff',
+    label: 'Servos',
+    icon: 'id-card-outline',
+    route: '/(app)/staff',
+    section: 'casa',
+    color: '#0f766e',
+    bg: '#f0fdfa',
   },
   {
     key: 'incidents',

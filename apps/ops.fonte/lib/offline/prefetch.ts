@@ -5,7 +5,7 @@
  * operador que entra na casa e só então abre a contagem não tem nada em cache.
  * Aqui o app puxa, no login e ao voltar do background, o pacote mínimo que os
  * fluxos de campo consomem — filhos da casa, catálogo de estoque, ocorrências
- * de hoje e atividades da casa.
+ * de hoje, atividades e servos da casa.
  *
  * LGPD (decisão 4 do epic 167): tudo que é aquecido **precisa** estar na
  * allowlist de `constants.ts`, senão o dado ficaria em memória por nada. O
@@ -54,6 +54,12 @@ function houseQueries(houseId: string): WarmQuery[] {
     {
       queryKey: queryKeys.activities.byHouse(houseId),
       queryFn: () => api.activities.list(),
+    },
+    // Story 204: lista *Servos* (e seletor de líder) disponível no primeiro
+    // uso sem sinal.
+    {
+      queryKey: queryKeys.staff.byHouse(houseId),
+      queryFn: () => api.houses.listStaff(houseId),
     },
   ];
 }

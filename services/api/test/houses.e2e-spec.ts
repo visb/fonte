@@ -154,9 +154,17 @@ describe('HouseController (e2e)', () => {
 
       expect(before.body.length).toBeGreaterThan(0);
       // O seed não sobe foto de servo: todos descem com `photoUrl` null — e só
-      // com as 4 colunas do resumo (minimização; a rota é lida por SERVANT).
+      // com as colunas do resumo (minimização; a rota é lida por SERVANT). A
+      // story 204 somou `role` e `ledMinistries`.
       for (const s of before.body) {
-        expect(Object.keys(s).sort()).toEqual(['id', 'name', 'photoUrl', 'whatsapp']);
+        expect(Object.keys(s).sort()).toEqual([
+          'id',
+          'ledMinistries',
+          'name',
+          'photoUrl',
+          'role',
+          'whatsapp',
+        ]);
         expect(s.photoUrl).toBeNull();
       }
 
@@ -186,6 +194,145 @@ describe('HouseController (e2e)', () => {
         .get(`${BASE}/houses/00000000-0000-0000-0000-000000000000/staff`)
         .set('Authorization', `Bearer ${token}`)
         .expect(404));
+  });
+
+  // ─── Lista de servos do ops (story 204) ───────────────────────────────────
+  //
+  // Fixtures próprias (story 182): casa, servos e ministérios criados por API e
+  // removidos por id. O seed não é tocado.
+  describe('papel e ministérios liderados (story 204)', () => {
+    const stamp = Date.now();
+    const ministryIds: string[] = [];
+    let fixtureHouseId: string;
+    let otherHouseId: string;
+    let coordId: string;
+    let servantId: string;
+    let idleId: string;
+    let dismissedId: string;
+    let outsiderId: string;
+
+    async function createHouse(name: string): Promise<string> {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/houses`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name })
+        .expect(201);
+      createdIds.push(res.body.id);
+      return res.body.id;
+    }
+
+    async function createStaff(
+      name: string,
+      role: 'COORDINATOR' | 'SERVANT',
+      house: string,
+    ): Promise<{ id: string }> {
+      const email = `${name.toLowerCase()}.${stamp}@fonte.test`;
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/staff`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name, email, password: 'secret123', role, houseId: house })
+        .expect(201);
+      staffIds.push(res.body.id);
+      return { id: res.body.id };
+    }
+
+    async function createMinistry(name: string, leaderId: string): Promise<string> {
+      const res = await request(app.getHttpServer())
+        .post(`${BASE}/houses/${fixtureHouseId}/ministries`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name })
+        .expect(201);
+      ministryIds.push(res.body.id);
+      await request(app.getHttpServer())
+        .patch(`${BASE}/ministries/${res.body.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ leaderId, leaderType: 'STAFF' })
+        .expect(200);
+      return res.body.id;
+    }
+
+    beforeAll(async () => {
+      fixtureHouseId = await createHouse(`Casa 204 ${stamp}`);
+      otherHouseId = await createHouse(`Casa 204 Vizinha ${stamp}`);
+      coordId = (await createStaff('Coord204', 'COORDINATOR', fixtureHouseId)).id;
+      servantId = (await createStaff('Servo204', 'SERVANT', fixtureHouseId)).id;
+      idleId = (await createStaff('Ocioso204', 'SERVANT', fixtureHouseId)).id;
+      dismissedId = (await createStaff('Desligado204', 'SERVANT', fixtureHouseId)).id;
+      outsiderId = (await createStaff('Vizinho204', 'SERVANT', otherHouseId)).id;
+
+      await createMinistry(`Horta 204 ${stamp}`, servantId);
+      await createMinistry(`Cozinha 204 ${stamp}`, servantId);
+      await createMinistry(`Limpeza 204 ${stamp}`, coordId);
+      const removed = await createMinistry(`Removido 204 ${stamp}`, servantId);
+      await request(app.getHttpServer())
+        .delete(`${BASE}/ministries/${removed}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .delete(`${BASE}/staff/${dismissedId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(204);
+    });
+
+    afterAll(async () => {
+      // Ministérios antes das casas; o delete tolera 404 (o removido já saiu).
+      for (const id of ministryIds) {
+        await request(app.getHttpServer())
+          .delete(`${BASE}/ministries/${id}`)
+          .set('Authorization', `Bearer ${adminToken}`);
+      }
+    });
+
+    // Servo criado por API nasce com troca de senha obrigatória (403 em tudo até
+    // trocar) — o SERVANT do seed prova o acesso na própria casa, read-only.
+    it('SERVANT → 200 com os campos novos na própria casa', async () => {
+      const servantToken = await login(app, 'operator@fonte.com', 'operator123');
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/houses/${houseId}/staff`)
+        .set('Authorization', `Bearer ${servantToken}`)
+        .expect(200);
+
+      const operator = res.body.find((s: { name: string }) => s.name === 'Operador Teste');
+      expect(operator).toMatchObject({ role: 'SERVANT' });
+      expect(Array.isArray(operator.ledMinistries)).toBe(true);
+      const coordinator = res.body.find((s: { name: string }) => s.name === 'Coordenador Teste');
+      expect(coordinator).toMatchObject({ role: 'COORDINATOR' });
+    });
+
+    it('role e ledMinistries batem com o banco; excluídos e de outra casa ficam de fora', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/houses/${fixtureHouseId}/staff`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      const byId = new Map(res.body.map((s: { id: string }) => [s.id, s]));
+      expect([...byId.keys()].sort()).toEqual([coordId, servantId, idleId].sort());
+      expect(byId.has(dismissedId)).toBe(false);
+      expect(byId.has(outsiderId)).toBe(false);
+
+      expect(byId.get(coordId)).toMatchObject({
+        role: 'COORDINATOR',
+        ledMinistries: [{ name: `Limpeza 204 ${stamp}` }],
+      });
+      // Ordenados por nome; o ministério excluído não aparece.
+      expect(byId.get(servantId)).toMatchObject({
+        role: 'SERVANT',
+        ledMinistries: [{ name: `Cozinha 204 ${stamp}` }, { name: `Horta 204 ${stamp}` }],
+      });
+      expect(byId.get(idleId)).toMatchObject({ role: 'SERVANT', ledMinistries: [] });
+      for (const m of (byId.get(servantId) as { ledMinistries: object[] }).ledMinistries) {
+        expect(Object.keys(m).sort()).toEqual(['id', 'name']);
+      }
+    });
+
+    it('RELATIVE → 403', async () => {
+      const relativeToken = await login(app, 'familiar@fonte.com', 'familiar123');
+      await request(app.getHttpServer())
+        .get(`${BASE}/houses/${fixtureHouseId}/staff`)
+        .set('Authorization', `Bearer ${relativeToken}`)
+        .expect(403);
+    });
   });
 
   // ─── Coordenadores da casa (story 194) ────────────────────────────────────

@@ -54,6 +54,7 @@ describe('buildMenuItems por perfil', () => {
     expect(keys).toEqual([
       'contributions',
       'residents',
+      'staff',
       'incidents',
       'activities',
       'ministries',
@@ -90,6 +91,27 @@ describe('buildMenuItems por perfil', () => {
     expect(keys).not.toContain('residents');
     expect(keys).not.toContain('storeroom');
     expect(keys).not.toContain('sync');
+  });
+
+  // Story 204 (decisão 2): mesmo gate de Filhos.
+  it('Servos: visível para coordenador e servo; invisível para interno e servo de grupo de apoio', () => {
+    expect(keysOf(servant)).toContain('staff');
+    expect(keysOf(coordinator)).toContain('staff');
+    expect(keysOf(houseCoordinator)).toContain('staff');
+    expect(keysOf(resident)).not.toContain('staff');
+    expect(keysOf(supportGroupServant)).not.toContain('staff');
+
+    const item = MENU_ITEMS.find((candidate) => candidate.key === 'staff');
+    expect(item).toMatchObject({
+      label: 'Servos',
+      icon: 'id-card-outline',
+      route: '/(app)/staff',
+      section: 'casa',
+    });
+    // Logo depois de Filhos e sem ação rápida no dashboard.
+    const keys = MENU_ITEMS.map((candidate) => candidate.key);
+    expect(keys.indexOf('staff')).toBe(keys.indexOf('residents') + 1);
+    expect(QUICK_ACTION_KEYS).not.toContain('staff');
   });
 
   it('mensagens exige permissão de enviar ou moderar; pedidos exige moderar', () => {

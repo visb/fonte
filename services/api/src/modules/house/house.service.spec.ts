@@ -496,14 +496,37 @@ describe('HouseService.findStaffForHouse', () => {
     const [sql, params] = query.mock.calls[0];
     expect(sql).toContain('photo_url AS "photoUrl"');
     expect(sql).toContain('FROM staff');
-    expect(sql).toContain('deleted_at IS NULL');
+    expect(sql).toContain('s.deleted_at IS NULL');
     expect(params).toEqual(['h1']);
+  });
+
+  // Story 204: papel do User e ministérios liderados (só STAFF, não excluídos).
+  it('junta o papel do usuário e os ministérios liderados não excluídos (story 204)', async () => {
+    const query = jest.fn().mockResolvedValue([]);
+    const houseRepo = makeHouseRepo({ count: jest.fn().mockResolvedValue(1) }, query);
+    const service = makeService(houseRepo);
+
+    await service.findStaffForHouse('h1');
+
+    const [sql] = query.mock.calls[0];
+    expect(sql).toContain('u.role');
+    expect(sql).toContain('JOIN users u ON u.id = s.user_id');
+    expect(sql).toContain("m.leader_type = 'STAFF'");
+    expect(sql).toContain('m.leader_id = s.id');
+    expect(sql).toContain('m.deleted_at IS NULL');
+    expect(sql).toContain('FILTER (WHERE m.id IS NOT NULL)');
+    expect(sql).toContain(`'[]'`);
+    expect(sql).toContain('AS "ledMinistries"');
+    expect(sql).toContain('s.house_id = $1');
   });
 
   it('propaga photoUrl com valor e com null sem mexer no resto do payload', async () => {
     const rows = [
-      { id: 's1', name: 'Ana', whatsapp: '62999990000', photoUrl: '/uploads/staff/ana.jpg' },
-      { id: 's2', name: 'Bruno', whatsapp: null, photoUrl: null },
+      {
+        id: 's1', name: 'Ana', whatsapp: '62999990000', photoUrl: '/uploads/staff/ana.jpg',
+        role: 'COORDINATOR', ledMinistries: [{ id: 'm1', name: 'Cozinha' }],
+      },
+      { id: 's2', name: 'Bruno', whatsapp: null, photoUrl: null, role: 'SERVANT', ledMinistries: [] },
     ];
     const query = jest.fn().mockResolvedValue(rows);
     const houseRepo = makeHouseRepo({ count: jest.fn().mockResolvedValue(1) }, query);

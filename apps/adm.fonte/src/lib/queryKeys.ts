@@ -38,6 +38,7 @@ export const queryKeys = {
   },
   ministries: {
     all: ['ministries'] as const,
+    detail: (id: string) => ['ministries', id] as const,
   },
   documentTemplates: {
     all: ['document-templates'] as const,

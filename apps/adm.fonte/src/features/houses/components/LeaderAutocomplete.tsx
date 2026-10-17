@@ -3,21 +3,36 @@ import { normalizeForSearch } from '@/lib/utils';
 import { SELECT_CLASS } from '../constants';
 
 export interface PersonItem { id: string; name: string }
-// Story 197: ministério é liderado só por servo — o backend recusa qualquer
-// outro `leaderType` com 400.
-export type LeaderType = 'STAFF';
+// Story 205: filho em acolhimento na casa volta a poder liderar. Quem chama
+// passa a lista de filhos já filtrada (`ministryEligibleResidents`).
+export type LeaderType = 'STAFF' | 'RESIDENT';
 export interface SelectedLeader { id: string; type: LeaderType }
 
+interface LeaderOption { id: string; name: string; type: LeaderType }
+
+const BADGE: Record<LeaderType, { label: string; className: string }> = {
+  STAFF: { label: 'Servo', className: 'bg-blue-100 text-blue-700' },
+  RESIDENT: { label: 'Filho', className: 'bg-green-100 text-green-700' },
+};
+
 export function LeaderAutocomplete({
-  selectedId, onSelect, staff,
+  selectedId, selectedType, onSelect, staff, residents = [],
 }: {
   selectedId: string | null;
+  selectedType: LeaderType | null;
   onSelect: (id: string | null, type: LeaderType | null) => void;
   staff: PersonItem[];
+  residents?: PersonItem[];
 }) {
-  const selectedName = selectedId
-    ? (staff.find((s) => s.id === selectedId)?.name ?? '')
-    : '';
+  const allOptions: LeaderOption[] = [
+    ...staff.map((s) => ({ id: s.id, name: s.name, type: 'STAFF' as const })),
+    ...residents.map((r) => ({ id: r.id, name: r.name, type: 'RESIDENT' as const })),
+  ];
+
+  const selectedName =
+    selectedId && selectedType
+      ? (allOptions.find((o) => o.id === selectedId && o.type === selectedType)?.name ?? '')
+      : '';
 
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -35,11 +50,11 @@ export function LeaderAutocomplete({
   }, []);
 
   const filtered = query
-    ? staff.filter((o) => normalizeForSearch(o.name).includes(normalizeForSearch(query)))
-    : staff;
+    ? allOptions.filter((o) => normalizeForSearch(o.name).includes(normalizeForSearch(query)))
+    : allOptions;
 
-  const handleSelect = (id: string | null) => {
-    onSelect(id, id ? 'STAFF' : null);
+  const handleSelect = (id: string | null, type: LeaderType | null) => {
+    onSelect(id, type);
     setOpen(false);
     setQuery('');
   };
@@ -65,20 +80,20 @@ export function LeaderAutocomplete({
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg">
           <div className="max-h-48 overflow-y-auto py-1">
-            <button type="button" className="w-full px-3 py-1.5 text-sm text-left text-muted-foreground hover:bg-accent" onMouseDown={() => handleSelect(null)}>
+            <button type="button" className="w-full px-3 py-1.5 text-sm text-left text-muted-foreground hover:bg-accent" onMouseDown={() => handleSelect(null, null)}>
               Sem líder
             </button>
             {filtered.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum resultado</p>}
             {filtered.map((o) => (
               <button
-                key={`STAFF-${o.id}`}
+                key={`${o.type}-${o.id}`}
                 type="button"
                 className="w-full flex items-center justify-between px-3 py-1.5 text-sm text-left hover:bg-accent"
-                onMouseDown={() => handleSelect(o.id)}
+                onMouseDown={() => handleSelect(o.id, o.type)}
               >
                 <span>{o.name}</span>
-                <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-blue-100 text-blue-700">
-                  Servo
+                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${BADGE[o.type].className}`}>
+                  {BADGE[o.type].label}
                 </span>
               </button>
             ))}

@@ -31,10 +31,9 @@ export class Ministry {
   @Column({ name: 'leader_id', nullable: true, type: 'uuid' })
   leaderId: string | null;
 
-  // Só `'STAFF'` desde a story 197 — a migration `DropResidentMinistryLink`
-  // zerou os ministérios que tinham filho como líder.
+  // `'RESIDENT'` voltou na story 205: filho em acolhimento na casa pode liderar.
   @Column({ name: 'leader_type', nullable: true, type: 'varchar', length: 10 })
-  leaderType: 'STAFF' | null;
+  leaderType: 'STAFF' | 'RESIDENT' | null;
 
   @OneToMany(() => MinistryStaff, (ms) => ms.ministry, { eager: false })
   staffMembers: MinistryStaff[];

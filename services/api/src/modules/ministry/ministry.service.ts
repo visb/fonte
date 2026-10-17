@@ -6,6 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import {
+  isMinistryEligibleResident,
+  MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE,
+  REMOVABLE_RESIDENT_STATUSES,
+} from '@fonte/types';
 import { Ministry } from './ministry.entity';
 import { MinistryStaff } from './ministry-staff.entity';
 import { MinistryTask } from './ministry-task.entity';
@@ -27,8 +32,9 @@ export class MinistryService {
 
   // ─── House-scoped list ───────────────────────────────────────────────────────
 
-  // Ministério é organização de trabalho de servo (story 197): não tem filho como
-  // membro nem como líder. A contagem exibida é a de servos.
+  // Story 205: filho volta a ser membro e líder. A contagem vem separada
+  // (servos · filhos) e só conta filho em acolhimento na casa do ministério
+  // (decisão 8) — dado legado incoerente não infla o número.
   async findByHouse(houseId: string): Promise<
     Array<{
       id: string;
@@ -36,6 +42,7 @@ export class MinistryService {
       leaderId: string | null;
       leaderType: string | null;
       leaderName: string | null;
+      filhoCount: number;
       servoCount: number;
     }>
   > {
@@ -44,15 +51,25 @@ export class MinistryService {
               m.name,
               m.leader_id   AS "leaderId",
               m.leader_type AS "leaderType",
-              CASE WHEN m.leader_type = 'STAFF' THEN s.name ELSE NULL END AS "leaderName",
+              CASE
+                WHEN m.leader_type = 'STAFF'    THEN s.name
+                WHEN m.leader_type = 'RESIDENT' THEN r.name
+                ELSE NULL
+              END AS "leaderName",
+              COUNT(DISTINCT res.id)::int AS "filhoCount",
               COUNT(DISTINCT ms.staff_id)::int AS "servoCount"
        FROM ministries m
-       LEFT JOIN staff s ON s.id = m.leader_id AND m.leader_type = 'STAFF' AND s.deleted_at IS NULL
+       LEFT JOIN staff     s   ON s.id  = m.leader_id AND m.leader_type = 'STAFF'    AND s.deleted_at IS NULL
+       LEFT JOIN residents r   ON r.id  = m.leader_id AND m.leader_type = 'RESIDENT' AND r.deleted_at IS NULL
+       LEFT JOIN residents res ON res.ministry_id = m.id
+                              AND res.house_id = m.house_id
+                              AND res.status::text = ANY($2::text[])
+                              AND res.deleted_at IS NULL
        LEFT JOIN ministry_staff ms ON ms.ministry_id = m.id
        WHERE m.house_id = $1 AND m.deleted_at IS NULL
-       GROUP BY m.id, m.name, m.leader_id, m.leader_type, s.name
+       GROUP BY m.id, m.name, m.leader_id, m.leader_type, s.name, r.name
        ORDER BY m.name`,
-      [houseId],
+      [houseId, [...REMOVABLE_RESIDENT_STATUSES]],
     );
   }
 
@@ -69,22 +86,38 @@ export class MinistryService {
     leaderId: string | null;
     leaderType: string | null;
     leaderName: string | null;
-    members: Array<{ id: string; name: string; role: 'SERVO' }>;
+    members: Array<{ id: string; name: string; role: 'FILHO' | 'SERVO' }>;
   }> {
     const [rows] = await this.repo.manager.query<[{ id: string; name: string; house_id: string; leader_id: string | null; leader_type: string | null; leader_name: string | null }]>(
       `SELECT m.id, m.name, m.house_id, m.leader_id, m.leader_type,
-              CASE WHEN m.leader_type = 'STAFF' THEN s.name ELSE NULL END AS leader_name
+              CASE
+                WHEN m.leader_type = 'STAFF'    THEN s.name
+                WHEN m.leader_type = 'RESIDENT' THEN r.name
+                ELSE NULL
+              END AS leader_name
        FROM ministries m
-       LEFT JOIN staff s ON s.id = m.leader_id AND m.leader_type = 'STAFF' AND s.deleted_at IS NULL
+       LEFT JOIN staff     s ON s.id = m.leader_id AND m.leader_type = 'STAFF'    AND s.deleted_at IS NULL
+       LEFT JOIN residents r ON r.id = m.leader_id AND m.leader_type = 'RESIDENT' AND r.deleted_at IS NULL
        WHERE m.id = $1 AND m.deleted_at IS NULL`,
       [id],
     );
     if (!rows) throw new NotFoundException(`Ministry ${id} not found`);
 
-    const servos = await this.repo.manager.query<Array<{ id: string; name: string }>>(
-      `SELECT st.id, st.name FROM ministry_staff ms JOIN staff st ON st.id = ms.staff_id AND st.deleted_at IS NULL WHERE ms.ministry_id = $1 ORDER BY st.name`,
-      [id],
-    );
+    const [filhos, servos] = await Promise.all([
+      // Decisão 8: só filho em acolhimento na casa do ministério aparece.
+      this.repo.manager.query<Array<{ id: string; name: string }>>(
+        `SELECT id, name FROM residents
+          WHERE ministry_id = $1 AND house_id = $2
+            AND status::text = ANY($3::text[])
+            AND deleted_at IS NULL
+          ORDER BY name`,
+        [id, rows.house_id, [...REMOVABLE_RESIDENT_STATUSES]],
+      ),
+      this.repo.manager.query<Array<{ id: string; name: string }>>(
+        `SELECT st.id, st.name FROM ministry_staff ms JOIN staff st ON st.id = ms.staff_id AND st.deleted_at IS NULL WHERE ms.ministry_id = $1 ORDER BY st.name`,
+        [id],
+      ),
+    ]);
 
     return {
       id: rows.id,
@@ -93,20 +126,25 @@ export class MinistryService {
       leaderId: rows.leader_id,
       leaderType: rows.leader_type,
       leaderName: rows.leader_name,
-      members: servos.map((s) => ({ id: s.id, name: s.name, role: 'SERVO' as const })),
+      members: [
+        ...filhos.map((f) => ({ id: f.id, name: f.name, role: 'FILHO' as const })),
+        ...servos.map((s) => ({ id: s.id, name: s.name, role: 'SERVO' as const })),
+      ],
     };
   }
 
   async update(id: string, dto: UpdateMinistryDto): Promise<Ministry> {
-    // Story 197: ministério só é liderado por servo. O DTO já barra o valor na
-    // borda; a guarda aqui protege chamadas internas e devolve a mensagem de
-    // domínio — e garante que nada é persistido quando o valor chega errado.
-    if ((dto.leaderType as string | null | undefined) === 'RESIDENT') {
-      throw new BadRequestException('Ministério só pode ser liderado por um servo.');
-    }
-
     const ministry = await this.repo.findOne({ where: { id } });
     if (!ministry) throw new NotFoundException(`Ministry ${id} not found`);
+
+    // Story 205 (decisão 6): filho só lidera se estiver em acolhimento na casa
+    // do ministério. Valida o par resultante, antes de persistir qualquer coisa.
+    const nextType = dto.leaderType !== undefined ? dto.leaderType : ministry.leaderType;
+    const nextLeaderId = dto.leaderId !== undefined ? dto.leaderId : ministry.leaderId;
+    const leaderTouched = dto.leaderType !== undefined || dto.leaderId !== undefined;
+    if (leaderTouched && nextType === 'RESIDENT' && nextLeaderId) {
+      await this.assertEligibleResident(ministry.houseId, nextLeaderId);
+    }
 
     if (dto.name !== undefined) ministry.name = dto.name;
     if (dto.leaderId !== undefined) ministry.leaderId = dto.leaderId ?? null;
@@ -118,7 +156,46 @@ export class MinistryService {
   async remove(id: string): Promise<void> {
     const ministry = await this.repo.findOne({ where: { id } });
     if (!ministry) throw new NotFoundException(`Ministry ${id} not found`);
+    // Ministério tem soft delete: o `ON DELETE SET NULL` da FK não dispara, então
+    // os filhos saem do ministério aqui (story 205).
+    await this.repo.manager.query(`UPDATE residents SET ministry_id = NULL WHERE ministry_id = $1`, [id]);
     await this.repo.softDelete(id);
+  }
+
+  // ─── Members: filhos ─────────────────────────────────────────────────────────
+
+  /**
+   * Story 205 (decisão 6): o vínculo só existe para filho em acolhimento
+   * (`REMOVABLE_RESIDENT_STATUSES`) na mesma casa do ministério. A regra é do
+   * backend — o build antigo do `ops` mostrou que filtro só de tela não segura.
+   */
+  private async assertEligibleResident(ministryHouseId: string, residentId: string): Promise<void> {
+    const [resident] = await this.repo.manager.query<
+      [{ id: string; house_id: string | null; status: string } | undefined]
+    >(`SELECT id, house_id, status FROM residents WHERE id = $1 AND deleted_at IS NULL`, [residentId]);
+    if (!resident) throw new NotFoundException(`Resident ${residentId} not found`);
+    if (!isMinistryEligibleResident({ status: resident.status, houseId: resident.house_id }, ministryHouseId)) {
+      throw new BadRequestException(MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE);
+    }
+  }
+
+  async addResident(ministryId: string, residentId: string): Promise<void> {
+    const ministry = await this.repo.findOne({ where: { id: ministryId } });
+    if (!ministry) throw new NotFoundException(`Ministry ${ministryId} not found`);
+
+    await this.assertEligibleResident(ministry.houseId, residentId);
+
+    await this.repo.manager.query(
+      `UPDATE residents SET ministry_id = $1 WHERE id = $2`,
+      [ministryId, residentId],
+    );
+  }
+
+  async removeResident(ministryId: string, residentId: string): Promise<void> {
+    await this.repo.manager.query(
+      `UPDATE residents SET ministry_id = NULL WHERE id = $1 AND ministry_id = $2`,
+      [residentId, ministryId],
+    );
   }
 
   // ─── Members: servos ─────────────────────────────────────────────────────────

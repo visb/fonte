@@ -3,59 +3,83 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
 import { LeaderAutocomplete } from './LeaderAutocomplete';
 
-// Story 197: só servo lidera ministério — o componente não recebe mais filhos.
+// Story 205: filho em acolhimento volta a ser opção de líder.
 const staff = [
   { id: 's1', name: 'Servo João' },
-  { id: 's2', name: 'Servo André' },
+  { id: 's2', name: 'Servo Maria' },
+];
+const residents = [
+  { id: 'r1', name: 'Filho André' },
+  { id: 'r2', name: 'Filho Bruno' },
 ];
 
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => cleanup());
 
 describe('LeaderAutocomplete', () => {
-  it('mostra "Sem líder" quando nada selecionado e abre a lista ao clicar', () => {
-    render(<LeaderAutocomplete selectedId={null} onSelect={vi.fn()} staff={staff} />);
+  it('mostra "Sem líder" e abre a lista com servos e filhos, cada um com seu badge', () => {
+    render(
+      <LeaderAutocomplete selectedId={null} selectedType={null} onSelect={vi.fn()} staff={staff} residents={residents} />,
+    );
     expect(screen.getByText('Sem líder')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Sem líder'));
-    // Ao abrir mostra as opções, todas com o badge de servo.
     expect(screen.getByText('Servo João')).toBeInTheDocument();
-    expect(screen.getAllByText('Servo')).toHaveLength(staff.length);
+    expect(screen.getByText('Filho André')).toBeInTheDocument();
+    expect(screen.getAllByText('Servo')).toHaveLength(2);
+    expect(screen.getAllByText('Filho')).toHaveLength(2);
+  });
+
+  it('sem a lista de filhos mostra só servos', () => {
+    render(<LeaderAutocomplete selectedId={null} selectedType={null} onSelect={vi.fn()} staff={staff} />);
+    fireEvent.click(screen.getByText('Sem líder'));
     expect(screen.queryByText('Filho')).not.toBeInTheDocument();
   });
 
-  it('mostra o nome do líder selecionado', () => {
-    render(<LeaderAutocomplete selectedId="s2" onSelect={vi.fn()} staff={staff} />);
-    expect(screen.getByText('Servo André')).toBeInTheDocument();
+  it('mostra o nome do líder selecionado (servo ou filho)', () => {
+    const { rerender } = render(
+      <LeaderAutocomplete selectedId="s2" selectedType="STAFF" onSelect={vi.fn()} staff={staff} residents={residents} />,
+    );
+    expect(screen.getByText('Servo Maria')).toBeInTheDocument();
+    rerender(
+      <LeaderAutocomplete selectedId="r2" selectedType="RESIDENT" onSelect={vi.fn()} staff={staff} residents={residents} />,
+    );
+    expect(screen.getByText('Filho Bruno')).toBeInTheDocument();
   });
 
   it('filtra por busca ignorando acentos/caixa', () => {
-    render(<LeaderAutocomplete selectedId={null} onSelect={vi.fn()} staff={staff} />);
+    render(
+      <LeaderAutocomplete selectedId={null} selectedType={null} onSelect={vi.fn()} staff={staff} residents={residents} />,
+    );
     fireEvent.click(screen.getByText('Sem líder'));
     fireEvent.change(screen.getByPlaceholderText('Buscar...'), { target: { value: 'andre' } });
-    expect(screen.getByText('Servo André')).toBeInTheDocument();
+    expect(screen.getByText('Filho André')).toBeInTheDocument();
     expect(screen.queryByText('Servo João')).not.toBeInTheDocument();
   });
 
   it('mostra "Nenhum resultado" quando a busca não casa', () => {
-    render(<LeaderAutocomplete selectedId={null} onSelect={vi.fn()} staff={staff} />);
+    render(<LeaderAutocomplete selectedId={null} selectedType={null} onSelect={vi.fn()} staff={staff} />);
     fireEvent.click(screen.getByText('Sem líder'));
     fireEvent.change(screen.getByPlaceholderText('Buscar...'), { target: { value: 'zzz' } });
     expect(screen.getByText('Nenhum resultado')).toBeInTheDocument();
   });
 
-  it('seleciona um servo chamando onSelect com id e tipo STAFF', () => {
+  it('seleciona servo com tipo STAFF e filho com tipo RESIDENT', () => {
     const onSelect = vi.fn();
-    render(<LeaderAutocomplete selectedId={null} onSelect={onSelect} staff={staff} />);
+    render(
+      <LeaderAutocomplete selectedId={null} selectedType={null} onSelect={onSelect} staff={staff} residents={residents} />,
+    );
     fireEvent.click(screen.getByText('Sem líder'));
     fireEvent.mouseDown(screen.getByText('Servo João'));
     expect(onSelect).toHaveBeenCalledWith('s1', 'STAFF');
+    fireEvent.click(screen.getByText('Sem líder'));
+    fireEvent.mouseDown(screen.getByText('Filho Bruno'));
+    expect(onSelect).toHaveBeenCalledWith('r2', 'RESIDENT');
   });
 
   it('seleciona "Sem líder" na lista chamando onSelect com null', () => {
     const onSelect = vi.fn();
-    render(<LeaderAutocomplete selectedId="s1" onSelect={onSelect} staff={staff} />);
+    render(<LeaderAutocomplete selectedId="s1" selectedType="STAFF" onSelect={onSelect} staff={staff} />);
     fireEvent.click(screen.getByText('Servo João'));
-    // botão "Sem líder" dentro da lista (o primeiro botão)
     const semLider = screen.getAllByRole('button').find((b) => b.textContent === 'Sem líder');
     fireEvent.mouseDown(semLider!);
     expect(onSelect).toHaveBeenCalledWith(null, null);
@@ -64,7 +88,7 @@ describe('LeaderAutocomplete', () => {
   it('fecha a lista ao clicar fora', () => {
     render(
       <div>
-        <LeaderAutocomplete selectedId={null} onSelect={vi.fn()} staff={staff} />
+        <LeaderAutocomplete selectedId={null} selectedType={null} onSelect={vi.fn()} staff={staff} />
         <button>fora</button>
       </div>,
     );

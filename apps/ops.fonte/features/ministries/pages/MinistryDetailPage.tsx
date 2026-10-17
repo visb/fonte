@@ -95,6 +95,7 @@ export function MinistryDetailPage() {
         ministryId={id ?? ''}
         houseId={houseId}
         currentLeaderId={ministry.leaderId}
+        currentLeaderType={ministry.leaderType}
       />
 
       <AddTaskModal

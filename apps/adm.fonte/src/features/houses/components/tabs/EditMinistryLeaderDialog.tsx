@@ -3,8 +3,9 @@ import type { HouseMinistry } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { getErrorMessage } from '@/lib/errors';
 import { LeaderAutocomplete, type SelectedLeader } from '../LeaderAutocomplete';
-import { useUpdateMinistryLeader } from '../../hooks/useHouseMinistries';
+import { useMinistryEligibleResidents, useUpdateMinistryLeader } from '../../hooks/useHouseMinistries';
 import { useHouseStaff } from '../../hooks/useHouses';
 
 interface Props {
@@ -13,9 +14,10 @@ interface Props {
   houseId: string;
 }
 
-// Story 197: só servo lidera ministério.
+// Story 205: líder pode ser servo ou filho em acolhimento na casa.
 export function EditMinistryLeaderDialog({ ministry, onClose, houseId }: Props) {
   const { data: staff = [] } = useHouseStaff(houseId, { enabled: !!ministry });
+  const { data: residents = [] } = useMinistryEligibleResidents(houseId, { enabled: !!ministry });
   const [leader, setLeader] = useState<SelectedLeader | null>(null);
 
   useEffect(() => {
@@ -48,9 +50,16 @@ export function EditMinistryLeaderDialog({ ministry, onClose, houseId }: Props) 
           <Label>Responsável</Label>
           <LeaderAutocomplete
             selectedId={leader?.id ?? null}
+            selectedType={leader?.type ?? null}
             onSelect={(id, type) => setLeader(id && type ? { id, type } : null)}
             staff={staff}
+            residents={residents}
           />
+          {mutation.isError && (
+            <p className="text-sm text-destructive">
+              {getErrorMessage(mutation.error, 'Erro ao salvar o responsável')}
+            </p>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>

@@ -145,6 +145,12 @@ export class CreateResidentDto {
   @Max(31)
   contributionDueDay?: number | null;
 
+  // Story 205: ministério no acolhimento. Só vale para filho em acolhimento na
+  // casa do ministério (o service valida e devolve 400).
+  @IsOptional()
+  @IsUUID()
+  ministryId?: string | null;
+
   // Histórico de acolhimentos do import em lote (story 121). Quando presente com
   // mais de um item, o `ImportService.commit` cria um `Admission` por par
   // entrada→saída; o topo do resident reflete o mais recente. Opcional — ignorado

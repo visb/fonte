@@ -19,7 +19,14 @@ export function MinistryCard({ ministry }: Props) {
       <Text className="text-sm text-gray-500 mt-1">
         {ministry.leaderName ? `Líder: ${ministry.leaderName}` : 'Sem líder definido'}
       </Text>
+      {/* Story 205 (decisão 10): servos e filhos contados separados. */}
       <View className="flex-row gap-4 mt-2">
+        <View className="flex-row items-center gap-1">
+          <Ionicons name="person-outline" size={13} color="#6b7280" />
+          <Text className="text-xs text-gray-500">
+            {ministry.filhoCount ?? 0} {ministry.filhoCount === 1 ? 'filho' : 'filhos'}
+          </Text>
+        </View>
         <View className="flex-row items-center gap-1">
           <Ionicons name="people-outline" size={13} color="#6b7280" />
           <Text className="text-xs text-gray-500">

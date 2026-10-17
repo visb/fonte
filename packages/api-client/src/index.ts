@@ -59,6 +59,7 @@ export type {
   CreateSupplyMovementInput,
   Ministry,
   MinistryDetail,
+  MinistryLeaderType,
   MinistryMember,
   MinistryTask,
   CreateMinistryInput,

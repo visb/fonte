@@ -1,4 +1,5 @@
 import { Text, TouchableOpacity, View } from 'react-native';
+import { REMOVABLE_RESIDENT_STATUSES, type ResidentStatus } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 
 function fmt(iso: string | null) {
@@ -26,15 +27,20 @@ function SectionLabel({ children }: { children: string }) {
 
 interface Props {
   resident: Resident;
+  onChangeMinistry: () => void;
   onResetPassword: () => void;
   onDeclareProducts: () => void;
 }
 
 export function ResidentOverviewTab({
   resident,
+  onChangeMinistry,
   onResetPassword,
   onDeclareProducts,
 }: Props) {
+  // Story 205: só filho em acolhimento (com casa) pode trocar de ministério.
+  const canChangeMinistry =
+    !!resident.houseId && REMOVABLE_RESIDENT_STATUSES.includes(resident.status as ResidentStatus);
   return (
     <View className="px-4 py-4">
       <SectionLabel>Contribuição</SectionLabel>
@@ -48,6 +54,17 @@ export function ResidentOverviewTab({
         </Text>
         <Text className="text-sm text-blue-600">›</Text>
       </TouchableOpacity>
+
+      <SectionLabel>Ministério</SectionLabel>
+      <View className="py-2.5 border-b border-gray-100 flex-row items-center">
+        <Text className="text-sm text-gray-500 w-36">Atual</Text>
+        <Text className="text-sm text-gray-900 flex-1">{resident.ministry?.name ?? '—'}</Text>
+        {canChangeMinistry && (
+          <TouchableOpacity accessibilityLabel="Alterar ministério" onPress={onChangeMinistry} className="ml-2">
+            <Text className="text-sm text-blue-600 font-medium">Alterar</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       <SectionLabel>Identificação</SectionLabel>
       <Row label="Nome" value={resident.name} />

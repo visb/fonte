@@ -7,7 +7,10 @@ jest.mock('@/lib/api', () => ({
       listMinistries: jest.fn(),
       addMinistry: jest.fn(),
     },
+    residents: { listByHouse: jest.fn() },
     ministries: {
+      addResident: jest.fn(),
+      removeResident: jest.fn(),
       getById: jest.fn(),
       listTasks: jest.fn(),
       update: jest.fn(),
@@ -36,10 +39,14 @@ import {
   useCreateTask,
   useUpdateTask,
   useDeleteTask,
+  useMinistryEligibleResidents,
+  useAddResident,
+  useRemoveResident,
 } from './useMinistries';
 
 const m = api as unknown as {
   houses: Record<string, jest.Mock>;
+  residents: Record<string, jest.Mock>;
   ministries: Record<string, jest.Mock>;
 };
 
@@ -98,11 +105,65 @@ describe('useCreateMinistry', () => {
     expect(m.ministries.update).not.toHaveBeenCalled();
   });
 
-  // Story 197: o vínculo filho↔ministério não existe mais — o api-client não
-  // expõe as rotas de membro filho.
-  it('o api-client não tem mais addResident/removeResident de ministério', () => {
-    expect(m.ministries.addResident).toBeUndefined();
-    expect(m.ministries.removeResident).toBeUndefined();
+  it('cria com líder filho (RESIDENT) e não adiciona membros em lote', async () => {
+    m.houses.addMinistry.mockResolvedValue({ id: 'min1' });
+    m.ministries.update.mockResolvedValue({});
+    const { result } = renderHookWithClient(() => useCreateMinistry('h1'));
+    result.current.mutate({ name: 'Horta', leaderId: 'r1', leaderType: 'RESIDENT' });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(m.ministries.update).toHaveBeenCalledWith('min1', { leaderId: 'r1', leaderType: 'RESIDENT' });
+    expect(m.ministries.addResident).not.toHaveBeenCalled();
+  });
+});
+
+describe('Story 205 — filhos do ministério', () => {
+  it('useMinistryEligibleResidents filtra só filhos em acolhimento (alta/evasão/pré somem)', async () => {
+    m.residents.listByHouse.mockResolvedValue([
+      { id: 'r1', status: 'ACTIVE' },
+      { id: 'r2', status: 'DISCIPLINE' },
+      { id: 'r3', status: 'TEMP_LEAVE' },
+      { id: 'r4', status: 'DISCHARGED' },
+      { id: 'r5', status: 'EVADED' },
+      { id: 'r6', status: 'PRE_ADMISSION' },
+      { id: 'r7', status: 'CENSUS_ADDED' },
+    ]);
+    const { result } = renderHookWithClient(() => useMinistryEligibleResidents('h1'));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data!.map((r) => r.id)).toEqual(['r1', 'r2', 'r3']);
+  });
+
+  it('useMinistryEligibleResidents lê a lista da casa do cache (store local), sem rede', () => {
+    const client = createTestQueryClient();
+    client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
+    client.setQueryData(queryKeys.residents.byHouse('h1'), [
+      { id: 'r1', status: 'ACTIVE' },
+      { id: 'r4', status: 'DISCHARGED' },
+    ]);
+    const { result } = renderHookWithClient(() => useMinistryEligibleResidents('h1'), client);
+    expect(result.current.data!.map((r) => r.id)).toEqual(['r1']);
+    expect(m.residents.listByHouse).not.toHaveBeenCalled();
+  });
+
+  it('useMinistryEligibleResidents sem casa não busca', () => {
+    renderHookWithClient(() => useMinistryEligibleResidents(undefined));
+    expect(m.residents.listByHouse).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['useAddResident', () => useAddResident('min1', 'h1'), () => m.ministries.addResident],
+    ['useRemoveResident', () => useRemoveResident('min1', 'h1'), () => m.ministries.removeResident],
+  ])('%s chama a API e invalida ministério, lista da casa e ficha do filho', async (_n, hook, getFn) => {
+    getFn().mockResolvedValue({});
+    const client = createTestQueryClient();
+    const spy = jest.spyOn(client, 'invalidateQueries');
+    const { result } = renderHookWithClient(hook as never, client);
+    (result.current as { mutate: (a: unknown) => void }).mutate('r1');
+    await waitFor(() => expect((result.current as { isSuccess: boolean }).isSuccess).toBe(true));
+    expect(getFn()).toHaveBeenCalledWith('min1', 'r1');
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.ministries.detail('min1') });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.ministries.byHouse('h1') });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.houses.ministries('h1') });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.residents.detail('r1') });
   });
 });
 

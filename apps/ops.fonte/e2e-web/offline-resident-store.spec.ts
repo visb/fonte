@@ -174,6 +174,9 @@ test.describe('ops.fonte — store local dos filhos sem sinal', () => {
     await waitForStoreRecord(page, `resident_details:${residentId}:follow_ups`);
     await waitForStoreRecord(page, `resident_details:${residentId}:consents`);
     await waitForStoreRecord(page, 'meta:synced-at:');
+    // Story 205 (decisão 9): ministérios da casa voltam a ter nome de filho e
+    // moram no store de filho (purgado no logout), não no blob de 24h.
+    await waitForStoreRecord(page, 'house_ministries:');
 
     // Financeiro no aparelho é decisão explícita da story (consequência LGPD
     // registrada em docs/lgpd/DIAGNOSTICO_LGPD.md).
@@ -191,8 +194,8 @@ test.describe('ops.fonte — store local dos filhos sem sinal', () => {
     // aparelho, porque a rede está bloqueada.
     await visible(page, RESIDENT_NAME).click();
     await expect(visible(page, 'Identificação')).toBeVisible({ timeout: 30_000 });
-    // Story 197: ministério não integra mais a ficha do filho.
-    await expect(visible(page, 'Ministério')).toHaveCount(0);
+    // Story 205: o ministério volta à ficha do filho — e abre offline.
+    await expect(visible(page, 'Ministério')).toBeVisible();
 
     await visible(page, 'Acompanhamento').click();
     await expect(visible(page, FOLLOW_UP_TEXT)).toBeVisible({ timeout: 15_000 });

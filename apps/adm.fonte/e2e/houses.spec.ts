@@ -166,47 +166,83 @@ test.describe('Casas', () => {
     await expect(row.locator('img')).toHaveCount(0);
   });
 
-  // ─── Ministérios sem filho (story 197) ────────────────────────────────────
+  // ─── Ministérios com filhos (story 205; inverte a 197) ───────────────────
 
-  test('cria ministério com líder servo e a casa o lista sem contagem de filhos', async ({
+  test('cria ministério e adiciona filho ativo; filho com alta não aparece na busca', async ({
     page,
     request,
   }) => {
-    const ministryName = `Ministério E2E ${Date.now()}`;
-
-    await page.getByText('Casa Teste').click();
-    await page.getByRole('button', { name: 'Ministérios' }).click();
-
-    await page.getByRole('button', { name: 'Novo ministério' }).click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
-    await dialog.getByLabel('Nome *').fill(ministryName);
-
-    // Sem seleção de filhos em lugar nenhum do dialog.
-    await expect(dialog.getByPlaceholder('Buscar filho...')).toHaveCount(0);
-
-    // Líder é servo — o autocomplete só oferece servos, todos com o badge.
-    await dialog.getByText('Sem líder').click();
-    await dialog.getByText('Coordenador Teste').click({ position: { x: 5, y: 5 } });
-    await expect(dialog.getByText('Filho')).toHaveCount(0);
-
-    await dialog.getByRole('button', { name: 'Criar' }).click();
-
-    const row = page.locator('.rounded-lg.border').filter({ hasText: ministryName });
-    await expect(row).toBeVisible();
-    await expect(row).toContainText('servo');
-    await expect(row).not.toContainText('filho');
-
-    // Fixture própria, removida por id (story 182).
+    const stamp = Date.now();
+    const ministryName = `Ministério E2E ${stamp}`;
+    const activeName = `Filho Ministério Ativo ${stamp}`;
+    const dischargedName = `Filho Ministério Alta ${stamp}`;
     const headers = { Authorization: `Bearer ${await loginApi(request)}` };
     const housesRes = await request.get(`${API_URL}/houses`, { headers });
     const houses = (await housesRes.json()) as Array<{ id: string; name: string }>;
     const house = houses.find((h) => h.name === 'Casa Teste') ?? houses[0];
-    const listRes = await request.get(`${API_URL}/houses/${house.id}/ministries`, { headers });
-    const created = ((await listRes.json()) as Array<{ id: string; name: string }>).find(
-      (m) => m.name === ministryName,
-    );
-    if (created) await request.delete(`${API_URL}/ministries/${created.id}`, { headers });
+    const residentIds: string[] = [];
+
+    // Fixtures próprias (story 182): um filho ativo e um que já saiu.
+    for (const name of [activeName, dischargedName]) {
+      const res = await request.post(`${API_URL}/residents`, {
+        headers,
+        data: { name, houseId: house.id, status: 'ACTIVE', entryDate: '2024-01-01' },
+      });
+      expect(res.status()).toBe(201);
+      residentIds.push((await res.json()).id as string);
+    }
+    const discharge = await request.patch(`${API_URL}/residents/${residentIds[1]}`, {
+      headers,
+      data: { status: 'DISCHARGED' },
+    });
+    expect(discharge.status()).toBe(200);
+
+    try {
+      await page.getByText('Casa Teste').click();
+      await page.getByRole('button', { name: 'Ministérios' }).click();
+
+      await page.getByRole('button', { name: 'Novo ministério' }).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await dialog.getByLabel('Nome *').fill(ministryName);
+
+      // Líder: servos e filhos em acolhimento; quem já saiu não é opção.
+      await dialog.getByText('Sem líder').click();
+      await dialog.getByPlaceholder('Buscar...').fill('Filho Ministério');
+      await expect(dialog.getByText(activeName)).toBeVisible();
+      await expect(dialog.getByText(dischargedName)).toHaveCount(0);
+      await dialog.getByPlaceholder('Buscar...').fill('Coordenador Teste');
+      await dialog.getByText('Coordenador Teste').click({ position: { x: 5, y: 5 } });
+
+      await dialog.getByRole('button', { name: 'Criar' }).click();
+
+      const row = page.locator('.rounded-lg.border').filter({ hasText: ministryName });
+      await expect(row).toBeVisible();
+      await expect(row).toContainText('0 filhos');
+
+      // Filhos do ministério: a busca só oferece filho em acolhimento.
+      await row.getByTitle('Filhos do ministério').click();
+      const residentsDialog = page.getByRole('dialog');
+      await expect(residentsDialog.getByText(`Filhos — ${ministryName}`)).toBeVisible();
+      await residentsDialog.getByPlaceholder('Buscar filho...').fill('Filho Ministério');
+      await expect(residentsDialog.getByText(activeName)).toBeVisible();
+      await expect(residentsDialog.getByText(dischargedName)).toHaveCount(0);
+
+      await residentsDialog.getByRole('button', { name: `Adicionar ${activeName}` }).click();
+      await expect(residentsDialog.getByText('Filhos (1)')).toBeVisible();
+      await expect(residentsDialog.getByRole('button', { name: `Remover ${activeName}` })).toBeVisible();
+      await residentsDialog.getByRole('button', { name: 'Fechar' }).first().click();
+
+      await expect(row).toContainText('1 filho');
+    } finally {
+      // Limpeza por id acumulado (story 182). Delete tolera 404.
+      const listRes = await request.get(`${API_URL}/houses/${house.id}/ministries`, { headers });
+      const created = ((await listRes.json()) as Array<{ id: string; name: string }>).find(
+        (m) => m.name === ministryName,
+      );
+      if (created) await request.delete(`${API_URL}/ministries/${created.id}`, { headers });
+      for (const id of residentIds) await request.delete(`${API_URL}/residents/${id}`, { headers });
+    }
   });
 
   // ─── Coordenadores da casa (story 194) ────────────────────────────────────

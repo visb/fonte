@@ -5,15 +5,19 @@ vi.mock('@/lib/api', () => ({
   api: {
     houses: {
       listMinistries: vi.fn(),
+      listResidents: vi.fn(),
       addMinistry: vi.fn(),
       listRules: vi.fn(),
       createRule: vi.fn(),
       deleteRule: vi.fn(),
     },
-    // Story 197: `addResident`/`removeResident` deixaram de existir no cliente.
+    // Story 205: `addResident`/`removeResident` voltaram ao cliente.
     ministries: {
+      getById: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      addResident: vi.fn(),
+      removeResident: vi.fn(),
     },
   },
 }));
@@ -26,6 +30,10 @@ import {
   useCreateHouseMinistry,
   useUpdateMinistryLeader,
   useRemoveMinistry,
+  useMinistryEligibleResidents,
+  useMinistryDetail,
+  useAddMinistryResident,
+  useRemoveMinistryResident,
 } from './useHouseMinistries';
 import { useHouseRules, useCreateRule, useDeleteRule } from './useHouseRules';
 
@@ -40,19 +48,23 @@ describe('ministérios', () => {
     expect(api.houses.listMinistries).toHaveBeenCalledWith('h1');
   });
 
-  // Decisão 7: sem os membros, o create encolheu para `addMinistry` + `update`
-  // do líder — o `Promise.all` de N chamadas sem transação foi embora junto.
-  it('create cria, define líder servo e invalida — sem chamada de membro', async () => {
+  it('lista desabilitada não busca', () => {
+    renderHookWithClient(() => useHouseMinistriesList('h1', { enabled: false }));
+    expect(api.houses.listMinistries).not.toHaveBeenCalled();
+  });
+
+  // Decisão 7 da 197, mantida na 205: o create não faz N `addResident` sem transação.
+  it('create cria, define líder e invalida — sem chamada de membro', async () => {
     vi.mocked(api.houses.addMinistry).mockResolvedValue({ id: 'm1' } as never);
     vi.mocked(api.ministries.update).mockResolvedValue({} as never);
 
     const { result, queryClient } = renderHookWithClient(() => useCreateHouseMinistry('h1'));
     const spy = vi.spyOn(queryClient, 'invalidateQueries');
-    result.current.mutate({ name: 'Cozinha', leaderId: 's1', leaderType: 'STAFF' });
+    result.current.mutate({ name: 'Cozinha', leaderId: 'r1', leaderType: 'RESIDENT' });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.houses.addMinistry).toHaveBeenCalledWith('h1', { name: 'Cozinha' });
-    expect(api.ministries.update).toHaveBeenCalledWith('m1', { leaderId: 's1', leaderType: 'STAFF' });
-    expect(api.ministries).not.toHaveProperty('addResident');
+    expect(api.ministries.update).toHaveBeenCalledWith('m1', { leaderId: 'r1', leaderType: 'RESIDENT' });
+    expect(api.ministries.addResident).not.toHaveBeenCalled();
     expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.houses.ministries('h1') });
   });
 
@@ -69,14 +81,56 @@ describe('ministérios', () => {
     vi.mocked(api.ministries.delete).mockResolvedValue(undefined as never);
 
     const { result: u } = renderHookWithClient(() => useUpdateMinistryLeader('h1'));
-    u.current.mutate({ ministryId: 'm1', leaderId: 's1', leaderType: 'STAFF' });
+    u.current.mutate({ ministryId: 'm1', leaderId: 'r1', leaderType: 'RESIDENT' });
     await waitFor(() => expect(u.current.isSuccess).toBe(true));
-    expect(api.ministries.update).toHaveBeenCalledWith('m1', { leaderId: 's1', leaderType: 'STAFF' });
+    expect(api.ministries.update).toHaveBeenCalledWith('m1', { leaderId: 'r1', leaderType: 'RESIDENT' });
 
     const { result: r } = renderHookWithClient(() => useRemoveMinistry('h1'));
     r.current.mutate('m1');
     await waitFor(() => expect(r.current.isSuccess).toBe(true));
     expect(api.ministries.delete).toHaveBeenCalledWith('m1');
+  });
+});
+
+describe('filhos do ministério (story 205)', () => {
+  it('elegíveis: só filhos em acolhimento da casa (filho com alta some)', async () => {
+    vi.mocked(api.houses.listResidents).mockResolvedValue([
+      { id: 'r1', name: 'Ativo', status: 'ACTIVE' },
+      { id: 'r2', name: 'Alta', status: 'DISCHARGED' },
+      { id: 'r3', name: 'Disciplina', status: 'DISCIPLINE' },
+      { id: 'r4', name: 'Evadido', status: 'EVADED' },
+    ] as never);
+    const { result } = renderHookWithClient(() => useMinistryEligibleResidents('h1'));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data!.map((r) => r.id)).toEqual(['r1', 'r3']);
+  });
+
+  it('detalhe do ministério só busca com id', async () => {
+    vi.mocked(api.ministries.getById).mockResolvedValue({ id: 'm1', members: [] } as never);
+    renderHookWithClient(() => useMinistryDetail(null));
+    expect(api.ministries.getById).not.toHaveBeenCalled();
+    const { result } = renderHookWithClient(() => useMinistryDetail('m1'));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.ministries.getById).toHaveBeenCalledWith('m1');
+  });
+
+  it('adicionar e remover filho chamam a API e invalidam detalhe, lista e fichas', async () => {
+    vi.mocked(api.ministries.addResident).mockResolvedValue({} as never);
+    vi.mocked(api.ministries.removeResident).mockResolvedValue({} as never);
+
+    const { result: add, queryClient } = renderHookWithClient(() => useAddMinistryResident('h1', 'm1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    add.current.mutate('r1');
+    await waitFor(() => expect(add.current.isSuccess).toBe(true));
+    expect(api.ministries.addResident).toHaveBeenCalledWith('m1', 'r1');
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.ministries.detail('m1') });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.houses.ministries('h1') });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.residents.all });
+
+    const { result: rm } = renderHookWithClient(() => useRemoveMinistryResident('h1', 'm1'));
+    rm.current.mutate('r1');
+    await waitFor(() => expect(rm.current.isSuccess).toBe(true));
+    expect(api.ministries.removeResident).toHaveBeenCalledWith('m1', 'r1');
   });
 });
 

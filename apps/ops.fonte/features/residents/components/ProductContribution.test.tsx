@@ -248,6 +248,7 @@ describe('ResidentOverviewTab — entrada de contribuição', () => {
     render(
       <ResidentOverviewTab
         resident={resident}
+        onChangeMinistry={jest.fn()}
         onResetPassword={jest.fn()}
         onDeclareProducts={onDeclareProducts}
       />,

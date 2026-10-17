@@ -10,6 +10,7 @@ import {
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { useResidentById } from '../hooks/useResidents';
 import { ResetResidentPasswordModal } from '../components/ResetResidentPasswordModal';
+import { ChangeMinistryModal } from '../components/ChangeMinistryModal';
 import { ResidentOverviewTab } from '../components/ResidentOverviewTab';
 import { ResidentFamiliesTab } from '../components/ResidentFamiliesTab';
 import { ResidentAttachmentsTab } from '../components/ResidentAttachmentsTab';
@@ -28,6 +29,7 @@ export function ResidentDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('Visão Geral');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [ministryModalOpen, setMinistryModalOpen] = useState(false);
 
   const { data: resident, isLoading, refetch } = useResidentById(id);
   // Story 175: a ficha vem do store local, que não expira — o frescor é dito,
@@ -102,6 +104,7 @@ export function ResidentDetailPage() {
           {activeTab === 'Visão Geral' && (
             <ResidentOverviewTab
               resident={resident}
+              onChangeMinistry={() => setMinistryModalOpen(true)}
               onResetPassword={() => setResetPasswordOpen(true)}
               onDeclareProducts={() =>
                 router.push({
@@ -132,6 +135,15 @@ export function ResidentDetailPage() {
         </ScrollView>
       </View>
 
+      {resident.houseId && (
+        <ChangeMinistryModal
+          visible={ministryModalOpen}
+          onClose={() => setMinistryModalOpen(false)}
+          residentId={id!}
+          houseId={resident.houseId}
+          currentMinistryId={resident.ministryId ?? null}
+        />
+      )}
       {resident.userId && (
         <ResetResidentPasswordModal
           visible={resetPasswordOpen}

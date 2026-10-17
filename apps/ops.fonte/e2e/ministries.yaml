@@ -8,11 +8,19 @@ appId: org.fonte.ops
 - waitForAnimationToEnd
 - assertVisible: "Visão Geral"
 - assertVisible: "Tarefas"
-# Story 197: ministério é organização de trabalho de servo — líder, servos e
-# tarefas. Não existe seção de filhos nem membro filho.
 - assertVisible: "Líder"
 - assertVisible: "Adicionar Servo"
-- assertNotVisible: "Filhos"
+# Story 205: filho em acolhimento volta a ser membro. Adiciona o filho do seed e
+# o remove no fim — o seed é só leitura entre execuções (story 182).
+- assertVisible: "Adicionar Filho"
+- tapOn: "Buscar filho em acolhimento..."
+- inputText: "Joao"
+- tapOn: "Adicionar João Testador"
+- waitForAnimationToEnd
+- assertVisible: "Remover João Testador"
+- tapOn: "Remover João Testador"
+- waitForAnimationToEnd
+- assertNotVisible: "Remover João Testador"
 - tapOn: "Tarefas"
 - waitForAnimationToEnd
 - assertVisible: "Nenhuma tarefa cadastrada."

@@ -139,4 +139,10 @@ export class UpdateResidentDto {
   @Min(1)
   @Max(31)
   contributionDueDay?: number | null;
+
+  // Story 205: ministério na ficha. Só filho em acolhimento na casa do
+  // ministério (o service valida e devolve 400); `null` tira do ministério.
+  @IsOptional()
+  @IsUUID()
+  ministryId?: string | null;
 }

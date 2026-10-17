@@ -20,6 +20,8 @@ export const makeResidentSchema = (
   name: z.string().min(1, 'Nome é obrigatório'),
   // Obrigatória para todo status exceto ARCHIVED (validado no superRefine).
   houseId: z.string().optional(),
+  // Story 205: ministério da casa (vazio = sem ministério → `null` no payload).
+  ministryId: z.string().optional(),
   status: z.nativeEnum(ResidentStatus).optional(),
   birthDate: birthDateField(options.initialBirthDate),
   cpf: z.string().optional(),
@@ -93,7 +95,7 @@ export const FICHA_FIELDS = [
 ] as const satisfies readonly (keyof ResidentFormData)[];
 
 export const ADMISSAO_FIELDS = [
-  'houseId', 'entryDate', 'familyInvestment', 'familyInvestmentAmount', 'contributionDueDay',
+  'houseId', 'ministryId', 'entryDate', 'familyInvestment', 'familyInvestmentAmount', 'contributionDueDay',
 ] as const satisfies readonly (keyof ResidentFormData)[];
 
 export function buildResidentPayload(data: ResidentFormData): Record<string, unknown> {
@@ -121,6 +123,7 @@ export function residentToFormValues(r: Resident): ResidentFormData {
     // o campo do form é `string | undefined`, então normaliza o null para o valor
     // vazio do <Select> ("Selecione a casa").
     houseId: r.houseId ?? '',
+    ministryId: r.ministryId ?? '',
     status: r.status,
     birthDate: dateStr(r.birthDate),
     // Prefill sem double-mask (story 151): só formata dígito cru; valor redigido

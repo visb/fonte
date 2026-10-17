@@ -91,7 +91,9 @@ Quase todos os servos foram filhos um dia. Um Resident pode ser promovido a Staf
 
 - Apenas COORDINATOR ou ADMIN pode criar ou remover ministérios
 - SERVANT pode ser atribuído como responsável de um ministério
-- Filhos podem ser designados a um ou mais ministérios
+- Filho pertence a no máximo um ministério (`residents.ministry_id`) e pode ser o líder dele
+- Só filho **em acolhimento** (`ACTIVE`, `DISCIPLINE`, `TEMP_LEAVE` — `REMOVABLE_RESIDENT_STATUSES`) **na mesma casa** do ministério entra no ministério ou o lidera; fora disso o backend responde 400 (story 205)
+- Alta, evasão (qualquer saída do acolhimento) ou transferência de casa tira o filho do ministério e da liderança automaticamente, com evento `MINISTRY_CHANGE` na linha do tempo; readmissão volta sem ministério
 - Ministério não pode ser removido fisicamente (soft delete)
 
 ---

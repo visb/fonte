@@ -328,11 +328,15 @@ export interface HouseMinistry {
   id: string;
   name: string;
   leaderId: string | null;
-  // Só servo lidera ministério desde a story 197.
-  leaderType: 'STAFF' | null;
+  // Story 205: filho em acolhimento na casa volta a poder liderar.
+  leaderType: MinistryLeaderType | null;
   leaderName: string | null;
+  // Só filhos em acolhimento na casa do ministério (story 205, decisão 8).
+  filhoCount: number;
   servoCount: number;
 }
+
+export type MinistryLeaderType = 'STAFF' | 'RESIDENT';
 
 export interface AddMinistryInput {
   name: string;
@@ -511,6 +515,9 @@ export interface Resident {
   house: { id: string; name: string } | null;
   // Nulo só para ARCHIVED (import sem correspondência na planilha).
   houseId: string | null;
+  // Story 205: só filho em acolhimento tem ministério (saída/transferência zera).
+  ministry: { id: string; name: string } | null;
+  ministryId: string | null;
 }
 
 export interface CreateResidentInput {
@@ -544,6 +551,9 @@ export interface CreateResidentInput {
   familyInvestment?: FamilyInvestment | null;
   familyInvestmentAmount?: number | null;
   contributionDueDay?: number | null;
+  // Story 205: ministério no acolhimento/ficha. 400 se o filho não estiver em
+  // acolhimento na casa do ministério; `null` tira do ministério.
+  ministryId?: string | null;
   // Histórico de acolhimentos do import em lote (story 121). Quando presente com
   // mais de um item, o backend cria um `Admission` por par entrada→saída; o topo
   // do resident reflete o mais recente. Opcional — ignorado no create normal.
@@ -621,6 +631,7 @@ export interface Admission {
   // Nullable desde a migration `AllowNullResidentHouse` (filho ARCHIVED sem casa).
   houseId: string | null;
   house: { id: string; name: string } | null;
+  ministryId: string | null;
   entryDate: string | null;
   exitDate: string | null;
   status: string;
@@ -799,12 +810,12 @@ export interface Ministry {
   name: string;
 }
 
-// Membro de ministério é sempre servo desde a story 197 — filho deixou de ter
-// vínculo com ministério.
+// Story 205: filho (FILHO) volta a ser membro, ao lado dos servos (SERVO). Só
+// filho em acolhimento na casa do ministério aparece.
 export interface MinistryMember {
   id: string;
   name: string;
-  role: 'SERVO';
+  role: 'FILHO' | 'SERVO';
 }
 
 export interface MinistryDetail {
@@ -812,7 +823,7 @@ export interface MinistryDetail {
   name: string;
   houseId: string;
   leaderId: string | null;
-  leaderType: 'STAFF' | null;
+  leaderType: MinistryLeaderType | null;
   leaderName: string | null;
   members: MinistryMember[];
 }
@@ -833,7 +844,7 @@ export interface CreateMinistryInput {
 export interface UpdateMinistryInput {
   name?: string;
   leaderId?: string | null;
-  leaderType?: 'STAFF' | null;
+  leaderType?: MinistryLeaderType | null;
 }
 
 export interface CreateMinistryTaskInput {

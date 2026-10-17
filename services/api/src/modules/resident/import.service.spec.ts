@@ -198,27 +198,77 @@ describe('ImportService', () => {
       expect(result.resident.id).toBe('new-1');
     });
 
-    // Story 197 (decisão 10): o mapeamento de `ministryId` saiu do import. As
-    // fichas pendentes passam a ser importadas sem ministério — nada se perde,
-    // porque a coluna de destino deixou de existir.
-    it('ficha com ministério importa normalmente, ignorando o campo', async () => {
+    // Story 205: o mapeamento de `ministryId` volta ao import.
+    it('ficha ativa com ministério → vínculo gravado e relação recarregada', async () => {
       const dto = commitDto({
-        resident: { name: 'Maria', houseId: 'house-1', ministryId: 'min-1' } as never,
+        resident: { name: 'Maria', houseId: 'house-1', status: ResidentStatus.ACTIVE, ministryId: 'min-1' } as never,
       });
 
       const result = await service.commit(dto, 'user-1');
 
       expect(result.resident.id).toBe('new-1');
-      // O acolhimento gravado pelo import não tem para onde levar o ministério.
-      const admissions = admissionCreate.mock.calls.map(([row]) => row);
-      for (const row of admissions) {
-        expect(row).not.toHaveProperty('ministryId');
-      }
-      // A relação `ministry` também não é mais carregada na releitura do filho.
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ ministryId: 'min-1' }), managerMock);
       const relations = residentTxFindOne.mock.calls.flatMap(
         ([opts]) => (opts as { relations?: string[] }).relations ?? [],
       );
-      expect(relations).not.toContain('ministry');
+      expect(relations).toContain('ministry');
+    });
+
+    // Decisão 6: ficha fora de acolhimento é importada SEM vínculo, não recusada.
+    it.each([ResidentStatus.ARCHIVED, ResidentStatus.DISCHARGED, ResidentStatus.EVADED, ResidentStatus.PRE_ADMISSION])(
+      'ficha %s com ministério → importada sem vínculo',
+      async (status) => {
+        const dto = commitDto({
+          resident: { name: 'Maria', houseId: 'house-1', status, ministryId: 'min-1' } as never,
+        });
+
+        await service.commit(dto, 'user-1');
+
+        expect(create).toHaveBeenCalledWith(expect.objectContaining({ ministryId: null }), managerMock);
+      },
+    );
+
+    it('ficha sem status (pré-admissão) com ministério → importada sem vínculo', async () => {
+      const dto = commitDto({
+        resident: { name: 'Maria', houseId: 'house-1', ministryId: 'min-1' } as never,
+      });
+      await service.commit(dto, 'user-1');
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ ministryId: null }), managerMock);
+    });
+
+    it('ficha que saiu (exitDate deriva alta) perde o ministério', async () => {
+      const dto = commitDto({
+        resident: {
+          name: 'Maria',
+          houseId: 'house-1',
+          status: ResidentStatus.ACTIVE,
+          entryDate: '2020-01-01',
+          exitDate: '2021-01-01',
+          ministryId: 'min-1',
+        } as never,
+      });
+      await service.commit(dto, 'user-1');
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ status: ResidentStatus.DISCHARGED, ministryId: null }),
+        managerMock,
+      );
+    });
+
+    it('passagens anteriores do histórico entram sem ministério', async () => {
+      const dto = commitDto({
+        resident: {
+          name: 'Maria',
+          houseId: 'house-1',
+          status: ResidentStatus.ACTIVE,
+          ministryId: 'min-1',
+          admissions: [
+            { entryDate: '2019-01-01', exitDate: '2019-03-01' },
+            { entryDate: '2024-01-01' },
+          ],
+        } as never,
+      });
+      await service.commit(dto, 'user-1');
+      expect(admissionCreate).toHaveBeenCalledWith(expect.objectContaining({ ministryId: null }));
     });
 
     it('marca as competências da planilha como parcelas pagas do carnê, na transação', async () => {

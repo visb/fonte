@@ -11,6 +11,7 @@ import { SectionTitle, FormField } from "@/components/shared/FormField";
 import { PersonalDataFields } from "@/components/shared/PersonalDataFields";
 import { ControlledDateInput } from "@/components/shared/ControlledDateInput";
 import { FAMILY_INVESTMENT_LABELS } from "../constants";
+import { ResidentMinistryField } from "./ResidentMinistryField";
 import type { ResidentFormData } from "../lib/residentSchema";
 import type { House } from "@fonte/api-client";
 
@@ -135,6 +136,7 @@ export function ResidentAdmissionSections({
             ))}
           </Select>
         </FormField>
+        <ResidentMinistryField control={control} />
         <FormField label="Data de entrada" error={errors.entryDate?.message}>
           <ControlledDateInput control={control} name="entryDate" max={today} />
         </FormField>

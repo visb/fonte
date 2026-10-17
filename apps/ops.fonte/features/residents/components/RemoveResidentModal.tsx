@@ -22,7 +22,7 @@ import {
 } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
-import { DatePickerModal } from '@/components/DatePickerModal';
+import { DateInput } from '@/components/shared/DateInput';
 import {
   useDischargeResident,
   useEvadeResident,
@@ -32,11 +32,7 @@ import {
 
 type Action = ResidentRemovalAction;
 
-function formatDate(iso: string): string {
-  if (!iso) return '';
-  const [year, month, day] = iso.split('-');
-  return `${day}/${month}/${year}`;
-}
+const EXIT_DATE_REQUIRED_MESSAGE = 'Informe a data do acontecimento (dd/mm/aaaa).';
 
 // Rótulo e descrição vêm de `@fonte/types` (story 196) — o `adm` mostra os
 // mesmos. Ícone e cor são do RN e ficam aqui.
@@ -78,7 +74,6 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
   const [targetHouseId, setTargetHouseId] = useState<string | null>(null);
   // "Hoje" no fuso da operação (story 203): é o limite máximo da saída.
   const [exitDate, setExitDate] = useState(() => todayInSaoPaulo());
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const { data: houses = [] } = useHouses();
   const dischargeMutation = useDischargeResident(houseId);
@@ -137,21 +132,22 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
   // entrar na fila offline já condenado ao 400 do backend.
   const today = todayInSaoPaulo();
   const entryDate = resident?.entryDate ? resident.entryDate.slice(0, 10) : undefined;
-  const exitDateError = needsExitDate
-    ? findAdmissionDatesIssue(
-        { entryDate, exitDate },
-        { today, check: { entryDate: false, exitDate: true } },
-      )?.message
-    : undefined;
+  // Texto vazio, incompleto ou inválido chega como '' (story 209).
+  const exitDateError = !needsExitDate
+    ? undefined
+    : !exitDate
+      ? EXIT_DATE_REQUIRED_MESSAGE
+      : findAdmissionDatesIssue(
+          { entryDate, exitDate },
+          { today, check: { entryDate: false, exitDate: true } },
+        )?.message;
   const confirmDisabled =
     isPending ||
     !selectedAction ||
     (selectedAction === 'transfer' && !targetHouseId) ||
-    (needsExitDate && !exitDate) ||
     !!exitDateError;
 
   return (
-    <>
     <Modal visible={visible} transparent animationType="slide" onShow={handleOpen}>
       <View className="flex-1 justify-end bg-black/50">
         <Pressable className="flex-1" onPress={onClose} />
@@ -201,18 +197,15 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
             {needsExitDate ? (
               <View>
                 <Text className="text-sm font-medium text-gray-700 mb-1.5 mt-2">Data do acontecimento *</Text>
-                <TouchableOpacity
-                  className="border border-gray-300 rounded-lg px-3 py-2.5 flex-row items-center justify-between"
-                  onPress={() => setDatePickerOpen(true)}
-                >
-                  <Text className={`text-sm ${exitDate ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {exitDate ? formatDate(exitDate) : 'Selecionar data'}
-                  </Text>
-                  <Ionicons name="calendar-outline" size={18} color="#6b7280" />
-                </TouchableOpacity>
-                {exitDateError ? (
-                  <Text className="text-xs text-red-600 mt-1">{exitDateError}</Text>
-                ) : null}
+                {/* Story 209: digitável; o calendário mantém os limites da 203. */}
+                <DateInput
+                  accessibilityLabel="Data do acontecimento"
+                  value={exitDate}
+                  onChange={setExitDate}
+                  minDate={entryDate}
+                  maxDate={today}
+                  error={exitDateError}
+                />
               </View>
             ) : null}
 
@@ -264,15 +257,5 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
         </View>
       </View>
     </Modal>
-
-    <DatePickerModal
-      visible={datePickerOpen}
-      value={exitDate}
-      minimumDate={entryDate}
-      maximumDate={today}
-      onClose={() => setDatePickerOpen(false)}
-      onChange={setExitDate}
-    />
-    </>
   );
 }

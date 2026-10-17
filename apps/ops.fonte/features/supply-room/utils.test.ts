@@ -3,7 +3,6 @@ import {
   toNumber,
   formatQuantity,
   formatDateBR,
-  toISODate,
   movementLabel,
 } from './utils';
 
@@ -19,10 +18,6 @@ describe('supply-room/utils — re-export de lib/inventoryUtils', () => {
 
   it('formatDateBR converte ISO para dd/mm/yyyy', () => {
     expect(formatDateBR('2026-03-10')).toBe('10/03/2026');
-  });
-
-  it('toISODate formata uma Date local', () => {
-    expect(toISODate(new Date('2026-03-10T00:00:00'))).toBe('2026-03-10');
   });
 
   it('movementLabel rotula entrada/saída', () => {

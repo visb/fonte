@@ -7,18 +7,6 @@ jest.mock('@expo/vector-icons', () => {
   const { Text } = require('react-native');
   return { Ionicons: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
 });
-// WheelDatePickerModal: stub que expõe onConfirm via testID-friendly botão.
-jest.mock('@/components/WheelDatePickerModal', () => {
-  const { Text, TouchableOpacity } = require('react-native');
-  return {
-    WheelDatePickerModal: ({ visible, onConfirm }: { visible: boolean; onConfirm: (d: Date) => void }) =>
-      visible ? (
-        <TouchableOpacity onPress={() => onConfirm(new Date('2026-02-15T00:00:00'))}>
-          <Text>confirm-date</Text>
-        </TouchableOpacity>
-      ) : null,
-  };
-});
 jest.mock('@/lib/api', () => ({
   api: { storeroom: { listMovements: jest.fn() } },
   resolveAssetUrl: (u: string) => u,
@@ -28,7 +16,6 @@ import { api } from '@/lib/api';
 import { StoreroomItemCard } from './StoreroomItemCard';
 import { MovementTypeSelector } from './MovementTypeSelector';
 import { LowStockAlert } from './LowStockAlert';
-import { DateField } from './DateField';
 import { MovementHistoryRow } from './MovementHistoryRow';
 import { SubmitMovementButton } from './SubmitMovementButton';
 import { NotesField } from './NotesField';
@@ -110,17 +97,6 @@ describe('LowStockAlert', () => {
     expect(screen.getByText(/1 item\)/)).toBeTruthy();
     rerender(<LowStockAlert items={[makeItem(), makeItem({ id: 'i2', name: 'Feijão' })]} />);
     expect(screen.getByText(/2 itens\)/)).toBeTruthy();
-  });
-});
-
-describe('DateField', () => {
-  it('abre o picker e propaga a data confirmada', () => {
-    const onChange = jest.fn();
-    render(<DateField value={new Date('2026-01-01T00:00:00')} onChange={onChange} />);
-    expect(screen.getByText('01/01/2026')).toBeTruthy();
-    fireEvent.press(screen.getByText('01/01/2026'));
-    fireEvent.press(screen.getByText('confirm-date'));
-    expect(onChange).toHaveBeenCalledWith(expect.any(Date), '2026-02-15');
   });
 });
 

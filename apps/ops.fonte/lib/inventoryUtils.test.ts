@@ -3,7 +3,6 @@ import {
   toNumber,
   formatQuantity,
   formatDateBR,
-  toISODate,
   movementLabel,
 } from './inventoryUtils';
 
@@ -56,13 +55,6 @@ describe('inventoryUtils', () => {
 
     it('retorna a entrada se não for parseável', () => {
       expect(formatDateBR('texto-invalido')).toBe('texto-invalido');
-    });
-  });
-
-  describe('toISODate', () => {
-    it('formata Date para aaaa-mm-dd com zero-padding', () => {
-      const d = new Date(2026, 0, 5); // 5 jan 2026
-      expect(toISODate(d)).toBe('2026-01-05');
     });
   });
 

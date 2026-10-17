@@ -1,6 +1,8 @@
 import { View, Text, TextInput } from 'react-native';
 import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
+import { todayInSaoPaulo } from '@fonte/types';
+import { DateInput } from '@/components/shared/DateInput';
 import type { StreetSaleFormData } from '../pages/NewStreetSalePage';
 import { ProductTypeSelector } from './ProductTypeSelector';
 import { AmountField } from './AmountField';
@@ -9,24 +11,25 @@ type Props = {
   control: Control<StreetSaleFormData>;
   errors: FieldErrors<StreetSaleFormData>;
   totalAmount: string;
-  onDatePress: () => void;
-  dateLabel: string;
 };
 
-export function StreetSaleFormFields({ control, errors, totalAmount, onDatePress, dateLabel }: Props) {
+export function StreetSaleFormFields({ control, errors, totalAmount }: Props) {
   return (
     <View className="space-y-5">
       <View>
         <Text className="text-sm font-medium text-gray-700 mb-1.5">Data</Text>
+        {/* Story 209: digitável; o calendário fica como alternativa. */}
         <Controller
           control={control}
           name="date"
-          render={() => (
-            <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 bg-gray-50"
-              value={dateLabel}
-              editable={false}
-              onTouchStart={onDatePress}
+          render={({ field: { value, onChange, onBlur } }) => (
+            <DateInput
+              accessibilityLabel="Data"
+              value={value}
+              onChange={onChange}
+              onBlur={onBlur}
+              maxDate={todayInSaoPaulo()}
+              error={errors.date?.message}
             />
           )}
         />

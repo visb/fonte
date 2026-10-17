@@ -219,9 +219,66 @@ describe('RemoveResidentModal', () => {
     fireEvent.press(screen.getByText('icon:calendar-outline'));
     expect(lastDatePicker().visible).toBe(true);
     act(() => lastDatePicker().onChange('2026-01-02'));
-    expect(screen.getByText('02/01/2026')).toBeTruthy();
+    expect(screen.getByLabelText('Data do acontecimento').props.value).toBe('02/01/2026');
     act(() => lastDatePicker().onClose());
     expect(lastDatePicker().visible).toBe(false);
+  });
+
+  // ─── Story 209: data do acontecimento digitável ────────────────────────────
+  describe('data digitada (story 209)', () => {
+    const withEntry = { ...props, resident: { id: 'r1', name: 'João', entryDate: '2026-03-10' } };
+    const typeExit = (digits: string) =>
+      fireEvent.changeText(screen.getByLabelText('Data do acontecimento'), digits);
+
+    it('vem preenchida com hoje e a data digitada chega ao payload', async () => {
+      m.houses.list.mockResolvedValue([]);
+      m.residents.update.mockResolvedValue({ id: 'r1' });
+      rc(<RemoveResidentModal {...withEntry} mode="exit" />);
+      fireEvent.press(screen.getByText('Evasão'));
+      const [y, mo, d] = todayInSaoPaulo().split('-');
+      expect(screen.getByLabelText('Data do acontecimento').props.value).toBe(`${d}/${mo}/${y}`);
+      typeExit('15032026');
+      fireEvent.press(screen.getByText('Confirmar'));
+      await waitFor(() =>
+        expect(m.residents.update).toHaveBeenCalledWith(
+          'r1',
+          expect.objectContaining({ status: 'EVADED', exitDate: '2026-03-15' }),
+          expectIdempotencyKey,
+        ),
+      );
+    });
+
+    it('digitada no futuro → mensagem e nada enviado', () => {
+      m.houses.list.mockResolvedValue([]);
+      rc(<RemoveResidentModal {...withEntry} mode="exit" />);
+      fireEvent.press(screen.getByText('Declarar alta'));
+      typeExit('01012999');
+      expect(screen.getByText(ADMISSION_DATE_MESSAGES.exitFuture)).toBeTruthy();
+      fireEvent.press(screen.getByText('Confirmar'));
+      expect(m.residents.update).not.toHaveBeenCalled();
+    });
+
+    it('digitada antes da entrada → mensagem e nada enviado', () => {
+      m.houses.list.mockResolvedValue([]);
+      rc(<RemoveResidentModal {...withEntry} mode="exit" />);
+      fireEvent.press(screen.getByText('Declarar alta'));
+      typeExit('09032026');
+      expect(screen.getByText(ADMISSION_DATE_MESSAGES.exitBeforeEntry('2026-03-10'))).toBeTruthy();
+      fireEvent.press(screen.getByText('Confirmar'));
+      expect(m.residents.update).not.toHaveBeenCalled();
+    });
+
+    it('incompleta ou inválida → pede a data e não envia', () => {
+      m.houses.list.mockResolvedValue([]);
+      rc(<RemoveResidentModal {...withEntry} mode="exit" />);
+      fireEvent.press(screen.getByText('Declarar alta'));
+      typeExit('3102');
+      expect(screen.getByText('Informe a data do acontecimento (dd/mm/aaaa).')).toBeTruthy();
+      typeExit('31022026');
+      expect(screen.getByText('Informe a data do acontecimento (dd/mm/aaaa).')).toBeTruthy();
+      fireEvent.press(screen.getByText('Confirmar'));
+      expect(m.residents.update).not.toHaveBeenCalled();
+    });
   });
 
   it('reabrir o modal (onShow) limpa a escolha anterior', () => {

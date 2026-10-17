@@ -54,3 +54,39 @@ appId: org.fonte.ops
 - waitForAnimationToEnd
 - assertVisible: "Visão Geral"
 - assertVisible: "Acompanhamento"
+
+# --- Story 209: adicionar filho DIGITANDO as datas ---
+# Sessão nova (o login reabre o app limpo) para não depender de para onde o
+# `back` da ficha volta. Fixture própria com nome único, removida no fim pelo
+# helpers/delete-census-resident.js (story 182). ASCII de propósito: o Maestro
+# não digita fora do ASCII (mobile-dev-inc/maestro#146).
+- evalScript: ${output.censusName = 'Filho Datas ' + Date.now()}
+- runFlow: helpers/login-coordinator.yaml
+- tapOn: "Menu"
+- waitForAnimationToEnd
+- tapOn: "Contagem"
+- waitForAnimationToEnd
+- tapOn: "Adicionar filho"
+- waitForAnimationToEnd
+- tapOn: "Nome completo"
+- inputText: ${output.censusName}
+# O acolhimento vem com hoje: apaga e digita uma data retroativa.
+- tapOn: "Data de acolhimento"
+- eraseText: 10
+- inputText: "01022026"
+- assertVisible: "01/02/2026"
+# Rótulo e campo têm o mesmo texto: index 1 é o campo (vem depois do rótulo).
+- tapOn:
+    text: "Data de nascimento"
+    index: 1
+- inputText: "05031985"
+- assertVisible: "05/03/1985"
+- hideKeyboard
+- tapOn: "Adicionar"
+- waitForAnimationToEnd
+- assertVisible: ${output.censusName}
+- runScript:
+    file: helpers/delete-census-resident.js
+    env:
+      API_URL: http://10.0.2.2:3001/api/v1
+      NAME: ${output.censusName}

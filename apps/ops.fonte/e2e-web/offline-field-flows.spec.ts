@@ -277,6 +277,63 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
       .toBe('EVADED');
   });
 
+  // Story 209: no pátio, sem sinal, o operador DIGITA as datas (acolhimento
+  // retroativo e nascimento de 40 anos atrás) em vez de navegar no calendário.
+  // O filho entra na fila e sobe com as datas exatamente como digitadas.
+  test('contagem: filho adicionado sem sinal com datas digitadas sobe com as datas certas', async ({
+    page,
+    context,
+  }) => {
+    const name = `Filho Datas ${Date.now()}`;
+    const created: { status: number; id?: string }[] = [];
+    page.on('response', async (response) => {
+      const request_ = response.request();
+      if (request_.method() === 'POST' && request_.url().endsWith('/census/residents')) {
+        const body = await response.json().catch(() => ({}));
+        created.push({ status: response.status(), id: body?.id });
+        if (body?.id) residentIds.push(body.id);
+      }
+    });
+
+    await login(page, COORDINATOR);
+    // Passagem com rede: é ela que enche o cache que a contagem usa offline.
+    await visible(page, 'Contagem').click();
+    await expect(visible(page, 'Adicionar filho')).toBeVisible({ timeout: 30_000 });
+
+    await goOffline(page, context);
+
+    await visible(page, 'Adicionar filho').click();
+    await expect(page.getByPlaceholder('Nome completo').filter({ visible: true })).toBeVisible();
+    // No react-native-web o `onShow` do Modal (que reseta o form) só dispara
+    // no fim da animação de slide (~300ms): digitar antes disso seria apagado.
+    await page.waitForTimeout(800);
+    await page.getByPlaceholder('Nome completo').filter({ visible: true }).fill(name);
+    const entryInput = page.getByLabel('Data de acolhimento', { exact: true }).filter({ visible: true });
+    await entryInput.fill('');
+    await entryInput.pressSequentially('01022026');
+    await expect(entryInput).toHaveValue('01/02/2026');
+    const birthInput = page.getByLabel('Data de nascimento', { exact: true }).filter({ visible: true });
+    await birthInput.pressSequentially('05031985');
+    await expect(birthInput).toHaveValue('05/03/1985');
+    await visible(page, 'Adicionar').click();
+
+    // Modal fecha na hora; nada saiu do aparelho.
+    await expect(page.getByPlaceholder('Nome completo').filter({ visible: true })).toHaveCount(0, {
+      timeout: 15_000,
+    });
+    expect(created).toEqual([]);
+
+    await context.setOffline(false);
+
+    await expect.poll(() => created.map((c) => c.status), { timeout: 60_000 }).toEqual([201]);
+    const id = created[0].id!;
+    const response = await api.get(`${API_BASE_URL}/residents/${id}`, { headers: authHeaders });
+    const resident = (await response.json()) as { name: string; entryDate: string; birthDate: string };
+    expect(resident.name).toBe(name);
+    expect(resident.entryDate.slice(0, 10)).toBe('2026-02-01');
+    expect(resident.birthDate.slice(0, 10)).toBe('1985-03-05');
+  });
+
   // Story 179: o modal existe justamente para o operador conferir "é esse o
   // João mesmo?" no pátio — onde não há sinal. Ele abre com o que a lista já
   // tem em mãos; a ficha só enriquece se estiver no aparelho.

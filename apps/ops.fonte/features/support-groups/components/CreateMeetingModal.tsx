@@ -11,21 +11,23 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { SupportGroup } from '@fonte/api-client';
-import { DAY_OF_WEEK_LABELS } from '@fonte/types';
+import { DAY_OF_WEEK_LABELS, todayInSaoPaulo } from '@fonte/types';
+import { DateInput } from '@/components/shared/DateInput';
 import { useCreateMeeting, useSupportGroups } from '../hooks/useSupportGroups';
-import { DatePickerModal } from '@/components/DatePickerModal';
 
+const MEETING_DATE_REQUIRED_MESSAGE = 'Informe a data da reunião (dd/mm/aaaa).';
+
+/**
+ * Próxima data (hoje incluso) que cai no dia da semana do grupo. Parte do "hoje"
+ * no fuso da operação e calcula em UTC puro — `toISOString()` sobre a data
+ * local virava o dia seguinte depois das 21h (story 209, decisão 8).
+ */
 function nextMeetingDate(dayOfWeek: number): string {
-  const today = new Date();
-  const diff = (dayOfWeek - today.getDay() + 7) % 7;
-  const next = new Date(today);
-  next.setDate(today.getDate() + diff);
-  return next.toISOString().split('T')[0];
-}
-
-function formatDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-');
-  return `${day}/${month}/${year}`;
+  const [year, month, day] = todayInSaoPaulo().split('-').map(Number);
+  const today = new Date(Date.UTC(year, month - 1, day));
+  const diff = (dayOfWeek - today.getUTCDay() + 7) % 7;
+  today.setUTCDate(today.getUTCDate() + diff);
+  return today.toISOString().slice(0, 10);
 }
 
 interface Props {
@@ -39,14 +41,13 @@ export function CreateMeetingModal({ visible, onClose, onSuccess }: Props) {
   const [selectedGroup, setSelectedGroup] = useState<SupportGroup | null>(null);
   const [date, setDate] = useState('');
   const [notes, setNotes] = useState('');
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const createMutation = useCreateMeeting(selectedGroup?.id ?? '');
 
   function handleOpen() {
     const firstGroup = groups[0] ?? null;
     setSelectedGroup(firstGroup);
-    setDate(firstGroup ? nextMeetingDate(firstGroup.dayOfWeek) : new Date().toISOString().split('T')[0]);
+    setDate(firstGroup ? nextMeetingDate(firstGroup.dayOfWeek) : todayInSaoPaulo());
     setNotes('');
   }
 
@@ -69,7 +70,6 @@ export function CreateMeetingModal({ visible, onClose, onSuccess }: Props) {
   }
 
   return (
-    <>
       <Modal visible={visible} transparent animationType="slide" onShow={handleOpen}>
         <View className="flex-1 justify-end bg-black/50">
           <Pressable className="flex-1" onPress={onClose} />
@@ -115,15 +115,13 @@ export function CreateMeetingModal({ visible, onClose, onSuccess }: Props) {
 
               <View>
                 <Text className="text-sm font-medium text-gray-700 mb-1.5">Data *</Text>
-                <TouchableOpacity
-                  className="border border-gray-300 rounded-lg px-3 py-2.5 flex-row items-center justify-between"
-                  onPress={() => setDatePickerOpen(true)}
-                >
-                  <Text className={`text-sm ${date ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {date ? formatDate(date) : 'Selecionar data'}
-                  </Text>
-                  <Ionicons name="calendar-outline" size={18} color="#6b7280" />
-                </TouchableOpacity>
+                {/* Story 209: digitável; reunião é agendada, então futuro pode. */}
+                <DateInput
+                  accessibilityLabel="Data da reunião"
+                  value={date}
+                  onChange={setDate}
+                  error={selectedGroup && !date ? MEETING_DATE_REQUIRED_MESSAGE : undefined}
+                />
               </View>
 
               <View>
@@ -162,13 +160,5 @@ export function CreateMeetingModal({ visible, onClose, onSuccess }: Props) {
           </View>
         </View>
       </Modal>
-
-      <DatePickerModal
-        visible={datePickerOpen}
-        value={date}
-        onClose={() => setDatePickerOpen(false)}
-        onChange={setDate}
-      />
-    </>
   );
 }

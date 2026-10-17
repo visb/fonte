@@ -97,7 +97,9 @@ export class RelativeController {
    */
   @Get('me/receivables/:receivableId/receipt')
   @Roles(Role.RELATIVE)
-  @Audit('relative.receivable.receipt', 'resident-receivable', 'receivableId')
+  @Audit('relative.receivable.receipt', 'resident-receivable', 'receivableId', {
+    context: () => ({ format: 'pdf', count: 1 }),
+  })
   async downloadMyReceivableReceipt(
     @Param('receivableId', ParseUUIDPipe) receivableId: string,
     @CurrentUser() user: AuthenticatedUser,

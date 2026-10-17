@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { DataRightsService } from './data-rights.service';
 import { StorageService } from '../storage/storage.service';
+import { AuditService } from '../audit/audit.service';
 
 function makeService(queryImpl: (sql: string, params: unknown[]) => Promise<unknown[]>, del = jest.fn()) {
   const query = jest.fn(queryImpl);
@@ -9,7 +10,9 @@ function makeService(queryImpl: (sql: string, params: unknown[]) => Promise<unkn
   const transaction = jest.fn(async (cb: (m: { query: jest.Mock }) => Promise<unknown>) => cb({ query }));
   const dataSource = { query, transaction } as unknown as DataSource;
   const storage = { delete: del } as unknown as StorageService;
-  return { service: new DataRightsService(dataSource, storage), del, query };
+  // Story 199 — AuditService real: a redação dos diffs usa o mesmo `query`.
+  const audit = new AuditService({} as never, dataSource);
+  return { service: new DataRightsService(dataSource, storage, audit), del, query };
 }
 
 describe('DataRightsService.exportResident', () => {
@@ -54,6 +57,10 @@ describe('DataRightsService.anonymizeResident', () => {
     expect(updateSqls.some((s) => s.includes('UPDATE residents SET') && s.includes("name = 'Titular anonimizado'"))).toBe(true);
     expect(updateSqls.some((s) => s.includes('UPDATE relatives SET'))).toBe(true);
     expect(updateSqls.some((s) => s.includes('DELETE FROM resident_attachments'))).toBe(true);
+    // Story 199: os diffs da trilha ligados ao titular perdem os valores, na transação.
+    const redact = query.mock.calls.find((c) => (c[0] as string).includes('UPDATE audit_logs SET changes'));
+    expect(redact?.[1]).toEqual(['r1', 'resident']);
+    expect(redact?.[0]).toContain("'before', NULL, 'after', NULL, 'redacted', true");
   });
 
   it('throws when resident does not exist', async () => {

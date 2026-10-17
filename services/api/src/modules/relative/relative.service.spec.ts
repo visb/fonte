@@ -8,6 +8,7 @@ import { Resident } from '../resident/resident.entity';
 import { User } from '../user/user.entity';
 import { StorageService } from '../storage/storage.service';
 import { ResidentFollowUpService } from '../resident-follow-up/resident-follow-up.service';
+import { createAuditHarness, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
 function makeRepo(overrides: Record<string, jest.Mock> = {}) {
   return {
@@ -33,6 +34,7 @@ function makeService(
   followUp: Partial<ResidentFollowUpService> = { createAuto: jest.fn() },
   receivables = makeReceivables(),
 ) {
+  lastAudit = createAuditHarness(repoMap([[Relative, relativeRepo]]));
   return new RelativeService(
     relativeRepo as unknown as Repository<Relative>,
     makeRepo() as unknown as Repository<Resident>,
@@ -41,8 +43,11 @@ function makeService(
     {} as StorageService,
     followUp as ResidentFollowUpService,
     receivables as never,
+    lastAudit.audit, // story 199
   );
 }
+
+let lastAudit: ReturnType<typeof createAuditHarness>;
 
 describe('RelativeService.create', () => {
   it('logs a RELATIVE_ADDED follow-up and marks responsible when requested', async () => {
@@ -141,6 +146,7 @@ function buildWithStorage(
     storage as StorageService,
     { createAuto: jest.fn() } as unknown as ResidentFollowUpService,
     makeReceivables() as never,
+    createAuditHarness(repoMap([[Relative, relativeRepo]])).audit,
   );
 }
 
@@ -289,6 +295,7 @@ describe('RelativeService.findByResident house scoping', () => {
       {} as never,                                // storageService
       {} as never,                                // followUpService
       {} as never,                                // receivableService (story 193)
+      createAuditHarness().audit,                 // audit (story 199)
     );
   }
 

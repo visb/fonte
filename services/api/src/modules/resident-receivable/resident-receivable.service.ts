@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, Repository } from 'typeorm';
 import {
   ACTIVE_RESIDENT_STATUSES,
+  AuditAction,
+  AuditTargetType,
   FamilyInvestment,
   NotificationType,
   PaymentMethod,
@@ -24,6 +26,8 @@ import { RegisterPaymentDto } from './dto/register-payment.dto';
 import { StorageService } from '../storage/storage.service';
 import { NotificationService } from '../notification/notification.service';
 import { toDbTimestamp } from '../../common/lib/db-timestamp';
+import { AuditService, loadById } from '../audit/audit.service';
+import { RECEIVABLE_AUDIT_FIELDS } from '../audit/audit-fields';
 import {
   ProductContributionView,
   ReceivableProductContributionService,
@@ -133,6 +137,8 @@ export class ResidentReceivableService {
     private storageService: StorageService,
     private notifications: NotificationService,
     private productContributions: ReceivableProductContributionService,
+    // Story 199 — último de propósito: os anteriores são contrato dos specs.
+    private audit: AuditService,
   ) {}
 
   async findByResident(residentId: string): Promise<ResidentReceivableView[]> {
@@ -528,16 +534,18 @@ export class ResidentReceivableService {
       attachmentUrl = await this.storageService.upload('attachments', filename, file.buffer, file.mimetype);
     }
 
-    await this.repo.update(receivableId, {
-      status: ReceivableStatus.PAID,
-      paidAt: dto.paidAt as unknown as Date,
-      paymentMethod: dto.paymentMethod,
-      paidAmount: dto.paidAmount ?? receivable.amount,
-      paidFamilyInvestment: dto.paidFamilyInvestment ?? receivable.familyInvestment,
-      notes: dto.notes ?? null,
-      attachmentUrl,
-      createdById: staff?.id ?? null,
-    });
+    await this.trackReceivable(residentId, receivableId, AuditAction.RESIDENT_RECEIVABLE_PAYMENT, (m) =>
+      m.getRepository(ResidentReceivable).update(receivableId, {
+        status: ReceivableStatus.PAID,
+        paidAt: dto.paidAt as unknown as Date,
+        paymentMethod: dto.paymentMethod,
+        paidAmount: dto.paidAmount ?? receivable.amount,
+        paidFamilyInvestment: dto.paidFamilyInvestment ?? receivable.familyInvestment,
+        notes: dto.notes ?? null,
+        attachmentUrl,
+        createdById: staff?.id ?? null,
+      }),
+    );
 
     const updated = await this.repo.findOne({ where: { id: receivableId }, relations: ['createdBy'] });
 
@@ -578,22 +586,43 @@ export class ResidentReceivableService {
 
     if (receivable.attachmentUrl) await this.storageService.delete(receivable.attachmentUrl);
 
-    await this.repo.update(receivableId, {
-      status: ReceivableStatus.PENDING,
-      paidAt: null,
-      paymentMethod: null,
-      paidAmount: null,
-      paidFamilyInvestment: null,
-      notes: null,
-      attachmentUrl: null,
-      createdById: null,
-    });
+    await this.trackReceivable(residentId, receivableId, AuditAction.RESIDENT_RECEIVABLE_REOPEN, (m) =>
+      m.getRepository(ResidentReceivable).update(receivableId, {
+        status: ReceivableStatus.PENDING,
+        paidAt: null,
+        paymentMethod: null,
+        paidAmount: null,
+        paidFamilyInvestment: null,
+        notes: null,
+        attachmentUrl: null,
+        createdById: null,
+      }),
+    );
 
     const updated = await this.repo.findOne({ where: { id: receivableId }, relations: ['createdBy'] });
     return this.toView(updated!);
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────
+
+  /** Story 199 — parcela com antes/depois; o filho é o recurso principal. */
+  private trackReceivable(
+    residentId: string,
+    receivableId: string,
+    action: string,
+    write: (manager: EntityManager) => Promise<unknown>,
+  ): Promise<unknown> {
+    return this.audit.track({
+      action,
+      targetType: AuditTargetType.RESIDENT_RECEIVABLE,
+      targetId: receivableId,
+      fields: RECEIVABLE_AUDIT_FIELDS,
+      load: loadById(ResidentReceivable),
+      lockTable: 'resident_receivables',
+      scope: () => ({ parentType: AuditTargetType.RESIDENT, parentId: residentId }),
+      write,
+    });
+  }
 
   private startIndex(resident: Resident): number | null {
     if (!resident.entryDate) return null;

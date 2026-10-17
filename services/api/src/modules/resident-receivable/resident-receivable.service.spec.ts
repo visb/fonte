@@ -30,6 +30,7 @@ import { ResidentReceivable } from './resident-receivable.entity';
 import { Admission } from '../resident/admission.entity';
 import { Resident } from '../resident/resident.entity';
 import { Staff } from '../staff/staff.entity';
+import { createAuditHarness, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
 interface MockRepo {
   find: jest.Mock;
@@ -84,8 +85,11 @@ function makeService(
     {} as never, // StorageService
     { create: jest.fn().mockResolvedValue(undefined) } as never, // NotificationService
     { mapByReceivables: jest.fn().mockResolvedValue(new Map()) } as never, // ReceivableProductContributionService
+    createAuditHarness(repoMap([[ResidentReceivable, repo]])).audit, // story 199
   );
 }
+
+let lastAudit: ReturnType<typeof createAuditHarness>;
 
 function makeFullService(
   repo: MockRepo,
@@ -99,6 +103,7 @@ function makeFullService(
     findOne: jest.fn().mockResolvedValue({ name: 'Acolhido' }),
     ...residentRepo,
   };
+  lastAudit = createAuditHarness(repoMap([[ResidentReceivable, repo]]));
   return new ResidentReceivableService(
     repo as unknown as Repository<ResidentReceivable>,
     residentRepoWithFind as Repository<Resident>,
@@ -107,6 +112,7 @@ function makeFullService(
     storage as never,
     { create: jest.fn().mockResolvedValue(undefined) } as never, // NotificationService
     { mapByReceivables: jest.fn().mockResolvedValue(new Map()) } as never, // ReceivableProductContributionService
+    lastAudit.audit, // story 199
   );
 }
 

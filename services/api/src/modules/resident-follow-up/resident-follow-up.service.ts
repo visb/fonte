@@ -1,7 +1,17 @@
 ﻿import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
-import { FollowUpAccessLevel, FollowUpType, Role, ResidentStatus } from '@fonte/types';
+import {
+  AuditAction,
+  AuditTargetType,
+  FollowUpAccessLevel,
+  FollowUpType,
+  Role,
+  ResidentStatus,
+} from '@fonte/types';
+import { AuditService, loadById } from '../audit/audit.service';
+import { AuditSnapshot, diffSnapshots } from '../audit/audit-diff';
+import { FOLLOW_UP_AUDIT_FIELDS, RESIDENT_AUDIT_FIELDS } from '../audit/audit-fields';
 import { ResidentFollowUp } from './resident-follow-up.entity';
 import { Staff } from '../staff/staff.entity';
 import { Resident } from '../resident/resident.entity';
@@ -39,6 +49,8 @@ export class ResidentFollowUpService {
     @InjectRepository(Resident)
     private residentRepo: Repository<Resident>,
     private storageService: StorageService,
+    // Story 199 — último de propósito: os anteriores são contrato dos specs.
+    private audit: AuditService,
   ) {}
 
   async findByResident(residentId: string, role: string): Promise<ResidentFollowUpView[]> {
@@ -121,14 +133,35 @@ export class ResidentFollowUpService {
       accessLevel,
       createdById: staff?.id ?? null,
     });
-    const saved = await this.repo.save(entry);
+    // Story 199: lançamento de contribuição pelo acompanhamento entra na trilha.
+    const saved =
+      dto.type === FollowUpType.MONTHLY_CONTRIBUTION
+        ? await this.audit.track<ResidentFollowUp>({
+            action: AuditAction.RESIDENT_CONTRIBUTION_CREATE,
+            targetType: AuditTargetType.RESIDENT_FOLLOW_UP,
+            fields: FOLLOW_UP_AUDIT_FIELDS,
+            load: loadById(ResidentFollowUp),
+            resolveId: (f) => f.id,
+            scope: () => ({ parentType: AuditTargetType.RESIDENT, parentId: residentId }),
+            write: (m) => m.getRepository(ResidentFollowUp).save(entry),
+          })
+        : await this.repo.save(entry);
 
     // Status-changing events: update resident directly (bypass ResidentService to avoid loop)
     const newStatus = STATUS_BY_TYPE[dto.type];
     if (newStatus) {
-      await this.residentRepo.update(residentId, {
-        status: newStatus,
-        exitDate: dto.date as unknown as Date,
+      await this.audit.track({
+        action: AuditAction.RESIDENT_STATUS_UPDATE,
+        targetType: AuditTargetType.RESIDENT,
+        targetId: residentId,
+        fields: RESIDENT_AUDIT_FIELDS,
+        load: loadById(Resident),
+        lockTable: 'residents',
+        write: (m) =>
+          m.getRepository(Resident).update(residentId, {
+            status: newStatus,
+            exitDate: dto.date as unknown as Date,
+          }),
       });
     }
 
@@ -172,19 +205,39 @@ export class ResidentFollowUpService {
     );
 
     const toCreate = dto.months.filter((m) => !existingKeys.has(m.date.slice(0, 7)));
+    const residentRepo = manager ? manager.getRepository(Resident) : this.residentRepo;
+    const houseId = toCreate.length
+      ? (await residentRepo.findOne({ where: { id: residentId } }))?.houseId
+      : null;
 
     if (toCreate.length > 0) {
-      const entries = toCreate.map((m) =>
-        repo.create({
-          residentId,
-          date: m.date as unknown as Date,
-          type: FollowUpType.MONTHLY_CONTRIBUTION,
-          description: null,
-          accessLevel: FollowUpAccessLevel.ALL,
-          createdById: staff?.id ?? null,
-        }),
-      );
-      await repo.save(entries);
+      // Story 199: um evento por lançamento criado, na mesma transação; a
+      // correlação (requisição) agrupa o lote. Sem snapshot do lote inteiro.
+      await this.audit.inTransaction(async (tx) => {
+        const txRepo = tx.getRepository(ResidentFollowUp);
+        const entries = toCreate.map((m) =>
+          txRepo.create({
+            residentId,
+            date: m.date as unknown as Date,
+            type: FollowUpType.MONTHLY_CONTRIBUTION,
+            description: null,
+            accessLevel: FollowUpAccessLevel.ALL,
+            createdById: staff?.id ?? null,
+          }),
+        );
+        const saved = await txRepo.save(entries);
+        for (const entry of saved ?? entries) {
+          await this.audit.recordChange(tx, {
+            action: AuditAction.RESIDENT_CONTRIBUTION_BULK,
+            targetType: AuditTargetType.RESIDENT_FOLLOW_UP,
+            targetId: entry.id ?? null,
+            parentType: AuditTargetType.RESIDENT,
+            parentId: residentId,
+            houseId: houseId ?? null,
+            changes: diffSnapshots(FOLLOW_UP_AUDIT_FIELDS, null, entry as unknown as AuditSnapshot),
+          });
+        }
+      }, manager);
     }
 
     return { created: toCreate.length, skipped: dto.months.length - toCreate.length };
@@ -219,7 +272,15 @@ export class ResidentFollowUpService {
 
     const filename = this.storageService.uniqueFilename(file.originalname, 'comprovante_');
     const url = await this.storageService.upload('attachments', filename, file.buffer, file.mimetype);
-    await this.repo.update(followUpId, { attachmentUrl: url });
+    await this.audit.track({
+      action: AuditAction.RESIDENT_FOLLOW_UP_ATTACHMENT,
+      targetType: AuditTargetType.RESIDENT_FOLLOW_UP,
+      targetId: followUpId,
+      fields: FOLLOW_UP_AUDIT_FIELDS,
+      load: loadById(ResidentFollowUp),
+      scope: () => ({ parentType: AuditTargetType.RESIDENT, parentId: residentId }),
+      write: (m) => m.getRepository(ResidentFollowUp).update(followUpId, { attachmentUrl: url }),
+    });
 
     const updated = await this.repo.findOne({ where: { id: followUpId }, relations: ['createdBy'] });
     return this.toView(updated!);

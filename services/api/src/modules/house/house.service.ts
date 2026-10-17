@@ -4,8 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PRESENT_RESIDENT_STATUSES, Role, ServantRank } from '@fonte/types';
+import { EntityManager, Repository } from 'typeorm';
+import { AuditAction, AuditTargetType, PRESENT_RESIDENT_STATUSES, Role, ServantRank } from '@fonte/types';
+import { AuditService, loadById } from '../audit/audit.service';
+import type { AuditFieldMap } from '../audit/audit-diff';
+import {
+  HOUSE_AUDIT_FIELDS,
+  HOUSE_PHOTO_AUDIT_FIELDS,
+  HOUSE_RULE_AUDIT_FIELDS,
+} from '../audit/audit-fields';
 import { House } from './house.entity';
 import { HousePhoto } from './house-photo.entity';
 import { HouseRule } from './house-rule.entity';
@@ -57,6 +64,8 @@ export class HouseService {
     @InjectRepository(HouseRule)
     private houseRuleRepo: Repository<HouseRule>,
     private storageService: StorageService,
+    // Story 199 — último de propósito: os anteriores são contrato dos specs.
+    private audit: AuditService,
   ) {}
 
   /**
@@ -170,8 +179,10 @@ export class HouseService {
     if (dto.coordinatorId) throw new BadRequestException(TITULAR_ON_CREATE_MESSAGE);
     // Clear before saving: partial unique index rejects two mother houses at once.
     if (dto.isMotherHouse) await this.clearOtherMotherHouses();
-    const house = this.houseRepository.create(dto);
-    return this.houseRepository.save(house);
+    return this.trackHouse(undefined, AuditAction.HOUSE_CREATE, (m) => {
+      const repo = m.getRepository(House);
+      return repo.save(repo.create(dto));
+    });
   }
 
   async update(id: string, dto: UpdateHouseDto): Promise<House> {
@@ -181,8 +192,49 @@ export class HouseService {
     if (dto.coordinatorId != null) await this.assertEligibleTitular(dto.coordinatorId, id);
     // Clear before updating: partial unique index rejects two mother houses at once.
     if (dto.isMotherHouse) await this.clearOtherMotherHouses(id);
-    await this.houseRepository.update(id, dto);
+    await this.trackHouse(id, AuditAction.HOUSE_UPDATE, (m) => m.getRepository(House).update(id, dto));
     return this.findOne(id);
+  }
+
+  /** Story 199 — escrita na casa com antes/depois na mesma transação. */
+  private trackHouse<R>(
+    id: string | undefined,
+    action: string,
+    write: (manager: EntityManager) => Promise<R>,
+  ): Promise<R> {
+    return this.audit.track<R>({
+      action,
+      targetType: AuditTargetType.HOUSE,
+      targetId: id,
+      fields: HOUSE_AUDIT_FIELDS,
+      load: loadById(House),
+      lockTable: id ? 'houses' : undefined,
+      resolveId: (result) => (result as unknown as House).id,
+      scope: ({ before, after }) => ({ houseId: ((after ?? before)?.id as string | undefined) ?? id ?? null }),
+      write,
+    });
+  }
+
+  /** Story 199 — foto/regra da casa: recurso filho com a casa como principal. */
+  private trackHouseChild<R>(
+    houseId: string,
+    targetId: string | undefined,
+    action: string,
+    targetType: string,
+    entity: typeof HousePhoto | typeof HouseRule,
+    fields: AuditFieldMap,
+    write: (manager: EntityManager) => Promise<R>,
+  ): Promise<R> {
+    return this.audit.track<R>({
+      action,
+      targetType,
+      targetId,
+      fields,
+      load: loadById(entity),
+      resolveId: (result) => (result as unknown as { id: string }).id,
+      scope: () => ({ houseId, parentType: AuditTargetType.HOUSE, parentId: houseId }),
+      write,
+    });
   }
 
   /**
@@ -220,7 +272,7 @@ export class HouseService {
   async remove(id: string): Promise<void> {
     const count = await this.houseRepository.count({ where: { id } });
     if (!count) throw new NotFoundException(`House ${id} not found`);
-    await this.houseRepository.softDelete(id);
+    await this.trackHouse(id, AuditAction.HOUSE_DELETE, (m) => m.getRepository(House).softDelete(id));
   }
 
   async addPhoto(houseId: string, file: Express.Multer.File): Promise<HousePhoto> {
@@ -228,13 +280,18 @@ export class HouseService {
     if (!count) throw new NotFoundException(`House ${houseId} not found`);
     const filename = this.storageService.uniqueFilename(file.originalname);
     const url = await this.storageService.upload('houses', filename, file.buffer, file.mimetype);
-    const photo = this.photoRepository.create({
+    return this.trackHouseChild(
       houseId,
-      filename: file.originalname,
-      path: url,
-      url,
-    });
-    return this.photoRepository.save(photo);
+      undefined,
+      AuditAction.HOUSE_PHOTO_ADD,
+      AuditTargetType.HOUSE_PHOTO,
+      HousePhoto,
+      HOUSE_PHOTO_AUDIT_FIELDS,
+      (m) => {
+        const repo = m.getRepository(HousePhoto);
+        return repo.save(repo.create({ houseId, filename: file.originalname, path: url, url }));
+      },
+    );
   }
 
   async removePhoto(houseId: string, photoId: string): Promise<void> {
@@ -243,7 +300,15 @@ export class HouseService {
     });
     if (!photo) throw new NotFoundException(`Photo ${photoId} not found`);
     await this.storageService.delete(photo.url);
-    await this.photoRepository.delete(photoId);
+    await this.trackHouseChild(
+      houseId,
+      photoId,
+      AuditAction.HOUSE_PHOTO_REMOVE,
+      AuditTargetType.HOUSE_PHOTO,
+      HousePhoto,
+      HOUSE_PHOTO_AUDIT_FIELDS,
+      (m) => m.getRepository(HousePhoto).delete(photoId),
+    );
   }
 
   // ─── Residents ──────────────────────────────────────────────────────────────
@@ -313,13 +378,32 @@ export class HouseService {
 
   async createRule(houseId: string, dto: CreateHouseRuleDto): Promise<HouseRule> {
     await this.assertHouseExists(houseId);
-    return this.houseRuleRepo.save(this.houseRuleRepo.create({ houseId, ...dto }));
+    return this.trackHouseChild(
+      houseId,
+      undefined,
+      AuditAction.HOUSE_RULE_CREATE,
+      AuditTargetType.HOUSE_RULE,
+      HouseRule,
+      HOUSE_RULE_AUDIT_FIELDS,
+      (m) => {
+        const repo = m.getRepository(HouseRule);
+        return repo.save(repo.create({ houseId, ...dto }));
+      },
+    );
   }
 
   async removeRule(houseId: string, ruleId: string): Promise<void> {
     const rule = await this.houseRuleRepo.findOne({ where: { id: ruleId, houseId } });
     if (!rule) throw new NotFoundException(`Rule ${ruleId} not found`);
-    await this.houseRuleRepo.softDelete(ruleId);
+    await this.trackHouseChild(
+      houseId,
+      ruleId,
+      AuditAction.HOUSE_RULE_DELETE,
+      AuditTargetType.HOUSE_RULE,
+      HouseRule,
+      HOUSE_RULE_AUDIT_FIELDS,
+      (m) => m.getRepository(HouseRule).softDelete(ruleId),
+    );
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────

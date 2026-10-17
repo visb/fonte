@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import {
   Activity,
+  ScrollText,
   BookOpen,
   Building2,
   CalendarDays,
@@ -347,6 +348,12 @@ export function AppLayout() {
             <Link to="/observabilidade" onClick={closeSidebar} className={navLinkClass}>
               <Activity size={16} />
               Observabilidade
+            </Link>
+          )}
+          {isAdmin && (
+            <Link to="/auditoria" onClick={closeSidebar} className={navLinkClass}>
+              <ScrollText size={16} />
+              Auditoria
             </Link>
           )}
         </nav>

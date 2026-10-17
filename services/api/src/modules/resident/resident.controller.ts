@@ -25,7 +25,7 @@ import { ResidentReceivableSummary, Role } from '@fonte/types';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RevealSensitive } from '../../common/decorators/reveal-sensitive.decorator';
-import { Audit } from '../../common/decorators/audit.decorator';
+import { Audit, AuditRequestLike } from '../../common/decorators/audit.decorator';
 import { Idempotent } from '../../common/decorators/idempotent.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -112,6 +112,22 @@ const spreadsheetOptions = {
     cb(null, true);
   },
 };
+
+/**
+ * Story 199 — metadados permitidos da geração de documento: ids dos templates,
+ * formato e quantidade. Nunca o conteúdo gerado.
+ */
+export function documentContext(format: 'pdf' | 'html') {
+  return (req: AuditRequestLike): Record<string, unknown> => {
+    const fromBody = req.body?.templateIds;
+    const templateIds = Array.isArray(fromBody)
+      ? fromBody.filter((id): id is string => typeof id === 'string')
+      : req.params?.templateId
+        ? [req.params.templateId]
+        : [];
+    return { templateIds, format, count: templateIds.length };
+  };
+}
 
 /**
  * Faz o parse do campo `rows` (JSON string de `SpreadsheetImportRow[]`) que vem
@@ -298,7 +314,8 @@ export class ResidentController {
   @Patch(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR)
   @RevealSensitive()
-  @Audit('resident.update', 'resident')
+  // Story 199: o evento `resident.update` (com antes/depois) é gravado pelo
+  // service, na transação da alteração — sem `@Audit` aqui para não duplicar.
   @Idempotent()
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -314,7 +331,6 @@ export class ResidentController {
   @Patch(':id/identity')
   @Roles(Role.ADMIN)
   @RevealSensitive()
-  @Audit('resident.identity.update', 'resident')
   updateIdentity(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateResidentIdentityDto,
@@ -325,7 +341,6 @@ export class ResidentController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Roles(Role.ADMIN)
-  @Audit('resident.delete', 'resident')
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.residentService.remove(id);
   }
@@ -472,7 +487,11 @@ export class ResidentController {
   @Get(':id/receivables/:receivableId/receipt')
   @Roles(Role.ADMIN, Role.COORDINATOR)
   // O alvo auditado é a PARCELA (o sujeito do recibo), não o filho da URL.
-  @Audit('resident.receivable.receipt', 'resident-receivable', 'receivableId')
+  @Audit('resident.receivable.receipt', 'resident-receivable', 'receivableId', {
+    parentType: 'resident',
+    parentParam: 'id',
+    context: () => ({ format: 'pdf', count: 1 }),
+  })
   async downloadReceivableReceipt(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('receivableId', ParseUUIDPipe) receivableId: string,
@@ -575,6 +594,7 @@ export class ResidentController {
 
   @Get(':id/documents/:templateId/render')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  @Audit('resident.document.render', 'resident', 'id', { context: documentContext('html') })
   async renderDocument(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('templateId', ParseUUIDPipe) templateId: string,
@@ -589,7 +609,7 @@ export class ResidentController {
 
   @Get(':id/documents/:templateId/pdf')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
-  @Audit('resident.document.pdf', 'resident')
+  @Audit('resident.document.pdf', 'resident', 'id', { context: documentContext('pdf') })
   async downloadPdf(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('templateId', ParseUUIDPipe) templateId: string,
@@ -610,7 +630,7 @@ export class ResidentController {
   // POST que não cria recurso: o PDF é artefato descartável de impressão.
   @HttpCode(HttpStatus.OK)
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
-  @Audit('resident.document.combined-pdf', 'resident')
+  @Audit('resident.document.combined-pdf', 'resident', 'id', { context: documentContext('pdf') })
   async downloadCombinedPdf(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: GenerateCombinedPdfDto,

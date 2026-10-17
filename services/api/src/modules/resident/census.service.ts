@@ -6,7 +6,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotificationType, ResidentStatus, Role } from '@fonte/types';
+import { AuditAction, AuditTargetType, NotificationType, ResidentStatus, Role } from '@fonte/types';
+import { AuditService, loadById } from '../audit/audit.service';
+import { RESIDENT_AUDIT_FIELDS } from '../audit/audit-fields';
 import { Resident } from './resident.entity';
 import { ResidentService } from './resident.service';
 import { CreateResidentDto } from './dto/create-resident.dto';
@@ -28,6 +30,8 @@ export class CensusService {
     private readonly staffRepo: Repository<Staff>,
     private readonly residentService: ResidentService,
     private readonly notifications: NotificationService,
+    // Story 199 — último de propósito: os anteriores são contrato dos specs.
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -38,10 +42,11 @@ export class CensusService {
     dto: CreateResidentDto,
     requesterUserId: string,
   ): Promise<Resident> {
-    const resident = await this.residentService.create({
-      ...dto,
-      status: ResidentStatus.CENSUS_ADDED,
-    });
+    const resident = await this.residentService.create(
+      { ...dto, status: ResidentStatus.CENSUS_ADDED },
+      undefined,
+      { auditAction: AuditAction.CENSUS_RESIDENT_ADD },
+    );
 
     const [staff, house] = await Promise.all([
       this.staffRepo.findOne({ where: { userId: requesterUserId } }),
@@ -110,6 +115,16 @@ export class CensusService {
       }),
     );
 
+    // Story 199 — conclusão não altera linha de negócio: evento sem diff, com os
+    // números informados pela contagem (sem dado pessoal).
+    await this.audit.recordEvent({
+      action: AuditAction.CENSUS_CONCLUDE,
+      targetType: AuditTargetType.HOUSE,
+      targetId: dto.houseId,
+      houseId: dto.houseId,
+      context: { confirmedCount: dto.confirmedCount, total: dto.total, addedCount },
+    });
+
     return { addedCount };
   }
 
@@ -143,9 +158,12 @@ export class CensusService {
     });
     for (const resident of pending) {
       // Reusa a transição padrão p/ ACTIVE (admission, recálculo, notificação).
-      await this.residentService.update(resident.id, {
-        status: ResidentStatus.ACTIVE,
-      });
+      // Um evento por filho aprovado; a correlação (requisição) agrupa o lote.
+      await this.residentService.update(
+        resident.id,
+        { status: ResidentStatus.ACTIVE },
+        { auditAction: AuditAction.CENSUS_APPROVE },
+      );
     }
     return { approved: pending.length };
   }
@@ -157,8 +175,15 @@ export class CensusService {
     if (resident.status !== ResidentStatus.CENSUS_ADDED) {
       throw new ConflictException('Filho não está aguardando revisão da contagem');
     }
-    await this.residentRepo.update(residentId, {
-      status: ResidentStatus.REJECTED_CENSUS,
+    await this.audit.track({
+      action: AuditAction.CENSUS_REJECT,
+      targetType: AuditTargetType.RESIDENT,
+      targetId: residentId,
+      fields: RESIDENT_AUDIT_FIELDS,
+      load: loadById(Resident),
+      lockTable: 'residents',
+      write: (m) =>
+        m.getRepository(Resident).update(residentId, { status: ResidentStatus.REJECTED_CENSUS }),
     });
     return this.residentRepo.findOne({ where: { id: residentId } }) as Promise<Resident>;
   }

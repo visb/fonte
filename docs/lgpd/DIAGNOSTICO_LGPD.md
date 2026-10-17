@@ -80,13 +80,32 @@ Categorias: **P** = dado pessoal; **S** = dado pessoal sensível (art. 11).
 - **Mitigações:** chave por `userId` (outro usuário no mesmo navegador não vê o rascunho de quem preencheu); sem arquivos; sem envio a servidor (o rascunho nunca sai do navegador); leitura/escrita em `try/catch` (storage bloqueado só desliga o rascunho).
 - **Gaps remanescentes:** (1) **sem criptografia** no `localStorage` — quem tem acesso ao perfil do navegador (DevTools) lê o rascunho até ele expirar ou ser apagado; (2) **sessão expirada não apaga** o rascunho (só o logout explícito), para que o usuário retome após novo login — fica limitado pelos 7 dias.
 
+### 2.4 Trilha de auditoria de ações (`audit_logs`)
+
+> Origem: story 199 (amplia o registro de leituras/LGPD que já existia). Código em `services/api/src/modules/audit/`; tela ADMIN `/auditoria` no `adm.fonte`.
+
+- **Dado:** um evento por ação do catálogo (`AuditAction` em `@fonte/types`): autor (`user_id`, `role`), IP, método e rota **sem query string**, alvo (`target_type`/`target_id`), recurso principal (`parent_type`/`parent_id`, ex.: o filho da parcela), casa no momento da ação e casa anterior (`house_id`/`previous_house_id`), correlação da requisição, resultado/motivo e, para alterações, os campos alterados com **antes/depois** (`changed_fields`, `changes` JSONB). Eventos sem diff (login, documentos, conclusão da contagem) guardam só metadados permitidos em `context`.
+- **Titular:** usuários do sistema (autor) e o titular do recurso alterado (filho, servo, familiar).
+- **Categoria:** dado pessoal (**P**). Dado **sensível não é gravado em texto**: a projeção de antes/depois usa **lista explícita de campos por domínio** (`audit-fields.ts`) e aplica, ANTES de persistir:
+  - `redacted` (só registra QUE mudou, antes/depois `null`): saúde, medicação contínua, dependência, religião, peso, altura, endereço, observações da parcela e descrição de acompanhamento;
+  - `masked`: CPF, RG, telefone/WhatsApp e e-mail (só os últimos caracteres; e-mail mantém 1ª letra e domínio). O campo continua sinalizado como alterado mesmo quando as máscaras coincidem;
+  - `file`: foto, assinatura, anexos e comprovantes viram o marcador `[arquivo]` — **nunca** URL (canônica ou assinada), bytes ou nome do arquivo.
+  - Campo fora da lista nunca entra (senha, hash, token, cookie, `Authorization`, corpo HTTP, query string).
+- **Login:** uma ocorrência por tentativa finalizada (sucesso e falhas: credencial inválida, usuário inativo, identificador inexistente/ambíguo, entrada inválida, bloqueio por tentativas, erro interno). Falha **não** atribui identidade: autor nulo e o identificador digitado gravado **mascarado** (e-mail `a***@dominio`; telefone só 4 últimos dígitos). A resposta externa não muda.
+- **Exclusões** registram só o vínculo (status/casa/datas do filho; casa/perfil do servo) — sem cópia da ficha. Nomes exibidos na tela são resolvidos pelo banco no momento da consulta (sem snapshot permanente de nome).
+- **Anonimização (art. 18):** `anonymizeResident` zera, na mesma transação, os valores de antes/depois de todos os eventos cujo alvo ou recurso principal é o titular (fica só a lista de campos alterados). É a única escrita posterior permitida sobre `audit_logs`; nenhuma rota edita ou apaga eventos.
+- **Finalidade / base legal:** segurança e rastreabilidade de quem alterou o quê (art. 37 e 46) — **legítimo interesse e segurança** (§5, "Controle de acesso ao sistema").
+- **Acesso:** consulta (`GET /audit`, `GET /audit/events/:id`) exclusiva de **ADMIN**.
+- **Garantias e limites:** alterações de banco do catálogo gravam o evento **na mesma transação** (falha da auditoria desfaz a alteração). Login, geração de documentos e conclusão da contagem gravam de forma aguardada, mas **sem fila durável**: indisponibilidade exclusiva da auditoria gera aviso sanitizado no log operacional e o evento pode se perder — não há garantia absoluta para esses eventos. Upload/PDF/storage não são transacionais.
+- **Retenção:** **sem prazo definido** — os eventos ficam indefinidamente, como os registros de leitura já existentes. Prazo legal de retenção é decisão jurídica pendente (não inventado aqui); ver `ROADMAP_LGPD.md`.
+
 ## 3. Mapa de gaps
 
 | Gap | Risco | Artigo LGPD | Arquivo(s) | Pilar |
 |---|---|---|---|---|
 | Sem registro de consentimento | Alto | art. 8, 11 | (inexistente) | Consentimento |
 | Sem política de privacidade / termo versionado | Alto | art. 9 | (inexistente) | Consentimento |
-| Sem audit log de acesso/alteração a dado sensível | Alto | art. 37, 46 | (inexistente) | Segurança |
+| Sem audit log de acesso/alteração a dado sensível | Alto → **Mitigado** (registro de leituras pré-existente + story 199: leituras + alterações com antes/depois mascarado, login; ver §2.4) — resta prazo de retenção da trilha | art. 37, 46 | `services/api/src/modules/audit/` | Segurança |
 | Sem direitos do titular (export/exclusão/anonimização/retificação) | Alto | art. 18, 19, 20 | (inexistente) | Direitos |
 | Sem rate-limit no login (força bruta) | Alto | art. 46 | `auth.controller.ts`, `main.ts` | Segurança |
 | CPF/RG em texto puro em respostas de lista | Médio/Alto | art. 6 (minimização) | `resident.entity.ts`, `staff.entity.ts` | Segurança |

@@ -5368,8 +5368,82 @@
                 "{{residentId}}"
               ]
             },
-            "description": "Trilha de auditoria de um recurso (LGPD art. 37). Somente ADMIN. targetType: resident|staff."
+            "description": "Trilha de auditoria de um recurso (LGPD art. 37). Somente ADMIN. targetType: resident|staff. Contrato legado preservado na story 199 (a resposta agora tambem traz os campos novos do evento)."
           }
+        },
+        {
+          "name": "List audit events (story 199)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/audit?from=2026-10-01T03:00:00.000Z&to=2026-10-18T03:00:00.000Z&houseId={{houseId}}&action=resident.update&targetType=resident&targetId={{residentId}}&outcome=SUCCESS&userId={{userId}}&limit=50&cursor={{auditCursor}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit"
+              ],
+              "query": [
+                { "key": "from", "value": "2026-10-01T03:00:00.000Z", "description": "Inicio do periodo (ISO 8601). Default: 30 dias atras." },
+                { "key": "to", "value": "2026-10-18T03:00:00.000Z", "description": "Fim do periodo (ISO 8601, exclusivo). Default: agora. from > to -> 400." },
+                { "key": "userId", "value": "{{userId}}", "description": "Autor (UUID).", "disabled": true },
+                { "key": "houseId", "value": "{{houseId}}", "description": "Casa no momento da acao; acha os dois lados de uma transferencia." },
+                { "key": "action", "value": "resident.update", "description": "Acao do catalogo (AuditAction em @fonte/types), ex.: auth.login, staff.update, census.reject." },
+                { "key": "targetType", "value": "resident", "description": "resident | staff | house | ministry | resident-receivable | product-contribution | ...", "disabled": true },
+                { "key": "targetId", "value": "{{residentId}}", "description": "Recurso como alvo OU como recurso principal (ex.: o filho dono da parcela)." },
+                { "key": "outcome", "value": "SUCCESS", "description": "SUCCESS | FAILURE (falhas existem so para login).", "disabled": true },
+                { "key": "limit", "value": "50", "description": "Default 50, maximo 100." },
+                { "key": "cursor", "value": "{{auditCursor}}", "description": "nextCursor da pagina anterior (opaco).", "disabled": true }
+              ]
+            },
+            "description": "Story 199 - eventos de auditoria, mais recentes primeiro (created_at DESC, id DESC), paginados por cursor. Somente ADMIN (demais roles 403, anonimo 401). Filtro desconhecido, periodo/cursor invalido ou limit fora de 1..100 -> 400. Resposta: { items: AuditEventSummary[], nextCursor: string | null }. Nomes de autor/recurso/casa resolvidos pelo banco (null quando ausente -> exibir o id). hasDetail=false = evento legado (antes da 199). Nenhuma rota edita ou apaga eventos."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"items\": [\n    {\n      \"id\": \"6f1c3b8e-1d2a-4b9c-9e8f-0a1b2c3d4e5f\",\n      \"createdAt\": \"2026-10-17T12:00:00.000Z\",\n      \"action\": \"resident.update\",\n      \"outcome\": \"SUCCESS\",\n      \"reason\": null,\n      \"userId\": \"0b1c...\",\n      \"userName\": \"Administrador\",\n      \"role\": \"ADMIN\",\n      \"targetType\": \"resident\",\n      \"targetId\": \"9a8b...\",\n      \"targetName\": \"Joao da Silva\",\n      \"houseId\": \"h2...\",\n      \"houseName\": \"Casa B\",\n      \"previousHouseId\": \"h1...\",\n      \"previousHouseName\": \"Casa A\",\n      \"parentType\": null,\n      \"parentId\": null,\n      \"parentName\": null,\n      \"changedFields\": [\"houseId\"],\n      \"hasDetail\": true\n    }\n  ],\n  \"nextCursor\": \"MjAyNi0xMC0xN1QxMjowMDowMC4wMDAwMDB8NmYxYy4uLg\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get audit event detail (story 199)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/audit/events/{{auditEventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit",
+                "events",
+                "{{auditEventId}}"
+              ]
+            },
+            "description": "Story 199 - detalhe de um evento: diferencas { field, before, after, redacted } e contexto (login: identificador mascarado e status; documentos: templateIds, format, count). Dado sensivel chega mascarado (redacted: true) ou como null; arquivos como \"[arquivo]\" (nunca URL). Somente ADMIN. 404 quando ausente; id nao-UUID -> 400. Declarada antes da rota legada :targetType/:targetId."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"6f1c3b8e-1d2a-4b9c-9e8f-0a1b2c3d4e5f\",\n  \"createdAt\": \"2026-10-17T12:00:00.000Z\",\n  \"action\": \"resident.update\",\n  \"outcome\": \"SUCCESS\",\n  \"reason\": null,\n  \"userId\": \"0b1c...\",\n  \"userName\": \"Administrador\",\n  \"role\": \"ADMIN\",\n  \"targetType\": \"resident\",\n  \"targetId\": \"9a8b...\",\n  \"targetName\": \"Joao da Silva\",\n  \"houseId\": \"h2...\",\n  \"houseName\": \"Casa B\",\n  \"previousHouseId\": \"h1...\",\n  \"previousHouseName\": \"Casa A\",\n  \"parentType\": null,\n  \"parentId\": null,\n  \"parentName\": null,\n  \"changedFields\": [\"houseId\", \"cpf\"],\n  \"hasDetail\": true,\n  \"changes\": [\n    { \"field\": \"houseId\", \"before\": \"h1...\", \"after\": \"h2...\", \"redacted\": false },\n    { \"field\": \"cpf\", \"before\": \"***00\", \"after\": \"***11\", \"redacted\": true }\n  ],\n  \"context\": null,\n  \"httpMethod\": \"PATCH\",\n  \"path\": \"/api/v1/residents/9a8b...\",\n  \"ipAddress\": \"10.0.0.1\",\n  \"correlationId\": \"2f9e...\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Evento de auditoria 6f1c... nao encontrado\",\n  \"error\": \"Not Found\"\n}"
+            }
+          ]
         }
       ]
     },

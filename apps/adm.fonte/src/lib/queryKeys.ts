@@ -119,6 +119,13 @@ export const queryKeys = {
   observability: {
     stats: ['observability', 'stats'] as const,
   },
+  // Story 199 — trilha de auditoria (ADMIN). Filtros entram na chave: trocar
+  // filtro é outra consulta e reinicia a paginação.
+  audit: {
+    all: ['audit'] as const,
+    events: (filters: Record<string, unknown>) => ['audit', 'events', filters] as const,
+    event: (id: string) => ['audit', 'event', id] as const,
+  },
   associates: {
     all: ['associates'] as const,
     detail: (id: string) => ['associates', id] as const,

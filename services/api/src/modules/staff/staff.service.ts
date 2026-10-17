@@ -6,7 +6,14 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Role, ServantRank, StaffPermissionType } from '@fonte/types';
+import { AuditAction, AuditTargetType, Role, ServantRank, StaffPermissionType } from '@fonte/types';
+import { AuditService, loadById, TrackOptions } from '../audit/audit.service';
+import type { AuditSnapshot } from '../audit/audit-diff';
+import {
+  STAFF_AUDIT_FIELDS,
+  STAFF_DELETE_AUDIT_FIELDS,
+  STAFF_PERMISSION_AUDIT_FIELDS,
+} from '../audit/audit-fields';
 import { Staff } from './staff.entity';
 import { StaffPermission } from './staff-permission.entity';
 import { House } from '../house/house.entity';
@@ -16,6 +23,24 @@ import { UpdateStaffDto } from './dto/update-staff.dto';
 import { UpdateStaffMeDto } from './dto/update-staff-me.dto';
 import { StorageService } from '../storage/storage.service';
 import { assertAdultBirthDate } from '../../common/lib/birth-date';
+
+/**
+ * Estado auditável do servo (story 199): a ficha + perfil/e-mail/ativo do User
+ * ligado. Senha e hash nunca entram (a lista de campos não os contém).
+ */
+export async function loadStaffSnapshot(manager: EntityManager, id: string): Promise<AuditSnapshot | null> {
+  const staff = await manager.getRepository(Staff).findOne({ where: { id } });
+  if (!staff) return null;
+  const user = await manager
+    .getRepository(User)
+    .findOne({ where: { id: staff.userId }, withDeleted: true });
+  return {
+    ...(staff as unknown as AuditSnapshot),
+    email: user?.email ?? null,
+    role: user?.role ?? null,
+    isActive: user?.isActive ?? null,
+  };
+}
 
 @Injectable()
 export class StaffService {
@@ -27,6 +52,8 @@ export class StaffService {
     @InjectRepository(StaffPermission)
     private permissionRepository: Repository<StaffPermission>,
     private storageService: StorageService,
+    // Story 199 — último de propósito: os anteriores são contrato dos specs.
+    private audit: AuditService,
   ) {}
 
   // O whatsapp é o identificador de login do servo (story 97): persistir só os
@@ -79,24 +106,46 @@ export class StaffService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const user = this.userRepository.create({
-      email,
-      passwordHash,
-      role: dto.role,
-      mustChangePassword: true,
-    });
-    const savedUser = await this.userRepository.save(user);
-
     const { email: _email, password: _password, role, ...fields } = dto;
-    const staff = this.staffRepository.create({
-      ...fields,
-      whatsapp: this.normalizeWhatsapp(dto.whatsapp),
-      houseId: dto.houseId ?? null,
-      supportGroupId: dto.supportGroupId ?? null,
-      rank: dto.role === Role.SERVANT ? (dto.rank ?? null) : null,
-      userId: savedUser.id,
+
+    // Story 199: User + Staff + evento na mesma transação.
+    return this.trackStaff(undefined, AuditAction.STAFF_CREATE, async (m) => {
+      const userRepo = m.getRepository(User);
+      const staffRepo = m.getRepository(Staff);
+      const savedUser = await userRepo.save(
+        userRepo.create({ email, passwordHash, role: dto.role, mustChangePassword: true }),
+      );
+      return staffRepo.save(
+        staffRepo.create({
+          ...fields,
+          whatsapp: this.normalizeWhatsapp(dto.whatsapp),
+          houseId: dto.houseId ?? null,
+          supportGroupId: dto.supportGroupId ?? null,
+          rank: dto.role === Role.SERVANT ? (dto.rank ?? null) : null,
+          userId: savedUser.id,
+        }),
+      );
     });
-    return this.staffRepository.save(staff);
+  }
+
+  /** Story 199 — escrita no servo (ficha + User ligado) com antes/depois. */
+  private trackStaff<R>(
+    id: string | undefined,
+    action: string,
+    write: (manager: EntityManager) => Promise<R>,
+    extra: Partial<TrackOptions<R>> = {},
+  ): Promise<R> {
+    return this.audit.track<R>({
+      action,
+      targetType: AuditTargetType.STAFF,
+      targetId: id,
+      fields: STAFF_AUDIT_FIELDS,
+      load: loadStaffSnapshot,
+      lockTable: id ? 'staff' : undefined,
+      resolveId: (result) => (result as unknown as Staff).id,
+      write,
+      ...extra,
+    });
   }
 
   existsForFormerResident(residentId: string): Promise<boolean> {
@@ -190,20 +239,13 @@ export class StaffService {
     const leavesCoordinatorRole = role !== undefined && role !== Role.COORDINATOR;
     const dropsTitular = leavesHouse || leavesCoordinatorRole;
 
-    const applyWrites = async (manager?: EntityManager) => {
+    // Uma transação só (story 199): ficha, User, limpeza do titular e evento.
+    await this.trackStaff(id, AuditAction.STAFF_UPDATE, async (manager) => {
       const repos = this.writers(manager);
       if (Object.keys(staffFields).length) await repos.staff.update(id, staffFields);
       if (Object.keys(userUpdates).length) await repos.user.update(staff.userId, userUpdates);
-    };
-
-    if (dropsTitular) {
-      await this.staffRepository.manager.transaction(async (manager) => {
-        await applyWrites(manager);
-        await this.clearTitular(id, manager);
-      });
-    } else {
-      await applyWrites();
-    }
+      if (dropsTitular) await this.clearTitular(id, manager);
+    });
 
     return this.findOne(id);
   }
@@ -215,7 +257,9 @@ export class StaffService {
     }
     const filename = this.storageService.uniqueFilename(file.originalname);
     const url = await this.storageService.upload('staff', filename, file.buffer, file.mimetype);
-    await this.staffRepository.update(id, { photoUrl: url });
+    await this.trackStaff(id, AuditAction.STAFF_PHOTO_UPDATE, (m) =>
+      m.getRepository(Staff).update(id, { photoUrl: url }),
+    );
     return this.findOne(id);
   }
 
@@ -226,15 +270,18 @@ export class StaffService {
       staffFields.whatsapp = this.normalizeWhatsapp(staffFields.whatsapp);
     }
 
-    if (Object.keys(staffFields).length) {
-      await this.staffRepository.update(staff.id, staffFields);
-    }
-
+    // Conflito de e-mail é checado ANTES de gravar: recusa não deixa meia edição.
     if (email !== undefined) {
       const existing = await this.userRepository.findOne({ where: { email } });
       if (existing && existing.id !== staff.userId) throw new ConflictException('E-mail já cadastrado');
-      await this.userRepository.update(staff.userId, { email });
     }
+
+    await this.trackStaff(staff.id, AuditAction.STAFF_SELF_UPDATE, async (m) => {
+      if (Object.keys(staffFields).length) {
+        await m.getRepository(Staff).update(staff.id, staffFields);
+      }
+      if (email !== undefined) await m.getRepository(User).update(staff.userId, { email });
+    });
 
     return this.findByUserId(userId);
   }
@@ -254,7 +301,9 @@ export class StaffService {
     }
     const filename = this.storageService.uniqueFilename(file.originalname);
     const url = await this.storageService.upload('signatures', filename, file.buffer, file.mimetype);
-    await this.staffRepository.update(id, { signatureUrl: url });
+    await this.trackStaff(id, AuditAction.STAFF_SIGNATURE_UPDATE, (m) =>
+      m.getRepository(Staff).update(id, { signatureUrl: url }),
+    );
     return this.findOne(id);
   }
 
@@ -270,7 +319,9 @@ export class StaffService {
     const staff = await this.findOne(id);
     if (staff.signatureUrl) {
       await this.storageService.delete(staff.signatureUrl);
-      await this.staffRepository.update(id, { signatureUrl: null });
+      await this.trackStaff(id, AuditAction.STAFF_SIGNATURE_REMOVE, (m) =>
+        m.getRepository(Staff).update(id, { signatureUrl: null }),
+      );
     }
     return this.findOne(id);
   }
@@ -284,13 +335,18 @@ export class StaffService {
     const staff = await this.findOne(id);
     // Story 194, decisão 6: o desligamento tira o staff da lista de
     // coordenadores; a casa não pode continuar exibindo-o como titular.
-    await this.staffRepository.manager.transaction(async (manager) => {
-      const repos = this.writers(manager);
-      await repos.user.update(staff.userId, { isActive: false });
-      await repos.user.softDelete(staff.userId);
-      await repos.staff.softDelete(id);
-      await this.clearTitular(id, manager);
-    });
+    await this.trackStaff(
+      id,
+      AuditAction.STAFF_DELETE,
+      async (manager) => {
+        const repos = this.writers(manager);
+        await repos.user.update(staff.userId, { isActive: false });
+        await repos.user.softDelete(staff.userId);
+        await repos.staff.softDelete(id);
+        await this.clearTitular(id, manager);
+      },
+      { fields: STAFF_DELETE_AUDIT_FIELDS },
+    );
   }
 
   // ─── Permissions ─────────────────────────────────────────────────────────────
@@ -304,13 +360,36 @@ export class StaffService {
     await this.findOne(staffId);
     const existing = await this.permissionRepository.findOne({ where: { staffId, permissionType: type } });
     if (existing) throw new ConflictException('Permissão já concedida');
-    return this.permissionRepository.save(this.permissionRepository.create({ staffId, permissionType: type }));
+    return this.trackPermission(undefined, AuditAction.STAFF_PERMISSION_GRANT, staffId, (m) => {
+      const repo = m.getRepository(StaffPermission);
+      return repo.save(repo.create({ staffId, permissionType: type }));
+    });
   }
 
   async removePermission(staffId: string, type: StaffPermissionType): Promise<void> {
     const perm = await this.permissionRepository.findOne({ where: { staffId, permissionType: type } });
     if (!perm) throw new NotFoundException('Permissão não encontrada');
-    await this.permissionRepository.delete(perm.id);
+    await this.trackPermission(perm.id, AuditAction.STAFF_PERMISSION_REVOKE, staffId, (m) =>
+      m.getRepository(StaffPermission).delete(perm.id),
+    );
+  }
+
+  private trackPermission<R>(
+    id: string | undefined,
+    action: string,
+    staffId: string,
+    write: (manager: EntityManager) => Promise<R>,
+  ): Promise<R> {
+    return this.audit.track<R>({
+      action,
+      targetType: AuditTargetType.STAFF_PERMISSION,
+      targetId: id,
+      fields: STAFF_PERMISSION_AUDIT_FIELDS,
+      load: loadById(StaffPermission),
+      resolveId: (result) => (result as unknown as StaffPermission).id,
+      scope: () => ({ parentType: AuditTargetType.STAFF, parentId: staffId }),
+      write,
+    });
   }
 
   async hasPermission(staffId: string, type: StaffPermissionType): Promise<boolean> {

@@ -7,6 +7,7 @@ import { ResidentDocument } from './resident-document.entity';
 import { ResidentAttachment } from './resident-attachment.entity';
 import { Admission } from './admission.entity';
 import { User } from '../user/user.entity';
+import { createAuditHarness, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
 jest.mock('bcrypt', () => ({ hash: jest.fn().mockResolvedValue('hashed') }));
 
@@ -80,6 +81,15 @@ function build(over: Partial<Record<keyof Mocks, Record<string, jest.Mock>>> = {
     },
   };
 
+  // Story 199 — AuditService real; escritas passam pelos mesmos mocks.
+  const harness = createAuditHarness(
+    repoMap([
+      [Resident, mocks.resident],
+      [ResidentDocument, mocks.doc],
+      [ResidentAttachment, mocks.attachment],
+      [User, mocks.user],
+    ]),
+  );
   const service = new ResidentService(
     mocks.resident as unknown as Repository<Resident>,
     mocks.doc as unknown as Repository<ResidentDocument>,
@@ -92,8 +102,9 @@ function build(over: Partial<Record<keyof Mocks, Record<string, jest.Mock>>> = {
     mocks.staff as never,
     { query: jest.fn().mockResolvedValue([]) } as never,
     { create: jest.fn() } as never,
+    harness.audit,
   );
-  return { service, mocks };
+  return { service, mocks, harness };
 }
 
 const file = { buffer: Buffer.from('x'), originalname: 'a.jpg', mimetype: 'image/jpeg' } as Express.Multer.File;

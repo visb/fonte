@@ -1,4 +1,6 @@
 jest.mock('@fonte/types', () => ({
+  // Story 199: o catálogo de auditoria (AuditAction…) vem do módulo real.
+  ...jest.requireActual('@fonte/types'),
   Role: { ADMIN: 'ADMIN', COORDINATOR: 'COORDINATOR', SERVANT: 'SERVANT' },
   ResidentStatus: { ACTIVE: 'ACTIVE', DISCHARGED: 'DISCHARGED', EVADED: 'EVADED' },
   FollowUpType: {
@@ -18,6 +20,7 @@ import { ResidentFollowUp } from './resident-follow-up.entity';
 import { Staff } from '../staff/staff.entity';
 import { Resident } from '../resident/resident.entity';
 import { StorageService } from '../storage/storage.service';
+import { createAuditHarness, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
 function makeQb(rows: unknown[]) {
   const qb: Record<string, jest.Mock> = {
@@ -54,13 +57,23 @@ function makeService(
   residentRepo = makeRepo(),
   storage: Partial<StorageService> = {},
 ) {
+  lastAudit = createAuditHarness(
+    repoMap([
+      [ResidentFollowUp, repo],
+      [Staff, staffRepo],
+      [Resident, residentRepo],
+    ]),
+  );
   return new ResidentFollowUpService(
     repo as unknown as Repository<ResidentFollowUp>,
     staffRepo as unknown as Repository<Staff>,
     residentRepo as unknown as Repository<Resident>,
     storage as StorageService,
+    lastAudit.audit, // story 199
   );
 }
+
+let lastAudit: ReturnType<typeof createAuditHarness>;
 
 describe('ResidentFollowUpService.findByResident', () => {
   it('restricts SERVANT to ALL-level entries', async () => {

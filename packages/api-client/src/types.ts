@@ -1,4 +1,7 @@
 import type {
+  AuditChange,
+  AuditOutcome,
+  LoginFailureReason,
   ResidentStatus,
   ImportAdmission,
   Gender,
@@ -388,6 +391,8 @@ export interface Staff {
   education: string | null;
   religion: string | null;
   user: { email: string | null; role: Role };
+  /** Conta de acesso do servo (coluna `user_id`; já vinha na resposta — story 199 tipou). */
+  userId?: string;
 }
 
 /**
@@ -1275,6 +1280,63 @@ export interface AuditLog {
   path: string | null;
   ipAddress: string | null;
   createdAt: string;
+}
+
+// ─── Auditoria de ações (story 199) ──────────────────────────────────────────
+
+/** Filtros de `GET /audit`. Datas em ISO 8601; período padrão: últimos 30 dias. */
+export interface AuditEventFilters {
+  from?: string;
+  to?: string;
+  userId?: string;
+  houseId?: string;
+  action?: string;
+  targetType?: string;
+  /** Casa como alvo OU recurso principal (ex.: filho da parcela). */
+  targetId?: string;
+  outcome?: AuditOutcome;
+  cursor?: string;
+  /** Default 50, máximo 100. */
+  limit?: number;
+}
+
+export interface AuditEventSummary {
+  id: string;
+  createdAt: string;
+  action: string;
+  /** `null` em eventos legados (antes da story 199). */
+  outcome: AuditOutcome | null;
+  reason: LoginFailureReason | null;
+  userId: string | null;
+  userName: string | null;
+  role: string | null;
+  targetType: string | null;
+  targetId: string | null;
+  targetName: string | null;
+  houseId: string | null;
+  houseName: string | null;
+  previousHouseId: string | null;
+  previousHouseName: string | null;
+  parentType: string | null;
+  parentId: string | null;
+  parentName: string | null;
+  changedFields: string[] | null;
+  /** `false` = evento legado: sem diff nem contexto ("detalhe indisponível"). */
+  hasDetail: boolean;
+}
+
+export interface AuditEventDetail extends AuditEventSummary {
+  changes: AuditChange[] | null;
+  context: Record<string, unknown> | null;
+  httpMethod: string | null;
+  path: string | null;
+  ipAddress: string | null;
+  correlationId: string | null;
+}
+
+export interface AuditEventPage {
+  items: AuditEventSummary[];
+  nextCursor: string | null;
 }
 
 // ─── App Settings ─────────────────────────────────────────────────────────────

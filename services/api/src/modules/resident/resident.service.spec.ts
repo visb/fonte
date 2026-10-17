@@ -92,6 +92,7 @@ import { Admission } from './admission.entity';
 import { User } from '../user/user.entity';
 import { ListResidentsDto } from './dto/list-residents.dto';
 import { ReadmitResidentDto } from './dto/readmit-resident.dto';
+import { createAuditHarness, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
 // ─── Query builder factory ────────────────────────────────────────────────────
 
@@ -243,6 +244,13 @@ function makeService(
     create: jest.fn().mockResolvedValue(undefined),
   },
 ) {
+  lastAudit = createAuditHarness(
+    repoMap([
+      [Resident, residentRepo],
+      [Admission, admissionRepo],
+      [User, userRepo],
+    ]),
+  );
   return new ResidentService(
     residentRepo as Repository<Resident>,
     {} as Repository<ResidentDocument>,
@@ -255,8 +263,12 @@ function makeService(
     staffService as never, // StaffService
     { query: jest.fn().mockResolvedValue([]) } as never, // DataSource
     notifications as never, // NotificationService
+    lastAudit.audit, // AuditService real sobre manager fake (story 199)
   );
 }
+
+// Story 199 — harness da auditoria do último service criado por makeService.
+let lastAudit: ReturnType<typeof createAuditHarness>;
 
 // ═════════════════════════════════════════════════════════════════════════════
 // findAll
@@ -585,16 +597,26 @@ describe('ResidentService.create', () => {
       { create: notificationsCreate },
     );
 
+    const insert = jest.fn().mockResolvedValue(undefined);
     const manager = {
       getRepository: jest.fn().mockReturnValue({
         create: jest.fn().mockReturnValue(saved),
         save: jest.fn().mockResolvedValue(saved),
+        findOne: jest.fn().mockResolvedValue(saved),
+        insert, // audit_logs (story 199)
       }),
+      query: jest.fn().mockResolvedValue([]),
     } as never;
 
-    await service.create({ name: 'Ana', houseId: HOUSE_ID, status: 'ACTIVE' } as never, manager);
+    await service.create({ name: 'Ana', houseId: HOUSE_ID, status: 'ACTIVE' } as never, manager, {
+      auditAction: 'resident.import',
+    });
 
     expect(notificationsCreate).not.toHaveBeenCalled();
+    // Story 199: a criação do import entra NA transação externa, com ação própria.
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'resident.import', targetId: RESIDENT_ID, houseId: HOUSE_ID }),
+    );
   });
 });
 
@@ -822,9 +844,6 @@ describe('ResidentService — vínculo com ministério (story 205)', () => {
         if (sql.includes("leader_type = 'RESIDENT' AND leader_id")) return led.map((id) => ({ id }));
         return [];
       }),
-      transaction: jest.fn(async (fn: (m: unknown) => Promise<void>) =>
-        fn({ getRepository: () => ({ update: txResidentUpdate }), query: txQuery }),
-      ),
     };
     const followUpService = {
       createAuto: jest.fn().mockResolvedValue(undefined),
@@ -847,6 +866,15 @@ describe('ResidentService — vínculo com ministério (story 205)', () => {
       create: jest.fn().mockImplementation((v) => ({ id: RESIDENT_ID, ...v })),
       save: jest.fn().mockImplementation((v) => Promise.resolve(v)),
     };
+    // Story 199: a escrita da ficha roda SEMPRE na transação da auditoria (com o
+    // evento); `txResidentUpdate`/`txQuery` são o repositório/consulta dela.
+    const harness = createAuditHarness(
+      repoMap([
+        [Resident, { ...residentRepo, update: txResidentUpdate }],
+        [Admission, admissionRepo],
+      ]),
+      txQuery,
+    );
     const service = new ResidentService(
       residentRepo as never,
       {} as never,
@@ -859,9 +887,25 @@ describe('ResidentService — vínculo com ministério (story 205)', () => {
       {} as never,
       dataSource as never,
       { create: jest.fn().mockResolvedValue(undefined) } as never,
+      harness.audit,
     );
     const emitted = () => followUpService.createAuto.mock.calls.map(([, type]) => type);
-    return { service, residentUpdate, txResidentUpdate, txQuery, dataSource, admissionUpdate, emitted, residentRepo };
+    const auditTx = harness.dataSource.transaction;
+    // `residentUpdate` (repositório injetado) não é mais usado pelo update: os
+    // asserts de gravação olham o repositório da transação.
+    void residentUpdate;
+    return {
+      service,
+      residentUpdate: txResidentUpdate,
+      txResidentUpdate,
+      txQuery,
+      dataSource,
+      auditTx,
+      admissionUpdate,
+      emitted,
+      residentRepo,
+      harness,
+    };
   }
 
   // ── guard (decisão 6) na ficha ────────────────────────────────────────────
@@ -932,21 +976,20 @@ describe('ResidentService — vínculo com ministério (story 205)', () => {
     const s = setup({ resident: { ministryId: MINISTRY_ID } as Partial<Resident>, led: ['led-1'] });
     await s.service.update(RESIDENT_ID, { status });
 
-    expect(s.dataSource.transaction).toHaveBeenCalledTimes(1);
+    expect(s.auditTx).toHaveBeenCalledTimes(1);
     expect(s.txResidentUpdate).toHaveBeenCalledWith(RESIDENT_ID, { status, ministryId: null });
     expect(s.txQuery).toHaveBeenCalledWith(
       'UPDATE ministries SET leader_id = NULL, leader_type = NULL WHERE id = ANY($1::uuid[])',
       [['led-1']],
     );
-    expect(s.residentUpdate).not.toHaveBeenCalled();
     expect(s.admissionUpdate).toHaveBeenCalledWith('admission-uuid', { status, ministryId: null });
     expect(s.emitted()).toEqual(expect.arrayContaining([FollowUpType.MINISTRY_CHANGE, exitEvent]));
   });
 
-  it('alta de membro que não lidera nada: zera ministry_id sem transação', async () => {
+  it('alta de membro que não lidera nada: zera ministry_id sem tocar liderança', async () => {
     const s = setup({ resident: { ministryId: MINISTRY_ID } as Partial<Resident> });
     await s.service.update(RESIDENT_ID, { status: ResidentStatus.DISCHARGED });
-    expect(s.dataSource.transaction).not.toHaveBeenCalled();
+    expect(s.txQuery).not.toHaveBeenCalledWith(expect.stringContaining('UPDATE ministries'), expect.anything());
     expect(s.residentUpdate).toHaveBeenCalledWith(RESIDENT_ID, {
       status: ResidentStatus.DISCHARGED,
       ministryId: null,
@@ -987,8 +1030,9 @@ describe('ResidentService — vínculo com ministério (story 205)', () => {
       BadRequestException,
     );
     expect(s.dataSource.query).not.toHaveBeenCalled();
-    expect(s.dataSource.transaction).not.toHaveBeenCalled();
+    expect(s.auditTx).not.toHaveBeenCalled();
     expect(s.residentUpdate).not.toHaveBeenCalled();
+    expect(s.harness.inserted).toHaveLength(0);
     expect(s.emitted()).toEqual([]);
   });
 
@@ -1648,7 +1692,8 @@ describe('ResidentService.promoteToServant', () => {
       { createAuto, getLastContributionDates: jest.fn().mockResolvedValue(new Map()) },
     );
 
-    return { service, residentUpdate, userUpdate, userSave, staffService, createAuto };
+    const residentRepo = { findOne: residentFindOne };
+    return { service, residentUpdate, userUpdate, userSave, staffService, createAuto, residentRepo };
   }
 
   it('reuses existing User (RESIDENT→SERVANT) when resident already has access', async () => {
@@ -1717,11 +1762,33 @@ describe('ResidentService.promoteToServant', () => {
     await service.promoteToServant(RESIDENT_ID, {});
 
     expect(residentUpdate).toHaveBeenCalledWith(RESIDENT_ID, expect.objectContaining({ ministryId: null }));
-    const dataSource = (service as unknown as { dataSource: { query: jest.Mock } }).dataSource;
-    expect(dataSource.query).toHaveBeenCalledWith(
+    // Story 199: a limpeza da liderança roda na transação da auditoria.
+    expect(lastAudit.query).toHaveBeenCalledWith(
       expect.stringContaining("WHERE leader_type = 'RESIDENT' AND leader_id = $1"),
       [RESIDENT_ID],
     );
+  });
+
+  it('registra resident.promote com o servo criado no contexto (story 199)', async () => {
+    const { service, residentRepo } = makePromoteService({ userId: USER_ID });
+    const before = makeResident({ userId: USER_ID });
+    (residentRepo.findOne as jest.Mock)
+      .mockResolvedValueOnce(before) // findOne do service
+      .mockResolvedValueOnce(before) // antes (auditoria)
+      .mockResolvedValueOnce({ ...before, status: 'DISCHARGED', exitDate: '2026-01-15' }); // depois
+
+    await service.promoteToServant(RESIDENT_ID, { date: '2026-01-15' });
+
+    expect(lastAudit.inserted).toEqual([
+      expect.objectContaining({
+        action: 'resident.promote',
+        targetType: 'resident',
+        targetId: RESIDENT_ID,
+        houseId: HOUSE_ID,
+        context: { staffId: 'staff-1' },
+        changedFields: ['status', 'exitDate'],
+      }),
+    ]);
   });
 
   it('uses the provided date for exit, timeline and staff promotedAt', async () => {
@@ -2084,6 +2151,7 @@ describe('ResidentService.getContributionsReport', () => {
       {} as never,
       { query } as never,
       { create: jest.fn().mockResolvedValue(undefined) } as never,
+      createAuditHarness().audit,
     );
     return { service, query };
   }
@@ -2179,6 +2247,7 @@ describe('ResidentService.findAdmissionDocuments', () => {
       {} as never,                                                            // staffService
       {} as never,                                                            // dataSource
       {} as never,                                                            // notifications
+      createAuditHarness().audit,                                             // audit (story 199)
     );
 
     const result = await service.findAdmissionDocuments(RESIDENT_ID, [

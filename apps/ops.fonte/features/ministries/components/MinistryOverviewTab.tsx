@@ -5,6 +5,7 @@ import type { MinistryDetail } from '@fonte/api-client';
 import { useAddStaff, useRemoveStaff } from '../hooks/useMinistries';
 import { useHouseStaff } from '@/features/staff/hooks/useHouseStaff';
 import { OfflineNotice } from '@/components/shared/OfflineNotice';
+import { ServantRankBadge } from '@/components/shared/ServantRankBadge';
 import { useIsOnline } from '@/lib/offline/network';
 import { normalizeForSearch } from '@/lib/searchUtils';
 import { MinistryResidentsSection } from './MinistryResidentsSection';
@@ -51,7 +52,11 @@ export function MinistryOverviewTab({ ministryId, houseId, ministry, onEditLeade
       <SectionLabel>Líder</SectionLabel>
       <View className="flex-row items-center py-3 border-b border-gray-100">
         <Ionicons name="person-circle-outline" size={36} color="#6b7280" />
-        <Text className="flex-1 text-sm text-gray-900 ml-3">{ministry.leaderName ?? '—'}</Text>
+        <View className="flex-1 flex-row items-center flex-wrap gap-2 ml-3">
+          <Text className="text-sm text-gray-900">{ministry.leaderName ?? '—'}</Text>
+          {/* Story 207: nível só de líder servo. */}
+          <ServantRankBadge rank={ministry.leaderType === 'STAFF' ? ministry.leaderRank : null} />
+        </View>
         <TouchableOpacity onPress={onEditLeader} disabled={!isOnline} accessibilityLabel="Editar líder">
           <Text className={`text-sm font-medium ${isOnline ? 'text-blue-600' : 'text-gray-300'}`}>Editar</Text>
         </TouchableOpacity>

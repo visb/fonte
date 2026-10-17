@@ -3,6 +3,8 @@ appId: org.fonte.ops
 - runFlow: helpers/login-operator.yaml
 - assertVisible: "Bem-vindo,"
 - assertVisible: "Operador Teste"
+# Story 207: badge de nível do servo logado (seed: Operador Teste = CONSAGRADO).
+- assertVisible: "Consagrado"
 - assertVisible: "Casa Teste"
 - assertVisible: "Filhos na casa"
 - assertVisible: "Ocorrências hoje"

@@ -2,6 +2,7 @@ import { TouchableOpacity, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import type { HouseMinistry } from '@fonte/api-client';
+import { ServantRankBadge } from '@/components/shared/ServantRankBadge';
 
 interface Props {
   ministry: HouseMinistry;
@@ -16,9 +17,13 @@ export function MinistryCard({ ministry }: Props) {
       activeOpacity={0.7}
     >
       <Text className="text-base font-semibold text-gray-900">{ministry.name}</Text>
-      <Text className="text-sm text-gray-500 mt-1">
-        {ministry.leaderName ? `Líder: ${ministry.leaderName}` : 'Sem líder definido'}
-      </Text>
+      <View className="flex-row items-center flex-wrap gap-2 mt-1">
+        <Text className="text-sm text-gray-500">
+          {ministry.leaderName ? `Líder: ${ministry.leaderName}` : 'Sem líder definido'}
+        </Text>
+        {/* Story 207: nível só de líder servo; filho/sem líder → null. */}
+        <ServantRankBadge rank={ministry.leaderType === 'STAFF' ? ministry.leaderRank : null} />
+      </View>
       {/* Story 205 (decisão 10): servos e filhos contados separados. */}
       <View className="flex-row gap-4 mt-2">
         <View className="flex-row items-center gap-1">

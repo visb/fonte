@@ -96,4 +96,13 @@ describe('WelcomeHeader', () => {
     render(<WelcomeHeader name="Servo X" />);
     expect(screen.getByText('icon:person')).toBeTruthy();
   });
+
+  // Story 207: nível do servo logado.
+  it('servo com nível mostra o badge; sem nível, não', () => {
+    render(<WelcomeHeader name="Servo X" rank={'ALIANCADO' as never} />);
+    expect(screen.getByText('Aliançado')).toBeTruthy();
+    screen.unmount();
+    render(<WelcomeHeader name="Coord" rank={null} />);
+    expect(screen.queryByTestId(/^servant-rank-/)).toBeNull();
+  });
 });

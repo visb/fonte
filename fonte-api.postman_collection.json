@@ -845,7 +845,7 @@
           "name": "Get House Staff",
           "request": {
             "method": "GET",
-            "description": "Resumo dos servos da casa (ADMIN | COORDINATOR | SERVANT). Não devolve a entidade Staff inteira — só as colunas do resumo, por minimização de dado pessoal. Story 181: passa a incluir `photoUrl` (foto do servo; `staff` não tem thumb). Story 204: inclui `role` (do User ligado: COORDINATOR | SERVANT | ADMIN) e `ledMinistries` (ministérios não excluídos com leader_type STAFF liderados pelo servo, ordenados por nome; `[]` quando não lidera nenhum) — usados pela lista de servos do ops. Ordem: nome. RELATIVE/RESIDENT → 403; casa inexistente → 404. Resposta 200: [ { \"id\": \"uuid\", \"name\": \"Coordenador Teste\", \"whatsapp\": \"11977773000\", \"photoUrl\": \"/uploads/staff/foto.jpg\", \"role\": \"COORDINATOR\", \"ledMinistries\": [ { \"id\": \"uuid\", \"name\": \"Cozinha\" } ] }, { \"id\": \"uuid\", \"name\": \"Operador Teste\", \"whatsapp\": \"11977771000\", \"photoUrl\": null, \"role\": \"SERVANT\", \"ledMinistries\": [] } ]",
+            "description": "Resumo dos servos da casa (ADMIN | COORDINATOR | SERVANT). Não devolve a entidade Staff inteira — só as colunas do resumo, por minimização de dado pessoal. Story 181: passa a incluir `photoUrl` (foto do servo; `staff` não tem thumb). Story 204: inclui `role` (do User ligado: COORDINATOR | SERVANT | ADMIN) e `ledMinistries` (ministérios não excluídos com leader_type STAFF liderados pelo servo, ordenados por nome; `[]` quando não lidera nenhum) — usados pela lista de servos do ops. Story 207: inclui `rank` (nível do servo: ASPIRANTE | CONSAGRADO | ALIANCADO; `null` para coordenador/admin ou servo sem nível) — badge de nível no ops. Ordem: nome. RELATIVE/RESIDENT → 403; casa inexistente → 404. Resposta 200: [ { \"id\": \"uuid\", \"name\": \"Coordenador Teste\", \"whatsapp\": \"11977773000\", \"photoUrl\": \"/uploads/staff/foto.jpg\", \"role\": \"COORDINATOR\", \"rank\": null, \"ledMinistries\": [ { \"id\": \"uuid\", \"name\": \"Cozinha\" } ] }, { \"id\": \"uuid\", \"name\": \"Operador Teste\", \"whatsapp\": \"11977771000\", \"photoUrl\": null, \"role\": \"SERVANT\", \"rank\": \"CONSAGRADO\", \"ledMinistries\": [] } ]",
             "url": {
               "raw": "{{baseUrl}}/houses/{{houseId}}/staff",
               "host": [
@@ -863,7 +863,7 @@
           "name": "Get House Ministries",
           "request": {
             "method": "GET",
-            "description": "Ministérios da casa com líder (servo ou filho: `leaderType`, `leaderName`) e contagens separadas `servoCount` e `filhoCount` (story 205). `filhoCount` conta só filhos em acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE) na casa do ministério.",
+            "description": "Ministérios da casa com líder (servo ou filho: `leaderType`, `leaderName`) e contagens separadas `servoCount` e `filhoCount` (story 205). `filhoCount` conta só filhos em acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE) na casa do ministério. Story 207: `leaderRank` = nível do líder servo (ASPIRANTE | CONSAGRADO | ALIANCADO); `null` quando o líder é filho (RESIDENT), quando não há líder ou quando o servo não tem nível. Item: { \"id\": \"uuid\", \"name\": \"Cozinha\", \"leaderId\": \"uuid\", \"leaderType\": \"STAFF\", \"leaderName\": \"Operador Teste\", \"leaderRank\": \"CONSAGRADO\", \"filhoCount\": 3, \"servoCount\": 2 }",
             "url": {
               "raw": "{{baseUrl}}/houses/{{houseId}}/ministries",
               "host": [
@@ -2386,7 +2386,7 @@
           "name": "Get Ministry by ID",
           "request": {
             "method": "GET",
-            "description": "Detalhe do ministério: líder (`leaderType` \"STAFF\" ou \"RESIDENT\", com `leaderName`) e `members` com role FILHO ou SERVO. Story 205: só aparecem como FILHO os filhos em acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE) na casa do ministério.",
+            "description": "Detalhe do ministério: líder (`leaderType` \"STAFF\" ou \"RESIDENT\", com `leaderName`) e `members` com role FILHO ou SERVO. Story 205: só aparecem como FILHO os filhos em acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE) na casa do ministério. Story 207: `leaderRank` = nível do líder servo (ASPIRANTE | CONSAGRADO | ALIANCADO); `null` para líder filho, sem líder ou servo sem nível. Resposta 200: { \"id\": \"uuid\", \"name\": \"Cozinha\", \"houseId\": \"uuid\", \"leaderId\": \"uuid\", \"leaderType\": \"STAFF\", \"leaderName\": \"Operador Teste\", \"leaderRank\": \"CONSAGRADO\", \"members\": [ { \"id\": \"uuid\", \"name\": \"Filho\", \"role\": \"FILHO\" } ] }",
             "url": {
               "raw": "{{baseUrl}}/ministries/{{ministryId}}",
               "host": [

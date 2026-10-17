@@ -72,6 +72,47 @@ describe('MinistryService.findOne', () => {
     expect(String(sql)).toContain('house_id = $2');
     expect(params).toEqual(['m1', 'h1', ['ACTIVE', 'DISCIPLINE', 'TEMP_LEAVE']]);
   });
+
+  // Story 207: leaderRank só para líder servo.
+  it('devolve leaderRank do líder servo', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          id: 'm1', name: 'Cozinha', house_id: 'h1', leader_id: 's1', leader_type: 'STAFF',
+          leader_name: 'Servo', leader_rank: 'ALIANCADO',
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    const service = makeService(makeRepo({}, query));
+
+    const result = await service.findOne('m1');
+    expect(result.leaderRank).toBe('ALIANCADO');
+    const [sql] = query.mock.calls[0];
+    expect(String(sql)).toContain(
+      `CASE WHEN m.leader_type = 'STAFF' THEN s.rank ELSE NULL END AS leader_rank`,
+    );
+  });
+
+  it('leaderRank null para líder filho e para ministério sem líder', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce([
+        { id: 'm1', name: 'A', house_id: 'h1', leader_id: 'r1', leader_type: 'RESIDENT', leader_name: 'Filho', leader_rank: null },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { id: 'm2', name: 'B', house_id: 'h1', leader_id: null, leader_type: null, leader_name: null },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    const service = makeService(makeRepo({}, query));
+
+    expect((await service.findOne('m1')).leaderRank).toBeNull();
+    expect((await service.findOne('m2')).leaderRank).toBeNull();
+  });
 });
 
 describe('MinistryService.update', () => {
@@ -260,6 +301,24 @@ describe('MinistryService.findByHouse', () => {
     expect(String(sql)).toContain('res.house_id = m.house_id');
     expect(String(sql)).toContain("WHEN m.leader_type = 'RESIDENT' THEN r.name");
     expect(rows[0]).toMatchObject({ filhoCount: 3, servoCount: 2 });
+  });
+
+  // Story 207: nível do líder só quando o líder é servo.
+  it('devolve leaderRank do servo líder e null para líder filho ou sem líder', async () => {
+    const query = jest.fn().mockResolvedValue([
+      { id: 'm1', leaderType: 'STAFF', leaderRank: 'CONSAGRADO' },
+      { id: 'm2', leaderType: 'RESIDENT', leaderRank: null },
+      { id: 'm3', leaderType: null, leaderRank: null },
+    ]);
+    const service = makeService(makeRepo({}, query));
+
+    const rows = await service.findByHouse('h1');
+    const [sql] = query.mock.calls[0];
+    expect(String(sql)).toContain(
+      `CASE WHEN m.leader_type = 'STAFF' THEN s.rank ELSE NULL END AS "leaderRank"`,
+    );
+    expect(String(sql)).toContain('s.rank');
+    expect(rows.map((r) => r.leaderRank)).toEqual(['CONSAGRADO', null, null]);
   });
 });
 

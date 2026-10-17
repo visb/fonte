@@ -10,6 +10,7 @@ import {
   isMinistryEligibleResident,
   MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE,
   REMOVABLE_RESIDENT_STATUSES,
+  ServantRank,
 } from '@fonte/types';
 import { Ministry } from './ministry.entity';
 import { MinistryStaff } from './ministry-staff.entity';
@@ -42,6 +43,7 @@ export class MinistryService {
       leaderId: string | null;
       leaderType: string | null;
       leaderName: string | null;
+      leaderRank: ServantRank | null;
       filhoCount: number;
       servoCount: number;
     }>
@@ -56,6 +58,7 @@ export class MinistryService {
                 WHEN m.leader_type = 'RESIDENT' THEN r.name
                 ELSE NULL
               END AS "leaderName",
+              CASE WHEN m.leader_type = 'STAFF' THEN s.rank ELSE NULL END AS "leaderRank",
               COUNT(DISTINCT res.id)::int AS "filhoCount",
               COUNT(DISTINCT ms.staff_id)::int AS "servoCount"
        FROM ministries m
@@ -67,7 +70,7 @@ export class MinistryService {
                               AND res.deleted_at IS NULL
        LEFT JOIN ministry_staff ms ON ms.ministry_id = m.id
        WHERE m.house_id = $1 AND m.deleted_at IS NULL
-       GROUP BY m.id, m.name, m.leader_id, m.leader_type, s.name, r.name
+       GROUP BY m.id, m.name, m.leader_id, m.leader_type, s.name, s.rank, r.name
        ORDER BY m.name`,
       [houseId, [...REMOVABLE_RESIDENT_STATUSES]],
     );
@@ -86,15 +89,17 @@ export class MinistryService {
     leaderId: string | null;
     leaderType: string | null;
     leaderName: string | null;
+    leaderRank: ServantRank | null;
     members: Array<{ id: string; name: string; role: 'FILHO' | 'SERVO' }>;
   }> {
-    const [rows] = await this.repo.manager.query<[{ id: string; name: string; house_id: string; leader_id: string | null; leader_type: string | null; leader_name: string | null }]>(
+    const [rows] = await this.repo.manager.query<[{ id: string; name: string; house_id: string; leader_id: string | null; leader_type: string | null; leader_name: string | null; leader_rank: ServantRank | null }]>(
       `SELECT m.id, m.name, m.house_id, m.leader_id, m.leader_type,
               CASE
                 WHEN m.leader_type = 'STAFF'    THEN s.name
                 WHEN m.leader_type = 'RESIDENT' THEN r.name
                 ELSE NULL
-              END AS leader_name
+              END AS leader_name,
+              CASE WHEN m.leader_type = 'STAFF' THEN s.rank ELSE NULL END AS leader_rank
        FROM ministries m
        LEFT JOIN staff     s ON s.id = m.leader_id AND m.leader_type = 'STAFF'    AND s.deleted_at IS NULL
        LEFT JOIN residents r ON r.id = m.leader_id AND m.leader_type = 'RESIDENT' AND r.deleted_at IS NULL
@@ -126,6 +131,8 @@ export class MinistryService {
       leaderId: rows.leader_id,
       leaderType: rows.leader_type,
       leaderName: rows.leader_name,
+      // Story 207: nível do líder servo; líder RESIDENT ou sem líder → null.
+      leaderRank: rows.leader_rank ?? null,
       members: [
         ...filhos.map((f) => ({ id: f.id, name: f.name, role: 'FILHO' as const })),
         ...servos.map((s) => ({ id: s.id, name: s.name, role: 'SERVO' as const })),

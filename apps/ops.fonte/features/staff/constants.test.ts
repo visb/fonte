@@ -3,7 +3,7 @@ import type { HouseStaffMember } from '@fonte/api-client';
 import { sortHouseStaff, staffRoleLabel, whatsappUrl } from './constants';
 
 function m(id: string, name: string, role: Role): HouseStaffMember {
-  return { id, name, role, whatsapp: null, photoUrl: null, ledMinistries: [] };
+  return { id, name, role, rank: null, whatsapp: null, photoUrl: null, ledMinistries: [] };
 }
 
 describe('whatsappUrl', () => {

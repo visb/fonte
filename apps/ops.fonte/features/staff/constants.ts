@@ -1,5 +1,21 @@
-import { Role } from '@fonte/types';
+import { Role, ServantRank } from '@fonte/types';
 import type { HouseStaffMember } from '@fonte/api-client';
+
+/**
+ * Nível espiritual do servo (story 207). Rótulos iguais aos do `adm`; cores no
+ * mesmo padrão (Aspirante cinza, Consagrado azul, Aliançado verde).
+ */
+export const SERVANT_RANK_LABELS: Record<ServantRank, string> = {
+  [ServantRank.ASPIRANTE]: 'Aspirante',
+  [ServantRank.CONSAGRADO]: 'Consagrado',
+  [ServantRank.ALIANCADO]: 'Aliançado',
+};
+
+export const SERVANT_RANK_BADGE: Record<ServantRank, { color: string; bg: string }> = {
+  [ServantRank.ASPIRANTE]: { color: '#4b5563', bg: '#f3f4f6' },
+  [ServantRank.CONSAGRADO]: { color: '#1d4ed8', bg: '#eff6ff' },
+  [ServantRank.ALIANCADO]: { color: '#15803d', bg: '#f0fdf4' },
+};
 
 /** Rótulo do papel do servo na lista *Servos* (story 204). */
 export const STAFF_ROLE_LABELS: Partial<Record<Role, string>> = {

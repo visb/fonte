@@ -2,18 +2,22 @@ import { View, Text, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { resolveAssetUrl } from "@/lib/api";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
+import { ServantRankBadge } from "@/components/shared/ServantRankBadge";
+import type { ServantRank } from "@fonte/types";
 
 type Props = {
   name: string;
   houseName?: string;
   photoUrl?: string | null;
+  /** Story 207: nível do servo logado; nulo → sem badge. */
+  rank?: ServantRank | null;
 };
 
 /**
  * "Sair" saiu daqui na story 176: virou o último item da tab Menu, junto com o
  * aviso de que sair descarta a fila de envio.
  */
-export function WelcomeHeader({ name, houseName, photoUrl }: Props) {
+export function WelcomeHeader({ name, houseName, photoUrl, rank }: Props) {
   const photoUri = resolveAssetUrl(photoUrl);
 
   return (
@@ -30,6 +34,11 @@ export function WelcomeHeader({ name, houseName, photoUrl }: Props) {
           <View className="flex-1">
             <Text className="text-white text-sm">Bem-vindo,</Text>
             <Text className="text-xl font-bold text-white">{name}</Text>
+            {rank ? (
+              <View className="mt-1">
+                <ServantRankBadge rank={rank} />
+              </View>
+            ) : null}
             {houseName && (
               <Text className="text-sm text-white/70 mt-0.5">{houseName}</Text>
             )}

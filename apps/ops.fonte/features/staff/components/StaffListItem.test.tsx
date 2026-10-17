@@ -1,6 +1,6 @@
 import { Linking } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Role } from '@fonte/types';
+import { Role, ServantRank } from '@fonte/types';
 import type { HouseStaffMember } from '@fonte/api-client';
 
 jest.mock('@expo/vector-icons', () => {
@@ -20,6 +20,7 @@ function member(overrides: Partial<HouseStaffMember> = {}): HouseStaffMember {
     whatsapp: '(62) 99999-0000',
     photoUrl: null,
     role: Role.SERVANT,
+    rank: null,
     ledMinistries: [],
     ...overrides,
   };
@@ -82,6 +83,18 @@ describe('StaffListItem', () => {
     render(<StaffListItem item={member()} isSelf />);
     expect(screen.getByText(/\(você\)/)).toBeTruthy();
     expect(screen.queryByLabelText('WhatsApp de Ana Maria Souza')).toBeNull();
+  });
+
+  // Story 207: badge de nível ao lado do papel.
+  it('servo com nível mostra o badge do nível', () => {
+    render(<StaffListItem item={member({ rank: ServantRank.ALIANCADO })} isSelf={false} />);
+    expect(screen.getByText('Aliançado')).toBeTruthy();
+    expect(screen.getByTestId('servant-rank-ALIANCADO')).toBeTruthy();
+  });
+
+  it('coordenador (rank nulo) não mostra badge de nível', () => {
+    render(<StaffListItem item={member({ role: Role.COORDINATOR, rank: null })} isSelf={false} />);
+    expect(screen.queryByTestId(/^servant-rank-/)).toBeNull();
   });
 
   it('papel desconhecido cai no rótulo cru com badge neutro', () => {

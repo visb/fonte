@@ -45,7 +45,7 @@ export function DashboardPage() {
         <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
-      <WelcomeHeader name={staff?.name ?? "—"} houseName={staff?.house?.name} photoUrl={staff?.photoUrl} />
+      <WelcomeHeader name={staff?.name ?? "—"} houseName={staff?.house?.name} photoUrl={staff?.photoUrl} rank={staff?.rank} />
       <View className="px-4 py-4">
         {/* Fila de sincronização (story 170): só aparece quando há algo por subir. */}
         <SyncQueueBadge />

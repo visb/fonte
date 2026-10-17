@@ -155,13 +155,14 @@ describe('HouseController (e2e)', () => {
       expect(before.body.length).toBeGreaterThan(0);
       // O seed não sobe foto de servo: todos descem com `photoUrl` null — e só
       // com as colunas do resumo (minimização; a rota é lida por SERVANT). A
-      // story 204 somou `role` e `ledMinistries`.
+      // story 204 somou `role` e `ledMinistries`; a 207, `rank`.
       for (const s of before.body) {
         expect(Object.keys(s).sort()).toEqual([
           'id',
           'ledMinistries',
           'name',
           'photoUrl',
+          'rank',
           'role',
           'whatsapp',
         ]);

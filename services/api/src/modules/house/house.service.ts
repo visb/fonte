@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PRESENT_RESIDENT_STATUSES, Role } from '@fonte/types';
+import { PRESENT_RESIDENT_STATUSES, Role, ServantRank } from '@fonte/types';
 import { House } from './house.entity';
 import { HousePhoto } from './house-photo.entity';
 import { HouseRule } from './house-rule.entity';
@@ -34,6 +34,8 @@ export interface HouseStaffMember {
   whatsapp: string | null;
   photoUrl: string | null;
   role: Role;
+  /** Story 207: nível espiritual do servo; `null` para coordenador/admin ou servo sem nível. */
+  rank: ServantRank | null;
   ledMinistries: Array<{ id: string; name: string }>;
 }
 
@@ -273,17 +275,19 @@ export class HouseService {
    * Resumo dos servos da casa (story 181): as colunas mínimas para a aba Servos
    * do detalhe da casa e os dropdowns de ministério. Segue sendo `SELECT` cru e
    * enxuto de propósito — a rota é lida por SERVANT e devolver o registro
-   * completo (e-mail, rank, ex-filho) ampliaria a superfície de dado pessoal sem
+   * completo (e-mail, documentos, ex-filho) ampliaria a superfície de dado pessoal sem
    * necessidade (LGPD art. 6, minimização).
    *
    * Story 204: soma `role` (do `User` ligado) e `ledMinistries` (ministérios não
    * excluídos que o servo lidera) para a lista de servos do `ops`. Aditivo — os
    * consumidores antigos ignoram os campos novos.
+   *
+   * Story 207: soma `rank` (nível do servo) para o badge de nível no `ops`.
    */
   async findStaffForHouse(houseId: string): Promise<HouseStaffMember[]> {
     await this.assertHouseExists(houseId);
     return this.houseRepository.manager.query(
-      `SELECT s.id, s.name, s.whatsapp, s.photo_url AS "photoUrl", u.role,
+      `SELECT s.id, s.name, s.whatsapp, s.photo_url AS "photoUrl", u.role, s.rank,
               COALESCE(
                 json_agg(json_build_object('id', m.id, 'name', m.name) ORDER BY m.name)
                   FILTER (WHERE m.id IS NOT NULL),

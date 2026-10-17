@@ -88,6 +88,28 @@ describe('MinistryCard', () => {
     render(<MinistryCard ministry={{ id: 'min1', name: 'Horta', leaderName: null, servoCount: 0 } as never} />);
     expect(screen.getByText('0 filhos')).toBeTruthy();
   });
+
+  // Story 207: badge do nível do líder servo.
+  it('líder servo com nível mostra o badge', () => {
+    render(
+      <MinistryCard
+        ministry={{ id: 'min1', name: 'Cozinha', leaderName: 'Servo X', leaderType: 'STAFF', leaderRank: 'CONSAGRADO', servoCount: 1, filhoCount: 0 } as never}
+      />,
+    );
+    expect(screen.getByText('Consagrado')).toBeTruthy();
+  });
+
+  it('líder filho ou sem líder: sem badge de nível', () => {
+    render(
+      <MinistryCard
+        ministry={{ id: 'min1', name: 'Horta', leaderName: 'Filho', leaderType: 'RESIDENT', leaderRank: 'CONSAGRADO', servoCount: 0, filhoCount: 1 } as never}
+      />,
+    );
+    expect(screen.queryByTestId(/^servant-rank-/)).toBeNull();
+    screen.unmount();
+    render(<MinistryCard ministry={{ id: 'min2', name: 'X', leaderName: null, leaderType: null, leaderRank: null, servoCount: 0 } as never} />);
+    expect(screen.queryByTestId(/^servant-rank-/)).toBeNull();
+  });
 });
 
 describe('MinistryTaskRow', () => {
@@ -312,6 +334,19 @@ describe('LeaderPickerModal', () => {
     expect(m.houses.listStaff).not.toHaveBeenCalled();
   });
 
+  // Story 207: cada servo listado com o badge do nível; filho sem badge.
+  it('servos listados com o badge do nível; filhos e servo sem nível sem badge', async () => {
+    m.houses.listStaff.mockResolvedValue([
+      { id: 's1', name: 'Servo X', rank: 'ASPIRANTE' },
+      { id: 's2', name: 'Coord Y', rank: null },
+    ]);
+    rc(<LeaderPickerModal {...props} />);
+    await waitFor(() => expect(screen.getByText('Servo X')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Filho Ativo')).toBeTruthy());
+    expect(screen.getByText('Aspirante')).toBeTruthy();
+    expect(screen.getAllByTestId(/^servant-rank-/)).toHaveLength(1);
+  });
+
   it('"Sem líder" muta com null', async () => {
     m.houses.listStaff.mockResolvedValue([]);
     m.ministries.update.mockResolvedValue({});
@@ -414,6 +449,34 @@ describe('MinistryOverviewTab', () => {
 
     fireEvent.press(screen.getAllByText('icon:remove-circle-outline')[0]);
     await waitFor(() => expect(m.ministries.removeStaff).toHaveBeenCalledWith('min1', 's1'));
+  });
+
+  // Story 207: nível do líder servo ao lado do nome.
+  it('líder servo com nível mostra o badge', async () => {
+    m.houses.listStaff.mockResolvedValue([]);
+    rc(
+      <MinistryOverviewTab
+        ministryId="min1"
+        houseId="h1"
+        ministry={{ leaderName: 'Servo X', leaderType: 'STAFF', leaderRank: 'ALIANCADO', members: [] } as never}
+        onEditLeader={jest.fn()}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText('Aliançado')).toBeTruthy());
+  });
+
+  it('líder filho: sem badge de nível', async () => {
+    m.houses.listStaff.mockResolvedValue([]);
+    rc(
+      <MinistryOverviewTab
+        ministryId="min1"
+        houseId="h1"
+        ministry={{ leaderName: 'Filho', leaderType: 'RESIDENT', leaderRank: null, members: [] } as never}
+        onEditLeader={jest.fn()}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText('Filho')).toBeTruthy());
+    expect(screen.queryByTestId(/^servant-rank-/)).toBeNull();
   });
 
   it('ministério sem servo mostra vazio', async () => {

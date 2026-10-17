@@ -1,5 +1,7 @@
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { ServantRank } from '@fonte/types';
+import { ServantRankBadge } from '@/components/shared/ServantRankBadge';
 
 const THEME = '#272950';
 
@@ -7,11 +9,13 @@ interface Props {
   displayName?: string;
   photoUrl: string | null;
   subtitle?: string;
+  /** Story 207: nível do servo logado; nulo (ou modo Resident) → sem badge. */
+  rank?: ServantRank | null;
   isPhotoUploading: boolean;
   onPickPhoto: () => void;
 }
 
-export function ProfileHeader({ displayName, photoUrl, subtitle, isPhotoUploading, onPickPhoto }: Props) {
+export function ProfileHeader({ displayName, photoUrl, subtitle, rank, isPhotoUploading, onPickPhoto }: Props) {
   return (
     <View style={{ backgroundColor: THEME }} className="pt-4 pb-12 items-center">
       <Pressable onPress={onPickPhoto} className="relative">
@@ -38,6 +42,11 @@ export function ProfileHeader({ displayName, photoUrl, subtitle, isPhotoUploadin
         </View>
       </Pressable>
       <Text className="text-white text-xl font-bold mt-3">{displayName}</Text>
+      {rank ? (
+        <View className="mt-1">
+          <ServantRankBadge rank={rank} />
+        </View>
+      ) : null}
       {subtitle ? <Text className="text-white/70 text-sm">{subtitle}</Text> : null}
     </View>
   );

@@ -63,6 +63,7 @@ export function ProfilePage() {
           displayName={displayName}
           photoUrl={photoUrl}
           subtitle={subtitle}
+          rank={isResident ? null : staff?.rank}
           isPhotoUploading={isPhotoUploading}
           onPickPhoto={handlePickPhoto}
         />

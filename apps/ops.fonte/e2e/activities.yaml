@@ -1,0 +1,27 @@
+appId: org.fonte.ops
+---
+# Story 208: atividades em abas por status, uma coluna por vez. O seed não tem
+# atividade, então o fluxo cria a própria fixture pelo quick-add de Rascunhos e a
+# remove no fim (story 182: seed só leitura, limpeza pelo título único).
+- runFlow: helpers/login-operator.yaml
+- evalScript: ${output.title = 'Abas ' + Date.now()}
+- tapOn: "Atividades"
+- waitForAnimationToEnd
+- assertVisible: "Rascunhos"
+- assertVisible: "Solicitações"
+- assertVisible: "A fazer"
+- tapOn: "A fazer"
+- waitForAnimationToEnd
+- tapOn: "Rascunhos"
+- waitForAnimationToEnd
+- tapOn: "+ Nova atividade (título)"
+# ASCII de propósito: o Maestro não digita fora do ASCII (mobile-dev-inc/maestro#146).
+- inputText: ${output.title}
+- tapOn: "Adicionar"
+- waitForAnimationToEnd
+- assertVisible: ${output.title}
+- runScript:
+    file: helpers/delete-activity.js
+    env:
+      API_URL: http://10.0.2.2:3001/api/v1
+      TITLE: ${output.title}

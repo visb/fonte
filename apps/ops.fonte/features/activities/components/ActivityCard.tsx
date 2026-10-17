@@ -48,7 +48,7 @@ export function ActivityCard({
   }
 
   return (
-    <View className="bg-white rounded-xl border border-gray-100 px-4 py-3">
+    <View testID={`activity-card-${item.id}`} className="bg-white rounded-xl border border-gray-100 px-4 py-3">
       <TouchableOpacity
         accessibilityRole="button"
         activeOpacity={onPress ? 0.6 : 1}

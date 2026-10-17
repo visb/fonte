@@ -84,7 +84,7 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 | 6 | 204 — Listagem de servos no ops | [OK] | api 1949 + e2e 665; ops 1433 + e2e-web 28; api-client 307 | da82541 | 0362f1c |
 | 7 | 205 — Restaurar vínculo filho↔ministério | [OK] | api 2006 + e2e 670; adm 1909; ops 1459 + e2e-web 28 | 0d8f671 | d814f6c |
 | 8 | 207 — Nível do servo no ops | [OK] | api 2010 + e2e 674; ops 1477 + e2e-web 28; api-client 308 | c545d17 | c035470 |
-| 9 | 208 — Atividades em colunas no ops | [ ] | | | |
+| 9 | 208 — Atividades em colunas no ops | [OK] | ops 1502 + e2e-web 29 | 63f2302 | a78aa78 |
 | 10 | 209 — Campos de data digitáveis no ops | [ ] | | | |
 | 11 | 210 — Estado civil: união estável e viúvo(a) | [ ] | | | |
 | 12 | 211 — Rascunho automático do acolhimento | [ ] | | | |
@@ -108,6 +108,7 @@ Rodada de autorun **199–212** — aberta em 2026-10-15.
 - [OK] 205 — testes: api unit 2006 (93.3%), api e2e 670/670, api-client 308, adm unit 1909, adm e2e houses 12/12 + residents 32/39 (7 = pré-existentes João Testador), ops unit 1459 (95.5%), ops e2e-web 28/28; migration up/revert/up só no test — commit: 0d8f671 — merge: d814f6c — 2026-10-17 — Maestro `ministries.yaml` PENDENTE-MANUAL.
   Nota: `PERSIST_BUSTER` → v3; BUSINESS_RULES.md (Ministérios) atualizado.
 - [OK] 207 — testes: api unit 2010 (93.3%), api e2e 674/674, api-client 308, ops unit 1477 (95.5%), ops e2e-web 28/28 — commit: c545d17 — merge: c035470 — 2026-10-17 — Maestro `dashboard.yaml` PENDENTE-MANUAL (exige `pnpm test:setup`: seed-test agora dá rank CONSAGRADO ao Operador).
+- [OK] 208 — testes: ops unit 1502 (código novo 100% linhas), ops e2e-web 29/29 — commit: 63f2302 — merge: a78aa78 — 2026-10-17 — Maestro `activities.yaml` PENDENTE-MANUAL (nunca executado; usa http do Maestro em 10.0.2.2:3001).
 
 ## Resumo final
 

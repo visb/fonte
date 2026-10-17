@@ -21,12 +21,6 @@ export function formatDateBR(iso: string): string {
   return `${day}/${month}/${year}`;
 }
 
-export function toISODate(date: Date): string {
-  const d = String(date.getDate()).padStart(2, '0');
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  return `${date.getFullYear()}-${m}-${d}`;
-}
-
 export function movementLabel(type: MovementType): string {
   return type === MovementType.IN ? 'Entrada' : 'Saída';
 }

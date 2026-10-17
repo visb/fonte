@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,7 +5,6 @@ import { router } from 'expo-router';
 import type { StreetSale } from '@fonte/api-client';
 import { useAuth } from '@/lib/auth';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
-import { DatePickerModal } from '@/components/DatePickerModal';
 import { useUpdateStreetSale } from '../hooks/useStreetSales';
 import { StreetSaleFormFields } from '../components/StreetSaleFormFields';
 import type { StreetSaleFormData as FormData } from './NewStreetSalePage';
@@ -27,9 +25,7 @@ export function EditStreetSalePage({ sale }: Props) {
   const { staff } = useAuth();
   const mutation = useUpdateStreetSale(staff?.houseId ?? '');
   const submit = useFieldSubmit(mutation);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-
-  const { control, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
+  const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(streetSaleSchema),
     defaultValues: {
       date: sale.date,
@@ -41,9 +37,9 @@ export function EditStreetSalePage({ sale }: Props) {
     },
   });
 
-  const [dateValue, amountPix, amountCash, amountCard] = useWatch({
+  const [amountPix, amountCash, amountCard] = useWatch({
     control,
-    name: ['date', 'amountPix', 'amountCash', 'amountCard'],
+    name: ['amountPix', 'amountCash', 'amountCard'],
   });
 
   const totalAmount = String(
@@ -51,11 +47,6 @@ export function EditStreetSalePage({ sale }: Props) {
     parseFloat((amountCash || '0').replace(',', '.') || '0') +
     parseFloat((amountCard || '0').replace(',', '.') || '0'),
   );
-
-  const formatDateLabel = (iso: string) => {
-    const [y, m, d] = iso.split('-');
-    return `${d}/${m}/${y}`;
-  };
 
   const onSubmit = (data: FormData) => {
     submit(
@@ -91,37 +82,22 @@ export function EditStreetSalePage({ sale }: Props) {
   };
 
   return (
-    <>
-      <ScrollView className="flex-1 bg-white" keyboardShouldPersistTaps="handled">
-        <View className="px-4 py-5">
-          <StreetSaleFormFields
-            control={control}
-            errors={errors}
-            totalAmount={totalAmount}
-            dateLabel={formatDateLabel(dateValue ?? sale.date)}
-            onDatePress={() => setShowDatePicker(true)}
-          />
+    <ScrollView className="flex-1 bg-white" keyboardShouldPersistTaps="handled">
+      <View className="px-4 py-5">
+        <StreetSaleFormFields control={control} errors={errors} totalAmount={totalAmount} />
 
-          <TouchableOpacity
-            className="bg-indigo-900 rounded-lg py-3.5 items-center mt-6"
-            onPress={handleSubmit(onSubmit)}
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className="text-white font-semibold text-base">Salvar alterações</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      <DatePickerModal
-        visible={showDatePicker}
-        value={dateValue ?? sale.date}
-        onChange={(date) => setValue('date', date)}
-        onClose={() => setShowDatePicker(false)}
-      />
-    </>
+        <TouchableOpacity
+          className="bg-indigo-900 rounded-lg py-3.5 items-center mt-6"
+          onPress={handleSubmit(onSubmit)}
+          disabled={mutation.isPending}
+        >
+          {mutation.isPending ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text className="text-white font-semibold text-base">Salvar alterações</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }

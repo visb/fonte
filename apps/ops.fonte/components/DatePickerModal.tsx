@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { todayInSaoPaulo } from '@fonte/types';
 
 const MONTH_NAMES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -55,7 +56,8 @@ export function DatePickerModal({
   const atMaxMonth = !!maximumDate && monthKey(year, month) >= maximumDate.slice(0, 7);
   const atMinMonth = !!minimumDate && monthKey(year, month) <= minimumDate.slice(0, 7);
 
-  const today = new Date().toISOString().split('T')[0];
+  // "Hoje" no fuso da operação, não o dia UTC (story 209, decisão 8).
+  const today = todayInSaoPaulo();
   const firstDayOfWeek = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 

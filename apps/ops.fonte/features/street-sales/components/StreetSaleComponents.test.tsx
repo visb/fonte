@@ -42,19 +42,13 @@ describe('AmountField / StreetSaleFormFields', () => {
     const { control, formState: { errors } } = useForm({
       defaultValues: { date: '2026-01-01', type: StreetSaleType.BREAD, quantity: '', amountPix: '', amountCash: '', amountCard: '' },
     });
-    return (
-      <StreetSaleFormFields
-        control={control}
-        errors={errors}
-        totalAmount="10.5"
-        onDatePress={jest.fn()}
-        dateLabel="01/01/2026"
-      />
-    );
+    return <StreetSaleFormFields control={control} errors={errors} totalAmount="10.5" />;
   }
 
   it('renderiza os campos, o seletor de produto e o total calculado', () => {
     render(<Harness />);
+    // Story 209: a data é um campo digitável com o valor do form.
+    expect(screen.getByLabelText('Data').props.value).toBe('01/01/2026');
     expect(screen.getByText('Produto')).toBeTruthy();
     expect(screen.getByText('PIX (R$)')).toBeTruthy();
     expect(screen.getByText('Total arrecadado')).toBeTruthy();

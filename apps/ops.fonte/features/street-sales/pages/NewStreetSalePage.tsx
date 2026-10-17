@@ -1,13 +1,12 @@
-import { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { router } from 'expo-router';
-import { StreetSaleType } from '@fonte/types';
+import { StreetSaleType, todayInSaoPaulo } from '@fonte/types';
 import { useAuth } from '@/lib/auth';
+import { pastOrTodayDateSchema } from '@/lib/date';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
-import { DatePickerModal } from '@/components/DatePickerModal';
 import { useCreateStreetSale } from '../hooks/useStreetSales';
 import { StreetSaleFormFields } from '../components/StreetSaleFormFields';
 
@@ -23,7 +22,8 @@ const amountSchema = z
   .default('0');
 
 export const streetSaleSchema = z.object({
-  date: z.string().min(1),
+  // Story 209: digitável; lançamento retroativo pode, futuro não.
+  date: pastOrTodayDateSchema,
   type: z.nativeEnum(StreetSaleType),
   quantity: z.string().regex(/^\d+$/, 'Informe a quantidade').refine((v) => parseInt(v) > 0, 'Deve ser maior que zero'),
   amountPix: amountSchema,
@@ -33,18 +33,16 @@ export const streetSaleSchema = z.object({
 
 export type StreetSaleFormData = z.infer<typeof streetSaleSchema>;
 
-const today = new Date().toISOString().slice(0, 10);
-
 export function NewStreetSalePage() {
   const { staff } = useAuth();
   const mutation = useCreateStreetSale();
   const submit = useFieldSubmit(mutation);
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const { control, handleSubmit, setValue, formState: { errors } } = useForm<StreetSaleFormData>({
+  const { control, handleSubmit, formState: { errors } } = useForm<StreetSaleFormData>({
     resolver: zodResolver(streetSaleSchema),
     defaultValues: {
-      date: today,
+      // "Hoje" no fuso da operação, não o dia UTC (story 209, decisão 8).
+      date: todayInSaoPaulo(),
       type: StreetSaleType.BREAD,
       quantity: '',
       amountPix: '',
@@ -53,9 +51,9 @@ export function NewStreetSalePage() {
     },
   });
 
-  const [dateValue, amountPix, amountCash, amountCard] = useWatch({
+  const [amountPix, amountCash, amountCard] = useWatch({
     control,
-    name: ['date', 'amountPix', 'amountCash', 'amountCard'],
+    name: ['amountPix', 'amountCash', 'amountCard'],
   });
 
   const totalAmount = String(
@@ -63,11 +61,6 @@ export function NewStreetSalePage() {
     parseFloat((amountCash || '0').replace(',', '.') || '0') +
     parseFloat((amountCard || '0').replace(',', '.') || '0')
   );
-
-  const formatDateLabel = (iso: string) => {
-    const [y, m, d] = iso.split('-');
-    return `${d}/${m}/${y}`;
-  };
 
   const onSubmit = (data: StreetSaleFormData) => {
     if (!staff?.houseId) return;
@@ -101,37 +94,22 @@ export function NewStreetSalePage() {
   };
 
   return (
-    <>
-      <ScrollView className="flex-1 bg-white" keyboardShouldPersistTaps="handled">
-        <View className="px-4 py-5">
-          <StreetSaleFormFields
-            control={control}
-            errors={errors}
-            totalAmount={totalAmount}
-            dateLabel={formatDateLabel(dateValue ?? today)}
-            onDatePress={() => setShowDatePicker(true)}
-          />
+    <ScrollView className="flex-1 bg-white" keyboardShouldPersistTaps="handled">
+      <View className="px-4 py-5">
+        <StreetSaleFormFields control={control} errors={errors} totalAmount={totalAmount} />
 
-          <TouchableOpacity
-            className="bg-indigo-900 rounded-lg py-3.5 items-center mt-6"
-            onPress={handleSubmit(onSubmit)}
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className="text-white font-semibold text-base">Registrar faturamento</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      <DatePickerModal
-        visible={showDatePicker}
-        value={dateValue ?? today}
-        onChange={(date) => setValue('date', date)}
-        onClose={() => setShowDatePicker(false)}
-      />
-    </>
+        <TouchableOpacity
+          className="bg-indigo-900 rounded-lg py-3.5 items-center mt-6"
+          onPress={handleSubmit(onSubmit)}
+          disabled={mutation.isPending}
+        >
+          {mutation.isPending ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text className="text-white font-semibold text-base">Registrar faturamento</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }

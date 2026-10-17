@@ -21,6 +21,15 @@ appId: org.fonte.ops
 - tapOn: "Selecionar Arroz"
 - tapOn: "0"
 - inputText: "5"
+# Story 209: a data é digitável. O campo vem com hoje; apaga e lança retroativo.
+# O rótulo "Data" e o campo (accessibilityLabel "Data") casam com o mesmo texto:
+# index 1 é o campo, que vem depois do rótulo na árvore.
+- tapOn:
+    text: "Data"
+    index: 1
+- eraseText: 10
+- inputText: "01022026"
+- assertVisible: "01/02/2026"
 - hideKeyboard
 - tapOn: "Registrar entrada"
 - waitForAnimationToEnd

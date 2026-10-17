@@ -7,17 +7,6 @@ jest.mock('@expo/vector-icons', () => {
   const { Text } = require('react-native');
   return { Ionicons: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
 });
-jest.mock('@/components/WheelDatePickerModal', () => {
-  const { Text, TouchableOpacity } = require('react-native');
-  return {
-    WheelDatePickerModal: ({ visible, onConfirm }: { visible: boolean; onConfirm: (d: Date) => void }) =>
-      visible ? (
-        <TouchableOpacity onPress={() => onConfirm(new Date('2026-02-15T00:00:00'))}>
-          <Text>confirm-date</Text>
-        </TouchableOpacity>
-      ) : null,
-  };
-});
 jest.mock('@/lib/api', () => ({
   api: { supplyRoom: { listMovements: jest.fn() } },
   resolveAssetUrl: (u: string) => u,
@@ -29,7 +18,6 @@ import { CategorySelector } from './CategorySelector';
 import { SupplyRoomItemCard } from './SupplyRoomItemCard';
 import { NewItemForm } from './NewItemForm';
 import { ItemSearchInput } from './ItemSearchInput';
-import { DateField } from './DateField';
 import { MovementTypeSelector } from './MovementTypeSelector';
 import { MovementHistoryRow } from './MovementHistoryRow';
 import { ItemDetailsModal } from './ItemDetailsModal';
@@ -149,15 +137,7 @@ describe('ItemSearchInput', () => {
   });
 });
 
-describe('DateField / MovementTypeSelector / MovementHistoryRow', () => {
-  it('DateField propaga data confirmada', () => {
-    const onChange = jest.fn();
-    render(<DateField value={new Date('2026-01-01T00:00:00')} onChange={onChange} />);
-    fireEvent.press(screen.getByText('01/01/2026'));
-    fireEvent.press(screen.getByText('confirm-date'));
-    expect(onChange).toHaveBeenCalledWith(expect.any(Date), '2026-02-15');
-  });
-
+describe('MovementTypeSelector / MovementHistoryRow', () => {
   it('MovementTypeSelector dispara onChange', () => {
     const onChange = jest.fn();
     render(<MovementTypeSelector value={MovementType.IN} onChange={onChange} />);

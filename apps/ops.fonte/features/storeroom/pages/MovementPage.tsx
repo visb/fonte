@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { View, ScrollView, Alert } from "react-native";
+import { View, ScrollView, Alert, Text } from "react-native";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { router } from "expo-router";
-import { MovementType } from "@fonte/types";
+import { MovementType, todayInSaoPaulo } from "@fonte/types";
 import type { StoreroomItem } from "@fonte/api-client";
 import { useAuth } from "@/lib/auth";
 import { getErrorMessage } from "@/lib/errors";
@@ -15,10 +15,10 @@ import {
   useCreateMovement,
   useCreateStoreroomItem,
 } from "@/features/storeroom/hooks/useStoreroom";
-import { toISODate } from "@/features/storeroom/utils";
+import { pastOrTodayDateSchema } from "@/lib/date";
+import { DateInput } from "@/components/shared/DateInput";
 import { MovementTypeSelector } from "@/features/storeroom/components/MovementTypeSelector";
 import { ItemSearchInput } from "@/features/storeroom/components/ItemSearchInput";
-import { DateField } from "@/features/storeroom/components/DateField";
 import { QuantityField } from "@/features/storeroom/components/QuantityField";
 import { NotesField } from "@/features/storeroom/components/NotesField";
 import { ResponsibleDisplay } from "@/features/storeroom/components/ResponsibleDisplay";
@@ -35,13 +35,13 @@ const schema = z.object({
       "Quantidade deve ser maior que 0",
     ),
   notes: z.string().optional(),
-  date: z.string(),
+  // Story 209: lançamento retroativo pode, futuro não.
+  date: pastOrTodayDateSchema,
 });
 type FormData = z.infer<typeof schema>;
 
 export function MovementPage() {
   const { staff } = useAuth();
-  const [dateObj, setDateObj] = useState(new Date());
   const [search, setSearch] = useState("");
 
   const { data: items = [] } = useStoreroomItems(staff?.houseId);
@@ -63,7 +63,8 @@ export function MovementPage() {
       type: MovementType.IN,
       quantity: "",
       notes: "",
-      date: toISODate(new Date()),
+      // "Hoje" no fuso da operação, não o do aparelho (story 209).
+      date: todayInSaoPaulo(),
     },
   });
 
@@ -171,13 +172,23 @@ export function MovementPage() {
           )}
         />
 
-        <DateField
-          value={dateObj}
-          onChange={(date, iso) => {
-            setDateObj(date);
-            setValue("date", iso);
-          }}
-        />
+        <View>
+          <Text className="text-sm font-medium text-gray-700 mb-1.5">Data</Text>
+          <Controller
+            control={control}
+            name="date"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <DateInput
+                accessibilityLabel="Data"
+                value={value}
+                onChange={onChange}
+                onBlur={onBlur}
+                maxDate={todayInSaoPaulo()}
+                error={errors.date?.message}
+              />
+            )}
+          />
+        </View>
 
         <Controller
           control={control}

@@ -7,6 +7,8 @@
  * conversão e a leitura da mensagem de erro sem mexer em `expo-file-system`.
  */
 
+import { residentReceiptFilename } from '@fonte/types';
+
 const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 /**
@@ -33,12 +35,18 @@ export function bytesToBase64(buffer: ArrayBuffer | Uint8Array): string {
  * Caminho do PDF no cache. `cacheDirectory` é anulável (web/SSR não têm) e o
  * template cru imprimiria `null/recibo-....pdf`; aqui o nome do arquivo
  * sobrevive sozinho.
+ *
+ * Story 212, decisão 6 — o nome é `recibo-{filho}-{MM}-{AAAA}.pdf` (helper
+ * único de `@fonte/types`, o mesmo do servidor e do `adm`). Dois filhos
+ * homônimos na mesma competência sobrescrevem o arquivo: aceitável, o cache só
+ * serve para compartilhar na hora.
  */
 export function receiptFileUri(
   cacheDirectory: string | null | undefined,
-  receivableId: string,
+  residentName: string | null | undefined,
+  referenceMonth: string | null | undefined,
 ): string {
-  return `${cacheDirectory ?? ''}recibo-${receivableId}.pdf`;
+  return `${cacheDirectory ?? ''}${residentReceiptFilename(residentName, referenceMonth)}`;
 }
 
 /**

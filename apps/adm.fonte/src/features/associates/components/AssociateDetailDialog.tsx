@@ -14,6 +14,7 @@ import {
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { ReceiptErrorAlert } from '@/components/shared/ReceiptErrorAlert';
 import { getErrorMessage } from '@/lib/errors';
 import { useAssociateById } from '../hooks/useAssociates';
 import { useChargeReceipt } from '../hooks/useChargeReceipt';
@@ -73,7 +74,10 @@ export function AssociateDetailDialog({ associateId, open, onClose }: Props) {
               {/* Story 178 — o erro do recibo (ex.: template não cadastrado)
                   chega ao operador com a frase acionável do backend. */}
               {receipt.error && (
-                <p className="text-sm text-destructive">{receipt.error}</p>
+                <ReceiptErrorAlert
+                  message={receipt.error}
+                  missingTemplateType={receipt.missingTemplateType}
+                />
               )}
               {data.charges.length === 0 ? (
                 <EmptyState title="Nenhuma cobrança registrada." />

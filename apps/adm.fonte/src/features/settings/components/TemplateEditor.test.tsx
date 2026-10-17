@@ -32,6 +32,8 @@ vi.mock('@tiptap/react', () => ({
 const updateMutate = vi.fn();
 vi.mock('../hooks/useDocumentTemplates', () => ({
   useUpdateDocumentTemplate: () => ({ mutate: updateMutate, isPending: false, isError: false, error: null }),
+  // Story 212 — o ReceiptTypeField (só em recibo) lê os recibos cadastrados.
+  useDocumentTemplates: () => ({ data: [] }),
 }));
 
 vi.mock('./TableToolbar', () => ({ TableToolbar: () => null }));
@@ -145,8 +147,16 @@ describe('TemplateEditor — kind = RECEIPT (story 178)', () => {
     expect(screen.queryByRole('radio', { name: 'Todos' })).not.toBeInTheDocument();
   });
 
+  it('recibo ganha o campo "Tipo de recibo" editável (story 212)', () => {
+    render(<TemplateEditor template={receiptTemplate()} onSaved={vi.fn()} />);
+    expect(
+      (screen.getByLabelText('Tipo de recibo') as HTMLSelectElement).value,
+    ).toBe(ReceiptType.ASSOCIATE_CONTRIBUTION);
+  });
+
   it('o mesmo template como RESIDENT segue renderizando os três controles', () => {
     render(<TemplateEditor template={template()} onSaved={vi.fn()} />);
+    expect(screen.queryByLabelText('Tipo de recibo')).not.toBeInTheDocument();
     expect(screen.getByLabelText(/Exigir no acolhimento/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Assinar no acolhimento/i)).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Todos' })).toBeInTheDocument();

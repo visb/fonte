@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
-import { ReceiptType, TemplateKind } from '@fonte/types';
+import { RECEIPT_TYPE_LABELS, ReceiptType, TemplateKind } from '@fonte/types';
+import { NEW_RECEIPT_PARAM } from '@/components/shared/ReceiptErrorAlert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -22,7 +24,33 @@ import { TEMPLATE_KIND_SECTIONS } from '../constants';
 export function DocumentTemplatesTab() {
   const [editing, setEditing] = useState<DocumentTemplate | null>(null);
   const [createKind, setCreateKind] = useState<TemplateKind | null>(null);
+  const [initialReceiptType, setInitialReceiptType] = useState<ReceiptType | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DocumentTemplate | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Story 212, decisão 8 — `?newReceipt=<tipo>` (atalho do erro do gerador)
+  // abre o dialog de novo recibo com o tipo; tipo inválido abre sem seleção. O
+  // param é consumido para não reabrir o dialog num reload.
+  const newReceiptParam = searchParams.get(NEW_RECEIPT_PARAM);
+  useEffect(() => {
+    if (newReceiptParam === null) return;
+    const valid = (Object.values(ReceiptType) as string[]).includes(newReceiptParam);
+    setInitialReceiptType(valid ? (newReceiptParam as ReceiptType) : null);
+    setCreateKind(TemplateKind.RECEIPT);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete(NEW_RECEIPT_PARAM);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [newReceiptParam, setSearchParams]);
+
+  const closeCreate = () => {
+    setCreateKind(null);
+    setInitialReceiptType(null);
+  };
 
   // Duas queries com query keys distintas (o backend filtra por kind): o recibo
   // nunca entra na lista que a aba de Anexos do acolhido consome.
@@ -51,6 +79,12 @@ export function DocumentTemplatesTab() {
             <span className="font-semibold text-sm truncate">{editing.name}</span>
             {editing.kind === TemplateKind.RECEIPT && (
               <Badge variant="secondary" className="text-xs shrink-0">Recibo</Badge>
+            )}
+            {/* Story 212, decisão 1 — o tipo que o gerador procura, à vista. */}
+            {editing.kind === TemplateKind.RECEIPT && editing.receiptType && (
+              <Badge variant="outline" className="text-xs shrink-0" data-testid="editing-receipt-type">
+                {RECEIPT_TYPE_LABELS[editing.receiptType]}
+              </Badge>
             )}
             {editing.isRequired && (
               <Badge variant="secondary" className="text-xs shrink-0">Acolhimento</Badge>
@@ -84,9 +118,10 @@ export function DocumentTemplatesTab() {
 
       <CreateTemplateDialog
         open={createKind !== null}
-        onClose={() => setCreateKind(null)}
+        onClose={closeCreate}
         kind={createKind ?? TemplateKind.RESIDENT}
         takenReceiptTypes={takenReceiptTypes}
+        initialReceiptType={initialReceiptType}
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>

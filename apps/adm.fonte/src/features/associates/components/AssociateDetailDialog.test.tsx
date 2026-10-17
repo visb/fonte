@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { ReceiptType } from '@fonte/types';
 
 const state = { data: undefined as unknown, isLoading: false, error: null as unknown, refetch: vi.fn() };
 vi.mock('../hooks/useAssociates', () => ({ useAssociateById: () => state }));
@@ -17,12 +20,29 @@ vi.mock('./ChargeRow', () => ({
 const receiptState = {
   downloadingId: null as string | null,
   error: null as string | null,
+  missingTemplateType: null as ReceiptType | null,
   dismissError: vi.fn(),
   download: vi.fn(),
 };
 vi.mock('../hooks/useChargeReceipt', () => ({ useChargeReceipt: () => receiptState }));
 
 import { AssociateDetailDialog } from './AssociateDetailDialog';
+
+function LocationProbe() {
+  const location = useLocation();
+  return <span data-testid="location">{location.pathname + location.search}</span>;
+}
+
+/** Story 212 — o atalho "Cadastrar template" navega: precisa de router. */
+function renderDialog(ui: ReactElement) {
+  return render(
+    <MemoryRouter initialEntries={['/associates']}>
+      <Routes>
+        <Route path="*" element={<>{ui}<LocationProbe /></>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
 
 function associate(over: Record<string, unknown> = {}) {
   return {
@@ -39,6 +59,7 @@ beforeEach(() => {
   state.error = null;
   receiptState.downloadingId = null;
   receiptState.error = null;
+  receiptState.missingTemplateType = null;
 });
 afterEach(() => cleanup());
 
@@ -46,19 +67,19 @@ describe('AssociateDetailDialog', () => {
   it('loading mostra título fallback de carregamento', () => {
     state.isLoading = true;
     state.data = undefined;
-    render(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
+    renderDialog(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
     expect(screen.getByText('Detalhe do associado')).toBeInTheDocument();
   });
 
   it('erro mostra ErrorState', () => {
     state.data = undefined;
     state.error = new Error('boom');
-    render(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
+    renderDialog(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
     expect(screen.getByText(/Erro ao carregar o associado|boom/)).toBeInTheDocument();
   });
 
   it('mostra dados do associado e empty state de cobranças', () => {
-    render(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
+    renderDialog(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
     expect(screen.getByText('João Associado')).toBeInTheDocument();
     expect(screen.getByText('Dia 10')).toBeInTheDocument();
     expect(screen.getByText('Nenhuma cobrança registrada.')).toBeInTheDocument();
@@ -66,7 +87,7 @@ describe('AssociateDetailDialog', () => {
 
   it('lista cobranças quando há histórico', () => {
     state.data = associate({ charges: [{ id: 'c1' }, { id: 'c2' }] });
-    render(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
+    renderDialog(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
     expect(screen.getByText('charge-c1')).toBeInTheDocument();
     expect(screen.getByText('charge-c2')).toBeInTheDocument();
     expect(screen.getByText('Recibo')).toBeInTheDocument();
@@ -76,7 +97,7 @@ describe('AssociateDetailDialog', () => {
 
   it('liga o botão de recibo da linha ao download do hook', () => {
     state.data = associate({ charges: [{ id: 'c1' }] });
-    render(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
+    renderDialog(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'charge-c1' }));
     expect(receiptState.download).toHaveBeenCalledWith('c1');
   });
@@ -84,7 +105,21 @@ describe('AssociateDetailDialog', () => {
   it('erro do recibo aparece na tela com a mensagem do backend', () => {
     state.data = associate({ charges: [{ id: 'c1' }] });
     receiptState.error = 'Nenhum template de recibo cadastrado. Cadastre em Configurações → Templates.';
-    render(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
+    renderDialog(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
     expect(screen.getByText(/Cadastre em Configurações → Templates\./)).toBeInTheDocument();
+    // Sem o code do backend, não há atalho.
+    expect(screen.queryByRole('button', { name: 'Cadastrar template' })).not.toBeInTheDocument();
+  });
+
+  // Story 212, decisão 4.
+  it('template ausente ganha "Cadastrar template" com o tipo do associado', () => {
+    state.data = associate({ charges: [{ id: 'c1' }] });
+    receiptState.error = 'Nenhum template de recibo cadastrado. Cadastre em Configurações → Templates.';
+    receiptState.missingTemplateType = ReceiptType.ASSOCIATE_CONTRIBUTION;
+    renderDialog(<AssociateDetailDialog associateId="a1" open onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Cadastrar template' }));
+    expect(screen.getByTestId('location').textContent).toBe(
+      '/settings/templates?newReceipt=ASSOCIATE_CONTRIBUTION',
+    );
   });
 });

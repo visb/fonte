@@ -102,6 +102,59 @@ test.describe('Recibos (stories 178 e 193)', () => {
     await login(page);
   });
 
+  // ── Story 212: o tipo à vista, escolhido e editável ─────────────────────────
+  // Roda primeiro (workers: 1, ordem do arquivo): sem nenhum recibo cadastrado,
+  // os dois tipos estão livres para a troca. O template é removido por id no
+  // fim do próprio teste, liberando os tipos para os testes seguintes.
+  test('cria recibo escolhendo o tipo, vê o badge e troca o tipo no editor', async ({ page }) => {
+    const name = `E2E Recibo tipo ${STAMP}`;
+    await gotoTemplates(page);
+    await page.getByRole('button', { name: 'Novo recibo' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    const typeSelect = dialog.getByLabel('Tipo de recibo');
+    await expect(typeSelect).toHaveValue('');
+    await dialog.getByLabel('Nome do documento').fill(name);
+    // Sem escolher o tipo, não cria.
+    await dialog.getByRole('button', { name: 'Criar' }).click();
+    await expect(dialog.getByText('Selecione o tipo de recibo')).toBeVisible();
+    await typeSelect.selectOption({ label: 'Contribuição mensal do acolhido' });
+    await dialog.getByRole('button', { name: 'Criar' }).click();
+    await expect(dialog).not.toBeVisible();
+
+    // Badge do tipo no card da lista.
+    const card = page.locator('div.cursor-pointer').filter({ hasText: name });
+    await expect(card.getByText('Contribuição mensal do acolhido')).toBeVisible();
+
+    // Editor: badge no cabeçalho + troca do tipo.
+    await card.getByText(name, { exact: true }).click();
+    const headerBadge = page.getByTestId('editing-receipt-type');
+    await expect(headerBadge).toHaveText('Contribuição mensal do acolhido');
+    const editorType = page.getByLabel('Tipo de recibo');
+    await expect(editorType).toHaveValue('RESIDENT_CONTRIBUTION');
+    await editorType.selectOption({ label: 'Contribuição mensal do associado' });
+    await expect(editorType).toHaveValue('ASSOCIATE_CONTRIBUTION');
+    await expect(headerBadge).toHaveText('Contribuição mensal do associado');
+
+    // De volta à lista, o badge mudou (gravado no servidor).
+    await page.getByRole('button', { name: 'Voltar' }).click();
+    const updatedCard = page.locator('div.cursor-pointer').filter({ hasText: name });
+    await expect(updatedCard.getByText('Contribuição mensal do associado')).toBeVisible();
+    await expect(updatedCard.getByText('Contribuição mensal do acolhido')).toHaveCount(0);
+
+    // Limpeza por id (story 182): só o que este teste criou.
+    const res = await api.get(`${API_URL}/document-templates?kind=RECEIPT`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const created = ((await res.json()) as { id: string; name: string }[]).find(
+      (t) => t.name === name,
+    );
+    expect(created).toBeTruthy();
+    await api.delete(`${API_URL}/document-templates/${created!.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  });
+
   test('cadastra o recibo, baixa o PDF da cobrança paga e o template não vaza para os anexos do filho', async ({
     page,
   }) => {
@@ -117,8 +170,10 @@ test.describe('Recibos (stories 178 e 193)', () => {
     const typeSelect = dialog.getByLabel('Tipo de recibo');
     await expect(typeSelect).toBeVisible();
     // Story 193 — dois tipos com resolver: associado e acolhido. Pizza e pão
-    // seguem fora (declarados no enum, sem resolver).
-    await expect(typeSelect.locator('option')).toHaveCount(2);
+    // seguem fora (declarados no enum, sem resolver). Story 212 — mais o
+    // placeholder "Selecione o tipo", que é o valor inicial (sem pré-seleção).
+    await expect(typeSelect.locator('option')).toHaveCount(3);
+    await expect(typeSelect).toHaveValue('');
     await typeSelect.selectOption({ label: 'Contribuição mensal do associado' });
     await dialog.getByLabel('Nome do documento').fill(RECEIPT_NAME);
     await dialog.getByRole('button', { name: 'Criar' }).click();
@@ -180,14 +235,20 @@ test.describe('Recibos (stories 178 e 193)', () => {
   test('cadastra o recibo do acolhido, baixa o PDF da parcela paga e o template não vaza para os anexos', async ({
     page,
   }) => {
-    // ── 1. Cadastro do template do tipo NOVO ──────────────────────────────────
-    await gotoTemplates(page);
-    await page.getByRole('button', { name: 'Novo recibo' }).click();
+    // ── 0. Story 212: sem template do tipo, o erro oferece o atalho ───────────
+    await page.goto(`/residents/${residentFixture.residentId}`);
+    await page.getByRole('button', { name: 'Contribuição', exact: true }).click();
+    await page.getByRole('button', { name: /Recibo/ }).first().click();
+    await expect(page.getByText(/Cadastre em Configurações → Templates/)).toBeVisible({
+      timeout: 30000,
+    });
+    await page.getByRole('button', { name: 'Cadastrar template' }).click();
+
+    // ── 1. Cadastro do template do tipo NOVO, já pré-escolhido pelo atalho ────
+    await expect(page).toHaveURL('/settings/templates');
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    await dialog.getByLabel('Tipo de recibo').selectOption({
-      label: 'Contribuição mensal do acolhido',
-    });
+    await expect(dialog.getByLabel('Tipo de recibo')).toHaveValue('RESIDENT_CONTRIBUTION');
     await dialog.getByLabel('Nome do documento').fill(RESIDENT_RECEIPT_NAME);
     await dialog.getByRole('button', { name: 'Criar' }).click();
     await expect(dialog).not.toBeVisible();
@@ -218,7 +279,11 @@ test.describe('Recibos (stories 178 e 193)', () => {
     const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
     await receiptButton.click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/\.pdf$/);
+    // Story 212 — recibo-{filho}-{MM}-{AAAA}.pdf, pela competência da parcela.
+    const [year, month] = residentFixture.referenceMonth.split('-');
+    expect(download.suggestedFilename()).toBe(
+      `recibo-e2e-filho-pagante-${STAMP}-${month}-${year}.pdf`,
+    );
     // Caminho feliz não passa pelo getErrorMessage.
     await expect(page.getByText(/Falha ao gerar o recibo/)).toHaveCount(0);
 

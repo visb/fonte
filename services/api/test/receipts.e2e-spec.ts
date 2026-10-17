@@ -82,7 +82,8 @@ describe('Receipts (e2e)', () => {
       await dataSource.query(`DELETE FROM document_templates WHERE id = $1`, [receiptTemplateId]);
     }
     await app.close();
-  });
+    // `app.close()` derruba o browser do puppeteer: sob carga passa dos 5s padrão.
+  }, 30_000);
 
   // ── Sem template cadastrado ─────────────────────────────────────────────────
 
@@ -94,6 +95,9 @@ describe('Receipts (e2e)', () => {
         .expect(404)
         .then((res) => {
           expect(res.body.message).toContain('Configurações → Templates');
+          // Story 212, decisão 7.
+          expect(res.body.code).toBe('RECEIPT_TEMPLATE_MISSING');
+          expect(res.body.receiptType).toBe('ASSOCIATE_CONTRIBUTION');
         }));
   });
 

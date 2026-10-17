@@ -1,5 +1,6 @@
 import type { DocumentTemplate } from '@fonte/api-client';
 import { Trash2 } from 'lucide-react';
+import { RECEIPT_TYPE_LABELS, TemplateKind } from '@fonte/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TEMPLATE_AVAILABILITY_BADGE } from '../constants';
@@ -23,6 +24,12 @@ export function TemplateCard({ template: t, onSelect, onDelete }: Props) {
           <span className="font-medium text-sm truncate">{t.name}</span>
           {t.isRequired && (
             <Badge variant="secondary" className="text-xs shrink-0">Acolhimento</Badge>
+          )}
+          {/* Story 212 — o tipo do recibo à vista: é ele que o gerador procura. */}
+          {t.kind === TemplateKind.RECEIPT && t.receiptType && (
+            <Badge variant="outline" className="text-xs shrink-0">
+              {RECEIPT_TYPE_LABELS[t.receiptType]}
+            </Badge>
           )}
           {availabilityLabel && (
             <Badge variant="outline" className="text-xs shrink-0">{availabilityLabel}</Badge>

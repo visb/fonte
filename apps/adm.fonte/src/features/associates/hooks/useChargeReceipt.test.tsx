@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { ReceiptType } from '@fonte/types';
 
 vi.mock('@/lib/api', () => ({
   api: { associates: { chargeReceipt: vi.fn() } },
@@ -60,6 +61,45 @@ describe('useChargeReceipt (story 178)', () => {
     );
     expect(result.current.error).not.toMatch(/Falha ao gerar o recibo/);
     expect(click).not.toHaveBeenCalled();
+  });
+
+  // Story 212 — o corpo do erro chega como Blob (responseType: 'blob').
+  it('404 com code RECEIPT_TEMPLATE_MISSING em Blob → mensagem + missingTemplateType', async () => {
+    const body = new Blob([
+      JSON.stringify({
+        statusCode: 404,
+        message: 'Nenhum template de recibo cadastrado para contribuição mensal do associado.',
+        code: 'RECEIPT_TEMPLATE_MISSING',
+        receiptType: 'ASSOCIATE_CONTRIBUTION',
+      }),
+    ]);
+    vi.mocked(api.associates.chargeReceipt).mockRejectedValue({
+      response: { status: 404, data: body },
+    } as never);
+    const { result } = renderHook(() => useChargeReceipt());
+
+    await act(async () => {
+      await result.current.download('chg-1');
+    });
+
+    expect(result.current.error).toContain('contribuição mensal do associado');
+    expect(result.current.missingTemplateType).toBe(ReceiptType.ASSOCIATE_CONTRIBUTION);
+    act(() => result.current.dismissError());
+    expect(result.current.missingTemplateType).toBeNull();
+  });
+
+  it('404 sem code (cobrança inexistente) não oferece atalho', async () => {
+    vi.mocked(api.associates.chargeReceipt).mockRejectedValue({
+      response: { status: 404, data: new Blob([JSON.stringify({ message: 'Cobrança não encontrada' })]) },
+    } as never);
+    const { result } = renderHook(() => useChargeReceipt());
+
+    await act(async () => {
+      await result.current.download('chg-x');
+    });
+
+    expect(result.current.error).toBe('Cobrança não encontrada');
+    expect(result.current.missingTemplateType).toBeNull();
   });
 
   it('erro sem mensagem do backend cai no fallback, e dismissError limpa', async () => {

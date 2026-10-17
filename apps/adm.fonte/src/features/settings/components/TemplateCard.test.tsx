@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import type { DocumentTemplate } from '@fonte/api-client';
-import { TemplateAvailability } from '@fonte/types';
+import { ReceiptType, TemplateAvailability, TemplateKind } from '@fonte/types';
 import { TemplateCard } from './TemplateCard';
 
 afterEach(() => cleanup());
@@ -72,6 +72,33 @@ describe('TemplateCard', () => {
   it('sem o campo não mostra badge nenhuma', () => {
     render(<TemplateCard template={template()} onSelect={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.queryByText(/Só (não-)?ativos/)).not.toBeInTheDocument();
+  });
+
+  // ─── Tipo do recibo (story 212) ─────────────────────────────────────────────
+
+  it('recibo mostra a badge com o rótulo do tipo', () => {
+    render(
+      <TemplateCard
+        template={template({
+          kind: TemplateKind.RECEIPT,
+          receiptType: ReceiptType.RESIDENT_CONTRIBUTION,
+        })}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Contribuição mensal do acolhido')).toBeInTheDocument();
+  });
+
+  it('template de documento não mostra badge de tipo de recibo', () => {
+    render(
+      <TemplateCard
+        template={template({ kind: TemplateKind.RESIDENT, receiptType: null })}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText(/Contribuição mensal/)).not.toBeInTheDocument();
   });
 
   it('clique no card seleciona; clique no lixo exclui sem propagar select', () => {

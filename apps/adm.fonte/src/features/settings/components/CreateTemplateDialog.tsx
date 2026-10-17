@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -17,20 +17,37 @@ import {
 import { getErrorMessage } from '@/lib/errors';
 import { useCreateDocumentTemplate } from '../hooks/useDocumentTemplates';
 
-const schema = z.object({
-  name: z.string().trim().min(1, 'Informe o nome do template'),
-  // Só exigido quando o grupo é Recibos — refinado abaixo, no resolver.
+const RECEIPT_TYPE_REQUIRED = 'Selecione o tipo de recibo';
+
+const nameSchema = z.string().trim().min(1, 'Informe o nome do template');
+
+// Story 212, decisão 2 — no grupo Recibos o tipo é OBRIGATÓRIO e sem default:
+// quem não olha o select não pode mais criar o tipo errado sem perceber.
+const receiptSchema = z.object({
+  name: nameSchema,
+  receiptType: z.nativeEnum(ReceiptType, {
+    required_error: RECEIPT_TYPE_REQUIRED,
+    invalid_type_error: RECEIPT_TYPE_REQUIRED,
+  }),
+});
+const documentSchema = z.object({
+  name: nameSchema,
   receiptType: z.nativeEnum(ReceiptType).optional(),
 });
-type FormData = z.infer<typeof schema>;
+type FormData = z.infer<typeof documentSchema>;
 
 interface Props {
   open: boolean;
   onClose: () => void;
   /** Grupo em que o template nasce: documento do acolhido ou recibo. */
   kind: TemplateKind;
-  /** Tipos de recibo JÁ cadastrados — decisão 2: um template por tipo. */
+  /** Tipos de recibo JÁ cadastrados — decisão 2 da 178: um template por tipo. */
   takenReceiptTypes: ReceiptType[];
+  /**
+   * Story 212, decisão 4 — tipo pré-escolhido quando o dialog é aberto pelo
+   * atalho do erro do gerador. Tipo indisponível (já tomado) é ignorado.
+   */
+  initialReceiptType?: ReceiptType | null;
 }
 
 /**
@@ -41,22 +58,35 @@ interface Props {
  * pode oferecer um recibo que ninguém sabe emitir, nem um segundo template de um
  * tipo que já tem o seu.
  */
-export function CreateTemplateDialog({ open, onClose, kind, takenReceiptTypes }: Props) {
+export function CreateTemplateDialog({
+  open,
+  onClose,
+  kind,
+  takenReceiptTypes,
+  initialReceiptType,
+}: Props) {
   const isReceipt = kind === TemplateKind.RECEIPT;
   const available = IMPLEMENTED_RECEIPT_TYPES.filter((t) => !takenReceiptTypes.includes(t));
-  // Valor de enum (string): identidade estável, então serve de dependência.
-  const defaultReceiptType = available[0];
+  // Só vale o tipo que ainda está livre; o resto abre sem seleção.
+  const startType =
+    isReceipt && initialReceiptType && available.includes(initialReceiptType)
+      ? initialReceiptType
+      : undefined;
 
+  const resolver = useMemo(
+    () => zodResolver(isReceipt ? receiptSchema : documentSchema),
+    [isReceipt],
+  );
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { name: '', receiptType: defaultReceiptType },
+    resolver,
+    defaultValues: { name: '', receiptType: startType },
   });
 
   // Reabrir o dialog sempre começa em branco — inclusive depois de trocar de
   // grupo (o mesmo componente serve aos dois).
   useEffect(() => {
-    if (open) reset({ name: '', receiptType: defaultReceiptType });
-  }, [open, kind, defaultReceiptType, reset]);
+    if (open) reset({ name: '', receiptType: startType });
+  }, [open, kind, startType, reset]);
 
   const createMutation = useCreateDocumentTemplate();
 
@@ -110,8 +140,11 @@ export function CreateTemplateDialog({ open, onClose, kind, takenReceiptTypes }:
                         id="new-template-receipt-type"
                         className="h-9 w-full rounded-md border bg-background px-3 text-sm"
                         value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.value as ReceiptType)}
+                        onChange={(e) =>
+                          field.onChange((e.target.value || undefined) as ReceiptType | undefined)
+                        }
                       >
+                        <option value="">Selecione o tipo</option>
                         {available.map((type) => (
                           <option key={type} value={type}>
                             {RECEIPT_TYPE_LABELS[type]}
@@ -120,6 +153,9 @@ export function CreateTemplateDialog({ open, onClose, kind, takenReceiptTypes }:
                       </select>
                     )}
                   />
+                )}
+                {errors.receiptType && (
+                  <p className="text-xs text-destructive">{errors.receiptType.message}</p>
                 )}
               </div>
             )}

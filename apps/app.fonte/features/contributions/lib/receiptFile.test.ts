@@ -35,14 +35,22 @@ describe('bytesToBase64 (story 193)', () => {
   });
 });
 
-describe('receiptFileUri (story 193)', () => {
-  it('grava no cache, com o id da parcela no nome', () => {
-    expect(receiptFileUri('file:///cache/', 'rcv-1')).toBe('file:///cache/recibo-rcv-1.pdf');
+describe('receiptFileUri (stories 193/212)', () => {
+  it('grava no cache como recibo-{filho}-{MM}-{AAAA}.pdf (competência)', () => {
+    expect(receiptFileUri('file:///cache/', 'João da Silva', '2026-10-01')).toBe(
+      'file:///cache/recibo-joao-da-silva-10-2026.pdf',
+    );
   });
 
   it('sem cacheDirectory (web/SSR), o nome sobrevive sem "null" no caminho', () => {
-    expect(receiptFileUri(null, 'rcv-1')).toBe('recibo-rcv-1.pdf');
-    expect(receiptFileUri(undefined, 'rcv-1')).toBe('recibo-rcv-1.pdf');
+    expect(receiptFileUri(null, 'Conceição', '2026-03-01')).toBe('recibo-conceicao-03-2026.pdf');
+    expect(receiptFileUri(undefined, 'Conceição', '2026-03-01')).toBe(
+      'recibo-conceicao-03-2026.pdf',
+    );
+  });
+
+  it('sem nome do filho não sobra hífen duplo', () => {
+    expect(receiptFileUri('/c/', undefined, '2026-10-01')).toBe('/c/recibo-10-2026.pdf');
   });
 });
 

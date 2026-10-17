@@ -9,6 +9,12 @@ import { bytesToBase64, messageFromBinaryError, receiptFileUri } from '../lib/re
 
 const DOWNLOAD_FALLBACK = 'Falha ao gerar o recibo. Tente novamente em instantes.';
 
+/** Story 212 — dados da linha que dão nome ao arquivo do recibo. */
+export interface ReceiptFileInfo {
+  residentName: string | null | undefined;
+  referenceMonth: string;
+}
+
 /**
  * Story 193 — parcelas PAGAS do filho do familiar logado.
  *
@@ -38,14 +44,20 @@ export function useReceivableReceipt() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const download = useCallback(async (receivableId: string) => {
+  const download = useCallback(async (receivableId: string, file: ReceiptFileInfo) => {
     setDownloadingId(receivableId);
     setError(null);
     try {
       const data = await api.relatives.receivableReceipt(receivableId, {
         responseType: 'arraybuffer',
       });
-      const uri = receiptFileUri(FileSystem.cacheDirectory, receivableId);
+      // Story 212 — nome com o filho e a competência, montado com os dados da
+      // linha (sem ler o Content-Disposition).
+      const uri = receiptFileUri(
+        FileSystem.cacheDirectory,
+        file.residentName,
+        file.referenceMonth,
+      );
       await FileSystem.writeAsStringAsync(uri, bytesToBase64(data as ArrayBuffer), {
         encoding: FileSystem.EncodingType.Base64,
       });

@@ -351,11 +351,11 @@ function makeResidentService(options: {
 }
 
 describe('ReceiptService.generateForResidentReceivable', () => {
-  it('caminho feliz devolve buffer PDF e filename do tipo novo com o número', async () => {
+  it('caminho feliz devolve buffer PDF, o número e filename recibo-{filho}-{MM}-{AAAA} (story 212)', async () => {
     const { service, templateService } = makeResidentService();
     const result = await service.generateForResidentReceivable('rcv-1', 'user-1');
 
-    expect(result.filename).toBe('recibo-contribuicao-acolhido-000001.pdf');
+    expect(result.filename).toBe('recibo-pedro-acolhido-08-2026.pdf');
     expect(result.number).toBe(1);
     expect(result.buffer.subarray(0, 4).toString()).toBe('%PDF');
     expect(templateService.renderWithResolver).toHaveBeenCalled();
@@ -418,6 +418,24 @@ describe('ReceiptService.generateForResidentReceivable', () => {
     await expect(service.generateForResidentReceivable('rcv-1')).rejects.toThrow(
       'Cadastre em Configurações → Templates.',
     );
+  });
+
+  // Story 212, decisão 6 — a competência manda, não o pagamento nem o número.
+  it('filename usa o nome do filho e a COMPETÊNCIA: "João da Silva" + 2026-10 → recibo-joao-da-silva-10-2026.pdf', async () => {
+    const { service } = makeResidentService({
+      resident: { name: 'João da Silva' },
+      receivable: { referenceMonth: '2026-10-01' as never, paidAt: '2026-11-05' as never },
+    });
+    const result = await service.generateForResidentReceivable('rcv-1');
+    expect(result.filename).toBe('recibo-joao-da-silva-10-2026.pdf');
+  });
+
+  // Story 212, decisão 7 — o `code` é só do template ausente.
+  it('parcela inexistente continua 404 SEM o code de template ausente', async () => {
+    const { service } = makeResidentService({ receivable: null });
+    const error = await service.generateForResidentReceivable('rcv-x').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(NotFoundException);
+    expect((error as NotFoundException).getResponse()).not.toHaveProperty('code');
   });
 
   // Decisão 9 — dois responsáveis (dado legado do import) não podem fazer o

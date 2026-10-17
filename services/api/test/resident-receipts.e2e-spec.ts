@@ -5,7 +5,13 @@ process.env.NODE_ENV = 'test';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
-import { FamilyInvestment, PaymentMethod, todayInSaoPaulo } from '@fonte/types';
+import {
+  FamilyInvestment,
+  PaymentMethod,
+  RECEIPT_TEMPLATE_MISSING_CODE,
+  residentReceiptFilename,
+  todayInSaoPaulo,
+} from '@fonte/types';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
 
 /**
@@ -40,6 +46,7 @@ describe('Resident contribution receipts (e2e)', () => {
   let relativeAToken: string;
   let relativeBToken: string;
   let paidAId: string;
+  let paidAReferenceMonth: string;
   let pendingAId: string;
   let paidBId: string;
   const createdUserIds: string[] = [];
@@ -92,22 +99,22 @@ describe('Resident contribution receipts (e2e)', () => {
   /** Paga a primeira parcela pendente do carnê e devolve (paga, ainda pendente). */
   async function payFirstInstallment(
     residentId: string,
-  ): Promise<{ paidId: string; pendingId: string }> {
+  ): Promise<{ paidId: string; pendingId: string; referenceMonth: string }> {
     const list = await request(app.getHttpServer())
       .get(`${BASE}/residents/${residentId}/receivables`)
       .set('Authorization', `Bearer ${coordToken}`)
       .expect(200);
-    const [first, second] = list.body as { id: string }[];
+    const [first, second] = list.body as { id: string; referenceMonth: string }[];
     await request(app.getHttpServer())
       .post(`${BASE}/residents/${residentId}/receivables/${first.id}/payment`)
       .set('Authorization', `Bearer ${coordToken}`)
       .send({
-        paidAt: new Date().toISOString().slice(0, 10),
+        paidAt: todayInSaoPaulo(),
         paymentMethod: PaymentMethod.PIX,
         paidAmount: 480,
       })
       .expect(201);
-    return { paidId: first.id, pendingId: second.id };
+    return { paidId: first.id, pendingId: second.id, referenceMonth: first.referenceMonth };
   }
 
   beforeAll(async () => {
@@ -119,7 +126,11 @@ describe('Resident contribution receipts (e2e)', () => {
 
     residentAId = await createResident(`Filho A ${tag}`);
     residentBId = await createResident(`Filho B ${tag}`);
-    ({ paidId: paidAId, pendingId: pendingAId } = await payFirstInstallment(residentAId));
+    ({
+      paidId: paidAId,
+      pendingId: pendingAId,
+      referenceMonth: paidAReferenceMonth,
+    } = await payFirstInstallment(residentAId));
     ({ paidId: paidBId } = await payFirstInstallment(residentBId));
 
     ({ id: relativeAId, token: relativeAToken } = await createRelativeWithAccess(
@@ -174,7 +185,23 @@ describe('Resident contribution receipts (e2e)', () => {
         .then((res) => {
           expect(res.body.message).toContain('Configurações → Templates');
           expect(res.body.message).toContain('acolhido');
+          // Story 212, decisão 7 — código legível por máquina + o tipo pedido.
+          expect(res.body.code).toBe(RECEIPT_TEMPLATE_MISSING_CODE);
+          expect(res.body.receiptType).toBe('RESIDENT_CONTRIBUTION');
         }));
+
+    it('o template ausente é checado ANTES da parcela (mesmo parcela inexistente leva o code)', async () => {
+      // O gerador acha o template primeiro (story 178): o 404 de parcela
+      // inexistente SEM code só aparece com o template cadastrado — coberto em
+      // "parcela inexistente → 404" mais abaixo.
+      const res = await request(app.getHttpServer())
+        .get(
+          `${BASE}/residents/${residentAId}/receivables/00000000-0000-4000-8000-000000000000/receipt`,
+        )
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(404);
+      expect(res.body.code).toBe(RECEIPT_TEMPLATE_MISSING_CODE);
+    });
   });
 
   // ── Cadastro do template (nenhuma migration: o tipo é DADO) ─────────────────
@@ -238,13 +265,16 @@ describe('Resident contribution receipts (e2e)', () => {
           expect(res.body.message).toContain('parcela paga');
         }));
 
-    it('parcela inexistente → 404', () =>
+    it('parcela inexistente → 404 SEM o code de template ausente (story 212)', () =>
       request(app.getHttpServer())
         .get(
           `${BASE}/residents/${residentAId}/receivables/00000000-0000-4000-8000-000000000000/receipt`,
         )
         .set('Authorization', `Bearer ${adminToken}`)
-        .expect(404));
+        .expect(404)
+        .then((res) => {
+          expect(res.body.code).toBeUndefined();
+        }));
 
     it('receivableId inválido → 400 (ParseUUIDPipe)', () =>
       request(app.getHttpServer())
@@ -252,7 +282,7 @@ describe('Resident contribution receipts (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(400));
 
-    it('ADMIN → 200 com application/pdf e o número no nome do arquivo', async () => {
+    it('ADMIN → 200 com application/pdf e recibo-{filho}-{MM}-{AAAA}.pdf (story 212)', async () => {
       const res = await request(app.getHttpServer())
         .get(`${BASE}/residents/${residentAId}/receivables/${paidAId}/receipt`)
         .set('Authorization', `Bearer ${adminToken}`)
@@ -265,9 +295,9 @@ describe('Resident contribution receipts (e2e)', () => {
         .expect(200);
 
       expect(res.headers['content-type']).toContain('application/pdf');
-      expect(res.headers['content-disposition']).toMatch(
-        /attachment; filename="recibo-contribuicao-acolhido-\d{6}\.pdf"/,
-      );
+      const expected = residentReceiptFilename(`Filho A ${tag}`, paidAReferenceMonth);
+      expect(expected).toMatch(/^recibo-filho-a-e2e-recibo-filho-\d+-\d{2}-\d{4}\.pdf$/);
+      expect(res.headers['content-disposition']).toBe(`attachment; filename="${expected}"`);
       expect((res.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
     }, 120_000);
 

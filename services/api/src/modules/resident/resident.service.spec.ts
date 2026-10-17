@@ -1038,7 +1038,7 @@ describe('ResidentService.readmit', () => {
   });
 
   it('uses today as entryDate when dto.entryDate is not provided', async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInSaoPaulo();
     const dtoWithoutDate: ReadmitResidentDto = { houseId: 'new-house-uuid' };
 
     const { service, admissionCreate } = makeReadmitService({ status: ResidentStatus.DISCHARGED });
@@ -1698,7 +1698,7 @@ describe('ResidentService.update exit events', () => {
     const { service, createAuto, cancelAfterExit } = makeUpdateService(
       makeResident({ status: ResidentStatus.ACTIVE }),
     );
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInSaoPaulo();
 
     await service.update(RESIDENT_ID, { status: ResidentStatus.DISCHARGED } as never);
 

@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import type { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
+import { todayInSaoPaulo } from '@fonte/types';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
 
 describe('House product contributions (story 195)', () => {
@@ -37,7 +38,7 @@ describe('House product contributions (story 195)', () => {
     otherHouse = createdHouse.body.id;
     for (const [index, house] of [houseId, otherHouse, houseId].entries()) {
       const response = await request(app.getHttpServer()).post(`${BASE}/residents`).set('Authorization', `Bearer ${coordinator}`)
-        .send({ name: `Produtos 195 ${Date.now()} ${index}`, houseId: house, entryDate: new Date().toISOString().slice(0, 10), familyInvestment: 'PAYMENT_700', contributionDueDay: 10 }).expect(201);
+        .send({ name: `Produtos 195 ${Date.now()} ${index}`, houseId: house, entryDate: todayInSaoPaulo(), familyInvestment: 'PAYMENT_700', contributionDueDay: 10 }).expect(201);
       residents.push(response.body.id);
     }
     const response = await request(app.getHttpServer()).get(`${BASE}/residents/${residents[0]}/receivables`).set('Authorization', `Bearer ${coordinator}`).expect(200);

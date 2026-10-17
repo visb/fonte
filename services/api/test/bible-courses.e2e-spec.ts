@@ -4,7 +4,7 @@ process.env.NODE_ENV = 'test';
 
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { BibleCourseEnrollmentStatus } from '@fonte/types';
+import { BibleCourseEnrollmentStatus, todayInSaoPaulo } from '@fonte/types';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
 
 // PNG 1x1 transparente válido — o upload de foto passa pelo sharp.
@@ -131,7 +131,7 @@ describe('BibleCourseController (e2e)', () => {
       eligibleId = eligible.body.id;
 
       // Interno recém-entrado: não deve aparecer (menos de 3 meses).
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayInSaoPaulo();
       const fresh = await request(app.getHttpServer())
         .post(`${BASE}/residents`)
         .set('Authorization', `Bearer ${token}`)

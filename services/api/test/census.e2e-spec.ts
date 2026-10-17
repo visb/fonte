@@ -4,9 +4,11 @@ process.env.NODE_ENV = 'test';
 
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
+import { todayInSaoPaulo } from '@fonte/types';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
 
-const today = () => new Date().toISOString().split('T')[0];
+// Story 203: "hoje" é o dia de São Paulo — o dia UTC já é amanhã após 21h BRT.
+const today = () => todayInSaoPaulo();
 
 describe('CensusController (e2e)', () => {
   let app: INestApplication;

@@ -1,4 +1,5 @@
 import { test, expect, request, type APIRequestContext, type Page } from '@playwright/test';
+import { todayInSaoPaulo } from '@fonte/types';
 
 const BASE = 'http://localhost:3001/api/v1';
 const suffix = Date.now();
@@ -17,7 +18,7 @@ test.beforeAll(async () => {
   const operator = await api.post(`${BASE}/auth/login`, { data: { identifier: 'operator@fonte.com', password: 'operator123' } });
   operatorHeaders = { Authorization: `Bearer ${(await operator.json()).accessToken}` };
   houseId = (await (await api.get(`${BASE}/staff/me`, { headers: operatorHeaders })).json()).houseId;
-  const resident = await api.post(`${BASE}/residents`, { headers, data: { name: residentName, houseId, entryDate: new Date().toISOString().slice(0, 10), familyInvestment: 'PAYMENT_700', contributionDueDay: 10 } });
+  const resident = await api.post(`${BASE}/residents`, { headers, data: { name: residentName, houseId, entryDate: todayInSaoPaulo(), familyInvestment: 'PAYMENT_700', contributionDueDay: 10 } });
   expect(resident.ok()).toBeTruthy(); residentId = (await resident.json()).id;
   receivableId = (await (await api.get(`${BASE}/residents/${residentId}/receivables`, { headers })).json())[0].id;
 });

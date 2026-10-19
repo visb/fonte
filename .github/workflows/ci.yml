@@ -42,7 +42,8 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
-      # Roda os 6 pacotes testaveis com --coverage. Qualquer threshold abaixo do
+      # Roda os pacotes testaveis com --coverage (inclui release.fonte e o
+      # script de release — story 213). Qualquer threshold abaixo do
       # piso encerra com exit != 0 e quebra o build (gate). E2E nao entra no gate.
       - name: Unit + coverage gate (todos os pacotes)
         run: pnpm test:cov:all
@@ -59,6 +60,12 @@ jobs:
     permissions:
       contents: read
       packages: write
+    # Mesmo grupo do job `web` do release.yml (story 213): os builds do
+    # fonte-web nunca se sobrepõem, então o fonte-web:latest publicado por
+    # último é sempre o que já enxergou o APK mais novo.
+    concurrency:
+      group: fonte-web-image
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
@@ -85,8 +92,21 @@ jobs:
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
 
-      # A URL da API e BUILD-TIME nos dois front-ends: fica embutida no bundle.
-      # Trocar de dominio exige rebuild, nao restart.
+      # Story 213: o stage `web` embute o ultimo APK publicado (fonte-apk:latest)
+      # no release.fonte. Antes da primeira release a imagem nao existe e o
+      # build cai no stage vazio (`apk-empty`) — a home mostra "APK ainda nao
+      # publicado" em vez de quebrar o deploy da main.
+      - name: APK publicado
+        id: apk
+        run: |
+          if docker manifest inspect ghcr.io/visb/fonte-apk:latest > /dev/null 2>&1; then
+            echo "image=ghcr.io/visb/fonte-apk:latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=apk-empty" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A URL da API e BUILD-TIME nos front-ends: fica embutida no bundle.
+      # Trocar de dominio exige rebuild, nao restart. O release.fonte nao usa API.
       - name: Web
         uses: docker/build-push-action@v6
         with:
@@ -96,6 +116,7 @@ jobs:
           build-args: |
             VITE_API_URL=https://adm.fontedemisericordia.com.br/api/v1
             EXPO_PUBLIC_API_URL=https://ops.fontedemisericordia.com.br/api/v1
+            APK_IMAGE=${{ steps.apk.outputs.image }}
           tags: |
             ghcr.io/visb/fonte-web:latest
             ghcr.io/visb/fonte-web:${{ github.sha }}

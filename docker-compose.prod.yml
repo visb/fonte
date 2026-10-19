@@ -116,8 +116,13 @@ services:
     # Recarrega a cada 6h para pegar certificado renovado pelo certbot.
     # Certificado renovado sem reload NÃO vale: o nginx segue servindo o antigo
     # até reiniciar, e o site cai quando o velho expira.
+    #
+    # O `sh -c` pula o /docker-entrypoint.d da imagem, então o enable-sites roda
+    # aqui (story 213): no boot e antes de cada reload, habilita os hosts
+    # opcionais (ex.: release.) cujo certificado já existe. Sem ele, host novo
+    # sem certificado derrubaria o nginx inteiro.
     command: >
-      sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
+      sh -c "/docker-entrypoint.d/05-fonte-enable-sites.sh; while :; do sleep 6h & wait $${!}; /docker-entrypoint.d/05-fonte-enable-sites.sh; nginx -s reload; done & nginx -g 'daemon off;'"
 
   # ── TLS ─────────────────────────────────────────────────────────────────────
   # Renova a cada 12h; `renew` só age no que está perto de vencer, então rodar

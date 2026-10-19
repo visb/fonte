@@ -50,3 +50,6 @@ stories
 docs
 *.md
 !README.md
+# Conteúdo do changelog do release.fonte (story 213): entra no build do stage
+# `web`. Re-incluído explicitamente para nenhum padrão de .md acima engoli-lo.
+!apps/release.fonte/content/releases/*.md

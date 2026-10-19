@@ -16,15 +16,29 @@
 // transform, o que congelaria esta decisao no valor de producao quando o arquivo
 // e carregado pelo Jest. O Expo CLI avalia este arquivo em Node puro, sem babel,
 // entao a leitura em runtime continua valendo no build.
+//
+// Versão (story 213): fonte ÚNICA no `version` do package.json — que é a versão
+// da plataforma (tag vX.Y.Z). `android.versionCode` deriva dela
+// (config/version.js), então o bump do release é uma linha só.
+//
+// Assinatura (story 213): com as quatro variáveis OPS_KEYSTORE_PATH,
+// OPS_KEYSTORE_PASSWORD, OPS_KEY_ALIAS e OPS_KEY_PASSWORD no ambiente do
+// prebuild/gradle, o APK de release sai assinado com a keystore fixa
+// (config/releaseSigning.js). Sem elas, segue o debug-signing (smoke local).
+const { version } = require('./package.json');
+const { versionCode } = require('./config/version');
+const { releaseSigningEnabled, withReleaseSigning } = require('./config/releaseSigning');
+
 const env = process.env;
 const apiUrl = env.EXPO_PUBLIC_API_URL ?? '';
 const allowCleartext = apiUrl.startsWith('http://');
+const signRelease = releaseSigningEnabled(env);
 
 module.exports = {
   expo: {
     name: 'OPS Fonte',
     slug: 'ops-fonte',
-    version: '1.0.0',
+    version,
     orientation: 'portrait',
     scheme: 'ops-fonte',
     userInterfaceStyle: 'light',
@@ -39,6 +53,7 @@ module.exports = {
         backgroundColor: '#272950',
       },
       package: 'org.fonte.ops',
+      versionCode: versionCode(version),
     },
     web: {
       bundler: 'metro',
@@ -69,6 +84,7 @@ module.exports = {
           },
         },
       ],
+      ...(signRelease ? [withReleaseSigning] : []),
     ],
     experiments: {
       typedRoutes: true,

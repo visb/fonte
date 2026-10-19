@@ -1,0 +1,43 @@
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./vitest.setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
+    // e2e/** é Playwright — fora do Vitest.
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    coverage: {
+      provider: 'v8',
+      all: true,
+      reporter: ['text', 'text-summary'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.d.ts',
+        'src/test/**',
+        // Bootstrap do React (createRoot) e shell de providers + BrowserRouter:
+        // orquestração pura, coberta pelo e2e (Playwright). As rotas em si
+        // (AppRoutes) e as pages ficam DENTRO do denominador, com teste unit.
+        'src/main.tsx',
+        'src/App.tsx',
+      ],
+      // Piso de 90% em todas as métricas (story 213, catraca do CI — só sobe).
+      thresholds: {
+        statements: 90,
+        branches: 90,
+        functions: 90,
+        lines: 90,
+      },
+    },
+  },
+});

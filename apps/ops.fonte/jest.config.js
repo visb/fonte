@@ -13,6 +13,9 @@ module.exports = {
     'components/**/*.{ts,tsx}',
     'features/**/*.{ts,tsx}',
     'lib/**/*.{ts,tsx}',
+    // Story 213: versionCode e assinatura de release ENTRAM no denominador —
+    // são lógica pura (não orquestração), com spec em tests/releaseConfig.test.ts.
+    'config/**/*.js',
     '!**/*.test.{ts,tsx}',
     '!**/__mocks__/**',
     '!**/*.d.ts',

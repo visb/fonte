@@ -4,7 +4,13 @@
 #   deps  → install do workspace inteiro (camada cacheável)
 #   build → dist da API, dos packages compartilhados e dos dois frontends web
 #   api   → runtime da API (alvo do serviço `api` do docker-compose.prod.yml)
-#   web   → nginx servindo adm + ops e fazendo proxy da API e do MinIO
+#   web   → nginx servindo adm + ops + release e fazendo proxy da API e do MinIO
+#
+# APK do ops.fonte (story 213): o stage `web` copia o último APK publicado da
+# imagem ghcr.io/visb/fonte-apk (gerada pelo release.yml na tag vX.Y.Z) para
+# /srv/release/downloads. Sem `--build-arg APK_IMAGE=...` o build usa um
+# diretório VAZIO (bootstrap: nenhuma fonte-apk ainda) e a home do release.fonte
+# mostra "APK ainda não publicado" — o build nunca depende de a imagem existir.
 #
 # Build:
 #   docker build --target api -t fonte-api .
@@ -21,6 +27,8 @@
 # não é lido por pg_restore mais antigo). Trocar a base por uma Alpine <3.23
 # quebra `backup:import`/`backup:restore` (stories 20 e 188).
 ARG NODE_IMAGE=node:22-alpine3.23
+# Imagem com /downloads/{ops-<versão>.apk,latest.json}. Default = stage vazio.
+ARG APK_IMAGE=apk-empty
 
 # ── base ──────────────────────────────────────────────────────────────────────
 FROM ${NODE_IMAGE} AS base
@@ -55,6 +63,7 @@ COPY apps/adm.fonte/package.json apps/adm.fonte/
 COPY apps/ops.fonte/package.json apps/ops.fonte/
 COPY apps/app.fonte/package.json apps/app.fonte/
 COPY apps/portal.fonte/package.json apps/portal.fonte/
+COPY apps/release.fonte/package.json apps/release.fonte/
 # `--frozen-lockfile` exige o manifesto de TODOS os workspaces do
 # pnpm-workspace.yaml, inclusive app.fonte/portal.fonte — que não são buildados
 # neste corte, mas sem eles o install falha.
@@ -77,6 +86,9 @@ RUN pnpm build:api
 RUN pnpm --filter adm.fonte build
 # `build:ops` = expo export --platform web (output: 'static').
 RUN pnpm build:ops
+# release.fonte (story 213): estático, sem API; o changelog vem de
+# content/releases/*.md e frontmatter inválido quebra este passo.
+RUN pnpm build:release
 # portal.fonte e app.fonte ficam FORA deste corte (decisão da story 189).
 
 # ── api ───────────────────────────────────────────────────────────────────────
@@ -138,13 +150,36 @@ ENTRYPOINT ["/sbin/tini", "--"]
 # `start` roda migration:run e só então sobe o node dist/main.
 CMD ["pnpm", "--filter", "api", "start"]
 
+# ── apk ───────────────────────────────────────────────────────────────────────
+# Bootstrap: sem fonte-apk publicada, /downloads existe e fica vazio.
+FROM nginx:alpine AS apk-empty
+RUN mkdir -p /downloads
+
+# Resolve para o stage acima (default) ou para ghcr.io/visb/fonte-apk:<tag>.
+FROM ${APK_IMAGE} AS apk
+
 # ── web ───────────────────────────────────────────────────────────────────────
 FROM nginx:alpine AS web
 LABEL org.opencontainers.image.source=https://github.com/visb/fonte
-# Os dois frontends são estáticos: nenhum precisa de processo Node em runtime,
+# Os frontends são estáticos: nenhum precisa de processo Node em runtime,
 # então nenhum vira serviço no compose — são roots de `server` no nginx.
 COPY --from=build /app/apps/adm.fonte/dist /srv/adm
 COPY --from=build /app/apps/ops.fonte/dist /srv/ops
+COPY --from=build /app/apps/release.fonte/dist /srv/release
+COPY --from=apk /downloads/ /srv/release/downloads/
+# /downloads/ops.apk é o link FIXO da home: aponta (symlink) para o versionado,
+# sem duplicar ~70 MB na imagem. Sem APK (bootstrap) não cria nada e o nginx
+# responde 404 — que a home traduz em "APK ainda não publicado".
+RUN cd /srv/release/downloads \
+    && for apk in ops-*.apk; do [ -e "$apk" ] && ln -sf "$apk" ops.apk; done; true
 COPY docker/nginx/snippets/ /etc/nginx/snippets/
+# Hosts opcionais (story 213): só entram com o certificado emitido — ver
+# docker/nginx/enable-sites.sh. O script roda no boot pelo entrypoint padrão da
+# imagem e também pelo `command` do docker-compose.prod.yml.
+COPY docker/nginx/sites/ /etc/nginx/sites-available/
+COPY --chmod=755 docker/nginx/enable-sites.sh /docker-entrypoint.d/05-fonte-enable-sites.sh
+# Checkout no Windows (core.autocrlf) traz o .sh com CRLF, que o sh do Alpine
+# não executa. Normaliza para o build local valer igual ao do CI (Linux).
+RUN sed -i 's/\r$//' /docker-entrypoint.d/05-fonte-enable-sites.sh
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80 443

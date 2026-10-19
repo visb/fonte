@@ -229,6 +229,7 @@ Hosts deste corte:
 |---|---|
 | `adm.fontedemisericordia.com.br` | `adm.fonte` (Vite) + `/api/v1` |
 | `ops.fontedemisericordia.com.br` | `ops.fonte` web (`expo export`) + `/api/v1` |
+| `release.fontedemisericordia.com.br` | `release.fonte` (Vite, **sem** API): download do APK do ops + changelog — ver §9.7 |
 | `static.fontedemisericordia.com.br` | proxy para o MinIO (**bucket privado**, só URL assinada) |
 
 `portal.fonte` e `app.fonte` estão fora deste corte: não são buildados, não têm `server` block
@@ -237,7 +238,7 @@ e não entram em `CORS_ORIGIN`.
 ## 9.1 Pré-requisitos
 
 1. Docker + Docker Compose no VPS, repositório clonado.
-2. DNS: os **três** hosts apontando para o IP do VPS (o certbot só emite depois disso).
+2. DNS: os **quatro** hosts apontando para o IP do VPS (o certbot só emite depois disso).
 3. `.env` na **raiz** do repositório no VPS (nunca versionado). É ao mesmo tempo o arquivo de
    interpolação do compose e o `env_file` da API. Base: `services/api/.env.example`. Precisa
    conter, no mínimo:
@@ -324,10 +325,10 @@ docker compose -f docker-compose.prod.yml run -d --service-ports \
   --name fonte-nginx-bootstrap nginx
 ```
 
-**3. Emita os três certificados** (um por host — a assinatura e o `server_name` são por host):
+**3. Emita os certificados** (um por host — a assinatura e o `server_name` são por host):
 
 ```bash
-for host in adm ops static; do
+for host in adm ops release static; do
   docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certbot \
     certonly --webroot -w /var/www/certbot \
     -d $host.fontedemisericordia.com.br \
@@ -507,7 +508,99 @@ adicione você mesmo. Sem isso o deploy deixa de ter aprovação manual.
 IMAGE_TAG=<sha-do-commit-bom> docker compose -f docker-compose.prod.yml up -d api nginx
 ```
 
-## 9.7 Limites conhecidos
+## 9.7 Releases e APK do ops (`release.fonte`)
+
+Uma release é a **versão da plataforma inteira** (tag git `vX.Y.Z`; a versão é o `version` de
+`apps/ops.fonte/package.json`, de onde o `android.versionCode` deriva). Quem prepara é a skill
+`/release` (`.claude/skills/fonte-release/`): escreve o changelog
+(`apps/release.fonte/content/releases/vX.Y.Z.md`), faz o bump, o smoke do APK, o commit
+`chore(release): vX.Y.Z` e a tag anotada — e **para**. O push é seu:
+
+```bash
+git push origin main --follow-tags
+```
+
+O push da tag dispara o `.github/workflows/release.yml`: confere tag × `package.json` × changelog,
+compila o APK **assinado** em Linux (`arm64-v8a`), publica `ghcr.io/visb/fonte-apk:<versão>` (+
+`:latest`) com `ops-<versão>.apk` e `latest.json`, reconstrói o `fonte-web` com o APK novo em
+`/srv/release/downloads/` e chama o `deploy.yml`. Todo build da `main` copia o último
+`fonte-apk:latest`; antes da primeira release, a home mostra "APK ainda não publicado".
+
+Ensaio sem publicar: Actions → Release → Run workflow com uma tag existente e `publish`
+desmarcado — builda e confere a assinatura do APK, sem imagem e sem deploy.
+
+### DNS e certificado (uma vez)
+
+1. Cloudflare: registro `A` `release` → IP do VPS, **nuvem cinza** (DNS only), como os demais — o
+   certbot valida por HTTP na porta 80 e o nginx termina o TLS.
+2. Com a stack no ar (o bloco da porta 80 já atende o ACME do host `release.`):
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certbot \
+  certonly --webroot -w /var/www/certbot \
+  -d release.fontedemisericordia.com.br \
+  --email <email> --agree-tos --no-eff-email
+```
+
+3. Habilite o host — o `server` do `release.` é **opcional**
+   (`docker/nginx/sites/`): o `docker/nginx/enable-sites.sh` só o liga quando o certificado
+   existe, no boot do nginx e antes de cada reload de 6h. Para entrar na hora:
+
+```bash
+docker compose -f docker-compose.prod.yml restart nginx
+```
+
+Por isso a config pode chegar à produção (deploy automático da `main`) **antes** do certificado
+sem derrubar adm, ops e storage: até lá o host `release.` só não tem `server` 443. A renovação
+segue a do certbot (§9.3).
+
+### Keystore de release do ops (uma vez — e o backup é para sempre)
+
+O APK é assinado com uma keystore **fixa**. Sem ela o Android recusa atualizar por cima, e
+desinstalar apaga o banco local e a **fila offline** do ops. **Perder a keystore = todo mundo
+desinstala e reinstala.** Ela nunca entra no git.
+
+**Gerar** (máquina do responsável, JDK instalado):
+
+```bash
+keytool -genkeypair -v -storetype PKCS12 -keystore ops-release.keystore \
+  -alias ops -keyalg RSA -keysize 4096 -validity 10000
+```
+
+**Cadastrar** em GitHub → Settings → Secrets and variables → Actions:
+
+| Secret | Valor |
+|---|---|
+| `OPS_KEYSTORE_BASE64` | `base64 -w0 ops-release.keystore` (PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("ops-release.keystore"))`) |
+| `OPS_KEYSTORE_PASSWORD` | senha da keystore |
+| `OPS_KEY_ALIAS` | `ops` (o `-alias` usado acima) |
+| `OPS_KEY_PASSWORD` | senha da chave (em PKCS12, a mesma da keystore) |
+
+Faltando qualquer um, o `release.yml` falha — nunca publica APK debug-signed. O passo
+"Conferir assinatura" roda `apksigner verify --print-certs` e reprova certificado debug.
+
+**Backup:** guarde o arquivo `.keystore` **e** as senhas em dois lugares fora do VPS e do GitHub
+(ex.: cofre de senhas + mídia offline). Os secrets do GitHub não são recuperáveis — só
+sobrescrevíveis.
+
+**Build local assinado (opcional):** exporte `OPS_KEYSTORE_PATH` (caminho do arquivo),
+`OPS_KEYSTORE_PASSWORD`, `OPS_KEY_ALIAS` e `OPS_KEY_PASSWORD` antes do `expo prebuild` e do
+`gradlew`. Sem nenhuma delas o build sai debug-signed (smoke); com só parte delas o
+`app.config.js` recusa a config.
+
+**Rotação** (só se a chave vazar ou se perder): gere uma nova keystore, troque os quatro secrets e
+publique uma release com `breaking: true` no changelog — todos precisam sincronizar as
+pendências, desinstalar e instalar de novo, exatamente como na primeira versão assinada.
+
+### Primeira versão assinada
+
+Quem tem hoje o APK debug-signed (recebido por fora) precisa **desinstalar uma vez** para
+instalar a `v1.0.0` — antes, abrir o app com internet e confirmar que a tela de pendências está
+vazia. Da `v1.0.0` em diante, toda atualização instala por cima. Conferência manual a cada
+release nova: instalar por cima num aparelho físico e confirmar que login, dados locais e fila
+offline sobrevivem.
+
+## 9.8 Limites conhecidos
 
 - **MinIO no mesmo VPS não é backup** — os bytes ficam no mesmo disco do Postgres. Destino
   offsite segue em aberto (story 20).

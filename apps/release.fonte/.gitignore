@@ -1,0 +1,8 @@
+dist
+.env
+.env.local
+*.tsbuildinfo
+coverage
+test-results
+playwright-report
+.last-run.json

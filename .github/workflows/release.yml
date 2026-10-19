@@ -1,0 +1,225 @@
+name: Release
+
+# Publicação de uma release da plataforma (story 213). Gatilho: push de tag
+# vX.Y.Z — feito pela skill fonte-release, que para ANTES do push e deixa o
+# comando `git push origin main --follow-tags` para o usuário. Push = publicação.
+#
+#   check  → a tag bate com apps/ops.fonte/package.json e tem changelog escrito
+#   apk    → APK release ASSINADO (keystore fixa) → imagem ghcr.io/visb/fonte-apk
+#   web    → rebuild do fonte-web já com o APK novo em /srv/release/downloads
+#   deploy → deploy.yml (o mesmo do push na main)
+#
+# O APK é compilado AQUI, em Linux (sem o MAX_PATH/ninja do Windows), e nunca
+# entra no git. A máquina do operador só faz o smoke local antes de taguear.
+#
+# workflow_dispatch = ENSAIO: builda e confere a assinatura do APK de uma tag
+# existente sem publicar imagem nem fazer deploy (a não ser que `publish` seja
+# marcado).
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag existente a ensaiar (ex.: v1.0.0)
+        required: true
+      publish:
+        description: Publicar fonte-apk/fonte-web e fazer deploy
+        type: boolean
+        default: false
+
+env:
+  TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+  PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
+
+jobs:
+  check:
+    name: Tag × package.json × changelog
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Falha aqui se a tag não bate com a versão do ops ou se falta o
+      # apps/release.fonte/content/releases/<tag>.md — antes de gastar o build.
+      - name: Conferir a tag
+        run: node scripts/release/check-tag.mjs "$TAG"
+
+      - name: Versão
+        id: version
+        run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+  apk:
+    name: APK assinado → fonte-apk
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      # Mesma URL embutida no ops web (ci.yml): https → cleartext bloqueado.
+      EXPO_PUBLIC_API_URL: https://ops.fontedemisericordia.com.br/api/v1
+      # Metro com raiz no app, não no workspace (senão o bundle de release não
+      # resolve `expo-router/entry`). Ver apps/ops.fonte/scripts/build-e2e-android.js.
+      EXPO_NO_METRO_WORKSPACE_ROOT: '1'
+      NODE_ENV: production
+      # Sem org/token do Sentry o release FALHA no upload de source maps.
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.3.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Pacotes compartilhados
+        run: |
+          pnpm build:types
+          pnpm build:api-client
+
+      # A keystore vive SÓ nos secrets (base64) e no backup do responsável.
+      # Faltando qualquer um, falha — nunca publicar APK debug-signed.
+      - name: Keystore de release
+        env:
+          OPS_KEYSTORE_BASE64: ${{ secrets.OPS_KEYSTORE_BASE64 }}
+          OPS_KEYSTORE_PASSWORD: ${{ secrets.OPS_KEYSTORE_PASSWORD }}
+          OPS_KEY_ALIAS: ${{ secrets.OPS_KEY_ALIAS }}
+          OPS_KEY_PASSWORD: ${{ secrets.OPS_KEY_PASSWORD }}
+        run: |
+          for name in OPS_KEYSTORE_BASE64 OPS_KEYSTORE_PASSWORD OPS_KEY_ALIAS OPS_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::secret $name ausente"; exit 1; fi
+          done
+          echo "$OPS_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/ops-release.keystore"
+          echo "OPS_KEYSTORE_PATH=$RUNNER_TEMP/ops-release.keystore" >> "$GITHUB_ENV"
+
+      - name: Prebuild + assembleRelease (arm64-v8a)
+        working-directory: apps/ops.fonte
+        env:
+          OPS_KEYSTORE_PASSWORD: ${{ secrets.OPS_KEYSTORE_PASSWORD }}
+          OPS_KEY_ALIAS: ${{ secrets.OPS_KEY_ALIAS }}
+          OPS_KEY_PASSWORD: ${{ secrets.OPS_KEY_PASSWORD }}
+        run: |
+          pnpm exec expo prebuild -p android --clean --no-install
+          ./android/gradlew -p android assembleRelease -PreactNativeArchitectures=arm64-v8a
+
+      # Prova de que a assinatura é a da keystore fixa: um APK com o
+      # certificado debug não atualiza por cima e obrigaria todos a reinstalar.
+      - name: Conferir assinatura
+        run: |
+          APK=apps/ops.fonte/android/app/build/outputs/apk/release/app-release.apk
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | tee "$RUNNER_TEMP/certs.txt"
+          if grep -qi "CN=Android Debug" "$RUNNER_TEMP/certs.txt"; then
+            echo "::error::APK assinado com a chave DEBUG"; exit 1
+          fi
+
+      - name: Artefatos (ops-<versão>.apk + latest.json)
+        run: >
+          node scripts/release/apk-manifest.mjs
+          --apk apps/ops.fonte/android/app/build/outputs/apk/release/app-release.apk
+          --version "$VERSION"
+          --out "$RUNNER_TEMP/apk-image/downloads"
+
+      - name: Remover a keystore do runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/ops-release.keystore"
+
+      - uses: docker/setup-buildx-action@v3
+        if: env.PUBLISH == 'true'
+
+      - name: Login no GHCR
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Imagem imutável por versão; `latest` passa a apontar para ela. É dela
+      # que o stage `web` copia o APK em todo build (inclusive o da main).
+      - name: Publicar fonte-apk
+        if: env.PUBLISH == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ runner.temp }}/apk-image
+          file: docker/apk/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/visb/fonte-apk:${{ env.VERSION }}
+            ghcr.io/visb/fonte-apk:latest
+
+  web:
+    name: fonte-web com o APK novo
+    needs: [check, apk]
+    if: ${{ github.event_name == 'push' || inputs.publish }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    # Mesmo grupo do job `images` do ci.yml: builds do fonte-web nunca se
+    # sobrepõem, então um build da main iniciado ANTES do APK novo não consegue
+    # publicar o fonte-web:latest DEPOIS deste.
+    concurrency:
+      group: fonte-web-image
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: web
+          push: true
+          build-args: |
+            VITE_API_URL=https://adm.fontedemisericordia.com.br/api/v1
+            EXPO_PUBLIC_API_URL=https://ops.fontedemisericordia.com.br/api/v1
+            APK_IMAGE=ghcr.io/visb/fonte-apk:${{ needs.check.outputs.version }}
+          tags: |
+            ghcr.io/visb/fonte-web:latest
+            ghcr.io/visb/fonte-web:${{ github.sha }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  deploy:
+    needs: web
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

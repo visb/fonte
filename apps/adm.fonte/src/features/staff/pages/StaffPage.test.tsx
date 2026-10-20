@@ -17,8 +17,10 @@ vi.mock('../components/DeleteStaffDialog', () => ({
     staff ? <div>delete {staff.name}</div> : null,
 }));
 vi.mock('../components/StaffCard', () => ({
-  StaffCard: ({ staff, onDelete }: { staff: { name: string }; onDelete: () => void }) => (
-    <button onClick={onDelete}>{staff.name}</button>
+  StaffCard: ({ staff, href, onDelete }: { staff: { name: string }; href: string; onDelete: () => void }) => (
+    <button data-href={href} onClick={onDelete}>
+      {staff.name}
+    </button>
   ),
 }));
 
@@ -60,9 +62,10 @@ describe('StaffPage — filtro Ativos | Desligados (story 217)', () => {
     expect(screen.getByRole('button', { name: 'Desligados' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('lista os cards e abre a exclusão de cadastro', () => {
+  it('lista os cards com link para o detalhe e abre a exclusão de cadastro', () => {
     staffQuery.data = [{ id: 's1', name: 'Pedro Servo' }];
     renderPage();
+    expect(screen.getByText('Pedro Servo')).toHaveAttribute('data-href', '/staff/s1');
     fireEvent.click(screen.getByText('Pedro Servo'));
     expect(screen.getByText('delete Pedro Servo')).toBeInTheDocument();
   });

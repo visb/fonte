@@ -9,7 +9,8 @@ stories **sem intervenção humana**. As decisões já estão travadas em cada `
 > (codificar + gates + commit) é responsabilidade do agent **`fonte-implementer`** — este protocolo
 > só **orquestra**: escolhe a próxima story, dispara o agent, mergeia na main e atualiza o ledger.
 
-Forma de iniciar: skill **`/autorun`** (Claude Code, `.claude/skills/autorun`, via `/loop`) ou
+Forma de iniciar: skill **`/autorun`** (Claude Code, `.claude/skills/autorun`, execução sequencial
+na sessão — o harness retoma sozinho após o reset do limite de uso; sem `/loop`/agendamento) ou
 **`$autorun`** (Codex, `.agents/skills/autorun`, execução sequencial na sessão; retomar = invocar de
 novo). O texto abaixo é o protocolo que a skill executa. No Codex, "tool `Agent`" = subagente
 `.codex/agents/fonte-implementer.toml`; `Write`/`Edit` = `apply_patch`.
@@ -31,8 +32,8 @@ commit `feat(story-NN)` = feita; pular.
 - **Um spawn por story, contexto limpo:** para cada story, disparar o agent `fonte-implementer`
   (tool `Agent`). O orquestrador **não** codifica no próprio contexto — só coordena, sobe serviços,
   dispara um agent por vez, mergeia e registra.
-  - **Se o spawn falhar por limite de sessão** ("You've hit your session limit"): encerrar o turno
-    sem ação; o próximo disparo do `/loop` (após o reset) retoma sozinho. Não rearmar nada.
+  - **Limite de uso** ("You've hit your session limit"): não precisa fazer nada — o Claude Code
+    retoma a sessão sozinho após o reset; continuar do ledger. Não agendar `/loop`/wakeup/cron.
 - **Disciplina de shell (o que mais interrompe o run):** arquivo se escreve com `Write`/`Edit`, nunca
   `cat >`/heredoc/`python - <<EOF`/`sed -i` multilinha; `.env` só por `Read`; um comando simples por
   chamada Bash (sem `cd X && ... | tail`); comando > ~1500 chars falha com
@@ -40,8 +41,8 @@ commit `feat(story-NN)` = feita; pular.
   nega esses comandos e diz a alternativa — ao levar um `[bash-guard:...]`, trocar de tool, não de
   sintaxe de shell.
 - **`automode-unavailable` não é bloqueio de story:** é o gateway de permissão temporariamente
-  indisponível ("... is temporarily unavailable"). Repetir até 2x; persistindo, encerrar o turno e
-  deixar o próximo disparo retomar do ledger. Nunca marcar `BLOQUEADO` por esse motivo.
+  indisponível ("... is temporarily unavailable"). Repetir até 2x; persistindo, seguir para outro
+  passo/story que não dependa dele e voltar depois. Nunca marcar `BLOQUEADO` por esse motivo.
 - **Merge na main por story (padrão), sem push, sem PR:** cada story, ao ficar verde, é mergeada na
   `main` local antes da próxima (`--no-ff`). Branches preservadas.
 - **Teste-antes-do-merge (DoD):** antes de **qualquer** merge — suíte da área tocada **toda verde**
@@ -82,18 +83,20 @@ git switch -c {prefixo}/story-NN-{slug}
 - Arquivar o plano: `git mv stories/NN-*.md stories/done/` + commit
   `docs(stories): arquiva story NN concluida em done/`.
 
-## A cada disparo do loop
+## Execução da fila
+
+Em sequência, na mesma sessão, até não sobrar story `[ ]`/`in_progress`:
 
 1. **Reler estado:** ledger (`stories/PROGRESS.md`) + `git log`. Stories com commit `feat(story-NN)`
    = prontas; pular.
-2. **Se a sessão estiver no limite** (`You've hit your session limit · resets <hora>`): **não fazer
-   nada**, encerrar o turno. O `/loop` (intervalo fixo) redispara depois do reset e retoma sozinho.
-   (Encher a **janela de contexto** é outro caso: há auto-compactação e segue no mesmo turno.)
-3. **Caso contrário:** escolher a próxima story `[ ]`/`in_progress` na ordem (respeitando deps
-   rígidas), disparar `fonte-implementer` com o plano + branch. Ao receber o recibo: se OK e verde →
-   mergear na main + arquivar; senão → registrar `BLOQUEADO`/PARCIAL com motivo. Marcar status no
-   ledger. Várias stories por turno se houver orçamento.
-4. **Salvar estado sempre:** ledger atualizado + tudo commitado (cada story = checkpoint).
+2. **Próxima story** `[ ]`/`in_progress` na ordem (respeitando deps rígidas) → disparar
+   `fonte-implementer` com o plano + branch. Ao receber o recibo: se OK e verde → mergear na main +
+   arquivar; senão → registrar `BLOQUEADO`/PARCIAL com motivo. Marcar status no ledger.
+3. **Salvar estado sempre:** ledger atualizado + tudo commitado (cada story = checkpoint). Voltar ao 1.
+
+Limite de uso (`You've hit your session limit · resets <hora>`) → a sessão pausa e o harness retoma
+sozinho após o reset; seguir do ledger. Encher a **janela de contexto** → auto-compactação, segue no
+mesmo turno. Sessão encerrada de vez (crash, fechou o terminal) → `/autorun` de novo retoma do ledger.
 
 ## Registro de progresso (ledger)
 
@@ -107,10 +110,10 @@ Após cada story, anexar ao Log da rodada:
 hashes + bloqueio + no máx. 1 nota crítica). Detalhe rico (lista de specs, percentuais, racional)
 vai no **corpo do commit** ou no `.md` da story ao arquivar — não no ledger.
 
-## Encerrar o loop
+## Encerrar o run
 
 Quando **todas** as stories estiverem `[OK]` ou `BLOQUEADO`/PENDENTE-MANUAL no ledger: escrever o
-resumo final (ver "Ao terminar") e **encerrar o loop** — não reagendar.
+resumo final (ver "Ao terminar") e encerrar.
 
 ## Ao terminar
 
@@ -118,8 +121,8 @@ Resumo final no ledger: o que passou, o que ficou BLOQUEADO/PENDENTE-MANUAL e po
 commits/merges, comandos exatos pra reproduzir os gates. Deixar os serviços de pé.
 
 **Arquivar a rodada:** mover a seção da rodada encerrada para `stories/done/PROGRESS-NN-MM.md` e
-restaurar o stub em `stories/PROGRESS.md` (o ledger ativo fica pequeno — é relido a cada disparo do
-loop; rodadas mortas não podem acumular nele). Commit `docs(stories): arquiva rodada NN-MM`.
+restaurar o stub em `stories/PROGRESS.md` (o ledger ativo fica pequeno — é relido a cada story;
+rodadas mortas não podem acumular nele). Commit `docs(stories): arquiva rodada NN-MM`.
 
 ## Proibido
 

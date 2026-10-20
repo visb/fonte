@@ -122,6 +122,8 @@ export interface ResidentFixtureInput {
    * `ACTIVE` explicitamente.
    */
   status?: string;
+  /** Story 219: CPF é único entre filhos — usar `randomCpf()` de `helpers/cpf`. */
+  cpf?: string;
 }
 
 export interface ResidentFixture {
@@ -159,6 +161,7 @@ export async function createResident(
       familyInvestment: data.familyInvestment ?? 'PAYMENT_700',
       ...(data.contributionDueDay ? { contributionDueDay: data.contributionDueDay } : {}),
       ...(data.status ? { status: data.status } : {}),
+      ...(data.cpf ? { cpf: data.cpf } : {}),
     },
   });
   if (!res.ok()) {

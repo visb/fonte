@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { todayInSaoPaulo } from '@fonte/types';
+import { RESIDENT_CPF_IN_USE_CODE, todayInSaoPaulo } from '@fonte/types';
 import {
   admissionDraftKey,
   readAdmissionDraft,
@@ -233,5 +233,43 @@ describe('AdmissionWizardPage — rascunho (story 211)', () => {
     expect(await screen.findByText('familiares de novo1')).toBeInTheDocument();
     expect(mutateAsync).toHaveBeenCalledTimes(1);
     expect(readAdmissionDraft(KEY)).toMatchObject({ step: 2, residentId: 'novo1' });
+  });
+});
+
+describe('AdmissionWizardPage — CPF do filho (story 219)', () => {
+  const cpfInput = () => document.querySelector('input[name="cpf"]') as HTMLInputElement;
+
+  it('CPF inválido segura a ficha com "CPF inválido."', async () => {
+    renderPage();
+    fireEvent.change(nameInput(), { target: { value: 'Filho CPF' } });
+    fireEvent.change(cpfInput(), { target: { value: '12345678900' } });
+    fireEvent.click(screen.getByRole('button', { name: /Avançar/ }));
+    expect(await screen.findByText('CPF inválido.')).toBeInTheDocument();
+    expect(houseSelect()).toBeNull();
+  });
+
+  it('409 de CPF em uso volta à ficha com o erro no campo e o link', async () => {
+    mutateAsync.mockRejectedValue({
+      response: {
+        status: 409,
+        data: {
+          code: RESIDENT_CPF_IN_USE_CODE,
+          message: 'Já existe um filho com este CPF: Bruno (Alta).',
+          conflictResidentId: 'r9',
+        },
+      },
+    });
+    renderPage();
+    fireEvent.change(nameInput(), { target: { value: 'Filho CPF' } });
+    fireEvent.change(cpfInput(), { target: { value: '52998224725' } });
+    fireEvent.click(screen.getByRole('button', { name: /Avançar/ }));
+    await waitFor(() => expect(houseSelect()).toBeInTheDocument());
+    fireEvent.change(houseSelect(), { target: { value: 'h1' } });
+    fireEvent.click(screen.getByRole('button', { name: /Avançar/ }));
+
+    expect(await screen.findByText(/Já existe um filho com este CPF: Bruno \(Alta\)\./)).toBeInTheDocument();
+    expect(cpfInput()).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver cadastro' })).toHaveAttribute('href', '/residents/r9');
+    expect(mutateAsync.mock.calls[0][0].data.cpf).toBe('52998224725');
   });
 });

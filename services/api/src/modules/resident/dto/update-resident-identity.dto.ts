@@ -1,5 +1,6 @@
 import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Gender } from '@fonte/types';
+import { NormalizeCpf } from '../../../common/lib/cpf';
 
 /**
  * DTO dedicado à correção dos "dados de identidade" na reintrodução (story 147).
@@ -13,7 +14,9 @@ export class UpdateResidentIdentityDto {
   @IsNotEmpty()
   name?: string;
 
+  // Story 219: dígitos; DV e unicidade julgados no service só se o CPF mudar.
   @IsOptional()
+  @NormalizeCpf()
   @IsString()
   cpf?: string | null;
 

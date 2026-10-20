@@ -2393,6 +2393,77 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   url: 'Arquivo',
 };
 
+// ─── CPF do filho (story 219) ────────────────────────────────────────────────
+
+/** Mensagem única de CPF com tamanho/dígito verificador errado (api, adm e ops). */
+export const INVALID_CPF_MESSAGE = 'CPF inválido.';
+
+/** `code` do corpo do 409 quando o CPF já pertence a outro filho não excluído. */
+export const RESIDENT_CPF_IN_USE_CODE = 'RESIDENT_CPF_IN_USE';
+
+/**
+ * Corpo do 409 de CPF em uso (story 219, decisão 9). `conflictResidentId` é o
+ * filho que já tem o CPF — o `adm` linka o cadastro e a 218 oferece reacolher.
+ * `null` só quando a corrida foi perdida e o vencedor não pôde ser relido.
+ */
+export interface ResidentCpfConflictBody {
+  statusCode: 409;
+  error: 'Conflict';
+  code: typeof RESIDENT_CPF_IN_USE_CODE;
+  message: string;
+  conflictResidentId: string | null;
+}
+
+/**
+ * Só os dígitos do CPF; vazio (ou só máscara) → `null`. O CPF é gravado assim —
+ * a máscara `000.000.000-00` é só de exibição/digitação.
+ */
+export function normalizeCpf(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const digits = String(value).replace(/\D/g, '');
+  return digits.length > 0 ? digits : null;
+}
+
+function cpfCheckDigit(digits: string, length: number): number {
+  let sum = 0;
+  for (let i = 0; i < length; i += 1) sum += Number(digits[i]) * (length + 1 - i);
+  const rest = (sum * 10) % 11;
+  return rest === 10 ? 0 : rest;
+}
+
+/**
+ * `true` para CPF com 11 dígitos e dígitos verificadores corretos. Rejeita a
+ * sequência repetida (`000…`, `111…`), que passa no cálculo mas não existe.
+ * Aceita o valor mascarado (normaliza antes de julgar).
+ */
+export function isValidCpf(value: string | null | undefined): boolean {
+  const digits = normalizeCpf(value);
+  if (!digits || digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+  return (
+    cpfCheckDigit(digits, 9) === Number(digits[9]) &&
+    cpfCheckDigit(digits, 10) === Number(digits[10])
+  );
+}
+
+/** `12345678909` → `123.456.789-09`. Fora de 11 dígitos, devolve o valor como veio. */
+export function formatCpf(value: string): string {
+  const digits = normalizeCpf(value);
+  if (!digits || digits.length !== 11) return value;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
+/**
+ * Máscara progressiva para o input (digitação): aplica `000.000.000-00` até
+ * onde já há dígitos e descarta o excedente de 11.
+ */
+export function maskCpfInput(value: string): string {
+  const digits = (value ?? '').replace(/\D/g, '').slice(0, 11);
+  const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6, 9)].filter(Boolean);
+  const body = parts.join('.');
+  return digits.length > 9 ? `${body}-${digits.slice(9)}` : body;
+}
+
 /** Marcador gravado no lugar de qualquer arquivo/URL (story 199 — nunca a URL). */
 export const AUDIT_FILE_MARKER = '[arquivo]';
 

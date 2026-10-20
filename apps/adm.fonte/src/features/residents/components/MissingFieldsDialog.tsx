@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/shared/FormField';
 import { useUpdateResident } from '../hooks/useResidents';
+import { getErrorMessage } from '@/lib/errors';
 import type { UpdateResidentInput } from '@fonte/api-client';
 
 export interface MissingField {
@@ -87,6 +88,12 @@ export function MissingFieldsDialog({ open, onClose, missingFields, residentId, 
             </FormField>
           ))}
         </div>
+        {/* Story 219: CPF inválido/em uso (e qualquer outra recusa) não falha em silêncio. */}
+        {updateMutation.isError && (
+          <p className="text-sm text-destructive">
+            {getErrorMessage(updateMutation.error, 'Erro ao salvar as informações.')}
+          </p>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={updateMutation.isPending}>
             Cancelar

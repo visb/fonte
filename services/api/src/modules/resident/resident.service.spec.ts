@@ -1084,13 +1084,14 @@ describe('ResidentService — vínculo com ministério (story 205)', () => {
 describe('ResidentService.updateIdentity', () => {
   it('atualiza SÓ os campos de identidade e retorna o resident', async () => {
     const before = makeResident({ name: 'Ana', cpf: null, rg: null } as Partial<Resident>);
-    const after = makeResident({ name: 'Ana Maria', cpf: '12345678900', rg: '123456' } as Partial<Resident>);
+    // Story 219: CPF novo precisa de DV válido.
+    const after = makeResident({ name: 'Ana Maria', cpf: '52998224725', rg: '123456' } as Partial<Resident>);
     const residentFindOne = jest.fn().mockResolvedValueOnce(before).mockResolvedValue(after);
     const residentUpdate = jest.fn().mockResolvedValue({ affected: 1 });
 
     const service = makeService({ findOne: residentFindOne, update: residentUpdate });
 
-    const dto = { name: 'Ana Maria', cpf: '12345678900', rg: '123456' };
+    const dto = { name: 'Ana Maria', cpf: '52998224725', rg: '123456' };
     const result = await service.updateIdentity(RESIDENT_ID, dto);
 
     // O repo.update recebe apenas o dto de identidade — não mistura outros campos.

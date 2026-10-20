@@ -6,12 +6,15 @@ import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { todayInSaoPaulo } from '@fonte/types';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
+import { randomCpf } from './helpers/cpf';
 
 // Story 203: "hoje" é o dia de São Paulo — o dia UTC já é amanhã após 21h BRT.
 const today = () => todayInSaoPaulo();
 // E-mail é único no banco e a suíte roda contra um banco que persiste entre
 // execuções: sufixo por run evita 409 ao repetir o e2e sem reseed.
 const run = Date.now().toString(36);
+// Story 219: CPF do filho é único e validado — um CPF válido por execução.
+const residentCpf = randomCpf();
 const snapshotUrl = (houseId: string, since?: string) =>
   `${BASE}/houses/${houseId}/offline-snapshot${since ? `?since=${encodeURIComponent(since)}` : ''}`;
 
@@ -65,7 +68,7 @@ describe('Offline snapshot da casa (e2e)', () => {
         houseId,
         status: 'ACTIVE',
         entryDate: today(),
-        cpf: '12345678900',
+        cpf: residentCpf,
         rg: 'MG1234567',
         familyInvestment: 'BASKET_500',
       })
@@ -240,9 +243,9 @@ describe('Offline snapshot da casa (e2e)', () => {
           .set('Authorization', `Bearer ${token}`)
           .expect(200);
         const filho = res.body.residents[0];
-        expect(filho.cpf).toBe('***.***.789-00');
+        expect(filho.cpf).toBe(`***.***.${residentCpf.slice(6, 9)}-${residentCpf.slice(9)}`);
         expect(filho.rg).toBe('***67');
-        expect(JSON.stringify(res.body)).not.toContain('12345678900');
+        expect(JSON.stringify(res.body)).not.toContain(residentCpf);
         expect(JSON.stringify(res.body)).not.toContain('MG1234567');
       }
     });

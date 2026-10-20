@@ -12,6 +12,7 @@ import { AvatarUpload } from '@/components/AvatarUpload';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { getErrorMessage, isNotFoundError } from '@/lib/errors';
+import { applyCpfConflict } from '@/lib/cpf';
 import {
   useCreateResident,
   useResidentById,
@@ -77,6 +78,7 @@ export function AdmissionWizardPage() {
     getValues,
     watch,
     reset,
+    setError: setFieldError,
     formState: { errors },
   } = useForm<ResidentFormData>({
     resolver: zodResolver(residentSchema),
@@ -185,7 +187,9 @@ export function AdmissionWizardPage() {
       setResidentId(resident.id);
       setStep(2);
     } catch (e) {
-      setError(getErrorMessage(e, 'Erro ao registrar acolhimento.'));
+      // Story 219: CPF em uso → volta à ficha com o erro no campo (e o link).
+      if (applyCpfConflict(e, setFieldError)) setStep(0);
+      else setError(getErrorMessage(e, 'Erro ao registrar acolhimento.'));
     } finally {
       setAdvancing(false);
     }

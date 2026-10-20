@@ -3,6 +3,7 @@ import {
   ADMISSION_DATE_MESSAGES,
   FamilyInvestment,
   Gender,
+  INVALID_CPF_MESSAGE,
   MIN_AGE_MESSAGE,
   ResidentStatus,
   todayInSaoPaulo,
@@ -173,6 +174,32 @@ describe('buildResidentPayload', () => {
     expect(payload.contributionDueDay).toBe(10);
     expect(payload.cpf).toBeNull();
     expect(payload.rg).toBeNull();
+  });
+
+  // Story 219: CPF vai só com dígitos; o redigido nunca é gravado.
+  it('CPF mascarado vira dígitos; redigido sai do payload', () => {
+    const base = { name: 'J', houseId: 'h1' };
+    expect(buildResidentPayload({ ...base, cpf: '529.982.247-25' } as ResidentFormData).cpf).toBe('52998224725');
+    expect('cpf' in buildResidentPayload({ ...base, cpf: '***.***.789-00' } as ResidentFormData)).toBe(false);
+  });
+});
+
+describe('CPF do filho (story 219)', () => {
+  const cpfIssue = (res: ReturnType<typeof residentSchema.safeParse>) =>
+    res.error?.issues.find((i) => i.path[0] === 'cpf')?.message;
+  const base = { name: 'João', houseId: 'h1' };
+
+  it('criação: CPF com DV inválido reprova; válido e vazio passam', () => {
+    expect(cpfIssue(residentSchema.safeParse({ ...base, cpf: '123.456.789-00' }))).toBe(INVALID_CPF_MESSAGE);
+    expect(cpfIssue(residentSchema.safeParse({ ...base, cpf: '111.111.111-11' }))).toBe(INVALID_CPF_MESSAGE);
+    expect(residentSchema.safeParse({ ...base, cpf: '529.982.247-25' }).success).toBe(true);
+    expect(residentSchema.safeParse({ ...base, cpf: '' }).success).toBe(true);
+  });
+
+  it('edição: CPF legado inválido não alterado passa; trocado por inválido reprova', () => {
+    const legacy = makeResidentSchema({ initialCpf: '12345678900' });
+    expect(legacy.safeParse({ ...base, cpf: '123.456.789-00' }).success).toBe(true);
+    expect(cpfIssue(legacy.safeParse({ ...base, cpf: '123.456.789-01' }))).toBe(INVALID_CPF_MESSAGE);
   });
 });
 

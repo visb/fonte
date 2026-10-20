@@ -1,4 +1,4 @@
-import { ADMISSION_DATE_MESSAGES, Gender } from '@fonte/types';
+import { ADMISSION_DATE_MESSAGES, Gender, INVALID_CPF_MESSAGE } from '@fonte/types';
 import {
   ADD_RESIDENT_DATE_MESSAGES,
   addResidentSchema,
@@ -18,6 +18,22 @@ function issues(overrides: Record<string, unknown>) {
   if (result.success) return {};
   return Object.fromEntries(result.error.issues.map((i) => [i.path.join('.'), i.message]));
 }
+
+describe('addResidentSchema — CPF (story 219)', () => {
+  it('vazio e CPF válido (com ou sem máscara) passam', () => {
+    expect(issues({ cpf: '' })).toEqual({});
+    expect(issues({ cpf: '529.982.247-25' })).toEqual({});
+    expect(issues({ cpf: '52998224725' })).toEqual({});
+  });
+
+  it.each([
+    ['DV errado', '123.456.789-00'],
+    ['repetido', '111.111.111-11'],
+    ['curto', '529.982.247'],
+  ])('rejeita %s com "CPF inválido."', (_label, cpf) => {
+    expect(issues({ cpf }).cpf).toBe(INVALID_CPF_MESSAGE);
+  });
+});
 
 describe('addResidentSchema (stories 202, 203 e 209)', () => {
   it('defaults: acolhimento hoje (fuso da operação), sem nascimento, aceito', () => {

@@ -15,7 +15,7 @@ const SPREADSHEET_ROWS = {
       houseName: 'Casa Teste',
       name: 'Filho Tranquilo',
       nameNormalized: 'filho tranquilo',
-      cpf: '11111111111',
+      cpf: '52998224725',
       familyContact: '(11) 90000-0001',
       entryDate: '2023-02-10',
       exitDate: null,
@@ -54,7 +54,8 @@ async function mockImportRoutes(page: Page) {
   await page.route('**/api/v1/residents/import/parse-docx-with-spreadsheet', (route) => {
     const preview =
       call++ === 0
-        ? previewFor('Filho Tranquilo', '11111111111')
+        ? // Story 219: a revisão da ficha recusa CPF com DV inválido/repetido.
+          previewFor('Filho Tranquilo', '52998224725')
         : previewFor('Filho Duplicado', '22222222222');
     return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(preview) });
   });

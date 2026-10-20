@@ -12,6 +12,7 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
+import { NormalizeCpf } from '../../../common/lib/cpf';
 
 export class UpdateResidentDto {
   @IsOptional()
@@ -27,7 +28,10 @@ export class UpdateResidentDto {
   @IsDateString()
   birthDate?: string | null;
 
+  // Story 219: normalizado para dígitos aqui; o DV só é julgado no service
+  // quando o CPF MUDA (ficha legada com CPF inválido continua salvável).
   @IsOptional()
+  @NormalizeCpf()
   @IsString()
   cpf?: string | null;
 

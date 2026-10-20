@@ -1,7 +1,13 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Modal } from 'react-native';
-import { ADMISSION_DATE_MESSAGES, maxBirthDateFor, todayInSaoPaulo } from '@fonte/types';
+import {
+  ADMISSION_DATE_MESSAGES,
+  INVALID_CPF_MESSAGE,
+  maxBirthDateFor,
+  RESIDENT_CPF_IN_USE_CODE,
+  todayInSaoPaulo,
+} from '@fonte/types';
 import { createTestQueryClient, expectIdempotencyKey } from '@/lib/test/utils';
 import { OUTBOX_MUTATION_KEYS } from '@/lib/offline/outbox';
 import { ADD_RESIDENT_DATE_MESSAGES } from '../lib/addResidentSchema';
@@ -203,7 +209,9 @@ describe('AddResidentModal', () => {
     await waitFor(() => expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalled());
     // campos
     fireEvent.changeText(screen.getByPlaceholderText('Nome completo'), 'Carlos');
-    fireEvent.changeText(screen.getByPlaceholderText('000.000.000-00'), '11122233344');
+    // Story 219: CPF válido; a máscara aparece na digitação e o payload vai em dígitos.
+    fireEvent.changeText(screen.getByPlaceholderText('000.000.000-00'), '52998224725');
+    expect(screen.getByPlaceholderText('000.000.000-00').props.value).toBe('529.982.247-25');
     fireEvent.changeText(screen.getByPlaceholderText('Número do RG'), 'MG123');
     fireEvent.changeText(screen.getByPlaceholderText('Brasileira'), 'Boliviana');
     // abre os date pickers (cobre os onPress dos campos de data)
@@ -212,7 +220,7 @@ describe('AddResidentModal', () => {
     fireEvent.press(screen.getByText('Adicionar'));
     await waitFor(() =>
       expect(m.census.addResident).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Carlos', cpf: '11122233344', rg: 'MG123', nationality: 'Boliviana' }),
+        expect.objectContaining({ name: 'Carlos', cpf: '52998224725', rg: 'MG123', nationality: 'Boliviana' }),
         expectIdempotencyKey,
       ),
     );
@@ -472,5 +480,47 @@ describe('AddResidentModal', () => {
     fireEvent.changeText(screen.getByPlaceholderText('Nome completo'), 'Zé');
     fireEvent.press(screen.getByText('Adicionar'));
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Erro', expect.any(String)));
+  });
+
+  // ── Story 219: CPF do filho único ─────────────────────────────────────────
+  it('CPF com DV inválido → erro no campo e nada enfileirado', async () => {
+    const client = createTestQueryClient();
+    render(
+      <QueryClientProvider client={client}>
+        <AddResidentModal {...props} />
+      </QueryClientProvider>,
+    );
+    fireEvent.changeText(screen.getByPlaceholderText('Nome completo'), 'CPF Ruim');
+    fireEvent.changeText(screen.getByPlaceholderText('000.000.000-00'), '11111111111');
+    fireEvent.press(screen.getByText('Adicionar'));
+    await waitFor(() => expect(screen.getByText(INVALID_CPF_MESSAGE)).toBeTruthy());
+    expect(m.census.addResident).not.toHaveBeenCalled();
+    expect(client.getMutationCache().getAll()).toHaveLength(0);
+  });
+
+  it('409 de CPF em uso → alerta com a mensagem do servidor (nome e status do dono)', async () => {
+    const { Alert } = require('react-native');
+    jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    m.census.addResident.mockRejectedValue({
+      response: {
+        status: 409,
+        data: {
+          code: RESIDENT_CPF_IN_USE_CODE,
+          message: 'Já existe um filho com este CPF: Bruno (Alta).',
+          conflictResidentId: 'r9',
+        },
+      },
+    });
+    rc(<AddResidentModal {...props} />);
+    fireEvent.changeText(screen.getByPlaceholderText('Nome completo'), 'Bruno de novo');
+    fireEvent.changeText(screen.getByPlaceholderText('000.000.000-00'), '529.982.247-25');
+    fireEvent.press(screen.getByText('Adicionar'));
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith('Erro', 'Já existe um filho com este CPF: Bruno (Alta).'),
+    );
+    expect(m.census.addResident).toHaveBeenCalledWith(
+      expect.objectContaining({ cpf: '52998224725' }),
+      expectIdempotencyKey,
+    );
   });
 });

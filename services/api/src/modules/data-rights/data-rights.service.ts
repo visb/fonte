@@ -117,6 +117,11 @@ export class DataRightsService {
         [residentId],
       );
       await manager.query('DELETE FROM resident_attachments WHERE resident_id = $1', [residentId]);
+      // Story 219: o log da dedup de CPF guarda o CPF antigo — não sobrevive.
+      await manager.query(
+        'DELETE FROM resident_cpf_dedup_log WHERE resident_id = $1 OR kept_resident_id = $1',
+        [residentId],
+      );
 
       // Story 199: os diffs da trilha de auditoria ligados ao titular perdem os
       // valores (fica só QUE campo mudou) — nenhuma cópia sobrevive à anonimização.

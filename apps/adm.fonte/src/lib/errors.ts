@@ -1,4 +1,4 @@
-import { RECEIPT_TEMPLATE_MISSING_CODE, ReceiptType } from '@fonte/types';
+import { RECEIPT_TEMPLATE_MISSING_CODE, RESIDENT_CPF_IN_USE_CODE, ReceiptType } from '@fonte/types';
 
 type ApiErrorData = {
   message?: string | string[];
@@ -28,6 +28,21 @@ export function getErrorMessage(error: unknown, fallback = 'Ocorreu um erro ines
 /** Story 212 — o `code` do corpo de erro da API, quando houver. */
 export function getErrorCode(error: unknown): string | undefined {
   return errorData(error)?.code;
+}
+
+/**
+ * Story 219 — o 409 de CPF do filho em uso: mensagem pronta (nome + status do
+ * dono) e o id do dono para linkar o cadastro. Outro erro → `null`.
+ */
+export function getCpfConflict(
+  error: unknown,
+): { message: string; conflictResidentId: string | null } | null {
+  const data = errorData(error) as (ApiErrorData & { conflictResidentId?: string | null }) | undefined;
+  if (data?.code !== RESIDENT_CPF_IN_USE_CODE) return null;
+  return {
+    message: getErrorMessage(error, 'Já existe um filho com este CPF.'),
+    conflictResidentId: data.conflictResidentId ?? null,
+  };
 }
 
 /**

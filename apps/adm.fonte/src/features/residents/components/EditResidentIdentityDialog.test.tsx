@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
-import { Gender, MIN_AGE_MESSAGE } from '@fonte/types';
+import { MemoryRouter } from 'react-router-dom';
+import { Gender, INVALID_CPF_MESSAGE, MIN_AGE_MESSAGE, RESIDENT_CPF_IN_USE_CODE } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 
 const mutate = vi.fn();
@@ -115,6 +116,50 @@ describe('EditResidentIdentityDialog', () => {
     await waitFor(() => expect(mutate).toHaveBeenCalled());
     expect(mutate.mock.calls[0][0].birthDate).toBe(minor);
     expect(screen.queryByText(MIN_AGE_MESSAGE)).toBeNull();
+  });
+
+  // Story 219 — o CPF carregado acima (12345678900) é legado com DV inválido.
+  it('CPF legado inválido salva sem mudar; mudar para outro inválido mostra a mensagem', async () => {
+    render(<EditResidentIdentityDialog open onClose={vi.fn()} resident={resident()} />);
+    fireEvent.change(screen.getByDisplayValue('123.456.789-00'), { target: { value: '111.111.111-11' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    expect(await screen.findByText(INVALID_CPF_MESSAGE)).toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it('409 de CPF em uso → erro no campo com link "Ver cadastro"', async () => {
+    mutate.mockImplementation((_data, opts) =>
+      opts.onError({
+        response: {
+          status: 409,
+          data: {
+            code: RESIDENT_CPF_IN_USE_CODE,
+            message: 'Já existe um filho com este CPF: Bruno (Alta).',
+            conflictResidentId: 'r9',
+          },
+        },
+      }),
+    );
+    render(
+      <MemoryRouter>
+        <EditResidentIdentityDialog open onClose={vi.fn()} resident={resident({ cpf: null })} />
+      </MemoryRouter>,
+    );
+    fireEvent.change(screen.getByPlaceholderText('000.000.000-00'), { target: { value: '52998224725' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    expect(await screen.findByText(/Já existe um filho com este CPF: Bruno \(Alta\)\./)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver cadastro' })).toHaveAttribute('href', '/residents/r9');
+    expect(mutate.mock.calls[0][0].cpf).toBe('52998224725');
+  });
+
+  it('erro 409 de CPF não se repete no rodapé', () => {
+    state = {
+      isPending: false,
+      isError: true,
+      error: { response: { data: { code: RESIDENT_CPF_IN_USE_CODE, message: 'CPF duplicado X' } } },
+    };
+    render(<EditResidentIdentityDialog open onClose={vi.fn()} resident={resident()} />);
+    expect(screen.queryByText('CPF duplicado X')).toBeNull();
   });
 
   it('mostra erro da mutation', () => {

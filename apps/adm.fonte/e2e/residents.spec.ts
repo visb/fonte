@@ -604,7 +604,8 @@ test.describe('Filhos (Residentes)', () => {
   // resumo deve exibir o NOME da casa (não o UUID) e o LABEL da modalidade.
   const parsedResident = {
     name: 'Filho Importado IA',
-    cpf: '123.456.789-00',
+    // Story 219: o formulário de revisão recusa CPF com DV inválido.
+    cpf: '529.982.247-25',
     rg: '12.345.678-9',
     nationality: 'Brasileira',
     birthDate: '1990-05-20',

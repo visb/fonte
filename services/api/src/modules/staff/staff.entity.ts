@@ -109,6 +109,11 @@ export class Staff {
   @Column({ name: 'promoted_at', type: 'date', nullable: true })
   promotedAt: string | null;
 
+  // Story 217 — data do desligamento. Servo ativo = não soft-deletado e sem
+  // `dismissed_at` (predicado em `active-staff.ts`). O cadastro continua visível.
+  @Column({ name: 'dismissed_at', type: 'date', nullable: true })
+  dismissedAt: string | null;
+
   @ManyToOne(() => SupportGroup, { eager: false, nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'support_group_id' })
   supportGroup: SupportGroup | null;

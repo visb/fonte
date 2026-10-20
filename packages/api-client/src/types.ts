@@ -376,6 +376,8 @@ export interface Staff {
   rank: ServantRank | null;
   formerResidentId: string | null;
   promotedAt: string | null;
+  /** Story 217 — data do desligamento (`YYYY-MM-DD`); `null` = servo ativo. */
+  dismissedAt?: string | null;
   // Ficha pessoal (espelha os dados do filho)
   birthDate: string | null;
   cpf: string | null;

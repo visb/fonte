@@ -2,6 +2,9 @@ import type { AxiosInstance } from 'axios';
 import type { Staff, StaffMe, CreateStaffInput, UpdateStaffInput, UpdateStaffMeInput, StaffPermission, AddStaffPermissionInput } from '../types.js';
 import type {
   CreateServicePeriodPayload,
+  DismissStaffPayload,
+  ReinstateStaffPayload,
+  StaffListStatus,
   StaffAttachment,
   StaffPermissionType,
   StaffServicePeriod,
@@ -23,7 +26,12 @@ export function createStaffModule(http: AxiosInstance) {
     // no backend; devolve o StaffMe atualizado (signatureUrl null).
     removeMySignature: (): Promise<StaffMe> =>
       http.delete<StaffMe>('/staff/me/signature').then((r) => r.data),
-    list: () => http.get<Staff[]>('/staff').then((r) => r.data),
+    // Story 217 — sem `status` o backend devolve só os ativos (não desligados).
+    list: (params?: { status?: StaffListStatus }) =>
+      (params?.status
+        ? http.get<Staff[]>('/staff', { params: { status: params.status } })
+        : http.get<Staff[]>('/staff')
+      ).then((r) => r.data),
     getById: (id: string) => http.get<Staff>(`/staff/${id}`).then((r) => r.data),
     create: (data: CreateStaffInput) => http.post<Staff>('/staff', data).then((r) => r.data),
     update: (id: string, data: UpdateStaffInput) =>
@@ -33,6 +41,11 @@ export function createStaffModule(http: AxiosInstance) {
         .post<Staff>(`/staff/${id}/photo`, formData, { headers: { 'Content-Type': undefined } })
         .then((r) => r.data),
     delete: (id: string) => http.delete(`/staff/${id}`),
+    // Story 217 — desligamento e reintegração (só ADMIN).
+    dismiss: (id: string, payload: DismissStaffPayload): Promise<Staff> =>
+      http.post<Staff>(`/staff/${id}/dismiss`, payload).then((r) => r.data),
+    reinstate: (id: string, payload: ReinstateStaffPayload): Promise<Staff> =>
+      http.post<Staff>(`/staff/${id}/reinstate`, payload).then((r) => r.data),
 
     listAttachments: (id: string): Promise<StaffAttachment[]> =>
       http.get<StaffAttachment[]>(`/staff/${id}/attachments`).then((r) => r.data),

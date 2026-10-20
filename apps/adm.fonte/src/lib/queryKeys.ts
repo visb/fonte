@@ -29,6 +29,8 @@ export const queryKeys = {
   },
   staff: {
     all: ['staff'] as const,
+    // Story 217 — lista por status (ativos | desligados), sob o prefixo `all`.
+    list: (status: 'active' | 'dismissed') => ['staff', 'list', status] as const,
     detail: (id: string) => ['staff', id] as const,
     permissions: (id: string) => ['staff', id, 'permissions'] as const,
     attachments: (id: string) => ['staff', id, 'attachments'] as const,

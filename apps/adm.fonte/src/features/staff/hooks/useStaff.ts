@@ -1,6 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type {
   CreateServicePeriodPayload,
+  DismissStaffPayload,
+  ReinstateStaffPayload,
+  StaffListStatus,
   StaffPermissionType,
   UpdateServicePeriodPayload,
 } from '@fonte/types';
@@ -58,10 +61,13 @@ export function useRemoveMySignature() {
   });
 }
 
-export function useStaff(options?: { enabled?: boolean }) {
+// Story 217 — `status` default `active` (servos não desligados); `dismissed`
+// alimenta o filtro "Desligados" da lista.
+export function useStaff(options?: { enabled?: boolean; status?: StaffListStatus }) {
+  const status = options?.status ?? 'active';
   return useQuery({
-    queryKey: queryKeys.staff.all,
-    queryFn: () => api.staff.list(),
+    queryKey: queryKeys.staff.list(status),
+    queryFn: () => (status === 'active' ? api.staff.list() : api.staff.list({ status })),
     enabled: options?.enabled ?? true,
   });
 }
@@ -119,6 +125,36 @@ export function useDeleteStaff() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.staff.all });
     },
+  });
+}
+
+// ─── Desligamento e reintegração (story 217) ───────────────────────────────────
+
+/**
+ * O desligamento mexe no servo, nos períodos, na casa (contagem, coordenadores,
+ * titular, aba Servos) e na liderança de ministérios — invalida tudo isso.
+ */
+function invalidateAfterStatusChange(queryClient: QueryClient, staffId: string) {
+  queryClient.invalidateQueries({ queryKey: queryKeys.staff.all });
+  queryClient.invalidateQueries({ queryKey: queryKeys.staff.detail(staffId) });
+  queryClient.invalidateQueries({ queryKey: queryKeys.staff.servicePeriods(staffId) });
+  queryClient.invalidateQueries({ queryKey: queryKeys.houses.all });
+  queryClient.invalidateQueries({ queryKey: queryKeys.ministries.all });
+}
+
+export function useDismissStaff(staffId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: DismissStaffPayload) => api.staff.dismiss(staffId, payload),
+    onSuccess: () => invalidateAfterStatusChange(queryClient, staffId),
+  });
+}
+
+export function useReinstateStaff(staffId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ReinstateStaffPayload) => api.staff.reinstate(staffId, payload),
+    onSuccess: () => invalidateAfterStatusChange(queryClient, staffId),
   });
 }
 

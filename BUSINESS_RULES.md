@@ -131,6 +131,37 @@ Registro de quando até quando alguém serviu (`staff_service_periods`). "Servo"
 
 ---
 
+## 5.3. Desligamento de servo (story 217)
+
+Saída de um servo (todo Staff). **Só ADMIN, só no `adm.fonte`** (`POST /staff/:id/dismiss` e
+`POST /staff/:id/reinstate`).
+
+- **O cadastro fica visível como "Desligado"** (`staff.dismissed_at`), sem soft delete. Servo
+  **ativo** = não soft-deletado **e** não desligado — predicado único da API
+  (`services/api/src/modules/staff/active-staff.ts`). Desligado sai das listas, contagens e
+  seletores de servo ativo (lista de servos, aba Servos da casa, contagem da casa, coordenadores,
+  líder de ministério, grupos de apoio, contatos do familiar); aparece no filtro **"Desligados"** da
+  lista do `adm`, e o detalhe com o Histórico continua acessível.
+- **Motivo = categoria + observação**: Pedido próprio, Decisão da coordenação, Transferência para
+  outra obra, Falecimento, Outro (`StaffDismissalReason`). Observação livre opcional, **obrigatória
+  em "Outro"**. O motivo mora no **período de serviço encerrado** (seção 5.2) e aparece no card dele.
+- **Data do desligamento**: informada (default hoje), não futura e ≥ início do período em andamento.
+- **Efeitos, numa transação só**: fecha o período aberto (fim = data, motivo, observação), grava
+  `dismissed_at`, desativa o `User` (`is_active = false` — login bloqueado; sessão aberta cai no
+  próximo 401), limpa o **titular** da casa e a **liderança de ministérios** do servo. Permissões
+  extras, casa e nível **ficam** gravados (inertes enquanto desligado).
+- **Reintegração** (desligado → ativo): reativa o `User`, limpa `dismissed_at` e abre um período de
+  serviço **novo** (casa escolhida + data de início não futura e ≥ fim do último período). As
+  permissões gravadas voltam a valer.
+- Desligar quem já está desligado ou reintegrar quem está ativo → 409.
+- **Excluir cadastro** (`DELETE /staff/:id`, soft delete) continua, só para cadastro feito por
+  engano — na UI é ação secundária com confirmação forte. Staff excluído antes desta story segue
+  oculto (não é migrado).
+- Auditoria: `staff.dismiss` / `staff.reinstate` (alvo o servo) + `staff.service_period.update` no
+  período encerrado.
+
+---
+
 ## 6. Ministérios
 
 - Apenas COORDINATOR ou ADMIN pode criar ou remover ministérios
@@ -220,7 +251,7 @@ Autenticação é centralizada na entidade `User`. Cada entidade que precisar de
 ### Coordenador da casa (stories 194 e 214)
 
 - **Coordenador da casa** = Staff lotado nela (`staff.house_id`) com role `COORDINATOR` **ou**
-  `ADMIN`, não desligado. A lista é derivada (sem tabela de junção) e aparece em
+  `ADMIN` **e ativo** — não excluído e não desligado (story 217, seção 5.3). A lista é derivada (sem tabela de junção) e aparece em
   `GET /houses/:id` → `coordinators`.
 - Admin sem `house_id` não coordena casa nenhuma; admin coordena **só** a casa onde está lotado.
 - O titular (`houses.coordinator_id`) só pode ser eleito entre os coordenadores da casa; o titular não

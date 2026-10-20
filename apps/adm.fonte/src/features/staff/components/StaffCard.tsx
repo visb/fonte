@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PersonAvatar } from '@/components/shared/PersonAvatar';
 import { SERVANT_RANK_LABELS, SERVANT_RANK_VARIANT } from '../constants';
+import { StaffDismissedBadge } from './StaffDismissedBadge';
 
 const ROLE_LABEL: Record<string, string> = {
   [Role.ADMIN]: 'Administrador',
@@ -59,20 +60,24 @@ export function StaffCard({ staff: s, onView, onEdit, onResetPassword, onDelete 
         {s.user.role === Role.SERVANT && s.rank && (
           <Badge variant={SERVANT_RANK_VARIANT[s.rank]}>{SERVANT_RANK_LABELS[s.rank]}</Badge>
         )}
+        {s.dismissedAt && <StaffDismissedBadge dismissedAt={s.dismissedAt} />}
       </div>
       <div className="flex gap-1 shrink-0">
         <Button variant="ghost" size="icon" onClick={onEdit} title="Editar">
           <Pencil size={16} />
         </Button>
-        <Button variant="ghost" size="icon" onClick={onResetPassword} title="Resetar senha">
-          <KeyRound size={16} />
-        </Button>
+        {/* Story 217: desligado não tem acesso — resetar senha não faz sentido. */}
+        {!s.dismissedAt && (
+          <Button variant="ghost" size="icon" onClick={onResetPassword} title="Resetar senha">
+            <KeyRound size={16} />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
           className="text-destructive hover:text-destructive"
           onClick={onDelete}
-          title="Excluir"
+          title="Excluir cadastro"
         >
           <Trash2 size={16} />
         </Button>

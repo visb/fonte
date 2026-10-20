@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import type { StaffServicePeriod } from '@fonte/types';
+import { StaffDismissalReason, type StaffServicePeriod } from '@fonte/types';
 import { ServicePeriodCard } from './ServicePeriodCard';
 
 afterEach(() => cleanup());
@@ -37,6 +37,28 @@ describe('ServicePeriodCard', () => {
   it('casa sem relação carregada cai no id', () => {
     render(<ServicePeriodCard period={{ ...base, house: undefined }} />);
     expect(screen.getByText('h1')).toBeInTheDocument();
+  });
+
+  it('período encerrado por desligamento mostra motivo e observação (story 217)', () => {
+    render(
+      <ServicePeriodCard
+        period={{
+          ...base,
+          endDate: '2025-06-30',
+          endReason: StaffDismissalReason.TRANSFER_OTHER_WORK,
+          endNotes: 'Foi para a obra de Goiânia',
+        }}
+      />,
+    );
+    expect(screen.getByText('Motivo do desligamento')).toBeInTheDocument();
+    expect(screen.getByText('Transferência para outra obra')).toBeInTheDocument();
+    expect(screen.getByText('Foi para a obra de Goiânia')).toBeInTheDocument();
+  });
+
+  it('período encerrado à mão não mostra motivo', () => {
+    render(<ServicePeriodCard period={{ ...base, endDate: '2025-06-30', endReason: null, endNotes: null }} />);
+    expect(screen.queryByText('Motivo do desligamento')).toBeNull();
+    expect(screen.queryByText('Observação')).toBeNull();
   });
 
   it('onEdit mostra o botão e dispara', () => {

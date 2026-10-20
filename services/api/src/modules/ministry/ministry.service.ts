@@ -29,6 +29,7 @@ import {
   MINISTRY_STAFF_AUDIT_FIELDS,
   RESIDENT_MINISTRY_AUDIT_FIELDS,
 } from '../audit/audit-fields';
+import { activeStaffSql } from '../staff/active-staff';
 
 @Injectable()
 export class MinistryService {
@@ -74,7 +75,7 @@ export class MinistryService {
               COUNT(DISTINCT res.id)::int AS "filhoCount",
               COUNT(DISTINCT ms.staff_id)::int AS "servoCount"
        FROM ministries m
-       LEFT JOIN staff     s   ON s.id  = m.leader_id AND m.leader_type = 'STAFF'    AND s.deleted_at IS NULL
+       LEFT JOIN staff     s   ON s.id  = m.leader_id AND m.leader_type = 'STAFF'    AND ${activeStaffSql('s')}
        LEFT JOIN residents r   ON r.id  = m.leader_id AND m.leader_type = 'RESIDENT' AND r.deleted_at IS NULL
        LEFT JOIN residents res ON res.ministry_id = m.id
                               AND res.house_id = m.house_id
@@ -179,7 +180,7 @@ export class MinistryService {
               END AS leader_name,
               CASE WHEN m.leader_type = 'STAFF' THEN s.rank ELSE NULL END AS leader_rank
        FROM ministries m
-       LEFT JOIN staff     s ON s.id = m.leader_id AND m.leader_type = 'STAFF'    AND s.deleted_at IS NULL
+       LEFT JOIN staff     s ON s.id = m.leader_id AND m.leader_type = 'STAFF'    AND ${activeStaffSql('s')}
        LEFT JOIN residents r ON r.id = m.leader_id AND m.leader_type = 'RESIDENT' AND r.deleted_at IS NULL
        WHERE m.id = $1 AND m.deleted_at IS NULL`,
       [id],
@@ -197,7 +198,7 @@ export class MinistryService {
         [id, rows.house_id, [...REMOVABLE_RESIDENT_STATUSES]],
       ),
       this.repo.manager.query<Array<{ id: string; name: string }>>(
-        `SELECT st.id, st.name FROM ministry_staff ms JOIN staff st ON st.id = ms.staff_id AND st.deleted_at IS NULL WHERE ms.ministry_id = $1 ORDER BY st.name`,
+        `SELECT st.id, st.name FROM ministry_staff ms JOIN staff st ON st.id = ms.staff_id AND ${activeStaffSql('st')} WHERE ms.ministry_id = $1 ORDER BY st.name`,
         [id],
       ),
     ]);

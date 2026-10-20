@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { StaffDismissalReason } from '@fonte/types';
 import { Staff } from './staff.entity';
 import { House } from '../house/house.entity';
 
@@ -41,6 +42,20 @@ export class StaffServicePeriod {
 
   @Column({ name: 'end_date', type: 'date', nullable: true })
   endDate: string | null;
+
+  // Story 217 — motivo do desligamento que encerrou o período (nulo se o
+  // período foi encerrado à mão pela edição da 216).
+  @Column({
+    name: 'end_reason',
+    type: 'enum',
+    enum: StaffDismissalReason,
+    enumName: 'staff_service_periods_end_reason_enum',
+    nullable: true,
+  })
+  endReason: StaffDismissalReason | null;
+
+  @Column({ name: 'end_notes', type: 'text', nullable: true })
+  endNotes: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

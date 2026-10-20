@@ -1,30 +1,30 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
+import type { StaffListStatus } from '@fonte/types';
 import type { Staff } from '@fonte/api-client';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useStaff, useDeleteStaff } from '../hooks/useStaff';
+import { useStaff } from '../hooks/useStaff';
 import { ResetPasswordDialog } from '../components/ResetPasswordDialog';
+import { DeleteStaffDialog } from '../components/DeleteStaffDialog';
 import { StaffCard } from '../components/StaffCard';
+import { StaffStatusFilter } from '../components/StaffStatusFilter';
 
 export function StaffPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Story 217 — filtro Ativos | Desligados na URL (volta do detalhe mantém o filtro).
+  const status: StaffListStatus = searchParams.get('status') === 'dismissed' ? 'dismissed' : 'active';
+  const setStatus = (next: StaffListStatus) =>
+    setSearchParams(next === 'dismissed' ? { status: next } : {}, { replace: true });
   const [deleteTarget, setDeleteTarget] = useState<Staff | null>(null);
   const [resetTarget, setResetTarget] = useState<Staff | null>(null);
 
-  const { data: staff = [], isLoading, isError, refetch } = useStaff();
-  const deleteMutation = useDeleteStaff();
-
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
+  const { data: staff = [], isLoading, isError, refetch } = useStaff({ status });
 
   return (
     <div>
@@ -40,8 +40,16 @@ export function StaffPage() {
         }
       />
 
-      {staff.length === 0 ? (
-        <EmptyState title="Nenhum servo cadastrado." />
+      <div className="mb-4">
+        <StaffStatusFilter value={status} onChange={setStatus} />
+      </div>
+
+      {isLoading ? (
+        <LoadingState />
+      ) : isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : staff.length === 0 ? (
+        <EmptyState title={status === 'dismissed' ? 'Nenhum servo desligado.' : 'Nenhum servo cadastrado.'} />
       ) : (
         <div className="space-y-3">
           {staff.map((s) => (
@@ -57,31 +65,8 @@ export function StaffPage() {
         </div>
       )}
 
-      <ResetPasswordDialog
-        open={!!resetTarget}
-        onClose={() => setResetTarget(null)}
-        staff={resetTarget}
-      />
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Servo</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir <strong>{deleteTarget?.name}</strong>? O acesso ao sistema será revogado.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ResetPasswordDialog open={!!resetTarget} onClose={() => setResetTarget(null)} staff={resetTarget} />
+      <DeleteStaffDialog staff={deleteTarget} onClose={() => setDeleteTarget(null)} />
     </div>
   );
 }

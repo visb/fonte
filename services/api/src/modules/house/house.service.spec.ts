@@ -145,6 +145,17 @@ describe('HouseService.findAll', () => {
     expect(statuses).not.toContain(ResidentStatus.ARCHIVED);
   });
 
+  it('conta só servo ativo — fora soft-deletado e desligado (story 217)', async () => {
+    const query = makeAggregateQuery({});
+    const houseRepo = makeHouseRepo({ find: jest.fn().mockResolvedValue([{ id: 'h1' }]) }, query);
+    const service = makeService(houseRepo);
+
+    await service.findAll();
+
+    const [sql] = query.mock.calls.find(([s]: [string]) => s.includes('FROM staff')) as [string];
+    expect(sql).toContain('s.deleted_at IS NULL AND s.dismissed_at IS NULL');
+  });
+
   it('hits the DB on every call — no residual cache path', async () => {
     const query = makeAggregateQuery({ residents: [{ houseId: 'h1', count: '3' }] });
     const find = jest.fn().mockResolvedValue([{ id: 'h1' }]);
@@ -232,6 +243,11 @@ describe('HouseService.findOne', () => {
 
     const result = await service.findOne('h1');
     expect(result).toMatchObject({ id: 'h1', activeResidentsCount: 5, staffCount: 4 });
+    // Story 217: a contagem da casa ignora servo desligado.
+    const countSql = query.mock.calls
+      .map(([sql]: [string]) => sql)
+      .find((sql: string) => sql.includes('COUNT(DISTINCT s.id)'));
+    expect(countSql).toContain('s.dismissed_at IS NULL');
   });
 
   it('defaults to zero counts for a house with no residents and no staff', async () => {
@@ -284,6 +300,8 @@ describe('HouseService.findOne coordenadores (story 194)', () => {
     expect(sql).toContain('s.house_id = $1');
     expect(sql).toContain('u.role = ANY($2)');
     expect(sql).toContain('s.deleted_at IS NULL');
+    // Story 217: coordenador desligado (dismissed_at) fica fora da lista.
+    expect(sql).toContain('s.dismissed_at IS NULL');
     expect(sql).toContain('ORDER BY s.name');
     // Story 214: ADMIN lotado na casa também é coordenador dela.
     expect(params).toEqual(['h1', [Role.COORDINATOR, Role.ADMIN]]);
@@ -447,6 +465,16 @@ describe('HouseService.update — elegibilidade do titular (decisão 7)', () => 
     expect(houseRepo.update).not.toHaveBeenCalled();
   });
 
+  // Story 217: desligado (dismissed_at, sem soft delete) não é titular.
+  it('recusa coordenador desligado pelo processo de desligamento (story 217)', async () => {
+    const { service, houseRepo } = makeTitularService({ ...eligible, dismissedAt: '2026-01-01' });
+
+    await expect(service.update('h1', { coordinatorId: 's1' } as never)).rejects.toThrow(
+      INELIGIBLE_TITULAR_MESSAGE,
+    );
+    expect(houseRepo.update).not.toHaveBeenCalled();
+  });
+
   it('recusa coordenador de outra casa (400, não 404)', async () => {
     const { service, houseRepo } = makeTitularService({ ...eligible, houseId: 'h2' });
 
@@ -549,6 +577,8 @@ describe('HouseService.findStaffForHouse', () => {
     expect(sql).toContain('photo_url AS "photoUrl"');
     expect(sql).toContain('FROM staff');
     expect(sql).toContain('s.deleted_at IS NULL');
+    // Story 217: servo desligado sai da aba Servos e dos seletores.
+    expect(sql).toContain('s.dismissed_at IS NULL');
     expect(params).toEqual(['h1']);
   });
 

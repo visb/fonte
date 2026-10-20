@@ -1,26 +1,38 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, IsNull, Not, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import {
   AuditAction,
   AuditTargetType,
+  isDateBefore,
+  isFutureDate,
   Role,
   ServantRank,
+  STAFF_DISMISSAL_MESSAGES,
+  StaffDismissalReason,
+  type StaffListStatus,
   StaffPermissionType,
   todayInSaoPaulo,
 } from '@fonte/types';
-import { AuditService, loadById, TrackOptions } from '../audit/audit.service';
+import { AuditService, defaultScope, loadById, TrackOptions } from '../audit/audit.service';
 import type { AuditSnapshot } from '../audit/audit-diff';
 import {
   STAFF_AUDIT_FIELDS,
   STAFF_DELETE_AUDIT_FIELDS,
+  STAFF_DISMISSAL_AUDIT_FIELDS,
   STAFF_PERMISSION_AUDIT_FIELDS,
+  STAFF_SERVICE_PERIOD_AUDIT_FIELDS,
 } from '../audit/audit-fields';
+import { StaffServicePeriod } from './staff-service-period.entity';
+import { DismissStaffDto } from './dto/dismiss-staff.dto';
+import { ReinstateStaffDto } from './dto/reinstate-staff.dto';
+import { ACTIVE_STAFF_WHERE } from './active-staff';
 import { Staff } from './staff.entity';
 import { StaffPermission } from './staff-permission.entity';
 import { House } from '../house/house.entity';
@@ -32,6 +44,11 @@ import { StorageService } from '../storage/storage.service';
 import { assertAdultBirthDate } from '../../common/lib/birth-date';
 import { isHouseCoordinatorRole } from '../../common/auth/house-coordinator';
 import { openServicePeriod } from './staff-service-period.service';
+
+/** `YYYY-MM-DD` de um valor do DTO (string ISO) ou da entidade (date). */
+function isoDay(value: string | Date): string {
+  return (value instanceof Date ? value.toISOString() : String(value)).slice(0, 10);
+}
 
 /**
  * Estado auditável do servo (story 199): a ficha + perfil/e-mail/ativo do User
@@ -85,15 +102,21 @@ export class StaffService {
 
   // LGPD art. 6/46 — escopo por casa. COORDINATOR só lista staff da própria
   // casa; ADMIN lista todos. houseId vem do staff autenticado, não do cliente.
-  async findAll(caller?: { role: string; userId: string }): Promise<Staff[]> {
+  // Story 217: `status` default `active` (não desligado); `dismissed` = filtro
+  // "Desligados" da lista do adm.
+  async findAll(
+    caller?: { role: string; userId: string },
+    status: StaffListStatus = 'active',
+  ): Promise<Staff[]> {
     const order = { name: 'ASC' } as const;
     const relations = ['user', 'house', 'supportGroup'];
+    const statusWhere = status === 'dismissed' ? { dismissedAt: Not(IsNull()) } : ACTIVE_STAFF_WHERE;
     if (caller && caller.role !== Role.ADMIN) {
       const me = await this.findByUserId(caller.userId).catch(() => null);
       if (!me?.houseId) return [];
-      return this.staffRepository.find({ where: { houseId: me.houseId }, order, relations });
+      return this.staffRepository.find({ where: { houseId: me.houseId, ...statusWhere }, order, relations });
     }
-    return this.staffRepository.find({ order, relations });
+    return this.staffRepository.find({ where: { ...statusWhere }, order, relations });
   }
 
   async findOne(id: string): Promise<Staff> {
@@ -377,6 +400,124 @@ export class StaffService {
       },
       { fields: STAFF_DELETE_AUDIT_FIELDS },
     );
+  }
+
+  // ─── Desligamento e reintegração (story 217) ─────────────────────────────────
+
+  /**
+   * Desliga o servo sem soft delete, numa transação só: fecha o período de
+   * serviço aberto (data + motivo + observação), grava `dismissed_at`, desativa
+   * o User (login bloqueado), limpa o titular da casa e a liderança de
+   * ministérios. Permissões extras, `house_id` e `rank` ficam gravados.
+   */
+  async dismiss(id: string, dto: DismissStaffDto): Promise<Staff> {
+    const staff = await this.findOne(id);
+    if (staff.dismissedAt) throw new ConflictException(STAFF_DISMISSAL_MESSAGES.alreadyDismissed);
+    const date = isoDay(dto.date);
+    if (isFutureDate(date, todayInSaoPaulo())) {
+      throw new BadRequestException(STAFF_DISMISSAL_MESSAGES.dateFuture);
+    }
+    const notes = dto.notes?.trim() || null;
+    if (dto.reason === StaffDismissalReason.OTHER && !notes) {
+      throw new BadRequestException(STAFF_DISMISSAL_MESSAGES.notesRequired);
+    }
+
+    await this.trackStaff(
+      id,
+      AuditAction.STAFF_DISMISS,
+      async (manager) => {
+        const open = await manager
+          .getRepository(StaffServicePeriod)
+          .findOne({ where: { staffId: id, endDate: IsNull() } });
+        if (open) {
+          const start = isoDay(open.startDate);
+          if (isDateBefore(date, start)) {
+            throw new BadRequestException(STAFF_DISMISSAL_MESSAGES.dateBeforeStart(start));
+          }
+          await this.trackPeriodClosure(manager, id, open.id, {
+            endDate: date,
+            endReason: dto.reason,
+            endNotes: notes,
+          });
+        }
+        const repos = this.writers(manager);
+        await repos.staff.update(id, { dismissedAt: date });
+        await repos.user.update(staff.userId, { isActive: false });
+        await this.clearTitular(id, manager);
+        await manager.query(
+          `UPDATE ministries SET leader_id = NULL, leader_type = NULL
+            WHERE leader_type = 'STAFF' AND leader_id = $1`,
+          [id],
+        );
+      },
+      { fields: STAFF_DISMISSAL_AUDIT_FIELDS },
+    );
+    return this.findOne(id);
+  }
+
+  /**
+   * Reintegra o desligado: reativa o User, limpa `dismissed_at` e abre um
+   * período novo (casa + início). Início não futuro e ≥ fim do último período.
+   * `houseId` ausente mantém a última casa do cadastro.
+   */
+  async reinstate(id: string, dto: ReinstateStaffDto): Promise<Staff> {
+    const staff = await this.findOne(id);
+    if (!staff.dismissedAt) throw new ConflictException(STAFF_DISMISSAL_MESSAGES.notDismissed);
+    const date = isoDay(dto.date);
+    if (isFutureDate(date, todayInSaoPaulo())) {
+      throw new BadRequestException(STAFF_DISMISSAL_MESSAGES.reinstateFuture);
+    }
+    const houseId = dto.houseId !== undefined ? dto.houseId : staff.houseId;
+
+    await this.trackStaff(
+      id,
+      AuditAction.STAFF_REINSTATE,
+      async (manager) => {
+        if (houseId && !(await manager.count(House, { where: { id: houseId } }))) {
+          throw new BadRequestException('Casa não encontrada.');
+        }
+        const periods = await manager.getRepository(StaffServicePeriod).find({ where: { staffId: id } });
+        const lastBound = periods
+          .map((period) => isoDay(period.endDate ?? period.startDate))
+          .sort()
+          .pop();
+        if (lastBound && isDateBefore(date, lastBound)) {
+          throw new BadRequestException(STAFF_DISMISSAL_MESSAGES.reinstateBeforeLastEnd(lastBound));
+        }
+        // Período aberto residual (legado/correção manual): fecha antes de abrir o novo.
+        const open = periods.find((period) => !period.endDate);
+        if (open) await this.trackPeriodClosure(manager, id, open.id, { endDate: date });
+        const repos = this.writers(manager);
+        await repos.staff.update(id, { dismissedAt: null, houseId });
+        await repos.user.update(staff.userId, { isActive: true });
+        await openServicePeriod(manager, { staffId: id, houseId, startDate: date });
+      },
+      { fields: STAFF_DISMISSAL_AUDIT_FIELDS },
+    );
+    return this.findOne(id);
+  }
+
+  /** Fecha o período aberto com evento próprio (alvo o período, servo como principal). */
+  private trackPeriodClosure(
+    manager: EntityManager,
+    staffId: string,
+    periodId: string,
+    update: Partial<StaffServicePeriod>,
+  ): Promise<unknown> {
+    return this.audit.track({
+      action: AuditAction.STAFF_SERVICE_PERIOD_UPDATE,
+      targetType: AuditTargetType.STAFF_SERVICE_PERIOD,
+      targetId: periodId,
+      fields: STAFF_SERVICE_PERIOD_AUDIT_FIELDS,
+      load: loadById(StaffServicePeriod),
+      scope: ({ before, after }) => ({
+        ...defaultScope(before, after),
+        parentType: AuditTargetType.STAFF,
+        parentId: staffId,
+      }),
+      manager,
+      write: (m) => m.getRepository(StaffServicePeriod).update(periodId, update),
+    });
   }
 
   // ─── Permissions ─────────────────────────────────────────────────────────────

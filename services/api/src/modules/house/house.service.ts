@@ -20,7 +20,8 @@ import { CreateHouseDto } from './dto/create-house.dto';
 import { CreateHouseRuleDto } from './dto/create-house-rule.dto';
 import { UpdateHouseDto } from './dto/update-house.dto';
 import { StorageService } from '../storage/storage.service';
-import { HOUSE_COORDINATOR_ROLES, isHouseCoordinatorRole } from '../../common/auth/house-coordinator';
+import { HOUSE_COORDINATOR_ROLES, isActiveHouseCoordinator } from '../../common/auth/house-coordinator';
+import { activeStaffSql } from '../staff/active-staff';
 
 /**
  * Coordenador da casa no detalhe (story 194). Mesmas quatro colunas do resumo de
@@ -100,10 +101,10 @@ export class HouseService {
       }),
       this.getResidentCountsMap(),
       this.houseRepository.manager.query<Array<{ houseId: string; count: string }>>(
-        `SELECT house_id AS "houseId", COUNT(DISTINCT id)::int AS count
-         FROM staff
-         WHERE deleted_at IS NULL
-         GROUP BY house_id`,
+        `SELECT s.house_id AS "houseId", COUNT(DISTINCT s.id)::int AS count
+         FROM staff s
+         WHERE ${activeStaffSql('s')}
+         GROUP BY s.house_id`,
       ),
       this.houseRepository.manager.query<Array<{ houseId: string; thumbnailUrl: string }>>(
         `SELECT DISTINCT ON (house_id) house_id AS "houseId", url AS "thumbnailUrl"
@@ -128,7 +129,8 @@ export class HouseService {
    * Lista de coordenadores da casa (story 194, decisão 1): derivada de `Staff`,
    * sem tabela de junção — `house_id` + role de coordenador da casa + não
    * soft-deletado. Story 214: role de coordenador da casa = COORDINATOR **ou**
-   * ADMIN (`HOUSE_COORDINATOR_ROLES`). A role mora em `users`, daí o join. O
+   * ADMIN (`HOUSE_COORDINATOR_ROLES`). Story 217: só servo ativo (não
+   * desligado — `activeStaffSql`). A role mora em `users`, daí o join. O
    * titular (`coordinator_id`) aparece aqui também: ele é um coordenador da
    * casa, não uma categoria à parte.
    */
@@ -137,7 +139,7 @@ export class HouseService {
       `SELECT s.id, s.name, s.whatsapp, s.photo_url AS "photoUrl"
        FROM staff s
        JOIN users u ON u.id = s.user_id
-       WHERE s.house_id = $1 AND u.role = ANY($2) AND s.deleted_at IS NULL
+       WHERE s.house_id = $1 AND u.role = ANY($2) AND ${activeStaffSql('s')}
        ORDER BY s.name`,
       [houseId, [...HOUSE_COORDINATOR_ROLES]],
     );
@@ -157,7 +159,7 @@ export class HouseService {
       }),
       this.getResidentCountsMap(),
       this.houseRepository.manager.query<Array<{ count: string }>>(
-        `SELECT COUNT(DISTINCT id)::int AS count FROM staff WHERE house_id = $1 AND deleted_at IS NULL`,
+        `SELECT COUNT(DISTINCT s.id)::int AS count FROM staff s WHERE s.house_id = $1 AND ${activeStaffSql('s')}`,
         [id],
       ),
       this.findCoordinators(id),
@@ -248,17 +250,24 @@ export class HouseService {
    */
   private async assertEligibleTitular(staffId: string, houseId: string): Promise<void> {
     const [staff] = await this.houseRepository.manager.query<
-      Array<{ id: string; houseId: string | null; role: string; deletedAt: Date | null }>
+      Array<{
+        id: string;
+        houseId: string | null;
+        role: string;
+        deletedAt: Date | null;
+        dismissedAt: string | null;
+      }>
     >(
-      `SELECT s.id, s.house_id AS "houseId", u.role AS role, s.deleted_at AS "deletedAt"
+      `SELECT s.id, s.house_id AS "houseId", u.role AS role, s.deleted_at AS "deletedAt",
+              s.dismissed_at AS "dismissedAt"
        FROM staff s
        JOIN users u ON u.id = s.user_id
        WHERE s.id = $1`,
       [staffId],
     );
     if (!staff) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
-    if (staff.deletedAt !== null) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
-    if (!isHouseCoordinatorRole(staff.role)) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
+    // Story 217: coordenador = role de coordenação E ativo (não desligado).
+    if (!isActiveHouseCoordinator(staff)) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
     if (staff.houseId !== houseId) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
   }
 
@@ -366,7 +375,7 @@ export class HouseService {
        JOIN users u ON u.id = s.user_id
        LEFT JOIN ministries m
          ON m.leader_type = 'STAFF' AND m.leader_id = s.id AND m.deleted_at IS NULL
-       WHERE s.house_id = $1 AND s.deleted_at IS NULL
+       WHERE s.house_id = $1 AND ${activeStaffSql('s')}
        GROUP BY s.id, u.role
        ORDER BY s.name`,
       [houseId],

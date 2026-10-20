@@ -1880,6 +1880,10 @@ export interface StaffServicePeriod {
   house?: { id: string; name: string } | null;
   startDate: string;
   endDate: string | null;
+  /** Story 217 — motivo do desligamento que encerrou o período (nulo se encerrado à mão). */
+  endReason?: StaffDismissalReason | null;
+  /** Story 217 — observação livre do desligamento. */
+  endNotes?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1955,6 +1959,54 @@ export function findServicePeriodOverlap<
   const hit = findAdmissionOverlap(toAdmission(period), index);
   return hit ? others[index.indexOf(hit)] : null;
 }
+
+// ─── Desligamento e reintegração de servo (story 217) ────────────────────────
+
+/** Categoria do motivo do desligamento — gravada no período de serviço encerrado. */
+export enum StaffDismissalReason {
+  OWN_REQUEST = 'OWN_REQUEST',
+  COORDINATION_DECISION = 'COORDINATION_DECISION',
+  TRANSFER_OTHER_WORK = 'TRANSFER_OTHER_WORK',
+  DEATH = 'DEATH',
+  OTHER = 'OTHER',
+}
+
+export const STAFF_DISMISSAL_REASON_LABELS: Record<StaffDismissalReason, string> = {
+  [StaffDismissalReason.OWN_REQUEST]: 'Pedido próprio',
+  [StaffDismissalReason.COORDINATION_DECISION]: 'Decisão da coordenação',
+  [StaffDismissalReason.TRANSFER_OTHER_WORK]: 'Transferência para outra obra',
+  [StaffDismissalReason.DEATH]: 'Falecimento',
+  [StaffDismissalReason.OTHER]: 'Outro',
+};
+
+/** Filtro de `GET /staff?status=` — default `active` (não desligado). */
+export type StaffListStatus = 'active' | 'dismissed';
+
+/** `POST /staff/:id/dismiss` — `notes` obrigatória quando `reason = OTHER`. */
+export interface DismissStaffPayload {
+  date: string;
+  reason: StaffDismissalReason;
+  notes?: string | null;
+}
+
+/** `POST /staff/:id/reinstate` — abre um período novo (casa + início). */
+export interface ReinstateStaffPayload {
+  date: string;
+  houseId?: string | null;
+}
+
+/** Mensagens únicas da story 217 — backend (400/409) e dialogs usam as mesmas. */
+export const STAFF_DISMISSAL_MESSAGES = {
+  notesRequired: 'Descreva o motivo do desligamento.',
+  dateFuture: 'A data do desligamento não pode ser no futuro.',
+  dateBeforeStart: (startDate: string) =>
+    `A data do desligamento não pode ser anterior ao início do período em andamento (${formatIsoDateBr(startDate)}).`,
+  alreadyDismissed: 'Este servo já está desligado.',
+  notDismissed: 'Este servo não está desligado.',
+  reinstateFuture: 'A data de reintegração não pode ser no futuro.',
+  reinstateBeforeLastEnd: (endDate: string) =>
+    `A data de reintegração não pode ser anterior ao fim do último período de serviço (${formatIsoDateBr(endDate)}).`,
+} as const;
 
 // ─── Offline snapshot da casa (story 177) ────────────────────────────────────
 
@@ -2118,6 +2170,9 @@ export const AuditAction = {
   // Story 216 — períodos de serviço da aba Histórico (alvo do período, servo como principal).
   STAFF_SERVICE_PERIOD_CREATE: 'staff.service_period.create',
   STAFF_SERVICE_PERIOD_UPDATE: 'staff.service_period.update',
+  // Story 217 — desligamento e reintegração (alvo o servo).
+  STAFF_DISMISS: 'staff.dismiss',
+  STAFF_REINSTATE: 'staff.reinstate',
 
   RESIDENT_CREATE: 'resident.create',
   RESIDENT_IMPORT: 'resident.import',
@@ -2194,6 +2249,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'staff.permission.revoke': 'Permissão revogada',
   'staff.service_period.create': 'Período de serviço registrado',
   'staff.service_period.update': 'Período de serviço corrigido',
+  'staff.dismiss': 'Servo desligado',
+  'staff.reinstate': 'Servo reintegrado',
   'resident.create': 'Filho cadastrado',
   'resident.import': 'Filho importado',
   'resident.update': 'Ficha do filho editada',

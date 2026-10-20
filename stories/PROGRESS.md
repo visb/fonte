@@ -22,7 +22,7 @@ Rodada de autorun **214–219** — aberta em 2026-10-20.
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 214 — admin lotado conta como coordenador da casa | [OK] | api 2177 · e2e 713 · adm 2053+13 · ops 1593 | 22ed19f | 6e153ae |
-| 2 | 215 — criar e editar acolhimentos no Histórico | [ ] | | | |
+| 2 | 215 — criar e editar acolhimentos no Histórico | [OK] | api 2209 · e2e 720 · adm 2086+2 · client 313 | f4eb3b0 | d7a29a0 |
 | 3 | 216 — período de serviço do servo no Histórico | [ ] | | | |
 | 4 | 217 — desligamento e reintegração de servo | [ ] | | | |
 | 5 | 219 — CPF do filho único | [ ] | | | |
@@ -32,6 +32,8 @@ Rodada de autorun **214–219** — aberta em 2026-10-20.
 
 [OK] 214 — testes: api 2177/2177, api e2e 713/713, adm unit 2053 + e2e houses 13/13, ops 1593; cov api 93,66% stmts — commit: 22ed19f — merge: 6e153ae — 2026-10-20
 Predicado de coordenador em `services/api/src/common/auth/house-coordinator.ts` (+ espelho `apps/ops.fonte/lib/houseCoordinator.ts`) — 217 rebaseia aqui.
+[OK] 215 — testes: api 2209/2209 (cov 93,75%), api e2e 720/720, adm unit 2086 + e2e admission-history 2/2, api-client 313 — commit: f4eb3b0 — merge: d7a29a0 — 2026-10-20
+Regra extra: passagem antiga tem de começar antes da entrada do atual (senão viraria o "atual"). 216: `buildHistory` aceita `kind: 'service'`; `findAdmissionOverlap` reutilizável.
 
 ## Resumo final
 

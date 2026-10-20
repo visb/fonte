@@ -154,6 +154,23 @@ describe('residents module', () => {
     expect(http.get).toHaveBeenCalledWith('/residents/res-1/admissions');
   });
 
+  it('createAdmission posta passagem antiga (story 215)', async () => {
+    const body = {
+      houseId: 'h1',
+      entryDate: '2020-01-01',
+      exitDate: '2020-06-01',
+      status: 'DISCHARGED',
+    } as never;
+    await residents.createAdmission('res-1', body);
+    expect(http.post).toHaveBeenCalledWith('/residents/res-1/admissions', body);
+  });
+
+  it('updateAdmission corrige passagem (story 215)', async () => {
+    const body = { entryDate: '2020-02-01' };
+    await residents.updateAdmission('res-1', 'adm-1', body);
+    expect(http.patch).toHaveBeenCalledWith('/residents/res-1/admissions/adm-1', body);
+  });
+
   it('getFollowUps busca acompanhamentos', async () => {
     await residents.getFollowUps('res-1');
     expect(http.get).toHaveBeenCalledWith('/residents/res-1/follow-ups');

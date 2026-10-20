@@ -17,7 +17,9 @@ import { ResidentDocument } from './resident-document.entity';
 import { Admission } from './admission.entity';
 import { ResidentController } from './resident.controller';
 import { CensusController } from './census.controller';
+import { AdmissionController } from './admission.controller';
 import { ResidentService } from './resident.service';
+import { AdmissionService } from './admission.service';
 import { CensusService } from './census.service';
 import { DocxParserService } from './docx-parser.service';
 import { SpreadsheetImportService } from './spreadsheet-parser.service';
@@ -42,9 +44,10 @@ import { ImportService } from './import.service';
     NotificationModule,
     StaffModule,
   ],
-  controllers: [ResidentController, CensusController],
+  controllers: [ResidentController, CensusController, AdmissionController],
   providers: [
     ResidentService,
+    AdmissionService,
     CensusService,
     DocxParserService,
     SpreadsheetImportService,

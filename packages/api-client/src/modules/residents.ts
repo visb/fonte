@@ -1,4 +1,5 @@
 import type { AxiosInstance } from 'axios';
+import type { CreateAdmissionPayload, UpdateAdmissionPayload } from '@fonte/types';
 import type {
   Admission,
   BulkCreateContributionsInput,
@@ -100,6 +101,20 @@ export function createResidentsModule(http: AxiosInstance) {
 
     getAdmissions: (id: string): Promise<Admission[]> =>
       http.get<Admission[]>(`/residents/${id}/admissions`).then((r) => r.data),
+
+    // Story 215 — passagem antiga (já encerrada) pela aba Histórico. ADMIN-only.
+    createAdmission: (residentId: string, payload: CreateAdmissionPayload): Promise<Admission> =>
+      http.post<Admission>(`/residents/${residentId}/admissions`, payload).then((r) => r.data),
+
+    // Story 215 — correção de passagem. No acolhimento atual só `entryDate`.
+    updateAdmission: (
+      residentId: string,
+      admissionId: string,
+      payload: UpdateAdmissionPayload,
+    ): Promise<Admission> =>
+      http
+        .patch<Admission>(`/residents/${residentId}/admissions/${admissionId}`, payload)
+        .then((r) => r.data),
 
     getFollowUps: (id: string): Promise<ResidentFollowUp[]> =>
       http.get<ResidentFollowUp[]>(`/residents/${id}/follow-ups`).then((r) => r.data),

@@ -1,75 +1,85 @@
-import { ResidentStatus } from '@fonte/types';
-import { Badge } from '@/components/ui/badge';
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { Role } from '@fonte/types';
+import type { Admission } from '@fonte/api-client';
+import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { RESIDENT_STATUS_LABELS, RESIDENT_STATUS_VARIANT } from '../../constants';
+import { useAuth } from '@/contexts/AuthContext';
 import { useResidentAdmissions } from '../../hooks/useResidents';
+import { AdmissionCard } from '../AdmissionCard';
+import { AdmissionFormDialog } from '../AdmissionFormDialog';
 
 interface Props {
   residentId: string;
 }
 
-function formatDate(value: string | null | undefined): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+/**
+ * Item da linha do tempo do Histórico. Hoje só acolhimentos; a story 216
+ * acrescenta os períodos de serviço como outro `kind` na mesma lista.
+ */
+type HistoryItem = { kind: 'admission'; key: string; title: string; admission: Admission };
+
+function buildHistory(admissions: Admission[]): HistoryItem[] {
+  return admissions.map((admission, index) => ({
+    kind: 'admission',
+    key: `admission-${admission.id}`,
+    title: `Acolhimento ${admissions.length - index}`,
+    admission,
+  }));
 }
 
+// A passagem fica guardada ao fechar: o título não troca durante a animação.
+type DialogState = { open: boolean; admission: Admission | null };
+
+/**
+ * Aba Histórico (story 215): acolhimentos do filho, do mais recente ao mais
+ * antigo. ADMIN adiciona passagem antiga e corrige passagens; os demais leem.
+ * Mesma aba no detalhe do servo ex-filho (`formerResidentId`).
+ */
 export function AdmissionsTab({ residentId }: Props) {
+  const { role } = useAuth();
+  const canEdit = role === Role.ADMIN;
   const { data: admissions = [], isLoading } = useResidentAdmissions(residentId);
+  const [dialog, setDialog] = useState<DialogState>({ open: false, admission: null });
 
   if (isLoading) return <LoadingState />;
 
-  if (admissions.length === 0) {
-    return (
-      <div className="py-12 text-center text-muted-foreground text-sm space-y-1">
-        <p className="font-medium">Nenhum acolhimento registrado.</p>
-        <p className="text-xs">O histórico é criado a partir do primeiro acolhimento.</p>
-      </div>
-    );
-  }
+  const items = buildHistory(admissions);
 
   return (
     <div className="space-y-4">
-      {admissions.map((admission, index) => {
-        const statusKey = admission.status as ResidentStatus;
-        const label = RESIDENT_STATUS_LABELS[statusKey] ?? admission.status;
-        const variant = RESIDENT_STATUS_VARIANT[statusKey] ?? 'secondary';
+      {canEdit && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setDialog({ open: true, admission: null })}>
+            <Plus size={15} /> Adicionar acolhimento
+          </Button>
+        </div>
+      )}
 
-        return (
-          <div key={admission.id} className="rounded-lg border bg-card p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold">
-                Acolhimento {admissions.length - index}
-              </h4>
-              <Badge variant={variant}>{label}</Badge>
-            </div>
+      {items.length === 0 ? (
+        <div className="py-12 text-center text-muted-foreground text-sm space-y-1">
+          <p className="font-medium">Nenhum acolhimento registrado.</p>
+          <p className="text-xs">O histórico é criado a partir do primeiro acolhimento.</p>
+        </div>
+      ) : (
+        items.map((item) => (
+          <AdmissionCard
+            key={item.key}
+            title={item.title}
+            admission={item.admission}
+            onEdit={canEdit ? () => setDialog({ open: true, admission: item.admission }) : undefined}
+          />
+        ))
+      )}
 
-            <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-              <span className="text-muted-foreground">Casa</span>
-              <span>{admission.house?.name ?? admission.houseId}</span>
-
-              <span className="text-muted-foreground">Entrada</span>
-              <span>{formatDate(admission.entryDate)}</span>
-
-              <span className="text-muted-foreground">Saída</span>
-              <span>{formatDate(admission.exitDate)}</span>
-
-              {admission.weight != null && (
-                <>
-                  <span className="text-muted-foreground">Peso</span>
-                  <span>{admission.weight} kg</span>
-                </>
-              )}
-              {admission.height != null && (
-                <>
-                  <span className="text-muted-foreground">Altura</span>
-                  <span>{admission.height} cm</span>
-                </>
-              )}
-            </div>
-
-          </div>
-        );
-      })}
+      {canEdit && (
+        <AdmissionFormDialog
+          open={dialog.open}
+          onClose={() => setDialog((state) => ({ ...state, open: false }))}
+          residentId={residentId}
+          admission={dialog.admission}
+        />
+      )}
     </div>
   );
 }

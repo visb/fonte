@@ -19,6 +19,8 @@ vi.mock('@/lib/api', () => ({
       addAttachment: vi.fn(),
       deleteAttachment: vi.fn(),
       getAdmissions: vi.fn(),
+      createAdmission: vi.fn(),
+      updateAdmission: vi.fn(),
       readmit: vi.fn(),
       uploadSignedDocument: vi.fn(),
     },
@@ -59,6 +61,8 @@ import {
   useResidentAdmissions,
   useReadmitResident,
   useUploadSignedDocument,
+  useCreateAdmission,
+  useUpdateAdmission,
 } from './useResidents';
 
 beforeEach(() => vi.clearAllMocks());
@@ -113,6 +117,31 @@ describe('queries de residente', () => {
     const { result } = renderHookWithClient(() => useResidentRelatives('r1'));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.relatives.listByResident).toHaveBeenCalledWith('r1');
+  });
+});
+
+describe('acolhimentos do Histórico (story 215)', () => {
+  it('useCreateAdmission posta e invalida acolhimentos + ficha', async () => {
+    vi.mocked(api.residents.createAdmission).mockResolvedValue({ id: 'a1' } as never);
+    const { result, queryClient } = renderHookWithClient(() => useCreateAdmission('r1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    const payload = { houseId: 'h1', entryDate: '2020-01-01', exitDate: '2020-02-01', status: 'DISCHARGED' } as never;
+    result.current.mutate(payload);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.residents.createAdmission).toHaveBeenCalledWith('r1', payload);
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.residents.admissions('r1') });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.residents.detail('r1') });
+  });
+
+  it('useUpdateAdmission corrige e invalida acolhimentos + ficha', async () => {
+    vi.mocked(api.residents.updateAdmission).mockResolvedValue({ id: 'a1' } as never);
+    const { result, queryClient } = renderHookWithClient(() => useUpdateAdmission('r1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    result.current.mutate({ admissionId: 'a1', payload: { entryDate: '2020-01-02' } });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.residents.updateAdmission).toHaveBeenCalledWith('r1', 'a1', { entryDate: '2020-01-02' });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.residents.admissions('r1') });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.residents.detail('r1') });
   });
 });
 

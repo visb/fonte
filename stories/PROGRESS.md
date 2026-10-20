@@ -24,7 +24,7 @@ Rodada de autorun **214–219** — aberta em 2026-10-20.
 | 1 | 214 — admin lotado conta como coordenador da casa | [OK] | api 2177 · e2e 713 · adm 2053+13 · ops 1593 | 22ed19f | 6e153ae |
 | 2 | 215 — criar e editar acolhimentos no Histórico | [OK] | api 2209 · e2e 720 · adm 2086+2 · client 313 | f4eb3b0 | d7a29a0 |
 | 3 | 216 — período de serviço do servo no Histórico | [OK] | api 2236 · e2e 727 · adm 2126+19 · client 316 | 9064cc4 | e235e21 |
-| 4 | 217 — desligamento e reintegração de servo | [ ] | | | |
+| 4 | 217 — desligamento e reintegração de servo | [OK] | api 2266 · e2e 734 · adm 2171+pw · client 319 | 5971688 | dc76705 |
 | 5 | 219 — CPF do filho único | [ ] | | | |
 | 6 | 218 — contagem do ops reacolhe filho existente | [ ] | | | |
 
@@ -36,6 +36,8 @@ Predicado de coordenador em `services/api/src/common/auth/house-coordinator.ts` 
 Regra extra: passagem antiga tem de começar antes da entrada do atual (senão viraria o "atual"). 216: `buildHistory` aceita `kind: 'service'`; `findAdmissionOverlap` reutilizável.
 [OK] 216 — testes: api 2236/2236 (cov 93,83%), api e2e 727/727, adm unit 2126 + e2e 19/19, api-client 316 — commit: 9064cc4 — merge: e235e21 — 2026-10-20
 Migration 1783038200000 (próxima > isso). `StaffServicePeriodService` + `openServicePeriod(manager,…)`; índice único parcial = 1 aberto por staff. Staff já soft-deletado ficou sem período.
+[OK] 217 — testes: api 2266/2266 (cov 93,88%), api e2e 734/734, adm unit 2171 + pw staff*/houses verdes (2x), api-client 319 — commit: 5971688 — merge: dc76705 — 2026-10-20
+Migration 1783038300000. Predicado único `modules/staff/active-staff.ts`; "titular não pode ser desligado" lido como "desligado não pode ser titular" (dismiss limpa titular).
 
 ## Resumo final
 

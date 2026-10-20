@@ -70,6 +70,25 @@ Para registrar alta:
 
 ---
 
+## 5.0. Histórico de acolhimentos (story 215)
+
+A aba Histórico do `adm.fonte` lista as passagens (`admissions`) do filho. Só **ADMIN** cria e
+edita; COORDINATOR e SERVANT leem. Não há exclusão (histórico é fato).
+
+- **Acolhimento atual** = o de maior entrada (índice 0 da lista, story 164) — o que a ficha espelha.
+  Nele só a **data de entrada** é corrigível (atualiza também `resident.entry_date`; o carnê não é
+  recalculado). Casa, saída e status mudam só por transferência, alta ou readmissão.
+- **Passagem encerrada**: casa, entrada, saída e status editáveis.
+- **Criar** = só passagem antiga, já encerrada (entrada + saída). Acolhimento novo é a readmissão.
+- Status aceito numa passagem criada/editada: só status de saída (`DISCHARGED`, `EVADED`,
+  `ARCHIVED`). Casa só pode ficar nula com `ARCHIVED`.
+- Datas seguem a story 203 (não futuras, saída ≥ entrada). Passagens do mesmo filho **não se
+  sobrepõem** (sair e reentrar no mesmo dia pode) e a passagem antiga tem de começar antes do
+  acolhimento atual — senão ela viraria o "atual".
+- Auditoria: `admission.create` / `admission.update`, alvo `admission`, filho como principal.
+
+---
+
 ## 5.1. Promoção de filho a servo
 
 Quase todos os servos foram filhos um dia. Um Resident pode ser promovido a Staff:

@@ -1,5 +1,5 @@
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ResidentStatus } from '@fonte/types';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import type { CreateAdmissionPayload, ResidentStatus, UpdateAdmissionPayload } from '@fonte/types';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import type {
@@ -259,6 +259,33 @@ export function useResidentAdmissions(residentId: string, options?: { enabled?: 
     queryFn: () => api.residents.getAdmissions(residentId),
     enabled: (options?.enabled ?? true) && !!residentId,
   });
+}
+
+/**
+ * Story 215 — passagem antiga (já encerrada) registrada pela aba Histórico.
+ * Invalida a lista de acolhimentos e a ficha (o espelho da ficha pode mudar).
+ */
+export function useCreateAdmission(residentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateAdmissionPayload) => api.residents.createAdmission(residentId, payload),
+    onSuccess: () => invalidateAdmissionHistory(queryClient, residentId),
+  });
+}
+
+/** Story 215 — correção de passagem (no atual, só a entrada; espelha na ficha). */
+export function useUpdateAdmission(residentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ admissionId, payload }: { admissionId: string; payload: UpdateAdmissionPayload }) =>
+      api.residents.updateAdmission(residentId, admissionId, payload),
+    onSuccess: () => invalidateAdmissionHistory(queryClient, residentId),
+  });
+}
+
+function invalidateAdmissionHistory(queryClient: QueryClient, residentId: string) {
+  queryClient.invalidateQueries({ queryKey: queryKeys.residents.admissions(residentId) });
+  queryClient.invalidateQueries({ queryKey: queryKeys.residents.detail(residentId) });
 }
 
 export function useReadmitResident(residentId: string) {

@@ -41,6 +41,18 @@ export const RESIDENT_AUDIT_FIELDS: AuditFieldMap = {
   photoUrl: 'file',
 };
 
+/**
+ * Story 215 — passagem editada pela aba Histórico: só os campos editáveis ali.
+ * Saúde/peso/investimento ficam de fora (são da ficha, não desta tela).
+ */
+export const ADMISSION_AUDIT_FIELDS: AuditFieldMap = {
+  residentId: 'plain',
+  houseId: 'plain',
+  entryDate: 'plain',
+  exitDate: 'plain',
+  status: 'plain',
+};
+
 /** Exclusões (soft delete): só o vínculo — nada de cópia da ficha no log. */
 export const RESIDENT_DELETE_AUDIT_FIELDS: AuditFieldMap = {
   status: 'plain',

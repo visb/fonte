@@ -1785,6 +1785,86 @@ export function findAdmissionDatesIssue(
   return null;
 }
 
+// ─── Acolhimentos do Histórico (story 215) ──────────────────────────────────
+
+/**
+ * Status de **saída** aceitos numa passagem encerrada criada/editada pela aba
+ * Histórico: os mesmos status terminais que o import e a alta/evasão gravam nas
+ * passagens. Status de acolhimento em curso ou da contagem não entram.
+ */
+export const ADMISSION_EXIT_STATUSES: ResidentStatus[] = [
+  ResidentStatus.DISCHARGED,
+  ResidentStatus.EVADED,
+  ResidentStatus.ARCHIVED,
+];
+
+/** Passagem antiga (já encerrada) registrada pela aba Histórico — só ADMIN. */
+export interface CreateAdmissionPayload {
+  /** Nula só com status `ARCHIVED` (mesma regra do filho). */
+  houseId?: string | null;
+  entryDate: string;
+  exitDate: string;
+  status: ResidentStatus;
+}
+
+/**
+ * Correção de passagem. No acolhimento **atual** só `entryDate` é aceito (casa
+ * e status espelham a ficha e mudam por transição validada).
+ */
+export interface UpdateAdmissionPayload {
+  houseId?: string | null;
+  entryDate?: string;
+  exitDate?: string;
+  status?: ResidentStatus;
+}
+
+/** Mensagens únicas da story 215 — backend (400) e dialog usam as mesmas. */
+export const ADMISSION_HISTORY_MESSAGES = {
+  overlap: (entryDate: string | null, exitDate: string | null) =>
+    `Este período se sobrepõe ao acolhimento de ${entryDate ? formatIsoDateBr(entryDate) : 'data desconhecida'} a ${exitDate ? formatIsoDateBr(exitDate) : 'hoje'}.`,
+  afterCurrent: (currentEntryDate: string) =>
+    `A passagem antiga precisa começar antes do acolhimento atual (${formatIsoDateBr(currentEntryDate)}).`,
+  exitStatusRequired: 'Escolha um status de saída: Alta, Evasão ou Arquivado.',
+  houseRequired: 'Informe a casa — só passagem arquivada pode ficar sem casa.',
+  currentOnlyEntryDate:
+    'No acolhimento atual só a data de entrada pode ser corrigida. Casa, saída e status mudam por transferência, alta ou readmissão.',
+  exitDateRequired: 'Informe a data de saída — a passagem antiga precisa estar encerrada.',
+} as const;
+
+/** Período de uma passagem (`YYYY-MM-DD`; `exitDate` nulo = em aberto). */
+export interface AdmissionPeriod {
+  id?: string;
+  entryDate: string | null;
+  exitDate: string | null;
+}
+
+/**
+ * Story 215 — primeira passagem de `others` que se sobrepõe a `period`.
+ *
+ * Intervalos fechados nas pontas que se tocam: sair num dia e entrar de novo no
+ * mesmo dia **não** é sobreposição (é a regra da readmissão, story 203).
+ * Passagem em aberto vai até "sempre"; passagem sem entrada conhecida não é
+ * julgada (registro legado). A própria passagem (mesmo `id`) é ignorada.
+ */
+export function findAdmissionOverlap<T extends AdmissionPeriod>(
+  period: AdmissionPeriod,
+  others: readonly T[],
+): T | null {
+  const start = period.entryDate?.slice(0, 10);
+  if (!start) return null;
+  const end = period.exitDate?.slice(0, 10) ?? null;
+  for (const other of others) {
+    if (period.id && other.id === period.id) continue;
+    const otherStart = other.entryDate?.slice(0, 10);
+    if (!otherStart) continue;
+    const otherEnd = other.exitDate?.slice(0, 10) ?? null;
+    const startsBeforeOtherEnds = otherEnd === null || start < otherEnd;
+    const otherStartsBeforeEnd = end === null || otherStart < end;
+    if (startsBeforeOtherEnds && otherStartsBeforeEnd) return other;
+  }
+  return null;
+}
+
 // ─── Offline snapshot da casa (story 177) ────────────────────────────────────
 
 /**
@@ -1902,6 +1982,7 @@ export const AuditTargetType = {
   HOUSE_PHOTO: 'house-photo',
   HOUSE_RULE: 'house-rule',
   MINISTRY: 'ministry',
+  ADMISSION: 'admission',
 } as const;
 export type AuditTargetTypeValue = (typeof AuditTargetType)[keyof typeof AuditTargetType];
 
@@ -1921,6 +2002,7 @@ export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {
   'house-photo': 'Foto da casa',
   'house-rule': 'Regra da casa',
   ministry: 'Ministério',
+  admission: 'Acolhimento',
   consent: 'Consentimento',
   'associate-charge': 'Cobrança de associado',
 };
@@ -1953,6 +2035,10 @@ export const AuditAction = {
   RESIDENT_RELATIVE_CREATE: 'resident.relative.create',
   RESIDENT_RELATIVE_RESPONSIBLE: 'resident.relative.responsible',
   RESIDENT_RELATIVE_DELETE: 'resident.relative.delete',
+
+  // Story 215 — passagens da aba Histórico (alvo `admission`, filho como principal).
+  ADMISSION_CREATE: 'admission.create',
+  ADMISSION_UPDATE: 'admission.update',
 
   RESIDENT_CONTRIBUTION_PLAN: 'resident.contribution_plan.update',
   RESIDENT_CONTRIBUTION_EXEMPT: 'resident.contribution_exempt.update',
@@ -2022,6 +2108,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'resident.relative.create': 'Familiar adicionado',
   'resident.relative.responsible': 'Responsável definido',
   'resident.relative.delete': 'Familiar removido',
+  'admission.create': 'Passagem antiga registrada',
+  'admission.update': 'Acolhimento corrigido',
   'resident.contribution_plan.update': 'Plano de contribuição alterado',
   'resident.contribution_exempt.update': 'Isenção de contribuição alterada',
   'resident.receivable.payment': 'Pagamento de parcela registrado',

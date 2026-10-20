@@ -21,6 +21,10 @@
       "value": "{{residentId}}"
     },
     {
+      "key": "admissionId",
+      "value": "{{admissionId}}"
+    },
+    {
       "key": "relativeId",
       "value": "{{relativeId}}"
     },
@@ -1560,6 +1564,187 @@
             },
             "description": "Retorna histórico de todos os acolhimentos do residente, com nome da casa. Ordem (story 164): `entry_date DESC NULLS LAST`, desempate `created_at DESC` — o índice 0 é SEMPRE o acolhimento atual, inclusive em ficha importada (onde os acolhimentos antigos foram gravados depois do atual). `houseId` é anulável. Roles: ADMIN, COORDINATOR, SERVANT."
           }
+        },
+        {
+          "name": "Create Resident Admission (passagem antiga)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"houseId\": \"{{houseId}}\",\n  \"entryDate\": \"2022-03-01\",\n  \"exitDate\": \"2022-09-01\",\n  \"status\": \"DISCHARGED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/admissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "admissions"
+              ]
+            },
+            "description": "Story 215 — registra uma passagem ANTIGA, já encerrada, na aba Histórico. Acolhimento novo e ativo continua sendo pela readmissão (`POST /residents/:id/readmit`). Roles: **ADMIN** (COORDINATOR/SERVANT → 403).\n\nBody: `entryDate` e `exitDate` obrigatórios (`YYYY-MM-DD`); `status` ∈ `DISCHARGED`, `EVADED`, `ARCHIVED` (`ADMISSION_EXIT_STATUSES`); `houseId` (UUID) só pode faltar/ser `null` com `ARCHIVED`. Campo fora do contrato → 400 (`forbidNonWhitelisted`).\n\nRegras (400): datas da story 203 (entrada/saída não futuras, saída ≥ entrada); **sem sobreposição** com outra passagem do filho (encostar na saída de outra, mesmo dia, é permitido) → `\"Este período se sobrepõe ao acolhimento de dd/mm/aaaa a dd/mm/aaaa.\"` (passagem aberta aparece como `a hoje`); a passagem tem de começar **antes** do acolhimento atual → `\"A passagem antiga precisa começar antes do acolhimento atual (dd/mm/aaaa).\"`; status não terminal → `\"Escolha um status de saída: Alta, Evasão ou Arquivado.\"`; casa nula sem ARCHIVED → `\"Informe a casa — só passagem arquivada pode ficar sem casa.\"`; casa inexistente → `\"Casa não encontrada.\"`. Filho inexistente → 404.\n\nResposta 201: a `Admission` criada, com `house`. Auditoria: `admission.create` (alvo `admission`, filho como principal)."
+          },
+          "response": [
+            {
+              "name": "201 — passagem criada",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}/admissions",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}", "admissions"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"{{admissionId}}\",\n  \"residentId\": \"{{residentId}}\",\n  \"houseId\": \"{{houseId}}\",\n  \"house\": { \"id\": \"{{houseId}}\", \"name\": \"Casa Teste\" },\n  \"ministryId\": null,\n  \"entryDate\": \"2022-03-01\",\n  \"exitDate\": \"2022-09-01\",\n  \"status\": \"DISCHARGED\",\n  \"healthIssues\": null,\n  \"continuousMedication\": null,\n  \"weight\": null,\n  \"height\": null,\n  \"familyInvestment\": null,\n  \"familyInvestmentAmount\": null\n}"
+            },
+            {
+              "name": "400 — saída anterior à entrada (story 203)",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}/admissions",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}", "admissions"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"A data de saída não pode ser anterior à data de entrada (01/03/2022).\"\n}"
+            },
+            {
+              "name": "400 — sobreposição com outra passagem",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}/admissions",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}", "admissions"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Este período se sobrepõe ao acolhimento de 01/03/2022 a 15/10/2022.\"\n}"
+            },
+            {
+              "name": "403 — não-admin",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}/admissions",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}", "admissions"]
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 403,\n  \"error\": \"Forbidden\",\n  \"message\": \"Forbidden resource\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Resident Admission",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"exitDate\": \"2022-10-15\",\n  \"status\": \"EVADED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/admissions/{{admissionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "admissions",
+                "{{admissionId}}"
+              ]
+            },
+            "description": "Story 215 — corrige uma passagem pela aba Histórico. Roles: **ADMIN** (COORDINATOR/SERVANT → 403). Passagem de outro filho → 404.\n\nBody (tudo opcional; datas e status não aceitam `null`): `houseId` (UUID ou `null`), `entryDate`, `exitDate`, `status`.\n\n- **Passagem encerrada** (qualquer uma que não seja a atual): casa, entrada, saída e status editáveis. Só o que veio no payload é julgado (mesma linha da story 203). Mesmas regras do POST: status de saída, casa nula só com ARCHIVED, datas da 203, sem sobreposição com OUTRA passagem (a própria não conta), entrada antes do acolhimento atual.\n- **Acolhimento atual** (índice 0 de `GET /residents/:id/admissions`): só `entryDate`. Qualquer outro campo → 400 `\"No acolhimento atual só a data de entrada pode ser corrigida. Casa, saída e status mudam por transferência, alta ou readmissão.\"`. A nova entrada também atualiza `resident.entry_date` na mesma transação; o carnê **não** é recalculado.\n\nResposta 200: a `Admission` atualizada, com `house`. Auditoria: `admission.update` (alvo `admission`, filho como principal; no atual também grava o antes/depois da ficha)."
+          },
+          "response": [
+            {
+              "name": "200 — passagem corrigida",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}/admissions/{{admissionId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}", "admissions", "{{admissionId}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"{{admissionId}}\",\n  \"residentId\": \"{{residentId}}\",\n  \"houseId\": \"{{houseId}}\",\n  \"house\": { \"id\": \"{{houseId}}\", \"name\": \"Casa Teste\" },\n  \"entryDate\": \"2022-03-01\",\n  \"exitDate\": \"2022-10-15\",\n  \"status\": \"EVADED\"\n}"
+            },
+            {
+              "name": "400 — campo proibido no acolhimento atual",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}/admissions/{{admissionId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}", "admissions", "{{admissionId}}"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"No acolhimento atual só a data de entrada pode ser corrigida. Casa, saída e status mudam por transferência, alta ou readmissão.\"\n}"
+            },
+            {
+              "name": "400 — sobreposição com outra passagem",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}/admissions/{{admissionId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}", "admissions", "{{admissionId}}"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Este período se sobrepõe ao acolhimento de 10/01/2025 a hoje.\"\n}"
+            },
+            {
+              "name": "403 — não-admin",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}/admissions/{{admissionId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}", "admissions", "{{admissionId}}"]
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 403,\n  \"error\": \"Forbidden\",\n  \"message\": \"Forbidden resource\"\n}"
+            }
+          ]
         },
         {
           "name": "Get Resident Follow-Ups",

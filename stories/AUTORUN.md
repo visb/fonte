@@ -32,8 +32,12 @@ commit `feat(story-NN)` = feita; pular.
 - **Um spawn por story, contexto limpo:** para cada story, disparar o agent `fonte-implementer`
   (tool `Agent`). O orquestrador **não** codifica no próprio contexto — só coordena, sobe serviços,
   dispara um agent por vez, mergeia e registra.
-  - **Limite de uso** ("You've hit your session limit"): não precisa fazer nada — o Claude Code
-    retoma a sessão sozinho após o reset; continuar do ledger. Não agendar `/loop`/wakeup/cron.
+  - **Limite de uso** ("You've hit your session limit"): o thread principal não precisa fazer
+    nada — o Claude Code retoma a sessão sozinho após o reset; continuar do ledger. Não agendar
+    `/loop`/wakeup/cron.
+  - **Subagent morto pelo limite** (notificação `failed` com `rate_limit`/HTTP 429): o subagent
+    **não** retoma sozinho. Após o reset, mandar `SendMessage` para o mesmo agent ("continue de onde
+    parou") — ele retoma do transcript, sem spawn novo e sem refazer trabalho.
 - **Disciplina de shell (o que mais interrompe o run):** arquivo se escreve com `Write`/`Edit`, nunca
   `cat >`/heredoc/`python - <<EOF`/`sed -i` multilinha; `.env` só por `Read`; um comando simples por
   chamada Bash (sem `cd X && ... | tail`); comando > ~1500 chars falha com

@@ -43,7 +43,10 @@ Seguir `AUTORUN.md` → "Execução da fila", repetindo até não sobrar story `
 3. Salvar estado: ledger + tudo commitado (cada story = checkpoint) — e voltar ao item 1.
 
 Limite de uso atingido no meio → nada a fazer: a sessão pausa e o harness retoma sozinho após o
-reset; continuar do ledger. Encher a janela de contexto → auto-compactação, segue normal.
+reset; continuar do ledger. **Exceção:** se o `fonte-implementer` morrer pelo limite (notificação
+`failed` com `rate_limit`/429), ele não retoma sozinho — após o reset, `SendMessage` para o mesmo
+agent ("continue de onde parou"); nunca spawn novo por cima. Encher a janela de contexto →
+auto-compactação, segue normal.
 
 ## Disciplina de shell (o que mais mata run autônomo)
 

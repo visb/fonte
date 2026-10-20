@@ -20,6 +20,7 @@ import { CreateHouseDto } from './dto/create-house.dto';
 import { CreateHouseRuleDto } from './dto/create-house-rule.dto';
 import { UpdateHouseDto } from './dto/update-house.dto';
 import { StorageService } from '../storage/storage.service';
+import { HOUSE_COORDINATOR_ROLES, isHouseCoordinatorRole } from '../../common/auth/house-coordinator';
 
 /**
  * Coordenador da casa no detalhe (story 194). Mesmas quatro colunas do resumo de
@@ -125,18 +126,20 @@ export class HouseService {
 
   /**
    * Lista de coordenadores da casa (story 194, decisão 1): derivada de `Staff`,
-   * sem tabela de junção — `house_id` + role COORDINATOR + não soft-deletado.
-   * A role mora em `users`, daí o join. O titular (`coordinator_id`) aparece
-   * aqui também: ele é um coordenador da casa, não uma categoria à parte.
+   * sem tabela de junção — `house_id` + role de coordenador da casa + não
+   * soft-deletado. Story 214: role de coordenador da casa = COORDINATOR **ou**
+   * ADMIN (`HOUSE_COORDINATOR_ROLES`). A role mora em `users`, daí o join. O
+   * titular (`coordinator_id`) aparece aqui também: ele é um coordenador da
+   * casa, não uma categoria à parte.
    */
   private findCoordinators(houseId: string): Promise<HouseCoordinatorSummary[]> {
     return this.houseRepository.manager.query<HouseCoordinatorSummary[]>(
       `SELECT s.id, s.name, s.whatsapp, s.photo_url AS "photoUrl"
        FROM staff s
        JOIN users u ON u.id = s.user_id
-       WHERE s.house_id = $1 AND u.role = $2 AND s.deleted_at IS NULL
+       WHERE s.house_id = $1 AND u.role = ANY($2) AND s.deleted_at IS NULL
        ORDER BY s.name`,
-      [houseId, Role.COORDINATOR],
+      [houseId, [...HOUSE_COORDINATOR_ROLES]],
     );
   }
 
@@ -239,7 +242,8 @@ export class HouseService {
 
   /**
    * Story 194, decisão 7: o titular tem que estar na lista derivada da casa —
-   * coordenador, lotado NESTA casa, não desligado. Falha é 400, não 404: o staff
+   * coordenador da casa (COORDINATOR ou ADMIN, story 214), lotado NESTA casa,
+   * não desligado. Falha é 400, não 404: o staff
    * existe, o vínculo é que está errado.
    */
   private async assertEligibleTitular(staffId: string, houseId: string): Promise<void> {
@@ -254,7 +258,7 @@ export class HouseService {
     );
     if (!staff) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
     if (staff.deletedAt !== null) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
-    if (staff.role !== Role.COORDINATOR) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
+    if (!isHouseCoordinatorRole(staff.role)) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
     if (staff.houseId !== houseId) throw new BadRequestException(INELIGIBLE_TITULAR_MESSAGE);
   }
 

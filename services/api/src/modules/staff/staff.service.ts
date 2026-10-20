@@ -23,6 +23,7 @@ import { UpdateStaffDto } from './dto/update-staff.dto';
 import { UpdateStaffMeDto } from './dto/update-staff-me.dto';
 import { StorageService } from '../storage/storage.service';
 import { assertAdultBirthDate } from '../../common/lib/birth-date';
+import { isHouseCoordinatorRole } from '../../common/auth/house-coordinator';
 
 /**
  * Estado auditável do servo (story 199): a ficha + perfil/e-mail/ativo do User
@@ -232,11 +233,13 @@ export class StaffService {
     }
 
     // Story 194, decisão 6: só duas transições do update tiram o staff da lista
-    // de coordenadores da casa — mudar de casa e deixar de ser COORDINATOR.
-    // Trocar telefone/nome/e-mail do titular NÃO pode derrubar a coluna.
+    // de coordenadores da casa — mudar de casa e deixar de ser coordenador da
+    // casa (story 214: role fora de COORDINATOR | ADMIN; trocar COORDINATOR ↔
+    // ADMIN mantém o titular). Trocar telefone/nome/e-mail do titular NÃO pode
+    // derrubar a coluna.
     const leavesHouse =
       staffFields.houseId !== undefined && staffFields.houseId !== staff.houseId;
-    const leavesCoordinatorRole = role !== undefined && role !== Role.COORDINATOR;
+    const leavesCoordinatorRole = role !== undefined && !isHouseCoordinatorRole(role);
     const dropsTitular = leavesHouse || leavesCoordinatorRole;
 
     // Uma transação só (story 199): ficha, User, limpeza do titular e evento.

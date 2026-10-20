@@ -282,10 +282,11 @@ describe('HouseService.findOne coordenadores (story 194)', () => {
     const call = query.mock.calls.find(([sql]: [string]) => sql.includes('JOIN users'));
     const [sql, params] = call as [string, unknown[]];
     expect(sql).toContain('s.house_id = $1');
-    expect(sql).toContain('u.role = $2');
+    expect(sql).toContain('u.role = ANY($2)');
     expect(sql).toContain('s.deleted_at IS NULL');
     expect(sql).toContain('ORDER BY s.name');
-    expect(params).toEqual(['h1', Role.COORDINATOR]);
+    // Story 214: ADMIN lotado na casa também é coordenador dela.
+    expect(params).toEqual(['h1', [Role.COORDINATOR, Role.ADMIN]]);
     // Servo da mesma casa, coordenador de outra casa e coordenador desligado
     // ficam de fora por esse mesmo WHERE — não há filtro em memória depois.
   });
@@ -405,6 +406,45 @@ describe('HouseService.update — elegibilidade do titular (decisão 7)', () => 
     await service.update('h1', { coordinatorId: 's1' } as never);
 
     expect(houseRepo.update).toHaveBeenCalledWith('h1', { coordinatorId: 's1' });
+  });
+
+  it('aceita um ADMIN lotado na própria casa (story 214)', async () => {
+    const { service, houseRepo } = makeTitularService({ ...eligible, role: Role.ADMIN });
+
+    await service.update('h1', { coordinatorId: 's1' } as never);
+
+    expect(houseRepo.update).toHaveBeenCalledWith('h1', { coordinatorId: 's1' });
+  });
+
+  it('recusa ADMIN de outra casa (story 214)', async () => {
+    const { service, houseRepo } = makeTitularService({ ...eligible, role: Role.ADMIN, houseId: 'h2' });
+
+    await expect(service.update('h1', { coordinatorId: 's1' } as never)).rejects.toThrow(
+      INELIGIBLE_TITULAR_MESSAGE,
+    );
+    expect(houseRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('recusa ADMIN sem casa (story 214)', async () => {
+    const { service, houseRepo } = makeTitularService({ ...eligible, role: Role.ADMIN, houseId: null });
+
+    await expect(service.update('h1', { coordinatorId: 's1' } as never)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(houseRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('recusa ADMIN desligado (story 214)', async () => {
+    const { service, houseRepo } = makeTitularService({
+      ...eligible,
+      role: Role.ADMIN,
+      deletedAt: new Date(),
+    });
+
+    await expect(service.update('h1', { coordinatorId: 's1' } as never)).rejects.toThrow(
+      INELIGIBLE_TITULAR_MESSAGE,
+    );
+    expect(houseRepo.update).not.toHaveBeenCalled();
   });
 
   it('recusa coordenador de outra casa (400, não 404)', async () => {

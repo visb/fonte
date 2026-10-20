@@ -1,6 +1,6 @@
 import { ScrollView, View } from 'react-native';
-import { Role } from '@fonte/types';
 import { useAuth } from '@/lib/auth';
+import { isHouseCoordinatorRole } from '@/lib/houseCoordinator';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -19,9 +19,9 @@ export function HouseSettingsPage() {
   // Story 194: a casa tem N coordenadores e o `coordinator_id` é só o titular,
   // que NÃO ganha permissão extra (decisão 4). O gate é o vínculo — mesma regra
   // que o `house-capacity-request.service` já aplica no backend pelo ramo
-  // `staff.houseId === houseId`.
+  // `staff.houseId === houseId`. Story 214: ADMIN lotado na casa também passa.
   const isHouseCoordinator =
-    staff.user.role === Role.COORDINATOR && staff.houseId === house.id;
+    isHouseCoordinatorRole(staff.user.role) && staff.houseId === house.id;
 
   if (!isHouseCoordinator) {
     return <EmptyState message="Apenas o coordenador da casa pode acessar as configurações." />;

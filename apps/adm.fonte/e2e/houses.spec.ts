@@ -318,6 +318,59 @@ test.describe('Casas', () => {
     }
   });
 
+  // ─── Admin lotado na casa é coordenador dela (story 214) ──────────────────
+
+  test('admin lotado na casa aparece entre os coordenadores e pode ser titular', async ({
+    page,
+    request,
+  }) => {
+    const stamp = Date.now();
+    const headers = { Authorization: `Bearer ${await loginApi(request)}` };
+    let adminId: string | null = null;
+
+    const houseRes = await request.post(`${API_URL}/houses`, {
+      headers,
+      data: { name: `Casa 214 ${stamp}` },
+    });
+    expect(houseRes.status()).toBe(201);
+    const houseId = (await houseRes.json()).id as string;
+    const adminName = `Admin Lotado ${stamp}`;
+
+    try {
+      const staffRes = await request.post(`${API_URL}/staff`, {
+        headers,
+        data: {
+          name: adminName,
+          email: `admin214.${stamp}@fonte.test`,
+          password: 'secret123',
+          role: 'ADMIN',
+          houseId,
+        },
+      });
+      expect(staffRes.status()).toBe(201);
+      adminId = (await staffRes.json()).id as string;
+
+      await page.goto(`/houses/${houseId}`);
+      await expect(page.getByText(adminName)).toBeVisible();
+
+      await page.getByRole('button', { name: /Editar/ }).first().click();
+      const dialog = page.getByRole('dialog');
+      const select = dialog.getByLabel('Coordenador titular');
+      await expect(select.getByRole('option', { name: adminName })).toHaveCount(1);
+
+      await select.selectOption({ label: adminName });
+      await dialog.getByRole('button', { name: 'Salvar' }).click();
+      await expect(dialog).not.toBeVisible();
+
+      await expect(page.getByText('Titular', { exact: true })).toHaveCount(1);
+      await expect(page.locator('div').filter({ hasText: adminName }).last()).toContainText('Titular');
+    } finally {
+      // Fixture própria, removida por id (story 182).
+      if (adminId) await request.delete(`${API_URL}/staff/${adminId}`, { headers });
+      await request.delete(`${API_URL}/houses/${houseId}`, { headers });
+    }
+  });
+
   test('aba Servos mostra o avatar do servo', async ({ page }) => {
     await page.getByText('Casa Teste').click();
     await page.getByRole('button', { name: 'Servos' }).click();

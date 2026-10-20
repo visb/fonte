@@ -791,12 +791,49 @@ describe('StaffService — coordenador titular da casa (story 194)', () => {
     expect(houseUpdate).toHaveBeenCalled();
   });
 
-  it('virar ADMIN também tira o staff da lista e zera o titular', async () => {
-    const { service, houseUpdate } = titularService(coordinator);
+  // Story 214, decisão 6: ADMIN lotado na casa também é coordenador dela —
+  // trocar COORDINATOR ↔ ADMIN mantém o titular.
+  it('COORDINATOR → ADMIN mantém o titular (story 214)', async () => {
+    const { service, userRepo, houseUpdate } = titularService(coordinator);
 
     await service.update('staff-1', { role: 'ADMIN' } as never);
 
-    expect(houseUpdate).toHaveBeenCalled();
+    expect(userRepo.update).toHaveBeenCalledWith('user-1', { role: 'ADMIN' });
+    expect(houseUpdate).not.toHaveBeenCalled();
+  });
+
+  const admin = { ...coordinator, user: { id: 'user-1', role: 'ADMIN' } };
+
+  it('ADMIN → COORDINATOR mantém o titular (story 214)', async () => {
+    const { service, houseUpdate } = titularService(admin);
+
+    await service.update('staff-1', { role: 'COORDINATOR' } as never);
+
+    expect(houseUpdate).not.toHaveBeenCalled();
+  });
+
+  it('ADMIN → SERVANT zera o titular (story 214)', async () => {
+    const { service, houseUpdate } = titularService(admin);
+
+    await service.update('staff-1', { role: 'SERVANT' } as never);
+
+    expect(houseUpdate).toHaveBeenCalledWith(
+      House,
+      { coordinatorId: 'staff-1' },
+      { coordinatorId: null },
+    );
+  });
+
+  it('ADMIN que muda de casa zera o titular (story 214)', async () => {
+    const { service, houseUpdate } = titularService(admin);
+
+    await service.update('staff-1', { houseId: 'house-2' } as never);
+
+    expect(houseUpdate).toHaveBeenCalledWith(
+      House,
+      { coordinatorId: 'staff-1' },
+      { coordinatorId: null },
+    );
   });
 
   // O negativo que protege contra zelo excessivo: manutenção de cadastro do

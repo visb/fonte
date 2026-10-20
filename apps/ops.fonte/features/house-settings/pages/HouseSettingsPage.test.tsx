@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Role } from '@fonte/types';
 
 const mockAuth = jest.fn();
@@ -74,6 +74,20 @@ describe('HouseSettingsPage — gate de acesso (story 194)', () => {
     expect(screen.getByText(BLOCKED)).toBeTruthy();
   });
 
+  // Story 214: ADMIN lotado na casa é coordenador dela.
+  it('ADMIN lotado na casa entra (story 214)', () => {
+    setup({ staff: staff({ user: { role: Role.ADMIN } }) });
+
+    expect(screen.queryByText(BLOCKED)).toBeNull();
+    expect(screen.getByText('Leitos')).toBeTruthy();
+  });
+
+  it('ADMIN de outra casa continua barrado (story 214)', () => {
+    setup({ staff: staff({ houseId: 'house-9', user: { role: Role.ADMIN } }) });
+
+    expect(screen.getByText(BLOCKED)).toBeTruthy();
+  });
+
   it('SERVANT da própria casa continua barrado', () => {
     setup({ staff: staff({ user: { role: Role.SERVANT } }) });
 
@@ -101,17 +115,20 @@ describe('HouseSettingsPage — gate de acesso (story 194)', () => {
     expect(screen.queryByText('Leitos')).toBeNull();
   });
 
-  it('erro de carga mostra o ErrorState', () => {
+  it('erro de carga mostra o ErrorState e "Tentar novamente" refaz a consulta', () => {
+    const refetch = jest.fn();
     mockAuth.mockReturnValue({ staff: staff() });
     mockHouseById.mockReturnValue({
       data: undefined,
       isLoading: false,
       error: new Error('offline'),
-      refetch: jest.fn(),
+      refetch,
     });
 
     render(<HouseSettingsPage />);
 
     expect(screen.queryByText('Leitos')).toBeNull();
+    fireEvent.press(screen.getByText('Tentar novamente'));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 });

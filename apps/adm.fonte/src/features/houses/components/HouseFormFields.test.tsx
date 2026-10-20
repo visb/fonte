@@ -56,6 +56,23 @@ describe('HouseFormFields', () => {
     expect([...select.options].map((o) => o.value)).toEqual(['', 's1', 's2']);
   });
 
+  // Story 214: ADMIN lotado na casa vem em `coordinators` e é elegível — sem
+  // filtro por role no cliente.
+  it('lista o admin lotado na casa quando ele vem em coordinators (story 214)', () => {
+    const withAdmin = [
+      ...COORDINATORS,
+      { id: 's3', name: 'Admin Lotado', whatsapp: null, photoUrl: null },
+    ] as HouseStaffSummary[];
+    render(<Harness coordinators={withAdmin} />);
+
+    const select = screen.getByLabelText('Coordenador titular') as HTMLSelectElement;
+    expect([...select.options].map((o) => o.value)).toEqual(['', 's1', 's2', 's3']);
+    expect(screen.getByRole('option', { name: 'Admin Lotado' })).toBeInTheDocument();
+    expect(
+      screen.getByText('Só coordenadores ou administradores lotados nesta casa podem ser titulares.'),
+    ).toBeInTheDocument();
+  });
+
   it('em edição sem coordenadores o select só oferece "Sem titular"', () => {
     render(<Harness coordinators={[]} />);
     const select = screen.getByLabelText('Coordenador titular') as HTMLSelectElement;

@@ -98,6 +98,32 @@ describe('useMenuAccess', () => {
     expect(result.current.menuItems.map((item) => item.key)).not.toContain('houseSettings');
   });
 
+  // Story 214: ADMIN lotado na casa é coordenador dela.
+  it('ADMIN lotado na casa busca a casa e ganha os itens de coordenador', () => {
+    mockAuth.mockReturnValue(auth({ staff: { user: { role: Role.ADMIN } } }));
+    mockHouseById.mockReturnValue({ data: { id: 'house-1', coordinatorId: null } });
+
+    const { result } = renderHook(() => useMenuAccess());
+
+    expect(mockHouseById).toHaveBeenCalledWith('house-1', { enabled: true });
+    expect(result.current.access.isCoordinator).toBe(true);
+    expect(result.current.access.isHouseCoordinator).toBe(true);
+    expect(result.current.menuItems.map((item) => item.key)).toEqual(
+      expect.arrayContaining(['census', 'houseSettings']),
+    );
+  });
+
+  it('ADMIN sem casa não é coordenador de casa nenhuma', () => {
+    mockAuth.mockReturnValue(auth({ staff: { houseId: null, user: { role: Role.ADMIN } } }));
+
+    const { result } = renderHook(() => useMenuAccess());
+
+    expect(mockHouseById).toHaveBeenCalledWith(null, { enabled: true });
+    expect(result.current.access.isHouseCoordinator).toBe(false);
+    expect(result.current.menuItems.map((item) => item.key)).not.toContain('houseSettings');
+    expect(result.current.menuItems.map((item) => item.key)).not.toContain('census');
+  });
+
   it('servo da casa, mesmo com a casa carregada, não é coordenador da casa', () => {
     mockAuth.mockReturnValue(auth());
     mockHouseById.mockReturnValue({ data: { id: 'house-1', coordinatorId: 'staff-1' } });

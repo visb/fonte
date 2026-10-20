@@ -173,6 +173,20 @@ Autenticação é centralizada na entidade `User`. Cada entidade que precisar de
 - `RELATIVE` — exclusivo de Relative
 - `RESIDENT` — exclusivo de Resident
 
+### Coordenador da casa (stories 194 e 214)
+
+- **Coordenador da casa** = Staff lotado nela (`staff.house_id`) com role `COORDINATOR` **ou**
+  `ADMIN`, não desligado. A lista é derivada (sem tabela de junção) e aparece em
+  `GET /houses/:id` → `coordinators`.
+- Admin sem `house_id` não coordena casa nenhuma; admin coordena **só** a casa onde está lotado.
+- O titular (`houses.coordinator_id`) só pode ser eleito entre os coordenadores da casa; o titular não
+  ganha permissão extra (todos os coordenadores da casa configuram a casa).
+- O titular é limpo quando o staff é desligado, muda de casa ou deixa de ser coordenador da casa
+  (role fora de `COORDINATOR | ADMIN`). Trocar `COORDINATOR ↔ ADMIN` mantém o titular.
+- Admin lotado na casa abre os fluxos de coordenador (contagem, configurações da casa no `ops`, pedido
+  de capacidade), sob a mesma regra de vínculo com a casa. Fora desses fluxos, o ADMIN segue com o
+  poder pleno de sempre (ex.: altera capacidade direto).
+
 ### Hierarquia do servo (rank)
 
 Servos (`SERVANT`) têm um nível espiritual, separado do Role de sistema:

@@ -547,7 +547,7 @@
           "name": "Get House by ID",
           "request": {
             "method": "GET",
-            "description": "Detalhe da casa. Story 194 — a resposta traz DUAS coisas sobre coordenação: `coordinator`/`coordinatorId` (o coordenador TITULAR, referência/contato da casa, opcional) e `coordinators: Staff[]` — a lista DERIVADA de staff (`house_id` da casa + role COORDINATOR + não desligado), ordenada por nome, com as mesmas 4 colunas do resumo (`id`, `name`, `whatsapp`, `photoUrl`). O titular também aparece dentro de `coordinators`. Casa sem coordenador devolve `[]`. `GET /houses` NÃO popula o campo. Roles: ADMIN, COORDINATOR, SERVANT.",
+            "description": "Detalhe da casa. Story 194 — a resposta traz DUAS coisas sobre coordenação: `coordinator`/`coordinatorId` (o coordenador TITULAR, referência/contato da casa, opcional) e `coordinators: Staff[]` — a lista DERIVADA de staff (`house_id` da casa + role COORDINATOR **ou ADMIN** + não desligado), ordenada por nome, com as mesmas 4 colunas do resumo (`id`, `name`, `whatsapp`, `photoUrl`). Story 214 — ADMIN lotado na casa é coordenador dela e aparece aqui (ADMIN sem `house_id` não coordena casa nenhuma). Exemplo: `\"coordinators\": [{ \"id\": \"<uuid>\", \"name\": \"Admin Lotado\", \"whatsapp\": null, \"photoUrl\": null }, { \"id\": \"<uuid>\", \"name\": \"Coordenador Teste\", \"whatsapp\": \"62999990000\", \"photoUrl\": null }]`. O titular também aparece dentro de `coordinators`. Casa sem coordenador devolve `[]`. `GET /houses` NÃO popula o campo. Roles: ADMIN, COORDINATOR, SERVANT.",
             "url": {
               "raw": "{{baseUrl}}/houses/{{houseId}}",
               "host": [
@@ -633,7 +633,7 @@
           "name": "Update House",
           "request": {
             "method": "PATCH",
-            "description": "Atualiza a casa e é por AQUI que se elege o coordenador titular (story 194). `coordinatorId` ausente não mexe na coluna; `null` limpa o titular (casa sem titular é estado legítimo); um uuid tem que ser de um staff COORDINATOR lotado NESTA casa e não desligado — senão volta **400** (`\"O coordenador titular precisa ser um coordenador lotado nesta casa.\"`), nunca 404: o staff existe, o vínculo é que está errado. A coluna também é zerada automaticamente pelo `StaffService` quando o titular é desligado, muda de casa ou deixa de ser COORDINATOR. Roles: ADMIN, COORDINATOR (coordenador não altera capacidade — os campos são ignorados).",
+            "description": "Atualiza a casa e é por AQUI que se elege o coordenador titular (story 194). `coordinatorId` ausente não mexe na coluna; `null` limpa o titular (casa sem titular é estado legítimo); um uuid tem que ser de um staff COORDINATOR ou ADMIN (story 214) lotado NESTA casa e não desligado — senão volta **400** (`\"O coordenador titular precisa ser um coordenador lotado nesta casa.\"`), nunca 404: o staff existe, o vínculo é que está errado. A coluna também é zerada automaticamente pelo `StaffService` quando o titular é desligado, muda de casa ou deixa de ser coordenador da casa (role fora de COORDINATOR | ADMIN; trocar COORDINATOR ↔ ADMIN mantém o titular — story 214). Roles: ADMIN, COORDINATOR (coordenador não altera capacidade — os campos são ignorados).",
             "header": [
               {
                 "key": "Content-Type",
@@ -676,6 +676,7 @@
           "name": "Create Capacity Change Request (coordinator)",
           "request": {
             "method": "POST",
+            "description": "Coordenador da casa pede alteração de capacidade (não aplica na casa; gera pedido PENDING, supersede o PENDING anterior e notifica o ADMIN). Exige vínculo com a casa: `staff.house_id` = esta casa ou ser o titular — senão **403**. Story 214 — ADMIN lotado na casa também é coordenador dela e pode pedir, sob a mesma regra de vínculo. Roles: COORDINATOR, ADMIN.",
             "header": [
               {
                 "key": "Content-Type",
@@ -3014,13 +3015,14 @@
                 "residents"
               ]
             },
-            "description": "Coordenador adiciona um filho durante a contagem (status CENSUS_ADDED, aguardando aprovação do ADM).\n\nStory 202 — `birthDate`, quando informado, exige 18 anos completos HOJE (America/Sao_Paulo). Menor → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`. No ops.fonte o replay offline dessa recusa cai na tela de pendências (/sync); o app já valida antes de enfileirar.\n\nStory 203 — `entryDate` futura (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A data de entrada não pode ser no futuro.\" }`. O ops limita o seletor a hoje e valida antes de enfileirar."
+            "description": "Coordenador adiciona um filho durante a contagem (status CENSUS_ADDED, aguardando aprovação do ADM). Roles: COORDINATOR, ADMIN — story 214: ADMIN lotado na casa é coordenador dela e faz a contagem.\n\nStory 202 — `birthDate`, quando informado, exige 18 anos completos HOJE (America/Sao_Paulo). Menor → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`. No ops.fonte o replay offline dessa recusa cai na tela de pendências (/sync); o app já valida antes de enfileirar.\n\nStory 203 — `entryDate` futura (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A data de entrada não pode ser no futuro.\" }`. O ops limita o seletor a hoje e valida antes de enfileirar."
           }
         },
         {
           "name": "Conclude Census (coordinator)",
           "request": {
             "method": "POST",
+            "description": "Coordenador conclui a contagem; notifica o ADM com os números e a quantidade de filhos CENSUS_ADDED aguardando revisão. Retorna `{ addedCount }`. Roles: COORDINATOR, ADMIN — story 214: ADMIN lotado na casa é coordenador dela.",
             "header": [
               {
                 "key": "Content-Type",

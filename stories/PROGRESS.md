@@ -21,7 +21,7 @@ Rodada de autorun **214–219** — aberta em 2026-10-20.
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 214 — admin lotado conta como coordenador da casa | [ ] | | | |
+| 1 | 214 — admin lotado conta como coordenador da casa | [OK] | api 2177 · e2e 713 · adm 2053+13 · ops 1593 | 22ed19f | 6e153ae |
 | 2 | 215 — criar e editar acolhimentos no Histórico | [ ] | | | |
 | 3 | 216 — período de serviço do servo no Histórico | [ ] | | | |
 | 4 | 217 — desligamento e reintegração de servo | [ ] | | | |
@@ -29,6 +29,9 @@ Rodada de autorun **214–219** — aberta em 2026-10-20.
 | 6 | 218 — contagem do ops reacolhe filho existente | [ ] | | | |
 
 ## Log
+
+[OK] 214 — testes: api 2177/2177, api e2e 713/713, adm unit 2053 + e2e houses 13/13, ops 1593; cov api 93,66% stmts — commit: 22ed19f — merge: 6e153ae — 2026-10-20
+Predicado de coordenador em `services/api/src/common/auth/house-coordinator.ts` (+ espelho `apps/ops.fonte/lib/houseCoordinator.ts`) — 217 rebaseia aqui.
 
 ## Resumo final
 

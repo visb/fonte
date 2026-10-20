@@ -26,8 +26,9 @@ import { CensusService } from './census.service';
 export class CensusController {
   constructor(private readonly service: CensusService) {}
 
+  // Story 214: ADMIN lotado na casa também é coordenador dela.
   @Post('residents')
-  @Roles(Role.COORDINATOR)
+  @Roles(Role.COORDINATOR, Role.ADMIN)
   @Idempotent()
   addResident(
     @Body() dto: CreateResidentDto,
@@ -37,7 +38,7 @@ export class CensusController {
   }
 
   @Post('conclude')
-  @Roles(Role.COORDINATOR)
+  @Roles(Role.COORDINATOR, Role.ADMIN)
   @Idempotent()
   conclude(
     @Body() dto: ConcludeCensusDto,

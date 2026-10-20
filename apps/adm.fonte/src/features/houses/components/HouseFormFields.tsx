@@ -73,7 +73,7 @@ export function HouseFormFields({ register, errors, coordinators, isEdit }: Hous
             ))}
           </select>
           <p className="text-xs text-muted-foreground">
-            Só coordenadores lotados nesta casa podem ser titulares.
+            Só coordenadores ou administradores lotados nesta casa podem ser titulares.
           </p>
         </div>
       ) : (

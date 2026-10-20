@@ -114,6 +114,33 @@ describe('HouseCapacityRequestService.createRequest', () => {
     );
   });
 
+  // Story 214: ADMIN lotado na casa é coordenador dela e segue a MESMA regra de
+  // vínculo — lotação na casa (ou titularidade); admin de outra casa é 403.
+  it('aceita ADMIN lotado na casa (story 214)', async () => {
+    const houseRepo = makeRepo({ findOne: jest.fn().mockResolvedValue({ ...HOUSE, coordinatorId: null }) });
+    const admin = { id: 'staff-3', name: 'Admin', userId: 'user-3', houseId: 'house-1' };
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(admin) });
+    const { service, repo } = makeService(makeRepo(), houseRepo, staffRepo);
+
+    await service.createRequest('house-1', { generalCapacity: 12, staffCapacity: 6 }, 'user-3');
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ houseId: 'house-1', requestedById: 'staff-3' }),
+    );
+  });
+
+  it('recusa ADMIN lotado em outra casa (story 214)', async () => {
+    const houseRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(HOUSE) });
+    const admin = { id: 'staff-4', name: 'Admin', userId: 'user-4', houseId: 'house-2' };
+    const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(admin) });
+    const { service, repo } = makeService(makeRepo(), houseRepo, staffRepo);
+
+    await expect(
+      service.createRequest('house-1', { generalCapacity: 1, staffCapacity: 1 }, 'user-4'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
   it('still resolves when notification emission fails (best-effort)', async () => {
     const houseRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(HOUSE) });
     const staffRepo = makeRepo({ findOne: jest.fn().mockResolvedValue(STAFF) });

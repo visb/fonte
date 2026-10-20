@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Role } from '@fonte/types';
 import { useAuth } from '@/lib/auth';
+import { isHouseCoordinatorRole } from '@/lib/houseCoordinator';
 import { useHouseById } from '@/features/house-settings/hooks/useHouseSettings';
 import {
   buildMenuItems,
@@ -28,7 +28,8 @@ export function useMenuAccess(): {
   const { staff, isResident, canSendMessagesToFamilies, canModerateMessages } = useAuth();
 
   const isSupportGroupServant = !!staff && !staff.houseId;
-  const isCoordinator = staff?.user?.role === Role.COORDINATOR;
+  // Story 214: ADMIN lotado na casa também é coordenador dela (COORDINATOR | ADMIN).
+  const isCoordinator = isHouseCoordinatorRole(staff?.user?.role);
 
   const { data: house } = useHouseById(staff?.houseId, { enabled: isCoordinator });
 

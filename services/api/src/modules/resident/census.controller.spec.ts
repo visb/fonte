@@ -1,3 +1,5 @@
+import { Role } from '@fonte/types';
+import { ROLES_KEY } from '../../common/decorators/roles.decorator';
 import { CensusController } from './census.controller';
 
 function svc() {
@@ -26,5 +28,14 @@ describe('CensusController', () => {
     expect(s.conclude).toHaveBeenCalledWith({ houseId: 'h1' }, 'u1');
     expect(s.approveAll).toHaveBeenCalledWith('h1');
     expect(s.reject).toHaveBeenCalledWith('res1');
+  });
+
+  // Story 214: ADMIN lotado na casa também é coordenador dela — faz a contagem.
+  it('fluxo de contagem aceita COORDINATOR e ADMIN; revisão segue só ADMIN', () => {
+    const roles = (fn: unknown) => Reflect.getMetadata(ROLES_KEY, fn as object);
+    const proto = CensusController.prototype;
+    expect(roles(proto.addResident)).toEqual([Role.COORDINATOR, Role.ADMIN]);
+    expect(roles(proto.conclude)).toEqual([Role.COORDINATOR, Role.ADMIN]);
+    expect(roles(proto.approveAll)).toEqual([Role.ADMIN]);
   });
 });

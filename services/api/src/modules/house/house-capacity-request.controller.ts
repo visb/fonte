@@ -24,8 +24,10 @@ import { HouseCapacityRequestService } from './house-capacity-request.service';
 export class HouseCapacityRequestController {
   constructor(private readonly service: HouseCapacityRequestService) {}
 
+  // Story 214: ADMIN lotado na casa também é coordenador dela; o vínculo com a
+  // casa segue validado no service.
   @Post('houses/:id/capacity-requests')
-  @Roles(Role.COORDINATOR)
+  @Roles(Role.COORDINATOR, Role.ADMIN)
   create(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateCapacityRequestDto,

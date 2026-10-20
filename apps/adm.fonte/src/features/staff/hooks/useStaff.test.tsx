@@ -19,6 +19,9 @@ vi.mock('@/lib/api', () => ({
       listAttachments: vi.fn(),
       uploadAttachment: vi.fn(),
       deleteAttachment: vi.fn(),
+      listServicePeriods: vi.fn(),
+      createServicePeriod: vi.fn(),
+      updateServicePeriod: vi.fn(),
     },
   },
 }));
@@ -41,6 +44,9 @@ import {
   useStaffAttachments,
   useUploadStaffAttachment,
   useDeleteStaffAttachment,
+  useStaffServicePeriods,
+  useCreateServicePeriod,
+  useUpdateServicePeriod,
 } from './useStaff';
 
 beforeEach(() => vi.clearAllMocks());
@@ -162,6 +168,44 @@ describe('mutations de staff', () => {
     r2.current.mutate('MANAGE_BILLING' as never);
     await waitFor(() => expect(r2.current.isSuccess).toBe(true));
     expect(api.staff.removePermission).toHaveBeenCalledWith('s1', 'MANAGE_BILLING');
+  });
+});
+
+// ─── Períodos de serviço (story 216) ─────────────────────────────────────────
+
+describe('períodos de serviço', () => {
+  it('useStaffServicePeriods busca com a queryKey e desliga sem staffId ou enabled=false', async () => {
+    vi.mocked(api.staff.listServicePeriods).mockResolvedValue([{ id: 'p1' }] as never);
+    const { result, queryClient } = renderHookWithClient(() => useStaffServicePeriods('s1'));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.staff.listServicePeriods).toHaveBeenCalledWith('s1');
+    expect(queryClient.getQueryData(queryKeys.staff.servicePeriods('s1'))).toEqual([{ id: 'p1' }]);
+
+    const { result: r2 } = renderHookWithClient(() => useStaffServicePeriods(''));
+    expect(r2.current.fetchStatus).toBe('idle');
+    const { result: r3 } = renderHookWithClient(() => useStaffServicePeriods('s1', { enabled: false }));
+    expect(r3.current.fetchStatus).toBe('idle');
+  });
+
+  it('create posta o período e invalida a lista', async () => {
+    vi.mocked(api.staff.createServicePeriod).mockResolvedValue({ id: 'p1' } as never);
+    const { result, queryClient } = renderHookWithClient(() => useCreateServicePeriod('s1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    const payload = { houseId: 'h1', startDate: '2020-01-01', endDate: '2020-06-01' };
+    result.current.mutate(payload);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.staff.createServicePeriod).toHaveBeenCalledWith('s1', payload);
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.staff.servicePeriods('s1') });
+  });
+
+  it('update corrige o período e invalida a lista', async () => {
+    vi.mocked(api.staff.updateServicePeriod).mockResolvedValue({ id: 'p1' } as never);
+    const { result, queryClient } = renderHookWithClient(() => useUpdateServicePeriod('s1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    result.current.mutate({ periodId: 'p1', payload: { startDate: '2020-01-02' } });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.staff.updateServicePeriod).toHaveBeenCalledWith('s1', 'p1', { startDate: '2020-01-02' });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.staff.servicePeriods('s1') });
   });
 });
 

@@ -148,6 +148,14 @@ export const STAFF_ATTACHMENT_AUDIT_FIELDS: AuditFieldMap = {
   fileUrl: 'file',
 };
 
+/** Story 216 — período de serviço do servo (aba Histórico). */
+export const STAFF_SERVICE_PERIOD_AUDIT_FIELDS: AuditFieldMap = {
+  staffId: 'plain',
+  houseId: 'plain',
+  startDate: 'plain',
+  endDate: 'plain',
+};
+
 export const STAFF_PERMISSION_AUDIT_FIELDS: AuditFieldMap = {
   staffId: 'plain',
   permissionType: 'plain',

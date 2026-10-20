@@ -1,6 +1,12 @@
 import type { AxiosInstance } from 'axios';
 import type { Staff, StaffMe, CreateStaffInput, UpdateStaffInput, UpdateStaffMeInput, StaffPermission, AddStaffPermissionInput } from '../types.js';
-import type { StaffAttachment, StaffPermissionType } from '@fonte/types';
+import type {
+  CreateServicePeriodPayload,
+  StaffAttachment,
+  StaffPermissionType,
+  StaffServicePeriod,
+  UpdateServicePeriodPayload,
+} from '@fonte/types';
 
 export function createStaffModule(http: AxiosInstance) {
   return {
@@ -36,6 +42,18 @@ export function createStaffModule(http: AxiosInstance) {
         .then((r) => r.data),
     deleteAttachment: (id: string, attachmentId: string): Promise<void> =>
       http.delete(`/staff/${id}/attachments/${attachmentId}`).then(() => undefined),
+
+    // Story 216 — períodos de serviço da aba Histórico (escrita só ADMIN).
+    listServicePeriods: (id: string): Promise<StaffServicePeriod[]> =>
+      http.get<StaffServicePeriod[]>(`/staff/${id}/service-periods`).then((r) => r.data),
+    createServicePeriod: (id: string, payload: CreateServicePeriodPayload): Promise<StaffServicePeriod> =>
+      http.post<StaffServicePeriod>(`/staff/${id}/service-periods`, payload).then((r) => r.data),
+    updateServicePeriod: (
+      id: string,
+      periodId: string,
+      payload: UpdateServicePeriodPayload,
+    ): Promise<StaffServicePeriod> =>
+      http.patch<StaffServicePeriod>(`/staff/${id}/service-periods/${periodId}`, payload).then((r) => r.data),
 
     getPermissions: (id: string): Promise<StaffPermission[]> =>
       http.get<StaffPermission[]>(`/staff/${id}/permissions`).then((r) => r.data),

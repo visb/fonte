@@ -7,6 +7,7 @@ import { StaffAttachmentService } from './staff-attachment.service';
 import { Staff } from './staff.entity';
 import { StaffPermission } from './staff-permission.entity';
 import { StaffAttachment } from './staff-attachment.entity';
+import { StaffServicePeriod } from './staff-service-period.entity';
 import { User } from '../user/user.entity';
 import { createAuditHarness, memoryRepo, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
@@ -28,6 +29,7 @@ function setup() {
   ]);
   const permissions = memoryRepo();
   const attachments = memoryRepo();
+  const periods = memoryRepo();
   const houseCount = jest.fn().mockResolvedValue(0);
   const harness = createAuditHarness(
     repoMap([
@@ -35,6 +37,8 @@ function setup() {
       [User, users],
       [StaffPermission, permissions],
       [StaffAttachment, attachments],
+      // Story 216: o período de serviço aberto entra na transação da criação.
+      [StaffServicePeriod, periods],
     ]),
     undefined,
     { count: houseCount, update: jest.fn() },

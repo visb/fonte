@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { StaffPermissionType } from '@fonte/types';
+import type {
+  CreateServicePeriodPayload,
+  StaffPermissionType,
+  UpdateServicePeriodPayload,
+} from '@fonte/types';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import type { CreateStaffInput, UpdateStaffInput, UpdateStaffMeInput } from '@fonte/api-client';
@@ -148,6 +152,39 @@ export function useDeleteStaffAttachment(staffId: string) {
     mutationFn: (attachmentId: string) => api.staff.deleteAttachment(staffId, attachmentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.staff.attachments(staffId) });
+    },
+  });
+}
+
+// ─── Períodos de serviço (story 216) ───────────────────────────────────────────
+
+export function useStaffServicePeriods(staffId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.staff.servicePeriods(staffId),
+    queryFn: () => api.staff.listServicePeriods(staffId),
+    enabled: (options?.enabled ?? true) && !!staffId,
+  });
+}
+
+/** Período antigo, já encerrado (só ADMIN). */
+export function useCreateServicePeriod(staffId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateServicePeriodPayload) => api.staff.createServicePeriod(staffId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.staff.servicePeriods(staffId) });
+    },
+  });
+}
+
+/** Correção de período (no aberto, só o início). */
+export function useUpdateServicePeriod(staffId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ periodId, payload }: { periodId: string; payload: UpdateServicePeriodPayload }) =>
+      api.staff.updateServicePeriod(staffId, periodId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.staff.servicePeriods(staffId) });
     },
   });
 }

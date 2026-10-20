@@ -14,11 +14,11 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { TrackingTab } from '@/features/residents/components/tabs/TrackingTab';
 import { RelativesTab } from '@/features/residents/components/tabs/RelativesTab';
 import { AttachmentsTab } from '@/features/residents/components/tabs/AttachmentsTab';
-import { AdmissionsTab } from '@/features/residents/components/tabs/AdmissionsTab';
 import { useStaffById } from '../hooks/useStaff';
 import { ResetPasswordDialog } from '../components/ResetPasswordDialog';
 import { StaffOverviewTab } from '../components/StaffOverviewTab';
 import { StaffAttachmentsTab } from '../components/StaffAttachmentsTab';
+import { StaffHistoryTab } from '../components/StaffHistoryTab';
 import { SERVANT_RANK_LABELS, SERVANT_RANK_VARIANT } from '../constants';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -33,17 +33,18 @@ const ROLE_VARIANT: Record<string, 'destructive' | 'info' | 'secondary'> = {
   [Role.SERVANT]: 'secondary',
 };
 
-// Anexos do próprio servo (story 98) valem para todo servo; as abas herdadas
+// Anexos do próprio servo (story 98) e Histórico (story 216 — períodos de
+// serviço + acolhimentos do ex-filho) valem para todo servo; as abas herdadas
 // (dados do acolhimento) só existem para ex-filhos promovidos a servo.
 const BASE_TABS = [
   { id: 'overview', label: 'Visão Geral' },
   { id: 'attachments', label: 'Anexos' },
+  { id: 'admissions', label: 'Histórico' },
 ] as const;
 const INHERITED_TABS = [
   { id: 'timeline', label: 'Acompanhamento' },
   { id: 'relatives', label: 'Familiares' },
   { id: 'resident-attachments', label: 'Anexos do acolhimento' },
-  { id: 'admissions', label: 'Histórico' },
 ] as const;
 type TabId =
   | 'overview'
@@ -132,7 +133,9 @@ export function StaffDetailPage() {
       {formerResidentId && activeTab === 'resident-attachments' && (
         <AttachmentsTab residentId={formerResidentId} residentName={staff.name} />
       )}
-      {formerResidentId && activeTab === 'admissions' && <AdmissionsTab residentId={formerResidentId} />}
+      {activeTab === 'admissions' && (
+        <StaffHistoryTab staffId={staff.id} formerResidentId={formerResidentId} />
+      )}
 
       <ResetPasswordDialog open={resetOpen} onClose={() => setResetOpen(false)} staff={staff} />
 

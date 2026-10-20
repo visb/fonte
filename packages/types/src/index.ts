@@ -605,6 +605,39 @@ export interface CheckImportConflictResult {
   conflicts: ImportConflict[];
 }
 
+/**
+ * Story 218 — filhos fora de acolhimento que podem ser reacolhidos, para a busca
+ * "já passou pela comunidade?" da contagem do `ops`.
+ */
+export const RESIDENT_LOOKUP_STATUSES: ResidentStatus[] = [
+  ResidentStatus.DISCHARGED,
+  ResidentStatus.EVADED,
+  ResidentStatus.ARCHIVED,
+];
+
+/** Máximo de candidatos devolvidos por `GET /residents/lookup`. */
+export const RESIDENT_LOOKUP_LIMIT = 20;
+
+/** Termo mínimo (nome ou CPF) da busca de candidatos. */
+export const RESIDENT_LOOKUP_MIN_LENGTH = 3;
+
+/**
+ * Story 218 — candidato da busca de reacolhimento (`GET /residents/lookup`).
+ * Recorte enxuto por LGPD: nada de saúde, familiares, documentos ou CPF.
+ */
+export interface ResidentLookupItem {
+  id: string;
+  name: string;
+  /** `YYYY-MM-DD` ou `null`. */
+  birthDate: string | null;
+  photoUrl: string | null;
+  status: ResidentStatus;
+  /** Casa do último acolhimento (ou a da ficha, quando não há acolhimento). */
+  lastHouseName: string | null;
+  /** Maior data de saída registrada (`YYYY-MM-DD`) ou `null`. */
+  lastExitDate: string | null;
+}
+
 /** Um familiar do payload de commit do import (mínimo para satisfazer ≥1 relative). */
 export interface CommitImportRelative {
   name: string;
@@ -2208,6 +2241,8 @@ export const AuditAction = {
   RESIDENT_DOCUMENT_COMBINED_PDF: 'resident.document.combined-pdf',
   RESIDENT_RECEIVABLE_RECEIPT: 'resident.receivable.receipt',
   RELATIVE_RECEIVABLE_RECEIPT: 'relative.receivable.receipt',
+  // Story 218 — busca de candidatos a reacolhimento (CPF gravado mascarado).
+  RESIDENT_LOOKUP: 'resident.lookup',
 
   HOUSE_CREATE: 'house.create',
   HOUSE_UPDATE: 'house.update',
@@ -2280,6 +2315,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'resident.document.combined-pdf': 'PDF combinado gerado',
   'resident.receivable.receipt': 'Recibo de contribuição gerado',
   'relative.receivable.receipt': 'Recibo baixado pelo familiar',
+  'resident.lookup': 'Busca de filho para reacolhimento',
   'house.create': 'Casa criada',
   'house.update': 'Casa editada',
   'house.delete': 'Casa removida',

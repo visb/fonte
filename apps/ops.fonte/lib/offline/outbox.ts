@@ -37,6 +37,8 @@ export const OUTBOX_MUTATION_KEYS = {
   productContributionDeclare: ['productContributions', 'declare'],
   censusAddResident: ['census', 'addResident'],
   censusConclude: ['census', 'conclude'],
+  /** Story 218: reacolhimento de filho que já passou pela comunidade. */
+  censusReadmitResident: ['census', 'readmitResident'],
   /** Segunda etapa encadeada do `censusAddResident` (decisão 7): precisa do id criado. */
   residentUploadPhoto: ['residents', 'uploadPhoto'],
   residentUpdateStatus: ['residents', 'updateStatus'],
@@ -65,6 +67,7 @@ const OUTBOX_LABELS: Record<string, string> = {
   'productContributions/declare': 'Contribuição em produtos',
   'census/addResident': 'Filho adicionado na contagem',
   'census/conclude': 'Conclusão da contagem',
+  'census/readmitResident': 'Filho reacolhido na contagem',
   'residents/uploadPhoto': 'Foto do filho',
   'residents/updateStatus': 'Mudança de situação do filho',
   'incidents/create': 'Ocorrência',

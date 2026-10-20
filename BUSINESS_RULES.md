@@ -93,6 +93,29 @@ edita; COORDINATOR e SERVANT leem. Não há exclusão (histórico é fato).
 
 ---
 
+## 5.0.1. Readmissão (reacolhimento) e a contagem do `ops` (story 218)
+
+- Readmissão (`POST /residents/:id/readmit`, ADMIN/COORDINATOR) aceita filho com status `DISCHARGED`,
+  `EVADED` **ou `ARCHIVED`** (ficha do import em lote). Cria um acolhimento novo, `ACTIVE`, na casa
+  informada — ficha `ARCHIVED` sem casa passa a ter a casa do reacolhimento. Datas seguem a story
+  203 (entrada não futura e ≥ última saída). A notificação de acolhimento vai para a casa nova.
+- Reacolher reaproveita o cadastro: familiares, anexos e histórico ficam no mesmo filho — por isso o
+  "pelo menos um familiar" do acolhimento manual não se aplica.
+- **Contagem do `ops`**: ao adicionar filho, pergunta se ele já passou pela comunidade. Se sim, busca
+  (`GET /residents/lookup`, ADMIN/COORDINATOR) na **comunidade inteira**, só entre filhos fora de
+  acolhimento (alta, evasão, arquivado), por nome parcial sem acento/caixa ou CPF exato, até 20
+  candidatos e com recorte enxuto (nome, nascimento, foto, status, última casa, última saída — sem
+  CPF, saúde ou familiares; acesso auditado com CPF mascarado). Filho ativo em outra casa não
+  aparece: é transferência, fluxo do `adm`. Escolhido o candidato, o operador confirma a data de
+  entrada e o filho é reacolhido na casa da contagem (saúde/peso/plano ficam para o `adm`).
+  Nenhum candidato → cadastro novo, como antes. CPF do cadastro novo já em uso (409, story 219) →
+  oferece reacolher esse filho.
+- Adicionar filho pela contagem **exige rede** (para checar se ele já passou): offline o botão fica
+  desabilitado com aviso. O reacolhimento enviado entra na outbox como os demais lançamentos de
+  campo; a rejeição do servidor vai para a tela de pendências (`/sync`).
+
+---
+
 ## 5.1. Promoção de filho a servo
 
 Quase todos os servos foram filhos um dia. Um Resident pode ser promovido a Staff:

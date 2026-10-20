@@ -63,6 +63,13 @@ describe('detalhe por chave', () => {
     ).toBe('18 de 20 filhos');
   });
 
+  it('reacolhimento mostra o nome do filho (story 218)', () => {
+    expect(
+      syncItemDetail('census/readmitResident', { residentId: 'r9', residentName: ' Pedro ' }),
+    ).toBe('Pedro');
+    expect(syncItemLabel('census/readmitResident')).toBe('Filho reacolhido na contagem');
+  });
+
   it('ocorrência e comentário truncam texto longo', () => {
     const long = 'a'.repeat(200);
     const detail = syncItemDetail('incidents/create', { data: { description: long } });

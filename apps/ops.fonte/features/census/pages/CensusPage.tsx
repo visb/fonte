@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { useAuth } from '@/lib/auth';
 import { getErrorMessage } from '@/lib/errors';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
+import { useIsOnline } from '@/lib/offline/network';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { CensusHeader } from '../components/CensusHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { useActiveResidentsByHouse, useConcludeCensus } from '../hooks/useCensus';
@@ -40,6 +41,7 @@ export function CensusPage() {
   const [photoTarget, setPhotoTarget] = useState<Resident | null>(null);
   const concludeMutation = useConcludeCensus(houseId ?? '');
   const submitConclude = useFieldSubmit(concludeMutation);
+  const isOnline = useIsOnline();
 
   if (!houseId) return <EmptyState message="Você não está vinculado a uma casa." />;
   if (isLoading) return <LoadingState />;
@@ -85,18 +87,12 @@ export function CensusPage() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <View className="px-4 pt-4 pb-2 flex-row items-center justify-between">
-        <Text className="text-sm text-gray-500">
-          {confirmedCount}/{total} confirmados
-        </Text>
-        <TouchableOpacity
-          className="flex-row items-center bg-blue-600 rounded-xl px-3 py-2"
-          onPress={() => setAddOpen(true)}
-        >
-          <Ionicons name="add" size={18} color="#fff" />
-          <Text className="text-sm font-medium text-white ml-1">Adicionar filho</Text>
-        </TouchableOpacity>
-      </View>
+      <CensusHeader
+        confirmedCount={confirmedCount}
+        total={total}
+        isOnline={isOnline}
+        onAdd={() => setAddOpen(true)}
+      />
 
       <FlatList
         data={residents}

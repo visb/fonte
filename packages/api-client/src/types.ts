@@ -1510,6 +1510,7 @@ export type {
   CheckImportConflictResult,
   CommitImportRelative,
   ImportContributionsSummary,
+  ResidentLookupItem,
 } from '@fonte/types';
 
 // ─── Street Sales ─────────────────────────────────────────────────────────────

@@ -21,7 +21,9 @@
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { memoryStorage } from 'multer';
-import { ResidentReceivableSummary, Role } from '@fonte/types';
+import { AuditAction, ResidentLookupItem, ResidentReceivableSummary, Role } from '@fonte/types';
+import { maskCpf } from '../../common/lib/mask';
+import { LookupResidentsQueryDto } from './dto/lookup-residents-query.dto';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RevealSensitive } from '../../common/decorators/reveal-sensitive.decorator';
@@ -127,6 +129,17 @@ export function documentContext(format: 'pdf' | 'html') {
         : [];
     return { templateIds, format, count: templateIds.length };
   };
+}
+
+/**
+ * Story 218 — contexto do `resident.lookup`: o termo buscado por nome vai como
+ * veio; CPF (termo sem letras) vai mascarado — nunca o documento em claro.
+ */
+export function lookupAuditContext(req: AuditRequestLike): Record<string, unknown> {
+  const raw = req.query?.q;
+  const term = typeof raw === 'string' ? raw.trim() : '';
+  const isCpf = !/\p{L}/u.test(term) && /\d/.test(term);
+  return isCpf ? { kind: 'cpf', term: maskCpf(term) } : { kind: 'name', term };
 }
 
 /**
@@ -293,6 +306,15 @@ export class ResidentController {
     return this.importService.commit(dto, user.userId);
   }
 
+  // Story 218 — "já passou pela comunidade?" da contagem do ops. Declarada ANTES
+  // de `:id`: na ordem inversa `lookup` cairia no `ParseUUIDPipe` (400).
+  @Get('lookup')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  @Audit(AuditAction.RESIDENT_LOOKUP, 'resident', 'id', { context: lookupAuditContext })
+  lookup(@Query() dto: LookupResidentsQueryDto): Promise<ResidentLookupItem[]> {
+    return this.residentService.lookup(dto.q);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
   @RevealSensitive()
@@ -345,9 +367,12 @@ export class ResidentController {
     return this.residentService.remove(id);
   }
 
+  // `@Idempotent` (story 218): o reacolhimento pela contagem do ops passa pela
+  // outbox offline — o reenvio não pode bater no 400 de "já está ativo".
   @Post(':id/readmit')
   @Roles(Role.ADMIN, Role.COORDINATOR)
   @RevealSensitive()
+  @Idempotent()
   readmit(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReadmitResidentDto,

@@ -68,6 +68,9 @@ appId: org.fonte.ops
 - waitForAnimationToEnd
 - tapOn: "Adicionar filho"
 - waitForAnimationToEnd
+# Story 218: o modal pergunta antes se o filho já passou pela comunidade.
+- tapOn: "Não, é a primeira vez"
+- waitForAnimationToEnd
 - tapOn: "Nome completo"
 - inputText: ${output.censusName}
 # O acolhimento vem com hoje: apaga e digita uma data retroativa.
@@ -90,3 +93,40 @@ appId: org.fonte.ops
     env:
       API_URL: http://10.0.2.2:3001/api/v1
       NAME: ${output.censusName}
+
+# --- Story 218: reacolher filho que já passou pela comunidade ---
+# Fixture própria (alta registrada) em vez de filho do seed: reacolher muda o
+# status, e o seed é somente leitura (story 182). Removida no fim por id.
+- evalScript: ${output.readmitName = 'Reacolher Maestro ' + Date.now()}
+- runScript:
+    file: helpers/create-discharged-resident.js
+    env:
+      API_URL: http://10.0.2.2:3001/api/v1
+      NAME: ${output.readmitName}
+- runFlow: helpers/login-coordinator.yaml
+- tapOn: "Menu"
+- waitForAnimationToEnd
+- tapOn: "Contagem"
+- waitForAnimationToEnd
+- tapOn: "Adicionar filho"
+- waitForAnimationToEnd
+- assertVisible: "Este filho já passou pela Fonte de Misericórdia antes?"
+- tapOn: "Sim"
+- waitForAnimationToEnd
+- tapOn: "Nome ou CPF"
+- inputText: ${output.readmitName}
+- hideKeyboard
+- tapOn: "Buscar"
+- waitForAnimationToEnd
+- tapOn: "Candidato ${output.readmitName}"
+- waitForAnimationToEnd
+- assertVisible: "Reacolher filho"
+- tapOn: "Reacolher"
+- waitForAnimationToEnd
+# Volta para a lista da contagem com o mesmo cadastro (nada de duplicado).
+- assertVisible: "Detalhes de ${output.readmitName}"
+- runScript:
+    file: helpers/delete-resident.js
+    env:
+      API_URL: http://10.0.2.2:3001/api/v1
+      ID: ${output.readmitResidentId}

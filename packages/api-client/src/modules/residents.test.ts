@@ -149,6 +149,22 @@ describe('residents module', () => {
     expect(http.post).toHaveBeenCalledWith('/residents/res-1/readmit', body);
   });
 
+  it('readmit envia Idempotency-Key quando a outbox passa a chave (story 218)', async () => {
+    const body = { houseId: 'h1', entryDate: '2026-10-01' };
+    await residents.readmit('res-1', body, { idempotencyKey: 'key-1' });
+    expect(http.post).toHaveBeenCalledWith('/residents/res-1/readmit', body, {
+      headers: { 'Idempotency-Key': 'key-1' },
+    });
+  });
+
+  it('lookup busca candidatos por termo e retorna r.data (story 218)', async () => {
+    const items = [{ id: 'r1', name: 'Pedro' }];
+    http.get.mockResolvedValueOnce({ data: items });
+    const result = await residents.lookup('ped');
+    expect(http.get).toHaveBeenCalledWith('/residents/lookup', { params: { q: 'ped' } });
+    expect(result).toBe(items);
+  });
+
   it('getAdmissions busca admissões', async () => {
     await residents.getAdmissions('res-1');
     expect(http.get).toHaveBeenCalledWith('/residents/res-1/admissions');

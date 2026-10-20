@@ -5,7 +5,7 @@ import * as bcrypt from 'bcrypt';
 // require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
 // emits an undefined default for sharp's CommonJS module.
 const sharp = require('sharp') as typeof import('sharp');
-import { ACTIVE_RESIDENT_STATUSES, AuditAction, AuditTargetType, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isMinistryEligibleResident, isTemplateAvailableForStatus, MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE, normalizeCpf, NotificationType, PRESENT_RESIDENT_STATUSES, REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability, todayInSaoPaulo } from '@fonte/types';
+import { ACTIVE_RESIDENT_STATUSES, AuditAction, AuditTargetType, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isMinistryEligibleResident, isTemplateAvailableForStatus, MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE, normalizeCpf, NotificationType, PRESENT_RESIDENT_STATUSES, REMOVABLE_RESIDENT_STATUSES, RESIDENT_LOOKUP_LIMIT, RESIDENT_LOOKUP_STATUSES, ResidentLookupItem, ResidentStatus, Role, ServantRank, TemplateAvailability, todayInSaoPaulo } from '@fonte/types';
 import { Logger } from '@nestjs/common';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
@@ -648,16 +648,75 @@ export class ResidentService {
     }
   }
 
+  /**
+   * Story 218 — candidatos a reacolhimento pela contagem do `ops`: filhos fora
+   * de acolhimento (alta, evasão, arquivado) da comunidade inteira. Termo sem
+   * letras é CPF (exato, só dígitos); com letras é nome parcial sem acento/caixa.
+   * Recorte enxuto (LGPD): nada de saúde, familiares, documentos ou CPF.
+   */
+  async lookup(q: string): Promise<ResidentLookupItem[]> {
+    const term = q.trim();
+    const isCpfTerm = !/\p{L}/u.test(term) && /\d/.test(term);
+
+    const qb = this.residentRepository
+      .createQueryBuilder('resident')
+      .leftJoin('resident.house', 'house')
+      .select('resident.id', 'id')
+      .addSelect('resident.name', 'name')
+      .addSelect(`to_char(resident.birth_date, 'YYYY-MM-DD')`, 'birthDate')
+      .addSelect('COALESCE(resident.photo_thumb_url, resident.photo_url)', 'photoUrl')
+      .addSelect('resident.status', 'status')
+      // Casa do acolhimento mais recente (mesma ordem de `orderedAdmissionsQuery`);
+      // sem acolhimento, a casa da ficha (ARCHIVED costuma não ter nenhuma).
+      .addSelect(
+        `COALESCE((SELECT h.name FROM admissions a JOIN houses h ON h.id = a.house_id
+           WHERE a.resident_id = resident.id AND a.deleted_at IS NULL
+           ORDER BY a.entry_date DESC NULLS LAST, a.created_at DESC LIMIT 1), house.name)`,
+        'lastHouseName',
+      )
+      // Mesma regra de `findLastExitDate`: a maior saída entre admissões e ficha.
+      .addSelect(
+        `to_char(GREATEST((SELECT MAX(a.exit_date) FROM admissions a
+           WHERE a.resident_id = resident.id AND a.deleted_at IS NULL), resident.exit_date), 'YYYY-MM-DD')`,
+        'lastExitDate',
+      )
+      .where('resident.deleted_at IS NULL')
+      .andWhere('resident.status IN (:...statuses)', { statuses: RESIDENT_LOOKUP_STATUSES })
+      .orderBy('resident.name', 'ASC')
+      .addOrderBy('resident.id', 'ASC')
+      .limit(RESIDENT_LOOKUP_LIMIT);
+
+    if (isCpfTerm) {
+      qb.andWhere('resident.cpf = :cpf', { cpf: normalizeCpf(term) });
+    } else {
+      // `%`/`_` digitados são literais, não curingas.
+      const escaped = term.replace(/[\\%_]/g, (char) => `\\${char}`);
+      qb.andWhere('unaccent(LOWER(resident.name)) LIKE unaccent(LOWER(:name))', {
+        name: `%${escaped}%`,
+      });
+    }
+
+    const rows = await qb.getRawMany<ResidentLookupItem>();
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      birthDate: row.birthDate ?? null,
+      photoUrl: row.photoUrl ?? null,
+      status: row.status,
+      lastHouseName: row.lastHouseName ?? null,
+      lastExitDate: row.lastExitDate ?? null,
+    }));
+  }
+
   async readmit(id: string, dto: ReadmitResidentDto): Promise<Resident> {
     this.resolveInvestmentAmount(dto);
     const resident = await this.findOne(id);
 
-    if (
-      resident.status !== 'DISCHARGED' &&
-      resident.status !== 'EVADED'
-    ) {
+    // Story 218: ARCHIVED (ficha antiga do import em lote) também volta — sem
+    // casa, assume a casa informada (a da contagem, no `ops`).
+    if (!RESIDENT_LOOKUP_STATUSES.includes(resident.status)) {
       throw new BadRequestException(
-        'Apenas acolhidos com status Alta ou Evasão podem ser reintroduzidos.',
+        'Apenas filhos com status Alta, Evasão ou Arquivado podem ser reacolhidos.',
       );
     }
 
@@ -733,8 +792,9 @@ export class ResidentService {
 
     // Reintrodução entra direto como ACTIVE: dispara a mesma notificação de
     // "acolhimento concluído" do fluxo normal PRE→ACTIVE. Best-effort — a falha
-    // de notificação nunca quebra o readmit.
-    await this.notifyAdmissionCreated(resident);
+    // de notificação nunca quebra o readmit. Story 218: a casa avisada é a do
+    // reacolhimento — ficha ARCHIVED não tinha casa, e a de alta pode ter mudado.
+    await this.notifyAdmissionCreated({ ...resident, houseId: dto.houseId } as Resident);
 
     await this.receivableService.generateSchedule(id);
 

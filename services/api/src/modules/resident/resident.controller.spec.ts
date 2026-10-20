@@ -331,6 +331,47 @@ describe('ResidentController', () => {
     expect(Reflect.getMetadata(AUDIT_KEY, proto.remove)).toBeUndefined();
   });
 
+  // ── Story 218: busca de candidatos e readmit idempotente ──────────────────
+  describe('lookup de reacolhimento (story 218)', () => {
+    const proto = ResidentController.prototype;
+    const path = (fn: unknown) => Reflect.getMetadata(PATH_METADATA, fn as object) as string;
+
+    it('delega o termo ao service', async () => {
+      const { c, rs } = make();
+      (rs as Record<string, jest.Mock>).lookup = jest.fn().mockResolvedValue([]);
+      await c.lookup({ q: 'pedro' });
+      expect((rs as Record<string, jest.Mock>).lookup).toHaveBeenCalledWith('pedro');
+    });
+
+    it('é ADMIN/COORDINATOR (SERVANT fica de fora) e audita', () => {
+      expect(Reflect.getMetadata(ROLES_KEY, proto.lookup)).toEqual([Role.ADMIN, Role.COORDINATOR]);
+      expect(Reflect.getMetadata(AUDIT_KEY, proto.lookup)).toMatchObject({
+        action: 'resident.lookup',
+        targetType: 'resident',
+      });
+    });
+
+    it('é declarado antes de GET :id (senão "lookup" cairia no ParseUUIDPipe)', () => {
+      const handlers = Object.getOwnPropertyNames(proto).filter((name) => name !== 'constructor');
+      expect(path(proto.lookup)).toBe('lookup');
+      expect(handlers.indexOf('lookup')).toBeLessThan(handlers.indexOf('findOne'));
+    });
+
+    it('o contexto auditado mascara CPF e mantém o nome', () => {
+      const meta = Reflect.getMetadata(AUDIT_KEY, proto.lookup);
+      expect(meta.context({ query: { q: '529.982.247-25' } })).toEqual({
+        kind: 'cpf',
+        term: '***.***.247-25',
+      });
+      expect(meta.context({ query: { q: ' João ' } })).toEqual({ kind: 'name', term: 'João' });
+      expect(meta.context({})).toEqual({ kind: 'name', term: '' });
+    });
+
+    it('readmit aceita Idempotency-Key (outbox do ops)', () => {
+      expect(Reflect.getMetadata('idempotent', proto.readmit)).toBe(true);
+    });
+  });
+
   // ── Story 193: recibo da parcela paga ──────────────────────────────────────
   describe('recibo da contribuição do acolhido (story 193)', () => {
     it('delega ao ReceiptService com o usuário do TOKEN e devolve o PDF como anexo', async () => {

@@ -1,10 +1,38 @@
 # PROGRESS — ledger ativo
 
-**Nenhuma rodada aberta.** Rodadas encerradas ficam em `stories/done/PROGRESS-NN-MM.md`.
+Rodada de autorun **214–219** — aberta em 2026-10-20.
 
-Ao abrir uma rodada de autorun (`$autorun <faixa/tema>`), preencher este arquivo com o modelo
-abaixo e commitar (`docs(stories): abre rodada autorun <tema>`). O protocolo do "como" é
-`stories/AUTORUN.md` — não duplicar aqui.
+## Config da rodada
+
+- **Tema:** coordenação da casa, histórico (acolhimentos e serviço), desligamento de servo, reacolhimento na contagem e CPF único do filho.
+- **Ordem:** 214 → 215 → 216 → 217 → 219 → 218
+- **Branch base:** `main` (cada branch parte da `main` já com o merge da story anterior).
+- **Deps rígidas:** 215 → 216 (reusa `AdmissionCard`/`AdmissionFormDialog`) → 217 (usa `staff_service_periods`). Se uma bloquear, as seguintes da cadeia bloqueiam junto. 219 vem antes da 218 para a 218 já consumir o 409 `conflictResidentId` (não é dep rígida).
+- **Escopo técnico por story:**
+  - 214 — api + adm; sem migration; Postman (roles das rotas, `coordinators`); `BUSINESS_RULES.md`.
+  - 215 — api + adm; sem migration; types + api-client (`createAdmission`/update); Postman (2 endpoints).
+  - 216 — api + adm; migration `CreateStaffServicePeriods` (tabela + índice parcial + backfill); types + api-client; Postman (3 endpoints).
+  - 217 — api + adm; migration (`staff.dismissed_at`, `end_reason`, `end_notes`); types + api-client; Postman; rebasear predicado de coordenador da 214 (COORDINATOR|ADMIN **e** ativo).
+  - 219 — types (`normalizeCpf`/`isValidCpf`/`formatCpf`) + api + adm + ops; migration `UniqueResidentCpf` com `down` e tabela de backup; Postman (400/409).
+  - 218 — api + ops; sem migration; types + api-client (`residents.lookup`); Postman.
+- **Cuidados da rodada:** timestamps de migration crescentes e posteriores à última existente; rebuild `pnpm build:types && pnpm build:api-client` sempre que contrato mudar; `migration:run:test` após migration nova; ops é offline-first (mutations com `mutationKey` + `setMutationDefaults` + `networkMode: 'offlineFirst'`, 409 vai para `/sync`); CPF segue mascarado pelo `sensitive-data.interceptor`; e2e idempotentes (fixture própria, limpeza por id); cobertura ≥90 no escopo tocado. 219 em produção exige ensaio em dump recente → PENDENTE-MANUAL.
+
+## Fila
+
+| Ordem | Story | Status | Testes | Commit | Merge |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 214 — admin lotado conta como coordenador da casa | [ ] | | | |
+| 2 | 215 — criar e editar acolhimentos no Histórico | [ ] | | | |
+| 3 | 216 — período de serviço do servo no Histórico | [ ] | | | |
+| 4 | 217 — desligamento e reintegração de servo | [ ] | | | |
+| 5 | 219 — CPF do filho único | [ ] | | | |
+| 6 | 218 — contagem do ops reacolhe filho existente | [ ] | | | |
+
+## Log
+
+## Resumo final
+
+<vazio até o fim da rodada>
 
 ---
 

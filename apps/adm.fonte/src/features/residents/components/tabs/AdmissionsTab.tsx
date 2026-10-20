@@ -6,26 +6,12 @@ import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { useAuth } from '@/contexts/AuthContext';
 import { useResidentAdmissions } from '../../hooks/useResidents';
+import { buildHistory } from '../../lib/history';
 import { AdmissionCard } from '../AdmissionCard';
 import { AdmissionFormDialog } from '../AdmissionFormDialog';
 
 interface Props {
   residentId: string;
-}
-
-/**
- * Item da linha do tempo do Histórico. Hoje só acolhimentos; a story 216
- * acrescenta os períodos de serviço como outro `kind` na mesma lista.
- */
-type HistoryItem = { kind: 'admission'; key: string; title: string; admission: Admission };
-
-function buildHistory(admissions: Admission[]): HistoryItem[] {
-  return admissions.map((admission, index) => ({
-    kind: 'admission',
-    key: `admission-${admission.id}`,
-    title: `Acolhimento ${admissions.length - index}`,
-    admission,
-  }));
 }
 
 // A passagem fica guardada ao fechar: o título não troca durante a animação.
@@ -34,7 +20,7 @@ type DialogState = { open: boolean; admission: Admission | null };
 /**
  * Aba Histórico (story 215): acolhimentos do filho, do mais recente ao mais
  * antigo. ADMIN adiciona passagem antiga e corrige passagens; os demais leem.
- * Mesma aba no detalhe do servo ex-filho (`formerResidentId`).
+ * No detalhe do servo, a linha do tempo mista é a `StaffHistoryTab` (216).
  */
 export function AdmissionsTab({ residentId }: Props) {
   const { role } = useAuth();
@@ -62,14 +48,17 @@ export function AdmissionsTab({ residentId }: Props) {
           <p className="text-xs">O histórico é criado a partir do primeiro acolhimento.</p>
         </div>
       ) : (
-        items.map((item) => (
-          <AdmissionCard
-            key={item.key}
-            title={item.title}
-            admission={item.admission}
-            onEdit={canEdit ? () => setDialog({ open: true, admission: item.admission }) : undefined}
-          />
-        ))
+        items.map(
+          (item) =>
+            item.kind === 'admission' && (
+              <AdmissionCard
+                key={item.key}
+                title={item.title}
+                admission={item.admission}
+                onEdit={canEdit ? () => setDialog({ open: true, admission: item.admission }) : undefined}
+              />
+            ),
+        )
       )}
 
       {canEdit && (

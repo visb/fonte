@@ -129,6 +129,12 @@ async function seed() {
     [operatorStaff.id, StaffPermissionType.SEND_MESSAGES_TO_FAMILIES, StaffPermissionType.MODERATE_MESSAGES],
   );
 
+  // Story 216: todo servo tem período de serviço aberto (espelha o backfill).
+  await ds.query(
+    `INSERT INTO staff_service_periods (staff_id, house_id, start_date)
+     SELECT id, house_id, created_at::date FROM staff`,
+  );
+
   // Resident linked to house, with userId (access already generated)
   const [resident] = await ds.query<{ id: string }[]>(
     `INSERT INTO residents (id, name, house_id, status, entry_date, user_id)

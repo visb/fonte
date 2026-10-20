@@ -185,6 +185,42 @@ export async function deleteResident(
   throw new Error(`Falha ao remover filho ${id} (${res.status()}): ${await res.text()}`);
 }
 
+export interface StaffFixture {
+  id: string;
+  name: string;
+  houseId: string;
+}
+
+/**
+ * Cria um servo via API (story 216) — nasce com o período de serviço aberto
+ * (início = hoje). Sem e-mail: não colide com o login de ninguém.
+ */
+export async function createStaff(
+  request: APIRequestContext,
+  token: string,
+  data: { name: string; houseId?: string; role?: string },
+): Promise<StaffFixture> {
+  const houseId = data.houseId ?? (await resolveHouseId(request, token));
+  const res = await request.post(`${API_URL}/staff`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { name: data.name, password: 'senha123', role: data.role ?? 'SERVANT', houseId },
+  });
+  if (!res.ok()) {
+    throw new Error(`Falha ao criar servo "${data.name}" (${res.status()}): ${await res.text()}`);
+  }
+  const staff = await res.json();
+  return { id: staff.id as string, name: staff.name as string, houseId };
+}
+
+/** Remove (soft delete) um servo via API. Tolerante a 404, como `deleteResident`. */
+export async function deleteStaff(request: APIRequestContext, token: string, id: string): Promise<void> {
+  const res = await request.delete(`${API_URL}/staff/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.ok() || res.status() === 404) return;
+  throw new Error(`Falha ao remover servo ${id} (${res.status()}): ${await res.text()}`);
+}
+
 export interface StoreroomItemFixture {
   id: string;
   name: string;

@@ -103,6 +103,31 @@ Quase todos os servos foram filhos um dia. Um Resident pode ser promovido a Staf
 - Não é permitida dupla promoção do mesmo filho
 - A timeline do filho registra o evento `PROMOTED_TO_SERVANT` na data da promoção
 - O servo herda todo o histórico do filho (acompanhamento, familiares, anexos, acolhimentos), exibido na página de detalhes do servo via `former_resident_id`
+- A promoção abre o **período de serviço** do servo (seção 5.2), na mesma transação da criação do Staff
+
+---
+
+## 5.2. Período de serviço do servo (story 216)
+
+Registro de quando até quando alguém serviu (`staff_service_periods`). "Servo" aqui é todo Staff
+(SERVANT, COORDINATOR, ADMIN); o período não guarda role nem nível.
+
+- **Todo servo tem período**: ele nasce **aberto** (sem fim) na promoção do filho (início = data da
+  promoção, casa do servo) e no cadastro direto de servo (início = hoje). Servos anteriores à story
+  ganharam um período aberto por backfill (início = `promoted_at` ou a data de cadastro).
+- **No máximo um período aberto por servo** (índice único parcial). O fim é escrito pelo desligamento
+  (story 217).
+- Mudar o servo de casa **não** fecha/abre período: o período guarda a casa de início.
+- Aba **Histórico** do servo (todo servo): linha do tempo com os períodos de serviço e, para ex-filho,
+  os acolhimentos da seção 5.0, do início mais recente ao mais antigo. Leitura: ADMIN, COORDINATOR,
+  SERVANT. Escrita só **ADMIN**:
+  - **Criar** = só período antigo, já encerrado (início + fim; casa opcional).
+  - **Período encerrado**: casa, início e fim editáveis.
+  - **Período aberto**: só o início.
+- Datas: início e fim não futuros, fim ≥ início; períodos do mesmo servo **não se sobrepõem** (terminar
+  e recomeçar no mesmo dia pode). Sem exclusão.
+- Auditoria: `staff.service_period.create` / `staff.service_period.update`, alvo
+  `staff-service-period`, servo como principal.
 
 ---
 

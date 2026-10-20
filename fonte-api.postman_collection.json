@@ -25,6 +25,10 @@
       "value": "{{admissionId}}"
     },
     {
+      "key": "servicePeriodId",
+      "value": "{{servicePeriodId}}"
+    },
+    {
       "key": "relativeId",
       "value": "{{relativeId}}"
     },
@@ -525,6 +529,223 @@
               ]
             }
           }
+        },
+        {
+          "name": "List Staff Service Periods",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods",
+              "host": ["{{baseUrl}}"],
+              "path": ["staff", "{{staffId}}", "service-periods"]
+            },
+            "description": "Story 216 — períodos de serviço do servo (aba Histórico), ordenados por `startDate` desc, com `house`. Roles: ADMIN, COORDINATOR, SERVANT. Staff inexistente → 404.\n\nTodo servo tem período: ele nasce **aberto** (`endDate: null`) na promoção do filho (`startDate` = data da promoção, casa do servo) e no cadastro direto (`startDate` = hoje). No máximo um período aberto por servo (índice único parcial). O fim é escrito pelo desligamento (story 217)."
+          },
+          "response": [
+            {
+              "name": "200 — períodos do servo",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "service-periods"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"id\": \"{{servicePeriodId}}\",\n    \"staffId\": \"{{staffId}}\",\n    \"houseId\": \"{{houseId}}\",\n    \"house\": { \"id\": \"{{houseId}}\", \"name\": \"Casa Teste\" },\n    \"startDate\": \"2025-03-01\",\n    \"endDate\": null,\n    \"createdAt\": \"2025-03-01T12:00:00.000Z\",\n    \"updatedAt\": \"2025-03-01T12:00:00.000Z\",\n    \"deletedAt\": null\n  },\n  {\n    \"id\": \"8b1f0c2e-0000-4000-8000-000000000002\",\n    \"staffId\": \"{{staffId}}\",\n    \"houseId\": null,\n    \"house\": null,\n    \"startDate\": \"2020-01-01\",\n    \"endDate\": \"2020-06-01\",\n    \"createdAt\": \"2026-10-20T12:00:00.000Z\",\n    \"updatedAt\": \"2026-10-20T12:00:00.000Z\",\n    \"deletedAt\": null\n  }\n]"
+            },
+            {
+              "name": "404 — staff inexistente",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "service-periods"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"Staff 00000000-0000-4000-8000-000000000000 not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Staff Service Period",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"houseId\": \"{{houseId}}\",\n  \"startDate\": \"2020-01-01\",\n  \"endDate\": \"2020-06-01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods",
+              "host": ["{{baseUrl}}"],
+              "path": ["staff", "{{staffId}}", "service-periods"]
+            },
+            "description": "Story 216 — registra um período de serviço **antigo, já encerrado** pela aba Histórico. Roles: **ADMIN** (COORDINATOR/SERVANT → 403).\n\nBody: `houseId` (UUID ou `null` — servo sem casa), `startDate` e `endDate` (`YYYY-MM-DD`).\n\nRegras (400 com mensagem amigável): sem `endDate` → `\"Informe a data de fim — o período antigo precisa estar encerrado.\"` (ou `\"Este servo já tem um período de serviço em andamento.\"` quando já há um aberto); início/fim no futuro; fim antes do início; sobreposição com outro período do servo (pontas que se tocam não sobrepõem; o aberto vai até hoje); casa inexistente → `\"Casa não encontrada.\"`.\n\nResposta 201: o período criado, com `house`. Auditoria: `staff.service_period.create` (alvo `staff-service-period`, servo como principal)."
+          },
+          "response": [
+            {
+              "name": "201 — período antigo registrado",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "service-periods"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"{{servicePeriodId}}\",\n  \"staffId\": \"{{staffId}}\",\n  \"houseId\": \"{{houseId}}\",\n  \"house\": { \"id\": \"{{houseId}}\", \"name\": \"Casa Teste\" },\n  \"startDate\": \"2020-01-01\",\n  \"endDate\": \"2020-06-01\",\n  \"createdAt\": \"2026-10-20T12:00:00.000Z\",\n  \"updatedAt\": \"2026-10-20T12:00:00.000Z\",\n  \"deletedAt\": null\n}"
+            },
+            {
+              "name": "400 — sobreposição",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "service-periods"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Este período se sobrepõe ao período de serviço de 01/01/2020 a 01/06/2020.\"\n}"
+            },
+            {
+              "name": "400 — já há período em andamento",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "service-periods"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Este servo já tem um período de serviço em andamento.\"\n}"
+            },
+            {
+              "name": "400 — fim antes do início",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "service-periods"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"A data de fim não pode ser anterior à data de início (01/06/2021).\"\n}"
+            },
+            {
+              "name": "403 — não-admin",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "service-periods"]
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 403,\n  \"error\": \"Forbidden\",\n  \"message\": \"Forbidden resource\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Staff Service Period",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endDate\": \"2020-07-15\",\n  \"houseId\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods/{{servicePeriodId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["staff", "{{staffId}}", "service-periods", "{{servicePeriodId}}"]
+            },
+            "description": "Story 216 — corrige um período de serviço. Roles: **ADMIN** (COORDINATOR/SERVANT → 403). Período de outro servo → 404. Sem delete.\n\nBody (tudo opcional; datas não aceitam `null`): `houseId` (UUID ou `null`), `startDate`, `endDate`.\n\n- **Período encerrado**: casa, início e fim editáveis; mesmas regras do POST (datas não futuras, fim ≥ início, sem sobreposição com OUTRO período — o próprio não conta).\n- **Período em andamento** (`endDate: null`): só `startDate`. `endDate` ou `houseId` → 400 `\"No período em andamento só a data de início pode ser corrigida. O fim é registrado pelo desligamento do servo.\"`.\n\nResposta 200: o período atualizado, com `house`. Auditoria: `staff.service_period.update` (sem mudança efetiva, sem evento)."
+          },
+          "response": [
+            {
+              "name": "200 — período corrigido",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods/{{servicePeriodId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "service-periods", "{{servicePeriodId}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"{{servicePeriodId}}\",\n  \"staffId\": \"{{staffId}}\",\n  \"houseId\": null,\n  \"house\": null,\n  \"startDate\": \"2020-01-01\",\n  \"endDate\": \"2020-07-15\",\n  \"createdAt\": \"2026-10-20T12:00:00.000Z\",\n  \"updatedAt\": \"2026-10-20T12:05:00.000Z\",\n  \"deletedAt\": null\n}"
+            },
+            {
+              "name": "400 — fim ou casa no período em andamento",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods/{{servicePeriodId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "service-periods", "{{servicePeriodId}}"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"No período em andamento só a data de início pode ser corrigida. O fim é registrado pelo desligamento do servo.\"\n}"
+            },
+            {
+              "name": "403 — não-admin",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods/{{servicePeriodId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "service-periods", "{{servicePeriodId}}"]
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 403,\n  \"error\": \"Forbidden\",\n  \"message\": \"Forbidden resource\"\n}"
+            },
+            {
+              "name": "404 — período de outro servo",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/service-periods/{{servicePeriodId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "service-periods", "{{servicePeriodId}}"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"Período de serviço {{servicePeriodId}} não encontrado\"\n}"
+            }
+          ]
         }
       ]
     },

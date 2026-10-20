@@ -6,7 +6,14 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { AuditAction, AuditTargetType, Role, ServantRank, StaffPermissionType } from '@fonte/types';
+import {
+  AuditAction,
+  AuditTargetType,
+  Role,
+  ServantRank,
+  StaffPermissionType,
+  todayInSaoPaulo,
+} from '@fonte/types';
 import { AuditService, loadById, TrackOptions } from '../audit/audit.service';
 import type { AuditSnapshot } from '../audit/audit-diff';
 import {
@@ -24,6 +31,7 @@ import { UpdateStaffMeDto } from './dto/update-staff-me.dto';
 import { StorageService } from '../storage/storage.service';
 import { assertAdultBirthDate } from '../../common/lib/birth-date';
 import { isHouseCoordinatorRole } from '../../common/auth/house-coordinator';
+import { openServicePeriod } from './staff-service-period.service';
 
 /**
  * Estado auditável do servo (story 199): a ficha + perfil/e-mail/ativo do User
@@ -109,14 +117,15 @@ export class StaffService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const { email: _email, password: _password, role, ...fields } = dto;
 
-    // Story 199: User + Staff + evento na mesma transação.
+    // Story 199: User + Staff + evento na mesma transação. Story 216: o período
+    // de serviço aberto (início = hoje) entra na mesma transação.
     return this.trackStaff(undefined, AuditAction.STAFF_CREATE, async (m) => {
       const userRepo = m.getRepository(User);
       const staffRepo = m.getRepository(Staff);
       const savedUser = await userRepo.save(
         userRepo.create({ email, passwordHash, role: dto.role, mustChangePassword: true }),
       );
-      return staffRepo.save(
+      const staff = await staffRepo.save(
         staffRepo.create({
           ...fields,
           whatsapp: this.normalizeWhatsapp(dto.whatsapp),
@@ -126,6 +135,12 @@ export class StaffService {
           userId: savedUser.id,
         }),
       );
+      await openServicePeriod(m, {
+        staffId: staff.id,
+        houseId: staff.houseId ?? null,
+        startDate: todayInSaoPaulo(),
+      });
+      return staff;
     });
   }
 
@@ -154,7 +169,9 @@ export class StaffService {
   }
 
   // Cria um Staff a partir de um Resident promovido a servo. O User já foi
-  // resolvido (reaproveitado ou criado) pelo ResidentService.
+  // resolvido (reaproveitado ou criado) pelo ResidentService. Story 216: o
+  // período de serviço aberto (início = promoção, casa do staff) é gravado na
+  // mesma transação — falha nele desfaz a criação do staff.
   createFromResident(params: {
     name: string;
     whatsapp: string | null;
@@ -165,17 +182,27 @@ export class StaffService {
     rank: ServantRank;
     promotedAt: string;
   }): Promise<Staff> {
-    const staff = this.staffRepository.create({
-      name: params.name,
-      whatsapp: this.normalizeWhatsapp(params.whatsapp),
-      houseId: params.houseId,
-      photoUrl: params.photoUrl,
-      userId: params.userId,
-      formerResidentId: params.formerResidentId,
-      rank: params.rank,
-      promotedAt: params.promotedAt,
+    return this.staffRepository.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(Staff);
+      const staff = await repo.save(
+        repo.create({
+          name: params.name,
+          whatsapp: this.normalizeWhatsapp(params.whatsapp),
+          houseId: params.houseId,
+          photoUrl: params.photoUrl,
+          userId: params.userId,
+          formerResidentId: params.formerResidentId,
+          rank: params.rank,
+          promotedAt: params.promotedAt,
+        }),
+      );
+      await openServicePeriod(manager, {
+        staffId: staff.id,
+        houseId: params.houseId,
+        startDate: params.promotedAt,
+      });
+      return staff;
     });
-    return this.staffRepository.save(staff);
   }
 
   // ─── Coordenador titular da casa (story 194) ─────────────────────────────────

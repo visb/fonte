@@ -18,6 +18,7 @@ import { StaffService } from './staff.service';
 import { Staff } from './staff.entity';
 import { House } from '../house/house.entity';
 import { StaffPermission } from './staff-permission.entity';
+import { StaffServicePeriod } from './staff-service-period.entity';
 import { User } from '../user/user.entity';
 import { StorageService } from '../storage/storage.service';
 import { AuditService } from '../audit/audit.service';
@@ -63,15 +64,20 @@ function makeRepo(overrides: Partial<MockRepo> = {}): MockRepo {
 function attachManager(
   staffRepo: MockRepo,
   userRepo: MockRepo,
-  options: { isTitular?: boolean; permissionRepo?: MockRepo } = {},
+  options: { isTitular?: boolean; permissionRepo?: MockRepo; periodRepo?: MockRepo } = {},
 ) {
   const houseUpdate = jest.fn().mockResolvedValue({ affected: 1 });
   const houseCount = jest.fn().mockResolvedValue(options.isTitular === false ? 0 : 1);
   // Story 199: a transação é a do AuditService — o evento (audit_logs) entra nela.
   const auditInsert = jest.fn().mockResolvedValue(undefined);
+  // Story 216: o período de serviço aberto entra na transação da criação.
+  const periodRepo = options.periodRepo ?? makeRepo({
+    save: jest.fn().mockImplementation((v) => Promise.resolve({ id: 'period-1', ...v })),
+  });
   const entityManager = {
     getRepository: (entity: unknown) => {
       if (entity === AuditLog) return { insert: auditInsert };
+      if (entity === StaffServicePeriod) return periodRepo;
       if (entity === StaffPermission) return options.permissionRepo;
       return entity === Staff ? staffRepo : userRepo;
     },
@@ -81,7 +87,7 @@ function attachManager(
   };
   const transaction = jest.fn((cb: (m: unknown) => Promise<unknown>) => cb(entityManager));
   staffRepo.manager = { transaction };
-  return { houseUpdate, houseCount, transaction, auditInsert };
+  return { houseUpdate, houseCount, transaction, auditInsert, periodRepo };
 }
 
 /** Linhas de auditoria gravadas pela transação do staffRepo (story 199). */
@@ -281,6 +287,79 @@ describe('StaffService.createFromResident', () => {
     });
 
     expect(staffRepo.save.mock.calls[0][0].whatsapp).toBe('62988880000');
+  });
+});
+
+// ─── Story 216 — período de serviço nasce com o staff ─────────────────────────
+describe('StaffService — período de serviço aberto (story 216)', () => {
+  const promotion = {
+    name: 'Promovido',
+    whatsapp: null,
+    houseId: 'house-1',
+    photoUrl: null,
+    userId: 'user-9',
+    formerResidentId: 'res-9',
+    rank: 'ASPIRANTE' as never,
+    promotedAt: '2026-06-01',
+  };
+
+  it('promoção abre período com início = promotedAt e casa do staff, na mesma transação', async () => {
+    const staffRepo = makeRepo();
+    const userRepo = makeRepo();
+    const { periodRepo, transaction } = attachManager(staffRepo, userRepo);
+    const service = makeService(staffRepo, userRepo, makeRepo());
+
+    await service.createFromResident(promotion);
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(periodRepo.save).toHaveBeenCalledWith({
+      staffId: 'staff-1',
+      houseId: 'house-1',
+      startDate: '2026-06-01',
+      endDate: null,
+    });
+  });
+
+  it('falha ao gravar o período desfaz a promoção (erro propaga da transação)', async () => {
+    const staffRepo = makeRepo();
+    const userRepo = makeRepo();
+    const periodRepo = makeRepo({ save: jest.fn().mockRejectedValue(new Error('boom')) });
+    attachManager(staffRepo, userRepo, { periodRepo });
+    const service = makeService(staffRepo, userRepo, makeRepo());
+
+    await expect(service.createFromResident(promotion)).rejects.toThrow('boom');
+  });
+
+  it('cadastro direto abre período com início = hoje e a casa do cadastro', async () => {
+    const staffRepo = makeRepo();
+    const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });
+    const { periodRepo } = attachManager(staffRepo, userRepo);
+    const service = makeService(staffRepo, userRepo, makeRepo());
+
+    await service.create({
+      name: 'Direto',
+      password: 'secret123',
+      role: 'SERVANT' as never,
+      houseId: 'house-2',
+    } as never);
+
+    expect(periodRepo.save).toHaveBeenCalledWith({
+      staffId: 'staff-1',
+      houseId: 'house-2',
+      startDate: todayInSaoPaulo(),
+      endDate: null,
+    });
+  });
+
+  it('cadastro direto sem casa abre período sem casa', async () => {
+    const staffRepo = makeRepo();
+    const userRepo = makeRepo({ save: jest.fn().mockResolvedValue({ id: 'user-1' }) });
+    const { periodRepo } = attachManager(staffRepo, userRepo);
+    const service = makeService(staffRepo, userRepo, makeRepo());
+
+    await service.create({ name: 'Sem casa', password: 'secret123', role: 'ADMIN' as never } as never);
+
+    expect(periodRepo.save.mock.calls[0][0]).toMatchObject({ houseId: null, endDate: null });
   });
 });
 

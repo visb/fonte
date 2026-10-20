@@ -32,6 +32,10 @@ import { Staff } from './staff.entity';
 import { StaffPermission } from './staff-permission.entity';
 import { StaffService } from './staff.service';
 import { StaffAttachmentService } from './staff-attachment.service';
+import { StaffServicePeriodService } from './staff-service-period.service';
+import { StaffServicePeriod } from './staff-service-period.entity';
+import { CreateServicePeriodDto } from './dto/create-service-period.dto';
+import { UpdateServicePeriodDto } from './dto/update-service-period.dto';
 import { STAFF_ATTACHMENT_MAX_BYTES } from './staff-attachment.mimetypes';
 import { StaffAttachment } from '@fonte/types';
 
@@ -47,6 +51,7 @@ export class StaffController {
   constructor(
     private staffService: StaffService,
     private attachmentService: StaffAttachmentService,
+    private servicePeriodService: StaffServicePeriodService,
   ) {}
 
   @Get('me')
@@ -172,6 +177,33 @@ export class StaffController {
     @Param('attachmentId', ParseUUIDPipe) attachmentId: string,
   ): Promise<void> {
     return this.attachmentService.removeAttachment(id, attachmentId);
+  }
+
+  // ─── Períodos de serviço (story 216) ─────────────────────────────────────────
+
+  @Get(':id/service-periods')
+  @Roles(Role.ADMIN, Role.COORDINATOR, Role.SERVANT)
+  listServicePeriods(@Param('id', ParseUUIDPipe) id: string): Promise<StaffServicePeriod[]> {
+    return this.servicePeriodService.findServicePeriods(id);
+  }
+
+  @Post(':id/service-periods')
+  @Roles(Role.ADMIN)
+  createServicePeriod(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateServicePeriodDto,
+  ): Promise<StaffServicePeriod> {
+    return this.servicePeriodService.createServicePeriod(id, dto);
+  }
+
+  @Patch(':id/service-periods/:periodId')
+  @Roles(Role.ADMIN)
+  updateServicePeriod(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('periodId', ParseUUIDPipe) periodId: string,
+    @Body() dto: UpdateServicePeriodDto,
+  ): Promise<StaffServicePeriod> {
+    return this.servicePeriodService.updateServicePeriod(id, periodId, dto);
   }
 
   // ─── Permissions ─────────────────────────────────────────────────────────────

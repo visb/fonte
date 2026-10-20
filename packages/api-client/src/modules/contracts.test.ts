@@ -1018,6 +1018,21 @@ describe('staff module', () => {
     expect(http.delete).toHaveBeenCalledWith('/staff/s1/attachments/att1');
     expect(result).toBeUndefined();
   });
+  it('listServicePeriods busca períodos de serviço (story 216)', async () => {
+    const sentinel = [{ id: 'p1' }];
+    http.get.mockResolvedValueOnce({ data: sentinel });
+    expect(await m.listServicePeriods('s1')).toBe(sentinel);
+    expect(http.get).toHaveBeenCalledWith('/staff/s1/service-periods');
+  });
+  it('createServicePeriod posta período antigo (story 216)', async () => {
+    const body = { houseId: 'h1', startDate: '2020-01-01', endDate: '2020-06-01' };
+    await m.createServicePeriod('s1', body);
+    expect(http.post).toHaveBeenCalledWith('/staff/s1/service-periods', body);
+  });
+  it('updateServicePeriod corrige período (story 216)', async () => {
+    await m.updateServicePeriod('s1', 'p1', { startDate: '2020-01-02' });
+    expect(http.patch).toHaveBeenCalledWith('/staff/s1/service-periods/p1', { startDate: '2020-01-02' });
+  });
   it('getPermissions busca permissões', async () => {
     await m.getPermissions('s1');
     expect(http.get).toHaveBeenCalledWith('/staff/s1/permissions');

@@ -1865,6 +1865,97 @@ export function findAdmissionOverlap<T extends AdmissionPeriod>(
   return null;
 }
 
+// ─── Períodos de serviço do servo (story 216) ────────────────────────────────
+
+/**
+ * Período em que alguém serviu (todo `Staff`: SERVANT, COORDINATOR, ADMIN).
+ * Nasce aberto na promoção ou no cadastro direto; `endDate` nulo = em
+ * andamento. No máximo um período aberto por servo. `houseId` nulo = servo
+ * sem casa (ex.: grupo de apoio). Datas em `YYYY-MM-DD`.
+ */
+export interface StaffServicePeriod {
+  id: string;
+  staffId: string;
+  houseId: string | null;
+  house?: { id: string; name: string } | null;
+  startDate: string;
+  endDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Período antigo, já encerrado, registrado pela aba Histórico — só ADMIN. */
+export interface CreateServicePeriodPayload {
+  houseId?: string | null;
+  startDate: string;
+  endDate: string;
+}
+
+/**
+ * Correção de período. No período **aberto** só `startDate` é aceito (o fim é
+ * escrito pelo desligamento do servo).
+ */
+export interface UpdateServicePeriodPayload {
+  houseId?: string | null;
+  startDate?: string;
+  endDate?: string;
+}
+
+/** Mensagens únicas da story 216 — backend (400) e dialog usam as mesmas. */
+export const SERVICE_PERIOD_MESSAGES = {
+  startFuture: 'A data de início não pode ser no futuro.',
+  endFuture: 'A data de fim não pode ser no futuro.',
+  endBeforeStart: (startDate: string) =>
+    `A data de fim não pode ser anterior à data de início (${formatIsoDateBr(startDate)}).`,
+  endDateRequired: 'Informe a data de fim — o período antigo precisa estar encerrado.',
+  overlap: (startDate: string | null, endDate: string | null) =>
+    `Este período se sobrepõe ao período de serviço de ${startDate ? formatIsoDateBr(startDate) : 'data desconhecida'} a ${endDate ? formatIsoDateBr(endDate) : 'hoje'}.`,
+  openOnlyStartDate:
+    'No período em andamento só a data de início pode ser corrigida. O fim é registrado pelo desligamento do servo.',
+  alreadyOpen: 'Este servo já tem um período de serviço em andamento.',
+} as const;
+
+/**
+ * Story 216 — regras de data de um período (`YYYY-MM-DD`; vazio = não
+ * informado): início e fim não futuros, fim ≥ início. Devolve o campo e a
+ * mensagem do primeiro problema, ou `null`.
+ */
+export function findServicePeriodDatesIssue(
+  dates: { startDate?: string | null; endDate?: string | null },
+  today: string,
+): { field: 'startDate' | 'endDate'; message: string } | null {
+  const start = dates.startDate || null;
+  const end = dates.endDate || null;
+  if (start && isFutureDate(start, today)) {
+    return { field: 'startDate', message: SERVICE_PERIOD_MESSAGES.startFuture };
+  }
+  if (end && isFutureDate(end, today)) {
+    return { field: 'endDate', message: SERVICE_PERIOD_MESSAGES.endFuture };
+  }
+  if (start && end && isDateBefore(end, start)) {
+    return { field: 'endDate', message: SERVICE_PERIOD_MESSAGES.endBeforeStart(start) };
+  }
+  return null;
+}
+
+/**
+ * Primeiro período de `others` que se sobrepõe a `period` — mesma regra de
+ * intervalo da `findAdmissionOverlap` (pontas que se tocam não sobrepõem;
+ * aberto vai até "sempre"; o próprio `id` é ignorado).
+ */
+export function findServicePeriodOverlap<
+  T extends { id?: string; startDate: string | null; endDate: string | null },
+>(period: { id?: string; startDate: string | null; endDate: string | null }, others: readonly T[]): T | null {
+  const toAdmission = (p: { id?: string; startDate: string | null; endDate: string | null }) => ({
+    id: p.id,
+    entryDate: p.startDate,
+    exitDate: p.endDate,
+  });
+  const index = others.map(toAdmission);
+  const hit = findAdmissionOverlap(toAdmission(period), index);
+  return hit ? others[index.indexOf(hit)] : null;
+}
+
 // ─── Offline snapshot da casa (story 177) ────────────────────────────────────
 
 /**
@@ -1983,6 +2074,7 @@ export const AuditTargetType = {
   HOUSE_RULE: 'house-rule',
   MINISTRY: 'ministry',
   ADMISSION: 'admission',
+  STAFF_SERVICE_PERIOD: 'staff-service-period',
 } as const;
 export type AuditTargetTypeValue = (typeof AuditTargetType)[keyof typeof AuditTargetType];
 
@@ -2003,6 +2095,7 @@ export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {
   'house-rule': 'Regra da casa',
   ministry: 'Ministério',
   admission: 'Acolhimento',
+  'staff-service-period': 'Período de serviço',
   consent: 'Consentimento',
   'associate-charge': 'Cobrança de associado',
 };
@@ -2022,6 +2115,9 @@ export const AuditAction = {
   STAFF_ATTACHMENT_REMOVE: 'staff.attachment.remove',
   STAFF_PERMISSION_GRANT: 'staff.permission.grant',
   STAFF_PERMISSION_REVOKE: 'staff.permission.revoke',
+  // Story 216 — períodos de serviço da aba Histórico (alvo do período, servo como principal).
+  STAFF_SERVICE_PERIOD_CREATE: 'staff.service_period.create',
+  STAFF_SERVICE_PERIOD_UPDATE: 'staff.service_period.update',
 
   RESIDENT_CREATE: 'resident.create',
   RESIDENT_IMPORT: 'resident.import',
@@ -2096,6 +2192,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'staff.attachment.remove': 'Anexo do servo removido',
   'staff.permission.grant': 'Permissão concedida',
   'staff.permission.revoke': 'Permissão revogada',
+  'staff.service_period.create': 'Período de serviço registrado',
+  'staff.service_period.update': 'Período de serviço corrigido',
   'resident.create': 'Filho cadastrado',
   'resident.import': 'Filho importado',
   'resident.update': 'Ficha do filho editada',

@@ -88,9 +88,18 @@ export const STAFF_AUDIT_FIELDS: AuditFieldMap = {
   signatureUrl: 'file',
   rank: 'plain',
   supportGroupId: 'plain',
+  // Story 217 — data do desligamento.
+  dismissedAt: 'plain',
   // Vindos do User ligado (nunca senha/hash).
   email: 'masked',
   role: 'plain',
+  isActive: 'plain',
+};
+
+/** Story 217 — desligamento/reintegração: o que muda no servo e no User. */
+export const STAFF_DISMISSAL_AUDIT_FIELDS: AuditFieldMap = {
+  dismissedAt: 'plain',
+  houseId: 'plain',
   isActive: 'plain',
 };
 
@@ -154,6 +163,9 @@ export const STAFF_SERVICE_PERIOD_AUDIT_FIELDS: AuditFieldMap = {
   houseId: 'plain',
   startDate: 'plain',
   endDate: 'plain',
+  // Story 217 — motivo do desligamento; a observação é texto livre (redigida).
+  endReason: 'plain',
+  endNotes: 'redacted',
 };
 
 export const STAFF_PERMISSION_AUDIT_FIELDS: AuditFieldMap = {

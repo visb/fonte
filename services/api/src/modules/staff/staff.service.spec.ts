@@ -13,7 +13,7 @@ jest.mock('bcrypt', () => ({
 
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { maxBirthDateFor, MIN_AGE_MESSAGE, todayInSaoPaulo } from '@fonte/types';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { StaffService } from './staff.service';
 import { Staff } from './staff.entity';
 import { House } from '../house/house.entity';
@@ -976,14 +976,40 @@ describe('StaffService — coordenador titular da casa (story 194)', () => {
 });
 
 describe('StaffService.findAll house scoping', () => {
-  it('ADMIN lists all staff (no house filter)', async () => {
+  it('ADMIN lists all active staff (no house filter)', async () => {
     const staffRepo = makeRepo({ find: jest.fn().mockResolvedValue([{ id: 's1' }]) });
     const service = makeService(staffRepo, makeRepo(), makeRepo());
 
     await service.findAll({ role: 'ADMIN', userId: 'u1' });
 
     expect(staffRepo.find).toHaveBeenCalledWith(
-      expect.not.objectContaining({ where: expect.anything() }),
+      expect.objectContaining({ where: { dismissedAt: IsNull() } }),
+    );
+  });
+
+  // Story 217 — filtro "Desligados" da lista do adm.
+  it('status dismissed lista só os desligados', async () => {
+    const staffRepo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
+    const service = makeService(staffRepo, makeRepo(), makeRepo());
+
+    await service.findAll({ role: 'ADMIN', userId: 'u1' }, 'dismissed');
+
+    expect(staffRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { dismissedAt: Not(IsNull()) } }),
+    );
+  });
+
+  it('COORDINATOR com status dismissed fica na própria casa', async () => {
+    const staffRepo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'me', userId: 'u1', houseId: 'house-9' }),
+      find: jest.fn().mockResolvedValue([]),
+    });
+    const service = makeService(staffRepo, makeRepo(), makeRepo({ find: jest.fn().mockResolvedValue([]) }));
+
+    await service.findAll({ role: 'COORDINATOR', userId: 'u1' }, 'dismissed');
+
+    expect(staffRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { houseId: 'house-9', dismissedAt: Not(IsNull()) } }),
     );
   });
 
@@ -998,7 +1024,7 @@ describe('StaffService.findAll house scoping', () => {
     await service.findAll({ role: 'COORDINATOR', userId: 'u1' });
 
     expect(staffRepo.find).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { houseId: 'house-9' } }),
+      expect.objectContaining({ where: { houseId: 'house-9', dismissedAt: IsNull() } }),
     );
   });
 

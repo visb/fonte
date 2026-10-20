@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Role } from '@fonte/types';
-import { ArrowLeft, KeyRound, Pencil } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useGoBack } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
@@ -15,7 +15,8 @@ import { TrackingTab } from '@/features/residents/components/tabs/TrackingTab';
 import { RelativesTab } from '@/features/residents/components/tabs/RelativesTab';
 import { AttachmentsTab } from '@/features/residents/components/tabs/AttachmentsTab';
 import { useStaffById } from '../hooks/useStaff';
-import { ResetPasswordDialog } from '../components/ResetPasswordDialog';
+import { StaffDetailActions } from '../components/StaffDetailActions';
+import { StaffDismissedBadge } from '../components/StaffDismissedBadge';
 import { StaffOverviewTab } from '../components/StaffOverviewTab';
 import { StaffAttachmentsTab } from '../components/StaffAttachmentsTab';
 import { StaffHistoryTab } from '../components/StaffHistoryTab';
@@ -61,7 +62,6 @@ export function StaffDetailPage() {
   const activeTab = (searchParams.get('tab') as TabId | null) ?? 'overview';
   const setActiveTab = (tab: TabId) => setSearchParams({ tab }, { replace: true });
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
-  const [resetOpen, setResetOpen] = useState(false);
 
   const { data: staff, isLoading, isError } = useStaffById(id!);
 
@@ -93,19 +93,11 @@ export function StaffDetailPage() {
             {staff.user.role === Role.SERVANT && staff.rank && (
               <Badge variant={SERVANT_RANK_VARIANT[staff.rank]}>{SERVANT_RANK_LABELS[staff.rank]}</Badge>
             )}
+            {staff.dismissedAt && <StaffDismissedBadge dismissedAt={staff.dismissedAt} />}
           </div>
           {staff.house && <p className="text-sm text-muted-foreground mt-0.5">{staff.house.name}</p>}
         </div>
-        <Button variant="outline" size="sm" onClick={() => setResetOpen(true)}>
-          <KeyRound size={14} className="mr-2" />
-          Resetar senha
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link to={`/staff/${id}/edit`}>
-            <Pencil size={14} className="mr-2" />
-            Editar
-          </Link>
-        </Button>
+        <StaffDetailActions staff={staff} />
       </div>
 
       <div className="border-b flex gap-0">
@@ -136,8 +128,6 @@ export function StaffDetailPage() {
       {activeTab === 'admissions' && (
         <StaffHistoryTab staffId={staff.id} formerResidentId={formerResidentId} />
       )}
-
-      <ResetPasswordDialog open={resetOpen} onClose={() => setResetOpen(false)} staff={staff} />
 
       {staff.photoUrl && (
         <Dialog open={photoModalOpen} onOpenChange={setPhotoModalOpen}>

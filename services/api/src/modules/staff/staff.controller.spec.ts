@@ -98,8 +98,25 @@ describe('StaffController', () => {
 
   it('findAll passes the caller scope', async () => {
     const s = svc();
-    await new StaffController(s as never, attSvc() as never, {} as never).findAll(user);
-    expect(s.findAll).toHaveBeenCalledWith({ role: 'ADMIN', userId: 'u1' });
+    await new StaffController(s as never, attSvc() as never, {} as never).findAll(user, {});
+    expect(s.findAll).toHaveBeenCalledWith({ role: 'ADMIN', userId: 'u1' }, 'active');
+  });
+
+  it('findAll repassa o filtro de status (story 217)', async () => {
+    const s = svc();
+    await new StaffController(s as never, attSvc() as never, {} as never).findAll(user, { status: 'dismissed' });
+    expect(s.findAll).toHaveBeenCalledWith({ role: 'ADMIN', userId: 'u1' }, 'dismissed');
+  });
+
+  it('dismiss / reinstate delegam ao service (story 217)', async () => {
+    const s = { ...svc(), dismiss: jest.fn().mockResolvedValue({ id: 's1' }), reinstate: jest.fn().mockResolvedValue({ id: 's1' }) };
+    const c = new StaffController(s as never, attSvc() as never, {} as never);
+    const dismissBody = { date: '2026-01-01', reason: 'OWN_REQUEST' };
+    const reinstateBody = { date: '2026-02-01', houseId: 'h1' };
+    await c.dismiss('s1', dismissBody as never);
+    await c.reinstate('s1', reinstateBody as never);
+    expect(s.dismiss).toHaveBeenCalledWith('s1', dismissBody);
+    expect(s.reinstate).toHaveBeenCalledWith('s1', reinstateBody);
   });
 
   it('findOne / create / update / remove delegate', async () => {

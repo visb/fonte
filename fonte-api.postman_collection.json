@@ -283,14 +283,22 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/staff",
+              "raw": "{{baseUrl}}/staff?status=active",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "staff"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "active",
+                  "description": "Story 217 — `active` (default: não desligado) | `dismissed` (filtro \"Desligados\"). Outro valor → 400."
+                }
               ]
-            }
+            },
+            "description": "Lista os servos. Roles: ADMIN (todos) e COORDINATOR (só a própria casa).\n\nStory 217 — `?status=active|dismissed` (default `active`). Servo **ativo** = `deleted_at IS NULL AND dismissed_at IS NULL`. Cada item traz `dismissedAt` (`YYYY-MM-DD` ou `null`). Staff soft-deletado (`DELETE /staff/:id`) não aparece em nenhum dos dois filtros."
           }
         },
         {
@@ -306,8 +314,154 @@
                 "staff",
                 "{{staffId}}"
               ]
+            },
+            "description": "Detalhe do servo. Story 217 — servo desligado continua acessível (200) com `dismissedAt` preenchido; o Histórico (`/service-periods`) também."
+          },
+          "response": [
+            {
+              "name": "200 — servo desligado",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"{{staffId}}\",\n  \"name\": \"Nome do Staff\",\n  \"houseId\": \"{{houseId}}\",\n  \"house\": { \"id\": \"{{houseId}}\", \"name\": \"Casa Teste\" },\n  \"rank\": \"ASPIRANTE\",\n  \"dismissedAt\": \"2025-01-10\",\n  \"user\": { \"email\": \"staff@fonte.com\", \"role\": \"SERVANT\", \"isActive\": false }\n}"
             }
-          }
+          ]
+        },
+        {
+          "name": "Dismiss Staff",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2025-01-10\",\n  \"reason\": \"OTHER\",\n  \"notes\": \"Mudou de cidade\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/dismiss",
+              "host": ["{{baseUrl}}"],
+              "path": ["staff", "{{staffId}}", "dismiss"]
+            },
+            "description": "Story 217 — desliga o servo **sem soft delete**. Roles: **ADMIN** (COORDINATOR/SERVANT → 403).\n\nBody: `date` (`YYYY-MM-DD`), `reason` (`OWN_REQUEST` Pedido próprio | `COORDINATION_DECISION` Decisão da coordenação | `TRANSFER_OTHER_WORK` Transferência para outra obra | `DEATH` Falecimento | `OTHER` Outro), `notes` (opcional; obrigatória quando `OTHER`).\n\nNuma transação só: fecha o período de serviço aberto (`endDate` = `date`, `endReason`, `endNotes`), grava `dismissedAt` = `date`, desativa o User (`isActive: false` — login → 401), zera o titular da casa (`houses.coordinator_id`) e a liderança de ministérios (`leader_type = 'STAFF'`). Permissões extras, `houseId` e `rank` ficam gravados.\n\nErros: data futura → 400 `\"A data do desligamento não pode ser no futuro.\"`; antes do início do período aberto → 400 `\"A data do desligamento não pode ser anterior ao início do período em andamento (dd/mm/aaaa).\"`; `OTHER` sem observação → 400 `\"Descreva o motivo do desligamento.\"`; já desligado → 409 `\"Este servo já está desligado.\"`.\n\nResposta 200: o servo com `dismissedAt`. Auditoria: `staff.dismiss` (servo) + `staff.service_period.update` (período encerrado)."
+          },
+          "response": [
+            {
+              "name": "200 — servo desligado",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/dismiss",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "dismiss"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"{{staffId}}\",\n  \"name\": \"Nome do Staff\",\n  \"houseId\": \"{{houseId}}\",\n  \"dismissedAt\": \"2025-01-10\",\n  \"user\": { \"email\": \"staff@fonte.com\", \"role\": \"SERVANT\", \"isActive\": false }\n}"
+            },
+            {
+              "name": "400 — OTHER sem observação",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/dismiss",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "dismiss"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Descreva o motivo do desligamento.\"\n}"
+            },
+            {
+              "name": "409 — já desligado",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/dismiss",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "dismiss"]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"Este servo já está desligado.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reinstate Staff",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2025-02-01\",\n  \"houseId\": \"{{houseId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/reinstate",
+              "host": ["{{baseUrl}}"],
+              "path": ["staff", "{{staffId}}", "reinstate"]
+            },
+            "description": "Story 217 — reintegra o servo desligado. Roles: **ADMIN** (COORDINATOR/SERVANT → 403).\n\nBody: `date` (`YYYY-MM-DD`, início do novo período) e `houseId` (opcional: ausente mantém a última casa do cadastro; `null` = sem casa).\n\nNuma transação só: reativa o User (`isActive: true`), limpa `dismissedAt`, grava `houseId` e abre um período de serviço **novo** (aberto). As permissões extras gravadas voltam a valer.\n\nErros: data futura → 400 `\"A data de reintegração não pode ser no futuro.\"`; antes do fim do último período → 400 `\"A data de reintegração não pode ser anterior ao fim do último período de serviço (dd/mm/aaaa).\"`; casa inexistente → 400 `\"Casa não encontrada.\"`; servo ativo → 409 `\"Este servo não está desligado.\"`.\n\nResposta 200: o servo com `dismissedAt: null`. Auditoria: `staff.reinstate`."
+          },
+          "response": [
+            {
+              "name": "200 — servo reintegrado",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/reinstate",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "reinstate"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"{{staffId}}\",\n  \"name\": \"Nome do Staff\",\n  \"houseId\": \"{{houseId}}\",\n  \"dismissedAt\": null,\n  \"user\": { \"email\": \"staff@fonte.com\", \"role\": \"SERVANT\", \"isActive\": true }\n}"
+            },
+            {
+              "name": "400 — antes do fim do último período",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/reinstate",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "reinstate"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"A data de reintegração não pode ser anterior ao fim do último período de serviço (10/01/2025).\"\n}"
+            },
+            {
+              "name": "409 — servo ativo",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/staff/{{staffId}}/reinstate",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["staff", "{{staffId}}", "reinstate"]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"Este servo não está desligado.\"\n}"
+            }
+          ]
         },
         {
           "name": "Create Staff",
@@ -366,7 +520,7 @@
           "name": "Delete Staff",
           "request": {
             "method": "DELETE",
-            "description": "Desliga o servo (soft delete do staff + do user). Story 194 — se ele for o coordenador TITULAR de alguma casa, `houses.coordinator_id` é zerado na mesma transação: o `ON DELETE SET NULL` da FK só dispara em DELETE físico e o projeto usa `deleted_at`.",
+            "description": "Exclui o cadastro (soft delete do staff + do user). Story 217 — só para cadastro feito por engano: o servo some de todas as telas e o histórico fica inacessível; a saída normal é `POST /staff/:id/dismiss`. Story 194 — se ele for o coordenador TITULAR de alguma casa, `houses.coordinator_id` é zerado na mesma transação: o `ON DELETE SET NULL` da FK só dispara em DELETE físico e o projeto usa `deleted_at`.",
             "url": {
               "raw": "{{baseUrl}}/staff/{{staffId}}",
               "host": [
@@ -539,7 +693,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["staff", "{{staffId}}", "service-periods"]
             },
-            "description": "Story 216 — períodos de serviço do servo (aba Histórico), ordenados por `startDate` desc, com `house`. Roles: ADMIN, COORDINATOR, SERVANT. Staff inexistente → 404.\n\nTodo servo tem período: ele nasce **aberto** (`endDate: null`) na promoção do filho (`startDate` = data da promoção, casa do servo) e no cadastro direto (`startDate` = hoje). No máximo um período aberto por servo (índice único parcial). O fim é escrito pelo desligamento (story 217)."
+            "description": "Story 216 — períodos de serviço do servo (aba Histórico), ordenados por `startDate` desc, com `house`. Roles: ADMIN, COORDINATOR, SERVANT. Staff inexistente → 404.\n\nTodo servo tem período: ele nasce **aberto** (`endDate: null`) na promoção do filho (`startDate` = data da promoção, casa do servo) e no cadastro direto (`startDate` = hoje). No máximo um período aberto por servo (índice único parcial). O fim é escrito pelo desligamento (story 217): o período encerrado por `POST /staff/:id/dismiss` traz `endReason` (`StaffDismissalReason`) e `endNotes`; encerrado à mão fica com ambos `null`."
           },
           "response": [
             {

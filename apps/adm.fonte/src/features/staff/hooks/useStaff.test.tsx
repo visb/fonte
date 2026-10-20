@@ -22,6 +22,8 @@ vi.mock('@/lib/api', () => ({
       listServicePeriods: vi.fn(),
       createServicePeriod: vi.fn(),
       updateServicePeriod: vi.fn(),
+      dismiss: vi.fn(),
+      reinstate: vi.fn(),
     },
   },
 }));
@@ -47,6 +49,8 @@ import {
   useStaffServicePeriods,
   useCreateServicePeriod,
   useUpdateServicePeriod,
+  useDismissStaff,
+  useReinstateStaff,
 } from './useStaff';
 
 beforeEach(() => vi.clearAllMocks());
@@ -57,13 +61,52 @@ describe('useStaff', () => {
     vi.mocked(api.staff.list).mockResolvedValue([{ id: 's1' }] as never);
     const { result, queryClient } = renderHookWithClient(() => useStaff());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(api.staff.list).toHaveBeenCalled();
-    expect(queryClient.getQueryData(queryKeys.staff.all)).toEqual([{ id: 's1' }]);
+    expect(api.staff.list).toHaveBeenCalledWith();
+    expect(queryClient.getQueryData(queryKeys.staff.list('active'))).toEqual([{ id: 's1' }]);
 
     vi.mocked(api.staff.list).mockClear();
     const { result: r2 } = renderHookWithClient(() => useStaff({ enabled: false }));
     expect(r2.current.fetchStatus).toBe('idle');
     expect(api.staff.list).not.toHaveBeenCalled();
+  });
+
+  it('status dismissed busca os desligados numa key própria (story 217)', async () => {
+    vi.mocked(api.staff.list).mockResolvedValue([{ id: 'd1' }] as never);
+    const { result, queryClient } = renderHookWithClient(() => useStaff({ status: 'dismissed' }));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.staff.list).toHaveBeenCalledWith({ status: 'dismissed' });
+    expect(queryClient.getQueryData(queryKeys.staff.list('dismissed'))).toEqual([{ id: 'd1' }]);
+  });
+});
+
+describe('desligamento e reintegração (story 217)', () => {
+  const expectInvalidated = (spy: ReturnType<typeof vi.spyOn>) => {
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.staff.all });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.staff.detail('s1') });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.staff.servicePeriods('s1') });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.houses.all });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.ministries.all });
+  };
+
+  it('useDismissStaff posta e invalida servo, períodos, casas e ministérios', async () => {
+    vi.mocked(api.staff.dismiss).mockResolvedValue({ id: 's1' } as never);
+    const { result, queryClient } = renderHookWithClient(() => useDismissStaff('s1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    const payload = { date: '2026-01-01', reason: 'OWN_REQUEST' as never };
+    result.current.mutate(payload);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.staff.dismiss).toHaveBeenCalledWith('s1', payload);
+    expectInvalidated(spy);
+  });
+
+  it('useReinstateStaff posta e invalida o mesmo conjunto', async () => {
+    vi.mocked(api.staff.reinstate).mockResolvedValue({ id: 's1' } as never);
+    const { result, queryClient } = renderHookWithClient(() => useReinstateStaff('s1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    result.current.mutate({ date: '2026-02-01', houseId: 'h1' });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.staff.reinstate).toHaveBeenCalledWith('s1', { date: '2026-02-01', houseId: 'h1' });
+    expectInvalidated(spy);
   });
 });
 

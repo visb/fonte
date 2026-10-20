@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -28,6 +29,9 @@ import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { UpdateStaffMeDto } from './dto/update-staff-me.dto';
 import { AddPermissionDto } from './dto/add-permission.dto';
+import { DismissStaffDto } from './dto/dismiss-staff.dto';
+import { ReinstateStaffDto } from './dto/reinstate-staff.dto';
+import { ListStaffQueryDto } from './dto/list-staff-query.dto';
 import { Staff } from './staff.entity';
 import { StaffPermission } from './staff-permission.entity';
 import { StaffService } from './staff.service';
@@ -100,8 +104,11 @@ export class StaffController {
 
   @Get()
   @Roles(Role.ADMIN, Role.COORDINATOR)
-  findAll(@CurrentUser() user: AuthenticatedUser): Promise<Staff[]> {
-    return this.staffService.findAll({ role: user.role, userId: user.userId });
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: ListStaffQueryDto,
+  ): Promise<Staff[]> {
+    return this.staffService.findAll({ role: user.role, userId: user.userId }, query.status ?? 'active');
   }
 
   @Get(':id')
@@ -147,6 +154,24 @@ export class StaffController {
   @Roles(Role.ADMIN)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.staffService.remove(id);
+  }
+
+  // ─── Desligamento e reintegração (story 217) ─────────────────────────────────
+
+  @Post(':id/dismiss')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.ADMIN)
+  @RevealSensitive()
+  dismiss(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DismissStaffDto): Promise<Staff> {
+    return this.staffService.dismiss(id, dto);
+  }
+
+  @Post(':id/reinstate')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.ADMIN)
+  @RevealSensitive()
+  reinstate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReinstateStaffDto): Promise<Staff> {
+    return this.staffService.reinstate(id, dto);
   }
 
   // ─── Attachments (story 98) ──────────────────────────────────────────────────

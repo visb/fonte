@@ -122,8 +122,11 @@ test.describe('Servos', () => {
     await page.getByRole('button', { name: 'Cadastrar' }).click();
     await expect(page.getByText(name)).toBeVisible();
 
-    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: name }).getByTitle('Excluir').click();
-    await page.getByRole('button', { name: 'Excluir' }).last().click();
+    // Story 217: "Excluir cadastro" exige digitar EXCLUIR (a saída normal é "Desligar").
+    await page.locator('.rounded-lg.border.bg-card').filter({ hasText: name }).getByTitle('Excluir cadastro').click();
+    await page.getByLabel('Digite EXCLUIR para confirmar').fill('EXCLUIR');
+    await page.getByRole('button', { name: 'Excluir', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByText(name)).not.toBeVisible();
   });
 

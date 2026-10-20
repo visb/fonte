@@ -68,11 +68,25 @@ describe('StaffCard', () => {
     screen.getByText('Pedro Servo').click();
     screen.getByTitle('Editar').click();
     screen.getByTitle('Resetar senha').click();
-    screen.getByTitle('Excluir').click();
+    screen.getByTitle('Excluir cadastro').click();
     expect(onView).toHaveBeenCalled();
     expect(onEdit).toHaveBeenCalled();
     expect(onReset).toHaveBeenCalled();
     expect(onDelete).toHaveBeenCalled();
+  });
+
+  it('desligado mostra o selo com a data e esconde Resetar senha (story 217)', () => {
+    render(
+      <StaffCard
+        staff={makeStaff({ dismissedAt: '2025-01-10' })}
+        onView={noop}
+        onEdit={noop}
+        onResetPassword={noop}
+        onDelete={noop}
+      />,
+    );
+    expect(screen.getByText('Desligado em 10/01/2025')).toBeInTheDocument();
+    expect(screen.queryByTitle('Resetar senha')).toBeNull();
   });
 
   it('renderiza foto quando há photoUrl', () => {

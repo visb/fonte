@@ -1002,6 +1002,22 @@ describe('staff module', () => {
     await m.delete('s1');
     expect(http.delete).toHaveBeenCalledWith('/staff/s1');
   });
+  it('list com status filtra desligados (story 217)', async () => {
+    await m.list({ status: 'dismissed' });
+    expect(http.get).toHaveBeenCalledWith('/staff', { params: { status: 'dismissed' } });
+  });
+  it('dismiss posta o desligamento e desserializa (story 217)', async () => {
+    const sentinel = { id: 's1', dismissedAt: '2026-01-01' };
+    http.post.mockResolvedValueOnce({ data: sentinel });
+    const body = { date: '2026-01-01', reason: 'OTHER', notes: 'x' } as never;
+    expect(await m.dismiss('s1', body)).toBe(sentinel);
+    expect(http.post).toHaveBeenCalledWith('/staff/s1/dismiss', body);
+  });
+  it('reinstate posta a reintegração (story 217)', async () => {
+    const body = { date: '2026-02-01', houseId: 'h1' };
+    await m.reinstate('s1', body);
+    expect(http.post).toHaveBeenCalledWith('/staff/s1/reinstate', body);
+  });
   it('listAttachments busca anexos do servo', async () => {
     await m.listAttachments('s1');
     expect(http.get).toHaveBeenCalledWith('/staff/s1/attachments');

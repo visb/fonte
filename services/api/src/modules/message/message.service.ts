@@ -8,6 +8,7 @@ import { SendDirectMessageDto } from './dto/send-direct-message.dto';
 import { Resident } from '../resident/resident.entity';
 import { Relative } from '../relative/relative.entity';
 import { Staff } from '../staff/staff.entity';
+import { isActiveStaff } from '../staff/active-staff';
 import { StaffPermission } from '../staff/staff-permission.entity';
 import { User } from '../user/user.entity';
 import { SupportGroup } from '../support-group/support-group.entity';
@@ -394,7 +395,10 @@ export class MessageService {
       : [];
 
     const staffMap = new Map<string, Staff>();
-    for (const s of [...houseStaff, ...servants, ...coordinators]) staffMap.set(s.id, s);
+    // Story 217: servo desligado não aparece como contato do familiar.
+    for (const s of [...houseStaff, ...servants, ...coordinators].filter(isActiveStaff)) {
+      staffMap.set(s.id, s);
+    }
 
     const staffIds = [...staffMap.keys()];
     const permittedIds = staffIds.length > 0

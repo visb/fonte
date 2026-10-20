@@ -13,6 +13,7 @@ import { CreateSupportGroupDto } from './dto/create-support-group.dto';
 import { UpdateSupportGroupDto } from './dto/update-support-group.dto';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { Relative } from '../relative/relative.entity';
+import { activeStaffSql } from '../staff/active-staff';
 
 @Injectable()
 export class SupportGroupService {
@@ -51,7 +52,7 @@ export class SupportGroupService {
               g.day_of_week    AS "dayOfWeek",
               g.created_at     AS "createdAt"
        FROM support_groups g
-       LEFT JOIN staff s ON s.id = g.coordinator_id AND s.deleted_at IS NULL
+       LEFT JOIN staff s ON s.id = g.coordinator_id AND ${activeStaffSql('s')}
        WHERE g.deleted_at IS NULL
        ORDER BY g.name`,
     );
@@ -89,7 +90,7 @@ export class SupportGroupService {
               g.day_of_week    AS "dayOfWeek",
               g.created_at     AS "createdAt"
        FROM support_groups g
-       LEFT JOIN staff s ON s.id = g.coordinator_id AND s.deleted_at IS NULL
+       LEFT JOIN staff s ON s.id = g.coordinator_id AND ${activeStaffSql('s')}
        WHERE g.id = $1 AND g.deleted_at IS NULL`,
       [id],
     );

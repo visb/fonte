@@ -11,3 +11,15 @@ export const HOUSE_COORDINATOR_ROLES: readonly Role[] = [Role.COORDINATOR, Role.
 export function isHouseCoordinatorRole(role: string | null | undefined): boolean {
   return HOUSE_COORDINATOR_ROLES.includes(role as Role);
 }
+
+/**
+ * Story 217 — coordenador da casa é role de coordenação **e** servo ativo (não
+ * soft-deletado e não desligado). Desligado nunca coordena nem é titular.
+ */
+export function isActiveHouseCoordinator(staff: {
+  role: string | null | undefined;
+  deletedAt?: Date | string | null;
+  dismissedAt?: Date | string | null;
+}): boolean {
+  return isHouseCoordinatorRole(staff.role) && !staff.deletedAt && !staff.dismissedAt;
+}

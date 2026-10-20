@@ -2,6 +2,7 @@ import { Pencil } from 'lucide-react';
 import type { StaffServicePeriod } from '@fonte/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DISMISSAL_REASON_LABELS } from '../constants';
 
 interface Props {
   period: StaffServicePeriod;
@@ -47,6 +48,20 @@ export function ServicePeriodCard({ period, onEdit }: Props) {
 
         <span className="text-muted-foreground">Fim</span>
         <span>{open ? 'Em andamento' : formatDate(period.endDate)}</span>
+
+        {/* Story 217 — motivo do desligamento que encerrou o período. */}
+        {period.endReason && (
+          <>
+            <span className="text-muted-foreground">Motivo do desligamento</span>
+            <span>{DISMISSAL_REASON_LABELS[period.endReason] ?? period.endReason}</span>
+          </>
+        )}
+        {period.endNotes && (
+          <>
+            <span className="text-muted-foreground">Observação</span>
+            <span className="whitespace-pre-line">{period.endNotes}</span>
+          </>
+        )}
       </div>
     </div>
   );

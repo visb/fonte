@@ -18,6 +18,7 @@ import type {
   CommitImportResult,
   ReadmitResidentInput,
   Resident,
+  ResidentLookupItem,
   ResidentFollowUp,
   ResidentMe,
   ResetResidentPasswordInput,
@@ -96,8 +97,16 @@ export function createResidentsModule(http: AxiosInstance) {
           headers: { 'Content-Type': undefined },
         })
         .then((r) => r.data),
-    readmit: (id: string, data: ReadmitResidentInput): Promise<Resident> =>
-      http.post<Resident>(`/residents/${id}/readmit`, data).then((r) => r.data),
+    // `options.idempotencyKey` serve o reacolhimento pela contagem do ops (story
+    // 218), que passa pela outbox offline.
+    readmit: (id: string, data: ReadmitResidentInput, options?: RequestOptions): Promise<Resident> =>
+      http
+        .post<Resident>(`/residents/${id}/readmit`, data, ...requestConfig(options))
+        .then((r) => r.data),
+    // Story 218 — candidatos a reacolhimento (alta/evasão/arquivado) por nome
+    // parcial ou CPF. Recorte enxuto (LGPD), no máximo 20.
+    lookup: (q: string): Promise<ResidentLookupItem[]> =>
+      http.get<ResidentLookupItem[]>('/residents/lookup', { params: { q } }).then((r) => r.data),
 
     getAdmissions: (id: string): Promise<Admission[]> =>
       http.get<Admission[]>(`/residents/${id}/admissions`).then((r) => r.data),

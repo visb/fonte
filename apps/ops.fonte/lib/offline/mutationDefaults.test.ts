@@ -5,7 +5,7 @@ import { queryKeys } from '@/lib/queryKeys';
 jest.mock('@/lib/api', () => ({
   api: {
     census: { addResident: jest.fn(), conclude: jest.fn() },
-    residents: { update: jest.fn(), uploadPhoto: jest.fn() },
+    residents: { update: jest.fn(), uploadPhoto: jest.fn(), readmit: jest.fn() },
     incidents: { create: jest.fn() },
     storeroom: { createMovement: jest.fn(), createItem: jest.fn() },
     supplyRoom: { createMovement: jest.fn(), createItem: jest.fn() },
@@ -115,6 +115,18 @@ describe('envio com Idempotency-Key (contrato da story 172)', () => {
       variables: { houseId: 'h1', data: { houseId: 'h1' } },
       call: () => m.census.conclude,
       expected: [{ houseId: 'h1' }, idempotent],
+    },
+    {
+      name: 'census/readmitResident',
+      key: OUTBOX_MUTATION_KEYS.censusReadmitResident,
+      variables: {
+        houseId: 'h1',
+        residentId: 'r9',
+        residentName: 'Pedro',
+        data: { houseId: 'h1', entryDate: '2026-10-01' },
+      },
+      call: () => m.residents.readmit,
+      expected: ['r9', { houseId: 'h1', entryDate: '2026-10-01' }, idempotent],
     },
     {
       name: 'residents/updateStatus',
@@ -650,6 +662,36 @@ describe('update otimista — venda de rua e atividade (decisão 5)', () => {
     // trocado o objeto do detalhe por uma lista.
     expect(untouched?.detail).toEqual({ id: 'a1' });
     expect(untouched?.comments).toEqual([]);
+  });
+});
+
+describe('reacolhimento pela contagem (story 218)', () => {
+  it('invalida a lista da casa, a ficha e a busca de reacolhimento', async () => {
+    const queryClient = createClient();
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.censusReadmitResident, {
+      houseId: 'h1',
+      residentId: 'r9',
+      data: { houseId: 'h1', entryDate: '2026-10-01' },
+    });
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.residents.byHouse('h1') });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.residents.detail('r9') });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.residentLookup.all });
+  });
+
+  it('rejeição do servidor não some: o erro sobe para a fila (dead-letter / /sync)', async () => {
+    const queryClient = createClient();
+    m.residents.readmit.mockRejectedValue({ response: { status: 400 } });
+
+    await expect(
+      run(queryClient, OUTBOX_MUTATION_KEYS.censusReadmitResident, {
+        houseId: 'h1',
+        residentId: 'r9',
+        data: { houseId: 'h1', entryDate: '2026-10-01' },
+      }),
+    ).rejects.toMatchObject({ response: { status: 400 } });
   });
 });
 

@@ -181,6 +181,14 @@ describe('store local × cache em blob (story 175)', () => {
     expect(isPersistableQueryKey(queryKeys.staff.byHouse('h1'))).toBe(true);
     expect(isResidentStoreQueryKey(queryKeys.staff.byHouse('h1'))).toBe(false);
   });
+
+  // Story 218: a busca de reacolhimento traz gente de fora da casa — só memória,
+  // nem blob nem store de filho (LGPD).
+  it('residentLookup não vai para o disco', () => {
+    expect(isPersistableQueryKey(queryKeys.residentLookup.search('pedro'))).toBe(false);
+    expect(isResidentStoreQueryKey(queryKeys.residentLookup.search('pedro'))).toBe(false);
+    expect(isResidentStoreQueryKey(queryKeys.residentLookup.all)).toBe(false);
+  });
 });
 
 describe('constantes de persistência', () => {

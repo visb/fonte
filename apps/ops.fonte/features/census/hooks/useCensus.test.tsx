@@ -4,7 +4,13 @@ import { ResidentStatus } from '@fonte/types';
 
 jest.mock('@/lib/api', () => ({
   api: {
-    residents: { listByHouse: jest.fn(), update: jest.fn(), uploadPhoto: jest.fn() },
+    residents: {
+      listByHouse: jest.fn(),
+      update: jest.fn(),
+      uploadPhoto: jest.fn(),
+      lookup: jest.fn(),
+      readmit: jest.fn(),
+    },
     houses: { list: jest.fn() },
     census: { addResident: jest.fn(), conclude: jest.fn() },
   },
@@ -15,7 +21,10 @@ import { expectIdempotencyKey, renderHookWithClient } from '@/lib/test/utils';
 import {
   useActiveResidentsByHouse,
   useCensusAddResident,
+  useCensusReadmit,
   useConcludeCensus,
+  useFindReadmitCandidate,
+  useResidentLookup,
 } from './useCensus';
 
 const m = api as unknown as {
@@ -77,6 +86,39 @@ describe('useCensusAddResident', () => {
   });
 });
 
+describe('busca de reacolhimento (story 218)', () => {
+  const candidate = { id: 'r9', name: 'Pedro', status: ResidentStatus.ARCHIVED };
+
+  it('useResidentLookup busca com o termo aparado', async () => {
+    m.residents.lookup.mockResolvedValue([candidate]);
+    const { result } = renderHookWithClient(() => useResidentLookup('  ped  '));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(m.residents.lookup).toHaveBeenCalledWith('ped');
+    expect(result.current.data).toEqual([candidate]);
+  });
+
+  it('useResidentLookup não dispara com menos de 3 caracteres nem desabilitado', () => {
+    renderHookWithClient(() => useResidentLookup('pe'));
+    renderHookWithClient(() => useResidentLookup('pedro', { enabled: false }));
+    expect(m.residents.lookup).not.toHaveBeenCalled();
+  });
+
+  it('useFindReadmitCandidate acha o dono do CPF entre os candidatos', async () => {
+    m.residents.lookup.mockResolvedValue([{ ...candidate, id: 'outro' }, candidate]);
+    const { result } = renderHookWithClient(() => useFindReadmitCandidate());
+    await expect(result.current('52998224725', 'r9')).resolves.toEqual(candidate);
+    expect(m.residents.lookup).toHaveBeenCalledWith('52998224725');
+  });
+
+  it('useFindReadmitCandidate devolve null se o dono não é candidato ou a busca falha', async () => {
+    m.residents.lookup.mockResolvedValueOnce([candidate]);
+    const { result } = renderHookWithClient(() => useFindReadmitCandidate());
+    await expect(result.current('11111111111', 'ativo')).resolves.toBeNull();
+    m.residents.lookup.mockRejectedValueOnce(new Error('sem rede'));
+    await expect(result.current('22222222222', 'r9')).resolves.toBeNull();
+  });
+});
+
 describe('mutations de transição de status', () => {
   it('useConcludeCensus conclui', async () => {
     m.census.conclude.mockResolvedValue({});
@@ -84,6 +126,18 @@ describe('mutations de transição de status', () => {
     result.current.mutate({ houseId: 'h1' } as never);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(m.census.conclude).toHaveBeenCalledWith({ houseId: 'h1' }, expectIdempotencyKey);
+  });
+
+  it('useCensusReadmit reacolhe com payload mínimo e Idempotency-Key (story 218)', async () => {
+    m.residents.readmit.mockResolvedValue({ id: 'r9' });
+    const { result } = renderHookWithClient(() => useCensusReadmit('h1'));
+    result.current.mutate({ residentId: 'r9', residentName: 'Pedro', entryDate: '2026-10-01' });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(m.residents.readmit).toHaveBeenCalledWith(
+      'r9',
+      { houseId: 'h1', entryDate: '2026-10-01' },
+      expectIdempotencyKey,
+    );
   });
 
   // Alta/evasão/transferência e `useHouses` migraram para

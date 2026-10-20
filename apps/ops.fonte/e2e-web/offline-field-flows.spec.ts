@@ -300,13 +300,17 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
     await visible(page, 'Contagem').click();
     await expect(visible(page, 'Adicionar filho')).toBeVisible({ timeout: 30_000 });
 
+    // Story 218 (decisão 4): ENTRAR no fluxo exige rede (pergunta "já passou?").
+    // O sinal cai depois, já no formulário — e o lançamento vai para a fila.
+    await visible(page, 'Adicionar filho').click();
+    // No react-native-web o `onShow` do Modal (que reseta o passo) só dispara
+    // no fim da animação de slide (~300ms): agir antes disso seria desfeito.
+    await page.waitForTimeout(800);
+    await visible(page, 'Não, é a primeira vez').click();
+    await expect(page.getByPlaceholder('Nome completo').filter({ visible: true })).toBeVisible();
+
     await goOffline(page, context);
 
-    await visible(page, 'Adicionar filho').click();
-    await expect(page.getByPlaceholder('Nome completo').filter({ visible: true })).toBeVisible();
-    // No react-native-web o `onShow` do Modal (que reseta o form) só dispara
-    // no fim da animação de slide (~300ms): digitar antes disso seria apagado.
-    await page.waitForTimeout(800);
     await page.getByPlaceholder('Nome completo').filter({ visible: true }).fill(name);
     const entryInput = page.getByLabel('Data de acolhimento', { exact: true }).filter({ visible: true });
     await entryInput.fill('');
@@ -332,6 +336,74 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
     expect(resident.name).toBe(name);
     expect(resident.entryDate.slice(0, 10)).toBe('2026-02-01');
     expect(resident.birthDate.slice(0, 10)).toBe('1985-03-05');
+  });
+
+  // Story 218 (decisão 4): sem sinal não dá para checar se o filho já passou
+  // pela comunidade — o botão fica desabilitado com aviso, sem erro de rede.
+  test('contagem: sem sinal "Adicionar filho" fica desabilitado com aviso', async ({
+    page,
+    context,
+  }) => {
+    await login(page, COORDINATOR);
+    await visible(page, 'Contagem').click();
+    const addButton = page.getByLabel('Adicionar filho', { exact: true }).filter({ visible: true });
+    await expect(addButton).toBeEnabled({ timeout: 30_000 });
+
+    await goOffline(page, context);
+
+    await expect(addButton).toBeDisabled({ timeout: 15_000 });
+    await expect(
+      visible(
+        page,
+        'Sem conexão: para adicionar um filho é preciso estar online, para checar se ele já passou pela comunidade.',
+      ),
+    ).toBeVisible();
+    await addButton.click({ force: true });
+    await expect(visible(page, 'Este filho já passou pela Fonte de Misericórdia antes?')).toHaveCount(0);
+    await expect(page.getByText(/Network Error|Request failed/)).toHaveCount(0);
+
+    await context.setOffline(false);
+    await expect(addButton).toBeEnabled({ timeout: 30_000 });
+  });
+
+  // Story 218: com rede, "já passou?" → busca → reacolhe sem duplicar cadastro.
+  test('contagem: reacolhe filho que já passou pela comunidade', async ({ page }) => {
+    const marker = Array.from({ length: 8 }, () =>
+      String.fromCharCode(97 + Math.floor(Math.random() * 26)),
+    ).join('');
+    const name = `Reacolher Web ${marker}`;
+    const created = await api.post(`${API_BASE_URL}/residents`, {
+      headers: authHeaders,
+      data: { name, houseId, gender: 'MALE', status: 'ACTIVE', entryDate: '2025-01-10' },
+    });
+    expect(created.ok(), 'fixture do filho a reacolher').toBeTruthy();
+    const id = (await created.json()).id;
+    residentIds.push(id);
+    expect((await api.patch(`${API_BASE_URL}/residents/${id}`, {
+      headers: authHeaders, data: { status: 'DISCHARGED', exitDate: '2025-03-01' },
+    })).ok()).toBeTruthy();
+
+    await login(page, COORDINATOR);
+    await visible(page, 'Contagem').click();
+    await visible(page, 'Adicionar filho').click();
+    await page.waitForTimeout(800);
+    await visible(page, 'Sim').click();
+    await page.getByLabel('Nome ou CPF', { exact: true }).filter({ visible: true }).fill(`web ${marker}`);
+    await visible(page, 'Buscar').click();
+    await page.getByLabel(`Candidato ${name}`).filter({ visible: true }).click();
+    await expect(visible(page, 'Reacolher filho')).toBeVisible();
+    await visible(page, 'Reacolher').click();
+
+    // Modal fecha e o filho volta para a lista da contagem, sem cadastro novo.
+    await expect(page.getByText('Reacolher filho').filter({ visible: true })).toHaveCount(0, {
+      timeout: 30_000,
+    });
+    await expect(page.getByLabel(`Detalhes de ${name}`).filter({ visible: true })).toBeVisible({
+      timeout: 30_000,
+    });
+    const response = await api.get(`${API_BASE_URL}/residents/${id}`, { headers: authHeaders });
+    const resident = (await response.json()) as { status: string; houseId: string };
+    expect(resident).toMatchObject({ status: 'ACTIVE', houseId });
   });
 
   // Story 179: o modal existe justamente para o operador conferir "é esse o

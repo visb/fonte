@@ -81,6 +81,7 @@ import {
   MIN_AGE_MESSAGE,
   NotificationType,
   ResidentStatus,
+  Role,
   todayInSaoPaulo,
 } from '@fonte/types';
 import { Repository } from 'typeorm';
@@ -1198,6 +1199,47 @@ describe('ResidentService.readmit', () => {
     await expect(service.readmit(RESIDENT_ID, dto)).resolves.not.toThrow();
   });
 
+  // Story 218 (decisão 3): ficha ARCHIVED (import em lote) também é reacolhida.
+  it('ARCHIVED com casa → nova admission ACTIVE na casa informada', async () => {
+    const { service, admissionCreate, residentUpdate, generateSchedule } = makeReadmitService({
+      status: ResidentStatus.ARCHIVED,
+    });
+
+    await service.readmit(RESIDENT_ID, dto);
+
+    expect(admissionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ residentId: RESIDENT_ID, houseId: dto.houseId, status: 'ACTIVE' }),
+    );
+    const resetCall = residentUpdate.mock.calls.find(([, update]) => update.status === ResidentStatus.ACTIVE);
+    expect(resetCall![1]).toMatchObject({ houseId: dto.houseId, status: ResidentStatus.ACTIVE });
+    expect(generateSchedule).toHaveBeenCalledWith(RESIDENT_ID);
+  });
+
+  it('ARCHIVED sem casa e sem saída → volta com a casa da contagem', async () => {
+    const { service, residentUpdate, notificationsCreate } = makeReadmitService({
+      status: ResidentStatus.ARCHIVED,
+      houseId: null,
+      entryDate: null,
+      exitDate: null,
+    });
+
+    await service.readmit(RESIDENT_ID, { houseId: 'census-house', entryDate: '2025-06-01' });
+
+    const resetCall = residentUpdate.mock.calls.find(([, update]) => update.status === ResidentStatus.ACTIVE);
+    expect(resetCall![1]).toMatchObject({ houseId: 'census-house', entryDate: '2025-06-01' });
+    // A casa da contagem é avisada mesmo a ficha não tendo casa antes.
+    expect(notificationsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ houseId: 'census-house' }),
+    );
+  });
+
+  it('mensagem do 400 cita Alta, Evasão e Arquivado', async () => {
+    const { service } = makeReadmitService({ status: ResidentStatus.ACTIVE });
+    await expect(service.readmit(RESIDENT_ID, dto)).rejects.toThrow(
+      'Apenas filhos com status Alta, Evasão ou Arquivado podem ser reacolhidos.',
+    );
+  });
+
   it('soft-deletes user when resident has userId', async () => {
     const { service, residentUpdate, userSoftDelete } = makeReadmitService({
       status: ResidentStatus.DISCHARGED,
@@ -1273,17 +1315,22 @@ describe('ResidentService.readmit', () => {
     expect(result.status).toBe(ResidentStatus.ACTIVE);
   });
 
-  it('emits the ADMISSION_CREATED notification once for ADMIN', async () => {
+  // Story 218: a casa notificada é a do reacolhimento (dto.houseId), não a da
+  // ficha antiga — ARCHIVED nem tem casa.
+  it('emits ADMISSION_CREATED for ADMIN and for the readmission house', async () => {
     const { service, notificationsCreate } = makeReadmitService({
       status: ResidentStatus.DISCHARGED,
-      houseId: null,
+      houseId: 'old-house',
     });
 
     await service.readmit(RESIDENT_ID, dto);
 
-    expect(notificationsCreate).toHaveBeenCalledTimes(1);
+    expect(notificationsCreate).toHaveBeenCalledTimes(2);
     expect(notificationsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ type: NotificationType.ADMISSION_CREATED }),
+      expect.objectContaining({ type: NotificationType.ADMISSION_CREATED, recipientRole: Role.ADMIN }),
+    );
+    expect(notificationsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: NotificationType.ADMISSION_CREATED, houseId: dto.houseId }),
     );
   });
 
@@ -1418,6 +1465,108 @@ describe('ResidentService.readmit', () => {
       await service.readmit(RESIDENT_ID, { houseId: 'h' });
       expect(admissionSave).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// lookup (story 218) — o comportamento contra o banco real está no e2e
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('ResidentService.lookup', () => {
+  function makeLookupQb(rows: Record<string, unknown>[]) {
+    const qb: Record<string, jest.Mock> = {};
+    ['leftJoin', 'select', 'addSelect', 'where', 'andWhere', 'orderBy', 'addOrderBy', 'limit'].forEach(
+      (name) => {
+        qb[name] = jest.fn().mockReturnValue(qb);
+      },
+    );
+    qb.getRawMany = jest.fn().mockResolvedValue(rows);
+    return qb;
+  }
+
+  function setup(rows: Record<string, unknown>[] = []) {
+    const qb = makeLookupQb(rows);
+    const service = makeService({ createQueryBuilder: jest.fn().mockReturnValue(qb) } as never);
+    const whereCalls = () => qb.andWhere.mock.calls as Array<[string, Record<string, unknown>?]>;
+    return { qb, service, whereCalls };
+  }
+
+  it('só candidatos fora de acolhimento (alta, evasão, arquivado), não excluídos, até 20', async () => {
+    const { qb, service, whereCalls } = setup();
+    await service.lookup('pedro');
+
+    expect(qb.where).toHaveBeenCalledWith('resident.deleted_at IS NULL');
+    expect(whereCalls()).toContainEqual([
+      'resident.status IN (:...statuses)',
+      { statuses: [ResidentStatus.DISCHARGED, ResidentStatus.EVADED, ResidentStatus.ARCHIVED] },
+    ]);
+    expect(qb.limit).toHaveBeenCalledWith(20);
+  });
+
+  it('termo com letras → nome parcial sem acento/caixa', async () => {
+    const { service, whereCalls } = setup();
+    await service.lookup('  João  ');
+
+    expect(whereCalls()).toContainEqual([
+      'unaccent(LOWER(resident.name)) LIKE unaccent(LOWER(:name))',
+      { name: '%João%' },
+    ]);
+  });
+
+  it('escapa % e _ digitados no nome', async () => {
+    const { service, whereCalls } = setup();
+    await service.lookup('a%b_c');
+    expect(whereCalls()).toContainEqual([
+      'unaccent(LOWER(resident.name)) LIKE unaccent(LOWER(:name))',
+      { name: '%a\\%b\\_c%' },
+    ]);
+  });
+
+  it.each(['529.982.247-25', '52998224725'])('termo sem letras (%s) → CPF exato em dígitos', async (term) => {
+    const { service, whereCalls } = setup();
+    await service.lookup(term);
+
+    expect(whereCalls()).toContainEqual(['resident.cpf = :cpf', { cpf: '52998224725' }]);
+    expect(whereCalls().some(([sql]) => sql.includes('resident.name'))).toBe(false);
+  });
+
+  it('devolve só os campos do recorte, com nulos explícitos', async () => {
+    const { service } = setup([
+      {
+        id: 'r1',
+        name: 'Pedro',
+        birthDate: '1990-01-02',
+        photoUrl: '/uploads/p.jpg',
+        status: 'ARCHIVED',
+        lastHouseName: 'Casa Sede',
+        lastExitDate: '2024-05-01',
+        cpf: '52998224725',
+      },
+      { id: 'r2', name: 'Paulo', status: 'EVADED' },
+    ]);
+
+    const result = await service.lookup('pa');
+
+    expect(result).toEqual([
+      {
+        id: 'r1',
+        name: 'Pedro',
+        birthDate: '1990-01-02',
+        photoUrl: '/uploads/p.jpg',
+        status: 'ARCHIVED',
+        lastHouseName: 'Casa Sede',
+        lastExitDate: '2024-05-01',
+      },
+      {
+        id: 'r2',
+        name: 'Paulo',
+        birthDate: null,
+        photoUrl: null,
+        status: 'EVADED',
+        lastHouseName: null,
+        lastExitDate: null,
+      },
+    ]);
   });
 });
 

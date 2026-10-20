@@ -23,6 +23,7 @@ import type {
   ActivityCreateVariables,
   CensusAddResidentVariables,
   CensusConcludeVariables,
+  CensusReadmitResidentVariables,
   IncidentCreateVariables,
   ResidentUpdateStatusVariables,
   StoreroomItemVariables,
@@ -122,6 +123,14 @@ export const SYNC_ITEM_PRESENTATION: Record<string, SyncItemPresentation> = {
     background: '#f0fdfa',
     detail: detailOf<CensusConcludeVariables>((variables) =>
       variables.data ? `${variables.data.confirmedCount} de ${variables.data.total} filhos` : null,
+    ),
+  },
+  [serializeMutationKey(OUTBOX_MUTATION_KEYS.censusReadmitResident)]: {
+    icon: 'person-add-outline',
+    tint: '#0d9488',
+    background: '#f0fdfa',
+    detail: detailOf<CensusReadmitResidentVariables>((variables) =>
+      truncate(variables.residentName),
     ),
   },
   [serializeMutationKey(OUTBOX_MUTATION_KEYS.residentUploadPhoto)]: {

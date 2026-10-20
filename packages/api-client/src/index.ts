@@ -138,6 +138,7 @@ export type {
   ParseSpreadsheetResult,
   ImportAdmission,
   CheckImportConflictResult,
+  ResidentLookupItem,
   CheckImportFilesResult,
   ImportFileMatch,
   ImportContributionsSummary,

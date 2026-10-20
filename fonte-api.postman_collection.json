@@ -2027,7 +2027,31 @@
                 "readmit"
               ]
             },
-            "description": "Reintroduz acolhido com status DISCHARGED ou EVADED. Cria novo registro de Admission e reseta campos de admissão. Acesso digital anterior é revogado via soft-delete do User. Roles: ADMIN, COORDINATOR.\n\nStory 203 — a nova `entryDate` (ausente = hoje) não pode ser futura (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A data de entrada não pode ser no futuro.\" }` nem anterior à saída da última passagem encerrada (maior `exit_date` entre as admissões e a ficha) → 400 `\"A data de entrada não pode ser anterior à saída do acolhimento anterior (dd/mm/aaaa).\"`. Entrada no mesmo dia da última saída passa. Nada é persistido na recusa.\n\nStory 210 — `maritalStatus` aceita `SINGLE`, `MARRIED`, `STABLE_UNION` (União estável), `DIVORCED`, `WIDOWED` (Viúvo(a)) ou `null`."
+            "description": "Reintroduz acolhido com status DISCHARGED ou EVADED. Cria novo registro de Admission e reseta campos de admissão. Acesso digital anterior é revogado via soft-delete do User. Roles: ADMIN, COORDINATOR.\n\nStory 203 — a nova `entryDate` (ausente = hoje) não pode ser futura (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A data de entrada não pode ser no futuro.\" }` nem anterior à saída da última passagem encerrada (maior `exit_date` entre as admissões e a ficha) → 400 `\"A data de entrada não pode ser anterior à saída do acolhimento anterior (dd/mm/aaaa).\"`. Entrada no mesmo dia da última saída passa. Nada é persistido na recusa.\n\nStory 210 — `maritalStatus` aceita `SINGLE`, `MARRIED`, `STABLE_UNION` (União estável), `DIVORCED`, `WIDOWED` (Viúvo(a)) ou `null`.\n\nStory 218 — também aceita status `ARCHIVED` (ficha do import em lote): ficha sem casa volta com a `houseId` informada. Outros status → 400 `\"Apenas filhos com status Alta, Evasão ou Arquivado podem ser reacolhidos.\"`. A notificação de acolhimento vai para a casa do reacolhimento. Aceita header opcional `Idempotency-Key` (UUID) — o reacolhimento pela contagem do ops passa pela outbox offline; o reenvio com a mesma chave devolve a resposta original. Payload mínimo do ops: `{ \"houseId\": \"...\", \"entryDate\": \"AAAA-MM-DD\" }`."
+          }
+        },
+        {
+          "name": "Lookup Residents (reacolhimento)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/residents/lookup?q=joao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "lookup"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "joao",
+                  "description": "Nome parcial (sem acento/caixa) ou CPF (com ou sem máscara, exato). Mínimo 3 caracteres."
+                }
+              ]
+            },
+            "description": "Story 218 — candidatos a reacolhimento para a contagem do ops (\"já passou pela comunidade?\"). Busca na comunidade inteira, só filhos fora de acolhimento (`DISCHARGED`, `EVADED`, `ARCHIVED`), sem excluídos, ordenado por nome, no máximo 20. Termo sem letras é CPF exato (normalizado para dígitos); com letras é nome parcial sem acento/caixa. Roles: ADMIN, COORDINATOR (SERVANT → 403). Termo < 3 caracteres → 400 `\"Digite ao menos 3 caracteres para buscar.\"`.\n\nResposta (recorte LGPD — sem CPF, saúde, familiares ou documentos):\n```json\n[\n  {\n    \"id\": \"uuid\",\n    \"name\": \"João da Silva\",\n    \"birthDate\": \"1990-01-02\",\n    \"photoUrl\": \"/uploads/residents/thumb.jpg\",\n    \"status\": \"ARCHIVED\",\n    \"lastHouseName\": \"Casa Sede\",\n    \"lastExitDate\": \"2024-05-01\"\n  }\n]\n```\n`lastHouseName` = casa do acolhimento mais recente (ou a da ficha); `lastExitDate` = maior saída registrada. Acesso auditado (`resident.lookup`); termo de CPF gravado mascarado."
           }
         },
         {

@@ -74,6 +74,15 @@ export interface CensusAddResidentVariables extends OutboxVariables {
   photoPath?: string;
 }
 
+/** Story 218 — payload mínimo do reacolhimento (decisão 8). */
+export interface CensusReadmitResidentVariables extends OutboxVariables {
+  houseId: string;
+  residentId: string;
+  data: { houseId: string; entryDate: string };
+  /** Só para a tela de pendências — não vai para o backend. */
+  residentName?: string;
+}
+
 export interface ResidentUploadPhotoVariables extends OutboxVariables {
   houseId: string;
   residentId: string;
@@ -583,6 +592,25 @@ export function registerMutationDefaults(
             mimeType: variables.photo?.type,
           },
         );
+      },
+    },
+    options,
+  );
+
+  // Story 218: reacolhe na casa da contagem. Mesmo escopo `census` do cadastro
+  // novo — a fila sobe os dois em ordem.
+  defineOutboxMutation<CensusReadmitResidentVariables, Resident>(
+    queryClient,
+    {
+      key: OUTBOX_MUTATION_KEYS.censusReadmitResident,
+      run: (variables) =>
+        api.residents.readmit(variables.residentId, variables.data, {
+          idempotencyKey: variables.idempotencyKey,
+        }),
+      settled: (client, variables) => {
+        invalidateHouseResidents(client, variables.houseId);
+        void client.invalidateQueries({ queryKey: queryKeys.residents.detail(variables.residentId) });
+        void client.invalidateQueries({ queryKey: queryKeys.residentLookup.all });
       },
     },
     options,

@@ -11,6 +11,15 @@ export const queryKeys = {
     productContributions: (id: string, receivableId: string) =>
       ['resident-product-contributions', id, receivableId] as const,
   },
+  /**
+   * Busca de reacolhimento da contagem (story 218). Primeiro segmento próprio de
+   * propósito: `residents` cairia no store local dos filhos — e o resultado traz
+   * gente de fora da casa, que não vai para o disco (LGPD). Só memória.
+   */
+  residentLookup: {
+    all: ['resident-lookup'] as const,
+    search: (q: string) => ['resident-lookup', q] as const,
+  },
   inventory: {
     catalog: (houseId: string) => ['inventory-catalog', houseId] as const,
   },

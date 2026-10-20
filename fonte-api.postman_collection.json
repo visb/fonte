@@ -1489,7 +1489,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João da Silva\",\n  \"houseId\": \"{{houseId}}\",\n  \"birthDate\": \"1990-01-15\",\n  \"cpf\": \"123.456.789-00\",\n  \"status\": \"ACTIVE\",\n  \"entryDate\": \"2024-01-01\",\n  \"gender\": \"MALE\",\n  \"contactPhone\": \"+5511999999999\",\n  \"email\": \"joao@email.com\",\n  \"nationality\": \"Brasileira\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"maritalStatus\": \"STABLE_UNION\",\n  \"addiction\": \"Álcool\",\n  \"familyInvestment\": \"BASKET_500\",\n  \"familyInvestmentAmount\": null,\n  \"contributionDueDay\": 10\n}"
+              "raw": "{\n  \"name\": \"João da Silva\",\n  \"houseId\": \"{{houseId}}\",\n  \"birthDate\": \"1990-01-15\",\n  \"cpf\": \"529.982.247-25\",\n  \"status\": \"ACTIVE\",\n  \"entryDate\": \"2024-01-01\",\n  \"gender\": \"MALE\",\n  \"contactPhone\": \"+5511999999999\",\n  \"email\": \"joao@email.com\",\n  \"nationality\": \"Brasileira\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"maritalStatus\": \"STABLE_UNION\",\n  \"addiction\": \"Álcool\",\n  \"familyInvestment\": \"BASKET_500\",\n  \"familyInvestmentAmount\": null,\n  \"contributionDueDay\": 10\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/residents",
@@ -1500,8 +1500,44 @@
                 "residents"
               ]
             },
-            "description": "houseId é opcional quando status = ARCHIVED (import em lote de ficha fora da planilha, casa desconhecida); obrigatório para os demais status.\n\nStory 202 — `birthDate`, quando informado, exige 18 anos completos HOJE (data no fuso America/Sao_Paulo). Menor → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }` e nada é persistido. Nulo/ausente passa (campo opcional).\n\nStory 203 — datas de entrada e saída (\"hoje\" no fuso America/Sao_Paulo; hoje é permitido): `entryDate` futura → 400 `{ \"statusCode\": 400, \"message\": \"A data de entrada não pode ser no futuro.\" }`; `exitDate` antes da entrada → 400 `\"A data de saída não pode ser anterior à data de entrada (dd/mm/aaaa).\"` (mesmo dia passa); `exitDate` futura → 400 `\"A data de saída não pode ser no futuro.\"`. Nada é persistido. Vale também para a contagem do ops (`POST /census/residents`).\n\nStory 205 — `ministryId` (UUID, opcional) grava o ministério no filho e no acolhimento. Só vale para filho em acolhimento (status ACTIVE/DISCIPLINE/TEMP_LEAVE; ausente = PRE_ADMISSION) na casa do ministério; caso contrário 400 `\"Só filho em acolhimento nesta casa pode participar do ministério.\"`. No import em lote (`POST /residents/import/commit`), ficha fora de acolhimento (ARCHIVED, alta, evasão) é importada SEM ministério em vez de recusada.\n\nStory 210 — `maritalStatus` aceita `SINGLE` (Solteiro(a)), `MARRIED` (Casado(a)), `STABLE_UNION` (União estável), `DIVORCED` (Divorciado(a)) e `WIDOWED` (Viúvo(a)), ou `null`. Outro valor → 400. Vale também para `PATCH /residents/:id`, readmissão (`POST /residents/:id/readmit`) e import em lote (`POST /residents/import/commit`). No parse da ficha `.docx`, \"União estável\"/\"Amasiado(a)\"/\"Convivente\"/\"Companheiro(a)\" → `STABLE_UNION` e \"Viúvo(a)\" → `WIDOWED`."
-          }
+            "description": "houseId é opcional quando status = ARCHIVED (import em lote de ficha fora da planilha, casa desconhecida); obrigatório para os demais status.\n\nStory 202 — `birthDate`, quando informado, exige 18 anos completos HOJE (data no fuso America/Sao_Paulo). Menor → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }` e nada é persistido. Nulo/ausente passa (campo opcional).\n\nStory 203 — datas de entrada e saída (\"hoje\" no fuso America/Sao_Paulo; hoje é permitido): `entryDate` futura → 400 `{ \"statusCode\": 400, \"message\": \"A data de entrada não pode ser no futuro.\" }`; `exitDate` antes da entrada → 400 `\"A data de saída não pode ser anterior à data de entrada (dd/mm/aaaa).\"` (mesmo dia passa); `exitDate` futura → 400 `\"A data de saída não pode ser no futuro.\"`. Nada é persistido. Vale também para a contagem do ops (`POST /census/residents`).\n\nStory 205 — `ministryId` (UUID, opcional) grava o ministério no filho e no acolhimento. Só vale para filho em acolhimento (status ACTIVE/DISCIPLINE/TEMP_LEAVE; ausente = PRE_ADMISSION) na casa do ministério; caso contrário 400 `\"Só filho em acolhimento nesta casa pode participar do ministério.\"`. No import em lote (`POST /residents/import/commit`), ficha fora de acolhimento (ARCHIVED, alta, evasão) é importada SEM ministério em vez de recusada.\n\nStory 210 — `maritalStatus` aceita `SINGLE` (Solteiro(a)), `MARRIED` (Casado(a)), `STABLE_UNION` (União estável), `DIVORCED` (Divorciado(a)) e `WIDOWED` (Viúvo(a)), ou `null`. Outro valor → 400. Vale também para `PATCH /residents/:id`, readmissão (`POST /residents/:id/readmit`) e import em lote (`POST /residents/import/commit`). No parse da ficha `.docx`, \"União estável\"/\"Amasiado(a)\"/\"Convivente\"/\"Companheiro(a)\" → `STABLE_UNION` e \"Viúvo(a)\" → `WIDOWED`.\n\nStory 219 — CPF do filho é único entre filhos não excluídos e é gravado só com dígitos (`529.982.247-25` e `52998224725` são o mesmo CPF; a resposta devolve dígitos — mascarado pelo interceptor para quem não é privilegiado). `cpf` opcional; vazio → `null`. CPF com tamanho/dígito verificador errado (ou sequência repetida `111…`) → 400 `{ \"statusCode\": 400, \"message\": [\"CPF inválido.\"] }`. CPF já usado por outro filho não excluído → 409 `{ \"statusCode\": 409, \"error\": \"Conflict\", \"code\": \"RESIDENT_CPF_IN_USE\", \"message\": \"Já existe um filho com este CPF: <nome> (<status>).\", \"conflictResidentId\": \"<uuid>\" }`. Filho excluído (soft delete) não conta. Vale também para a contagem do ops (`POST /census/residents`) e o import em lote (`POST /residents/import/commit`)."
+          },
+          "response": [
+            {
+              "name": "400 — CPF inválido",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"name\": \"João da Silva\",\n  \"houseId\": \"{{houseId}}\",\n  \"cpf\": \"123.456.789-00\"\n}" },
+                "url": {
+                  "raw": "{{baseUrl}}/residents",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"message\": [\"CPF inválido.\"],\n  \"error\": \"Bad Request\"\n}"
+            },
+            {
+              "name": "409 — CPF em uso",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"name\": \"João da Silva\",\n  \"houseId\": \"{{houseId}}\",\n  \"cpf\": \"529.982.247-25\"\n}" },
+                "url": {
+                  "raw": "{{baseUrl}}/residents",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents"]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 409,\n  \"error\": \"Conflict\",\n  \"code\": \"RESIDENT_CPF_IN_USE\",\n  \"message\": \"Já existe um filho com este CPF: João da Silva (Alta).\",\n  \"conflictResidentId\": \"{{residentId}}\"\n}"
+            }
+          ]
         },
         {
           "name": "Update Resident",
@@ -1533,8 +1569,44 @@
                 "{{residentId}}"
               ]
             },
-            "description": "ADMIN e COORDINATOR (SERVANT recebe 403).\n\nStory 196 — guard de transição de saída: status DISCHARGED ou EVADED só é aceito a partir de ACTIVE, DISCIPLINE ou TEMP_LEAVE (REMOVABLE_RESIDENT_STATUSES). A partir de qualquer outro status (DISCHARGED, EVADED, ARCHIVED, PRE_ADMISSION, CENSUS_ADDED, REJECTED_CENSUS) a resposta é 400 com a mensagem por status de origem — ex.: `{ \"statusCode\": 400, \"message\": \"Filho já encerrado (evasão) não pode receber alta.\" }`. Nada é gravado e nenhum efeito (follow-up, cancelamento do carnê, notificação) é disparado.\n\nReenviar o MESMO status que o filho já tem continua 200 (reenvio idempotente da fila offline do ops). Mudar apenas `houseId` (transferência) não é restringido.\n\nStory 202 — `birthDate` só é julgado quando vem no payload E difere do gravado: nova data sem 18 anos completos hoje (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`, sem gravar nem disparar efeitos. Ficha legada com nascimento de menor continua salvável editando outros campos (ou reenviando a mesma data).\n\nStory 203 — `entryDate`/`exitDate` só são julgadas quando vêm no payload E diferem das gravadas; aí o par resultante (gravado ∪ payload) é checado: entrada futura → 400 `\"A data de entrada não pode ser no futuro.\"`; saída (alta/evasão) antes da entrada → 400 `\"A data de saída não pode ser anterior à data de entrada (dd/mm/aaaa).\"`; saída futura → 400 `\"A data de saída não pode ser no futuro.\"`. A recusa vem antes de gravar, do follow-up, do `cancelAfterExit` e da notificação. O guard de transição (story 196) é avaliado primeiro. Reenvio idempotente com as mesmas datas e ficha legada sem datas no payload → 200.\n\nStory 205 — ministério na ficha: `ministryId` (UUID ou null) troca/tira o ministério e emite `MINISTRY_CHANGE` na linha do tempo. O estado resultante é validado: filho fora de acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE) ou ministério de outra casa/excluído → 400 `\"Só filho em acolhimento nesta casa pode participar do ministério.\"`. Saída da comunidade (status fora de acolhimento, ex.: alta/evasão) ou transferência (`houseId` novo) zera `ministryId` (filho e acolhimento) e a liderança de ministério, na mesma transação, e emite `MINISTRY_CHANGE`. Transição recusada pelo guard da 196/203 não limpa nada. Readmissão volta sem ministério."
-          }
+            "description": "ADMIN e COORDINATOR (SERVANT recebe 403).\n\nStory 196 — guard de transição de saída: status DISCHARGED ou EVADED só é aceito a partir de ACTIVE, DISCIPLINE ou TEMP_LEAVE (REMOVABLE_RESIDENT_STATUSES). A partir de qualquer outro status (DISCHARGED, EVADED, ARCHIVED, PRE_ADMISSION, CENSUS_ADDED, REJECTED_CENSUS) a resposta é 400 com a mensagem por status de origem — ex.: `{ \"statusCode\": 400, \"message\": \"Filho já encerrado (evasão) não pode receber alta.\" }`. Nada é gravado e nenhum efeito (follow-up, cancelamento do carnê, notificação) é disparado.\n\nReenviar o MESMO status que o filho já tem continua 200 (reenvio idempotente da fila offline do ops). Mudar apenas `houseId` (transferência) não é restringido.\n\nStory 202 — `birthDate` só é julgado quando vem no payload E difere do gravado: nova data sem 18 anos completos hoje (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`, sem gravar nem disparar efeitos. Ficha legada com nascimento de menor continua salvável editando outros campos (ou reenviando a mesma data).\n\nStory 203 — `entryDate`/`exitDate` só são julgadas quando vêm no payload E diferem das gravadas; aí o par resultante (gravado ∪ payload) é checado: entrada futura → 400 `\"A data de entrada não pode ser no futuro.\"`; saída (alta/evasão) antes da entrada → 400 `\"A data de saída não pode ser anterior à data de entrada (dd/mm/aaaa).\"`; saída futura → 400 `\"A data de saída não pode ser no futuro.\"`. A recusa vem antes de gravar, do follow-up, do `cancelAfterExit` e da notificação. O guard de transição (story 196) é avaliado primeiro. Reenvio idempotente com as mesmas datas e ficha legada sem datas no payload → 200.\n\nStory 205 — ministério na ficha: `ministryId` (UUID ou null) troca/tira o ministério e emite `MINISTRY_CHANGE` na linha do tempo. O estado resultante é validado: filho fora de acolhimento (ACTIVE/DISCIPLINE/TEMP_LEAVE) ou ministério de outra casa/excluído → 400 `\"Só filho em acolhimento nesta casa pode participar do ministério.\"`. Saída da comunidade (status fora de acolhimento, ex.: alta/evasão) ou transferência (`houseId` novo) zera `ministryId` (filho e acolhimento) e a liderança de ministério, na mesma transação, e emite `MINISTRY_CHANGE`. Transição recusada pelo guard da 196/203 não limpa nada. Readmissão volta sem ministério.\n\nStory 219 — `cpf` vai para o banco só com dígitos (máscara aceita na entrada; vazio/null limpa). Dígito verificador e unicidade só são julgados quando o CPF MUDA: ficha legada com CPF inválido continua salvável editando outro campo (reenviar o mesmo CPF passa). Mudou para CPF inválido → 400 `{ \"statusCode\": 400, \"message\": \"CPF inválido.\" }`. Mudou para CPF de outro filho não excluído → 409 `{ \"statusCode\": 409, \"error\": \"Conflict\", \"code\": \"RESIDENT_CPF_IN_USE\", \"message\": \"Já existe um filho com este CPF: <nome> (<status>).\", \"conflictResidentId\": \"<uuid>\" }` (também quando a corrida é perdida no índice único)."
+          },
+          "response": [
+            {
+              "name": "409 — CPF em uso",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"cpf\": \"529.982.247-25\"\n}" },
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}"]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 409,\n  \"error\": \"Conflict\",\n  \"code\": \"RESIDENT_CPF_IN_USE\",\n  \"message\": \"Já existe um filho com este CPF: Pedro Souza (Ativo).\",\n  \"conflictResidentId\": \"00000000-0000-4000-8000-000000000219\"\n}"
+            },
+            {
+              "name": "400 — CPF inválido",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"cpf\": \"111.111.111-11\"\n}" },
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"message\": \"CPF inválido.\",\n  \"error\": \"Bad Request\"\n}"
+            }
+          ]
         },
         {
           "name": "Update Resident Identity (Admin)",
@@ -1548,7 +1620,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João da Silva Corrigido\",\n  \"cpf\": \"12345678900\",\n  \"rg\": \"123456789\",\n  \"birthDate\": \"1990-05-10\",\n  \"gender\": \"MALE\"\n}"
+              "raw": "{\n  \"name\": \"João da Silva Corrigido\",\n  \"cpf\": \"52998224725\",\n  \"rg\": \"123456789\",\n  \"birthDate\": \"1990-05-10\",\n  \"gender\": \"MALE\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/residents/{{residentId}}/identity",
@@ -1561,8 +1633,44 @@
                 "identity"
               ]
             },
-            "description": "Correção dos dados de identidade (nome, CPF, RG, nascimento, gênero) na reintrodução (story 147). Somente ADMIN; a resposta revela CPF/RG completos (RevealSensitive).\n\nStory 202 — `birthDate` alterado para quem não tem 18 anos completos hoje (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`. A mesma data já gravada (ficha legada) passa."
-          }
+            "description": "Correção dos dados de identidade (nome, CPF, RG, nascimento, gênero) na reintrodução (story 147). Somente ADMIN; a resposta revela CPF/RG completos (RevealSensitive).\n\nStory 202 — `birthDate` alterado para quem não tem 18 anos completos hoje (America/Sao_Paulo) → 400 `{ \"statusCode\": 400, \"message\": \"A pessoa precisa ter pelo menos 18 anos. Confira a data de nascimento.\" }`. A mesma data já gravada (ficha legada) passa.\n\nStory 219 — mesma regra do `PATCH /residents/:id`: `cpf` em dígitos; só julgado se mudar. Inválido → 400 `\"CPF inválido.\"`; CPF de outro filho não excluído → 409 com `code: \"RESIDENT_CPF_IN_USE\"` e `conflictResidentId`."
+          },
+          "response": [
+            {
+              "name": "409 — CPF em uso",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"cpf\": \"52998224725\"\n}" },
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}/identity",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}", "identity"]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 409,\n  \"error\": \"Conflict\",\n  \"code\": \"RESIDENT_CPF_IN_USE\",\n  \"message\": \"Já existe um filho com este CPF: Pedro Souza (Arquivado).\",\n  \"conflictResidentId\": \"00000000-0000-4000-8000-000000000219\"\n}"
+            },
+            {
+              "name": "400 — CPF inválido",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"cpf\": \"123.456.789-00\"\n}" },
+                "url": {
+                  "raw": "{{baseUrl}}/residents/{{residentId}}/identity",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["residents", "{{residentId}}", "identity"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"message\": \"CPF inválido.\",\n  \"error\": \"Bad Request\"\n}"
+            }
+          ]
         },
         {
           "name": "Delete Resident",

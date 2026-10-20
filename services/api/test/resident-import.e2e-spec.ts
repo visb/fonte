@@ -3,16 +3,13 @@ import * as request from 'supertest';
 import * as path from 'path';
 import { FamilyInvestment, FollowUpType } from '@fonte/types';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
+import { maskCpf, randomCpf } from './helpers/cpf';
 
 const FIXTURE = path.join(__dirname, 'fixtures/import-residents.xlsx');
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-/** CPF fictício de 11 dígitos, único por chamada (dígitos rápidos + sequência). */
-let cpfSeq = 0;
-function uniqueCpf(): string {
-  cpfSeq += 1;
-  return `${String(Date.now()).slice(-7)}${String(cpfSeq).padStart(4, '0')}`;
-}
+/** Story 219: CPF fictício válido (DV correto), aleatório por chamada. */
+const uniqueCpf = randomCpf;
 
 describe('Resident import — parse spreadsheet (e2e)', () => {
   let app: INestApplication;
@@ -314,12 +311,26 @@ describe('Resident import — conflito e commit (e2e)', () => {
         .expect(201);
       createdIds.push(first.body.resident.id);
 
-      await request(app.getHttpServer())
+      // Story 219: mesma checagem indexada do cadastro manual, com o CPF em
+      // outro formato (máscara da ficha) e o dono no corpo do 409.
+      const dup = await request(app.getHttpServer())
         .post(`${BASE}/residents/import/commit`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ ...payload, resident: { ...payload.resident, name: `Dup2 ${Date.now()}` } })
+        .send({ ...payload, resident: { ...payload.resident, cpf: maskCpf(cpf), name: `Dup2 ${Date.now()}` } })
         .expect(409);
+      expect(dup.body.conflictResidentId).toBe(first.body.resident.id);
     });
+
+    it('story 219: CPF com DV inválido → 400', () =>
+      request(app.getHttpServer())
+        .post(`${BASE}/residents/import/commit`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          resident: { name: `DV Ruim ${Date.now()}`, houseId, cpf: '111.222.333-44' },
+          relatives: [],
+          contributionMonths: [],
+        })
+        .expect(400));
 
     it('sem relatives → cria mesmo assim (regra ≥1 familiar vale só no acolhimento manual)', async () => {
       const res = await request(app.getHttpServer())

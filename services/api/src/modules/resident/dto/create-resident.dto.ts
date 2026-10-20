@@ -16,6 +16,7 @@ import {
 import { Transform, Type } from 'class-transformer';
 import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/types';
 import { ImportAdmissionDto } from './import-admission.dto';
+import { IsCpf, NormalizeCpf } from '../../../common/lib/cpf';
 
 export class CreateResidentDto {
   @IsString()
@@ -32,8 +33,11 @@ export class CreateResidentDto {
   @IsDateString()
   birthDate?: string | null;
 
+  // Story 219: gravado só com dígitos (a máscara chega e sai no `@NormalizeCpf`);
+  // criação (adm, contagem do ops e import) é sempre escrita nova → DV julgado.
   @IsOptional()
-  @IsString()
+  @NormalizeCpf()
+  @IsCpf()
   cpf?: string | null;
 
   @IsOptional()

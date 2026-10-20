@@ -3,6 +3,7 @@ import { FamilyInvestment, Gender, MaritalStatus, ResidentStatus } from '@fonte/
 import type { Resident } from '@fonte/api-client';
 import { displayCpf, displayRg, maskPhone } from '@/lib/masks';
 import { birthDateField } from '@/lib/birthDate';
+import { cpfField, cpfPayloadValue } from '@/lib/cpf';
 import { refineAdmissionDates } from './admissionDates';
 
 /**
@@ -15,6 +16,8 @@ export const makeResidentSchema = (
     initialBirthDate?: string | null;
     /** Story 203: par entrada/saída carregado na edição (só julga o que mudar). */
     initialAdmissionDates?: { entryDate?: string | null; exitDate?: string | null };
+    /** Story 219: CPF carregado na edição (DV só é julgado se o CPF mudar). */
+    initialCpf?: string | null;
   } = {},
 ) => z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -24,7 +27,7 @@ export const makeResidentSchema = (
   ministryId: z.string().optional(),
   status: z.nativeEnum(ResidentStatus).optional(),
   birthDate: birthDateField(options.initialBirthDate),
-  cpf: z.string().optional(),
+  cpf: cpfField(options.initialCpf),
   rg: z.string().optional(),
   nationality: z.string().optional(),
   city: z.string().optional(),
@@ -101,6 +104,12 @@ export const ADMISSAO_FIELDS = [
 export function buildResidentPayload(data: ResidentFormData): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
+    // Story 219: CPF vai só com dígitos; redigido (`***`) sai do payload.
+    if (key === 'cpf') {
+      const cpf = cpfPayloadValue(value as string | undefined);
+      if (cpf !== undefined) payload.cpf = cpf;
+      continue;
+    }
     if (value === '' || value === undefined) {
       payload[key] = null;
       continue;

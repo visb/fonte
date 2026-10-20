@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { maskCpfInput, normalizeCpf } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { useCensusAddResident } from '../hooks/useCensus';
@@ -69,7 +70,8 @@ export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props
           entryDate: values.entryDate,
           gender: values.gender,
           birthDate: values.birthDate || null,
-          cpf: values.cpf?.trim() || null,
+          // Story 219: CPF só com dígitos (a máscara é só de digitação).
+          cpf: normalizeCpf(values.cpf),
           rg: values.rg?.trim() || null,
           nationality: values.nationality?.trim() || null,
         },
@@ -87,6 +89,9 @@ export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props
             'Sem conexão agora: o filho será enviado assim que a conexão voltar.',
           );
         },
+        // Rejeição na hora (ex.: 409 de CPF em uso — "Já existe um filho com
+        // este CPF: <nome> (<status>)."). Se já estava na fila, o mesmo erro
+        // vai para /sync pela outbox (story 219, decisão 11).
         onFailed: (error) =>
           Alert.alert('Erro', getErrorMessage(error, 'Não foi possível adicionar o filho.')),
       },
@@ -125,6 +130,8 @@ export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props
               label="CPF"
               placeholder="000.000.000-00"
               keyboardType="number-pad"
+              mask={maskCpfInput}
+              error={errors.cpf?.message}
             />
             <AddResidentTextField control={control} name="rg" label="RG" placeholder="Número do RG" />
             <AddResidentField label="Gênero">

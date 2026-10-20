@@ -8,6 +8,10 @@ import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { FamilyInvestment, todayInSaoPaulo } from '@fonte/types';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
+import { maskCpf, randomCpf } from './helpers/cpf';
+
+// Story 219: CPF do filho é único e validado — fixture com CPF válido por execução.
+const residentCpf = randomCpf();
 
 /**
  * Story 199 — auditoria de ações dos usuários.
@@ -175,7 +179,7 @@ describe('Audit trail (e2e)', () => {
         .send({
           name: `Filho ${tag}`,
           houseId,
-          cpf: '123.456.789-00',
+          cpf: maskCpf(residentCpf),
           entryDate: todayInSaoPaulo(),
           familyInvestment: FamilyInvestment.PAYMENT_700,
           contributionDueDay: 10,
@@ -192,7 +196,7 @@ describe('Audit trail (e2e)', () => {
       expect(created).toMatchObject({ targetName: `Filho ${tag}`, houseId, outcome: 'SUCCESS' });
       const detail = await asAdmin(http().get(`${BASE}/audit/events/${created.id}`)).expect(200);
       const cpf = detail.body.changes.find((c: { field: string }) => c.field === 'cpf');
-      expect(cpf).toEqual({ field: 'cpf', before: null, after: '***00', redacted: true });
+      expect(cpf).toEqual({ field: 'cpf', before: null, after: `***${residentCpf.slice(-2)}`, redacted: true });
       expect(detail.body.path).toBe('/api/v1/residents');
     });
 

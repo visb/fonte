@@ -2,9 +2,12 @@ import { z } from 'zod';
 import {
   ADMISSION_DATE_MESSAGES,
   Gender,
+  INVALID_CPF_MESSAGE,
   isAdultBirthDate,
   isDateBefore,
   isFutureDate,
+  isValidCpf,
+  normalizeCpf,
   todayInSaoPaulo,
 } from '@fonte/types';
 
@@ -35,7 +38,12 @@ export const addResidentSchema = z
     // marcas, nascimento digitado errado passaria como "não informado".
     entryDateInvalid: z.boolean().optional(),
     birthDateInvalid: z.boolean().optional(),
-    cpf: z.string().optional(),
+    // Story 219: sem rede não há como checar unicidade — aqui só formato e DV
+    // (o 409 de CPF em uso volta do servidor; na fila, vai para /sync).
+    cpf: z
+      .string()
+      .optional()
+      .refine((v) => !normalizeCpf(v) || isValidCpf(v), { message: INVALID_CPF_MESSAGE }),
     rg: z.string().optional(),
     gender: z.nativeEnum(Gender),
     nationality: z.string().optional(),

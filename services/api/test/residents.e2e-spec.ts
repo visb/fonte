@@ -5,8 +5,9 @@ process.env.NODE_ENV = 'test';
 import { randomUUID } from 'crypto';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { ResidentStatus } from '@fonte/types';
+import { RESIDENT_CPF_IN_USE_CODE, ResidentStatus } from '@fonte/types';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
+import { maskCpf, randomCpf } from './helpers/cpf';
 
 describe('ResidentController (e2e)', () => {
   let app: INestApplication;
@@ -355,22 +356,50 @@ describe('ResidentController (e2e)', () => {
       const created = await request(app.getHttpServer())
         .post(`${BASE}/residents`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ name: `Identidade E2E ${Date.now()}`, houseId, cpf: '12345678900', rg: '123456789' })
+        .send({ name: `Identidade E2E ${Date.now()}`, houseId, cpf: randomCpf(), rg: '123456789' })
         .expect(201);
       residentId = created.body.id;
       createdIds.push(residentId);
     });
 
     it('ADMIN corrige a identidade → 200 e resposta revela CPF/RG completos', async () => {
+      const newCpf = randomCpf();
       const res = await request(app.getHttpServer())
         .patch(`${BASE}/residents/${residentId}/identity`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ name: 'Nome Corrigido', cpf: '98765432100', rg: '987654321', gender: 'MALE' })
+        .send({ name: 'Nome Corrigido', cpf: maskCpf(newCpf), rg: '987654321', gender: 'MALE' })
         .expect(200);
       expect(res.body.name).toBe('Nome Corrigido');
       // RevealSensitive: ADMIN recebe o documento cru completo, não redigido.
-      expect(res.body.cpf).toBe('98765432100');
+      // Story 219: gravado só com dígitos (a máscara enviada é descartada).
+      expect(res.body.cpf).toBe(newCpf);
       expect(res.body.rg).toBe('987654321');
+    });
+
+    it('story 219: CPF de outro filho → 409 com conflictResidentId; CPF inválido → 400', async () => {
+      const otherCpf = randomCpf();
+      const other = await request(app.getHttpServer())
+        .post(`${BASE}/residents`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `Dono CPF Identidade ${Date.now()}`, houseId, cpf: otherCpf })
+        .expect(201);
+      createdIds.push(other.body.id);
+
+      const conflict = await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${residentId}/identity`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ cpf: otherCpf })
+        .expect(409);
+      expect(conflict.body).toMatchObject({
+        code: RESIDENT_CPF_IN_USE_CODE,
+        conflictResidentId: other.body.id,
+      });
+
+      await request(app.getHttpServer())
+        .patch(`${BASE}/residents/${residentId}/identity`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ cpf: '123.456.789-00' })
+        .expect(400);
     });
 
     it('COORDINATOR → 403 (gate ADMIN-only)', () =>

@@ -150,7 +150,10 @@ describe('ImportService', () => {
     const admissionCreate = jest.fn((x) => x);
     const admissionSave = jest.fn((x) => Promise.resolve(x));
 
+    // Story 219: checagem de CPF por consulta indexada na transação.
+    const managerQuery = jest.fn();
     const managerMock = {
+      query: managerQuery,
       getRepository: jest.fn((entity: { name: string }) => {
         if (entity.name === 'Relative') {
           return { create: relativeCreate, save: relativeSave };
@@ -166,7 +169,8 @@ describe('ImportService', () => {
 
     beforeEach(() => {
       jest.clearAllMocks();
-      residentTxFind.mockResolvedValue([]); // sem conflito por padrão
+      residentTxFind.mockResolvedValue([]);
+      managerQuery.mockResolvedValue([]); // sem conflito de CPF por padrão
       residentTxFindOne.mockResolvedValue(resident({ id: 'new-1', name: 'Maria' }));
       create.mockResolvedValue({ id: 'new-1', name: 'Maria' });
       bulkCreateContributions.mockResolvedValue({ created: 2, skipped: 0 });
@@ -285,9 +289,18 @@ describe('ImportService', () => {
     });
 
     it('conflito por CPF existente → ConflictException e nada persistido (rollback)', async () => {
-      residentTxFind.mockResolvedValue([resident({ id: 'dup', cpf: '55566677788' })]);
+      managerQuery.mockResolvedValue([{ id: 'dup', name: 'Maria Antiga', status: ResidentStatus.ACTIVE }]);
 
-      await expect(service.commit(commitDto(), 'user-1')).rejects.toBeInstanceOf(ConflictException);
+      const error = await service.commit(commitDto(), 'user-1').catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ConflictException);
+      // Story 219: mesmo corpo do cadastro manual, com o dono.
+      expect((error as ConflictException).getResponse()).toMatchObject({
+        conflictResidentId: 'dup',
+        message: 'Já existe um filho com este CPF: Maria Antiga (Ativo).',
+      });
+      // Consulta indexada pelo CPF em dígitos — não carrega a tabela inteira.
+      expect(managerQuery).toHaveBeenCalledWith(expect.stringContaining('WHERE cpf = $1'), ['55566677788', null]);
+      expect(residentTxFind).not.toHaveBeenCalled();
 
       expect(create).not.toHaveBeenCalled();
       expect(relativeSave).not.toHaveBeenCalled();
@@ -438,13 +451,14 @@ describe('ImportService', () => {
 
     it('sem CPF na ficha não revalida conflito (segue o commit)', async () => {
       // Mesmo com um filho existente, sem CPF a checagem por CPF é pulada.
-      residentTxFind.mockResolvedValue([resident({ id: 'other', cpf: '99988877766' })]);
+      managerQuery.mockResolvedValue([{ id: 'other', name: 'Outro', status: ResidentStatus.ACTIVE }]);
       const dto = commitDto();
       (dto.resident as { cpf?: string | null }).cpf = null;
 
       await service.commit(dto, 'user-1');
 
       expect(create).toHaveBeenCalledTimes(1);
+      expect(managerQuery).not.toHaveBeenCalled();
     });
 
     // Story 120: filho que já saiu deriva ALTA/EVASÃO pela permanência.

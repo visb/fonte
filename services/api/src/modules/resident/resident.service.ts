@@ -5,7 +5,7 @@ import * as bcrypt from 'bcrypt';
 // require form: tsconfig lacks esModuleInterop, so `import sharp from 'sharp'`
 // emits an undefined default for sharp's CommonJS module.
 const sharp = require('sharp') as typeof import('sharp');
-import { ACTIVE_RESIDENT_STATUSES, AuditAction, AuditTargetType, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isMinistryEligibleResident, isTemplateAvailableForStatus, MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE, NotificationType, PRESENT_RESIDENT_STATUSES, REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability, todayInSaoPaulo } from '@fonte/types';
+import { ACTIVE_RESIDENT_STATUSES, AuditAction, AuditTargetType, ContributionReportItem, ContributionsReportResponse, FamilyInvestment, FollowUpType, isMinistryEligibleResident, isTemplateAvailableForStatus, MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE, normalizeCpf, NotificationType, PRESENT_RESIDENT_STATUSES, REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role, ServantRank, TemplateAvailability, todayInSaoPaulo } from '@fonte/types';
 import { Logger } from '@nestjs/common';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 
@@ -59,6 +59,7 @@ import { StorageService } from '../storage/storage.service';
 import { toDbTimestamp } from '../../common/lib/db-timestamp';
 import { assertAdultBirthDate } from '../../common/lib/birth-date';
 import { assertAdmissionDates } from './admission-dates';
+import { assertCpfAvailable, assertCpfChange, rethrowCpfViolation } from './resident-cpf';
 import { AuditService, loadById, TrackOptions } from '../audit/audit.service';
 import {
   RESIDENT_ATTACHMENT_AUDIT_FIELDS,
@@ -169,7 +170,7 @@ export class ResidentService {
       if (digits.length > 0) {
         qb.andWhere(
           `(unaccent(LOWER(resident.name)) LIKE unaccent(LOWER(:search))
-            OR REPLACE(REPLACE(resident.cpf, '.', ''), '-', '') LIKE :cpfSearch)`,
+            OR resident.cpf LIKE :cpfSearch)`,
           { search: `%${search}%`, cpfSearch: `%${digits}%` },
         );
       } else {
@@ -342,6 +343,10 @@ export class ResidentService {
         manager,
       );
     }
+    // Story 219: CPF só com dígitos e único entre filhos não excluídos (o DTO
+    // já normalizou e julgou o DV; a normalização aqui cobre chamada interna).
+    if (dto.cpf !== undefined) dto.cpf = normalizeCpf(dto.cpf);
+    await assertCpfAvailable(manager ?? this.dataSource, dto.cpf);
     const admissionRepo = manager ? manager.getRepository(Admission) : this.admissionRepository;
 
     const saved = await this.trackResident(
@@ -352,7 +357,7 @@ export class ResidentService {
         return repo.save(repo.create(dto));
       },
       { manager, resolveId: (r) => r.id },
-    );
+    ).catch((error) => rethrowCpfViolation(error, this.dataSource, dto.cpf));
 
     const admission = admissionRepo.create({
       residentId: saved.id,
@@ -468,6 +473,8 @@ export class ResidentService {
       { entryDate: dto.entryDate, exitDate: dto.exitDate },
       { previous: { entryDate: before.entryDate, exitDate: before.exitDate } },
     );
+    // Story 219: CPF em dígitos; DV e unicidade só se o CPF mudou.
+    await this.assertCpfWritable(id, dto, before.cpf);
 
     // Story 205 — vínculo com ministério. Roda DEPOIS dos guards de transição
     // (196) e de data (203): transição recusada não valida nem limpa nada.
@@ -499,7 +506,7 @@ export class ResidentService {
           [ledMinistryIds],
         );
       }
-    });
+    }).catch((error) => rethrowCpfViolation(error, this.dataSource, effective.cpf, id));
 
     // "Hoje" no fuso da operação (story 203): o dia UTC já é amanhã após 21h BRT.
     const today = todayInSaoPaulo();
@@ -556,10 +563,28 @@ export class ResidentService {
     // `findOne` valida a existência (lança NotFound) antes de gravar.
     const before = await this.findOne(id);
     assertAdultBirthDate(dto.birthDate, before.birthDate);
+    await this.assertCpfWritable(id, dto, before.cpf);
     await this.trackResident(id, AuditAction.RESIDENT_IDENTITY_UPDATE, (m) =>
       m.getRepository(Resident).update(id, dto),
-    );
+    ).catch((error) => rethrowCpfViolation(error, this.dataSource, dto.cpf, id));
     return this.findOne(id);
+  }
+
+  /**
+   * Story 219 (decisão 3): na edição o CPF vai em dígitos e só é julgado se
+   * MUDOU — ficha legada com CPF inválido continua salvável editando outro
+   * campo. Mudou para inválido → 400; para CPF de outro filho → 409.
+   */
+  private async assertCpfWritable(
+    id: string,
+    dto: { cpf?: string | null },
+    previous: string | null | undefined,
+  ): Promise<void> {
+    if (dto.cpf === undefined) return;
+    dto.cpf = normalizeCpf(dto.cpf);
+    if (assertCpfChange(dto.cpf, previous)) {
+      await assertCpfAvailable(this.dataSource, dto.cpf, id);
+    }
   }
 
   // Best-effort: a notification failure must never break the resident update.

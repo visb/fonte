@@ -57,6 +57,8 @@ describe('DataRightsService.anonymizeResident', () => {
     expect(updateSqls.some((s) => s.includes('UPDATE residents SET') && s.includes("name = 'Titular anonimizado'"))).toBe(true);
     expect(updateSqls.some((s) => s.includes('UPDATE relatives SET'))).toBe(true);
     expect(updateSqls.some((s) => s.includes('DELETE FROM resident_attachments'))).toBe(true);
+    // Story 219: o CPF antigo guardado pela dedup não sobrevive à anonimização.
+    expect(updateSqls.some((s) => s.includes('DELETE FROM resident_cpf_dedup_log'))).toBe(true);
     // Story 199: os diffs da trilha ligados ao titular perdem os valores, na transação.
     const redact = query.mock.calls.find((c) => (c[0] as string).includes('UPDATE audit_logs SET changes'));
     expect(redact?.[1]).toEqual(['r1', 'resident']);

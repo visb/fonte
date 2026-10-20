@@ -1,5 +1,6 @@
 import {
   type Control,
+  type FieldError,
   type FieldErrors,
   type FieldValues,
   type Path,
@@ -12,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionTitle, FormField } from "@/components/shared/FormField";
 import { ControlledDateInput } from "@/components/shared/ControlledDateInput";
+import { CpfFieldError } from "@/components/shared/CpfFieldError";
 import { maskCPF, maskRG, maskPhone, withMask } from "@/lib/masks";
 import { maxBirthDate } from "@/lib/birthDate";
 
@@ -76,6 +78,8 @@ export function PersonalDataFields<T extends FieldValues>({
         )}
         <FormField label="CPF">
           <Input {...withMask(f("cpf"), maskCPF)} placeholder="000.000.000-00" />
+          {/* Story 219: CPF inválido ou em uso (409, com link para o cadastro). */}
+          <CpfFieldError error={(errors as Record<string, FieldError | undefined>).cpf} />
         </FormField>
         <FormField label="RG">
           <Input {...withMask(f("rg"), maskRG)} placeholder="00.000.000-0" />

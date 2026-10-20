@@ -25,6 +25,10 @@ Não permitir alteração manual arbitrária sem validação.
 - Deve estar vinculado a uma House — exceção: status `ARCHIVED` pode não ter House (import em lote de ficha fora da planilha, casa desconhecida); filho sem casa não aparece em listagens/contagens por casa
 - Deve possuir pelo menos um responsável (Relative/familiar) no acolhimento manual — exceção: import em lote aceita ficha sem familiar (registro histórico; familiar pode ser cadastrado depois)
 - Não pode ser removido fisicamente (soft delete)
+- **CPF é único entre filhos não excluídos (story 219)** e é gravado **só com dígitos** — a máscara `000.000.000-00` é só de exibição/digitação. Garantido no banco por índice único parcial (`cpf` onde `cpf IS NOT NULL AND deleted_at IS NULL`); filho excluído (soft delete) não prende o CPF. Vale para o cadastro e a edição no `adm`, a contagem do `ops` e o import em lote.
+  - CPF novo ou alterado precisa de 11 dígitos e dígito verificador válido (sequência repetida `111…` é recusada) → senão 400 "CPF inválido.". Ficha legada com CPF inválido continua salvável editando outro campo: o CPF só é julgado quando muda.
+  - CPF já usado por outro filho → 409 "Já existe um filho com este CPF: <nome> (<status>)." com `conflictResidentId` (o `adm` linka o cadastro; a contagem do `ops` usa para reacolher). No `ops`, sem rede só formato/DV são checados; o 409 que volta da fila vai para a tela de pendências (`/sync`).
+  - Duplicados anteriores à regra: a migration `UniqueResidentCpf` manteve o CPF no filho em acolhimento (empate → o de `updated_at` mais recente) e limpou os demais, guardando o valor antigo em `resident_cpf_dedup_log` para mesclagem manual. A anonimização LGPD apaga o log do titular.
 
 ---
 

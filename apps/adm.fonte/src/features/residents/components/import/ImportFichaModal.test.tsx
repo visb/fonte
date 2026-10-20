@@ -20,7 +20,7 @@ function item(over: Partial<ImportQueueItem['preview']> = {}): ImportQueueItem {
     status: 'ready',
     error: null,
     preview: {
-      resident: { name: 'João Silva', cpf: '12345678900', entryDate: '2023-02-10' },
+      resident: { name: 'João Silva', cpf: '52998224725', entryDate: '2023-02-10' },
       relatives: [{ name: 'Maria', phone: '999998888', relationship: 'Mãe' }],
       warnings: {},
       houseName: 'Casa A',
@@ -66,7 +66,7 @@ describe('ImportFichaModal', () => {
   it('pré-carrega os campos com o preview', async () => {
     await renderModal();
     expect(screen.getByPlaceholderText('Nome do acolhido')).toHaveValue('João Silva');
-    expect(screen.getByPlaceholderText('000.000.000-00')).toHaveValue('12345678900');
+    expect(screen.getByPlaceholderText('000.000.000-00')).toHaveValue('52998224725');
     // familiar do preview pré-carregado
     expect(screen.getByLabelText('Nome do familiar 1')).toHaveValue('Maria');
   });
@@ -143,7 +143,7 @@ describe('ImportFichaModal', () => {
 
   it('mostra a data de saída e carrega a exitDate do preview (story 120)', async () => {
     await renderModal({
-      resident: { name: 'João Silva', cpf: '12345678900', entryDate: '2023-01-10', exitDate: '2023-08-10' },
+      resident: { name: 'João Silva', cpf: '52998224725', entryDate: '2023-01-10', exitDate: '2023-08-10' },
     });
     expect(screen.getByText('Data de saída')).toBeInTheDocument();
     const exitInput = document.querySelector('input[name="exitDate"]') as HTMLInputElement;
@@ -153,7 +153,7 @@ describe('ImportFichaModal', () => {
 
   it('envia a exitDate no payload do commit (backend deriva ALTA/EVASÃO)', async () => {
     const { onApproved } = await renderModal({
-      resident: { name: 'João Silva', cpf: '12345678900', entryDate: '2023-01-10', exitDate: '2023-08-10' },
+      resident: { name: 'João Silva', cpf: '52998224725', entryDate: '2023-01-10', exitDate: '2023-08-10' },
     });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));
@@ -170,7 +170,7 @@ describe('ImportFichaModal', () => {
     const { onApproved } = await renderModal({
       resident: {
         name: 'João Silva',
-        cpf: '12345678900',
+        cpf: '52998224725',
         entryDate: '2023-03-01',
         exitDate: '2023-05-01',
         admissions,
@@ -197,7 +197,7 @@ describe('ImportFichaModal', () => {
     await renderModal({
       resident: {
         name: 'João Silva',
-        cpf: '12345678900',
+        cpf: '52998224725',
         entryDate: '2023-03-01',
         exitDate: '2023-11-01',
         admissions: [{ entryDate: '2023-03-01', exitDate: '2023-11-01' }],
@@ -213,7 +213,7 @@ describe('ImportFichaModal', () => {
   });
 
   it('preserva a UF extraída do preview no lote', async () => {
-    await renderModal({ resident: { name: 'João Silva', cpf: '12345678900', state: 'SC' } });
+    await renderModal({ resident: { name: 'João Silva', cpf: '52998224725', state: 'SC' } });
     expect(screen.getByPlaceholderText('Ex: SP')).toHaveValue('SC');
   });
 
@@ -245,7 +245,7 @@ describe('ImportFichaModal', () => {
 
   it('desabilita Aprovar quando há conflito com filho já cadastrado', async () => {
     vi.mocked(api.residents.checkImportConflict).mockResolvedValue({
-      conflicts: [{ id: 'r9', name: 'João Duplicado', cpf: '12345678900', status: 'ACTIVE', houseName: 'Casa A' }],
+      conflicts: [{ id: 'r9', name: 'João Duplicado', cpf: '52998224725', status: 'ACTIVE', houseName: 'Casa A' }],
     } as never);
     await renderModal();
     await waitFor(() =>
@@ -259,7 +259,7 @@ describe('ImportFichaModal', () => {
     await renderModal({
       resident: {
         name: 'João Silva',
-        cpf: '12345678900',
+        cpf: '52998224725',
         entryDate: '2023-03-01',
         exitDate: '2023-05-01',
         admissions: [
@@ -276,7 +276,7 @@ describe('ImportFichaModal', () => {
 
   it('ficha com saída antes da entrada mostra o erro no campo de saída e não envia', async () => {
     await renderModal({
-      resident: { name: 'João Silva', cpf: '12345678900', entryDate: '2023-01-10', exitDate: '2023-01-09' },
+      resident: { name: 'João Silva', cpf: '52998224725', entryDate: '2023-01-10', exitDate: '2023-01-09' },
     });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Aprovar' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }));

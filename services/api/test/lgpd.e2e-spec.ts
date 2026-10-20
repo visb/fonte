@@ -5,6 +5,7 @@ process.env.NODE_ENV = 'test';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { bootstrapApp, login, loginCoordinator, BASE } from './helpers/e2e-app';
+import { maskCpf, randomCpf } from './helpers/cpf';
 
 // Cobre as funcionalidades LGPD: mascaramento de CPF, consentimento, trilha de
 // auditoria, documentos de acolhimento, export e anonimização.
@@ -14,8 +15,10 @@ describe('LGPD (e2e)', () => {
   let houseId: string;
   let residentId: string;
 
-  const FULL_CPF = '123.456.789-00';
-  const MASKED_CPF = '***.***.789-00';
+  // Story 219: CPF válido e único por execução; gravado só com dígitos — a
+  // máscara do interceptor continua a mesma sobre o valor em dígitos.
+  const FULL_CPF = randomCpf();
+  const MASKED_CPF = `***.***.${FULL_CPF.slice(6, 9)}-${FULL_CPF.slice(9)}`;
 
   beforeAll(async () => {
     app = await bootstrapApp();
@@ -25,7 +28,7 @@ describe('LGPD (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post(`${BASE}/residents`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: `LGPD E2E ${Date.now()}`, houseId, cpf: FULL_CPF, rg: '12345678' })
+      .send({ name: `LGPD E2E ${Date.now()}`, houseId, cpf: maskCpf(FULL_CPF), rg: '12345678' })
       .expect(201);
     residentId = created.body.id;
   });

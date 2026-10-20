@@ -18,6 +18,8 @@ import {
   type ResidentFormData,
 } from '../lib/residentSchema';
 import { ResidentFormSections } from '../components/ResidentFormSections';
+import { applyCpfConflict } from '@/lib/cpf';
+import { getCpfConflict, getErrorMessage } from '@/lib/errors';
 
 export function EditResidentPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,13 +33,16 @@ export function EditResidentPage() {
   // Story 203: entrada/saída legadas incoerentes só são julgadas se alteradas.
   const initialEntryDate = resident?.entryDate ?? null;
   const initialExitDate = resident?.exitDate ?? null;
+  // Story 219: CPF legado inválido só é julgado se for alterado.
+  const initialCpf = resident?.cpf ?? null;
   const schema = useMemo(
     () =>
       makeResidentSchema({
         initialBirthDate,
         initialAdmissionDates: { entryDate: initialEntryDate, exitDate: initialExitDate },
+        initialCpf,
       }),
-    [initialBirthDate, initialEntryDate, initialExitDate],
+    [initialBirthDate, initialEntryDate, initialExitDate, initialCpf],
   );
 
   const {
@@ -46,6 +51,7 @@ export function EditResidentPage() {
     handleSubmit,
     reset,
     watch,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<ResidentFormData>({ resolver: zodResolver(schema) });
 
@@ -61,9 +67,19 @@ export function EditResidentPage() {
         data: buildResidentPayload(data) as Parameters<typeof api.residents.update>[1],
         photo: pendingPhotoRef.current,
       },
-      { onSuccess: () => goBack() },
+      {
+        onSuccess: () => goBack(),
+        // Story 219: CPF em uso → erro no campo com link para o cadastro.
+        onError: (error) => {
+          applyCpfConflict(error, setError);
+        },
+      },
     );
   };
+  const submitError =
+    updateMutation.isError && !getCpfConflict(updateMutation.error)
+      ? getErrorMessage(updateMutation.error, 'Erro ao salvar o acolhimento.')
+      : null;
 
   if (loadingResident || loadingHouses) return <LoadingState />;
 
@@ -92,6 +108,8 @@ export function EditResidentPage() {
           showStatus
           watchFamilyInvestment={watch('familyInvestment')}
         />
+
+        {submitError && <p className="text-sm text-destructive pt-4">{submitError}</p>}
 
         <div className="flex justify-end gap-3 pt-6">
           <Button type="button" variant="outline" onClick={goBack}>

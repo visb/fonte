@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { AuditAction, CheckImportConflictResult, ImportConflict, REMOVABLE_RESIDENT_STATUSES, ResidentStatus } from '@fonte/types';
@@ -15,6 +15,7 @@ import { CommitImportDto } from './dto/commit-import.dto';
 import { CreateResidentDto } from './dto/create-resident.dto';
 import { ImportAdmissionDto } from './dto/import-admission.dto';
 import { deriveExitStatus } from './import.util';
+import { assertCpfAvailable } from './resident-cpf';
 
 /** Só os dígitos de um texto (para comparar CPFs de formatos diferentes). */
 function digitsOnly(text: string | null | undefined): string {
@@ -278,14 +279,12 @@ export class ImportService {
     }
   }
 
-  /** Idempotência: recusa (409) se já houver filho ativo com o mesmo CPF. */
+  /**
+   * Idempotência: recusa (409) se já houver filho não excluído com o mesmo CPF.
+   * Story 219: consulta pelo índice único (não carrega a tabela inteira) e
+   * devolve o mesmo corpo do cadastro manual (`conflictResidentId`).
+   */
   private async assertNoCpfConflict(manager: EntityManager, cpf?: string | null): Promise<void> {
-    const cpfDigits = digitsOnly(cpf);
-    if (!cpfDigits) return;
-    const residents = await manager.getRepository(Resident).find({ select: ['id', 'cpf'] });
-    const exists = residents.some((r) => digitsOnly(r.cpf) === cpfDigits);
-    if (exists) {
-      throw new ConflictException('Já existe um filho cadastrado com este CPF.');
-    }
+    await assertCpfAvailable(manager, cpf);
   }
 }

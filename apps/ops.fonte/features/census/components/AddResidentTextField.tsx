@@ -12,10 +12,12 @@ interface Props {
   placeholder: string;
   keyboardType?: KeyboardTypeOptions;
   error?: string;
+  /** Máscara aplicada na digitação (ex.: CPF, story 219). */
+  mask?: (value: string) => string;
 }
 
 /** Campo de texto livre do formulário "Adicionar filho". */
-export function AddResidentTextField({ control, name, label, placeholder, keyboardType, error }: Props) {
+export function AddResidentTextField({ control, name, label, placeholder, keyboardType, error, mask }: Props) {
   return (
     <AddResidentField label={label} error={error}>
       <Controller
@@ -27,7 +29,7 @@ export function AddResidentTextField({ control, name, label, placeholder, keyboa
             placeholder={placeholder}
             keyboardType={keyboardType}
             value={value}
-            onChangeText={onChange}
+            onChangeText={(text) => onChange(mask ? mask(text) : text)}
             onBlur={onBlur}
           />
         )}

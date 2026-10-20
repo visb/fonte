@@ -52,8 +52,11 @@ Migrations novas: `1783038200000-CreateStaffServicePeriods`, `1783038300000-AddS
 `1783038400000-UniqueResidentCpf`.
 
 **PENDENTE-MANUAL**
-- 219: ensaiar `UniqueResidentCpf` num dump recente de produção (skill `fonte-backup`) para ver
-  quantos CPFs repetidos serão limpos (backup em `resident_cpf_dedup_log`, `down` restaura).
+- ~~219: ensaiar `UniqueResidentCpf` num dump recente de produção~~ — **feito em 2026-10-20** num
+  Postgres 18 descartável no VPS (dump não saiu do servidor): 1051 CPFs normalizados, 18 grupos
+  repetidos → 18 CPFs limpos (12 ARCHIVED, 5 EVADED, 1 DISCHARGED), nenhum grupo com 2 filhos em
+  acolhimento, índice criado sem erro; `down` devolveu os 18 (0 divergências contra o snapshot).
+  2 CPFs têm tamanho ≠ 11 (passam na migration; caem no DV na próxima edição).
 - 219: import em lote passa a recusar CPF com DV inválido — revisor da fila pendente corrige/apaga.
 - 218: rodar o Maestro de `apps/ops.fonte/e2e/census.yaml` (fluxo de reacolhimento + ajuste 209)
   em emulador API 34.

@@ -551,7 +551,8 @@ docker compose -f docker-compose.prod.yml restart nginx
 ```
 
 Por isso a config pode chegar à produção (deploy automático da `main`) **antes** do certificado
-sem derrubar adm, ops e storage: até lá o host `release.` só não tem `server` 443. A renovação
+sem derrubar adm, ops e storage: até lá o host `release.` só não tem `server` 443 e cai no
+catch-all da `default.conf`, que recusa o handshake TLS (antes ele abria o adm). A renovação
 segue a do certbot (§9.3).
 
 ### Keystore de release do ops (uma vez — e o backup é para sempre)

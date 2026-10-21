@@ -200,6 +200,20 @@ Saída de um servo (todo Staff). **Só ADMIN, só no `adm.fonte`** (`POST /staff
 
 ---
 
+## 6.1. Atividades (stories 48 e 220)
+
+- Fluxo: rascunho (`DRAFT`) → solicitação (`REQUESTED`) → a fazer (`TODO`) → fazendo (`DOING`) ↔ impedimento (`BLOCKED`) → concluída (`DONE`). Transições validadas no service
+- Qualquer servo cria rascunho na própria casa; o criador envia a solicitação ou a devolve para rascunho
+- **Aprovar** a solicitação (`REQUESTED` → `TODO`) e **atribuir/trocar o responsável** cabem ao **coordenador da casa** (COORDINATOR ou ADMIN lotado na casa da atividade) ou ao ADMIN. SERVANT só vê o responsável
+- Aprovar exige responsável (o do pedido ou o já definido). O coordenador só escolhe **staff da casa da atividade**; fora disso, 400
+- O coordenador troca o responsável em qualquer situação **menos Concluída** (403): para trocar em `DONE`, reabrir antes. O ADMIN segue podendo reatribuir em qualquer situação, pelo `adm`
+- No bloco de trabalho (`TODO`, `DOING`, `BLOCKED`, `DONE`) o responsável é obrigatório: removê-lo é 400 para qualquer role
+- Toda atribuição ou troca de responsável fica no histórico (`RESPONSIBLE_CHANGED { from, to }`), inclusive a feita na aprovação, registrada antes do `STATUS_CHANGED`
+- Mexer no bloco de trabalho (iniciar, impedir, concluir, reabrir) é do responsável ou do ADMIN
+- Aprovar e trocar responsável exigem rede no `ops.fonte` (sem outbox)
+
+---
+
 ## 7. Storeroom (Dispensa)
 
 - Cada House possui sua própria storeroom

@@ -1,64 +1,45 @@
-import { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { Controller, useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import type { Activity } from '@fonte/api-client';
 import { useAuth } from '@/lib/auth';
+import { useIsOnline } from '@/lib/offline/network';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { getErrorMessage } from '@/lib/errors';
 import {
   useActivity,
   useDeleteAttachment,
-  useUpdateActivity,
   useUploadActivityAttachment,
 } from '@/features/activities/hooks/useActivities';
+import { useResponsibleModal } from '@/features/activities/hooks/useResponsibleModal';
 import { StatusBadge } from '@/features/activities/components/StatusBadge';
-import { canEditDescription } from '@/features/activities/lib/permissions';
-import { ActivityComments } from '@/features/activities/components/ActivityComments';
+import {
+  canEditDescription,
+  canManageResponsible,
+} from '@/features/activities/lib/permissions';
 import { ActivityAttachments } from '@/features/activities/components/ActivityAttachments';
-import { DescriptionMarkdown } from '@/features/activities/components/DescriptionMarkdown';
-
-const schema = z.object({ description: z.string().optional() });
-type FormData = z.infer<typeof schema>;
-
-function formatDateTime(value: string): string {
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleString('pt-BR');
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="flex-row justify-between py-2 border-b border-gray-100">
-      <Text className="text-sm text-gray-500">{label}</Text>
-      <Text className="text-sm font-medium text-gray-800 flex-1 text-right ml-3">{value}</Text>
-    </View>
-  );
-}
+import { ActivityInfoCard } from '@/features/activities/components/ActivityInfoCard';
+import { ActivityTabs } from '@/features/activities/components/ActivityTabs';
+import { DescriptionSection } from '@/features/activities/components/DescriptionSection';
+import { SelectResponsibleModal } from '@/features/activities/components/SelectResponsibleModal';
 
 export function ActivityDetailPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { staff } = useAuth();
   const { data: activity, isLoading, error, refetch } = useActivity(id);
+  const responsibleModal = useResponsibleModal();
+  const isOnline = useIsOnline();
 
   if (isLoading) return <LoadingState />;
   if (error || !activity) {
     return <ErrorState message="Erro ao carregar a atividade." onRetry={refetch} />;
   }
 
-  const editable = canEditDescription(activity, {
-    role: staff?.user?.role ?? null,
-    userId: staff?.userId ?? null,
+  const role = staff?.user?.role ?? null;
+  const editable = canEditDescription(activity, { role, userId: staff?.userId ?? null });
+  // Story 220: o coordenador da casa troca o responsável (menos em Concluída).
+  const canChangeResponsible = canManageResponsible(activity, {
+    role,
+    houseId: staff?.houseId ?? null,
   });
 
   return (
@@ -71,16 +52,13 @@ export function ActivityDetailPage() {
           <StatusBadge status={activity.status} />
         </View>
 
-        <View className="bg-white rounded-xl px-4 py-1 mb-5">
-          <InfoRow label="Casa" value={activity.house?.name ?? 'Geral (sem casa)'} />
-          <InfoRow
-            label="Responsável"
-            value={activity.responsible?.name ?? 'Não atribuído'}
-          />
-          <InfoRow label="Criado por" value={activity.createdBy?.name ?? '—'} />
-          <InfoRow label="Criada em" value={formatDateTime(activity.createdAt)} />
-          <InfoRow label="Atualizada em" value={formatDateTime(activity.updatedAt)} />
-        </View>
+        <ActivityInfoCard
+          activity={activity}
+          isOnline={isOnline}
+          onChangeResponsible={
+            canChangeResponsible ? () => responsibleModal.open(activity, 'change') : undefined
+          }
+        />
 
         <DescriptionSection activity={activity} editable={editable} />
 
@@ -90,11 +68,16 @@ export function ActivityDetailPage() {
           <ActivityAttachmentsSection activity={activity} />
         </View>
 
-        {/* Abas inferiores: Comentários (story 65) | Histórico (story 66). */}
+        {/* Abas inferiores: Comentários (story 65) | Histórico (story 220). */}
         <View className="mt-6">
-          <ActivityTabs activityId={activity.id} />
+          <ActivityTabs activityId={activity.id} houseId={activity.houseId} />
         </View>
       </View>
+
+      <SelectResponsibleModal
+        target={responsibleModal.target}
+        onClose={responsibleModal.close}
+      />
     </ScrollView>
   );
 }
@@ -112,139 +95,5 @@ function ActivityAttachmentsSection({ activity }: { activity: Activity }) {
       deleting={deleteMutation.isPending}
       uploadError={uploadMutation.error}
     />
-  );
-}
-
-type DetailsTab = 'comments' | 'history';
-
-function ActivityTabs({ activityId }: { activityId: string }) {
-  const [tab, setTab] = useState<DetailsTab>('comments');
-
-  return (
-    <View>
-      <View className="flex-row border-b border-gray-200 mb-3">
-        <TabButton active={tab === 'comments'} onPress={() => setTab('comments')}>
-          Comentários
-        </TabButton>
-        <TabButton active={tab === 'history'} onPress={() => setTab('history')}>
-          Histórico
-        </TabButton>
-      </View>
-
-      {tab === 'comments' ? (
-        <ActivityComments activityId={activityId} />
-      ) : (
-        <Text className="text-sm text-gray-500 text-center py-4">Histórico em breve.</Text>
-      )}
-    </View>
-  );
-}
-
-function TabButton({
-  active,
-  onPress,
-  children,
-}: {
-  active: boolean;
-  onPress: () => void;
-  children: string;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      className="px-4 py-2"
-      style={{
-        borderBottomWidth: 2,
-        borderBottomColor: active ? '#4f46e5' : 'transparent',
-      }}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-    >
-      <Text
-        className={
-          active
-            ? 'text-sm font-semibold text-gray-900'
-            : 'text-sm font-medium text-gray-500'
-        }
-      >
-        {children}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-function DescriptionSection({
-  activity,
-  editable,
-}: {
-  activity: Activity;
-  editable: boolean;
-}) {
-  const mutation = useUpdateActivity();
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { isDirty },
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { description: activity.description ?? '' },
-  });
-
-  useEffect(() => {
-    reset({ description: activity.description ?? '' });
-  }, [activity.description, reset]);
-
-  const onSubmit = (data: FormData) => {
-    mutation.mutate(
-      { id: activity.id, data: { description: data.description ? data.description : null } },
-      {
-        onSuccess: () => Alert.alert('Sucesso', 'Descrição atualizada.'),
-        onError: (err) => Alert.alert('Erro', getErrorMessage(err, 'Erro ao salvar a descrição.')),
-      },
-    );
-  };
-
-  if (!editable) {
-    return (
-      <View>
-        <Text className="text-sm font-medium text-gray-700 mb-1.5">Descrição</Text>
-        {/* Markdown renderizado read-only (negrito, listas, links) — story 72. */}
-        <DescriptionMarkdown markdown={activity.description} />
-      </View>
-    );
-  }
-
-  return (
-    <View>
-      <Text className="text-sm font-medium text-gray-700 mb-1.5">Descrição</Text>
-      <Controller
-        control={control}
-        name="description"
-        render={({ field: { onChange, value } }) => (
-          <TextInput
-            className="border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 bg-white"
-            placeholder="Detalhe a atividade..."
-            multiline
-            numberOfLines={5}
-            textAlignVertical="top"
-            value={value}
-            onChangeText={onChange}
-          />
-        )}
-      />
-      <TouchableOpacity
-        className="bg-indigo-600 rounded-lg py-3.5 items-center mt-4"
-        onPress={handleSubmit(onSubmit)}
-        disabled={!isDirty || mutation.isPending}
-        style={{ opacity: !isDirty || mutation.isPending ? 0.5 : 1 }}
-      >
-        {mutation.isPending ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text className="text-white font-semibold text-base">Salvar descrição</Text>
-        )}
-      </TouchableOpacity>
-    </View>
   );
 }

@@ -55,7 +55,7 @@ describe('atividade criada sem sinal (story 171)', () => {
     );
 
     // Sem id do servidor não há detalhe para abrir nem status para trocar.
-    expect(screen.queryByText('Enviar')).toBeNull();
+    expect(screen.queryByText('Enviar solicitação')).toBeNull();
     expect(onPress).not.toHaveBeenCalled();
   });
 

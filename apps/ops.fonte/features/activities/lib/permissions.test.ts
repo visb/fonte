@@ -1,5 +1,65 @@
 import { ActivityStatus, Role } from '@fonte/types';
-import { canDeleteComment, canEditDescription } from './permissions';
+import {
+  canApproveRequest,
+  canDeleteComment,
+  canEditDescription,
+  canManageResponsible,
+} from './permissions';
+
+describe('canManageResponsible / canApproveRequest (story 220)', () => {
+  const ALL = [
+    ActivityStatus.DRAFT,
+    ActivityStatus.REQUESTED,
+    ActivityStatus.TODO,
+    ActivityStatus.DOING,
+    ActivityStatus.BLOCKED,
+    ActivityStatus.DONE,
+  ];
+  const home = { houseId: 'h1' };
+
+  it.each([Role.ADMIN, Role.COORDINATOR])(
+    '%s da casa troca em todo status menos DONE',
+    (role) => {
+      for (const status of ALL) {
+        expect(canManageResponsible({ ...home, status }, { role, houseId: 'h1' })).toBe(
+          status !== ActivityStatus.DONE,
+        );
+      }
+    },
+  );
+
+  it.each([Role.ADMIN, Role.COORDINATOR])('%s da casa aprova só em REQUESTED', (role) => {
+    for (const status of ALL) {
+      expect(canApproveRequest({ ...home, status }, { role, houseId: 'h1' })).toBe(
+        status === ActivityStatus.REQUESTED,
+      );
+    }
+  });
+
+  it('SERVANT nunca troca nem aprova', () => {
+    for (const status of ALL) {
+      const viewer = { role: Role.SERVANT, houseId: 'h1' };
+      expect(canManageResponsible({ ...home, status }, viewer)).toBe(false);
+      expect(canApproveRequest({ ...home, status }, viewer)).toBe(false);
+    }
+  });
+
+  it('coordenador de outra casa (ou sem casa) não troca nem aprova', () => {
+    const activity = { ...home, status: ActivityStatus.REQUESTED };
+    expect(canManageResponsible(activity, { role: Role.COORDINATOR, houseId: 'h2' })).toBe(false);
+    expect(canApproveRequest(activity, { role: Role.COORDINATOR, houseId: 'h2' })).toBe(false);
+    expect(canManageResponsible(activity, { role: Role.ADMIN, houseId: null })).toBe(false);
+    expect(
+      canManageResponsible({ houseId: null, status: ActivityStatus.TODO }, { role: Role.ADMIN, houseId: null }),
+    ).toBe(false);
+  });
+
+  it('sem role não troca', () => {
+    expect(
+      canManageResponsible({ ...home, status: ActivityStatus.TODO }, { role: null, houseId: 'h1' }),
+    ).toBe(false);
+  });
+});
 
 describe('canDeleteComment', () => {
   const comment = { createdByUserId: 'author-user' };

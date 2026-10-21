@@ -6708,7 +6708,7 @@
                 "{{activityId}}"
               ]
             },
-            "description": "Edita conteudo. title/houseId: ADMIN sempre; criador so enquanto DRAFT. description (MARKDOWN, story 72 — sanitizada no servidor ao salvar): ADMIN em qualquer status; criador em DRAFT/REQUESTED/TODO (bloqueado a partir de DOING -> 403). Reatribuir responsibleStaffId so ADMIN. Roles: ADMIN, COORDINATOR, SERVANT."
+            "description": "Edita conteudo. title/houseId: ADMIN sempre; criador so enquanto DRAFT. description (MARKDOWN, story 72 — sanitizada no servidor ao salvar): ADMIN em qualquer status; criador em DRAFT/REQUESTED/TODO (bloqueado a partir de DOING -> 403). responsibleStaffId (atribuir/trocar, story 220): ADMIN ou coordenador da casa (COORDINATOR/ADMIN lotado na casa da atividade); SERVANT -> 403. Coordenador nao troca em DONE (403, reabrir antes) e so escolhe staff da casa da atividade (400); ADMIN reatribui em qualquer status. null (remover) em TODO/DOING/BLOCKED/DONE -> 400 para qualquer role. Coordenador mandando so responsibleStaffId nao cai na trava de title/houseId. Toda troca grava RESPONSIBLE_CHANGED { from, to } no historico. Exemplo: { \"responsibleStaffId\": \"{{staffId}}\" }. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {
@@ -6736,7 +6736,7 @@
                 "status"
               ]
             },
-            "description": "Transicao de coluna. DRAFT->REQUESTED (criador ou ADMIN); REQUESTED->TODO (so ADMIN, exige responsavel); REQUESTED->DRAFT (criador ou ADMIN — devolver/desfazer envio, story 75; responsibleStaffId preservado); bloco de trabalho TODO/DOING/BLOCKED/DONE (ADMIN ou o responsavel). Transicao invalida -> 400. Exemplo de devolucao: { \"status\": \"DRAFT\" }. Roles: ADMIN, COORDINATOR, SERVANT."
+            "description": "Transicao de coluna. DRAFT->REQUESTED (criador ou ADMIN); REQUESTED->TODO (aprovar — story 220: ADMIN ou coordenador da casa da atividade; SERVANT -> 403; exige responsavel no body ou ja definido -> senao 400; coordenador so com staff da casa da atividade -> senao 400; se o responsavel muda, grava RESPONSIBLE_CHANGED { from, to } antes do STATUS_CHANGED); REQUESTED->DRAFT (criador ou ADMIN — devolver/desfazer envio, story 75; responsibleStaffId preservado); bloco de trabalho TODO/DOING/BLOCKED/DONE (ADMIN ou o responsavel). Transicao invalida -> 400. Exemplo de devolucao: { \"status\": \"DRAFT\" }. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {

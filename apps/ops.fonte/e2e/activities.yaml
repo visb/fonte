@@ -1,10 +1,14 @@
 appId: org.fonte.ops
 ---
-# Story 208: atividades em abas por status, uma coluna por vez. O seed não tem
-# atividade, então o fluxo cria a própria fixture pelo quick-add de Rascunhos e a
-# remove no fim (story 182: seed só leitura, limpeza pelo título único).
-- runFlow: helpers/login-operator.yaml
-- evalScript: ${output.title = 'Abas ' + Date.now()}
+# Story 208: atividades em abas por status, uma coluna por vez.
+# Story 220: o coordenador da casa cria pela rota /activities/new, cai em
+# Rascunhos, envia a solicitação, aprova escolhendo o responsável no seletor e vê
+# a atribuição no Histórico do detalhe.
+# O seed não tem atividade: o fluxo cria a própria fixture e a remove no fim
+# (story 182: seed só leitura, limpeza pelo título único — feita pelo admin,
+# porque a atividade termina aprovada e o criador só apaga rascunho).
+- runFlow: helpers/login-coordinator.yaml
+- evalScript: ${output.title = 'Aprovar ' + Date.now()}
 - tapOn: "Atividades"
 - waitForAnimationToEnd
 - assertVisible: "Rascunhos"
@@ -12,14 +16,42 @@ appId: org.fonte.ops
 - assertVisible: "A fazer"
 - tapOn: "A fazer"
 - waitForAnimationToEnd
-- tapOn: "Rascunhos"
+# FAB → /activities/new
+- tapOn: "Nova atividade"
 - waitForAnimationToEnd
-- tapOn: "+ Nova atividade (título)"
+- tapOn: "Ex: Consertar o portão"
 # ASCII de propósito: o Maestro não digita fora do ASCII (mobile-dev-inc/maestro#146).
 - inputText: ${output.title}
-- tapOn: "Adicionar"
+- hideKeyboard
+- tapOn: "Criar rascunho"
+- tapOn: "OK"
+- waitForAnimationToEnd
+# Volta já na aba Rascunhos, com o item recém-criado.
+- assertVisible: ${output.title}
+- tapOn: "Enviar solicitação"
+- waitForAnimationToEnd
+- tapOn: "Solicitações"
 - waitForAnimationToEnd
 - assertVisible: ${output.title}
+# Sem responsável: aprovar abre o seletor, e escolher o servo já aprova.
+- tapOn: "Aprovar solicitação"
+- waitForAnimationToEnd
+- assertVisible: "Escolha o responsável para aprovar a solicitação."
+- tapOn: "Operador Teste"
+- waitForAnimationToEnd
+- tapOn: "A fazer"
+- waitForAnimationToEnd
+- assertVisible: ${output.title}
+- assertVisible: "Operador Teste"
+# Detalhe → Histórico mostra a atribuição feita na aprovação.
+- tapOn: ${output.title}
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: "Histórico"
+- tapOn: "Histórico"
+- scrollUntilVisible:
+    element: "atribuiu a Operador Teste"
+- assertVisible: ".*atribuiu a Operador Teste.*"
 - runScript:
     file: helpers/delete-activity.js
     env:

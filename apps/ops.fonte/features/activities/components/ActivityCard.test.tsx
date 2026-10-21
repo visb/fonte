@@ -73,11 +73,12 @@ describe('ActivityCard — devolver para rascunho (story 75)', () => {
 describe('ActivityCard — transições por papel/status', () => {
   const responsible = { userId: 'resp-user', name: 'Servo R' } as Activity['responsible'];
 
-  it('criador em DRAFT envia (REQUESTED)', () => {
+  it("criador em DRAFT envia (REQUESTED) com o rótulo 'Enviar solicitação'", () => {
     const onChangeStatus = jest.fn();
     const item = makeActivity({ status: ActivityStatus.DRAFT });
     render(<ActivityCard item={item} currentUserId="creator-user" onChangeStatus={onChangeStatus} />);
-    fireEvent.press(screen.getByText('Enviar'));
+    expect(screen.queryByText('Enviar')).toBeNull();
+    fireEvent.press(screen.getByText('Enviar solicitação'));
     expect(onChangeStatus).toHaveBeenCalledWith(item, ActivityStatus.REQUESTED);
   });
 

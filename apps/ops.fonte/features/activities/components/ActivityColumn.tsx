@@ -16,6 +16,8 @@ interface Props {
   currentUserId?: string;
   onChangeStatus: (activity: Activity, status: ActivityStatus) => void;
   onPressActivity: (activity: Activity) => void;
+  /** Abre o seletor de responsável (story 220). */
+  onPressResponsible?: (activity: Activity) => void;
   pending?: boolean;
   isOnline?: boolean;
   refreshing: boolean;
@@ -34,6 +36,7 @@ export function ActivityColumn({
   currentUserId,
   onChangeStatus,
   onPressActivity,
+  onPressResponsible,
   pending,
   isOnline,
   refreshing,
@@ -55,6 +58,8 @@ export function ActivityColumn({
             currentUserId={currentUserId}
             onChangeStatus={onChangeStatus}
             onPress={onPressActivity}
+            onPressResponsible={onPressResponsible}
+            viewer={{ role, houseId }}
             pending={pending}
             isOnline={isOnline}
           />

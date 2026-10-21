@@ -24,6 +24,7 @@ import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ChangeActivityStatusDto } from './dto/change-activity-status.dto';
 import { ListActivitiesQueryDto } from './dto/list-activities.dto';
 import { sanitizeMarkdown } from './sanitize-markdown';
+import { isHouseCoordinatorRole } from '../../common/auth/house-coordinator';
 
 /** Identidade autenticada que o service precisa (JWT não carrega houseId). */
 export interface ActivityUser {
@@ -116,6 +117,22 @@ export class ActivityService {
     if (!houseId || activity.houseId !== houseId) {
       throw new NotFoundException('Activity not found');
     }
+  }
+
+  /**
+   * Quem aprova solicitação e atribui/troca o responsável (story 220): ADMIN
+   * sempre; senão o coordenador da casa — role de coordenação (story 214)
+   * **e** lotado na casa da atividade. SERVANT nunca.
+   */
+  private canManageResponsible(
+    activity: Activity,
+    user: ActivityUser,
+    houseId: string | null,
+  ): boolean {
+    if (this.isAdmin(user)) return true;
+    return (
+      isHouseCoordinatorRole(user.role) && !!houseId && houseId === activity.houseId
+    );
   }
 
   /** Transição permitida pela matriz (independente de quem). */
@@ -323,16 +340,64 @@ export class ActivityService {
     }
     if (dto.houseId !== undefined) activity.houseId = dto.houseId ?? null;
 
-    // Reatribuir responsável: só ADMIN.
+    // Atribuir/trocar responsável (story 220): ADMIN ou coordenador da casa.
     if (dto.responsibleStaffId !== undefined) {
-      if (!admin) throw new ForbiddenException('Only ADMIN can reassign the responsible');
-      if (dto.responsibleStaffId) await this.assertStaffExists(dto.responsibleStaffId);
-      activity.responsibleStaffId = dto.responsibleStaffId ?? null;
+      await this.assertCanSetResponsible(activity, dto.responsibleStaffId, user, houseId);
+      this.assignResponsible(activity, dto.responsibleStaffId ?? null);
     }
 
     await this.repo.save(activity);
     await this.recordUpdateEvents(activity.id, before, activity, user);
     return this.findOne(id, user);
+  }
+
+  /**
+   * Regras de atribuir/trocar o responsável pelo `update` (story 220):
+   * - só ADMIN ou coordenador da casa da atividade (senão 403);
+   * - coordenador não troca em DONE — reabrir antes (403). ADMIN segue podendo
+   *   reatribuir em qualquer status, como já fazia pelo `adm` (decisão 4);
+   * - `null` no bloco de trabalho (TODO/DOING/BLOCKED/DONE) é 400 para QUALQUER
+   *   role (decisão 6): o `adm` não oferece "remover responsável" nesses status
+   *   (só atribui na aprovação), então a trava não quebra o ADMIN;
+   * - coordenador só escolhe staff da casa da atividade (400); ADMIN, qualquer
+   *   staff existente.
+   */
+  private async assertCanSetResponsible(
+    activity: Activity,
+    responsibleStaffId: string | null,
+    user: ActivityUser,
+    houseId: string | null,
+  ): Promise<void> {
+    if (!this.canManageResponsible(activity, user, houseId)) {
+      throw new ForbiddenException(
+        'Only the house coordinator or ADMIN can change the responsible',
+      );
+    }
+    const admin = this.isAdmin(user);
+    if (!admin && activity.status === ActivityStatus.DONE) {
+      throw new ForbiddenException(
+        'Reopen the activity before changing the responsible',
+      );
+    }
+    if (!responsibleStaffId) {
+      if (WORK_STATUSES.includes(activity.status)) {
+        throw new BadRequestException('A responsible staff is required in this status');
+      }
+      return;
+    }
+    if (admin) await this.assertStaffExists(responsibleStaffId);
+    else await this.assertStaffInHouse(responsibleStaffId, activity.houseId);
+  }
+
+  /**
+   * Seta o responsável descartando a relação `responsible` carregada pelo
+   * `loadOne`: no `save`, o TypeORM dá precedência ao objeto da relação sobre a
+   * coluna FK — mantê-la faria a troca se perder em silêncio (story 220). A view
+   * de retorno é remontada pelo `findOne`, que recarrega a relação.
+   */
+  private assignResponsible(activity: Activity, staffId: string | null): void {
+    activity.responsibleStaffId = staffId;
+    activity.responsible = undefined as unknown as Staff | null;
   }
 
   /** Registra um evento por campo efetivamente alterado no update (story 66). */
@@ -383,10 +448,21 @@ export class ActivityService {
       throw new BadRequestException(`Invalid transition: ${from} → ${to}`);
     }
 
-    await this.assertCanChangeStatus(activity, from, to, dto, user);
+    // A aprovação pode definir/trocar o responsável (story 220): guarda o "antes"
+    // para registrar a atribuição na trilha.
+    const responsibleBefore = activity.responsibleStaffId ?? null;
+    await this.assertCanChangeStatus(activity, from, to, dto, user, houseId);
 
     activity.status = to;
+    const responsibleAfter = activity.responsibleStaffId ?? null;
     await this.repo.save(activity);
+    if (responsibleAfter !== responsibleBefore) {
+      // Antes do STATUS_CHANGED: a atribuição é o que habilita a aprovação.
+      await this.events.record(activity.id, ActivityEventType.RESPONSIBLE_CHANGED, user, {
+        from: responsibleBefore,
+        to: responsibleAfter,
+      });
+    }
     await this.events.record(activity.id, ActivityEventType.STATUS_CHANGED, user, {
       from,
       to,
@@ -401,6 +477,7 @@ export class ActivityService {
     to: ActivityStatus,
     dto: ChangeActivityStatusDto,
     user: ActivityUser,
+    houseId: string | null,
   ): Promise<void> {
     const admin = this.isAdmin(user);
 
@@ -423,16 +500,22 @@ export class ActivityService {
       return;
     }
 
-    // REQUESTED → TODO: só ADMIN, exige responsável (body ou já setado).
+    // REQUESTED → TODO (aprovar): ADMIN ou coordenador da casa (story 220);
+    // exige responsável (body ou já setado). Coordenador só com staff da casa.
     if (from === ActivityStatus.REQUESTED && to === ActivityStatus.TODO) {
-      if (!admin) throw new ForbiddenException('Only ADMIN can approve a request');
+      if (!this.canManageResponsible(activity, user, houseId)) {
+        throw new ForbiddenException(
+          'Only the house coordinator or ADMIN can approve a request',
+        );
+      }
       const responsibleStaffId =
         dto.responsibleStaffId ?? activity.responsibleStaffId ?? null;
       if (!responsibleStaffId) {
         throw new BadRequestException('A responsible staff is required to move to TODO');
       }
-      await this.assertStaffExists(responsibleStaffId);
-      activity.responsibleStaffId = responsibleStaffId;
+      if (admin) await this.assertStaffExists(responsibleStaffId);
+      else await this.assertStaffInHouse(responsibleStaffId, activity.houseId);
+      this.assignResponsible(activity, responsibleStaffId);
       return;
     }
 
@@ -493,6 +576,20 @@ export class ActivityService {
   private async assertStaffExists(staffId: string): Promise<void> {
     const staff = await this.staffRepo.findOne({ where: { id: staffId } });
     if (!staff) throw new BadRequestException('Responsible staff not found');
+  }
+
+  /** Responsável escolhido pelo coordenador tem de ser staff da casa da atividade (story 220). */
+  private async assertStaffInHouse(
+    staffId: string,
+    houseId: string | null,
+  ): Promise<void> {
+    const staff = await this.staffRepo.findOne({ where: { id: staffId } });
+    if (!staff) throw new BadRequestException('Responsible staff not found');
+    if (!houseId || staff.houseId !== houseId) {
+      throw new BadRequestException(
+        'Responsible staff must belong to the activity house',
+      );
+    }
   }
 
   /**

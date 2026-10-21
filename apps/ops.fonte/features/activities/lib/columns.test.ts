@@ -1,7 +1,7 @@
 import { ActivityStatus } from '@fonte/types';
 import type { Activity } from '@fonte/api-client';
 import { ACTIVITY_COLUMNS } from '@/features/activities/constants';
-import { groupActivitiesByStatus, initialActivityTab } from './columns';
+import { groupActivitiesByStatus, initialActivityTab, parseActivityTab } from './columns';
 
 function activity(id: string, status: ActivityStatus): Activity {
   return { id, title: id, status } as Activity;
@@ -45,5 +45,13 @@ describe('activities/lib/columns (story 208)', () => {
 
   it('tudo vazio abre em Rascunhos', () => {
     expect(initialActivityTab(groupActivitiesByStatus([]))).toBe(ActivityStatus.DRAFT);
+  });
+
+  it('parseActivityTab aceita só status de coluna (story 220)', () => {
+    expect(parseActivityTab('DRAFT')).toBe(ActivityStatus.DRAFT);
+    expect(parseActivityTab('DONE')).toBe(ActivityStatus.DONE);
+    expect(parseActivityTab('nada')).toBeNull();
+    expect(parseActivityTab(undefined)).toBeNull();
+    expect(parseActivityTab(['DRAFT'])).toBeNull();
   });
 });

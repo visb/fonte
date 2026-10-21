@@ -55,6 +55,8 @@ export const queryKeys = {
     byHouse: (houseId: string) => ['activities', houseId] as const,
     detail: (id: string) => ['activities', 'detail', id] as const,
     comments: (activityId: string) => ['activities', 'comments', activityId] as const,
+    /** Trilha do histórico (story 220): primeiro segmento `activities`, persiste como o detalhe. */
+    events: (activityId: string) => ['activities', 'events', activityId] as const,
   },
   storeroom: {
     allItems: ['storeroom-items'] as const,

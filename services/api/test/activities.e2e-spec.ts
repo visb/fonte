@@ -15,17 +15,26 @@ describe('ActivityController (e2e)', () => {
   let coordToken: string;
   let coordHouseId: string;
   let coordStaffId: string;
+  let servantToken: string;
+  let servantStaffId: string;
 
   beforeAll(async () => {
     app = await bootstrapApp();
     adminToken = await login(app, 'admin@fonte.com', 'admin123');
     ({ token: coordToken, houseId: coordHouseId } = await loginCoordinator(app));
+    servantToken = await login(app, 'operator@fonte.com', 'operator123');
 
     const me = await request(app.getHttpServer())
       .get(`${BASE}/staff/me`)
       .set('Authorization', `Bearer ${coordToken}`)
       .expect(200);
     coordStaffId = me.body.id;
+
+    const servantMe = await request(app.getHttpServer())
+      .get(`${BASE}/staff/me`)
+      .set('Authorization', `Bearer ${servantToken}`)
+      .expect(200);
+    servantStaffId = servantMe.body.id;
 
     dataSource = app.get(DataSource);
   });
@@ -79,21 +88,41 @@ describe('ActivityController (e2e)', () => {
       expect(res.body.status).toBe(ActivityStatus.REQUESTED);
     });
 
-    it('coordinator cannot approve a request (REQUESTED → TODO is ADMIN only) → 403', () =>
+    it('servant cannot approve a request (story 220: house coordinator or ADMIN) → 403', () =>
       request(app.getHttpServer())
         .patch(`${BASE}/activities/${activityId}/status`)
-        .set('Authorization', `Bearer ${coordToken}`)
+        .set('Authorization', `Bearer ${servantToken}`)
         .send({ status: ActivityStatus.TODO, responsibleStaffId: coordStaffId })
         .expect(403));
 
-    it('admin approves the request and assigns a responsible (REQUESTED → TODO)', async () => {
+    it('house coordinator approves the request and assigns a responsible (REQUESTED → TODO)', async () => {
       const res = await request(app.getHttpServer())
         .patch(`${BASE}/activities/${activityId}/status`)
-        .set('Authorization', `Bearer ${adminToken}`)
+        .set('Authorization', `Bearer ${coordToken}`)
         .send({ status: ActivityStatus.TODO, responsibleStaffId: coordStaffId })
         .expect(200);
       expect(res.body.status).toBe(ActivityStatus.TODO);
       expect(res.body.responsibleStaffId).toBe(coordStaffId);
+    });
+
+    it('the approval records RESPONSIBLE_CHANGED and then STATUS_CHANGED (story 220)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}/events`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      // Ordem decrescente: o mais recente (STATUS_CHANGED) vem primeiro.
+      const types = res.body.map((e: { type: string }) => e.type);
+      const statusIdx = types.indexOf('STATUS_CHANGED');
+      const responsibleIdx = types.indexOf('RESPONSIBLE_CHANGED');
+      expect(responsibleIdx).toBeGreaterThan(-1);
+      expect(statusIdx).toBeGreaterThan(-1);
+      // Gravado antes → aparece depois na lista decrescente.
+      expect(responsibleIdx).toBeGreaterThan(statusIdx);
+      expect(res.body[responsibleIdx].metadata).toEqual({ from: null, to: coordStaffId });
+      expect(res.body[statusIdx].metadata).toEqual({
+        from: ActivityStatus.REQUESTED,
+        to: ActivityStatus.TODO,
+      });
     });
 
     it('responsible coordinator moves the card (TODO → DOING)', async () => {
@@ -710,6 +739,82 @@ describe('ActivityController (e2e)', () => {
       request(app.getHttpServer())
         .get(`${BASE}/activities/${activityId}/events`)
         .expect(401));
+  });
+
+  // ── responsável pelo coordenador da casa (story 220) ─────────────────────────
+
+  describe('house coordinator manages the responsible (story 220)', () => {
+    let activityId: string;
+
+    const patchStatus = (token: string, body: Record<string, unknown>) =>
+      request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(body);
+
+    const patchResponsible = (token: string, responsibleStaffId: string | null) =>
+      request(app.getHttpServer())
+        .patch(`${BASE}/activities/${activityId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ responsibleStaffId });
+
+    beforeAll(async () => {
+      // Fixture própria (story 182): criada aqui, apagada no afterAll da suíte.
+      const created = await request(app.getHttpServer())
+        .post(`${BASE}/activities`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .send({ title: `Responsável pelo coordenador ${Date.now()}`, houseId: coordHouseId })
+        .expect(201);
+      activityId = created.body.id;
+      await patchStatus(coordToken, { status: ActivityStatus.REQUESTED }).expect(200);
+    });
+
+    it('coordinator approves assigning a house servant → 200', async () => {
+      const res = await patchStatus(coordToken, {
+        status: ActivityStatus.TODO,
+        responsibleStaffId: servantStaffId,
+      }).expect(200);
+      expect(res.body.responsibleStaffId).toBe(servantStaffId);
+    });
+
+    it('coordinator cannot assign staff outside the house (houseless admin staff) → 400', async () => {
+      const admins = await request(app.getHttpServer())
+        .get(`${BASE}/staff/me`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      await patchResponsible(coordToken, admins.body.id).expect(400);
+    });
+
+    it('servant cannot change the responsible → 403', () =>
+      patchResponsible(servantToken, coordStaffId).expect(403));
+
+    it('coordinator changes the responsible → 200 and records RESPONSIBLE_CHANGED', async () => {
+      const res = await patchResponsible(coordToken, coordStaffId).expect(200);
+      expect(res.body.responsibleStaffId).toBe(coordStaffId);
+
+      const events = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${activityId}/events`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      const changes = events.body.filter(
+        (e: { type: string }) => e.type === 'RESPONSIBLE_CHANGED',
+      );
+      expect(changes[0].metadata).toEqual({ from: servantStaffId, to: coordStaffId });
+    });
+
+    it('removing the responsible in a work status → 400', () =>
+      patchResponsible(coordToken, null).expect(400));
+
+    it('coordinator cannot change the responsible once DONE → 403', async () => {
+      await patchStatus(coordToken, { status: ActivityStatus.DOING }).expect(200);
+      await patchStatus(coordToken, { status: ActivityStatus.DONE }).expect(200);
+      await patchResponsible(coordToken, servantStaffId).expect(403);
+    });
+
+    it('admin still reassigns in DONE (decision 4) → 200', async () => {
+      const res = await patchResponsible(adminToken, servantStaffId).expect(200);
+      expect(res.body.responsibleStaffId).toBe(servantStaffId);
+    });
   });
 
   describe('delete', () => {

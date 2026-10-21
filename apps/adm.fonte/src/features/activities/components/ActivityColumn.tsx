@@ -1,10 +1,10 @@
-import { useDroppable } from '@dnd-kit/core';
-import { ActivityStatus } from '@fonte/types';
-import type { Activity } from '@fonte/api-client';
-import { Badge } from '@/components/ui/badge';
-import { ActivityCard } from './ActivityCard';
-import { QuickAddCard } from './QuickAddCard';
-import { canQuickAddInStatus, type ActivityColumnDef } from '../constants';
+import { useDroppable } from "@dnd-kit/core";
+import { ActivityStatus } from "@fonte/types";
+import type { Activity } from "@fonte/api-client";
+import { Badge } from "@/components/ui/badge";
+import { ActivityCard } from "./ActivityCard";
+import { QuickAddCard } from "./QuickAddCard";
+import { canQuickAddInStatus, type ActivityColumnDef } from "../constants";
 
 interface Props {
   column: ActivityColumnDef;
@@ -43,9 +43,9 @@ export function ActivityColumn({
   // Durante o arraste: destaca alvos válidos; esmaece os inválidos.
   const dropClass = isDragActive
     ? isValidDropTarget
-      ? `ring-2 ring-primary/50 ${isOver ? 'bg-primary/10' : ''}`
-      : 'opacity-50'
-    : '';
+      ? `ring-2 ring-primary/50 ${isOver ? "bg-primary/10" : ""}`
+      : "opacity-50"
+    : "";
 
   return (
     <div
@@ -56,32 +56,32 @@ export function ActivityColumn({
     >
       <div className="flex items-center justify-between px-1 py-1.5">
         <Badge variant={column.variant}>{column.label}</Badge>
-        <span className="text-xs text-muted-foreground">{activities.length}</span>
+        <span className="text-xs text-muted-foreground">
+          {activities.length}
+        </span>
       </div>
+      {canQuickAdd && <QuickAddCard status={column.status} />}
       <div className="flex flex-col gap-2 overflow-y-auto">
-        {activities.length === 0 ? (
-          !canQuickAdd && (
-            <p className="px-1 py-4 text-center text-xs text-muted-foreground">
-              Nenhuma atividade
-            </p>
-          )
-        ) : (
-          activities.map((activity) => (
-            <ActivityCard
-              key={activity.id}
-              activity={activity}
-              isAdmin={isAdmin}
-              role={role}
-              userId={userId}
-              onChangeStatus={onChangeStatus}
-              onApprove={onApprove}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onOpenDetails={onOpenDetails}
-            />
-          ))
-        )}
-        {canQuickAdd && <QuickAddCard status={column.status} />}
+        {activities.length === 0
+          ? !canQuickAdd && (
+              <p className="px-1 py-4 text-center text-xs text-muted-foreground">
+                Nenhuma atividade
+              </p>
+            )
+          : activities.map((activity) => (
+              <ActivityCard
+                key={activity.id}
+                activity={activity}
+                isAdmin={isAdmin}
+                role={role}
+                userId={userId}
+                onChangeStatus={onChangeStatus}
+                onApprove={onApprove}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onOpenDetails={onOpenDetails}
+              />
+            ))}
       </div>
     </div>
   );

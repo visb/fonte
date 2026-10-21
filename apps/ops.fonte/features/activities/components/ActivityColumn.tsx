@@ -1,11 +1,11 @@
-import { FlatList, View } from 'react-native';
-import type { ActivityStatus } from '@fonte/types';
-import type { Activity } from '@fonte/api-client';
-import { EmptyState } from '@/components/shared/EmptyState';
-import { canQuickAddInStatus } from '@/features/activities/constants';
-import type { ActivityColumnData } from '@/features/activities/lib/columns';
-import { ActivityCard } from './ActivityCard';
-import { QuickAddCard } from './QuickAddCard';
+import { FlatList, View } from "react-native";
+import type { ActivityStatus } from "@fonte/types";
+import type { Activity } from "@fonte/api-client";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { canQuickAddInStatus } from "@/features/activities/constants";
+import type { ActivityColumnData } from "@/features/activities/lib/columns";
+import { ActivityCard } from "./ActivityCard";
+import { QuickAddCard } from "./QuickAddCard";
 
 interface Props {
   column: ActivityColumnData;
@@ -65,8 +65,10 @@ export function ActivityColumn({
           />
         )}
         ListEmptyComponent={<EmptyState message="Nenhuma atividade" />}
-        ListFooterComponent={
-          showQuickAdd ? <QuickAddCard status={column.status} houseId={houseId} /> : null
+        ListHeaderComponent={
+          showQuickAdd ? (
+            <QuickAddCard status={column.status} houseId={houseId} />
+          ) : null
         }
       />
     </View>

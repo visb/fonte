@@ -1,6 +1,6 @@
-import { View, Text, TouchableOpacity } from 'react-native';
-import { ActivityStatus } from '@fonte/types';
-import type { Activity } from '@fonte/api-client';
+import { View, Text, TouchableOpacity } from "react-native";
+import { ActivityStatus } from "@fonte/types";
+import type { Activity } from "@fonte/api-client";
 
 /**
  * Ações de mudança de status do card de atividade.
@@ -58,34 +58,52 @@ function transitionsFor(
   canApprove: boolean,
 ): { label: string; color: string; to: ActivityStatus }[] {
   if (isCreator && status === ActivityStatus.DRAFT) {
-    return [{ label: 'Enviar solicitação', color: '#2563eb', to: ActivityStatus.REQUESTED }];
+    return [
+      {
+        label: "Enviar solicitação",
+        color: "#2563eb",
+        to: ActivityStatus.REQUESTED,
+      },
+    ];
   }
   if (status === ActivityStatus.REQUESTED) {
     const actions: { label: string; color: string; to: ActivityStatus }[] = [];
     // Devolver para rascunho (story 75): o criador desfaz o próprio envio.
     if (isCreator) {
-      actions.push({ label: 'Devolver para rascunho', color: '#6b7280', to: ActivityStatus.DRAFT });
+      actions.push({
+        label: "Devolver para rascunho",
+        color: "#6b7280",
+        to: ActivityStatus.DRAFT,
+      });
     }
     // Aprovar (story 220): coordenador da casa. Criador-coordenador vê os dois.
     if (canApprove) {
-      actions.push({ label: 'Aprovar solicitação', color: '#16a34a', to: ActivityStatus.TODO });
+      actions.push({
+        label: "Aprovar solicitação",
+        color: "#16a34a",
+        to: ActivityStatus.TODO,
+      });
     }
     return actions;
   }
   if (!isResponsible) return [];
   if (status === ActivityStatus.TODO) {
-    return [{ label: 'Iniciar', color: '#b45309', to: ActivityStatus.DOING }];
+    return [{ label: "Iniciar", color: "#b45309", to: ActivityStatus.DOING }];
   }
   if (status === ActivityStatus.DOING) {
     return [
-      { label: 'Impedir', color: '#dc2626', to: ActivityStatus.BLOCKED },
-      { label: 'Concluir', color: '#16a34a', to: ActivityStatus.DONE },
+      {
+        label: "Marcar Impedimento",
+        color: "#dc2626",
+        to: ActivityStatus.BLOCKED,
+      },
+      { label: "Concluir", color: "#16a34a", to: ActivityStatus.DONE },
     ];
   }
   if (status === ActivityStatus.BLOCKED) {
     return [
-      { label: 'Retomar', color: '#b45309', to: ActivityStatus.DOING },
-      { label: 'Concluir', color: '#16a34a', to: ActivityStatus.DONE },
+      { label: "Retomar", color: "#b45309", to: ActivityStatus.DOING },
+      { label: "Concluir", color: "#16a34a", to: ActivityStatus.DONE },
     ];
   }
   return [];
@@ -100,7 +118,12 @@ export function ActivityCardActions({
   pending,
   isOnline = true,
 }: Props) {
-  const transitions = transitionsFor(item.status, isCreator, isResponsible, canApprove);
+  const transitions = transitionsFor(
+    item.status,
+    isCreator,
+    isResponsible,
+    canApprove,
+  );
   if (transitions.length === 0) return null;
 
   return (

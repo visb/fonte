@@ -144,7 +144,7 @@ export function ActivityCard({
             </Button>
             <Button size="sm" variant="outline" onClick={() => onChangeStatus(activity, ActivityStatus.BLOCKED)}>
               <Ban size={12} className="mr-1" />
-              Impedir
+              Marcar Impedimento
             </Button>
             <Button size="sm" onClick={() => onChangeStatus(activity, ActivityStatus.DONE)}>
               <Check size={12} className="mr-1" />

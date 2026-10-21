@@ -6,6 +6,11 @@ import { PendingBadge } from '@/components/shared/PendingBadge';
 import { StatusBadge } from './StatusBadge';
 import { ResponsibleBadge } from './ResponsibleBadge';
 import { ActivityCardActions } from './ActivityCardActions';
+import {
+  canApproveRequest,
+  canManageResponsible,
+  type ActivityViewer,
+} from '../lib/permissions';
 
 interface Props {
   item: Activity;
@@ -17,6 +22,10 @@ interface Props {
   pending?: boolean;
   /** Sem rede as mudanças de situação ficam desabilitadas (story 171). */
   isOnline?: boolean;
+  /** Role + casa de quem olha: regras do coordenador da casa (story 220). */
+  viewer?: ActivityViewer;
+  /** Abre o seletor de responsável (story 220); só usado se `viewer` pode trocar. */
+  onPressResponsible?: (activity: Activity) => void;
 }
 
 export function ActivityCard({
@@ -26,9 +35,14 @@ export function ActivityCard({
   onPress,
   pending,
   isOnline = true,
+  viewer,
+  onPressResponsible,
 }: Props) {
   const isCreator = item.createdByUserId === currentUserId;
   const isResponsible = item.responsible?.userId === currentUserId;
+  const canApprove = !!viewer && canApproveRequest(item, viewer);
+  const canChangeResponsible =
+    !!viewer && !!onPressResponsible && canManageResponsible(item, viewer);
   const { status } = item;
 
   // Criada sem sinal (story 171): ainda está na fila e não tem id do servidor,
@@ -64,15 +78,34 @@ export function ActivityCard({
 
         {/* Descrição não aparece na lista (story 71): só na tela de detalhes. */}
 
-        <View className="mt-0.5">
-          <ResponsibleBadge responsible={item.responsible} />
-        </View>
+        {!canChangeResponsible && (
+          <View className="mt-0.5">
+            <ResponsibleBadge responsible={item.responsible} />
+          </View>
+        )}
       </TouchableOpacity>
+
+      {/* Tocável fica fora do corpo: um toque não pode abrir detalhe e seletor. */}
+      {canChangeResponsible && (
+        <View className="mt-0.5">
+          <ResponsibleBadge
+            responsible={item.responsible}
+            onPress={() => onPressResponsible?.(item)}
+            disabled={!isOnline}
+          />
+          {!isOnline && (
+            <Text className="text-xs text-gray-400 mt-1">
+              Precisa de conexão para trocar o responsável.
+            </Text>
+          )}
+        </View>
+      )}
 
       <ActivityCardActions
         item={item}
         isCreator={isCreator}
         isResponsible={isResponsible}
+        canApprove={canApprove}
         onChangeStatus={onChangeStatus}
         pending={pending}
         isOnline={isOnline}

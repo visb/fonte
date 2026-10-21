@@ -21,7 +21,10 @@ export class UpdateActivityDto {
   @IsUUID()
   houseId?: string | null;
 
-  /** Reatribuir responsável — só ADMIN (validado no service). */
+  /**
+   * Atribuir/trocar responsável — ADMIN ou coordenador da casa da atividade
+   * (story 220; regras de status/casa validadas no service).
+   */
   @IsOptional()
   @IsUUID()
   responsibleStaffId?: string | null;

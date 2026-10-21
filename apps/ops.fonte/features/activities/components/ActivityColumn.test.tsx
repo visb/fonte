@@ -69,8 +69,24 @@ describe('ActivityColumn (story 208)', () => {
     fireEvent.press(screen.getByText('Trocar lâmpada'));
     expect(props.onPressActivity).toHaveBeenCalledWith(items[0]);
 
-    fireEvent.press(screen.getAllByText('Enviar')[0]);
+    fireEvent.press(screen.getAllByText('Enviar solicitação')[0]);
     expect(props.onChangeStatus).toHaveBeenCalledWith(items[0], ActivityStatus.REQUESTED);
+  });
+
+  it('coordenador da casa: tocar no responsável chama onPressResponsible (story 220)', () => {
+    const item = activity('a1', ActivityStatus.TODO, 'Varrer');
+    const onPressResponsible = jest.fn();
+    setup(ActivityStatus.TODO, [item], { role: 'COORDINATOR', onPressResponsible });
+    fireEvent.press(screen.getByLabelText('Definir responsável'));
+    expect(onPressResponsible).toHaveBeenCalledWith(item);
+  });
+
+  it('servo não recebe o responsável tocável (story 220)', () => {
+    setup(ActivityStatus.TODO, [activity('a1', ActivityStatus.TODO)], {
+      onPressResponsible: jest.fn(),
+    });
+    expect(screen.queryByLabelText('Definir responsável')).toBeNull();
+    expect(screen.getByLabelText('Sem responsável')).toBeTruthy();
   });
 
   it('coluna vazia mostra o EmptyState', () => {

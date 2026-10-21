@@ -84,7 +84,7 @@ test.describe('ops.fonte — atividades em colunas (story 208)', () => {
     const draftsBefore = await tabCount(page, 'DRAFT');
     const requestedBefore = await tabCount(page, 'REQUESTED');
 
-    await card.getByText('Enviar', { exact: true }).click();
+    await card.getByText('Enviar solicitação', { exact: true }).click();
 
     // O card foi para Solicitações, mas a aba ativa continua Rascunhos.
     await expect(

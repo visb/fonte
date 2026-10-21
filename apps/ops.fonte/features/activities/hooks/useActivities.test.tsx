@@ -15,16 +15,23 @@ jest.mock('@/lib/api', () => ({
       uploadAttachment: jest.fn(),
       uploadCommentAttachment: jest.fn(),
       deleteAttachment: jest.fn(),
+      listEvents: jest.fn(),
     },
   },
 }));
 
 import { Platform } from 'react-native';
 import { api } from '@/lib/api';
-import { expectIdempotencyKey, renderHookWithClient } from '@/lib/test/utils';
+import { queryKeys } from '@/lib/queryKeys';
+import {
+  createTestQueryClient,
+  expectIdempotencyKey,
+  renderHookWithClient,
+} from '@/lib/test/utils';
 import {
   useActivities,
   useActivity,
+  useActivityEvents,
   useCreateActivity,
   useUpdateActivity,
   useChangeActivityStatus,
@@ -80,6 +87,19 @@ describe('useActivities (queries)', () => {
     renderHookWithClient(() => useActivityComments(null));
     expect(mockApi.activities.listComments).not.toHaveBeenCalled();
   });
+
+  it('useActivityEvents lista o histórico por atividade (story 220)', async () => {
+    mockApi.activities.listEvents.mockResolvedValue([{ id: 'e1' }]);
+    const { result } = renderHookWithClient(() => useActivityEvents('a1'));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockApi.activities.listEvents).toHaveBeenCalledWith('a1');
+    expect(result.current.data).toEqual([{ id: 'e1' }]);
+  });
+
+  it('useActivityEvents não dispara sem id', () => {
+    renderHookWithClient(() => useActivityEvents(undefined));
+    expect(mockApi.activities.listEvents).not.toHaveBeenCalled();
+  });
 });
 
 describe('useActivities (mutations)', () => {
@@ -100,6 +120,27 @@ describe('useActivities (mutations)', () => {
     result.current.mutate({ id: 'a1', data: { title: 'novo' } as never });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(mockApi.activities.update).toHaveBeenCalledWith('a1', { title: 'novo' });
+  });
+
+  it('useUpdateActivity troca o responsável e invalida o histórico (story 220)', async () => {
+    mockApi.activities.update.mockResolvedValue({ id: 'a1' });
+    const client = createTestQueryClient();
+    const invalidate = jest.spyOn(client, 'invalidateQueries');
+    const { result } = renderHookWithClient(() => useUpdateActivity(), client);
+    result.current.mutate({ id: 'a1', data: { responsibleStaffId: 's2' } });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockApi.activities.update).toHaveBeenCalledWith('a1', { responsibleStaffId: 's2' });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.activities.events('a1') });
+  });
+
+  it('useChangeActivityStatus invalida o histórico da atividade (story 220)', async () => {
+    mockApi.activities.changeStatus.mockResolvedValue({ id: 'a1' });
+    const client = createTestQueryClient();
+    const invalidate = jest.spyOn(client, 'invalidateQueries');
+    const { result } = renderHookWithClient(() => useChangeActivityStatus(), client);
+    result.current.mutate({ id: 'a1', data: { status: 'TODO', responsibleStaffId: 's2' } as never });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.activities.events('a1') });
   });
 
   it('useChangeActivityStatus chama changeStatus', async () => {

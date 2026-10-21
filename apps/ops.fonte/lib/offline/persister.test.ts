@@ -41,6 +41,7 @@ describe('shouldDehydrateQuery — allowlist (LGPD)', () => {
     ['activities.byHouse', queryKeys.activities.byHouse('h1')],
     ['activities.detail', queryKeys.activities.detail('a1')],
     ['activities.comments', queryKeys.activities.comments('a1')],
+    ['activities.events', queryKeys.activities.events('a1')],
     ['streetSales.byHouse', queryKeys.streetSales.byHouse('h1')],
   ])('persiste %s (fluxo de campo)', (_label, key) => {
     expect(shouldDehydrateQuery(query(key))).toBe(true);

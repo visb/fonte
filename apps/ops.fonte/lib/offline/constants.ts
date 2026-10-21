@@ -92,7 +92,7 @@ export const PERSISTED_QUERY_PREFIXES = [
   // incidents.all / incidents.byHouse / incidents.todayByHouse
   'incidents',
   'incidents-today',
-  // activities.* (byHouse, detail, comments)
+  // activities.* (byHouse, detail, comments, events — histórico, story 220)
   'activities',
   // streetSales.all / streetSales.byHouse
   'street-sales',

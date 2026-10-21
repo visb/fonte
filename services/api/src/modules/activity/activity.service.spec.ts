@@ -318,15 +318,15 @@ describe('ActivityService.changeStatus (transitions)', () => {
     ).resolves.toBeDefined();
   });
 
-  it('REQUESTED → TODO only by ADMIN', async () => {
+  it('REQUESTED → TODO is forbidden for a SERVANT (story 220: house coordinator or ADMIN)', async () => {
     const repo = makeActivityRepo({
       findOne: jest.fn().mockResolvedValue(activity({ status: ActivityStatus.REQUESTED })),
     });
-    const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
+    const staff = makeStaffRepo({ 'coord2-user': { houseId: 'house-1' } });
     const service = makeService(repo, staff);
 
     await expect(
-      service.changeStatus('act-1', { status: ActivityStatus.TODO, responsibleStaffId: 'staff-9' }, COORD),
+      service.changeStatus('act-1', { status: ActivityStatus.TODO, responsibleStaffId: 'staff-9' }, COORD2),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -799,5 +799,374 @@ describe('ActivityService — registro de eventos (story 66)', () => {
     await expect(service.listEvents('act-1', COORD)).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+});
+
+// ── Story 220: coordenador da casa aprova e atribui/troca responsável ─────────
+
+const SERVANT: ActivityUser = { userId: 'servant-user', role: Role.SERVANT };
+
+/** Staff lotados: coord/servant na house-1; staff-in (house-1), staff-out (house-2). */
+function story220Staff() {
+  return makeStaffRepo(
+    {
+      'coord-user': { houseId: 'house-1' },
+      'servant-user': { houseId: 'house-1' },
+    },
+    {
+      'staff-in': { id: 'staff-in', userId: 'u-in', houseId: 'house-1' } as Staff,
+      'staff-in-2': { id: 'staff-in-2', userId: 'u-in-2', houseId: 'house-1' } as Staff,
+      'staff-out': { id: 'staff-out', userId: 'u-out', houseId: 'house-2' } as Staff,
+    },
+  );
+}
+
+/** Repo que devolve `first` no load e `after` no findOne do retorno; registra o save. */
+function story220Repo(first: Activity, after: Partial<Activity> = {}) {
+  const saved: Activity[] = [];
+  const repo = makeActivityRepo({
+    findOne: jest
+      .fn()
+      .mockResolvedValueOnce(first)
+      .mockResolvedValue(activity({ ...first, ...after })),
+    save: jest.fn(async (a: Activity) => {
+      saved.push({ ...a });
+      return a;
+    }),
+  });
+  return { repo, saved };
+}
+
+describe('ActivityService.changeStatus — aprovar (story 220)', () => {
+  it('COORDINATOR da casa aprova com responsável da casa → TODO + responsável', async () => {
+    const { repo, saved } = story220Repo(activity({ status: ActivityStatus.REQUESTED }));
+    const service = makeService(repo, story220Staff());
+
+    await service.changeStatus(
+      'act-1',
+      { status: ActivityStatus.TODO, responsibleStaffId: 'staff-in' },
+      COORD,
+    );
+
+    expect(saved[0].status).toBe(ActivityStatus.TODO);
+    expect(saved[0].responsibleStaffId).toBe('staff-in');
+  });
+
+  it('COORDINATOR aprova atividade que já tem responsável, sem body', async () => {
+    const { repo, saved } = story220Repo(
+      activity({ status: ActivityStatus.REQUESTED, responsibleStaffId: 'staff-in' }),
+    );
+    const service = makeService(repo, story220Staff());
+
+    await service.changeStatus('act-1', { status: ActivityStatus.TODO }, COORD);
+
+    expect(saved[0].status).toBe(ActivityStatus.TODO);
+    expect(saved[0].responsibleStaffId).toBe('staff-in');
+  });
+
+  it('COORDINATOR de outra casa → 404', async () => {
+    const { repo } = story220Repo(
+      activity({ status: ActivityStatus.REQUESTED, houseId: 'house-2' }),
+    );
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.changeStatus(
+        'act-1',
+        { status: ActivityStatus.TODO, responsibleStaffId: 'staff-out' },
+        COORD,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('SERVANT da casa → 403', async () => {
+    const { repo } = story220Repo(activity({ status: ActivityStatus.REQUESTED }));
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.changeStatus(
+        'act-1',
+        { status: ActivityStatus.TODO, responsibleStaffId: 'staff-in' },
+        SERVANT,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('COORDINATOR com responsável de outra casa → 400', async () => {
+    const { repo } = story220Repo(activity({ status: ActivityStatus.REQUESTED }));
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.changeStatus(
+        'act-1',
+        { status: ActivityStatus.TODO, responsibleStaffId: 'staff-out' },
+        COORD,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('COORDINATOR com responsável inexistente → 400', async () => {
+    const { repo } = story220Repo(activity({ status: ActivityStatus.REQUESTED }));
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.changeStatus(
+        'act-1',
+        { status: ActivityStatus.TODO, responsibleStaffId: 'ghost' },
+        COORD,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('COORDINATOR sem responsável nenhum → 400', async () => {
+    const { repo } = story220Repo(activity({ status: ActivityStatus.REQUESTED }));
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.changeStatus('act-1', { status: ActivityStatus.TODO }, COORD),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('ADMIN segue aprovando com staff de qualquer casa (regressão)', async () => {
+    const { repo, saved } = story220Repo(
+      activity({ status: ActivityStatus.REQUESTED, houseId: 'house-1' }),
+    );
+    const service = makeService(repo, story220Staff());
+
+    await service.changeStatus(
+      'act-1',
+      { status: ActivityStatus.TODO, responsibleStaffId: 'staff-out' },
+      ADMIN,
+    );
+
+    expect(saved[0].status).toBe(ActivityStatus.TODO);
+    expect(saved[0].responsibleStaffId).toBe('staff-out');
+  });
+
+  it('aprovação que define o responsável grava RESPONSIBLE_CHANGED e depois STATUS_CHANGED', async () => {
+    const { repo } = story220Repo(activity({ status: ActivityStatus.REQUESTED }));
+    const events = makeEvents();
+    const service = makeService(repo, story220Staff(), events);
+
+    await service.changeStatus(
+      'act-1',
+      { status: ActivityStatus.TODO, responsibleStaffId: 'staff-in' },
+      COORD,
+    );
+
+    expect(events.record.mock.calls.map((c) => [c[1], c[3]])).toEqual([
+      [ActivityEventType.RESPONSIBLE_CHANGED, { from: null, to: 'staff-in' }],
+      [
+        ActivityEventType.STATUS_CHANGED,
+        { from: ActivityStatus.REQUESTED, to: ActivityStatus.TODO },
+      ],
+    ]);
+  });
+
+  it('aprovação que troca o responsável grava { from, to } do anterior', async () => {
+    const { repo } = story220Repo(
+      activity({ status: ActivityStatus.REQUESTED, responsibleStaffId: 'staff-in' }),
+    );
+    const events = makeEvents();
+    const service = makeService(repo, story220Staff(), events);
+
+    await service.changeStatus(
+      'act-1',
+      { status: ActivityStatus.TODO, responsibleStaffId: 'staff-in-2' },
+      COORD,
+    );
+
+    expect(events.record.mock.calls[0][1]).toBe(ActivityEventType.RESPONSIBLE_CHANGED);
+    expect(events.record.mock.calls[0][3]).toEqual({ from: 'staff-in', to: 'staff-in-2' });
+    expect(events.record.mock.calls[1][1]).toBe(ActivityEventType.STATUS_CHANGED);
+  });
+
+  it('aprovação com o mesmo responsável não grava RESPONSIBLE_CHANGED', async () => {
+    const { repo } = story220Repo(
+      activity({ status: ActivityStatus.REQUESTED, responsibleStaffId: 'staff-in' }),
+    );
+    const events = makeEvents();
+    const service = makeService(repo, story220Staff(), events);
+
+    await service.changeStatus(
+      'act-1',
+      { status: ActivityStatus.TODO, responsibleStaffId: 'staff-in' },
+      COORD,
+    );
+
+    expect(events.record).toHaveBeenCalledTimes(1);
+    expect(events.record.mock.calls[0][1]).toBe(ActivityEventType.STATUS_CHANGED);
+  });
+});
+
+describe('ActivityService.update — trocar responsável (story 220)', () => {
+  it.each([
+    ActivityStatus.DRAFT,
+    ActivityStatus.REQUESTED,
+    ActivityStatus.TODO,
+    ActivityStatus.DOING,
+    ActivityStatus.BLOCKED,
+  ])('COORDINATOR da casa troca em %s → ok + RESPONSIBLE_CHANGED', async (status) => {
+    const { repo, saved } = story220Repo(
+      activity({ status, responsibleStaffId: 'staff-in', createdByUserId: 'other-user' }),
+    );
+    const events = makeEvents();
+    const service = makeService(repo, story220Staff(), events);
+
+    await service.update('act-1', { responsibleStaffId: 'staff-in-2' }, COORD);
+
+    expect(saved[0].responsibleStaffId).toBe('staff-in-2');
+    expect(events.record).toHaveBeenCalledWith(
+      'act-1',
+      ActivityEventType.RESPONSIBLE_CHANGED,
+      COORD,
+      { from: 'staff-in', to: 'staff-in-2' },
+    );
+  });
+
+  it('descarta a relação carregada ao trocar (senão o TypeORM grava o responsável antigo)', async () => {
+    const { repo, saved } = story220Repo(
+      activity({
+        status: ActivityStatus.TODO,
+        responsibleStaffId: 'staff-in',
+        responsible: { id: 'staff-in', name: 'Antigo' } as Staff,
+      }),
+    );
+    const service = makeService(repo, story220Staff());
+
+    await service.update('act-1', { responsibleStaffId: 'staff-in-2' }, COORD);
+
+    expect(saved[0].responsibleStaffId).toBe('staff-in-2');
+    expect(saved[0].responsible).toBeUndefined();
+  });
+
+  it('COORDINATOR em DONE → 403', async () => {
+    const { repo } = story220Repo(
+      activity({ status: ActivityStatus.DONE, responsibleStaffId: 'staff-in' }),
+    );
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.update('act-1', { responsibleStaffId: 'staff-in-2' }, COORD),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('ADMIN em DONE → ok (decisão 4)', async () => {
+    const { repo, saved } = story220Repo(
+      activity({ status: ActivityStatus.DONE, responsibleStaffId: 'staff-in' }),
+    );
+    const service = makeService(repo, story220Staff());
+
+    await service.update('act-1', { responsibleStaffId: 'staff-out' }, ADMIN);
+
+    expect(saved[0].responsibleStaffId).toBe('staff-out');
+  });
+
+  it('ADMIN com staff inexistente → 400', async () => {
+    const { repo } = story220Repo(activity({ status: ActivityStatus.TODO }));
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.update('act-1', { responsibleStaffId: 'ghost' }, ADMIN),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('COORDINATOR com responsável de outra casa → 400', async () => {
+    const { repo } = story220Repo(activity({ status: ActivityStatus.TODO }));
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.update('act-1', { responsibleStaffId: 'staff-out' }, COORD),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('COORDINATOR em atividade sem casa (ADMIN-only) → 404', async () => {
+    const { repo } = story220Repo(activity({ status: ActivityStatus.TODO, houseId: null }));
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.update('act-1', { responsibleStaffId: 'staff-in' }, COORD),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('SERVANT → 403', async () => {
+    const { repo } = story220Repo(activity({ status: ActivityStatus.TODO }));
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.update('act-1', { responsibleStaffId: 'staff-in' }, SERVANT),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it.each([
+    ActivityStatus.TODO,
+    ActivityStatus.DOING,
+    ActivityStatus.BLOCKED,
+    ActivityStatus.DONE,
+  ])('null em %s → 400 (decisão 6, inclusive ADMIN)', async (status) => {
+    const { repo } = story220Repo(activity({ status, responsibleStaffId: 'staff-in' }));
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.update('act-1', { responsibleStaffId: null }, ADMIN),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('null em TODO pelo coordenador → 400', async () => {
+    const { repo } = story220Repo(
+      activity({ status: ActivityStatus.TODO, responsibleStaffId: 'staff-in' }),
+    );
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.update('act-1', { responsibleStaffId: null }, COORD),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it.each([ActivityStatus.DRAFT, ActivityStatus.REQUESTED])(
+    'null em %s → ok',
+    async (status) => {
+      const { repo, saved } = story220Repo(
+        activity({ status, responsibleStaffId: 'staff-in' }),
+      );
+      const service = makeService(repo, story220Staff());
+
+      await service.update('act-1', { responsibleStaffId: null }, COORD);
+
+      expect(saved[0].responsibleStaffId).toBeNull();
+    },
+  );
+
+  it('coordenador mandando só responsável fora de DRAFT não cai na trava de título/casa', async () => {
+    const { repo } = story220Repo(
+      activity({ status: ActivityStatus.DOING, createdByUserId: 'other-user', responsibleStaffId: 'staff-in' }),
+    );
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.update('act-1', { responsibleStaffId: 'staff-in-2' }, COORD),
+    ).resolves.toBeDefined();
+  });
+
+  it('coordenador NÃO ganha edição de título fora de DRAFT (regressão story 48)', async () => {
+    const { repo } = story220Repo(
+      activity({ status: ActivityStatus.TODO, createdByUserId: 'other-user' }),
+    );
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.update('act-1', { title: 'novo', responsibleStaffId: 'staff-in' }, COORD),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('coordenador NÃO ganha edição de casa fora de DRAFT (regressão story 48)', async () => {
+    const { repo } = story220Repo(
+      activity({ status: ActivityStatus.REQUESTED, createdByUserId: 'other-user' }),
+    );
+    const service = makeService(repo, story220Staff());
+
+    await expect(
+      service.update('act-1', { houseId: 'house-2' }, COORD),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

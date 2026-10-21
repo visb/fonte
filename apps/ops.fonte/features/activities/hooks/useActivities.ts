@@ -73,6 +73,22 @@ export function useActivity(id: string | null | undefined) {
   });
 }
 
+/**
+ * Histórico da atividade (story 220): a trilha gravada pelo backend (story 66).
+ * A key começa com `activities`, então entra na allowlist offline como o detalhe.
+ */
+export function useActivityEvents(id: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.activities.events(id!),
+    queryFn: () => api.activities.listEvents(id!),
+    enabled: !!id,
+  });
+}
+
+/**
+ * Editar conteúdo ou trocar o responsável (story 220). Trocar responsável exige
+ * rede: o endpoint não aceita `Idempotency-Key`, então não entra na outbox.
+ */
 export function useUpdateActivity() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -81,6 +97,7 @@ export function useUpdateActivity() {
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.activities.detail(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.activities.events(id) });
     },
   });
 }
@@ -98,8 +115,10 @@ export function useChangeActivityStatus() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: ChangeActivityStatusInput }) =>
       api.activities.changeStatus(id, data),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
+      // A aprovação pode atribuir o responsável (story 220): o histórico muda.
+      queryClient.invalidateQueries({ queryKey: queryKeys.activities.events(id) });
     },
   });
 }

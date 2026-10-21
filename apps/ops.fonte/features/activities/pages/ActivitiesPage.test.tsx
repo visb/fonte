@@ -11,10 +11,31 @@ jest.mock('@expo/vector-icons', () => {
   const { Text } = require('react-native');
   return { Ionicons: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
 });
-jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(...a) } }));
-jest.mock('@/lib/auth', () => ({
-  useAuth: () => ({ staff: { houseId: 'h1', userId: 'u1', user: { role: 'SERVANT' } } }),
+let mockParams: Record<string, string | undefined> = {};
+let mockRole = 'SERVANT';
+jest.mock('expo-router', () => ({
+  router: { push: (...a: unknown[]) => mockPush(...a) },
+  useLocalSearchParams: () => mockParams,
 }));
+jest.mock('@/lib/auth', () => ({
+  useAuth: () => ({ staff: { houseId: 'h1', userId: 'u1', user: { role: mockRole } } }),
+}));
+// O seletor tem teste próprio; aqui só importa com que alvo/modo ele abre.
+jest.mock('@/features/activities/components/SelectResponsibleModal', () => {
+  const { Text } = require('react-native');
+  return {
+    SelectResponsibleModal: ({
+      target,
+      onClose,
+    }: {
+      target: { activity: { id: string }; mode: string } | null;
+      onClose: () => void;
+    }) =>
+      target ? (
+        <Text onPress={onClose}>{`modal:${target.mode}:${target.activity.id}`}</Text>
+      ) : null,
+  };
+});
 jest.mock('@/lib/offline/network', () => ({ useIsOnline: () => true }));
 jest.mock('@/features/activities/hooks/useActivities', () => ({
   useActivities: (...a: unknown[]) => mockUseActivities(...a),
@@ -64,6 +85,8 @@ function count(status: ActivityStatus) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockParams = {};
+  mockRole = 'SERVANT';
   jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => {});
 });
 afterEach(() => jest.restoreAllMocks());
@@ -156,6 +179,83 @@ describe('ActivitiesPage (story 208)', () => {
     render(<ActivitiesPage />);
     fireEvent.press(screen.getByLabelText('Nova atividade'));
     expect(mockPush).toHaveBeenCalledWith('/(app)/activities/new');
+  });
+
+  it('?tab=DRAFT abre em Rascunhos mesmo com itens em colunas anteriores (story 220)', () => {
+    mockParams = { tab: 'DRAFT' };
+    mockQuery({
+      data: [
+        activity('a1', ActivityStatus.REQUESTED, 'Pedido'),
+        activity('a2', ActivityStatus.DRAFT, 'Rascunho novo'),
+      ],
+    });
+    render(<ActivitiesPage />);
+    expect(tab(ActivityStatus.DRAFT)).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ selected: true }),
+    );
+  });
+
+  it('?tab=DRAFT vale mesmo se a lista ainda estava carregando (story 220)', () => {
+    mockParams = { tab: 'DRAFT' };
+    mockQuery({ isLoading: true });
+    const { rerender } = render(<ActivitiesPage />);
+    mockQuery({ data: [activity('a1', ActivityStatus.TODO, 'Outro')] });
+    rerender(<ActivitiesPage />);
+    expect(tab(ActivityStatus.DRAFT)).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ selected: true }),
+    );
+  });
+
+  it('?tab inválido mantém a regra de initialActivityTab (story 220)', () => {
+    mockParams = { tab: 'QUALQUER' };
+    mockQuery({ data: [activity('a1', ActivityStatus.TODO, 'Outro')] });
+    render(<ActivitiesPage />);
+    expect(tab(ActivityStatus.TODO)).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ selected: true }),
+    );
+  });
+
+  it('coordenador aprova com responsável já definido direto, sem modal (story 220)', () => {
+    mockRole = 'COORDINATOR';
+    mockQuery({
+      data: [
+        {
+          ...activity('a1', ActivityStatus.REQUESTED, 'Pedido'),
+          createdByUserId: 'outro',
+          responsibleStaffId: 's1',
+          responsible: { id: 's1', name: 'Ana', userId: 'u-s1' },
+        },
+      ],
+    });
+    render(<ActivitiesPage />);
+    fireEvent.press(screen.getByText('Aprovar solicitação'));
+    expect(mockMutate).toHaveBeenCalledWith({ id: 'a1', data: { status: ActivityStatus.TODO } });
+    expect(screen.queryByText(/modal:/)).toBeNull();
+  });
+
+  it('coordenador aprova sem responsável: abre o seletor em modo aprovar (story 220)', () => {
+    mockRole = 'COORDINATOR';
+    mockQuery({
+      data: [{ ...activity('a1', ActivityStatus.REQUESTED, 'Pedido'), createdByUserId: 'outro' }],
+    });
+    render(<ActivitiesPage />);
+    fireEvent.press(screen.getByText('Aprovar solicitação'));
+    expect(mockMutate).not.toHaveBeenCalled();
+    expect(screen.getByText('modal:approve:a1')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('modal:approve:a1'));
+    expect(screen.queryByText(/modal:/)).toBeNull();
+  });
+
+  it('coordenador toca no responsável e abre o seletor em modo trocar (story 220)', () => {
+    mockRole = 'COORDINATOR';
+    mockQuery({ data: [activity('a1', ActivityStatus.TODO, 'Varrer')] });
+    render(<ActivitiesPage />);
+    fireEvent.press(screen.getByLabelText('Definir responsável'));
+    expect(screen.getByText('modal:change:a1')).toBeTruthy();
   });
 
   it('puxar para atualizar refaz a query', async () => {

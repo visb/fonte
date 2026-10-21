@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { router } from 'expo-router';
+import { ActivityStatus } from '@fonte/types';
 import { useAuth } from '@/lib/auth';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { useCreateActivity } from '@/features/activities/hooks/useActivities';
@@ -20,6 +21,14 @@ const schema = z.object({
   description: z.string().optional(),
 });
 type FormData = z.infer<typeof schema>;
+
+/** Lista de atividades aberta em Rascunhos (`?tab=DRAFT`, story 220). */
+function goToDrafts() {
+  router.replace({
+    pathname: '/(app)/activities',
+    params: { tab: ActivityStatus.DRAFT },
+  } as never);
+}
 
 export function NewActivityPage() {
   const { staff } = useAuth();
@@ -44,14 +53,15 @@ export function NewActivityPage() {
         houseId: staff?.houseId ?? null,
       },
       {
-        onSent: () =>
-          Alert.alert('Sucesso', 'Rascunho criado.', [
-            { text: 'OK', onPress: () => router.back() },
-          ]),
-        // Sem sinal o rascunho fica na fila e já aparece na lista como
-        // pendente: volta primeiro, avisa depois.
+        // Story 220: cai na aba Rascunhos, onde está o que acabou de criar —
+        // vai para a lista primeiro, avisa depois.
+        onSent: () => {
+          goToDrafts();
+          Alert.alert('Sucesso', 'Rascunho criado.');
+        },
+        // Sem sinal o rascunho fica na fila e já aparece na lista como pendente.
         onQueued: () => {
-          router.back();
+          goToDrafts();
           Alert.alert(
             'Salvo no aparelho',
             'Sem conexão agora: o rascunho será enviado assim que a conexão voltar.',

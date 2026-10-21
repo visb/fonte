@@ -1,4 +1,4 @@
-import { ActivityStatus } from '@fonte/types';
+import { ActivityEventType, ActivityStatus } from '@fonte/types';
 
 /**
  * Colunas do quadro de atividades (story 208): uma aba por status, na ordem do
@@ -27,3 +27,30 @@ export function canQuickAddInStatus(
 ): boolean {
   return status === ActivityStatus.DRAFT;
 }
+
+// ── Histórico (story 220 — espelho de adm/features/activities/constants.ts) ──
+
+/** Rótulo de cada status no histórico, o mesmo das abas. */
+export const ACTIVITY_STATUS_LABELS: Record<ActivityStatus, string> = Object.fromEntries(
+  ACTIVITY_COLUMNS.map((c) => [c.status, c.title]),
+) as Record<ActivityStatus, string>;
+
+/** Ícone (Ionicons) + verbo de cada tipo de evento, sem o ator. */
+export const ACTIVITY_EVENT_CONFIG: Record<ActivityEventType, { icon: string; label: string }> = {
+  [ActivityEventType.CREATED]: { icon: 'add-circle-outline', label: 'criou a atividade' },
+  [ActivityEventType.STATUS_CHANGED]: { icon: 'swap-horizontal-outline', label: 'moveu' },
+  [ActivityEventType.TITLE_CHANGED]: { icon: 'create-outline', label: 'alterou o título' },
+  [ActivityEventType.DESCRIPTION_CHANGED]: {
+    icon: 'document-text-outline',
+    label: 'alterou a descrição',
+  },
+  [ActivityEventType.RESPONSIBLE_CHANGED]: {
+    icon: 'person-outline',
+    label: 'alterou o responsável',
+  },
+  [ActivityEventType.COMMENTED]: { icon: 'chatbubble-outline', label: 'comentou' },
+  [ActivityEventType.DELETED]: { icon: 'trash-outline', label: 'excluiu a atividade' },
+};
+
+/** Nome do servo quando o id não está mais na lista da casa. */
+export const REMOVED_STAFF_LABEL = 'servo removido';

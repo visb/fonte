@@ -13,6 +13,12 @@ interface Props {
   item: Activity;
   isCreator: boolean;
   isResponsible: boolean;
+  /**
+   * Coordenador da casa vendo uma solicitação (story 220): mostra "Aprovar
+   * solicitação", que dispara `onChangeStatus(item, TODO)`. Quem decide se abre
+   * o seletor de responsável é a page.
+   */
+  canApprove?: boolean;
   onChangeStatus: (activity: Activity, status: ActivityStatus) => void;
   /** Já há uma mudança de status em voo. */
   pending?: boolean;
@@ -49,14 +55,22 @@ function transitionsFor(
   status: ActivityStatus,
   isCreator: boolean,
   isResponsible: boolean,
+  canApprove: boolean,
 ): { label: string; color: string; to: ActivityStatus }[] {
   if (isCreator && status === ActivityStatus.DRAFT) {
-    return [{ label: 'Enviar', color: '#2563eb', to: ActivityStatus.REQUESTED }];
+    return [{ label: 'Enviar solicitação', color: '#2563eb', to: ActivityStatus.REQUESTED }];
   }
-  // Devolver para rascunho (story 75): o criador desfaz o próprio envio.
-  // ADMIN não opera pelo ops (segue a story 48).
-  if (isCreator && status === ActivityStatus.REQUESTED) {
-    return [{ label: 'Devolver para rascunho', color: '#6b7280', to: ActivityStatus.DRAFT }];
+  if (status === ActivityStatus.REQUESTED) {
+    const actions: { label: string; color: string; to: ActivityStatus }[] = [];
+    // Devolver para rascunho (story 75): o criador desfaz o próprio envio.
+    if (isCreator) {
+      actions.push({ label: 'Devolver para rascunho', color: '#6b7280', to: ActivityStatus.DRAFT });
+    }
+    // Aprovar (story 220): coordenador da casa. Criador-coordenador vê os dois.
+    if (canApprove) {
+      actions.push({ label: 'Aprovar solicitação', color: '#16a34a', to: ActivityStatus.TODO });
+    }
+    return actions;
   }
   if (!isResponsible) return [];
   if (status === ActivityStatus.TODO) {
@@ -81,11 +95,12 @@ export function ActivityCardActions({
   item,
   isCreator,
   isResponsible,
+  canApprove = false,
   onChangeStatus,
   pending,
   isOnline = true,
 }: Props) {
-  const transitions = transitionsFor(item.status, isCreator, isResponsible);
+  const transitions = transitionsFor(item.status, isCreator, isResponsible, canApprove);
   if (transitions.length === 0) return null;
 
   return (

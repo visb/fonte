@@ -16,7 +16,9 @@ jest.mock('@/lib/auth', () => ({
   useAuth: () => ({ changePassword: mockChangePassword }),
 }));
 
-import ChangePasswordScreen from './change-password';
+// Teste fora de app/: o Expo Router empacota todo arquivo de app/ como rota no
+// bundle web, e um *.test.tsx ali quebra o Metro com "jest is not defined".
+import ChangePasswordScreen from '@/app/(auth)/change-password';
 
 beforeEach(() => jest.clearAllMocks());
 

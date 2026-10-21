@@ -1,24 +1,39 @@
 # PROGRESS — ledger ativo
 
-Rodada de autorun **220–220** — aberta em 2026-10-20.
+**Nenhuma rodada aberta.** Rodadas encerradas ficam em `stories/done/PROGRESS-NN-MM.md`.
+
+Ao abrir uma rodada de autorun (`$autorun <faixa/tema>`), preencher este arquivo com o modelo
+abaixo e commitar (`docs(stories): abre rodada autorun <tema>`). O protocolo do "como" é
+`stories/AUTORUN.md` — não duplicar aqui.
+
+---
+
+## Modelo de seção por rodada
+
+```markdown
+Rodada de autorun **NN–MM** — aberta em AAAA-MM-DD.
 
 ## Config da rodada
 
-- **Tema:** ops — aprovar solicitação e atribuir/trocar responsável pelo coordenador da casa + aba Histórico.
-- **Ordem:** 220
-- **Branch base:** `main`.
-- **Deps rígidas:** nenhuma.
-- **Escopo técnico por story:** backend `modules/activity` (permissão, sem migration, sem endpoint novo), `BUSINESS_RULES.md`, Postman (descrições), `ops.fonte/features/activities`.
-- **Cuidados da rodada:** sem migration; contratos só se `ActivityEvent` mudar (`build:types`/`build:api-client`); ops offline-first (aprovar/trocar exigem rede, não entram na outbox; allowlist offline para events seguindo `activities.detail`); ADMIN mantém comportamento no adm; Maestro exige emulador — se indisponível, PENDENTE-MANUAL; cobertura ≥90 em `modules/activity` e `features/activities`.
+- **Tema:** <uma frase>
+- **Ordem:** NN → ... → MM
+- **Branch base:** `main` (cada branch parte da `main` já com o merge da story anterior).
+- **Deps rígidas:** <A → B, com o motivo; se A bloquear, B bloqueia junto>
+- **Escopo técnico por story:** <migration, contratos, Postman e apps tocados>
+- **Cuidados da rodada:** <contratos, migrations, dependências externas, invariantes e cobertura ≥90>
 
 ## Fila
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 220 — aprovar solicitação e responsável no ops | [ ] | | | |
+| 1 | NN — <título> | [ ] | | | |
 
 ## Log
+
+[OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data>
+<bloqueio/PENDENTE-MANUAL e no máximo uma nota crítica; até três linhas por entrada>
 
 ## Resumo final
 
 <vazio até o fim da rodada>
+```

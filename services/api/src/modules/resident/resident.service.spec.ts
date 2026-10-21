@@ -1249,7 +1249,8 @@ describe('ResidentService.readmit', () => {
     await service.readmit(RESIDENT_ID, dto);
 
     expect(residentUpdate).toHaveBeenCalledWith(RESIDENT_ID, { userId: null });
-    expect(userSoftDelete).toHaveBeenCalledWith(USER_ID);
+    // Só o User de kiosk: o promovido a servo (SERVANT) é o login do Staff.
+    expect(userSoftDelete).toHaveBeenCalledWith({ id: USER_ID, role: 'RESIDENT' });
   });
 
   it('does NOT soft-delete user when resident has no userId', async () => {
@@ -1903,6 +1904,14 @@ describe('ResidentService.promoteToServant', () => {
       expect.objectContaining({ status: 'DISCHARGED' }),
     );
     expect(createAuto).toHaveBeenCalledWith(RESIDENT_ID, 'PROMOTED_TO_SERVANT', expect.any(String));
+  });
+
+  it('desvincula do filho o User reaproveitado pelo servo', async () => {
+    const { service, residentUpdate } = makePromoteService({ userId: USER_ID });
+
+    await service.promoteToServant(RESIDENT_ID, {});
+
+    expect(residentUpdate).toHaveBeenCalledWith(RESIDENT_ID, expect.objectContaining({ userId: null }));
   });
 
   // Story 205 (decisão 7): promoção é alta — tira do ministério e da liderança.

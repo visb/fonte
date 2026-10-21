@@ -727,10 +727,12 @@ export class ResidentService {
       { previousExitDate: await this.findLastExitDate(resident) },
     );
 
-    // Revogar acesso digital do acolhimento anterior
+    // Revogar acesso digital do acolhimento anterior. Só apaga o User se ainda
+    // for de kiosk (RESIDENT): na promoção a servo ele vira SERVANT e passa a
+    // ser o login do Staff — apagá-lo derrubava o acesso e o `staff.user`.
     if (resident.userId) {
       await this.residentRepository.update(id, { userId: null });
-      await this.userRepository.softDelete(resident.userId);
+      await this.userRepository.softDelete({ id: resident.userId, role: Role.RESIDENT });
     }
 
     // Criar novo registro de acolhimento
@@ -989,6 +991,8 @@ export class ResidentService {
           status: ResidentStatus.DISCHARGED,
           exitDate: promotedAt as unknown as Date,
           ministryId: null,
+          // O User reaproveitado agora pertence ao Staff; o filho fica sem acesso.
+          userId: null,
         });
         await m.query(
           `UPDATE ministries SET leader_id = NULL, leader_type = NULL

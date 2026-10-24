@@ -102,6 +102,7 @@ import type {
   ImportContributionsSummary,
   UserPreferences,
   ResidentsFiltersPreference,
+  StaffFiltersPreference,
   TemplateAvailability,
   TemplateKind,
   ReceiptType,
@@ -1357,7 +1358,7 @@ export interface UpdateAppSettingsInput {
 
 // ─── User Preferences (story 130) ─────────────────────────────────────────────
 
-export type { UserPreferences, ResidentsFiltersPreference };
+export type { UserPreferences, ResidentsFiltersPreference, StaffFiltersPreference };
 
 // ─── Resident Session ─────────────────────────────────────────────────────────
 

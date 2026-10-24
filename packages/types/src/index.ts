@@ -2015,6 +2015,28 @@ export const STAFF_DISMISSAL_REASON_LABELS: Record<StaffDismissalReason, string>
 /** Filtro de `GET /staff?status=` — default `active` (não desligado). */
 export type StaffListStatus = 'active' | 'dismissed';
 
+/**
+ * Story 223 — query de `GET /staff`. `search` casa nome (sem acento/caixa) e
+ * dígitos do CPF; `houseId` só vale para ADMIN (ignorado para COORDINATOR).
+ */
+export interface StaffListParams {
+  status?: StaffListStatus;
+  search?: string;
+  houseId?: string;
+}
+
+/**
+ * Story 223 — preferência da lista de servos do adm (chave `staff.filters`).
+ * A busca (`q`) não entra; `house` vazio = "Todas as casas".
+ */
+export interface StaffFiltersPreference {
+  status: StaffListStatus;
+  house: string;
+}
+
+/** Chave canônica da preferência de filtros da lista de servos. */
+export const STAFF_FILTERS_PREFERENCE_KEY = 'staff.filters';
+
 /** `POST /staff/:id/dismiss` — `notes` obrigatória quando `reason = OTHER`. */
 export interface DismissStaffPayload {
   date: string;

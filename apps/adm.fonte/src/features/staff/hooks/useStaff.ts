@@ -3,7 +3,7 @@ import type {
   CreateServicePeriodPayload,
   DismissStaffPayload,
   ReinstateStaffPayload,
-  StaffListStatus,
+  StaffListParams,
   StaffPermissionType,
   UpdateServicePeriodPayload,
 } from '@fonte/types';
@@ -63,11 +63,22 @@ export function useRemoveMySignature() {
 
 // Story 217 — `status` default `active` (servos não desligados); `dismissed`
 // alimenta o filtro "Desligados" da lista.
-export function useStaff(options?: { enabled?: boolean; status?: StaffListStatus }) {
+// Story 223 — `search` (nome/CPF) e `houseId` (só ADMIN; o backend ignora para
+// os demais) filtram no servidor.
+export function useStaff(options?: { enabled?: boolean } & StaffListParams) {
   const status = options?.status ?? 'active';
+  const search = options?.search?.trim() ?? '';
+  const houseId = options?.houseId ?? '';
   return useQuery({
-    queryKey: queryKeys.staff.list(status),
-    queryFn: () => (status === 'active' ? api.staff.list() : api.staff.list({ status })),
+    queryKey: queryKeys.staff.list({ status, search, houseId }),
+    queryFn: () => {
+      const params: StaffListParams = {
+        ...(status === 'active' ? {} : { status }),
+        ...(search ? { search } : {}),
+        ...(houseId ? { houseId } : {}),
+      };
+      return Object.keys(params).length ? api.staff.list(params) : api.staff.list();
+    },
     enabled: options?.enabled ?? true,
   });
 }

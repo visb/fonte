@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, IsNull, Not, Repository } from 'typeorm';
+import { EntityManager, IsNull, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import {
   AuditAction,
@@ -32,7 +32,7 @@ import {
 import { StaffServicePeriod } from './staff-service-period.entity';
 import { DismissStaffDto } from './dto/dismiss-staff.dto';
 import { ReinstateStaffDto } from './dto/reinstate-staff.dto';
-import { ACTIVE_STAFF_WHERE } from './active-staff';
+import { activeStaffSql } from './active-staff';
 import { Staff } from './staff.entity';
 import { StaffPermission } from './staff-permission.entity';
 import { House } from '../house/house.entity';
@@ -44,6 +44,13 @@ import { StorageService } from '../storage/storage.service';
 import { assertAdultBirthDate } from '../../common/lib/birth-date';
 import { isHouseCoordinatorRole } from '../../common/auth/house-coordinator';
 import { openServicePeriod } from './staff-service-period.service';
+
+/** Story 223 — filtros de `GET /staff` (espelha `ListStaffQueryDto`). */
+export interface StaffListFilters {
+  status?: StaffListStatus;
+  search?: string;
+  houseId?: string;
+}
 
 /** `YYYY-MM-DD` de um valor do DTO (string ISO) ou da entidade (date). */
 function isoDay(value: string | Date): string {
@@ -104,19 +111,46 @@ export class StaffService {
   // casa; ADMIN lista todos. houseId vem do staff autenticado, não do cliente.
   // Story 217: `status` default `active` (não desligado); `dismissed` = filtro
   // "Desligados" da lista do adm.
+  // Story 223: `search` casa nome (sem acento/caixa) e, com dígitos, o CPF;
+  // `houseId` só vale para ADMIN — para os demais é ignorado (LGPD).
   async findAll(
     caller?: { role: string; userId: string },
-    status: StaffListStatus = 'active',
+    filters: StaffListFilters = {},
   ): Promise<Staff[]> {
-    const order = { name: 'ASC' } as const;
-    const relations = ['user', 'house', 'supportGroup'];
-    const statusWhere = status === 'dismissed' ? { dismissedAt: Not(IsNull()) } : ACTIVE_STAFF_WHERE;
+    const { status = 'active', search, houseId } = filters;
+    let scopeHouseId = houseId;
     if (caller && caller.role !== Role.ADMIN) {
       const me = await this.findByUserId(caller.userId).catch(() => null);
       if (!me?.houseId) return [];
-      return this.staffRepository.find({ where: { houseId: me.houseId, ...statusWhere }, order, relations });
+      scopeHouseId = me.houseId;
     }
-    return this.staffRepository.find({ where: { ...statusWhere }, order, relations });
+
+    const qb = this.staffRepository
+      .createQueryBuilder('staff')
+      .leftJoinAndSelect('staff.user', 'user')
+      .leftJoinAndSelect('staff.house', 'house')
+      .leftJoinAndSelect('staff.supportGroup', 'supportGroup')
+      .where(status === 'dismissed' ? 'staff.dismissed_at IS NOT NULL' : activeStaffSql('staff'))
+      .orderBy('staff.name', 'ASC');
+
+    if (scopeHouseId) qb.andWhere('staff.houseId = :houseId', { houseId: scopeHouseId });
+
+    const term = search?.trim();
+    if (term) {
+      // `%`/`_` digitados são literais, não curingas.
+      const escaped = term.replace(/[\\%_]/g, (char) => `\\${char}`);
+      const digits = term.replace(/\D/g, '');
+      if (digits.length > 0) {
+        qb.andWhere(
+          `(unaccent(LOWER(staff.name)) LIKE unaccent(LOWER(:search))
+            OR regexp_replace(COALESCE(staff.cpf, ''), '\\D', '', 'g') LIKE :cpfSearch)`,
+          { search: `%${escaped}%`, cpfSearch: `%${digits}%` },
+        );
+      } else {
+        qb.andWhere('unaccent(LOWER(staff.name)) LIKE unaccent(LOWER(:search))', { search: `%${escaped}%` });
+      }
+    }
+    return qb.getMany();
   }
 
   async findOne(id: string): Promise<Staff> {

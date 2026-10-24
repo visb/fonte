@@ -13,7 +13,7 @@ jest.mock('bcrypt', () => ({
 
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { maxBirthDateFor, MIN_AGE_MESSAGE, todayInSaoPaulo } from '@fonte/types';
-import { IsNull, Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { StaffService } from './staff.service';
 import { Staff } from './staff.entity';
 import { House } from '../house/house.entity';
@@ -975,70 +975,151 @@ describe('StaffService — coordenador titular da casa (story 194)', () => {
   });
 });
 
-describe('StaffService.findAll house scoping', () => {
-  it('ADMIN lists all active staff (no house filter)', async () => {
-    const staffRepo = makeRepo({ find: jest.fn().mockResolvedValue([{ id: 's1' }]) });
-    const service = makeService(staffRepo, makeRepo(), makeRepo());
+describe('StaffService.findAll (filtros e escopo por casa — stories 217/223)', () => {
+  const NAME_SQL = 'unaccent(LOWER(staff.name)) LIKE unaccent(LOWER(:search))';
 
-    await service.findAll({ role: 'ADMIN', userId: 'u1' });
-
-    expect(staffRepo.find).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { dismissedAt: IsNull() } }),
-    );
-  });
-
-  // Story 217 — filtro "Desligados" da lista do adm.
-  it('status dismissed lista só os desligados', async () => {
-    const staffRepo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
-    const service = makeService(staffRepo, makeRepo(), makeRepo());
-
-    await service.findAll({ role: 'ADMIN', userId: 'u1' }, 'dismissed');
-
-    expect(staffRepo.find).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { dismissedAt: Not(IsNull()) } }),
-    );
-  });
-
-  it('COORDINATOR com status dismissed fica na própria casa', async () => {
+  function setup(me: { houseId: string | null } | null = null) {
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([{ id: 's1' }]),
+    };
     const staffRepo = makeRepo({
-      findOne: jest.fn().mockResolvedValue({ id: 'me', userId: 'u1', houseId: 'house-9' }),
-      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(me ? { id: 'me', userId: 'u1', ...me } : null),
     });
+    const createQueryBuilder = jest.fn().mockReturnValue(qb);
+    Object.assign(staffRepo, { createQueryBuilder });
     const service = makeService(staffRepo, makeRepo(), makeRepo({ find: jest.fn().mockResolvedValue([]) }));
+    const andWhereCalls = (): Array<[string, Record<string, string>]> => qb.andWhere.mock.calls;
+    return { service, qb, createQueryBuilder, andWhereCalls };
+  }
 
-    await service.findAll({ role: 'COORDINATOR', userId: 'u1' }, 'dismissed');
+  const admin = { role: 'ADMIN', userId: 'u1' };
+  const coordinator = { role: 'COORDINATOR', userId: 'u1' };
 
-    expect(staffRepo.find).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { houseId: 'house-9', dismissedAt: Not(IsNull()) } }),
-    );
+  it('ADMIN sem filtros lista todos os ativos, com relações e ordem por nome', async () => {
+    const { service, qb, andWhereCalls } = setup();
+
+    const result = await service.findAll(admin);
+
+    expect(result).toEqual([{ id: 's1' }]);
+    expect(qb.where).toHaveBeenCalledWith('staff.deleted_at IS NULL AND staff.dismissed_at IS NULL');
+    expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('staff.user', 'user');
+    expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('staff.house', 'house');
+    expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('staff.supportGroup', 'supportGroup');
+    expect(qb.orderBy).toHaveBeenCalledWith('staff.name', 'ASC');
+    expect(andWhereCalls()).toEqual([]);
   });
 
-  it('COORDINATOR is scoped to own house', async () => {
-    const staffRepo = makeRepo({
-      findOne: jest.fn().mockResolvedValue({ id: 'me', userId: 'u1', houseId: 'house-9' }),
-      find: jest.fn().mockResolvedValue([]),
-    });
-    const permRepo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
-    const service = makeService(staffRepo, makeRepo(), permRepo);
+  it('status dismissed lista só os desligados', async () => {
+    const { service, qb } = setup();
 
-    await service.findAll({ role: 'COORDINATOR', userId: 'u1' });
+    await service.findAll(admin, { status: 'dismissed' });
 
-    expect(staffRepo.find).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { houseId: 'house-9', dismissedAt: IsNull() } }),
-    );
+    expect(qb.where).toHaveBeenCalledWith('staff.dismissed_at IS NOT NULL');
   });
 
-  it('returns empty when non-admin caller has no house', async () => {
-    const staffRepo = makeRepo({
-      findOne: jest.fn().mockResolvedValue({ id: 'me', userId: 'u1', houseId: null }),
-      find: jest.fn().mockResolvedValue([]),
-    });
-    const permRepo = makeRepo({ find: jest.fn().mockResolvedValue([]) });
-    const service = makeService(staffRepo, makeRepo(), permRepo);
+  it('ADMIN com houseId filtra pela casa', async () => {
+    const { service, andWhereCalls } = setup();
+
+    await service.findAll(admin, { houseId: 'house-2' });
+
+    expect(andWhereCalls()).toContainEqual(['staff.houseId = :houseId', { houseId: 'house-2' }]);
+  });
+
+  it('COORDINATOR fica na própria casa', async () => {
+    const { service, andWhereCalls } = setup({ houseId: 'house-9' });
+
+    await service.findAll(coordinator);
+
+    expect(andWhereCalls()).toContainEqual(['staff.houseId = :houseId', { houseId: 'house-9' }]);
+  });
+
+  it('COORDINATOR com houseId de outra casa: param ignorado (LGPD)', async () => {
+    const { service, andWhereCalls } = setup({ houseId: 'house-9' });
+
+    await service.findAll(coordinator, { houseId: 'house-2' });
+
+    const houseCalls = andWhereCalls().filter(([sql]) => sql.includes('houseId'));
+    expect(houseCalls).toEqual([['staff.houseId = :houseId', { houseId: 'house-9' }]]);
+  });
+
+  it('COORDINATOR com status dismissed + busca fica na própria casa', async () => {
+    const { service, qb, andWhereCalls } = setup({ houseId: 'house-9' });
+
+    await service.findAll(coordinator, { status: 'dismissed', search: 'joao', houseId: 'house-2' });
+
+    expect(qb.where).toHaveBeenCalledWith('staff.dismissed_at IS NOT NULL');
+    expect(andWhereCalls()).toEqual([
+      ['staff.houseId = :houseId', { houseId: 'house-9' }],
+      [NAME_SQL, { search: '%joao%' }],
+    ]);
+  });
+
+  it('busca por nome usa unaccent/LOWER com o termo aparado', async () => {
+    const { service, andWhereCalls } = setup();
+
+    await service.findAll(admin, { search: '  João  ' });
+
+    expect(andWhereCalls()).toEqual([[NAME_SQL, { search: '%João%' }]]);
+  });
+
+  it('busca com dígitos também casa o CPF só pelos dígitos', async () => {
+    const { service, andWhereCalls } = setup();
+
+    await service.findAll(admin, { search: '123.456' });
+
+    const [[sql, params]] = andWhereCalls();
+    expect(sql).toContain(NAME_SQL);
+    expect(sql).toContain("regexp_replace(COALESCE(staff.cpf, ''), '\\D', '', 'g') LIKE :cpfSearch");
+    expect(params).toEqual({ search: '%123.456%', cpfSearch: '%123456%' });
+  });
+
+  it('% e _ digitados são literais', async () => {
+    const { service, andWhereCalls } = setup();
+
+    await service.findAll(admin, { search: 'a%b_c' });
+
+    expect(andWhereCalls()).toEqual([[NAME_SQL, { search: '%a\\%b\\_c%' }]]);
+  });
+
+  it('busca só com espaços não filtra', async () => {
+    const { service, andWhereCalls } = setup();
+
+    await service.findAll(admin, { search: '   ' });
+
+    expect(andWhereCalls()).toEqual([]);
+  });
+
+  it('status dismissed combinado com busca e casa (ADMIN)', async () => {
+    const { service, qb, andWhereCalls } = setup();
+
+    await service.findAll(admin, { status: 'dismissed', search: 'ana', houseId: 'house-2' });
+
+    expect(qb.where).toHaveBeenCalledWith('staff.dismissed_at IS NOT NULL');
+    expect(andWhereCalls()).toEqual([
+      ['staff.houseId = :houseId', { houseId: 'house-2' }],
+      [NAME_SQL, { search: '%ana%' }],
+    ]);
+  });
+
+  it('não-ADMIN sem casa → [] sem consultar', async () => {
+    const { service, createQueryBuilder } = setup({ houseId: null });
 
     const result = await service.findAll({ role: 'SERVANT', userId: 'u1' });
 
     expect(result).toEqual([]);
-    expect(staffRepo.find).not.toHaveBeenCalled();
+    expect(createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it('não-ADMIN sem perfil de staff → []', async () => {
+    const { service, createQueryBuilder } = setup(null);
+
+    const result = await service.findAll(coordinator, { houseId: 'house-2' });
+
+    expect(result).toEqual([]);
+    expect(createQueryBuilder).not.toHaveBeenCalled();
   });
 });

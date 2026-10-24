@@ -30,7 +30,13 @@ export const queryKeys = {
   staff: {
     all: ['staff'] as const,
     // Story 217 — lista por status (ativos | desligados), sob o prefixo `all`.
-    list: (status: 'active' | 'dismissed') => ['staff', 'list', status] as const,
+    // Story 223 — busca e casa entram na key (cada combinação tem cache próprio).
+    list: (params: { status?: 'active' | 'dismissed'; search?: string; houseId?: string } = {}) =>
+      [
+        'staff',
+        'list',
+        { status: params.status ?? 'active', search: params.search ?? '', houseId: params.houseId ?? '' },
+      ] as const,
     detail: (id: string) => ['staff', id] as const,
     permissions: (id: string) => ['staff', id, 'permissions'] as const,
     attachments: (id: string) => ['staff', id, 'attachments'] as const,

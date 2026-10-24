@@ -1,5 +1,5 @@
 import {
-  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -22,8 +22,9 @@ export class CreateActivityDto {
   @IsUUID()
   houseId?: string | null;
 
+  /** Story 224: só DRAFT, REQUESTED ou TODO na criação (quem pode: ver service). */
   @IsOptional()
-  @IsEnum(ActivityStatus)
+  @IsIn([ActivityStatus.DRAFT, ActivityStatus.REQUESTED, ActivityStatus.TODO])
   status?: ActivityStatus;
 
   @IsOptional()

@@ -1,9 +1,6 @@
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityStatus } from '@fonte/types';
-import { LoadingState } from '@/components/shared/LoadingState';
-import { ErrorState } from '@/components/shared/ErrorState';
-import { EmptyState } from '@/components/shared/EmptyState';
 import { OfflineNotice } from '@/components/shared/OfflineNotice';
 import { getErrorMessage } from '@/lib/errors';
 import { useIsOnline } from '@/lib/offline/network';
@@ -13,15 +10,40 @@ import {
   useUpdateActivity,
 } from '@/features/activities/hooks/useActivities';
 import type { ResponsibleModalTarget } from '@/features/activities/hooks/useResponsibleModal';
-import { ResponsibleOptions } from './ResponsibleOptions';
+import { ResponsibleStaffList } from './ResponsibleStaffList';
+
+/** Servo escolhido no modo "escolher". */
+export interface PickedResponsible {
+  id: string;
+  name: string;
+}
+
+/**
+ * Modo "escolher" (story 224): só devolve o servo escolhido, sem mutation — quem
+ * abriu decide o que fazer (campo do formulário, quick-add em A fazer). A lista
+ * vem do cache offline da casa, então funciona sem sinal.
+ */
+export interface ResponsiblePick {
+  houseId: string | null | undefined;
+  currentId: string | null;
+  onSelect: (staff: PickedResponsible) => void;
+}
 
 interface Props {
   /** Atividade + modo; `null` fecha o modal. */
-  target: ResponsibleModalTarget | null;
+  target?: ResponsibleModalTarget | null;
+  /** Modo "escolher"; tem precedência sobre `target`. */
+  pick?: ResponsiblePick | null;
   onClose: () => void;
 }
 
-const TITLE = { approve: 'Aprovar solicitação', change: 'Selecionar responsável' } as const;
+type Mode = 'approve' | 'change' | 'pick';
+
+const TITLE: Record<Mode, string> = {
+  approve: 'Aprovar solicitação',
+  change: 'Selecionar responsável',
+  pick: 'Escolher responsável',
+};
 const FALLBACK_ERROR = {
   approve: 'Não foi possível aprovar a solicitação.',
   change: 'Não foi possível trocar o responsável.',
@@ -29,18 +51,19 @@ const FALLBACK_ERROR = {
 
 /**
  * Seletor do responsável (story 220), autossuficiente: busca os servos da casa
- * da atividade e dispara a mutation do modo. `approve` aprova já com o
- * escolhido (`PATCH /status` com TODO + responsável); `change` só troca
- * (`PATCH /activities/:id`). Exige rede: sem sinal a lista fica desabilitada.
+ * e age conforme o modo. `approve` aprova já com o escolhido (`PATCH /status`
+ * com TODO + responsável); `change` só troca (`PATCH /activities/:id`) — os dois
+ * exigem rede. `pick` (story 224) devolve o escolhido e fecha.
  */
-export function SelectResponsibleModal({ target, onClose }: Props) {
-  const activity = target?.activity ?? null;
-  const mode = target?.mode ?? 'change';
-  const staffQuery = useHouseStaff(activity?.houseId);
+export function SelectResponsibleModal({ target, pick, onClose }: Props) {
+  const activity = pick ? null : (target?.activity ?? null);
+  const mode: Mode = pick ? 'pick' : (target?.mode ?? 'change');
+  const staffQuery = useHouseStaff(pick ? pick.houseId : activity?.houseId);
   const update = useUpdateActivity();
   const changeStatus = useChangeActivityStatus();
   const isOnline = useIsOnline();
   const mutation = mode === 'approve' ? changeStatus : update;
+  const needsNetwork = mode !== 'pick';
 
   const close = () => {
     update.reset();
@@ -49,6 +72,11 @@ export function SelectResponsibleModal({ target, onClose }: Props) {
   };
 
   const handleSelect = (staffId: string) => {
+    if (pick) {
+      const person = staffQuery.data?.find((s) => s.id === staffId);
+      if (person) pick.onSelect({ id: person.id, name: person.name });
+      return close();
+    }
     if (!activity) return;
     if (mode === 'approve') {
       changeStatus.mutate(
@@ -64,10 +92,10 @@ export function SelectResponsibleModal({ target, onClose }: Props) {
     );
   };
 
-  const staff = staffQuery.data ?? [];
+  const currentId = pick ? pick.currentId : (activity?.responsibleStaffId ?? null);
 
   return (
-    <Modal visible={!!activity} transparent animationType="slide" onRequestClose={close}>
+    <Modal visible={!!pick || !!activity} transparent animationType="slide" onRequestClose={close}>
       <View className="flex-1 justify-end bg-black/50">
         <Pressable className="flex-1" onPress={close} />
         <View testID="select-responsible-modal" className="bg-white rounded-t-3xl max-h-[60%]">
@@ -83,28 +111,20 @@ export function SelectResponsibleModal({ target, onClose }: Props) {
                 Escolha o responsável para aprovar a solicitação.
               </Text>
             )}
-            {!isOnline && (
+            {needsNetwork && !isOnline && (
               <OfflineNotice message="Precisa de conexão para trocar o responsável." />
             )}
-            {mutation.error != null && (
+            {needsNetwork && mutation.error != null && (
               <Text className="text-xs text-red-600">
-                {getErrorMessage(mutation.error, FALLBACK_ERROR[mode])}
+                {getErrorMessage(mutation.error, FALLBACK_ERROR[mode as 'approve' | 'change'])}
               </Text>
             )}
-            {staffQuery.isLoading ? (
-              <LoadingState />
-            ) : staffQuery.error ? (
-              <ErrorState message="Erro ao carregar os servos." onRetry={staffQuery.refetch} />
-            ) : staff.length === 0 ? (
-              <EmptyState message="Nenhum servo na casa." />
-            ) : (
-              <ResponsibleOptions
-                staff={staff}
-                currentId={activity?.responsibleStaffId ?? null}
-                onSelect={handleSelect}
-                disabled={!isOnline || mutation.isPending}
-              />
-            )}
+            <ResponsibleStaffList
+              query={staffQuery}
+              currentId={currentId}
+              onSelect={handleSelect}
+              disabled={needsNetwork && (!isOnline || mutation.isPending)}
+            />
           </ScrollView>
         </View>
       </View>

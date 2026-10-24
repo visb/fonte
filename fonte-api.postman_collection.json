@@ -6682,7 +6682,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Consertar o portao\",\n  \"description\": \"Portao da frente esta emperrando\",\n  \"houseId\": \"{{houseId}}\"\n}"
+              "raw": "{\n  \"title\": \"Consertar o portao\",\n  \"description\": \"Portao da frente esta emperrando\",\n  \"houseId\": \"{{houseId}}\",\n  \"status\": \"TODO\",\n  \"responsibleStaffId\": \"{{staffId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/activities",
@@ -6693,7 +6693,7 @@
                 "activities"
               ]
             },
-            "description": "Cria atividade. ops (COORDINATOR/SERVANT) cria sempre em DRAFT. ADMIN pode criar em DRAFT ou TODO (status=TODO exige responsibleStaffId). `description` e MARKDOWN (story 72) e e sanitizada no servidor ao salvar (remove HTML bruto e protocolo de link perigoso). created_by = usuario do JWT. Roles: ADMIN, COORDINATOR, SERVANT."
+            "description": "Cria atividade (story 224). `status` opcional: DRAFT (default) | REQUESTED | TODO; DOING/BLOCKED/DONE -> 400. DRAFT: qualquer staff. REQUESTED/TODO: ADMIN ou coordenador da casa (COORDINATOR/ADMIN lotado na casa do `houseId`); SERVANT ou coordenador de outra casa -> 403. `responsibleStaffId` opcional em DRAFT/REQUESTED e obrigatorio em TODO (400 sem ele), aceito de qualquer role: nao-ADMIN so indica staff ativo (nao desligado) da casa da atividade (400 se de outra casa, desligado ou inexistente); ADMIN, qualquer staff existente (400 se inexistente). Com responsavel, o historico grava CREATED e depois RESPONSIBLE_CHANGED { from: null, to }. `description` e MARKDOWN (story 72) e e sanitizada no servidor ao salvar (remove HTML bruto e protocolo de link perigoso). created_by = usuario do JWT. Roles: ADMIN, COORDINATOR, SERVANT."
           }
         },
         {

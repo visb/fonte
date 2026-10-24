@@ -7,6 +7,17 @@ jest.mock('@expo/vector-icons', () => {
   return { Ionicons: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
 });
 
+// Campo responsável tem teste próprio (ResponsibleField.test.tsx); aqui só a
+// obrigatoriedade que o form repassa (story 224).
+jest.mock('./ResponsibleField', () => {
+  const { Text } = require('react-native');
+  return {
+    ResponsibleField: ({ required }: { required?: boolean }) => (
+      <Text>{`responsible-field:${required ? 'required' : 'optional'}`}</Text>
+    ),
+  };
+});
+
 // react-native-markdown-display: stub que só renderiza o texto e expõe onLinkPress.
 let lastOnLinkPress: ((url: string) => boolean) | undefined;
 jest.mock('react-native-markdown-display', () => {
@@ -279,11 +290,49 @@ describe('AudioPlayer', () => {
 
 describe('ActivityFormFields', () => {
   // harness com useForm real para exercitar os Controllers.
-  function Harness({ houseName }: { houseName?: string }) {
+  function Harness({
+    houseName,
+    statusOptions,
+  }: {
+    houseName?: string;
+    statusOptions?: ActivityStatus[];
+  }) {
     const { useForm } = require('react-hook-form');
-    const { control, formState: { errors } } = useForm({ defaultValues: { title: '', description: '' } });
-    return <ActivityFormFields control={control} errors={errors} houseName={houseName} />;
+    const { control, formState: { errors } } = useForm({
+      defaultValues: { title: '', description: '', status: 'DRAFT', responsibleStaffId: null },
+    });
+    return (
+      <ActivityFormFields
+        control={control}
+        errors={errors}
+        houseName={houseName}
+        statusOptions={statusOptions}
+      />
+    );
   }
+
+  it('sem opções (servo) não mostra o seletor de coluna; responsável opcional', () => {
+    render(<Harness statusOptions={[ActivityStatus.DRAFT]} />);
+    expect(screen.queryByText('Coluna')).toBeNull();
+    expect(screen.getByText('responsible-field:optional')).toBeTruthy();
+  });
+
+  it('coordenador: escolher A fazer torna o responsável obrigatório (story 224)', () => {
+    render(
+      <Harness
+        statusOptions={[ActivityStatus.DRAFT, ActivityStatus.REQUESTED, ActivityStatus.TODO]}
+      />,
+    );
+    expect(screen.getByText('Coluna')).toBeTruthy();
+    expect(screen.getByText('Rascunho')).toBeTruthy();
+    expect(screen.getByText('Solicitação')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Criar em A fazer'));
+    expect(screen.getByLabelText('Criar em A fazer')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ selected: true }),
+    );
+    expect(screen.getByText('responsible-field:required')).toBeTruthy();
+  });
 
   it('renderiza os campos título/descrição e a casa quando informada', () => {
     render(<Harness houseName="Casa Bethel" />);

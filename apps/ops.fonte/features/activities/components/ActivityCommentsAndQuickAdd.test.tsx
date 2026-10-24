@@ -32,6 +32,18 @@ jest.mock('@/lib/api', () => ({
   },
   resolveAssetUrl: (u: string) => u,
 }));
+// Seletor de responsável do quick-add em A fazer (story 224): servos do cache.
+jest.mock('@/features/staff/hooks/useHouseStaff', () => ({
+  useHouseStaff: () => ({
+    data: [
+      { id: 's1', name: 'Ana' },
+      { id: 's2', name: 'Bruno' },
+    ],
+    isLoading: false,
+    error: null,
+    refetch: jest.fn(),
+  }),
+}));
 jest.mock('@/lib/auth', () => ({
   useAuth: () => ({ staff: { userId: 'u1', user: { role: 'SERVANT' } } }),
 }));
@@ -80,6 +92,52 @@ describe('QuickAddCard', () => {
       ),
     );
     await waitFor(() => expect(input.props.value).toBe(''));
+  });
+
+  it('REQUESTED (story 224): cria direto, só com o título, sem modal', async () => {
+    m.activities.create.mockResolvedValue({ id: 'a1' });
+    renderWithClient(<QuickAddCard status={ActivityStatus.REQUESTED} houseId="h1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('+ Nova atividade (título)'), 'Pintar');
+    fireEvent.press(screen.getByText('Adicionar'));
+    await waitFor(() =>
+      expect(m.activities.create).toHaveBeenCalledWith(
+        { title: 'Pintar', status: ActivityStatus.REQUESTED, houseId: 'h1' },
+        expectIdempotencyKey,
+      ),
+    );
+    expect(screen.queryByTestId('select-responsible-modal')).toBeNull();
+  });
+
+  it('TODO (story 224): Adicionar abre o modal; escolher cria com responsibleStaffId', async () => {
+    m.activities.create.mockResolvedValue({ id: 'a1' });
+    renderWithClient(<QuickAddCard status={ActivityStatus.TODO} houseId="h1" />);
+    const input = screen.getByPlaceholderText('+ Nova atividade (título)');
+    fireEvent.changeText(input, 'Varrer');
+    fireEvent.press(screen.getByText('Adicionar'));
+    await waitFor(() => expect(screen.getByTestId('select-responsible-modal')).toBeTruthy());
+    expect(m.activities.create).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByLabelText('Responsável Bruno'));
+    await waitFor(() =>
+      expect(m.activities.create).toHaveBeenCalledWith(
+        { title: 'Varrer', status: ActivityStatus.TODO, houseId: 'h1', responsibleStaffId: 's2' },
+        expectIdempotencyKey,
+      ),
+    );
+    expect(screen.queryByTestId('select-responsible-modal')).toBeNull();
+    await waitFor(() => expect(input.props.value).toBe(''));
+  });
+
+  it('TODO (story 224): cancelar o modal não cria e mantém o título', async () => {
+    renderWithClient(<QuickAddCard status={ActivityStatus.TODO} houseId="h1" />);
+    const input = screen.getByPlaceholderText('+ Nova atividade (título)');
+    fireEvent.changeText(input, 'Varrer');
+    fireEvent.press(screen.getByText('Adicionar'));
+    await waitFor(() => expect(screen.getByTestId('select-responsible-modal')).toBeTruthy());
+    fireEvent.press(screen.getByLabelText('Fechar'));
+    expect(screen.queryByTestId('select-responsible-modal')).toBeNull();
+    expect(m.activities.create).not.toHaveBeenCalled();
+    expect(input.props.value).toBe('Varrer');
   });
 
   it('mostra erro de API quando a criação falha', async () => {

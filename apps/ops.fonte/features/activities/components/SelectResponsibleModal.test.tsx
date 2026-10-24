@@ -167,6 +167,38 @@ describe('SelectResponsibleModal (story 220)', () => {
     expect(screen.getByText('Nenhum servo na casa.')).toBeTruthy();
   });
 
+  it('modo escolher (story 224): devolve o servo sem mutation, usa a casa do pick e fecha', () => {
+    const onSelect = jest.fn();
+    const onClose = jest.fn();
+    render(
+      <SelectResponsibleModal pick={{ houseId: 'h7', currentId: null, onSelect }} onClose={onClose} />,
+    );
+    expect(mockUseHouseStaff).toHaveBeenCalledWith('h7');
+    expect(screen.getByText('Escolher responsável')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Responsável Bruno'));
+    expect(onSelect).toHaveBeenCalledWith({ id: 's2', name: 'Bruno' });
+    expect(onClose).toHaveBeenCalled();
+    expect(mockUpdate.mutate).not.toHaveBeenCalled();
+    expect(mockChange.mutate).not.toHaveBeenCalled();
+  });
+
+  it('modo escolher funciona offline e ignora erro de mutation antiga', () => {
+    mockOnline = false;
+    mockUpdate.error = { response: { data: { message: 'erro velho' } } };
+    const onSelect = jest.fn();
+    render(
+      <SelectResponsibleModal pick={{ houseId: 'h1', currentId: 's1', onSelect }} onClose={jest.fn()} />,
+    );
+    expect(screen.queryByText(/Precisa de conexão/)).toBeNull();
+    expect(screen.queryByText('erro velho')).toBeNull();
+    expect(screen.getByLabelText('Responsável Ana')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ selected: true }),
+    );
+    fireEvent.press(screen.getByLabelText('Responsável Ana'));
+    expect(onSelect).toHaveBeenCalledWith({ id: 's1', name: 'Ana' });
+  });
+
   it('fechar limpa os erros das mutations e chama onClose', () => {
     const onClose = jest.fn();
     render(<SelectResponsibleModal target={{ activity: makeActivity(), mode: 'change' }} onClose={onClose} />);

@@ -25,6 +25,7 @@ import { ChangeActivityStatusDto } from './dto/change-activity-status.dto';
 import { ListActivitiesQueryDto } from './dto/list-activities.dto';
 import { sanitizeMarkdown } from './sanitize-markdown';
 import { isHouseCoordinatorRole } from '../../common/auth/house-coordinator';
+import { isActiveStaff } from '../staff/active-staff';
 
 /** Identidade autenticada que o service precisa (JWT não carrega houseId). */
 export interface ActivityUser {
@@ -63,6 +64,13 @@ const WORK_STATUSES: ActivityStatus[] = [
   ActivityStatus.DOING,
   ActivityStatus.BLOCKED,
   ActivityStatus.DONE,
+];
+
+/** Status em que uma atividade pode nascer (story 224). */
+export const CREATE_STATUSES: ActivityStatus[] = [
+  ActivityStatus.DRAFT,
+  ActivityStatus.REQUESTED,
+  ActivityStatus.TODO,
 ];
 
 @Injectable()
@@ -129,9 +137,24 @@ export class ActivityService {
     user: ActivityUser,
     houseId: string | null,
   ): boolean {
+    return this.canManageInHouse(user, houseId, activity.houseId ?? null);
+  }
+
+  /**
+   * Predicado de coordenação sem depender de uma atividade carregada (story
+   * 224 — reusado pela criação): ADMIN sempre; senão role de coordenação e
+   * casa do staff = casa da atividade (nunca houseless).
+   */
+  private canManageInHouse(
+    user: ActivityUser,
+    staffHouseId: string | null,
+    activityHouseId: string | null,
+  ): boolean {
     if (this.isAdmin(user)) return true;
     return (
-      isHouseCoordinatorRole(user.role) && !!houseId && houseId === activity.houseId
+      isHouseCoordinatorRole(user.role) &&
+      !!staffHouseId &&
+      staffHouseId === activityHouseId
     );
   }
 
@@ -255,29 +278,10 @@ export class ActivityService {
   }
 
   async create(dto: CreateActivityDto, user: ActivityUser): Promise<ActivityDto> {
-    const admin = this.isAdmin(user);
-
-    // ops (não-ADMIN) só cria rascunho; ADMIN pode DRAFT ou TODO (com responsável).
-    let status = ActivityStatus.DRAFT;
-    if (admin && dto.status) {
-      if (dto.status !== ActivityStatus.DRAFT && dto.status !== ActivityStatus.TODO) {
-        throw new BadRequestException('Activity can only be created in DRAFT or TODO');
-      }
-      status = dto.status;
-    } else if (!admin && dto.status && dto.status !== ActivityStatus.DRAFT) {
-      throw new ForbiddenException('Only ADMIN can create an activity outside of DRAFT');
-    }
-
-    let responsibleStaffId = admin ? dto.responsibleStaffId ?? null : null;
-
-    if (status === ActivityStatus.TODO) {
-      // Criar direto em "a fazer" exige ADMIN + responsável.
-      if (!admin) throw new ForbiddenException('Only ADMIN can create an activity in TODO');
-      if (!responsibleStaffId) {
-        throw new BadRequestException('A responsible staff is required for TODO');
-      }
-      await this.assertStaffExists(responsibleStaffId);
-    }
+    const status = dto.status ?? ActivityStatus.DRAFT;
+    const activityHouseId = dto.houseId ?? null;
+    const responsibleStaffId = dto.responsibleStaffId ?? null;
+    await this.assertCanCreate(status, activityHouseId, responsibleStaffId, user);
 
     const activity = this.repo.create({
       title: dto.title,
@@ -285,13 +289,57 @@ export class ActivityService {
       // (remove HTML bruto e protocolo de link perigoso — defesa em profundidade).
       description: sanitizeMarkdown(dto.description),
       status,
-      houseId: dto.houseId ?? null,
+      houseId: activityHouseId,
       responsibleStaffId,
       createdByUserId: user.userId,
     });
     const saved = await this.repo.save(activity);
     await this.events.record(saved.id, ActivityEventType.CREATED, user);
+    if (responsibleStaffId) {
+      // Atribuição na criação aparece no Histórico como a da story 220.
+      await this.events.record(saved.id, ActivityEventType.RESPONSIBLE_CHANGED, user, {
+        from: null,
+        to: responsibleStaffId,
+      });
+    }
     return this.findOne(saved.id, user);
+  }
+
+  /**
+   * Matriz de criação (story 224):
+   * - DRAFT: qualquer staff;
+   * - REQUESTED/TODO: ADMIN ou coordenador da casa da atividade (senão 403);
+   * - outro status: 400 (o DTO já barra; defesa em profundidade);
+   * - TODO exige responsável (400); DRAFT/REQUESTED, opcional;
+   * - responsável: não-ADMIN só staff ativo da casa da atividade (400);
+   *   ADMIN, qualquer staff existente.
+   */
+  private async assertCanCreate(
+    status: ActivityStatus,
+    activityHouseId: string | null,
+    responsibleStaffId: string | null,
+    user: ActivityUser,
+  ): Promise<void> {
+    if (!CREATE_STATUSES.includes(status)) {
+      throw new BadRequestException(
+        'Activity can only be created in DRAFT, REQUESTED or TODO',
+      );
+    }
+    const admin = this.isAdmin(user);
+    if (status !== ActivityStatus.DRAFT && !admin) {
+      const staffHouseId = await this.resolveHouseId(user);
+      if (!this.canManageInHouse(user, staffHouseId, activityHouseId)) {
+        throw new ForbiddenException(
+          'Only the house coordinator or ADMIN can create an activity outside of DRAFT',
+        );
+      }
+    }
+    if (status === ActivityStatus.TODO && !responsibleStaffId) {
+      throw new BadRequestException('A responsible staff is required for TODO');
+    }
+    if (!responsibleStaffId) return;
+    if (admin) await this.assertStaffExists(responsibleStaffId);
+    else await this.assertStaffInHouse(responsibleStaffId, activityHouseId);
   }
 
   async update(
@@ -585,6 +633,10 @@ export class ActivityService {
   ): Promise<void> {
     const staff = await this.staffRepo.findOne({ where: { id: staffId } });
     if (!staff) throw new BadRequestException('Responsible staff not found');
+    // Desligado não recebe atividade (predicado único da story 217).
+    if (!isActiveStaff(staff)) {
+      throw new BadRequestException('Responsible staff is not active');
+    }
     if (!houseId || staff.houseId !== houseId) {
       throw new BadRequestException(
         'Responsible staff must belong to the activity house',

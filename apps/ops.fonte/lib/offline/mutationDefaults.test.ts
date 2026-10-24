@@ -1,5 +1,10 @@
 import { QueryClient } from '@tanstack/react-query';
-import { IncidentSeverity, MovementType, SupplyRoomCategory } from '@fonte/types';
+import {
+  ActivityStatus,
+  IncidentSeverity,
+  MovementType,
+  SupplyRoomCategory,
+} from '@fonte/types';
 import { queryKeys } from '@/lib/queryKeys';
 
 jest.mock('@/lib/api', () => ({
@@ -625,6 +630,46 @@ describe('update otimista — venda de rua e atividade (decisão 5)', () => {
 
     expect(visible?.[0]).toMatchObject({ title: 'Mutirão' });
     expect(queryClient.getQueryData(queryKeys.activities.byHouse('h1'))).toEqual([]);
+  });
+
+  it('atividade em A fazer com responsável aparece na coluna com o nome do cache (story 224)', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.activities.byHouse('h1'), []);
+    queryClient.setQueryData(queryKeys.staff.byHouse('h1'), [
+      { id: 's1', name: 'Ana', userId: 'u1' },
+      { id: 's2', name: 'Bruno' },
+    ]);
+    let visible: unknown[] | undefined;
+    m.activities.create.mockImplementation(() => {
+      visible = queryClient.getQueryData(queryKeys.activities.byHouse('h1'));
+      return Promise.resolve({ id: 'a2' });
+    });
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.activityCreate, {
+      data: { title: 'Varrer', houseId: 'h1', status: ActivityStatus.TODO, responsibleStaffId: 's2' },
+    });
+
+    expect(visible?.[0]).toMatchObject({
+      status: ActivityStatus.TODO,
+      responsibleStaffId: 's2',
+      responsible: { id: 's2', name: 'Bruno', userId: '' },
+    });
+  });
+
+  it('responsável fora do cache dos servos fica sem nome no card pendente (story 224)', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.activities.byHouse('h1'), []);
+    let visible: unknown[] | undefined;
+    m.activities.create.mockImplementation(() => {
+      visible = queryClient.getQueryData(queryKeys.activities.byHouse('h1'));
+      return Promise.resolve({ id: 'a2' });
+    });
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.activityCreate, {
+      data: { title: 'Varrer', houseId: 'h1', status: ActivityStatus.TODO, responsibleStaffId: 's9' },
+    });
+
+    expect(visible?.[0]).toMatchObject({ responsibleStaffId: 's9', responsible: null });
   });
 
   it('atividade sem casa não inventa entrada em lista nenhuma', async () => {

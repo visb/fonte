@@ -1,4 +1,5 @@
 import { ActivityEventType, ActivityStatus } from '@fonte/types';
+import { canCreateInStatus, type ActivityViewer } from './lib/permissions';
 
 /**
  * Colunas do quadro de atividades (story 208): uma aba por status, na ordem do
@@ -14,19 +15,41 @@ export const ACTIVITY_COLUMNS: readonly { status: ActivityStatus; title: string 
 ];
 
 /**
- * Espelha a matriz de criação do backend (story 48). No ops, o staff (não-ADMIN)
- * só cria em rascunho (`DRAFT`). Quick-add só pede o título, então só aparece em
- * colunas que NÃO exigem campo adicional — ou seja, apenas `DRAFT`.
- *
- * O `role` é recebido para manter a regra alinhada à matriz e fácil de ajustar
- * caso a permissão por status passe a depender do papel.
+ * Quick-add por coluna (story 224): `DRAFT` para todos; `REQUESTED` e `TODO` só
+ * para o coordenador da casa (em `TODO` o card pede o responsável num modal).
+ * Fazendo/Impedimento/Concluídas nunca. Espelha a matriz de criação do backend.
  */
-export function canQuickAddInStatus(
-  status: ActivityStatus,
-  _role: string | null | undefined,
-): boolean {
-  return status === ActivityStatus.DRAFT;
+export function canQuickAddInStatus(status: ActivityStatus, viewer: ActivityViewer): boolean {
+  return canCreateInStatus(status, viewer);
 }
+
+/** Rótulo de cada status no seletor do formulário de criação (story 224). */
+export const CREATE_STATUS_LABELS: Partial<Record<ActivityStatus, string>> = {
+  [ActivityStatus.DRAFT]: 'Rascunho',
+  [ActivityStatus.REQUESTED]: 'Solicitação',
+  [ActivityStatus.TODO]: 'A fazer',
+};
+
+/** Texto do botão e dos avisos de criação, por status (story 224, decisão 9). */
+export const CREATE_COPY: Partial<
+  Record<ActivityStatus, { button: string; sent: string; queued: string }>
+> = {
+  [ActivityStatus.DRAFT]: {
+    button: 'Criar rascunho',
+    sent: 'Rascunho criado.',
+    queued: 'Sem conexão agora: o rascunho será enviado assim que a conexão voltar.',
+  },
+  [ActivityStatus.REQUESTED]: {
+    button: 'Criar solicitação',
+    sent: 'Solicitação criada.',
+    queued: 'Sem conexão agora: a solicitação será enviada assim que a conexão voltar.',
+  },
+  [ActivityStatus.TODO]: {
+    button: 'Criar atividade',
+    sent: 'Atividade criada.',
+    queued: 'Sem conexão agora: a atividade será enviada assim que a conexão voltar.',
+  },
+};
 
 // ── Histórico (story 220 — espelho de adm/features/activities/constants.ts) ──
 

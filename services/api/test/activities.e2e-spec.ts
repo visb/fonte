@@ -817,6 +817,90 @@ describe('ActivityController (e2e)', () => {
     });
   });
 
+  // ── criar por coluna com responsável (story 224) ────────────────────────────
+
+  describe('create by column with a responsible (story 224)', () => {
+    const post = (token: string, body: Record<string, unknown>) =>
+      request(app.getHttpServer())
+        .post(`${BASE}/activities`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(body);
+
+    it('coordinator creates in TODO with a responsible → 201 + CREATED and RESPONSIBLE_CHANGED', async () => {
+      const res = await post(coordToken, {
+        title: `A fazer pelo coordenador ${Date.now()}`,
+        houseId: coordHouseId,
+        status: ActivityStatus.TODO,
+        responsibleStaffId: servantStaffId,
+      }).expect(201);
+      expect(res.body.status).toBe(ActivityStatus.TODO);
+      expect(res.body.responsibleStaffId).toBe(servantStaffId);
+
+      const events = await request(app.getHttpServer())
+        .get(`${BASE}/activities/${res.body.id}/events`)
+        .set('Authorization', `Bearer ${coordToken}`)
+        .expect(200);
+      // Ordem decrescente: RESPONSIBLE_CHANGED (gravado depois) vem primeiro.
+      const types = events.body.map((e: { type: string }) => e.type);
+      expect(types).toEqual(['RESPONSIBLE_CHANGED', 'CREATED']);
+      expect(events.body[0].metadata).toEqual({ from: null, to: servantStaffId });
+    });
+
+    it('coordinator creates in REQUESTED → 201', async () => {
+      const res = await post(coordToken, {
+        title: `Solicitação pelo coordenador ${Date.now()}`,
+        houseId: coordHouseId,
+        status: ActivityStatus.REQUESTED,
+      }).expect(201);
+      expect(res.body.status).toBe(ActivityStatus.REQUESTED);
+    });
+
+    it('coordinator in TODO without a responsible → 400', () =>
+      post(coordToken, {
+        title: 'Sem responsável',
+        houseId: coordHouseId,
+        status: ActivityStatus.TODO,
+      }).expect(400));
+
+    it('servant in TODO → 403', () =>
+      post(servantToken, {
+        title: 'Servo tentando a fazer',
+        houseId: coordHouseId,
+        status: ActivityStatus.TODO,
+        responsibleStaffId: servantStaffId,
+      }).expect(403));
+
+    it('DOING on create → 400 (DTO)', () =>
+      post(adminToken, {
+        title: 'Direto em andamento',
+        houseId: coordHouseId,
+        status: ActivityStatus.DOING,
+        responsibleStaffId: servantStaffId,
+      }).expect(400));
+
+    it('servant creates a DRAFT with a responsible → 201 with the responsible', async () => {
+      const res = await post(servantToken, {
+        title: `Rascunho com responsável ${Date.now()}`,
+        houseId: coordHouseId,
+        responsibleStaffId: coordStaffId,
+      }).expect(201);
+      expect(res.body.status).toBe(ActivityStatus.DRAFT);
+      expect(res.body.responsibleStaffId).toBe(coordStaffId);
+    });
+
+    it('servant with a responsible outside the house → 400', async () => {
+      const adminMe = await request(app.getHttpServer())
+        .get(`${BASE}/staff/me`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      await post(servantToken, {
+        title: 'Responsável de fora',
+        houseId: coordHouseId,
+        responsibleStaffId: adminMe.body.id,
+      }).expect(400);
+    });
+  });
+
   describe('delete', () => {
     it('coordinator cannot delete a non-draft activity → 403', async () => {
       const created = await request(app.getHttpServer())

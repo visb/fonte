@@ -200,10 +200,13 @@ Saída de um servo (todo Staff). **Só ADMIN, só no `adm.fonte`** (`POST /staff
 
 ---
 
-## 6.1. Atividades (stories 48 e 220)
+## 6.1. Atividades (stories 48, 220 e 224)
 
 - Fluxo: rascunho (`DRAFT`) → solicitação (`REQUESTED`) → a fazer (`TODO`) → fazendo (`DOING`) ↔ impedimento (`BLOCKED`) → concluída (`DONE`). Transições validadas no service
 - Qualquer servo cria rascunho na própria casa; o criador envia a solicitação ou a devolve para rascunho
+- **Criar** (story 224): em `DRAFT`, qualquer staff; em `REQUESTED` ou `TODO`, só o coordenador da casa da atividade ou o ADMIN (SERVANT ou coordenador de outra casa → 403). Nenhum outro status na criação (400)
+- O responsável pode ser indicado já na criação, por qualquer staff (inclusive no rascunho do servo). `TODO` exige responsável (400); em `DRAFT`/`REQUESTED` é opcional. Não-ADMIN só indica servo **ativo** da casa da atividade (400); o ADMIN, qualquer staff existente. Criar com responsável grava `CREATED` e depois `RESPONSIBLE_CHANGED { from: null, to }`
+- Trocar o responsável **depois** de criado continua sendo só do coordenador da casa ou do ADMIN (abaixo)
 - **Aprovar** a solicitação (`REQUESTED` → `TODO`) e **atribuir/trocar o responsável** cabem ao **coordenador da casa** (COORDINATOR ou ADMIN lotado na casa da atividade) ou ao ADMIN. SERVANT só vê o responsável
 - Aprovar exige responsável (o do pedido ou o já definido). O coordenador só escolhe **staff da casa da atividade**; fora disso, 400
 - O coordenador troca o responsável em qualquer situação **menos Concluída** (403): para trocar em `DONE`, reabrir antes. O ADMIN segue podendo reatribuir em qualquer situação, pelo `adm`

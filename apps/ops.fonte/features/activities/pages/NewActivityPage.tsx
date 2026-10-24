@@ -1,74 +1,64 @@
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { router } from 'expo-router';
-import { ActivityStatus } from '@fonte/types';
+import { View, ScrollView, Alert } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import type { ActivityStatus } from '@fonte/types';
 import { useAuth } from '@/lib/auth';
+import { getErrorMessage } from '@/lib/errors';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { useCreateActivity } from '@/features/activities/hooks/useActivities';
-import { ActivityFormFields } from '@/features/activities/components/ActivityFormFields';
+import { NewActivityForm } from '@/features/activities/components/NewActivityForm';
+import { CREATE_COPY } from '@/features/activities/constants';
+import { creatableStatuses } from '@/features/activities/lib/permissions';
+import {
+  resolveCreateStatus,
+  type NewActivityValues,
+} from '@/features/activities/lib/activityForm';
 
-const schema = z.object({
-  title: z.string().min(1, 'Informe o título'),
-  description: z.string().optional(),
-});
-type FormData = z.infer<typeof schema>;
-
-/** Lista de atividades aberta em Rascunhos (`?tab=DRAFT`, story 220). */
-function goToDrafts() {
+/** Lista de atividades aberta na aba do status criado (`?tab=`, stories 220/224). */
+function goToTab(status: ActivityStatus) {
   router.replace({
     pathname: '/(app)/activities',
-    params: { tab: ActivityStatus.DRAFT },
+    params: { tab: status },
   } as never);
 }
 
+/**
+ * Nova atividade (story 224): o coordenador escolhe a coluna (default = aba de
+ * onde veio o FAB, `?status=`); o servo cria sempre rascunho. Todos podem
+ * indicar o responsável. A criação passa pela outbox (offline-first).
+ */
 export function NewActivityPage() {
   const { staff } = useAuth();
+  const { status: statusParam } = useLocalSearchParams<{ status?: string }>();
   const mutation = useCreateActivity();
   const submit = useFieldSubmit(mutation);
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { title: '', description: '' },
-  });
+  const viewer = { role: staff?.user?.role ?? null, houseId: staff?.houseId ?? null };
+  const statusOptions = creatableStatuses(viewer);
+  const defaultStatus = resolveCreateStatus(statusParam, viewer);
 
-  const onSubmit = (data: FormData) => {
-    // ops cria sempre como rascunho (DRAFT) na própria casa.
+  const onSubmit = (data: NewActivityValues) => {
+    const copy = CREATE_COPY[data.status]!;
     submit(
       {
         title: data.title,
         description: data.description || null,
         houseId: staff?.houseId ?? null,
+        status: data.status,
+        ...(data.responsibleStaffId ? { responsibleStaffId: data.responsibleStaffId } : {}),
       },
       {
-        // Story 220: cai na aba Rascunhos, onde está o que acabou de criar —
-        // vai para a lista primeiro, avisa depois.
+        // Cai na aba do que acabou de criar — vai para a lista primeiro, avisa depois.
         onSent: () => {
-          goToDrafts();
-          Alert.alert('Sucesso', 'Rascunho criado.');
+          goToTab(data.status);
+          Alert.alert('Sucesso', copy.sent);
         },
-        // Sem sinal o rascunho fica na fila e já aparece na lista como pendente.
+        // Sem sinal fica na fila e já aparece na lista como pendente.
         onQueued: () => {
-          goToDrafts();
-          Alert.alert(
-            'Salvo no aparelho',
-            'Sem conexão agora: o rascunho será enviado assim que a conexão voltar.',
-          );
+          goToTab(data.status);
+          Alert.alert('Salvo no aparelho', copy.queued);
         },
-        onFailed: () =>
-          Alert.alert('Erro', 'Não foi possível criar a atividade.'),
+        onFailed: (error) =>
+          Alert.alert('Erro', getErrorMessage(error, 'Não foi possível criar a atividade.')),
       },
     );
   };
@@ -76,23 +66,14 @@ export function NewActivityPage() {
   return (
     <ScrollView className="flex-1 bg-white" keyboardShouldPersistTaps="handled">
       <View className="px-4 py-5">
-        <ActivityFormFields
-          control={control}
-          errors={errors}
+        <NewActivityForm
+          defaultStatus={defaultStatus}
+          statusOptions={statusOptions}
+          houseId={staff?.houseId}
           houseName={staff?.house?.name}
+          isPending={mutation.isPending}
+          onSubmit={onSubmit}
         />
-
-        <TouchableOpacity
-          className="bg-indigo-600 rounded-lg py-3.5 items-center mt-5"
-          onPress={handleSubmit(onSubmit)}
-          disabled={mutation.isPending}
-        >
-          {mutation.isPending ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="text-white font-semibold text-base">Criar rascunho</Text>
-          )}
-        </TouchableOpacity>
       </View>
     </ScrollView>
   );

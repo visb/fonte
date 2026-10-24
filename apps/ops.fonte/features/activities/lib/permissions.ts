@@ -58,6 +58,29 @@ export function canApproveRequest(
   );
 }
 
+/** Status em que uma atividade pode nascer (espelha `CREATE_STATUSES` do backend, story 224). */
+export const CREATABLE_STATUSES: readonly ActivityStatus[] = [
+  ActivityStatus.DRAFT,
+  ActivityStatus.REQUESTED,
+  ActivityStatus.TODO,
+];
+
+/**
+ * Espelha a matriz de criação do backend (story 224): rascunho, qualquer staff;
+ * solicitação e a fazer, só o coordenador da casa (o mesmo predicado de
+ * `canManageResponsible`, com a atividade nascendo na casa de quem cria).
+ */
+export function canCreateInStatus(status: ActivityStatus, viewer: ActivityViewer): boolean {
+  if (status === ActivityStatus.DRAFT) return true;
+  if (!CREATABLE_STATUSES.includes(status)) return false;
+  return canManageResponsible({ status, houseId: viewer.houseId ?? null }, viewer);
+}
+
+/** Status oferecidos no seletor do formulário para quem olha (story 224). */
+export function creatableStatuses(viewer: ActivityViewer): ActivityStatus[] {
+  return CREATABLE_STATUSES.filter((status) => canCreateInStatus(status, viewer));
+}
+
 /**
  * Espelha `assertCanDelete` do backend (story 65): o autor do comentário ou um
  * ADMIN pode excluí-lo.

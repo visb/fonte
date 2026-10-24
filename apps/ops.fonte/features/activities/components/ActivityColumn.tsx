@@ -42,7 +42,7 @@ export function ActivityColumn({
   refreshing,
   onRefresh,
 }: Props) {
-  const showQuickAdd = canQuickAddInStatus(column.status, role);
+  const showQuickAdd = canQuickAddInStatus(column.status, { role, houseId });
 
   return (
     <View style={{ width }} testID={`activity-column-${column.status}`}>

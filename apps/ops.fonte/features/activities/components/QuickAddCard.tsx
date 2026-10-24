@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
-import type { ActivityStatus } from '@fonte/types';
+import { ActivityStatus } from '@fonte/types';
 import { getErrorMessage } from '@/lib/errors';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { useCreateActivity } from '@/features/activities/hooks/useActivities';
+import { SelectResponsibleModal, type PickedResponsible } from './SelectResponsibleModal';
 
 const quickAddSchema = z.object({
   title: z.string().min(1, 'Informe o título'),
@@ -13,20 +15,23 @@ const quickAddSchema = z.object({
 type QuickAddData = z.infer<typeof quickAddSchema>;
 
 interface Props {
-  /** Coluna onde o card será criado (sempre DRAFT no ops). */
+  /** Coluna onde o card será criado (DRAFT; REQUESTED/TODO só coordenador — story 224). */
   status: ActivityStatus;
   /** Casa do staff autenticado; o backend resolve o escopo. */
   houseId?: string | null;
 }
 
 /**
- * Criação rápida estilo Trello no rodapé da seção rascunho: digita o título,
- * confirma (return-key ou botão) e cria. Após sucesso limpa o campo e mantém o
- * foco para criar vários em sequência.
+ * Criação rápida estilo Trello no topo da coluna: digita o título, confirma
+ * (return-key ou botão) e cria. Em A fazer (story 224) o "Adicionar" abre o
+ * seletor de responsável e escolher o servo cria a atividade com ele; cancelar
+ * não cria e mantém o título. Após criar limpa o campo para criar vários em
+ * sequência. O "modal aberto" é estado de UI do card, não campo do form.
  */
 export function QuickAddCard({ status, houseId }: Props) {
   const mutation = useCreateActivity();
   const submit = useFieldSubmit(mutation);
+  const [pendingTitle, setPendingTitle] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
@@ -37,14 +42,31 @@ export function QuickAddCard({ status, houseId }: Props) {
     defaultValues: { title: '' },
   });
 
-  const onSubmit = (data: QuickAddData) => {
+  const create = (title: string, responsibleStaffId?: string) => {
     // Offline o card já aparece na lista como pendente e o campo limpa na hora:
     // esperar o `onSuccess` deixaria o operador sem saber se salvou (story 171).
     const clear = () => reset({ title: '' });
-    submit({ title: data.title, status, houseId: houseId ?? null }, {
-      onSent: clear,
-      onQueued: clear,
-    });
+    submit(
+      {
+        title,
+        status,
+        houseId: houseId ?? null,
+        ...(responsibleStaffId ? { responsibleStaffId } : {}),
+      },
+      { onSent: clear, onQueued: clear },
+    );
+  };
+
+  const onSubmit = (data: QuickAddData) => {
+    if (status === ActivityStatus.TODO) {
+      setPendingTitle(data.title);
+      return;
+    }
+    create(data.title);
+  };
+
+  const onPickResponsible = (person: PickedResponsible) => {
+    if (pendingTitle) create(pendingTitle, person.id);
   };
 
   return (
@@ -89,6 +111,16 @@ export function QuickAddCard({ status, houseId }: Props) {
         <Text className="text-xs text-red-500 mt-1">
           {getErrorMessage(mutation.error, 'Não foi possível criar a atividade.')}
         </Text>
+      )}
+      {status === ActivityStatus.TODO && (
+        <SelectResponsibleModal
+          pick={
+            pendingTitle !== null
+              ? { houseId, currentId: null, onSelect: onPickResponsible }
+              : null
+          }
+          onClose={() => setPendingTitle(null)}
+        />
       )}
     </View>
   );

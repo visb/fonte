@@ -21,7 +21,7 @@ Rodada de autorun **221–224** — aberta em 2026-10-23.
 | --- | --- | --- | --- | --- | --- |
 | 1 | 221 — cards Filhos e Servos no dashboard do ops | [OK] | ops 1722 · web 36 | 06a92e4 | c42ee7b |
 | 2 | 222 — lista de filhos do ops por data de entrada | [OK] | ops 1733 | 8c65c29 | 316c18d |
-| 3 | 223 — busca e filtros na lista de servos do adm | [ ] | | | |
+| 3 | 223 — busca e filtros na lista de servos do adm | [OK] | api 2379 · e2e 762 · client 323 · adm 2222 · pw 17 | 5749044 | 44b8844 |
 | 4 | 224 — criar atividade por coluna com responsável no ops | [ ] | | | |
 
 ## Log
@@ -31,6 +31,9 @@ PENDENTE-MANUAL: Maestro `e2e/dashboard.yaml` (sem emulador). Nota: removido `us
 
 [OK] 222 — testes: ops unit 1733/1733; `lib/sortResidents.ts` 100 — commit: 8c65c29 — merge: 316c18d — 2026-10-23
 PENDENTE-MANUAL: Maestro (fluxos selecionam por texto, não mudaram). Nota: suíte ops paralela com máquina carregada teve timeout 5s em 3 arquivos alheios; `--maxWorkers=4` verde.
+
+[OK] 223 — testes: api 2379/2379, api:e2e 762/762, api-client 323/323, adm unit 2222/2222, Playwright staff*/residents/preferences verde; cobertura modules/staff 99.4/100 lines, hooks/comp novos 100 — commit: 5749044 — merge: 44b8844 — 2026-10-23
+Nota: busca por CPF compara só dígitos dos dois lados (`regexp_replace` em `staff.cpf`, CPF pode estar formatado); `%`/`_` escapados.
 
 ## Resumo final
 

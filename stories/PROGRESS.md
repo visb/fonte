@@ -20,7 +20,7 @@ Rodada de autorun **221–224** — aberta em 2026-10-23.
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 221 — cards Filhos e Servos no dashboard do ops | [OK] | ops 1722 · web 36 | 06a92e4 | c42ee7b |
-| 2 | 222 — lista de filhos do ops por data de entrada | [ ] | | | |
+| 2 | 222 — lista de filhos do ops por data de entrada | [OK] | ops 1733 | 8c65c29 | 316c18d |
 | 3 | 223 — busca e filtros na lista de servos do adm | [ ] | | | |
 | 4 | 224 — criar atividade por coluna com responsável no ops | [ ] | | | |
 
@@ -28,6 +28,9 @@ Rodada de autorun **221–224** — aberta em 2026-10-23.
 
 [OK] 221 — testes: ops unit 1722/1722, Playwright web 36/36; cobertura ops 96.2 stmts, StatCard/StatCards/DashboardPage 100 — commit: 06a92e4 — merge: c42ee7b — 2026-10-23
 PENDENTE-MANUAL: Maestro `e2e/dashboard.yaml` (sem emulador). Nota: removido `useIncidentsToday`; prefetch agora aquece `incidents.byHouse`.
+
+[OK] 222 — testes: ops unit 1733/1733; `lib/sortResidents.ts` 100 — commit: 8c65c29 — merge: 316c18d — 2026-10-23
+PENDENTE-MANUAL: Maestro (fluxos selecionam por texto, não mudaram). Nota: suíte ops paralela com máquina carregada teve timeout 5s em 3 arquivos alheios; `--maxWorkers=4` verde.
 
 ## Resumo final
 

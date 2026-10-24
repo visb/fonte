@@ -407,6 +407,23 @@ function rollbackStreetSale(queryClient: QueryClient, variables: StreetSaleCreat
   );
 }
 
+/**
+ * Nome do responsável do card pendente (story 224), tirado do cache offline dos
+ * servos da casa (story 204). Fora do cache fica sem nome até a fila subir.
+ */
+function optimisticResponsible(
+  queryClient: QueryClient,
+  houseId: string,
+  staffId: string | null | undefined,
+): Activity['responsible'] {
+  if (!staffId) return null;
+  const staff = queryClient.getQueryData<{ id: string; name: string; userId?: string }[]>(
+    queryKeys.staff.byHouse(houseId),
+  );
+  const person = staff?.find((s) => s.id === staffId);
+  return person ? { id: person.id, name: person.name, userId: person.userId ?? '' } : null;
+}
+
 function applyActivity(queryClient: QueryClient, variables: ActivityCreateVariables): void {
   const { data } = variables;
   if (!data.houseId) return;
@@ -416,12 +433,12 @@ function applyActivity(queryClient: QueryClient, variables: ActivityCreateVariab
     id: outboxEntityId(variables.idempotencyKey ?? ''),
     title: data.title,
     description: data.description ?? null,
-    // O ops cria sempre como rascunho; o backend aplica o mesmo default.
+    // Sem status o backend aplica rascunho; com ele (story 224) a coluna escolhida.
     status: data.status ?? ActivityStatus.DRAFT,
     houseId: data.houseId,
     house: null,
     responsibleStaffId: data.responsibleStaffId ?? null,
-    responsible: null,
+    responsible: optimisticResponsible(queryClient, data.houseId, data.responsibleStaffId),
     createdByUserId: '',
     createdBy: null,
     createdAt: now,

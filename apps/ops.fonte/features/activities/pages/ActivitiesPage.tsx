@@ -21,6 +21,19 @@ import {
   initialActivityTab,
   parseActivityTab,
 } from '@/features/activities/lib/columns';
+import {
+  canCreateInStatus,
+  type ActivityViewer,
+} from '@/features/activities/lib/permissions';
+
+/**
+ * Rota do FAB (story 224): leva a aba atual em `?status=` quando quem olha pode
+ * criar nela, para o formulário abrir já nessa coluna.
+ */
+function newActivityHref(tab: ActivityStatus, viewer: ActivityViewer) {
+  if (!canCreateInStatus(tab, viewer)) return '/(app)/activities/new' as const;
+  return { pathname: '/(app)/activities/new', params: { status: tab } } as never;
+}
 
 /**
  * Atividades da casa em colunas (story 208): abas por status, uma coluna por
@@ -108,7 +121,7 @@ export function ActivitiesPage() {
       <TouchableOpacity
         accessibilityLabel="Nova atividade"
         className="absolute bottom-6 right-6 bg-indigo-600 w-14 h-14 rounded-full items-center justify-center shadow-md"
-        onPress={() => router.push('/(app)/activities/new')}
+        onPress={() => router.push(newActivityHref(active, { role, houseId: staff?.houseId }))}
       >
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>

@@ -49,13 +49,22 @@ export function ActivityCard({
   // então não abre detalhe nem muda de situação — só avisa que vai subir.
   if (isOutboxEntityId(item.id)) {
     return (
-      <View className="bg-white rounded-xl border border-gray-100 px-4 py-3">
+      <View
+        testID="activity-card-pending"
+        className="bg-white rounded-xl border border-gray-100 px-4 py-3"
+      >
         <View className="flex-row items-center justify-between mb-1">
           <Text className="text-sm font-semibold text-gray-800 flex-1 pr-2" numberOfLines={2}>
             {item.title}
           </Text>
           <StatusBadge status={status} />
         </View>
+        {/* Criada já com responsável (story 224): só leitura até subir. */}
+        {item.responsibleStaffId && (
+          <View className="mb-1">
+            <ResponsibleBadge responsible={item.responsible} />
+          </View>
+        )}
         <PendingBadge />
       </View>
     );

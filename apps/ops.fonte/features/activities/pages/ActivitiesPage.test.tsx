@@ -174,11 +174,43 @@ describe('ActivitiesPage (story 208)', () => {
     expect(mockPush).toHaveBeenCalledWith('/(app)/activities/a1');
   });
 
-  it('FAB navega para /activities/new', () => {
+  it('FAB em Rascunhos leva ?status=DRAFT (story 224)', () => {
+    mockQuery({ data: [] });
+    render(<ActivitiesPage />);
+    fireEvent.press(screen.getByLabelText('Nova atividade'));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/(app)/activities/new',
+      params: { status: ActivityStatus.DRAFT },
+    });
+  });
+
+  it('coordenador: FAB na aba Solicitações leva ?status=REQUESTED (story 224)', () => {
+    mockRole = 'COORDINATOR';
+    mockParams = { tab: 'REQUESTED' };
+    mockQuery({ data: [] });
+    render(<ActivitiesPage />);
+    fireEvent.press(screen.getByLabelText('Nova atividade'));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/(app)/activities/new',
+      params: { status: ActivityStatus.REQUESTED },
+    });
+  });
+
+  it('servo: FAB numa aba onde não cria vai sem ?status= (story 224)', () => {
+    mockParams = { tab: 'TODO' };
     mockQuery({ data: [] });
     render(<ActivitiesPage />);
     fireEvent.press(screen.getByLabelText('Nova atividade'));
     expect(mockPush).toHaveBeenCalledWith('/(app)/activities/new');
+  });
+
+  it('coordenador: quick-add aparece em A fazer (story 224)', () => {
+    mockRole = 'COORDINATOR';
+    mockQuery({ data: [] });
+    render(<ActivitiesPage />);
+    expect(
+      within(screen.getByTestId('activity-column-TODO')).getByText('quick-add:TODO'),
+    ).toBeTruthy();
   });
 
   it('?tab=DRAFT abre em Rascunhos mesmo com itens em colunas anteriores (story 220)', () => {

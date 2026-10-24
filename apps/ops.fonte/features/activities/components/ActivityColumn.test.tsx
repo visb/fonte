@@ -94,15 +94,34 @@ describe('ActivityColumn (story 208)', () => {
     expect(screen.getByText('Nenhuma atividade')).toBeTruthy();
   });
 
-  it('quick-add só na coluna DRAFT', () => {
+  it('servo: quick-add só na coluna DRAFT', () => {
     setup(ActivityStatus.DRAFT, []);
     expect(screen.getByText('quick-add:DRAFT:h1')).toBeTruthy();
   });
 
-  it('sem quick-add fora de DRAFT', () => {
-    setup(ActivityStatus.REQUESTED, [activity('a1', ActivityStatus.REQUESTED)]);
-    expect(screen.queryByText(/quick-add/)).toBeNull();
-  });
+  it.each([ActivityStatus.REQUESTED, ActivityStatus.TODO])(
+    'servo: sem quick-add em %s',
+    (status) => {
+      setup(status, [activity('a1', status)]);
+      expect(screen.queryByText(/quick-add/)).toBeNull();
+    },
+  );
+
+  it.each([ActivityStatus.REQUESTED, ActivityStatus.TODO])(
+    'coordenador da casa: quick-add em %s (story 224)',
+    (status) => {
+      setup(status, [], { role: 'COORDINATOR' });
+      expect(screen.getByText(`quick-add:${status}:h1`)).toBeTruthy();
+    },
+  );
+
+  it.each([ActivityStatus.DOING, ActivityStatus.BLOCKED, ActivityStatus.DONE])(
+    'coordenador: sem quick-add em %s',
+    (status) => {
+      setup(status, [], { role: 'COORDINATOR' });
+      expect(screen.queryByText(/quick-add/)).toBeNull();
+    },
+  );
 
   it('puxar para atualizar chama onRefresh', async () => {
     const props = setup(ActivityStatus.DONE, []);

@@ -4,19 +4,25 @@ appId: org.fonte.ops
 # Story 220: o coordenador da casa cria pela rota /activities/new, cai em
 # Rascunhos, envia a solicitação, aprova escolhendo o responsável no seletor e vê
 # a atribuição no Histórico do detalhe.
-# O seed não tem atividade: o fluxo cria a própria fixture e a remove no fim
+# Story 224: o coordenador cria direto em A fazer pelo quick-add (título →
+# seletor de responsável) e em Solicitações pelo FAB (o form abre na coluna da
+# aba); o servo cria rascunho já indicando o responsável.
+# O seed não tem atividade: o fluxo cria as próprias fixtures e as remove no fim
 # (story 182: seed só leitura, limpeza pelo título único — feita pelo admin,
-# porque a atividade termina aprovada e o criador só apaga rascunho).
+# porque há atividade aprovada/em A fazer e o criador só apaga rascunho).
 - runFlow: helpers/login-coordinator.yaml
 - evalScript: ${output.title = 'Aprovar ' + Date.now()}
+- evalScript: ${output.todoTitle = 'AFazer ' + Date.now()}
+- evalScript: ${output.requestTitle = 'Pedido ' + Date.now()}
+- evalScript: ${output.draftTitle = 'Rascunho ' + Date.now()}
 - tapOn: "Atividades"
 - waitForAnimationToEnd
 - assertVisible: "Rascunhos"
 - assertVisible: "Solicitações"
 - assertVisible: "A fazer"
-- tapOn: "A fazer"
+- tapOn: "Rascunhos"
 - waitForAnimationToEnd
-# FAB → /activities/new
+# FAB em Rascunhos → /activities/new?status=DRAFT
 - tapOn: "Nova atividade"
 - waitForAnimationToEnd
 - tapOn: "Ex: Consertar o portão"
@@ -43,6 +49,16 @@ appId: org.fonte.ops
 - waitForAnimationToEnd
 - assertVisible: ${output.title}
 - assertVisible: "Operador Teste"
+# Story 224 — quick-add em A fazer: título → seletor → escolher já cria com o responsável.
+- tapOn: "+ Nova atividade (título)"
+- inputText: ${output.todoTitle}
+- hideKeyboard
+- tapOn: "Adicionar"
+- waitForAnimationToEnd
+- assertVisible: "Escolher responsável"
+- tapOn: "Responsável Operador Teste"
+- waitForAnimationToEnd
+- assertVisible: ${output.todoTitle}
 # Detalhe → Histórico mostra a atribuição feita na aprovação.
 - tapOn: ${output.title}
 - waitForAnimationToEnd
@@ -52,8 +68,58 @@ appId: org.fonte.ops
 - scrollUntilVisible:
     element: "atribuiu a Operador Teste"
 - assertVisible: ".*atribuiu a Operador Teste.*"
+- back
+- waitForAnimationToEnd
+# Story 224 — FAB na aba Solicitações: o form abre em "Solicitação" e cai lá.
+- tapOn: "Solicitações"
+- waitForAnimationToEnd
+- tapOn: "Nova atividade"
+- waitForAnimationToEnd
+- assertVisible: "Coluna"
+- assertVisible: "Criar solicitação"
+- tapOn: "Ex: Consertar o portão"
+- inputText: ${output.requestTitle}
+- hideKeyboard
+- tapOn: "Criar solicitação"
+- tapOn: "OK"
+- waitForAnimationToEnd
+- assertVisible: ${output.requestTitle}
+# Story 224 — servo: form sem seletor de coluna, com responsável → rascunho com ele.
+- runFlow: helpers/login-operator.yaml
+- tapOn: "Atividades"
+- waitForAnimationToEnd
+- tapOn: "Nova atividade"
+- waitForAnimationToEnd
+- assertNotVisible: "Coluna"
+- tapOn: "Ex: Consertar o portão"
+- inputText: ${output.draftTitle}
+- hideKeyboard
+- tapOn: "Escolher responsável"
+- waitForAnimationToEnd
+- tapOn: "Responsável Operador Teste"
+- waitForAnimationToEnd
+- tapOn: "Criar rascunho"
+- tapOn: "OK"
+- waitForAnimationToEnd
+- assertVisible: ${output.draftTitle}
+- assertVisible: "Operador Teste"
 - runScript:
     file: helpers/delete-activity.js
     env:
       API_URL: http://10.0.2.2:3001/api/v1
       TITLE: ${output.title}
+- runScript:
+    file: helpers/delete-activity.js
+    env:
+      API_URL: http://10.0.2.2:3001/api/v1
+      TITLE: ${output.todoTitle}
+- runScript:
+    file: helpers/delete-activity.js
+    env:
+      API_URL: http://10.0.2.2:3001/api/v1
+      TITLE: ${output.requestTitle}
+- runScript:
+    file: helpers/delete-activity.js
+    env:
+      API_URL: http://10.0.2.2:3001/api/v1
+      TITLE: ${output.draftTitle}

@@ -59,6 +59,39 @@ describe('atividade criada sem sinal (story 171)', () => {
     expect(onPress).not.toHaveBeenCalled();
   });
 
+  it('criada em A fazer com responsável mostra o responsável, só leitura (story 224)', () => {
+    render(
+      <ActivityCard
+        item={makeActivity({
+          id: outboxEntityId('chave-2'),
+          status: ActivityStatus.TODO,
+          responsibleStaffId: 's1',
+          responsible: { id: 's1', name: 'Ana', userId: '' },
+        })}
+        currentUserId="creator-user"
+        onChangeStatus={jest.fn()}
+        onPressResponsible={jest.fn()}
+        viewer={{ role: 'COORDINATOR', houseId: 'house-1' }}
+      />,
+    );
+
+    expect(screen.getByTestId('activity-card-pending')).toBeTruthy();
+    expect(screen.getByLabelText('Responsável: Ana')).toBeTruthy();
+    expect(screen.queryByLabelText(/Trocar responsável/)).toBeNull();
+  });
+
+  it('pendente sem responsável não mostra o selo de responsável', () => {
+    render(
+      <ActivityCard
+        item={makeActivity({ id: outboxEntityId('chave-3'), status: ActivityStatus.DRAFT })}
+        currentUserId="creator-user"
+        onChangeStatus={jest.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText('Sem responsável')).toBeNull();
+  });
+
   it('atividade normal continua com selo nenhum', () => {
     render(
       <ActivityCard item={makeActivity()} currentUserId="creator-user" onChangeStatus={jest.fn()} />,

@@ -10,6 +10,9 @@ import { ActivityService, ActivityUser } from './activity.service';
 import { Activity } from './activity.entity';
 import { Staff } from '../staff/staff.entity';
 import { ActivityEventService } from './activity-event.service';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { CreateActivityDto } from './dto/create-activity.dto';
 
 const ADMIN: ActivityUser = { userId: 'admin-user', role: Role.ADMIN };
 const COORD: ActivityUser = { userId: 'coord-user', role: Role.COORDINATOR };
@@ -234,7 +237,7 @@ describe('ActivityService.findOne (visibility)', () => {
 });
 
 describe('ActivityService.create', () => {
-  it('ops (non-admin) is forced to DRAFT even if it asks for TODO', async () => {
+  it('coordenador sem casa na atividade não cria em TODO (403)', async () => {
     const repo = makeActivityRepo();
     const staff = makeStaffRepo({ 'coord-user': { houseId: 'house-1' } });
     const service = makeService(repo, staff);
@@ -1168,5 +1171,275 @@ describe('ActivityService.update — trocar responsável (story 220)', () => {
     await expect(
       service.update('act-1', { houseId: 'house-2' }, COORD),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('COORDINATOR com responsável desligado → 400', async () => {
+    const { repo } = story220Repo(activity({ status: ActivityStatus.TODO }));
+    const service = makeService(repo, story224Staff());
+
+    await expect(
+      service.update('act-1', { responsibleStaffId: 'staff-dismissed' }, COORD),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+// ── Story 224: criar por coluna com responsável ──────────────────────────────
+
+/** story220Staff + um servo desligado na house-1. */
+function story224Staff() {
+  return makeStaffRepo(
+    {
+      'coord-user': { houseId: 'house-1' },
+      'servant-user': { houseId: 'house-1' },
+    },
+    {
+      'staff-in': { id: 'staff-in', userId: 'u-in', houseId: 'house-1' } as Staff,
+      'staff-out': { id: 'staff-out', userId: 'u-out', houseId: 'house-2' } as Staff,
+      'staff-dismissed': {
+        id: 'staff-dismissed',
+        userId: 'u-dis',
+        houseId: 'house-1',
+        dismissedAt: '2026-01-01',
+      } as unknown as Staff,
+    },
+  );
+}
+
+/** Repo de criação que captura o que foi passado ao `create`. */
+function createRepo() {
+  const created: Partial<Activity>[] = [];
+  const repo = makeActivityRepo({
+    create: jest.fn().mockImplementation((v) => {
+      created.push(v);
+      return v;
+    }),
+    findOne: jest.fn().mockResolvedValue(activity()),
+  });
+  return { repo, created };
+}
+
+describe('ActivityService.create — matriz role × status (story 224)', () => {
+  const withResponsible = (status: ActivityStatus) =>
+    status === ActivityStatus.TODO ? { responsibleStaffId: 'staff-in' } : {};
+
+  it('SERVANT cria DRAFT', async () => {
+    const { repo, created } = createRepo();
+    const service = makeService(repo, story224Staff());
+
+    await service.create(
+      { title: 'x', houseId: 'house-1', status: ActivityStatus.DRAFT },
+      SERVANT,
+    );
+
+    expect(created[0].status).toBe(ActivityStatus.DRAFT);
+  });
+
+  it.each([ActivityStatus.REQUESTED, ActivityStatus.TODO])(
+    'SERVANT em %s → 403',
+    async (status) => {
+      const { repo } = createRepo();
+      const service = makeService(repo, story224Staff());
+
+      await expect(
+        service.create(
+          { title: 'x', houseId: 'house-1', status, ...withResponsible(status) },
+          SERVANT,
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(repo.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([ActivityStatus.DRAFT, ActivityStatus.REQUESTED, ActivityStatus.TODO])(
+    'COORDINATOR da casa cria em %s',
+    async (status) => {
+      const { repo, created } = createRepo();
+      const service = makeService(repo, story224Staff());
+
+      await service.create(
+        { title: 'x', houseId: 'house-1', status, ...withResponsible(status) },
+        COORD,
+      );
+
+      expect(created[0].status).toBe(status);
+    },
+  );
+
+  it.each([ActivityStatus.REQUESTED, ActivityStatus.TODO])(
+    'COORDINATOR com houseId de outra casa em %s → 403',
+    async (status) => {
+      const { repo } = createRepo();
+      const service = makeService(repo, story224Staff());
+
+      await expect(
+        service.create(
+          { title: 'x', houseId: 'house-2', status, ...withResponsible(status) },
+          COORD,
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    },
+  );
+
+  it.each([ActivityStatus.DRAFT, ActivityStatus.REQUESTED, ActivityStatus.TODO])(
+    'ADMIN cria em %s',
+    async (status) => {
+      const { repo, created } = createRepo();
+      const service = makeService(repo, story224Staff());
+
+      await service.create({ title: 'x', status, ...withResponsible(status) }, ADMIN);
+
+      expect(created[0].status).toBe(status);
+    },
+  );
+
+  it.each([ActivityStatus.DOING, ActivityStatus.BLOCKED, ActivityStatus.DONE])(
+    '%s na criação → 400 no service (defesa em profundidade)',
+    async (status) => {
+      const { repo } = createRepo();
+      const service = makeService(repo, story224Staff());
+
+      await expect(
+        service.create({ title: 'x', status, responsibleStaffId: 'staff-in' }, ADMIN),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    },
+  );
+});
+
+describe('CreateActivityDto — status (story 224)', () => {
+  const errorsFor = async (status: string) => {
+    const dto = plainToInstance(CreateActivityDto, { title: 'x', status });
+    const errors = await validate(dto);
+    return errors.filter((e) => e.property === 'status');
+  };
+
+  it.each([ActivityStatus.DRAFT, ActivityStatus.REQUESTED, ActivityStatus.TODO])(
+    'aceita %s',
+    async (status) => {
+      expect(await errorsFor(status)).toHaveLength(0);
+    },
+  );
+
+  it.each([ActivityStatus.DOING, ActivityStatus.BLOCKED, ActivityStatus.DONE])(
+    'rejeita %s (400)',
+    async (status) => {
+      expect(await errorsFor(status)).toHaveLength(1);
+    },
+  );
+});
+
+describe('ActivityService.create — responsável (story 224)', () => {
+  it.each([
+    ['COORDINATOR', COORD],
+    ['ADMIN', ADMIN],
+  ])('%s em TODO sem responsável → 400', async (_label, user) => {
+    const { repo } = createRepo();
+    const service = makeService(repo, story224Staff());
+
+    await expect(
+      service.create({ title: 'x', houseId: 'house-1', status: ActivityStatus.TODO }, user),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('SERVANT cria DRAFT com responsável da casa → salvo', async () => {
+    const { repo, created } = createRepo();
+    const service = makeService(repo, story224Staff());
+
+    await service.create(
+      { title: 'x', houseId: 'house-1', responsibleStaffId: 'staff-in' },
+      SERVANT,
+    );
+
+    expect(created[0].status).toBe(ActivityStatus.DRAFT);
+    expect(created[0].responsibleStaffId).toBe('staff-in');
+  });
+
+  it.each([
+    ['de outra casa', 'staff-out'],
+    ['desligado', 'staff-dismissed'],
+    ['inexistente', 'ghost'],
+  ])('não-ADMIN com responsável %s → 400', async (_label, staffId) => {
+    const { repo } = createRepo();
+    const service = makeService(repo, story224Staff());
+
+    await expect(
+      service.create(
+        { title: 'x', houseId: 'house-1', responsibleStaffId: staffId },
+        SERVANT,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('não-ADMIN com responsável em atividade sem casa → 400', async () => {
+    const { repo } = createRepo();
+    const service = makeService(repo, story224Staff());
+
+    await expect(
+      service.create({ title: 'x', responsibleStaffId: 'staff-in' }, SERVANT),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('ADMIN com responsável de qualquer casa → ok (regressão)', async () => {
+    const { repo, created } = createRepo();
+    const service = makeService(repo, story224Staff());
+
+    await service.create(
+      {
+        title: 'x',
+        houseId: 'house-1',
+        status: ActivityStatus.TODO,
+        responsibleStaffId: 'staff-out',
+      },
+      ADMIN,
+    );
+
+    expect(created[0].responsibleStaffId).toBe('staff-out');
+  });
+
+  it('ADMIN com responsável inexistente → 400', async () => {
+    const { repo } = createRepo();
+    const service = makeService(repo, story224Staff());
+
+    await expect(
+      service.create({ title: 'x', responsibleStaffId: 'ghost' }, ADMIN),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe('ActivityService.create — eventos (story 224)', () => {
+  it('com responsável grava CREATED e depois RESPONSIBLE_CHANGED {from: null, to}', async () => {
+    const { repo } = createRepo();
+    const events = makeEvents();
+    const service = makeService(repo, story224Staff(), events);
+
+    await service.create(
+      {
+        title: 'x',
+        houseId: 'house-1',
+        status: ActivityStatus.TODO,
+        responsibleStaffId: 'staff-in',
+      },
+      COORD,
+    );
+
+    expect(events.record.mock.calls).toEqual([
+      ['act-1', ActivityEventType.CREATED, COORD],
+      ['act-1', ActivityEventType.RESPONSIBLE_CHANGED, COORD, { from: null, to: 'staff-in' }],
+    ]);
+  });
+
+  it('sem responsável grava só CREATED', async () => {
+    const { repo } = createRepo();
+    const events = makeEvents();
+    const service = makeService(repo, story224Staff(), events);
+
+    await service.create(
+      { title: 'x', houseId: 'house-1', status: ActivityStatus.REQUESTED },
+      COORD,
+    );
+
+    expect(events.record.mock.calls).toEqual([
+      ['act-1', ActivityEventType.CREATED, COORD],
+    ]);
   });
 });

@@ -1,7 +1,9 @@
 import { ActivityStatus, Role } from '@fonte/types';
 import {
   canApproveRequest,
+  canCreateInStatus,
   canDeleteComment,
+  creatableStatuses,
   canEditDescription,
   canManageResponsible,
 } from './permissions';
@@ -58,6 +60,34 @@ describe('canManageResponsible / canApproveRequest (story 220)', () => {
     expect(
       canManageResponsible({ ...home, status: ActivityStatus.TODO }, { role: null, houseId: 'h1' }),
     ).toBe(false);
+  });
+});
+
+describe('canCreateInStatus / creatableStatuses (story 224)', () => {
+  it('servo só cria rascunho', () => {
+    const viewer = { role: Role.SERVANT, houseId: 'h1' };
+    expect(creatableStatuses(viewer)).toEqual([ActivityStatus.DRAFT]);
+  });
+
+  it.each([Role.COORDINATOR, Role.ADMIN])('%s da casa cria em DRAFT/REQUESTED/TODO', (role) => {
+    expect(creatableStatuses({ role, houseId: 'h1' })).toEqual([
+      ActivityStatus.DRAFT,
+      ActivityStatus.REQUESTED,
+      ActivityStatus.TODO,
+    ]);
+  });
+
+  it('coordenador sem casa só cria rascunho', () => {
+    expect(creatableStatuses({ role: Role.COORDINATOR, houseId: undefined })).toEqual([
+      ActivityStatus.DRAFT,
+    ]);
+  });
+
+  it('DOING/BLOCKED/DONE nunca', () => {
+    const viewer = { role: Role.COORDINATOR, houseId: 'h1' };
+    expect(canCreateInStatus(ActivityStatus.DOING, viewer)).toBe(false);
+    expect(canCreateInStatus(ActivityStatus.BLOCKED, viewer)).toBe(false);
+    expect(canCreateInStatus(ActivityStatus.DONE, viewer)).toBe(false);
   });
 });
 

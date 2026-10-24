@@ -1,29 +1,27 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
-import type { StaffListStatus } from "@fonte/types";
+import { Role } from "@fonte/types";
 import type { Staff } from "@fonte/api-client";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { useAuth } from "@/contexts/AuthContext";
 import { useStaff } from "../hooks/useStaff";
+import { useStaffFiltersUrl } from "../hooks/useStaffFiltersUrl";
 import { ResetPasswordDialog } from "../components/ResetPasswordDialog";
 import { DeleteStaffDialog } from "../components/DeleteStaffDialog";
 import { StaffCard } from "../components/StaffCard";
-import { StaffStatusFilter } from "../components/StaffStatusFilter";
+import { StaffFilters } from "../components/StaffFilters";
 
 export function StaffPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  // Story 217 — filtro Ativos | Desligados na URL (volta do detalhe mantém o filtro).
-  const status: StaffListStatus =
-    searchParams.get("status") === "dismissed" ? "dismissed" : "active";
-  const setStatus = (next: StaffListStatus) =>
-    setSearchParams(next === "dismissed" ? { status: next } : {}, {
-      replace: true,
-    });
+  const { role } = useAuth();
+  const isAdmin = role === Role.ADMIN;
+  // Story 217/223 — busca, Ativos | Desligados e casa na URL (+ preferência).
+  const filters = useStaffFiltersUrl({ canFilterHouse: isAdmin });
   const [deleteTarget, setDeleteTarget] = useState<Staff | null>(null);
   const [resetTarget, setResetTarget] = useState<Staff | null>(null);
 
@@ -32,12 +30,22 @@ export function StaffPage() {
     isLoading,
     isError,
     refetch,
-  } = useStaff({ status });
+  } = useStaff({
+    status: filters.status,
+    search: filters.debouncedSearch,
+    houseId: filters.houseId,
+  });
+
+  const emptyTitle = filters.isFiltering
+    ? "Nenhum servo encontrado."
+    : filters.status === "dismissed"
+      ? "Nenhum servo desligado."
+      : "Nenhum servo cadastrado.";
 
   return (
     <div>
       <PageHeader
-        title="Servos"
+        title={isLoading || isError ? "Servos" : `Servos (${staff.length})`}
         actions={
           <Button asChild>
             <Link to="/staff/new">
@@ -48,22 +56,22 @@ export function StaffPage() {
         }
       />
 
-      <div className="mb-4">
-        <StaffStatusFilter value={status} onChange={setStatus} />
-      </div>
+      <StaffFilters
+        search={filters.search}
+        onSearchChange={filters.setSearch}
+        status={filters.status}
+        onStatusChange={filters.setStatus}
+        houseId={filters.houseId}
+        onHouseIdChange={filters.setHouseId}
+        showHouseFilter={isAdmin}
+      />
 
       {isLoading ? (
         <LoadingState />
       ) : isError ? (
         <ErrorState onRetry={refetch} />
       ) : staff.length === 0 ? (
-        <EmptyState
-          title={
-            status === "dismissed"
-              ? "Nenhum servo desligado."
-              : "Nenhum servo cadastrado."
-          }
-        />
+        <EmptyState title={emptyTitle} />
       ) : (
         <div className="space-y-3">
           {staff.map((s) => (

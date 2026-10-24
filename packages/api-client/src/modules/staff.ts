@@ -4,7 +4,7 @@ import type {
   CreateServicePeriodPayload,
   DismissStaffPayload,
   ReinstateStaffPayload,
-  StaffListStatus,
+  StaffListParams,
   StaffAttachment,
   StaffPermissionType,
   StaffServicePeriod,
@@ -27,11 +27,16 @@ export function createStaffModule(http: AxiosInstance) {
     removeMySignature: (): Promise<StaffMe> =>
       http.delete<StaffMe>('/staff/me/signature').then((r) => r.data),
     // Story 217 — sem `status` o backend devolve só os ativos (não desligados).
-    list: (params?: { status?: StaffListStatus }) =>
-      (params?.status
-        ? http.get<Staff[]>('/staff', { params: { status: params.status } })
+    // Story 223 — `search`/`houseId`; params vazios não vão na query string.
+    list: (params?: StaffListParams) => {
+      const query = Object.fromEntries(
+        Object.entries(params ?? {}).filter(([, value]) => typeof value === 'string' && value.trim() !== ''),
+      );
+      return (Object.keys(query).length
+        ? http.get<Staff[]>('/staff', { params: query })
         : http.get<Staff[]>('/staff')
-      ).then((r) => r.data),
+      ).then((r) => r.data);
+    },
     getById: (id: string) => http.get<Staff>(`/staff/${id}`).then((r) => r.data),
     create: (data: CreateStaffInput) => http.post<Staff>('/staff', data).then((r) => r.data),
     update: (id: string, data: UpdateStaffInput) =>

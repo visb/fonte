@@ -242,6 +242,7 @@ export type {
   EventInviteSkipReason,
   UserPreferences,
   ResidentsFiltersPreference,
+  StaffFiltersPreference,
   HouseOfflineSnapshotResponse,
   OfflineSnapshotDeleted,
 } from './types.js';

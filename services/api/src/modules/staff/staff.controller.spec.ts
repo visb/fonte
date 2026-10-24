@@ -99,13 +99,14 @@ describe('StaffController', () => {
   it('findAll passes the caller scope', async () => {
     const s = svc();
     await new StaffController(s as never, attSvc() as never, {} as never).findAll(user, {});
-    expect(s.findAll).toHaveBeenCalledWith({ role: 'ADMIN', userId: 'u1' }, 'active');
+    expect(s.findAll).toHaveBeenCalledWith({ role: 'ADMIN', userId: 'u1' }, {});
   });
 
-  it('findAll repassa o filtro de status (story 217)', async () => {
+  it('findAll repassa o DTO completo (stories 217/223)', async () => {
     const s = svc();
-    await new StaffController(s as never, attSvc() as never, {} as never).findAll(user, { status: 'dismissed' });
-    expect(s.findAll).toHaveBeenCalledWith({ role: 'ADMIN', userId: 'u1' }, 'dismissed');
+    const query = { status: 'dismissed' as const, search: 'ana', houseId: '7d1c0c1e-3b8a-4c43-9d8e-2a4f1f1b9c10' };
+    await new StaffController(s as never, attSvc() as never, {} as never).findAll(user, query);
+    expect(s.findAll).toHaveBeenCalledWith({ role: 'ADMIN', userId: 'u1' }, query);
   });
 
   it('dismiss / reinstate delegam ao service (story 217)', async () => {

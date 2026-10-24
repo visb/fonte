@@ -62,7 +62,7 @@ describe('useStaff', () => {
     const { result, queryClient } = renderHookWithClient(() => useStaff());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.staff.list).toHaveBeenCalledWith();
-    expect(queryClient.getQueryData(queryKeys.staff.list('active'))).toEqual([{ id: 's1' }]);
+    expect(queryClient.getQueryData(queryKeys.staff.list())).toEqual([{ id: 's1' }]);
 
     vi.mocked(api.staff.list).mockClear();
     const { result: r2 } = renderHookWithClient(() => useStaff({ enabled: false }));
@@ -75,7 +75,26 @@ describe('useStaff', () => {
     const { result, queryClient } = renderHookWithClient(() => useStaff({ status: 'dismissed' }));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.staff.list).toHaveBeenCalledWith({ status: 'dismissed' });
-    expect(queryClient.getQueryData(queryKeys.staff.list('dismissed'))).toEqual([{ id: 'd1' }]);
+    expect(queryClient.getQueryData(queryKeys.staff.list({ status: 'dismissed' }))).toEqual([{ id: 'd1' }]);
+  });
+
+  it('search e houseId vão ao servidor e entram na key (story 223)', async () => {
+    vi.mocked(api.staff.list).mockResolvedValue([{ id: 'f1' }] as never);
+    const { result, queryClient } = renderHookWithClient(() =>
+      useStaff({ status: 'dismissed', search: '  ana ', houseId: 'h1' }),
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.staff.list).toHaveBeenCalledWith({ status: 'dismissed', search: 'ana', houseId: 'h1' });
+    expect(
+      queryClient.getQueryData(queryKeys.staff.list({ status: 'dismissed', search: 'ana', houseId: 'h1' })),
+    ).toEqual([{ id: 'f1' }]);
+  });
+
+  it('ativos com busca omite o status (story 223)', async () => {
+    vi.mocked(api.staff.list).mockResolvedValue([] as never);
+    const { result } = renderHookWithClient(() => useStaff({ search: 'ana', houseId: '' }));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.staff.list).toHaveBeenCalledWith({ search: 'ana' });
   });
 });
 

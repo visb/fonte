@@ -3,7 +3,7 @@ import { ResidentStatus } from '@fonte/types';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { useHouses } from '@/features/houses/hooks/useHouses';
+import { HouseFilterSelect } from '@/components/shared/HouseFilterSelect';
 import { RESIDENT_STATUS_LABELS, RESIDENT_SORT_OPTIONS, type ResidentSortOption } from '../constants';
 
 interface ResidentsFiltersProps {
@@ -35,8 +35,6 @@ export function ResidentsFilters({
   onSortChange,
   hideHouseFilter = false,
 }: ResidentsFiltersProps) {
-  const { data: houses = [] } = useHouses({ enabled: !hideHouseFilter });
-
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-4">
       <div className="relative flex-1">
@@ -63,18 +61,7 @@ export function ResidentsFilters({
       </Select>
 
       {!hideHouseFilter && (
-        <Select
-          value={houseId}
-          onChange={(e) => onHouseIdChange?.(e.target.value)}
-          className="w-full sm:w-48"
-        >
-          <option value="">Todas as casas</option>
-          {houses.map((house) => (
-            <option key={house.id} value={house.id}>
-              {house.name}
-            </option>
-          ))}
-        </Select>
+        <HouseFilterSelect value={houseId} onChange={(value) => onHouseIdChange?.(value)} />
       )}
 
       <Select

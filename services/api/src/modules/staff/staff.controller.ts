@@ -108,7 +108,7 @@ export class StaffController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ListStaffQueryDto,
   ): Promise<Staff[]> {
-    return this.staffService.findAll({ role: user.role, userId: user.userId }, query.status ?? 'active');
+    return this.staffService.findAll({ role: user.role, userId: user.userId }, query);
   }
 
   @Get(':id')

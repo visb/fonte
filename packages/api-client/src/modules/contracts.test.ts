@@ -1006,6 +1006,18 @@ describe('staff module', () => {
     await m.list({ status: 'dismissed' });
     expect(http.get).toHaveBeenCalledWith('/staff', { params: { status: 'dismissed' } });
   });
+  it('list envia search e houseId (story 223)', async () => {
+    await m.list({ status: 'active', search: 'ana', houseId: 'h1' });
+    expect(http.get).toHaveBeenCalledWith('/staff', {
+      params: { status: 'active', search: 'ana', houseId: 'h1' },
+    });
+  });
+  it('list omite params vazios (story 223)', async () => {
+    await m.list({ search: '  ', houseId: '' });
+    expect(http.get).toHaveBeenCalledWith('/staff');
+    await m.list({ search: 'ana', houseId: undefined });
+    expect(http.get).toHaveBeenLastCalledWith('/staff', { params: { search: 'ana' } });
+  });
   it('dismiss posta o desligamento e desserializa (story 217)', async () => {
     const sentinel = { id: 's1', dismissedAt: '2026-01-01' };
     http.post.mockResolvedValueOnce({ data: sentinel });

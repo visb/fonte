@@ -295,10 +295,22 @@
                   "key": "status",
                   "value": "active",
                   "description": "Story 217 — `active` (default: não desligado) | `dismissed` (filtro \"Desligados\"). Outro valor → 400."
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Story 223 — busca por nome (sem acento e sem caixa, `unaccent(LOWER(...)) LIKE`). Termo com dígitos também casa o CPF pelos dígitos. Aparado; máx. 100 caracteres (→ 400).",
+                  "disabled": true
+                },
+                {
+                  "key": "houseId",
+                  "value": "{{houseId}}",
+                  "description": "Story 223 — UUID da casa (não-UUID → 400). Só vale para ADMIN; para COORDINATOR é **ignorado** (escopo continua sendo a casa do próprio staff — LGPD art. 6/46).",
+                  "disabled": true
                 }
               ]
             },
-            "description": "Lista os servos. Roles: ADMIN (todos) e COORDINATOR (só a própria casa).\n\nStory 217 — `?status=active|dismissed` (default `active`). Servo **ativo** = `deleted_at IS NULL AND dismissed_at IS NULL`. Cada item traz `dismissedAt` (`YYYY-MM-DD` ou `null`). Staff soft-deletado (`DELETE /staff/:id`) não aparece em nenhum dos dois filtros."
+            "description": "Lista os servos, ordenados por nome (array simples, sem paginação). Roles: ADMIN (todos) e COORDINATOR (só a própria casa).\n\nStory 217 — `?status=active|dismissed` (default `active`). Servo **ativo** = `deleted_at IS NULL AND dismissed_at IS NULL`. Cada item traz `dismissedAt` (`YYYY-MM-DD` ou `null`). Staff soft-deletado (`DELETE /staff/:id`) não aparece em nenhum dos dois filtros.\n\nStory 223 — `?search=` (nome sem acento/caixa ou dígitos do CPF) e `?houseId=` (só ADMIN; ignorado para COORDINATOR). Combináveis com `status`. Servo sem casa (grupo de apoio) só aparece sem `houseId`."
           }
         },
         {

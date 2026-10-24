@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { View, FlatList } from "react-native";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -7,6 +7,7 @@ import { ResidentStatus, type ResidentRowAction } from "@fonte/types";
 import { useAuth } from "@/lib/auth";
 import { normalizeForSearch } from "@/lib/searchUtils";
 import { useResidentsByHouse } from "@/features/residents/hooks/useResidents";
+import { sortResidentsByEntryDesc } from "@/features/residents/lib/sortResidents";
 import { ResidentSearchBar } from "@/features/residents/components/ResidentSearchBar";
 import { ResidentStatusFilterModal } from "@/features/residents/components/ResidentStatusFilterModal";
 import { ResidentListItem } from "@/features/residents/components/ResidentListItem";
@@ -54,7 +55,9 @@ export function ResidentsPage() {
   const filterActive =
     statusFilter.length !== RESIDENT_STATUS_FILTER_OPTIONS.length;
 
-  const filtered = residents.filter(
+  // Story 222: entrada mais recente primeiro; busca e filtro sobre a lista ordenada.
+  const sorted = useMemo(() => sortResidentsByEntryDesc(residents), [residents]);
+  const filtered = sorted.filter(
     (r) =>
       normalizeForSearch(r.name).includes(normalizeForSearch(search)) &&
       (statusFilter.length === 0 ||

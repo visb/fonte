@@ -48,7 +48,6 @@ export const queryKeys = {
   incidents: {
     all: ['incidents'] as const,
     byHouse: (houseId: string) => ['incidents', houseId] as const,
-    todayByHouse: (houseId: string) => ['incidents-today', houseId] as const,
   },
   activities: {
     all: ['activities'] as const,

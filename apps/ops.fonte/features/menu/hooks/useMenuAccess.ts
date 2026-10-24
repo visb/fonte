@@ -5,8 +5,10 @@ import { useHouseById } from '@/features/house-settings/hooks/useHouseSettings';
 import {
   buildMenuItems,
   buildQuickActions,
+  canAccessMenuItem,
   type AppMenuItem,
   type MenuAccess,
+  type MenuItemKey,
   type QuickActionItem,
 } from '../constants';
 
@@ -24,6 +26,8 @@ export function useMenuAccess(): {
   access: MenuAccess;
   menuItems: AppMenuItem[];
   quickActions: QuickActionItem[];
+  /** Story 221: a mesma regra do catálogo, para telas que decidem um toque (cards). */
+  canAccess: (key: MenuItemKey) => boolean;
 } {
   const { staff, isResident, canSendMessagesToFamilies, canModerateMessages } = useAuth();
 
@@ -62,6 +66,7 @@ export function useMenuAccess(): {
       access,
       menuItems: buildMenuItems(access),
       quickActions: buildQuickActions(access),
+      canAccess: (key: MenuItemKey) => canAccessMenuItem(key, access),
     }),
     [access],
   );

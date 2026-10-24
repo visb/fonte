@@ -50,7 +50,8 @@ describe('warmHouseCache', () => {
 
     expect(client.getQueryData(queryKeys.storeroom.items('h1'))).toEqual([{ id: 'i1' }]);
     expect(client.getQueryData(queryKeys.supplyRoom.items('h1'))).toEqual([]);
-    expect(client.getQueryData(queryKeys.incidents.todayByHouse('h1'))).toEqual([]);
+    // Story 221: aquece a key que a lista de ocorrências consome.
+    expect(client.getQueryData(queryKeys.incidents.byHouse('h1'))).toEqual([]);
     expect(client.getQueryData(queryKeys.activities.byHouse('h1'))).toEqual([]);
   });
 

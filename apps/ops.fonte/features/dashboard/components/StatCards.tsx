@@ -1,21 +1,33 @@
-import { View, Text } from "react-native";
+import { View } from "react-native";
+import { StatCard } from "./StatCard";
 
 type Props = {
   residentCount: number;
-  incidentCount: number;
+  staffCount: number;
+  /** Ausente quando o perfil não alcança a lista de filhos (catálogo do menu). */
+  onPressResidents?: () => void;
+  /** Ausente quando o perfil não alcança a lista de servos (catálogo do menu). */
+  onPressStaff?: () => void;
 };
 
-export function StatCards({ residentCount, incidentCount }: Props) {
+/** Contadores do dashboard: filhos e servos da casa (story 221). */
+export function StatCards({ residentCount, staffCount, onPressResidents, onPressStaff }: Props) {
   return (
     <View className="flex-row gap-3 mb-6">
-      <View className="flex-1 bg-white rounded-xl border border-gray-100 p-4">
-        <Text className="text-3xl font-bold text-gray-900">{residentCount}</Text>
-        <Text className="text-sm text-gray-500 mt-0.5">Filhos na casa</Text>
-      </View>
-      <View className="flex-1 bg-white rounded-xl border border-gray-100 p-4">
-        <Text className="text-3xl font-bold text-gray-900">{incidentCount}</Text>
-        <Text className="text-sm text-gray-500 mt-0.5">Ocorrências hoje</Text>
-      </View>
+      <StatCard
+        testID="stat-card-residents"
+        value={residentCount}
+        label="Filhos na casa"
+        accessibilityLabel="Ver filhos"
+        onPress={onPressResidents}
+      />
+      <StatCard
+        testID="stat-card-staff"
+        value={staffCount}
+        label="Servos na casa"
+        accessibilityLabel="Ver servos"
+        onPress={onPressStaff}
+      />
     </View>
   );
 }

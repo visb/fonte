@@ -16,6 +16,7 @@ jest.mock('@/features/notifications/components/NotificationBell', () => {
   return { NotificationBell: () => <Text>sino-notificacoes</Text> };
 });
 
+import { StatCard } from './StatCard';
 import { StatCards } from './StatCards';
 import { QuickActions } from './QuickActions';
 import { WelcomeHeader } from './WelcomeHeader';
@@ -32,13 +33,55 @@ const SERVANT: MenuAccess = {
 
 beforeEach(() => jest.clearAllMocks());
 
+describe('StatCard', () => {
+  it('com onPress é botão, mostra o chevron e dispara o callback', () => {
+    const onPress = jest.fn();
+    render(
+      <StatCard testID="card" value={7} label="Filhos na casa" accessibilityLabel="Ver filhos" onPress={onPress} />,
+    );
+    const button = screen.getByRole('button', { name: 'Ver filhos' });
+    expect(screen.getByText('icon:chevron-forward')).toBeTruthy();
+    fireEvent.press(button);
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('sem onPress não é botão nem mostra o chevron', () => {
+    render(<StatCard testID="card" value={7} label="Filhos na casa" accessibilityLabel="Ver filhos" />);
+    expect(screen.getByTestId('card')).toBeTruthy();
+    expect(screen.getByText('7')).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.queryByText('icon:chevron-forward')).toBeNull();
+  });
+});
+
 describe('StatCards', () => {
-  it('mostra contagens de filhos e ocorrências', () => {
-    render(<StatCards residentCount={12} incidentCount={3} />);
+  // Story 221: "Ocorrências hoje" deu lugar ao contador de servos.
+  it('mostra contagens de filhos e servos, sem ocorrências do dia', () => {
+    render(<StatCards residentCount={12} staffCount={3} />);
     expect(screen.getByText('12')).toBeTruthy();
     expect(screen.getByText('Filhos na casa')).toBeTruthy();
     expect(screen.getByText('3')).toBeTruthy();
-    expect(screen.getByText('Ocorrências hoje')).toBeTruthy();
+    expect(screen.getByText('Servos na casa')).toBeTruthy();
+    expect(screen.queryByText('Ocorrências hoje')).toBeNull();
+    expect(screen.getByTestId('stat-card-residents')).toBeTruthy();
+    expect(screen.getByTestId('stat-card-staff')).toBeTruthy();
+  });
+
+  it('cada card toca o seu callback', () => {
+    const onPressResidents = jest.fn();
+    const onPressStaff = jest.fn();
+    render(
+      <StatCards
+        residentCount={12}
+        staffCount={3}
+        onPressResidents={onPressResidents}
+        onPressStaff={onPressStaff}
+      />,
+    );
+    fireEvent.press(screen.getByRole('button', { name: 'Ver filhos' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Ver servos' }));
+    expect(onPressResidents).toHaveBeenCalledTimes(1);
+    expect(onPressStaff).toHaveBeenCalledTimes(1);
   });
 });
 

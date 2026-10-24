@@ -25,14 +25,6 @@ export function useIncidents(houseId: string | null | undefined) {
   });
 }
 
-export function useIncidentsToday(houseId: string | null | undefined) {
-  return useQuery({
-    queryKey: queryKeys.incidents.todayByHouse(houseId!),
-    queryFn: () => api.incidents.list({ houseId: houseId! }),
-    enabled: !!houseId,
-  });
-}
-
 /**
  * Ocorrência é lançada no momento em que acontece, muitas vezes sem sinal: vai
  * para a outbox (story 169) e aparece na lista na hora, como pendente.

@@ -374,7 +374,6 @@ describe('update otimista — despensa e ocorrência', () => {
   it('ocorrência aparece na lista da casa e some no erro definitivo', async () => {
     const queryClient = createClient();
     queryClient.setQueryData(queryKeys.incidents.byHouse('h1'), []);
-    queryClient.setQueryData(queryKeys.incidents.todayByHouse('h1'), []);
     const variables = {
       data: {
         date: '2026-08-10',
@@ -404,7 +403,6 @@ describe('update otimista — despensa e ocorrência', () => {
     });
     expect(pending?.[0].id.startsWith(outboxEntityId(''))).toBe(true);
     expect(queryClient.getQueryData(queryKeys.incidents.byHouse('h1'))).toEqual([]);
-    expect(queryClient.getQueryData(queryKeys.incidents.todayByHouse('h1'))).toEqual([]);
   });
 
   it('ocorrência sem filho envolvido fica com resident nulo', async () => {

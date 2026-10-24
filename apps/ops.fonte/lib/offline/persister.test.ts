@@ -37,7 +37,6 @@ describe('shouldDehydrateQuery — allowlist (LGPD)', () => {
     ['supplyRoom.items', queryKeys.supplyRoom.items('h1')],
     ['supplyRoom.movements', queryKeys.supplyRoom.movements('i1')],
     ['incidents.byHouse', queryKeys.incidents.byHouse('h1')],
-    ['incidents.todayByHouse', queryKeys.incidents.todayByHouse('h1')],
     ['activities.byHouse', queryKeys.activities.byHouse('h1')],
     ['activities.detail', queryKeys.activities.detail('a1')],
     ['activities.comments', queryKeys.activities.comments('a1')],
@@ -154,7 +153,6 @@ describe('store local × cache em blob (story 175)', () => {
       'supply-room-items',
       'supply-room-movements',
       'incidents',
-      'incidents-today',
       'activities',
       'street-sales',
     ]);

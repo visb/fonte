@@ -106,3 +106,53 @@ describe('ResidentsPage — saída da comunidade e transferência', () => {
     expect(mockRemoveModal).toHaveBeenCalledWith(expect.objectContaining({ houseId: 'h1' }));
   });
 });
+
+describe('ResidentsPage — ordem por data de entrada (story 222)', () => {
+  // Cache em ordem alfabética, como chegam o GET e o snapshot offline.
+  const ALPHABETICAL = [
+    { id: 'a', name: 'Ana', status: ResidentStatus.ACTIVE, entryDate: '2024-01-01' },
+    { id: 'b', name: 'Bruno', status: ResidentStatus.DISCHARGED, entryDate: '2026-05-01' },
+    { id: 'c', name: 'Carla', status: ResidentStatus.ACTIVE, entryDate: null },
+    { id: 'd', name: 'Davi', status: ResidentStatus.ACTIVE, entryDate: '2026-03-01' },
+    { id: 'e', name: 'Érico', status: ResidentStatus.ACTIVE, entryDate: '2025-06-01' },
+  ];
+
+  const renderedNames = () =>
+    screen
+      .getAllByText(/^(Ana|Bruno|Carla|Davi|Érico)$/)
+      .map((node) => node.props.children as string);
+
+  function renderSorted() {
+    mockAuth.mockReturnValue({ staff: { id: 's1', houseId: 'h1', user: { role: Role.SERVANT } } });
+    mockResidentsByHouse.mockReturnValue({
+      data: ALPHABETICAL,
+      isLoading: false,
+      refetch: jest.fn(),
+    });
+    return render(<ResidentsPage />);
+  }
+
+  it('renderiza a entrada mais recente primeiro e sem entrada no fim', () => {
+    renderSorted();
+    expect(renderedNames()).toEqual(['Davi', 'Érico', 'Ana', 'Carla']);
+  });
+
+  it('a busca filtra a lista já ordenada', () => {
+    renderSorted();
+    fireEvent.changeText(screen.getByPlaceholderText('Buscar filho...'), 'a');
+    expect(renderedNames()).toEqual(['Davi', 'Ana', 'Carla']);
+  });
+
+  it('o filtro de status mantém a ordem por entrada', () => {
+    renderSorted();
+    fireEvent.press(screen.getByText('icon:options-outline'));
+    fireEvent.press(screen.getByText('Alta'));
+    fireEvent.press(screen.getByText('Aplicar'));
+    expect(renderedNames()).toEqual(['Bruno', 'Davi', 'Érico', 'Ana', 'Carla']);
+  });
+
+  it('não muta o array do cache', () => {
+    renderSorted();
+    expect(ALPHABETICAL.map((r) => r.id)).toEqual(['a', 'b', 'c', 'd', 'e']);
+  });
+});

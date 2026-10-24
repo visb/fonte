@@ -161,6 +161,28 @@ describe('useMenuAccess', () => {
     ]);
   });
 
+  // Story 221: os cards do dashboard decidem o toque pela mesma regra do menu.
+  it('canAccess aplica a regra do catálogo ao perfil logado', () => {
+    mockAuth.mockReturnValue(auth());
+    const { result } = renderHook(() => useMenuAccess());
+    expect(result.current.canAccess('residents')).toBe(true);
+    expect(result.current.canAccess('staff')).toBe(true);
+    expect(result.current.canAccess('census')).toBe(false);
+  });
+
+  it('canAccess nega filhos e servos ao interno', () => {
+    mockAuth.mockReturnValue({
+      staff: null,
+      resident: { id: 'resident-1', name: 'Filho X' },
+      isResident: true,
+      canSendMessagesToFamilies: false,
+      canModerateMessages: false,
+    });
+    const { result } = renderHook(() => useMenuAccess());
+    expect(result.current.canAccess('residents')).toBe(false);
+    expect(result.current.canAccess('staff')).toBe(false);
+  });
+
   it('propaga as permissões de mensagens do useAuth', () => {
     mockAuth.mockReturnValue(auth({ canModerateMessages: true }));
     const { result } = renderHook(() => useMenuAccess());

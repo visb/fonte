@@ -13,11 +13,7 @@ jest.mock('@/lib/api', () => ({
 import { api } from '@/lib/api';
 import { expectIdempotencyKey, renderHookWithClient } from '@/lib/test/utils';
 import * as incidentHooks from './useIncidents';
-import {
-  useIncidents,
-  useIncidentsToday,
-  useCreateIncident,
-} from './useIncidents';
+import { useIncidents, useCreateIncident } from './useIncidents';
 
 const m = api as unknown as { incidents: Record<string, jest.Mock> };
 
@@ -36,11 +32,10 @@ describe('useIncidents', () => {
     expect(m.incidents.list).not.toHaveBeenCalled();
   });
 
-  it('useIncidentsToday lista por casa', async () => {
-    m.incidents.list.mockResolvedValue([{ id: 'in1' }]);
-    const { result } = renderHookWithClient(() => useIncidentsToday('h1'));
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(m.incidents.list).toHaveBeenCalledWith({ houseId: 'h1' });
+  // Story 221: o contador "Ocorrências hoje" saiu do dashboard e levou junto o
+  // hook dedicado — a lista da casa (`useIncidents`) é a única leitura.
+  it('não expõe mais o hook de ocorrências do dia (story 221)', () => {
+    expect('useIncidentsToday' in incidentHooks).toBe(false);
   });
 
   it('useCreateIncident repassa o payload (incidente é não-deletável: só create)', async () => {

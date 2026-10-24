@@ -6,10 +6,24 @@ appId: org.fonte.ops
 # Story 207: badge de nível do servo logado (seed: Operador Teste = CONSAGRADO).
 - assertVisible: "Consagrado"
 - assertVisible: "Casa Teste"
+# Story 221: contadores Filhos e Servos; "Ocorrências hoje" saiu do dashboard.
 - assertVisible: "Filhos na casa"
-- assertVisible: "Ocorrências hoje"
+- assertVisible: "Servos na casa"
+- assertNotVisible: "Ocorrências hoje"
 - assertVisible: "Ações rápidas"
 - assertVisible: "Nova ocorrência"
 - assertVisible: "Ver filhos"
 - assertVisible: "Ministérios"
 - assertVisible: "Dispensa"
+# Story 221: os cards são atalhos para as listas.
+- tapOn:
+    id: "stat-card-residents"
+- assertVisible: "Buscar filho..."
+- assertVisible: "João Testador"
+- back
+- assertVisible: "Servos na casa"
+- tapOn:
+    id: "stat-card-staff"
+- assertVisible: "Coordenador Teste"
+- back
+- assertVisible: "Bem-vindo,"

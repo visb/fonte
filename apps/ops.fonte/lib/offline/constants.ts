@@ -89,9 +89,9 @@ export const PERSISTED_QUERY_PREFIXES = [
   // supplyRoom.items / supplyRoom.movements
   'supply-room-items',
   'supply-room-movements',
-  // incidents.all / incidents.byHouse / incidents.todayByHouse
+  // incidents.all / incidents.byHouse (a chave `incidents-today` saiu com o
+  // contador do dashboard — story 221)
   'incidents',
-  'incidents-today',
   // activities.* (byHouse, detail, comments, events — histórico, story 220)
   'activities',
   // streetSales.all / streetSales.byHouse

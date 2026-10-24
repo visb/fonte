@@ -6,6 +6,7 @@ import {
   buildMenuItems,
   buildQuickActions,
   canAccessMenuItem,
+  menuItemRoute,
   type MenuAccess,
   type MenuItemKey,
 } from './constants';
@@ -45,6 +46,12 @@ describe('catálogo do menu', () => {
       expect(item.route.startsWith('/(app)/')).toBe(true);
       expect(item.label.length).toBeGreaterThan(0);
     });
+  });
+
+  // Story 221: os cards do dashboard navegam pela rota do catálogo.
+  it('menuItemRoute devolve a rota do item', () => {
+    expect(menuItemRoute('residents')).toBe('/(app)/residents');
+    expect(menuItemRoute('staff')).toBe('/(app)/staff');
   });
 });
 

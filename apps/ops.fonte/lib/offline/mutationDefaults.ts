@@ -302,20 +302,12 @@ function applyIncident(queryClient: QueryClient, variables: IncidentCreateVariab
     optimistic,
     ...(incidents ?? []),
   ]);
-  queryClient.setQueriesData<Incident[]>(
-    { queryKey: queryKeys.incidents.todayByHouse(data.houseId) },
-    (incidents) => [optimistic, ...(incidents ?? [])],
-  );
 }
 
 function rollbackIncident(queryClient: QueryClient, variables: IncidentCreateVariables): void {
   const id = outboxEntityId(variables.idempotencyKey ?? '');
   queryClient.setQueriesData<Incident[]>({ queryKey: queryKeys.incidents.all }, (incidents) =>
     dropOutboxEntry(incidents, id),
-  );
-  queryClient.setQueriesData<Incident[]>(
-    { queryKey: queryKeys.incidents.todayByHouse(variables.data.houseId) },
-    (incidents) => dropOutboxEntry(incidents, id),
   );
 }
 
@@ -671,11 +663,8 @@ export function registerMutationDefaults(
         api.incidents.create(variables.data, { idempotencyKey: variables.idempotencyKey }),
       optimistic: applyIncident,
       rollback: rollbackIncident,
-      settled: (client, variables) => {
+      settled: (client) => {
         void client.invalidateQueries({ queryKey: queryKeys.incidents.all });
-        void client.invalidateQueries({
-          queryKey: queryKeys.incidents.todayByHouse(variables.data.houseId),
-        });
       },
     },
     options,

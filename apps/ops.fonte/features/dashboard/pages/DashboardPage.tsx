@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { View, ScrollView, RefreshControl } from "react-native";
+import { router } from "expo-router";
 import { PRESENT_RESIDENT_STATUSES } from "@fonte/types";
 import { useAuth } from "@/lib/auth";
 import { useResidentCountByHouse } from "@/features/residents/hooks/useResidents";
-import { useIncidentsToday } from "@/features/incidents/hooks/useIncidents";
+import { useHouseStaff } from "@/features/staff/hooks/useHouseStaff";
 import { useMenuAccess } from "@/features/menu/hooks/useMenuAccess";
+import { menuItemRoute } from "@/features/menu/constants";
 import { WelcomeHeader } from "@/features/dashboard/components/WelcomeHeader";
 import { StatCards } from "@/features/dashboard/components/StatCards";
 import { QuickActions } from "@/features/dashboard/components/QuickActions";
@@ -16,15 +18,16 @@ export function DashboardPage() {
 
   const { data: residents = [], refetch: refetchResidents } =
     useResidentCountByHouse(staff?.houseId);
-  const { data: incidents = [], refetch: refetchIncidents } =
-    useIncidentsToday(staff?.houseId);
+  // Story 221: servos ativos da casa — mesma query (pré-carregada e persistida)
+  // da lista da story 204, sem fetch novo.
+  const { data: houseStaff = [], refetch: refetchStaff } = useHouseStaff(staff?.houseId);
   // Contagem e configurações da casa deixaram de ser recalculadas aqui: quem
   // decide o que o usuário alcança é o catálogo do menu (story 176).
-  const { quickActions } = useMenuAccess();
+  const { quickActions, canAccess } = useMenuAccess();
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([refetchResidents(), refetchIncidents()]);
+    await Promise.all([refetchResidents(), refetchStaff()]);
     setIsRefreshing(false);
   };
 
@@ -32,11 +35,12 @@ export function DashboardPage() {
     (PRESENT_RESIDENT_STATUSES as readonly string[]).includes(resident.status),
   ).length;
 
-  const todayIncidentsCount = incidents.filter((incident) => {
-    const incidentDate = new Date(incident.date).toISOString().split("T")[0];
-    const today = new Date().toISOString().split("T")[0];
-    return incidentDate === today;
-  }).length;
+  const openResidents = canAccess("residents")
+    ? () => router.push(menuItemRoute("residents") as never)
+    : undefined;
+  const openStaff = canAccess("staff")
+    ? () => router.push(menuItemRoute("staff") as never)
+    : undefined;
 
   return (
     <ScrollView
@@ -51,7 +55,9 @@ export function DashboardPage() {
         <SyncQueueBadge />
         <StatCards
           residentCount={presentResidentsCount}
-          incidentCount={todayIncidentsCount}
+          staffCount={houseStaff.length}
+          onPressResidents={openResidents}
+          onPressStaff={openStaff}
         />
         <QuickActions items={quickActions} />
       </View>

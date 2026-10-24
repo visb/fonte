@@ -5,7 +5,7 @@
  * operador que entra na casa e só então abre a contagem não tem nada em cache.
  * Aqui o app puxa, no login e ao voltar do background, o pacote mínimo que os
  * fluxos de campo consomem — filhos da casa, catálogo de estoque, ocorrências
- * de hoje, atividades e servos da casa.
+ * da casa, atividades e servos da casa.
  *
  * LGPD (decisão 4 do epic 167): tudo que é aquecido **precisa** estar na
  * allowlist de `constants.ts`, senão o dado ficaria em memória por nada. O
@@ -47,8 +47,10 @@ function houseQueries(houseId: string): WarmQuery[] {
       queryKey: queryKeys.supplyRoom.items(houseId),
       queryFn: () => api.supplyRoom.listItems({ houseId }),
     },
+    // Story 221: aquece a lista de ocorrências da casa (a tela consome
+    // `incidents.byHouse`); a chave do antigo contador do dashboard saiu.
     {
-      queryKey: queryKeys.incidents.todayByHouse(houseId),
+      queryKey: queryKeys.incidents.byHouse(houseId),
       queryFn: () => api.incidents.list({ houseId }),
     },
     {

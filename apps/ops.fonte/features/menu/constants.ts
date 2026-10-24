@@ -258,6 +258,11 @@ export function canAccessMenuItem(key: MenuItemKey, access: MenuAccess): boolean
   }
 }
 
+/** Rota do item no catálogo — telas fora do menu navegam por aqui, não por string solta. */
+export function menuItemRoute(key: MenuItemKey): string {
+  return (MENU_ITEMS.find((item) => item.key === key) as AppMenuItem).route;
+}
+
 export function buildMenuItems(access: MenuAccess): AppMenuItem[] {
   return MENU_ITEMS.filter((item) => canAccessMenuItem(item.key, access));
 }

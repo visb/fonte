@@ -1,6 +1,6 @@
 appId: org.fonte.ops
 # Stories 114/195 — declaração de contribuição em PRODUTOS de um filho.
-# Fluxo: Menu → Contribuições → Nova declaração → escolher filho → catálogo +
+# Fluxo: Menu → Contribuições → Nova contribuição → escolher filho → catálogo +
 # avulso → declarar → volta para a fila da casa.
 # Requer emulador/dispositivo + API de teste (schema 111+112) com catálogo
 # semeado na casa. Pré-requisitos de build/ambiente: story 184.
@@ -28,7 +28,7 @@ appId: org.fonte.ops
 - runFlow: helpers/login-operator.yaml
 - tapOn: "Menu"
 - tapOn: "Contribuições"
-- tapOn: "Nova declaração"
+- tapOn: "Nova contribuição"
 - tapOn: "Buscar por nome"
 # Prefixo sem acento: o Maestro não digita fora do ASCII
 # (mobile-dev-inc/maestro#146).

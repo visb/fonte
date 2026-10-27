@@ -31,7 +31,7 @@ export function ContributionsQueuePage() {
       )}
       <TouchableOpacity accessibilityRole="button" className="absolute bottom-6 right-6 rounded-full bg-indigo-900 px-5 py-4"
         onPress={() => router.push('/(app)/contributions/pick-resident' as never)}>
-        <Text className="text-white font-semibold">Nova declaração</Text>
+        <Text className="text-white font-semibold">Nova contribuição</Text>
       </TouchableOpacity>
     </View>
   );

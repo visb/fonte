@@ -38,7 +38,7 @@ it('queue renders one row per resident with catalog/free-text/pending summaries 
   expect(screen.getByText('Cesta básica')).toBeTruthy();
   expect(screen.getByText('Aguardando envio')).toBeTruthy();
   expect(screen.getByText('Pendente de detalhamento')).toBeTruthy();
-  fireEvent.press(screen.getByText('Nova declaração'));
+  fireEvent.press(screen.getByText('Nova contribuição'));
   expect(router.push).toHaveBeenCalledWith('/(app)/contributions/pick-resident');
 });
 it('queue handles empty/error/retry', async () => {

@@ -46,7 +46,7 @@ async function login(page: Page) {
   await expect(page.getByTestId(`contribution-${residentId}`).filter({ visible: true })).toBeVisible({ timeout: 30_000 });
 }
 async function openForm(page: Page) {
-  await page.getByRole('button', { name: 'Nova declaração', exact: true }).click();
+  await page.getByRole('button', { name: 'Nova contribuição', exact: true }).click();
   await page.getByLabel('Buscar filho').filter({ visible: true }).fill(name);
   await page.getByRole('button', { name, exact: true }).click();
   await expect(page.getByPlaceholder('Buscar produto...').filter({ visible: true })).toBeVisible({ timeout: 30_000 });

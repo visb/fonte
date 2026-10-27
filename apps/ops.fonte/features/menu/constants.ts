@@ -72,7 +72,7 @@ export const MENU_ITEMS: AppMenuItem[] = [
   {
     key: 'contributions', label: 'Contribuições', icon: 'gift-outline',
     route: '/(app)/contributions', section: 'casa', color: '#16a34a', bg: '#f0fdf4',
-    quickAction: { label: 'Nova declaração', route: '/(app)/contributions/pick-resident' },
+    quickAction: { label: 'Nova contribuição', route: '/(app)/contributions/pick-resident' },
   },
   {
     key: 'residents',

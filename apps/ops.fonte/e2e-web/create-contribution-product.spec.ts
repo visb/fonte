@@ -38,7 +38,7 @@ async function open(page: Page) {
   await visible(page, 'Entrar').click();
   await expect(visible(page, 'Bem-vindo,')).toBeVisible({ timeout: 30_000 });
   await visible(page, 'Menu').click(); await visible(page, 'Contribuições').click();
-  await page.getByRole('button', { name: 'Nova declaração', exact: true }).click();
+  await page.getByRole('button', { name: 'Nova contribuição', exact: true }).click();
   await page.getByLabel('Buscar filho').filter({ visible: true }).fill(residentName);
   await page.getByRole('button', { name: residentName, exact: true }).click();
   await expect(page.getByPlaceholder('Buscar produto...').filter({ visible: true })).toBeVisible();

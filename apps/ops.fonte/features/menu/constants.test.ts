@@ -211,7 +211,7 @@ describe('buildQuickActions', () => {
   it('mantém os rótulos e as rotas de hoje a partir do catálogo', () => {
     const actions = buildQuickActions(servant);
     expect(actions.map((action) => action.label)).toEqual([
-      'Nova declaração',
+      'Nova contribuição',
       'Nova ocorrência',
       'Atividades',
       'Ver filhos',

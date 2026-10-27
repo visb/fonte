@@ -63,15 +63,17 @@ describe('MenuPage', () => {
     render(<MenuPage />);
 
     expect(screen.getByText('Casa')).toBeTruthy();
-    expect(screen.getByText('Estoque')).toBeTruthy();
-    expect(screen.getByText('Comunicação')).toBeTruthy();
+    // Estoque escondido por ora (vai voltar): a seção some por não ter item.
+    expect(screen.queryByText('Estoque')).toBeNull();
+    // Mensagens e Pedidos também escondidos por ora: Comunicação some junto.
+    expect(screen.queryByText('Comunicação')).toBeNull();
     expect(screen.getByText('Conta')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('menu-item-residents'));
     expect(mockPush).toHaveBeenCalledWith('/(app)/residents');
 
-    fireEvent.press(screen.getByTestId('menu-item-storeroom'));
-    expect(mockPush).toHaveBeenCalledWith('/(app)/storeroom');
+    fireEvent.press(screen.getByTestId('menu-item-incidents'));
+    expect(mockPush).toHaveBeenCalledWith('/(app)/incidents');
 
     fireEvent.press(screen.getByTestId('menu-item-sync'));
     expect(mockPush).toHaveBeenCalledWith('/(app)/sync');
@@ -107,9 +109,10 @@ describe('MenuPage', () => {
     // Seção vazia não deixa título órfão na tela.
     expect(screen.queryByText('Casa')).toBeNull();
     expect(screen.queryByText('Estoque')).toBeNull();
-    expect(screen.getByText('Comunicação')).toBeTruthy();
+    // Mensagens e Pedidos escondidos por ora: sobra só a Conta.
+    expect(screen.queryByText('Comunicação')).toBeNull();
     expect(screen.getByText('Conta')).toBeTruthy();
-    expect(screen.getByTestId('menu-item-messages')).toBeTruthy();
+    expect(screen.queryByTestId('menu-item-messages')).toBeNull();
     expect(screen.getByTestId('menu-item-logout')).toBeTruthy();
     expect(screen.queryByTestId('menu-item-sync')).toBeNull();
   });

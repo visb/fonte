@@ -116,7 +116,7 @@ test.describe('ops.fonte — offline', () => {
 
     // O número veio do cache persistido — sem rede não houve como buscar.
     await expect(statCard(page, 'Filhos na casa')).toContainText(residentsOnline);
-    await expect(page.getByText('Almoxarifado')).toBeVisible();
+    await expect(page.getByText('Ministérios')).toBeVisible();
   });
 
   test('só as query keys da allowlist vão para o disco (LGPD)', async ({ page }) => {

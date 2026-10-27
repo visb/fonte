@@ -98,7 +98,8 @@ test.describe('ops.fonte — outbox offline', () => {
     });
 
     await loginAsOperator(page);
-    await page.getByText('Almoxarifado').click();
+    // Almoxarifado escondido do menu por ora (vai voltar): entra pela rota.
+    await page.goto('/supply-room');
     await expect(itemCard(page)).toBeVisible({ timeout: 30_000 });
     const stockBefore = await readStock(page);
 

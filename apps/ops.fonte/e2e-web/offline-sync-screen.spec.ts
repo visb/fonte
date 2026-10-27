@@ -74,7 +74,8 @@ function badge(page: Page) {
  * lançar — o cache é pré-requisito do lançamento em campo, não do teste.
  */
 async function openSupplyRoom(page: Page) {
-  await visible(page, 'Almoxarifado').click();
+  // Almoxarifado escondido do menu por ora (vai voltar): entra pela rota.
+  await page.goto('/supply-room');
   await expect(visible(page, ITEM_NAME)).toBeVisible({ timeout: 30_000 });
 }
 

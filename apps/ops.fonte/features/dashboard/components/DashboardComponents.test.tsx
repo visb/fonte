@@ -92,7 +92,8 @@ describe('QuickActions', () => {
     render(<QuickActions items={buildQuickActions(SERVANT)} />);
     expect(screen.getByText('Nova ocorrência')).toBeTruthy();
     expect(screen.getByText('Ver filhos')).toBeTruthy();
-    expect(screen.getByText('Faturamento')).toBeTruthy();
+    // Faturamento escondido por ora (vai voltar).
+    expect(screen.queryByText('Faturamento')).toBeNull();
     expect(screen.queryByText('Contagem')).toBeNull();
     expect(screen.queryByText('Configurações da casa')).toBeNull();
     fireEvent.press(screen.getByText('Atividades'));

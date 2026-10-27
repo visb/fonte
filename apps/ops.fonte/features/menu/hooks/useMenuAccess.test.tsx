@@ -142,7 +142,9 @@ describe('useMenuAccess', () => {
     expect(result.current.menuItems.map((item) => item.key)).toEqual(['supportGroups']);
   });
 
-  it('interno não dispara consulta de casa e fica só com mensagens e pedidos', () => {
+  // Mensagens e Pedidos escondidos do menu por ora (vão voltar): o interno
+  // fica sem item nenhum.
+  it('interno não dispara consulta de casa e fica sem itens no menu', () => {
     mockAuth.mockReturnValue({
       staff: null,
       resident: { id: 'resident-1', name: 'Filho X' },
@@ -155,10 +157,7 @@ describe('useMenuAccess', () => {
 
     expect(mockHouseById).toHaveBeenCalledWith(undefined, { enabled: false });
     expect(result.current.access.isSupportGroupServant).toBe(false);
-    expect(result.current.menuItems.map((item) => item.key)).toEqual([
-      'messages',
-      'wishlist',
-    ]);
+    expect(result.current.menuItems).toEqual([]);
   });
 
   // Story 221: os cards do dashboard decidem o toque pela mesma regra do menu.
@@ -188,8 +187,8 @@ describe('useMenuAccess', () => {
     const { result } = renderHook(() => useMenuAccess());
 
     expect(result.current.access.canModerateMessages).toBe(true);
-    expect(result.current.menuItems.map((item) => item.key)).toEqual(
-      expect.arrayContaining(['messages', 'wishlist']),
-    );
+    // Itens de Mensagens/Pedidos escondidos por ora; a regra continua valendo.
+    expect(result.current.canAccess('messages')).toBe(true);
+    expect(result.current.canAccess('wishlist')).toBe(true);
   });
 });

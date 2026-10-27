@@ -39,7 +39,15 @@ function keysOf(access: MenuAccess): MenuItemKey[] {
 describe('catálogo do menu', () => {
   it('tem um item por chave declarada, sem duplicata e com seção válida', () => {
     const sections = MENU_SECTIONS.map((section) => section.key);
-    expect(MENU_ITEMS.map((item) => item.key).sort()).toEqual([...MENU_ITEM_KEYS].sort());
+    // Eventos internos, a seção Estoque, Mensagens e Pedidos estão escondidos do
+    // menu por ora (vão voltar): as chaves seguem declaradas, só os itens estão
+    // comentados.
+    const hidden: MenuItemKey[] = [
+      'events', 'storeroom', 'supplyRoom', 'streetSales', 'messages', 'wishlist',
+    ];
+    expect(MENU_ITEMS.map((item) => item.key).sort()).toEqual(
+      MENU_ITEM_KEYS.filter((key) => !hidden.includes(key)).sort(),
+    );
     expect(new Set(MENU_ITEMS.map((item) => item.route)).size).toBe(MENU_ITEMS.length);
     MENU_ITEMS.forEach((item) => {
       expect(sections).toContain(item.section);
@@ -65,10 +73,6 @@ describe('buildMenuItems por perfil', () => {
       'incidents',
       'activities',
       'ministries',
-      'events',
-      'storeroom',
-      'supplyRoom',
-      'streetSales',
       'sync',
     ]);
     expect(keys).not.toContain('census');
@@ -88,8 +92,9 @@ describe('buildMenuItems por perfil', () => {
     expect(keys).toContain('houseSettings');
   });
 
-  it('interno vê só mensagens e pedidos', () => {
-    expect(keysOf(resident)).toEqual(['messages', 'wishlist']);
+  // Mensagens e Pedidos escondidos por ora: o interno fica sem item.
+  it('interno não vê item nenhum', () => {
+    expect(keysOf(resident)).toEqual([]);
   });
 
   it('servo de grupo de apoio vê apoio e nenhuma rota de casa ou estoque', () => {
@@ -121,23 +126,28 @@ describe('buildMenuItems por perfil', () => {
     expect(QUICK_ACTION_KEYS).not.toContain('staff');
   });
 
+  // Itens escondidos do menu por ora; a regra de acesso continua valendo.
   it('mensagens exige permissão de enviar ou moderar; pedidos exige moderar', () => {
-    expect(keysOf(servant)).not.toContain('messages');
-    expect(keysOf(servant)).not.toContain('wishlist');
+    expect(canAccessMenuItem('messages', servant)).toBe(false);
+    expect(canAccessMenuItem('wishlist', servant)).toBe(false);
 
-    expect(keysOf(messenger)).toContain('messages');
-    expect(keysOf(messenger)).not.toContain('wishlist');
+    expect(canAccessMenuItem('messages', messenger)).toBe(true);
+    expect(canAccessMenuItem('wishlist', messenger)).toBe(false);
 
-    expect(keysOf(moderator)).toContain('messages');
-    expect(keysOf(moderator)).toContain('wishlist');
+    expect(canAccessMenuItem('messages', moderator)).toBe(true);
+    expect(canAccessMenuItem('wishlist', moderator)).toBe(true);
+    expect(keysOf(moderator)).not.toContain('messages');
+    expect(keysOf(moderator)).not.toContain('wishlist');
   });
 
   it('nenhuma seção do menu fica vazia com título órfão para o servo da casa', () => {
     const items = buildMenuItems(moderator);
     const usedSections = new Set(items.map((item) => item.section));
     expect(usedSections.has('casa')).toBe(true);
-    expect(usedSections.has('estoque')).toBe(true);
-    expect(usedSections.has('comunicacao')).toBe(true);
+    // Estoque e Comunicação escondidos por ora: a seção some inteira em vez de
+    // ficar órfã.
+    expect(usedSections.has('estoque')).toBe(false);
+    expect(usedSections.has('comunicacao')).toBe(false);
     expect(usedSections.has('conta')).toBe(true);
   });
 });
@@ -190,7 +200,8 @@ describe('paridade com as regras de visibilidade do _layout/dashboard', () => {
     it(`${name}: toda rota visível na tab bar está no catálogo`, () => {
       const legacy = legacyTabVisibility(access);
       const keys = keysOf(access);
-      (['residents', 'messages', 'wishlist', 'supportGroups'] as MenuItemKey[]).forEach(
+      // messages/wishlist fora: escondidos da tab bar e do menu por ora.
+      (['residents', 'supportGroups'] as MenuItemKey[]).forEach(
         (key) => {
           const visibleInTabBar = legacy[key as keyof typeof legacy];
           expect(keys.includes(key)).toBe(visibleInTabBar);
@@ -216,10 +227,6 @@ describe('buildQuickActions', () => {
       'Atividades',
       'Ver filhos',
       'Ministérios',
-      'Dispensa',
-      'Almoxarifado',
-      'Faturamento',
-      'Eventos internos',
     ]);
     expect(actions.find((action) => action.key === 'incidents')?.route).toBe(
       '/(app)/incidents/new',

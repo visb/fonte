@@ -151,7 +151,8 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
   }) => {
     await login(page, OPERATOR);
     // Passagem com rede: é ela que enche o cache que a tela usa offline.
-    await visible(page, 'Almoxarifado').click();
+    // Almoxarifado escondido do menu por ora (vai voltar): entra pela rota.
+    await page.goto('/supply-room');
     await expect(page.getByLabel('Movimentar item')).toBeVisible({ timeout: 30_000 });
 
     await goOffline(page, context);
@@ -546,7 +547,8 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
     context,
   }) => {
     await login(page, OPERATOR);
-    await visible(page, 'Mensagens').click();
+    // Mensagens escondida da tab bar por ora (vai voltar): entra pela rota.
+    await page.goto('/messages');
     await visible(page, 'Filhos').click();
     // Conversa do seed: João Testador (filho) com Maria Testadora (familiar).
     await expect(visible(page, 'Maria Testadora')).toBeVisible({ timeout: 30_000 });

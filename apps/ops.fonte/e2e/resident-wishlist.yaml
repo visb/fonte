@@ -1,7 +1,8 @@
 appId: org.fonte.ops
 ---
 - runFlow: helpers/login-resident.yaml
-- tapOn: "Pedidos"
+# Aba Pedidos escondida por ora (vai voltar): entra pela rota.
+- openLink: "ops-fonte://wishlist"
 - waitForAnimationToEnd
 # As abas trazem o contador no rótulo ("Aprovados (1)"). O Maestro casa texto por
 # regex de match COMPLETO, então "Aprovados" não bate — daí o `.*`.

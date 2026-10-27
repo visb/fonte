@@ -195,7 +195,9 @@ export default function AppLayout() {
           options={{
             title: "Mensagens",
             headerShown: false,
-            href: canAccessMenuItem("messages", access) ? undefined : null,
+            // Escondido por ora (vai voltar).
+            // href: canAccessMenuItem("messages", access) ? undefined : null,
+            href: null,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="chatbubbles-outline" size={size} color={color} />
             ),
@@ -210,7 +212,9 @@ export default function AppLayout() {
           options={{
             title: "Pedidos",
             headerShown: false,
-            href: canAccessMenuItem("wishlist", access) ? undefined : null,
+            // Escondido por ora (vai voltar).
+            // href: canAccessMenuItem("wishlist", access) ? undefined : null,
+            href: null,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="gift-outline" size={size} color={color} />
             ),

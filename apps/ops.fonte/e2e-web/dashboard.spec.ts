@@ -42,8 +42,9 @@ test.describe('ops.fonte — dashboard web', () => {
 
     // Ações rápidas renderizadas a partir da casa do operador.
     await expect(page.getByText('Ministérios')).toBeVisible();
-    await expect(page.getByText('Almoxarifado')).toBeVisible();
     await expect(page.getByText('Atividades')).toBeVisible();
+    // Almoxarifado escondido dos atalhos por ora (vai voltar).
+    await expect(page.getByText('Almoxarifado')).toHaveCount(0);
   });
 
   test('logout pelo menu retorna à tela de login', async ({ page }) => {
@@ -76,9 +77,10 @@ test.describe('ops.fonte — tab Menu (story 176)', () => {
     await page.getByTestId('menu-item-residents').click();
     await expect(page).toHaveURL(/\/residents/, { timeout: 15_000 });
 
+    // Estoque e Comunicação escondidos do menu por ora (vão voltar).
     await openMenuTab(page);
-    await page.getByTestId('menu-item-storeroom').click();
-    await expect(page).toHaveURL(/\/storeroom/, { timeout: 15_000 });
+    await expect(page.getByTestId('menu-item-storeroom')).toHaveCount(0);
+    await expect(page.getByTestId('menu-item-messages')).toHaveCount(0);
 
     await openMenuTab(page);
     await page.getByTestId('menu-item-sync').click();

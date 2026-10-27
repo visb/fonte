@@ -1,7 +1,8 @@
 appId: org.fonte.ops
 ---
 - runFlow: helpers/login-operator.yaml
-- tapOn: "Dispensa"
+# Dispensa escondida do menu por ora (vai voltar): entra pela rota.
+- openLink: "ops-fonte://storeroom"
 - waitForAnimationToEnd
 - assertVisible: "Arroz"
 - tapOn: "Movimentar item"

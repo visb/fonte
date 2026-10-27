@@ -14,7 +14,8 @@ appId: org.fonte.ops
 - assertVisible: "Nova ocorrência"
 - assertVisible: "Ver filhos"
 - assertVisible: "Ministérios"
-- assertVisible: "Dispensa"
+# Dispensa escondida dos atalhos por ora (vai voltar).
+- assertNotVisible: "Dispensa"
 # Story 221: os cards são atalhos para as listas.
 - tapOn:
     id: "stat-card-residents"

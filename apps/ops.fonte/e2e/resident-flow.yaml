@@ -3,10 +3,11 @@ appId: org.fonte.ops
 - runFlow: helpers/login-resident.yaml
 - assertVisible: "João Testador"
 - assertVisible: "Use as abas abaixo para acessar mensagens e pedidos"
-- tapOn: "Mensagens"
+# Abas Mensagens e Pedidos escondidas por ora (vão voltar): entra pela rota.
+- openLink: "ops-fonte://messages"
 - waitForAnimationToEnd
 - assertVisible: "Tempo restante hoje"
-- tapOn: "Pedidos"
+- openLink: "ops-fonte://wishlist"
 - waitForAnimationToEnd
 - assertVisible: "Tempo restante hoje"
 - tapOn: "Início"

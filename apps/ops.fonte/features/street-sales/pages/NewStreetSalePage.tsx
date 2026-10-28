@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -88,7 +89,7 @@ export function NewStreetSalePage() {
         onQueued: () =>
           backToList('Faturamento salvo. Será enviado quando a conexão voltar.'),
         onFailed: () =>
-          Alert.alert('Erro', 'Não foi possível registrar o faturamento.'),
+          notify('Erro', 'Não foi possível registrar o faturamento.'),
       },
     );
   };

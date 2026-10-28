@@ -1,4 +1,5 @@
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import * as ImagePicker from 'expo-image-picker';
 import { resolveAssetUrl } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -22,7 +23,7 @@ export function ProfilePage() {
   async function handlePickPhoto() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para alterar sua foto.');
+      notify('Permissão necessária', 'Precisamos de acesso à galeria para alterar sua foto.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -39,7 +40,7 @@ export function ProfilePage() {
         { uri: asset.uri, type: asset.mimeType ?? 'image/jpeg' },
         {
           onSuccess: () => refreshResident(),
-          onError: () => Alert.alert('Erro', 'Não foi possível atualizar a foto.'),
+          onError: () => notify('Erro', 'Não foi possível atualizar a foto.'),
         },
       );
     } else {
@@ -47,7 +48,7 @@ export function ProfilePage() {
         { uri: asset.uri, type: asset.mimeType ?? 'image/jpeg' },
         {
           onSuccess: () => refreshStaff(),
-          onError: () => Alert.alert('Erro', 'Não foi possível atualizar a foto.'),
+          onError: () => notify('Erro', 'Não foi possível atualizar a foto.'),
         },
       );
     }

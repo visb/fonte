@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { Audio } from 'expo-av';
 import { getErrorMessage } from '@/lib/errors';
 import type { PickedAttachment } from '@/features/activities/hooks/useActivities';
@@ -59,7 +60,7 @@ export function AudioRecorder({ onRecorded, uploading }: Props) {
         durationSeconds,
       });
     } catch (e) {
-      Alert.alert('Erro', getErrorMessage(e, 'Falha ao finalizar a gravação.'));
+      notify('Erro', getErrorMessage(e, 'Falha ao finalizar a gravação.'));
     }
   };
 
@@ -67,7 +68,7 @@ export function AudioRecorder({ onRecorded, uploading }: Props) {
     try {
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
+        notify(
           'Permissão necessária',
           'Permita o acesso ao microfone para gravar áudio.',
         );
@@ -91,7 +92,7 @@ export function AudioRecorder({ onRecorded, uploading }: Props) {
         });
       }, 500);
     } catch (e) {
-      Alert.alert('Erro', getErrorMessage(e, 'Não foi possível acessar o microfone.'));
+      notify('Erro', getErrorMessage(e, 'Não foi possível acessar o microfone.'));
     }
   };
 

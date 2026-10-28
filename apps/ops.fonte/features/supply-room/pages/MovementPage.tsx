@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View, ScrollView, Alert, Text } from "react-native";
+import { View, ScrollView, Text } from "react-native";
+import { notify } from "@/lib/dialogs";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -98,7 +99,7 @@ export function MovementPage() {
         onSent: (newItem) => selectItem(newItem.id, newItem.name),
         onQueued: () => selectItem(localId, name),
         onFailed: (err) =>
-          Alert.alert(
+          notify(
             "Erro",
             getErrorMessage(err, "Não foi possível cadastrar o item."),
           ),
@@ -128,7 +129,7 @@ export function MovementPage() {
         onQueued: () =>
           backToList("Movimentação salva. Será enviada quando a conexão voltar."),
         onFailed: (err) =>
-          Alert.alert(
+          notify(
             "Erro",
             getErrorMessage(err, "Não foi possível registrar a movimentação."),
           ),

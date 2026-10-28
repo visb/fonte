@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -9,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { Ionicons } from '@expo/vector-icons';
 import type { House } from '@fonte/api-client';
 import {
@@ -107,13 +107,13 @@ export function RemoveResidentModal({ visible, houseId, resident, onClose, onSuc
     onSent: done,
     onQueued: () => {
       done();
-      Alert.alert(
+      notify(
         'Salvo no aparelho',
         'Sem conexão agora: a mudança será enviada assim que a conexão voltar.',
       );
     },
     onFailed: (error: unknown) =>
-      Alert.alert('Erro', getErrorMessage(error, 'Não foi possível concluir a ação.')),
+      notify('Erro', getErrorMessage(error, 'Não foi possível concluir a ação.')),
   };
 
   function handleConfirm() {

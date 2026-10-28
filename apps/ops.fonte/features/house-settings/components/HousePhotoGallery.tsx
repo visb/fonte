@@ -1,4 +1,5 @@
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import type { House } from '@fonte/api-client';
@@ -19,7 +20,7 @@ export function HousePhotoGallery({ house }: Props) {
   async function handlePickPhoto() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para adicionar fotos.');
+      notify('Permissão necessária', 'Precisamos de acesso à galeria para adicionar fotos.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -30,13 +31,13 @@ export function HousePhotoGallery({ house }: Props) {
     const asset = result.assets[0];
     addPhoto.mutate(
       { uri: asset.uri, type: asset.mimeType ?? 'image/jpeg' },
-      { onError: (err) => Alert.alert('Erro', getErrorMessage(err, 'Não foi possível adicionar a foto.')) },
+      { onError: (err) => notify('Erro', getErrorMessage(err, 'Não foi possível adicionar a foto.')) },
     );
   }
 
   function handleRemove(photoId: string) {
     removePhoto.mutate(photoId, {
-      onError: (err) => Alert.alert('Erro', getErrorMessage(err, 'Não foi possível remover a foto.')),
+      onError: (err) => notify('Erro', getErrorMessage(err, 'Não foi possível remover a foto.')),
     });
   }
 

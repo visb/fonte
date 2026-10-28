@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { maskCpfInput, normalizeCpf } from '@fonte/types';
@@ -72,7 +73,7 @@ export function AddResidentForm({ houseId, prefill, onCancel, onDone, onCpfConfl
         // encadeada, story 169) e o modal fecha na hora (story 171).
         onQueued: () => {
           onDone();
-          Alert.alert(
+          notify(
             'Salvo no aparelho',
             'Sem conexão agora: o filho será enviado assim que a conexão voltar.',
           );
@@ -82,7 +83,7 @@ export function AddResidentForm({ houseId, prefill, onCancel, onDone, onCpfConfl
         onFailed: (error) => {
           const conflict = getCpfConflict(error);
           if (conflict && cpf) return onCpfConflict(conflict, cpf);
-          Alert.alert('Erro', getErrorMessage(error, 'Não foi possível adicionar o filho.'));
+          notify('Erro', getErrorMessage(error, 'Não foi possível adicionar o filho.'));
         },
       },
     );

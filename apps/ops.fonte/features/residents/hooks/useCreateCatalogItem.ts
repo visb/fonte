@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { useCreateStoreroomItem } from '@/features/storeroom/hooks/useStoreroom';
 import { useCreateSupplyItem } from '@/features/supply-room/hooks/useSupplyRoom';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
@@ -22,7 +22,7 @@ export function useCreateCatalogItem(houseId: string) {
     const handlers = {
       onSent: (item: { id: string; name: string; unit: string }) => onCreated({ ...item, source: target }),
       onQueued: () => onCreated({ id: localId, name, unit, source: target }),
-      onFailed: (error: unknown) => Alert.alert('Erro', getErrorMessage(error, 'Não foi possível cadastrar o produto.')),
+      onFailed: (error: unknown) => notify('Erro', getErrorMessage(error, 'Não foi possível cadastrar o produto.')),
     };
     if (input.target === 'supply') submitSupply({ name, unit, category: input.category, houseId, localId }, handlers);
     else submitStoreroom({ name, unit, houseId, localId }, handlers);

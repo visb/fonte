@@ -1,4 +1,5 @@
-import { View, ScrollView, Alert } from 'react-native';
+import { View, ScrollView } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { router, useLocalSearchParams } from 'expo-router';
 import type { ActivityStatus } from '@fonte/types';
 import { useAuth } from '@/lib/auth';
@@ -50,15 +51,15 @@ export function NewActivityPage() {
         // Cai na aba do que acabou de criar — vai para a lista primeiro, avisa depois.
         onSent: () => {
           goToTab(data.status);
-          Alert.alert('Sucesso', copy.sent);
+          notify('Sucesso', copy.sent);
         },
         // Sem sinal fica na fila e já aparece na lista como pendente.
         onQueued: () => {
           goToTab(data.status);
-          Alert.alert('Salvo no aparelho', copy.queued);
+          notify('Salvo no aparelho', copy.queued);
         },
         onFailed: (error) =>
-          Alert.alert('Erro', getErrorMessage(error, 'Não foi possível criar a atividade.')),
+          notify('Erro', getErrorMessage(error, 'Não foi possível criar a atividade.')),
       },
     );
   };

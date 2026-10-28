@@ -5,8 +5,8 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from "react-native";
+import { notify } from "@/lib/dialogs";
 import { SupplyRoomCategory } from "@fonte/types";
 import { CategorySelector } from "./CategorySelector";
 
@@ -23,11 +23,11 @@ export function NewItemForm({ name, onConfirm, onCancel, isPending }: Props) {
 
   function handleConfirm() {
     if (!unit.trim()) {
-      Alert.alert("Atenção", "Informe a unidade de medida.");
+      notify("Atenção", "Informe a unidade de medida.");
       return;
     }
     if (!category) {
-      Alert.alert("Atenção", "Selecione uma categoria.");
+      notify("Atenção", "Selecione uma categoria.");
       return;
     }
     onConfirm(unit.trim(), category);

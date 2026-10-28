@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApplyDailyResult, DailyBoard, MoveDailyPersonInput } from '@fonte/types';
 import { api } from '@/lib/api';
@@ -43,7 +43,7 @@ export function useMoveDailyPerson(houseId: string) {
     },
     onError: (error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(key, context.previous);
-      Alert.alert('Erro', getErrorMessage(error, DAILY_LABELS.moveError));
+      notify('Erro', getErrorMessage(error, DAILY_LABELS.moveError));
       // 409 (encerrada) / 400 (board velho): o estado do servidor manda.
       void queryClient.invalidateQueries({ queryKey: key });
     },
@@ -67,7 +67,7 @@ export function useApplyDaily(houseId: string) {
       return { ...result, skippedPeople: describeSkipped(before, result.skipped) };
     },
     onError: (error) => {
-      Alert.alert('Erro', getErrorMessage(error, DAILY_LABELS.applyError));
+      notify('Erro', getErrorMessage(error, DAILY_LABELS.applyError));
       void queryClient.invalidateQueries({ queryKey: queryKeys.daily.board(houseId) });
     },
     onSuccess: () => {
@@ -86,7 +86,7 @@ export function useStartDaily(houseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => api.daily.start(houseId),
-    onError: (error) => Alert.alert('Erro', getErrorMessage(error, DAILY_LABELS.startError)),
+    onError: (error) => notify('Erro', getErrorMessage(error, DAILY_LABELS.startError)),
     onSuccess: (board: DailyBoard) => {
       queryClient.setQueryData(queryKeys.daily.board(houseId), board);
     },

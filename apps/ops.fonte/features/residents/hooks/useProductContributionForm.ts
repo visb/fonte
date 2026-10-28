@@ -1,6 +1,6 @@
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { router } from 'expo-router';
 import { getErrorMessage } from '@/lib/errors';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
@@ -19,7 +19,7 @@ export function useProductContributionForm(residentId: string, houseId: string,
     if (returnTo === 'contributions') {
       router.replace({ pathname: '/(app)/contributions', params: { successMsg: message } } as never);
     } else {
-      Alert.alert('Contribuição em produtos', message);
+      notify('Contribuição em produtos', message);
       router.back();
     }
   };
@@ -29,7 +29,7 @@ export function useProductContributionForm(residentId: string, houseId: string,
       referenceMonth: `${receivable.referenceMonth.slice(0, 7)}-01`, lines: toContributionLines(data.products) }, {
       onSent: () => leave('Contribuição em produtos declarada.'),
       onQueued: () => leave('Contribuição salva no aparelho. Aguardando envio.'),
-      onFailed: (error) => Alert.alert('Erro', getErrorMessage(error, 'Não foi possível declarar a contribuição.')),
+      onFailed: (error) => notify('Erro', getErrorMessage(error, 'Não foi possível declarar a contribuição.')),
     });
   });
   return { ...form, ...fields, onSubmit, isPending: mutation.isPending };

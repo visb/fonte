@@ -5,8 +5,8 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from "react-native";
+import { notify } from "@/lib/dialogs";
 
 type Props = {
   name: string;
@@ -20,7 +20,7 @@ export function NewItemForm({ name, onConfirm, onCancel, isPending }: Props) {
 
   function handleConfirm() {
     if (!unit.trim()) {
-      Alert.alert("Atenção", "Informe a unidade de medida.");
+      notify("Atenção", "Informe a unidade de medida.");
       return;
     }
     onConfirm(unit.trim());

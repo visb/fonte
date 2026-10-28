@@ -23,7 +23,7 @@ Rodada de autorun **225–230** — aberta em 2026-10-27.
 | --- | --- | --- | --- | --- | --- |
 | 1 | 225 — ops, Daily: board de ministérios em tempo real | [OK] | api 2482/2482, ops 1857/1857, e2e daily 8/8 | b3f40de | d564960 |
 | 2 | 226 — ops, data da ocorrência com calendário | [OK] | ops 1868/1868, PW web 9/10 (pré-exist.) | 813086b | b634a54 |
-| 3 | 227 — ocorrência com múltiplos filhos | [ ] | | | |
+| 3 | 227 — ocorrência com múltiplos filhos | [OK] | api 2499/2499, e2e 780/782 (pré-exist.), ops 1879/1879 | be1f0fd | a32be67 |
 | 4 | 229 — ocorrência positiva/negativa (substitui severidade) | [ ] | | | |
 | 5 | 230 — categoria da ocorrência | [ ] | | | |
 | 6 | 228 — ops, ocorrências na aba Acompanhamento | [ ] | | | |
@@ -32,6 +32,7 @@ Rodada de autorun **225–230** — aberta em 2026-10-27.
 
 [OK] 225 — testes: api 2482/2482 (daily 99.7 stmts), ops unit 1857/1857, e2e daily 8/8, PW web daily-offline verde — commit: b3f40de — merge: d564960 — 2026-10-28 — PENDENTE-MANUAL: Maestro daily.yaml (sem emulador), teste 2 celulares, APK novo (gesture-handler nativo). Pré-existentes fora da story: audit.e2e 2 falhas, PW offline-field-flows › mensagens (seed).
 [OK] 226 — testes: ops unit 1868/1868 (arquivos tocados 100%), PW offline-field-flows 9/10 (mensagens pré-existente) — commit: 813086b — merge: b634a54 — 2026-10-28 — PENDENTE-MANUAL: Maestro incidents.yaml. Nota: mensagens de erro reusam DATE_FIELD_MESSAGES.
+[OK] 227 — testes: api 2499/2499 (incident 100 stmts), e2e 780/782 (audit pré-exist.), api-client 330/330, ops 1879/1879, PW offline 9/10 (mensagens pré-exist.) — commit: be1f0fd — merge: a32be67 — 2026-10-28 — PENDENTE-MANUAL: Maestro incidents.yaml, APK novo. Nota: PERSIST_BUSTER não incrementado (preserva fila); IncidentCard tolera cache sem `residents`.
 
 ## Resumo final
 

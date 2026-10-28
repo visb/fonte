@@ -90,11 +90,16 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # android/ é CNG (só existe depois do prebuild): a chave do cache do
+      # gradle sai das deps JS, que é de onde vêm os módulos nativos.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
           cache: gradle
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            apps/ops.fonte/app.config.js
 
       - name: Install deps
         run: pnpm install --frozen-lockfile

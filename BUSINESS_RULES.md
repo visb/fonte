@@ -56,11 +56,12 @@ Regras:
 
 ## 4. Ocorrências
 
-- Deve registrar severity
+- Deve registrar o tipo: `POSITIVE` (fato positivo — atitude exemplar, ajuda a outro filho) ou
+  `NEGATIVE` (problema). Obrigatório e sem default: o operador escolhe conscientemente (story 229).
+- A severidade foi removida do produto (story 229); ocorrências antigas viraram `NEGATIVE`.
+  Payload legado com `severity` e sem `type` (APK antigo / fila offline) é aceito e grava `NEGATIVE`.
 - Deve registrar responsável
 - Não pode ser deletada
-- Se severity = CRITICAL:
-  - Pode exigir alteração de status do interno
 
 ---
 

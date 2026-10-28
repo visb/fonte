@@ -30,7 +30,7 @@ export function NewIncidentPage() {
     submit(
       {
         date: data.date,
-        severity: data.severity,
+        type: data.type,
         description: data.description,
         houseId: staff!.houseId!,
         responsibleId: staff!.id,
@@ -67,7 +67,8 @@ export function NewIncidentPage() {
         />
 
         <TouchableOpacity
-          className="bg-red-600 rounded-lg py-3.5 items-center mt-5"
+          // Cor neutra (story 229): vermelho fixo não combina com ocorrência positiva.
+          className="bg-gray-800 rounded-lg py-3.5 items-center mt-5"
           onPress={handleSubmit(onSubmit)}
           disabled={mutation.isPending}
         >

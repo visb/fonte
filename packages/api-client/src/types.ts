@@ -11,7 +11,7 @@ import type {
   Role,
   ServantRank,
   WishlistStatus,
-  IncidentSeverity,
+  IncidentType,
   MovementType,
   StaffPermissionType,
   TimerResetFrequency,
@@ -711,7 +711,8 @@ export interface CreateFollowUpInput {
 export interface Incident {
   id: string;
   date: string;
-  severity: IncidentSeverity;
+  /** Story 229: positiva ou negativa (substituiu `severity`). */
+  type: IncidentType;
   description: string;
   houseId: string;
   responsible: { id: string; name: string };
@@ -721,7 +722,8 @@ export interface Incident {
 
 export interface CreateIncidentInput {
   date: string;
-  severity: IncidentSeverity;
+  /** Story 229: obrigatório — o operador escolhe positiva ou negativa. */
+  type: IncidentType;
   description: string;
   houseId: string;
   responsibleId: string;

@@ -10,7 +10,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { IncidentSeverity } from '@fonte/types';
+import { IncidentType } from '@fonte/types';
 import { House } from '../house/house.entity';
 import { Staff } from '../staff/staff.entity';
 import { Resident } from '../resident/resident.entity';
@@ -23,8 +23,9 @@ export class Incident {
   @Column({ type: 'date' })
   date: string;
 
-  @Column({ type: 'enum', enum: IncidentSeverity })
-  severity: IncidentSeverity;
+  // Story 229: positiva/negativa — substituiu a severidade (coluna removida).
+  @Column({ type: 'enum', enum: IncidentType, enumName: 'incident_type' })
+  type: IncidentType;
 
   @Column({ type: 'text' })
   description: string;

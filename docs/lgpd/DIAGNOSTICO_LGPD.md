@@ -27,7 +27,7 @@ Categorias: **P** = dado pessoal; **S** = dado pessoal sensível (art. 11).
 | ResidentFollowUp | `services/api/src/modules/resident-follow-up/resident-follow-up.entity.ts` | `description`, `attachmentUrl` | Notas comportamentais/saúde |
 | ResidentReceivable | `services/api/src/modules/resident-receivable/resident-receivable.entity.ts` | `amount`, `paymentMethod`, `notes`, `attachmentUrl` | Financeiro |
 | ResidentUsageSession | `services/api/src/modules/resident-session/resident-usage-session.entity.ts` | `secondsUsed`, `date` | Rastreio de uso — **sem delete** |
-| Incident | `services/api/src/modules/incident/incident.entity.ts` | `description`, `severity` | Disciplinar/comportamental |
+| Incident | `services/api/src/modules/incident/incident.entity.ts` | `description`, `type` (positiva/negativa) | Disciplinar/comportamental |
 | SupportGroupCheckin / RelativeCheckin | `services/api/src/modules/support-group/*` | `checkedInAt` | Presença de família — **sem soft delete** |
 | House | `services/api/src/modules/house/house.entity.ts` | `name`, `address`, `city`, `state`, `phone` | Facilidade (não pessoal) |
 

@@ -4,7 +4,7 @@ process.env.NODE_ENV = 'test';
 
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { IncidentSeverity } from '@fonte/types';
+import { IncidentType } from '@fonte/types';
 import { DataSource } from 'typeorm';
 import { Test } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
@@ -64,7 +64,8 @@ describe('IncidentController (e2e)', () => {
     request(app.getHttpServer())
       .post(`${BASE}/incidents`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ date: '2026-06-01', severity: IncidentSeverity.LOW, houseId, responsibleId, ...body });
+      // `type: undefined` no body some do JSON — é assim que os casos legados omitem o tipo.
+      .send({ date: '2026-06-01', type: IncidentType.NEGATIVE, houseId, responsibleId, ...body });
 
   const track = (res: request.Response) => {
     if (res.body?.id) createdIncidentIds.push(res.body.id);
@@ -84,8 +85,13 @@ describe('IncidentController (e2e)', () => {
         .send({})
         .expect(400));
 
-    it('POST /incidents → 400 for an invalid severity', () =>
-      post({ severity: 'NONSENSE', description: 'x' }).expect(400));
+    it('POST /incidents → 400 for an invalid type', () =>
+      post({ type: 'NONSENSE', description: 'x' }).expect(400));
+
+    it('POST /incidents → 400 without type and without the legacy severity (story 229)', async () => {
+      const res = await post({ type: undefined, description: 'x' }).expect(400);
+      expect(res.body.message).toEqual(['Informe se a ocorrência é positiva ou negativa']);
+    });
 
     it('POST /incidents → 400 for non-UUID or duplicated residentIds', async () => {
       await post({ description: 'x', residentIds: ['nope'] }).expect(400);
@@ -110,7 +116,43 @@ describe('IncidentController (e2e)', () => {
       const res = track(await post({ description: description('da casa') }).expect(201));
       expect(res.body.id).toBeDefined();
       expect(res.body.residents).toEqual([]);
+      expect(res.body.type).toBe(IncidentType.NEGATIVE);
+      expect(res.body).not.toHaveProperty('severity');
       incidentId = res.body.id;
+    });
+
+    it('creates a POSITIVE incident (story 229)', async () => {
+      const res = track(
+        await post({ type: IncidentType.POSITIVE, description: description('positiva') }).expect(201),
+      );
+      expect(res.body.type).toBe(IncidentType.POSITIVE);
+      const fetched = await request(app.getHttpServer())
+        .get(`${BASE}/incidents/${res.body.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(fetched.body.type).toBe(IncidentType.POSITIVE);
+      expect(fetched.body).not.toHaveProperty('severity');
+    });
+
+    // Payload antigo da fila offline / APK em campo (story 229): manda `severity`
+    // e não manda `type`. Tem que passar no forbidNonWhitelisted e virar NEGATIVE.
+    it('still accepts the legacy severity payload without type → NEGATIVE', async () => {
+      const res = track(
+        await post({ type: undefined, severity: 'HIGH', description: description('legado severity') }).expect(201),
+      );
+      expect(res.body.type).toBe(IncidentType.NEGATIVE);
+      expect(res.body).not.toHaveProperty('severity');
+    });
+
+    it('type + legacy severity → uses the type', async () => {
+      const res = track(
+        await post({
+          type: IncidentType.POSITIVE,
+          severity: 'LOW',
+          description: description('type+severity'),
+        }).expect(201),
+      );
+      expect(res.body.type).toBe(IncidentType.POSITIVE);
     });
 
     it('creates an incident with N residents (residentIds)', async () => {

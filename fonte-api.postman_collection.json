@@ -3530,7 +3530,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "[\n  {\n    \"id\": \"{{incidentId}}\",\n    \"date\": \"2026-06-01\",\n    \"severity\": \"MEDIUM\",\n    \"description\": \"Discussão no refeitório.\",\n    \"houseId\": \"{{houseId}}\",\n    \"responsibleId\": \"{{staffId}}\",\n    \"responsible\": { \"id\": \"{{staffId}}\", \"name\": \"Nome do Staff\" },\n    \"residents\": [\n      { \"id\": \"{{residentId}}\", \"name\": \"João\" },\n      { \"id\": \"{{otherResidentId}}\", \"name\": \"Pedro\" }\n    ],\n    \"createdAt\": \"2026-06-01T14:00:00.000Z\",\n    \"updatedAt\": \"2026-06-01T14:00:00.000Z\",\n    \"deletedAt\": null\n  }\n]"
+              "body": "[\n  {\n    \"id\": \"{{incidentId}}\",\n    \"date\": \"2026-06-01\",\n    \"type\": \"NEGATIVE\",\n    \"description\": \"Discussão no refeitório.\",\n    \"houseId\": \"{{houseId}}\",\n    \"responsibleId\": \"{{staffId}}\",\n    \"responsible\": { \"id\": \"{{staffId}}\", \"name\": \"Nome do Staff\" },\n    \"residents\": [\n      { \"id\": \"{{residentId}}\", \"name\": \"João\" },\n      { \"id\": \"{{otherResidentId}}\", \"name\": \"Pedro\" }\n    ],\n    \"createdAt\": \"2026-06-01T14:00:00.000Z\",\n    \"updatedAt\": \"2026-06-01T14:00:00.000Z\",\n    \"deletedAt\": null\n  }\n]"
             }
           ]
         },
@@ -3568,7 +3568,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"2026-06-01\",\n  \"severity\": \"MEDIUM\",\n  \"description\": \"Descrição do incidente.\",\n  \"houseId\": \"{{houseId}}\",\n  \"responsibleId\": \"{{staffId}}\",\n  \"residentIds\": [\"{{residentId}}\", \"{{otherResidentId}}\"]\n}"
+              "raw": "{\n  \"date\": \"2026-06-01\",\n  \"type\": \"NEGATIVE\",\n  \"description\": \"Descrição do incidente.\",\n  \"houseId\": \"{{houseId}}\",\n  \"responsibleId\": \"{{staffId}}\",\n  \"residentIds\": [\"{{residentId}}\", \"{{otherResidentId}}\"]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/incidents",
@@ -3579,7 +3579,7 @@
                 "incidents"
               ]
             },
-            "description": "Story 227 — `residentIds` (0..N filhos, UUID v4, sem duplicata; vazio/ausente = ocorrência da casa). Todos precisam existir e ser da `houseId` da ocorrência, senão 400. `residentId` (um filho) é LEGADO e continua aceito durante a transição (APKs antigos e fila offline): vira `[residentId]`; mandar os dois resulta na união sem duplicata."
+            "description": "Story 227 — `residentIds` (0..N filhos, UUID v4, sem duplicata; vazio/ausente = ocorrência da casa). Todos precisam existir e ser da `houseId` da ocorrência, senão 400. `residentId` (um filho) é LEGADO e continua aceito durante a transição (APKs antigos e fila offline): vira `[residentId]`; mandar os dois resulta na união sem duplicata.\n\nStory 229 — `type` obrigatório: `POSITIVE` | `NEGATIVE` (substituiu a severidade, removida do produto e da resposta). Sem `type` → 400 \"Informe se a ocorrência é positiva ou negativa\". `severity` é LEGADO (APKs antigos e fila offline): é aceito e ignorado; payload com `severity` e sem `type` grava `NEGATIVE`. Com os dois, vale o `type` (que é validado)."
           },
           "response": [
             {
@@ -3595,7 +3595,7 @@
               "status": "Created",
               "code": 201,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"id\": \"{{incidentId}}\",\n  \"date\": \"2026-06-01\",\n  \"severity\": \"MEDIUM\",\n  \"description\": \"Descrição do incidente.\",\n  \"houseId\": \"{{houseId}}\",\n  \"responsibleId\": \"{{staffId}}\",\n  \"residents\": [\n    { \"id\": \"{{residentId}}\", \"name\": \"João\" },\n    { \"id\": \"{{otherResidentId}}\", \"name\": \"Pedro\" }\n  ],\n  \"createdAt\": \"2026-06-01T14:00:00.000Z\",\n  \"updatedAt\": \"2026-06-01T14:00:00.000Z\",\n  \"deletedAt\": null\n}"
+              "body": "{\n  \"id\": \"{{incidentId}}\",\n  \"date\": \"2026-06-01\",\n  \"type\": \"NEGATIVE\",\n  \"description\": \"Descrição do incidente.\",\n  \"houseId\": \"{{houseId}}\",\n  \"responsibleId\": \"{{staffId}}\",\n  \"residents\": [\n    { \"id\": \"{{residentId}}\", \"name\": \"João\" },\n    { \"id\": \"{{otherResidentId}}\", \"name\": \"Pedro\" }\n  ],\n  \"createdAt\": \"2026-06-01T14:00:00.000Z\",\n  \"updatedAt\": \"2026-06-01T14:00:00.000Z\",\n  \"deletedAt\": null\n}"
             },
             {
               "name": "400 — filho de outra casa",

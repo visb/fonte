@@ -1,13 +1,13 @@
 import 'reflect-metadata';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, ValidationPipe } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { Repository } from 'typeorm';
-import { IncidentSeverity, NotificationType } from '@fonte/types';
+import { IncidentType, NotificationType } from '@fonte/types';
 import { IncidentService, normalizeResidentIds } from './incident.service';
 import { Incident } from './incident.entity';
 import { Resident } from '../resident/resident.entity';
-import { CreateIncidentDto } from './dto/create-incident.dto';
+import { CreateIncidentDto, INCIDENT_TYPE_REQUIRED_MESSAGE } from './dto/create-incident.dto';
 
 const R1 = '11111111-1111-4111-8111-111111111111';
 const R2 = '22222222-2222-4222-8222-222222222222';
@@ -76,7 +76,7 @@ const houseResidents: Array<Partial<Resident>> = [
 function dto(extra: Partial<CreateIncidentDto> = {}): CreateIncidentDto {
   return {
     date: '2026-06-01',
-    severity: IncidentSeverity.MEDIUM,
+    type: IncidentType.NEGATIVE,
     description: 'briga no pátio',
     houseId: HOUSE,
     responsibleId: 'staff-1',
@@ -234,6 +234,37 @@ describe('IncidentService.create', () => {
     }
   });
 
+  it('persiste o tipo informado e nunca a severidade', async () => {
+    const repo = makeRepo();
+    const created = await makeService(repo).create(
+      dto({ type: IncidentType.POSITIVE, severity: 'HIGH' }),
+    );
+
+    expect(repo.save.mock.calls[0][0].type).toBe(IncidentType.POSITIVE);
+    expect(repo.save.mock.calls[0][0]).not.toHaveProperty('severity');
+    expect(created.type).toBe(IncidentType.POSITIVE);
+  });
+
+  it('payload legado (severity sem type) grava NEGATIVE', async () => {
+    const repo = makeRepo();
+    const created = await makeService(repo).create(dto({ type: undefined, severity: 'LOW' }));
+
+    expect(repo.save.mock.calls[0][0].type).toBe(IncidentType.NEGATIVE);
+    expect(repo.save.mock.calls[0][0]).not.toHaveProperty('severity');
+    expect(created.type).toBe(IncidentType.NEGATIVE);
+  });
+
+  it.each([
+    [IncidentType.POSITIVE, 'Nova ocorrência positiva'],
+    [IncidentType.NEGATIVE, 'Nova ocorrência negativa'],
+  ])('título da notificação conforme o tipo %s', async (type, title) => {
+    const notifications = makeNotifications();
+    await makeService(makeRepo(), makeResidentsRepo(), notifications).create(dto({ type }));
+
+    expect(notifications.create).toHaveBeenCalledTimes(2);
+    for (const [input] of notifications.create.mock.calls) expect(input.title).toBe(title);
+  });
+
   it('falha na notificação não quebra o registro', async () => {
     const notifications = { create: jest.fn().mockRejectedValue(new Error('down')) };
     const service = makeService(makeRepo(), makeResidentsRepo(), notifications);
@@ -252,7 +283,7 @@ describe('IncidentService.create', () => {
 describe('CreateIncidentDto', () => {
   const base = {
     date: '2026-06-01',
-    severity: IncidentSeverity.LOW,
+    type: IncidentType.NEGATIVE,
     description: 'x',
     houseId: R1,
     responsibleId: R2,
@@ -272,5 +303,53 @@ describe('CreateIncidentDto', () => {
     expect(await errorsOf({ ...base, residentIds: ['nope'] })).toEqual(['residentIds']);
     expect(await errorsOf({ ...base, residentIds: [R1, R1] })).toEqual(['residentIds']);
     expect(await errorsOf({ ...base, residentIds: R1 })).toEqual(['residentIds']);
+  });
+});
+
+/** Story 229 — mesmo pipe do `main.ts`: o payload legado da fila offline tem que passar. */
+describe('CreateIncidentDto × ValidationPipe global (story 229)', () => {
+  const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
+  const base = { date: '2026-06-01', description: 'x', houseId: R1, responsibleId: R2 };
+  const run = (body: Record<string, unknown>) =>
+    pipe.transform(body, { type: 'body', metatype: CreateIncidentDto }) as Promise<CreateIncidentDto>;
+  const messagesOf = async (body: Record<string, unknown>): Promise<string[]> => {
+    try {
+      await run(body);
+      return [];
+    } catch (error) {
+      expect(error).toBeInstanceOf(BadRequestException);
+      return ((error as BadRequestException).getResponse() as { message: string[] }).message;
+    }
+  };
+
+  it.each([IncidentType.POSITIVE, IncidentType.NEGATIVE])('aceita type %s', async (type) => {
+    await expect(run({ ...base, type })).resolves.toMatchObject({ type });
+  });
+
+  it('sem type e sem severity → 400 com mensagem clara', async () => {
+    expect(await messagesOf(base)).toEqual([INCIDENT_TYPE_REQUIRED_MESSAGE]);
+  });
+
+  it('legado: severity sem type passa (o service grava NEGATIVE)', async () => {
+    const dto = await run({ ...base, severity: 'HIGH' });
+    expect(dto.type).toBeUndefined();
+    expect(dto.severity).toBe('HIGH');
+  });
+
+  it('type + severity: valida e usa o type', async () => {
+    await expect(run({ ...base, type: IncidentType.POSITIVE, severity: 'LOW' })).resolves.toMatchObject({
+      type: IncidentType.POSITIVE,
+    });
+  });
+
+  it('type inválido → 400, mesmo acompanhado de severity', async () => {
+    expect(await messagesOf({ ...base, type: 'NEUTRAL' })).toEqual([INCIDENT_TYPE_REQUIRED_MESSAGE]);
+    expect(await messagesOf({ ...base, type: 'NEUTRAL', severity: 'LOW' })).toEqual([
+      INCIDENT_TYPE_REQUIRED_MESSAGE,
+    ]);
+  });
+
+  it('campo desconhecido continua barrado', async () => {
+    expect((await messagesOf({ ...base, type: IncidentType.NEGATIVE, foo: 1 })).length).toBe(1);
   });
 });

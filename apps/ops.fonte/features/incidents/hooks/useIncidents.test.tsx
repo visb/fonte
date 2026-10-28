@@ -1,5 +1,5 @@
 import { waitFor } from '@testing-library/react-native';
-import { IncidentSeverity } from '@fonte/types';
+import { IncidentType } from '@fonte/types';
 
 jest.mock('@/lib/api', () => ({
   api: {
@@ -43,7 +43,7 @@ describe('useIncidents', () => {
     const { result } = renderHookWithClient(() => useCreateIncident());
     const input = {
       date: '2026-01-01',
-      severity: IncidentSeverity.HIGH,
+      type: IncidentType.POSITIVE,
       description: 'Briga no refeitório',
       houseId: 'h1',
       responsibleId: 'staff-1',
@@ -59,7 +59,7 @@ describe('useIncidents', () => {
     const { result } = renderHookWithClient(() => useCreateIncident());
     const payload = {
       date: '2026-01-01',
-      severity: IncidentSeverity.LOW,
+      type: IncidentType.NEGATIVE,
       description: 'Briga',
       houseId: 'h1',
       responsibleId: 'staff-1',

@@ -1,11 +1,30 @@
-import { IncidentSeverity } from '@fonte/types';
+import { IncidentType } from '@fonte/types';
 import { DATE_FIELD_MESSAGES } from '@/lib/date';
-import { incidentFormDefaults, incidentFormSchema } from './schema';
+import { INCIDENT_TYPE_REQUIRED_MESSAGE, incidentFormDefaults, incidentFormSchema } from './schema';
 
 describe('incidentFormSchema (story 226, relógio mockado)', () => {
   afterEach(() => jest.useRealTimers());
 
-  const base = { severity: IncidentSeverity.MEDIUM, description: 'Algo', residentIds: [] };
+  const base = { type: IncidentType.NEGATIVE, description: 'Algo', residentIds: [] };
+
+  // Story 229: tipo obrigatório, sem default.
+  describe('type', () => {
+    function typeMessage(type: unknown) {
+      const result = incidentFormSchema.safeParse({ ...base, date: '2025-01-01', type });
+      if (result.success) return null;
+      return result.error.issues.find((issue) => issue.path[0] === 'type')?.message ?? null;
+    }
+
+    it('POSITIVE e NEGATIVE passam', () => {
+      expect(typeMessage(IncidentType.POSITIVE)).toBeNull();
+      expect(typeMessage(IncidentType.NEGATIVE)).toBeNull();
+    });
+
+    it('ausente ou inválido pede a escolha', () => {
+      expect(typeMessage(undefined)).toBe(INCIDENT_TYPE_REQUIRED_MESSAGE);
+      expect(typeMessage('MEDIUM')).toBe(INCIDENT_TYPE_REQUIRED_MESSAGE);
+    });
+  });
 
   function dateMessage(date: string) {
     const result = incidentFormSchema.safeParse({ ...base, date });
@@ -45,7 +64,7 @@ describe('incidentFormSchema (story 226, relógio mockado)', () => {
       jest.useFakeTimers({ now: new Date('2026-10-28T15:00:00Z') });
       expect(incidentFormDefaults()).toEqual({
         date: '2026-10-28',
-        severity: IncidentSeverity.MEDIUM,
+        type: undefined,
         description: '',
         residentIds: [],
       });

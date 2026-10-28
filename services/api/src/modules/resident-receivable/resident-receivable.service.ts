@@ -294,7 +294,9 @@ export class ResidentReceivableService {
     const rows = await this.repo
       .createQueryBuilder('rcv')
       .select('rcv.resident_id', 'residentId')
-      .addSelect('MAX(rcv.reference_month)', 'lastMonth')
+      // TO_CHAR: `date` (OID 1082) sem type parser chega como `Date` JS, e
+      // `String(date)` vira "Thu Oct 01" — o badge do card lia data inválida.
+      .addSelect("TO_CHAR(MAX(rcv.reference_month), 'YYYY-MM-DD')", 'lastMonth')
       .where('rcv.resident_id IN (:...residentIds)', { residentIds })
       .andWhere('rcv.status = :paid', { paid: ReceivableStatus.PAID })
       .andWhere('rcv.deleted_at IS NULL')

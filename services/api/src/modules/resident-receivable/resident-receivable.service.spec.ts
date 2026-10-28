@@ -744,13 +744,29 @@ describe('ResidentReceivableService.getLastPaidDates', () => {
       qb[m] = jest.fn(() => qb);
     });
     qb.getRawMany = jest.fn().mockResolvedValue([
-      { residentId: 'res-1', lastMonth: '2026-03-01T00:00:00.000Z' },
+      { residentId: 'res-1', lastMonth: '2026-03-01' },
     ]);
     const service = makeService(makeRepo({ createQueryBuilder: jest.fn(() => qb) }), {});
 
     const result = await service.getLastPaidDates(['res-1']);
 
     expect(result.get('res-1')).toBe('2026-03-01');
+  });
+
+  it('formata a competência no SQL — `date` cru vira Date JS e quebra o slice', async () => {
+    const qb: Record<string, jest.Mock> = {};
+    ['select', 'addSelect', 'where', 'andWhere', 'groupBy'].forEach((m) => {
+      qb[m] = jest.fn(() => qb);
+    });
+    qb.getRawMany = jest.fn().mockResolvedValue([]);
+    const service = makeService(makeRepo({ createQueryBuilder: jest.fn(() => qb) }), {});
+
+    await service.getLastPaidDates(['res-1']);
+
+    expect(qb.addSelect).toHaveBeenCalledWith(
+      "TO_CHAR(MAX(rcv.reference_month), 'YYYY-MM-DD')",
+      'lastMonth',
+    );
   });
 });
 

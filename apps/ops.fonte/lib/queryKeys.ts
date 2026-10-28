@@ -50,6 +50,11 @@ export const queryKeys = {
   incidents: {
     all: ['incidents'] as const,
     byHouse: (houseId: string) => ['incidents', houseId] as const,
+    /**
+     * Story 228: ocorrências em que o filho está envolvido (qualquer casa) — aba
+     * Acompanhamento da ficha. Prefixo `incidents`: persistida e invalidada junto.
+     */
+    byResident: (residentId: string) => ['incidents', 'resident', residentId] as const,
   },
   activities: {
     all: ['activities'] as const,

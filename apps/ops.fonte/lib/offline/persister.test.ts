@@ -37,6 +37,8 @@ describe('shouldDehydrateQuery — allowlist (LGPD)', () => {
     ['supplyRoom.items', queryKeys.supplyRoom.items('h1')],
     ['supplyRoom.movements', queryKeys.supplyRoom.movements('i1')],
     ['incidents.byHouse', queryKeys.incidents.byHouse('h1')],
+    // Story 228: aba Acompanhamento da ficha abre offline com as ocorrências.
+    ['incidents.byResident', queryKeys.incidents.byResident('r1')],
     ['activities.byHouse', queryKeys.activities.byHouse('h1')],
     ['activities.detail', queryKeys.activities.detail('a1')],
     ['activities.comments', queryKeys.activities.comments('a1')],
@@ -162,6 +164,7 @@ describe('store local × cache em blob (story 175)', () => {
     expect(isResidentStoreQueryKey(queryKeys.residents.detail('r1'))).toBe(true);
     expect(isResidentStoreQueryKey(queryKeys.residents.attachments('r1'))).toBe(true);
     expect(isResidentStoreQueryKey(queryKeys.incidents.byHouse('h1'))).toBe(false);
+    expect(isResidentStoreQueryKey(queryKeys.incidents.byResident('r1'))).toBe(false);
     expect(isResidentStoreQueryKey([{ scope: 'resident' }])).toBe(false);
   });
 

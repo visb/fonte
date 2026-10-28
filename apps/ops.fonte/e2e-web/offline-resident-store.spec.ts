@@ -28,6 +28,10 @@ const COORDINATOR = { email: 'coord@fonte.com', password: 'coord123' };
 const RESIDENT_NAME = 'João Testador';
 const FOLLOW_UP_TEXT = `Acompanhamento offline ${Date.now()}`;
 const ATTACHMENT_NAME = `anexo-offline-${Date.now()}.pdf`;
+const INCIDENT_TEXT = `Ocorrência na ficha offline ${Date.now()}`;
+
+/** Chave do cache em blob do React Query (`PERSIST_KEY`) — onde as ocorrências moram. */
+const QUERY_CACHE_KEY = 'ops-fonte-query-cache';
 
 /** Prefixo das chaves do driver web (`schema.ts`). */
 const STORE_PREFIX = 'ops-fonte-resident-store:';
@@ -37,6 +41,7 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 let api: APIRequestContext;
 let authHeaders: Record<string, string>;
 let residentId: string;
+let otherResidentName: string;
 
 test.beforeAll(async () => {
   // Sem `baseURL`: com caminho absoluto o Playwright descartaria o prefixo
@@ -61,6 +66,26 @@ test.beforeAll(async () => {
   const target = residents.find((resident) => resident.name === RESIDENT_NAME);
   expect(target, `filho "${RESIDENT_NAME}" do seed`).toBeTruthy();
   residentId = target!.id;
+  const otherResident = residents.find((resident) => resident.id !== residentId);
+  expect(otherResident, 'segundo filho do seed (linha "Com:")').toBeTruthy();
+  otherResidentName = otherResident!.name;
+
+  // Story 228: ocorrência de fixture com o filho (e mais um) — tem de aparecer
+  // na aba Acompanhamento sem sinal. Ocorrência não é deletável (BUSINESS_RULES),
+  // então a fixture é única por `Date.now()` e não mexe em linha do seed.
+  const incident = await api.post(`${API_BASE_URL}/incidents`, {
+    headers: authHeaders,
+    data: {
+      date: new Date().toISOString().slice(0, 10),
+      type: 'POSITIVE',
+      category: 'HELPING_OTHERS',
+      description: INCIDENT_TEXT,
+      houseId,
+      responsibleId: (await me.json()).id,
+      residentIds: [residentId, otherResident!.id],
+    },
+  });
+  expect(incident.ok(), 'fixture de ocorrência').toBeTruthy();
 
   // Acompanhamento de fixture: sem ele a aba abriria vazia e o teste não
   // distinguiria "veio do aparelho" de "não tem nada para vir".
@@ -183,6 +208,14 @@ test.describe('ops.fonte — store local dos filhos sem sinal', () => {
     const keys = await residentStoreKeys(page);
     expect(keys.some((key) => key.endsWith(':receivables'))).toBe(true);
 
+    // Story 228: as ocorrências da casa (prefetch) caem no cache em blob — é de
+    // lá que a aba Acompanhamento tira as do filho na primeira abertura offline.
+    await page.waitForFunction(
+      ({ key, text }) => (window.localStorage.getItem(key) ?? '').includes(text),
+      { key: QUERY_CACHE_KEY, text: INCIDENT_TEXT },
+      { timeout: 30_000 },
+    );
+
     await restartOffline(page);
 
     // Lista: veio do aparelho, e a tela diz de quando ela é.
@@ -199,6 +232,11 @@ test.describe('ops.fonte — store local dos filhos sem sinal', () => {
 
     await visible(page, 'Acompanhamento').click();
     await expect(visible(page, FOLLOW_UP_TEXT)).toBeVisible({ timeout: 15_000 });
+    // Story 228: a ocorrência do filho na mesma linha do tempo, com os outros
+    // filhos envolvidos — sem rede.
+    await expect(visible(page, INCIDENT_TEXT)).toBeVisible({ timeout: 15_000 });
+    await expect(visible(page, `Com: ${otherResidentName}`)).toBeVisible();
+    await expect(page.getByText('Não foi possível carregar as ocorrências')).toHaveCount(0);
 
     await visible(page, 'Privacidade').click();
     await expect(visible(page, 'Uso de imagem')).toBeVisible({ timeout: 15_000 });

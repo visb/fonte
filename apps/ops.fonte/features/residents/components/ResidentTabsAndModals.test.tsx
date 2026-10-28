@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { FollowUpType } from '@fonte/types';
+import { FollowUpType, IncidentCategory, IncidentType } from '@fonte/types';
 
 jest.mock('@expo/vector-icons', () => {
   const { Text } = require('react-native');
@@ -23,6 +23,10 @@ jest.mock('../hooks/useResidents', () => ({
   useResidentRelatives: (...a: unknown[]) => mockUseResidentRelatives(...a),
   useResetResidentPassword: (...a: unknown[]) => mockUseResetResidentPassword(...a),
 }));
+const mockUseResidentIncidents = jest.fn();
+jest.mock('@/features/incidents/hooks/useIncidents', () => ({
+  useResidentIncidents: (...a: unknown[]) => mockUseResidentIncidents(...a),
+}));
 jest.mock('../hooks/useResidentFollowUps', () => ({
   useResidentFollowUps: (...a: unknown[]) => mockUseResidentFollowUps(...a),
   useCreateFollowUp: (...a: unknown[]) => mockUseCreateFollowUp(...a),
@@ -41,6 +45,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockUseCreateFollowUp.mockReturnValue({ mutate: mockCreateFollowUpMutate, isPending: false });
   mockUseResetResidentPassword.mockReturnValue({ mutate: mockResetMutate, isPending: false });
+  mockUseResidentIncidents.mockReturnValue({ data: [], isLoading: false, isError: false });
 });
 
 describe('ResidentFamiliesTab', () => {
@@ -111,6 +116,75 @@ describe('ResidentTrackingTab', () => {
     });
     render(<ResidentTrackingTab residentId="r1" />);
     expect(screen.getByText('Observação')).toBeTruthy();
+  });
+
+  // Story 228: ocorrências do filho entram na mesma linha do tempo.
+  const followUp = {
+    id: 'f1',
+    type: FollowUpType.NOTE,
+    date: '2026-03-10',
+    description: 'Nota antiga',
+    createdByName: null,
+    createdAt: '2026-03-10T10:00:00Z',
+  };
+  const incident = {
+    id: 'i1',
+    date: '2026-03-12',
+    type: IncidentType.NEGATIVE,
+    category: IncidentCategory.AGGRESSION,
+    description: 'Briga no refeitório',
+    houseId: 'h1',
+    responsible: { id: 's1', name: 'Servo' },
+    residents: [{ id: 'r1', name: 'João' }],
+  };
+
+  it('busca as ocorrências do próprio filho', () => {
+    mockUseResidentFollowUps.mockReturnValue({ data: [], isLoading: false, isError: false });
+    render(<ResidentTrackingTab residentId="r1" />);
+    expect(mockUseResidentIncidents).toHaveBeenCalledWith('r1');
+  });
+
+  it('mescla follow-ups e ocorrências por data desc', () => {
+    mockUseResidentFollowUps.mockReturnValue({ data: [followUp], isLoading: false, isError: false });
+    mockUseResidentIncidents.mockReturnValue({ data: [incident], isLoading: false, isError: false });
+    render(<ResidentTrackingTab residentId="r1" />);
+    const texts = screen.getAllByText(/Briga no refeitório|Nota antiga/).map((n) => n.props.children);
+    expect(texts).toEqual(['Briga no refeitório', 'Nota antiga']);
+    expect(screen.getByText('Ocorrência')).toBeTruthy();
+  });
+
+  it('só ocorrências (sem follow-up) não mostra o vazio', () => {
+    mockUseResidentFollowUps.mockReturnValue({ data: [], isLoading: false, isError: false });
+    mockUseResidentIncidents.mockReturnValue({ data: [incident], isLoading: false, isError: false });
+    render(<ResidentTrackingTab residentId="r1" />);
+    expect(screen.queryByText('Nenhum evento registrado.')).toBeNull();
+    expect(screen.getByText('Briga no refeitório')).toBeTruthy();
+  });
+
+  it('erro só nas ocorrências mantém os follow-ups e mostra aviso', () => {
+    mockUseResidentFollowUps.mockReturnValue({ data: [followUp], isLoading: false, isError: false });
+    mockUseResidentIncidents.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+    render(<ResidentTrackingTab residentId="r1" />);
+    expect(screen.getByText('Nota antiga')).toBeTruthy();
+    expect(screen.getByText('Não foi possível carregar as ocorrências')).toBeTruthy();
+    expect(screen.queryByText('Erro ao carregar acompanhamento.')).toBeNull();
+  });
+
+  it('"Registrar" abre o modal de follow-up e "Cancelar" fecha', () => {
+    mockUseResidentFollowUps.mockReturnValue({ data: [], isLoading: false, isError: false });
+    render(<ResidentTrackingTab residentId="r1" />);
+    expect(screen.queryByPlaceholderText('Detalhes do evento...')).toBeNull();
+    fireEvent.press(screen.getByText('Registrar'));
+    expect(screen.getByPlaceholderText('Detalhes do evento...')).toBeTruthy();
+    fireEvent.press(screen.getByText('Cancelar'));
+    expect(screen.queryByPlaceholderText('Detalhes do evento...')).toBeNull();
+  });
+
+  it('ocorrências carregando mostram o indicador', () => {
+    mockUseResidentFollowUps.mockReturnValue({ data: [followUp], isLoading: false, isError: false });
+    mockUseResidentIncidents.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+    render(<ResidentTrackingTab residentId="r1" />);
+    expect(screen.queryByText('Nota antiga')).toBeNull();
   });
 });
 

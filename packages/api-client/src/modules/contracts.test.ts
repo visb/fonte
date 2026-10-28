@@ -634,6 +634,22 @@ describe('incidents module', () => {
     await m.list({ houseId: 'h1' });
     expect(http.get).toHaveBeenCalledWith('/incidents', { params: { houseId: 'h1' } });
   });
+  it('list filtra por filho envolvido (story 227)', async () => {
+    await m.list({ residentId: 'r1' });
+    expect(http.get).toHaveBeenCalledWith('/incidents', { params: { residentId: 'r1' } });
+  });
+  it('create posta residentIds (story 227)', async () => {
+    const body = {
+      date: '2026-01-01',
+      severity: 'LOW',
+      description: 'x',
+      houseId: 'h1',
+      responsibleId: 's1',
+      residentIds: ['r1', 'r2'],
+    } as never;
+    await m.create(body);
+    expect(http.post).toHaveBeenCalledWith('/incidents', body);
+  });
   it('getById busca por id', async () => {
     await m.getById('i1');
     expect(http.get).toHaveBeenCalledWith('/incidents/i1');

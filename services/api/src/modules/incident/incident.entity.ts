@@ -4,6 +4,8 @@ import {
   DeleteDateColumn,
   Entity,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -41,12 +43,15 @@ export class Incident {
   @JoinColumn({ name: 'responsible_id' })
   responsible: Staff;
 
-  @Column({ name: 'resident_id', nullable: true, type: 'uuid' })
-  residentId: string | null;
-
-  @ManyToOne(() => Resident, { eager: false, nullable: true })
-  @JoinColumn({ name: 'resident_id' })
-  resident: Resident | null;
+  // Story 227: N filhos por ocorrência (junção `incident_residents`). A resposta
+  // expõe só `{ id, name }` de cada um — o service seleciona apenas esses campos.
+  @ManyToMany(() => Resident)
+  @JoinTable({
+    name: 'incident_residents',
+    joinColumn: { name: 'incident_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'resident_id', referencedColumnName: 'id' },
+  })
+  residents: Resident[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

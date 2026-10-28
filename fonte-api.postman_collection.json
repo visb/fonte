@@ -3504,12 +3504,35 @@
                 },
                 {
                   "key": "residentId",
-                  "value": "",
+                  "value": "{{residentId}}",
+                  "description": "Story 227 — filtra pelas ocorrências em que o filho está envolvido (junção incident_residents). Cada ocorrência devolvida traz TODOS os filhos envolvidos em `residents`, não só o filtrado.",
                   "disabled": true
                 }
               ]
+            },
+            "description": "Lista as ocorrências (mais recentes primeiro). Story 227 — `residents: { id, name }[]` substitui `resident`/`residentId`."
+          },
+          "response": [
+            {
+              "name": "200 — ocorrências com filhos envolvidos",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/incidents?houseId={{houseId}}&residentId={{residentId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["incidents"],
+                  "query": [
+                    { "key": "houseId", "value": "{{houseId}}" },
+                    { "key": "residentId", "value": "{{residentId}}" }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"id\": \"{{incidentId}}\",\n    \"date\": \"2026-06-01\",\n    \"severity\": \"MEDIUM\",\n    \"description\": \"Discussão no refeitório.\",\n    \"houseId\": \"{{houseId}}\",\n    \"responsibleId\": \"{{staffId}}\",\n    \"responsible\": { \"id\": \"{{staffId}}\", \"name\": \"Nome do Staff\" },\n    \"residents\": [\n      { \"id\": \"{{residentId}}\", \"name\": \"João\" },\n      { \"id\": \"{{otherResidentId}}\", \"name\": \"Pedro\" }\n    ],\n    \"createdAt\": \"2026-06-01T14:00:00.000Z\",\n    \"updatedAt\": \"2026-06-01T14:00:00.000Z\",\n    \"deletedAt\": null\n  }\n]"
             }
-          }
+          ]
         },
         {
           "name": "Get Incident by ID",
@@ -3545,7 +3568,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"2024-06-01T14:00:00.000Z\",\n  \"severity\": \"MEDIUM\",\n  \"description\": \"Descrição do incidente.\",\n  \"houseId\": \"{{houseId}}\",\n  \"responsibleId\": \"{{staffId}}\",\n  \"residentId\": \"{{residentId}}\"\n}"
+              "raw": "{\n  \"date\": \"2026-06-01\",\n  \"severity\": \"MEDIUM\",\n  \"description\": \"Descrição do incidente.\",\n  \"houseId\": \"{{houseId}}\",\n  \"responsibleId\": \"{{staffId}}\",\n  \"residentIds\": [\"{{residentId}}\", \"{{otherResidentId}}\"]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/incidents",
@@ -3555,8 +3578,41 @@
               "path": [
                 "incidents"
               ]
+            },
+            "description": "Story 227 — `residentIds` (0..N filhos, UUID v4, sem duplicata; vazio/ausente = ocorrência da casa). Todos precisam existir e ser da `houseId` da ocorrência, senão 400. `residentId` (um filho) é LEGADO e continua aceito durante a transição (APKs antigos e fila offline): vira `[residentId]`; mandar os dois resulta na união sem duplicata."
+          },
+          "response": [
+            {
+              "name": "201 — ocorrência com 2 filhos",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/incidents",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["incidents"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"{{incidentId}}\",\n  \"date\": \"2026-06-01\",\n  \"severity\": \"MEDIUM\",\n  \"description\": \"Descrição do incidente.\",\n  \"houseId\": \"{{houseId}}\",\n  \"responsibleId\": \"{{staffId}}\",\n  \"residents\": [\n    { \"id\": \"{{residentId}}\", \"name\": \"João\" },\n    { \"id\": \"{{otherResidentId}}\", \"name\": \"Pedro\" }\n  ],\n  \"createdAt\": \"2026-06-01T14:00:00.000Z\",\n  \"updatedAt\": \"2026-06-01T14:00:00.000Z\",\n  \"deletedAt\": null\n}"
+            },
+            {
+              "name": "400 — filho de outra casa",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/incidents",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["incidents"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"message\": \"Todos os filhos envolvidos devem ser da casa da ocorrência.\",\n  \"error\": \"Bad Request\"\n}"
             }
-          }
+          ]
         }
       ]
     },

@@ -90,7 +90,7 @@ const flows: FieldFlow[] = [
       description: 'briga',
       houseId: 'h1',
       responsibleId: 'staff-1',
-      residentId: null,
+      residentIds: [],
     },
     call: () => m.incidents.create,
     payload: [
@@ -100,7 +100,7 @@ const flows: FieldFlow[] = [
         description: 'briga',
         houseId: 'h1',
         responsibleId: 'staff-1',
-        residentId: null,
+        residentIds: [],
       },
     ],
     invalidates: queryKeys.incidents.all,

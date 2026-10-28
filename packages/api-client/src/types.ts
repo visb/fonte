@@ -715,7 +715,8 @@ export interface Incident {
   description: string;
   houseId: string;
   responsible: { id: string; name: string };
-  resident: { id: string; name: string } | null;
+  /** Story 227: filhos envolvidos (0..N). Vazio = ocorrência da casa. */
+  residents: { id: string; name: string }[];
 }
 
 export interface CreateIncidentInput {
@@ -724,6 +725,12 @@ export interface CreateIncidentInput {
   description: string;
   houseId: string;
   responsibleId: string;
+  /** Story 227: filhos envolvidos (0..N). */
+  residentIds?: string[];
+  /**
+   * @deprecated Story 227 — formato antigo (um filho). Só existe para tipar itens
+   * já parados na fila offline; o backend une com `residentIds`. Não usar em código novo.
+   */
   residentId?: string | null;
 }
 

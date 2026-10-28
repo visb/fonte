@@ -7,7 +7,7 @@ const base = {
   severity: 'HIGH',
   description: 'briga no pátio',
   responsible: { name: 'Irmão João' },
-  resident: null,
+  residents: [],
 };
 
 describe('IncidentCard — ocorrência registrada sem sinal (story 171)', () => {

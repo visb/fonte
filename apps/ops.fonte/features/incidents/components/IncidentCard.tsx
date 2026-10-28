@@ -8,6 +8,16 @@ function fmt(iso: string) {
   return `${d}/${m}/${y}`;
 }
 
+/** Quantos nomes aparecem no card antes do "+N" (story 227). */
+export const INCIDENT_CARD_MAX_NAMES = 3;
+
+/** "A, B, C" ou "A, B, C +2" quando passa do limite. */
+export function formatInvolvedResidents(names: string[]): string {
+  const shown = names.slice(0, INCIDENT_CARD_MAX_NAMES).join(", ");
+  const hidden = names.length - INCIDENT_CARD_MAX_NAMES;
+  return hidden > 0 ? `${shown} +${hidden}` : shown;
+}
+
 type Props = {
   item: {
     id: string;
@@ -15,12 +25,15 @@ type Props = {
     severity: string;
     description: string;
     responsible: { name: string };
-    resident: { name: string } | null;
+    residents: { name: string }[];
   };
 };
 
 export function IncidentCard({ item }: Props) {
   const cfg = SEVERITY_CONFIG[item.severity as keyof typeof SEVERITY_CONFIG];
+  // Cache persistido antes da story 227 ainda pode trazer o formato antigo
+  // (`resident`) até o próximo refetch — sem `residents`, o card não quebra.
+  const residents = item.residents ?? [];
   return (
     <View className="bg-white rounded-xl border border-gray-100 px-4 py-3">
       <View className="flex-row items-center justify-between mb-1">
@@ -41,9 +54,11 @@ export function IncidentCard({ item }: Props) {
         {item.description}
       </Text>
       <Text className="text-xs text-gray-400">por {item.responsible?.name}</Text>
-      {item.resident && (
+      {residents.length > 0 && (
         <Text className="text-xs text-blue-600 mt-0.5">
-          Filho: {item.resident.name}
+          {`${residents.length === 1 ? "Filho" : "Filhos"}: ${formatInvolvedResidents(
+            residents.map((r) => r.name),
+          )}`}
         </Text>
       )}
       {/* Registrada sem sinal: está na fila, ainda não chegou ao servidor. */}

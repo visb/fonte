@@ -34,9 +34,9 @@ export function NewIncidentPage() {
         description: data.description,
         houseId: staff!.houseId!,
         responsibleId: staff!.id,
-        residentId: data.residentId || null,
+        residentIds: data.residentIds,
         responsibleName: staff?.name,
-        residentName: residents.find((r) => r.id === data.residentId)?.name,
+        residentNames: data.residentIds.map((id) => residents.find((r) => r.id === id)?.name ?? ''),
       },
       {
         onSent: () =>

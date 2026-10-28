@@ -5,7 +5,7 @@ import { incidentFormDefaults, incidentFormSchema } from './schema';
 describe('incidentFormSchema (story 226, relógio mockado)', () => {
   afterEach(() => jest.useRealTimers());
 
-  const base = { severity: IncidentSeverity.MEDIUM, description: 'Algo', residentId: '' };
+  const base = { severity: IncidentSeverity.MEDIUM, description: 'Algo', residentIds: [] };
 
   function dateMessage(date: string) {
     const result = incidentFormSchema.safeParse({ ...base, date });
@@ -28,6 +28,13 @@ describe('incidentFormSchema (story 226, relógio mockado)', () => {
     expect(dateMessage('2026-10-29')).toBe(DATE_FIELD_MESSAGES.future);
   });
 
+  it('residentIds aceita vazio e N filhos (story 227)', () => {
+    expect(incidentFormSchema.safeParse({ ...base, date: '2025-01-01' }).success).toBe(true);
+    expect(
+      incidentFormSchema.safeParse({ ...base, date: '2025-01-01', residentIds: ['r1', 'r2'] }).success,
+    ).toBe(true);
+  });
+
   it('descrição vazia segue exigida', () => {
     const result = incidentFormSchema.safeParse({ ...base, description: '', date: '2025-01-01' });
     expect(result.success).toBe(false);
@@ -40,7 +47,7 @@ describe('incidentFormSchema (story 226, relógio mockado)', () => {
         date: '2026-10-28',
         severity: IncidentSeverity.MEDIUM,
         description: '',
-        residentId: '',
+        residentIds: [],
       });
     });
 

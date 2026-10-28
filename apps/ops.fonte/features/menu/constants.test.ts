@@ -94,7 +94,16 @@ describe('buildMenuItems por perfil', () => {
     expect(keysOf(resident)).not.toContain('daily');
     expect(keysOf(supportGroupServant)).not.toContain('daily');
     expect(menuItemRoute('daily')).toBe('/(app)/daily');
-    expect(QUICK_ACTION_KEYS).not.toContain('daily');
+  });
+
+  it('Daily: atalho na home só para coordenador', () => {
+    const route = (access: MenuAccess) =>
+      buildQuickActions(access).find((action) => action.key === 'daily')?.route;
+    expect(route(coordinator)).toBe('/(app)/daily');
+    expect(route(houseCoordinator)).toBe('/(app)/daily');
+    expect(route(servant)).toBeUndefined();
+    expect(route(resident)).toBeUndefined();
+    expect(route(supportGroupServant)).toBeUndefined();
   });
 
   it('coordenador da própria casa ganha as configurações da casa', () => {

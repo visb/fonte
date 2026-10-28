@@ -238,6 +238,7 @@ export const QUICK_ACTION_KEYS: MenuItemKey[] = [
   'activities',
   'residents',
   'ministries',
+  'daily',
   // Escondidos por ora junto com os itens do menu (vão voltar).
   // 'storeroom',
   // 'supplyRoom',

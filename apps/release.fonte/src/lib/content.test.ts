@@ -12,8 +12,8 @@ describe('content', () => {
   });
 
   it('a primeira versão assinada avisa que exige desinstalar', () => {
-    const first = releases.find((release) => release.version === '1.0.0');
-    expect(first?.breaking).toBe(true);
-    expect(first?.apk).toBe(true);
+    const firstSigned = releases.find((release) => release.version === '1.1.0');
+    expect(firstSigned?.breaking).toBe(true);
+    expect(firstSigned?.apk).toBe(true);
   });
 });

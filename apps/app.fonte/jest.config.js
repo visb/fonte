@@ -8,6 +8,10 @@
 module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  // Primeiro teste de cada arquivo paga o carregamento frio do react-native sob
+  // coverage; no runner do CI isso passou dos 5s padrão (lib/auth.test.tsx, runs
+  // 39518198770 e 40741267769) e derrubou o gate — e com ele o deploy da main.
+  testTimeout: 20000,
   // Mede cobertura sobre todo o código-fonte, não só arquivos importados por testes.
   collectCoverageFrom: [
     'components/**/*.{ts,tsx}',

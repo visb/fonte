@@ -217,6 +217,12 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
     await goOffline(page, context);
 
     await visible(page, 'Nova ocorrência').click();
+    // Story 226: a data vem com hoje (fuso local) já mascarada em dd/mm/aaaa.
+    const today = todayInSaoPaulo();
+    const [year, month, day] = today.split('-');
+    await expect(
+      page.getByLabel('Data', { exact: true }).filter({ visible: true }),
+    ).toHaveValue(`${day}/${month}/${year}`, { timeout: 30_000 });
     await page
       .getByPlaceholder('Descreva a ocorrência com detalhes...')
       .filter({ visible: true })
@@ -237,8 +243,11 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
       headers: authHeaders,
       params: { houseId },
     });
-    const incidents = (await response.json()) as { description: string }[];
-    expect(incidents.filter((incident) => incident.description === INCIDENT_TEXT)).toHaveLength(1);
+    const incidents = (await response.json()) as { description: string; date: string }[];
+    const created = incidents.filter((incident) => incident.description === INCIDENT_TEXT);
+    expect(created).toHaveLength(1);
+    // Payload segue ISO aaaa-mm-dd (contrato e fila offline inalterados).
+    expect(String(created[0].date).slice(0, 10)).toBe(today);
   });
 
   test('censo: evasão registrada sem sinal é confirmada pelo backend depois', async ({

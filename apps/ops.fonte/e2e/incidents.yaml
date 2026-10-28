@@ -3,6 +3,16 @@ appId: org.fonte.ops
 - runFlow: helpers/login-operator.yaml
 - tapOn: "Nova ocorrência"
 - assertVisible: "Descreva a ocorrência com detalhes..."
+# Story 226: a data é digitável (dd/mm/aaaa) com calendário. Vem com hoje;
+# apaga e lança retroativo. O rótulo "Data" e o campo (accessibilityLabel
+# "Data") casam com o mesmo texto: index 1 é o campo, depois do rótulo.
+- tapOn:
+    text: "Data"
+    index: 1
+- eraseText: 10
+- inputText: "01022026"
+- assertVisible: "01/02/2026"
+- hideKeyboard
 - tapOn: "Descreva a ocorrência com detalhes..."
 # Sem acento de propósito: o Maestro não digita caracteres fora do ASCII
 # (mobile-dev-inc/maestro#146). Vale só para `inputText` — asserção de texto

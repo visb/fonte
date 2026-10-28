@@ -2,16 +2,11 @@ import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import { View, Text, TextInput } from 'react-native';
 import type { Resident } from '@fonte/api-client';
-import { IncidentSeverity } from '@fonte/types';
+import { todayInSaoPaulo } from '@fonte/types';
+import { DateInput } from '@/components/shared/DateInput';
+import type { IncidentFormData as FormData } from '../schema';
 import { SeveritySelector } from './SeveritySelector';
 import { ResidentPicker } from './ResidentPicker';
-
-interface FormData {
-  date: string;
-  severity: IncidentSeverity;
-  description: string;
-  residentId?: string;
-}
 
 interface Props {
   control: Control<FormData>;
@@ -28,12 +23,16 @@ export function IncidentFormFields({ control, errors, residents, responsibleName
         <Controller
           control={control}
           name="date"
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 bg-gray-50"
+          render={({ field: { onChange, onBlur, value } }) => (
+            // Story 226: máscara dd/mm/aaaa + calendário; o form segue com a ISO,
+            // então o payload e a fila offline não mudam. Ocorrência nunca é futura.
+            <DateInput
               value={value}
-              onChangeText={onChange}
-              placeholder="AAAA-MM-DD"
+              onChange={onChange}
+              onBlur={onBlur}
+              maxDate={todayInSaoPaulo()}
+              accessibilityLabel="Data"
+              error={errors.date?.message}
             />
           )}
         />

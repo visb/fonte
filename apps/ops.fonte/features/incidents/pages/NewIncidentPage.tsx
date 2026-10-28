@@ -1,24 +1,17 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { IncidentSeverity } from '@fonte/types';
 import { useAuth } from '@/lib/auth';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { useCreateIncident } from '@/features/incidents/hooks/useIncidents';
 import { useResidentsByHouse } from '@/features/residents/hooks/useResidents';
 import { IncidentFormFields } from '@/features/incidents/components/IncidentFormFields';
-
-const today = new Date().toISOString().split('T')[0];
-
-const schema = z.object({
-  date: z.string().min(1),
-  severity: z.nativeEnum(IncidentSeverity),
-  description: z.string().min(1, 'Descreva a ocorrência'),
-  residentId: z.string().optional(),
-});
-type FormData = z.infer<typeof schema>;
+import {
+  incidentFormDefaults,
+  incidentFormSchema,
+  type IncidentFormData as FormData,
+} from '@/features/incidents/schema';
 
 export function NewIncidentPage() {
   const { staff } = useAuth();
@@ -27,8 +20,8 @@ export function NewIncidentPage() {
   const submit = useFieldSubmit(mutation);
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { date: today, severity: IncidentSeverity.MEDIUM, description: '', residentId: '' },
+    resolver: zodResolver(incidentFormSchema),
+    defaultValues: incidentFormDefaults(),
   });
 
   const onSubmit = (data: FormData) => {

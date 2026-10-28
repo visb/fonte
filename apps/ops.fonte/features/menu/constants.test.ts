@@ -86,6 +86,17 @@ describe('buildMenuItems por perfil', () => {
     expect(keys).not.toContain('houseSettings');
   });
 
+  // Story 225 (decisão 3): Daily só para ADMIN/COORDINATOR da casa.
+  it('Daily: visível para coordenador; oculto para servo, interno e servo de grupo de apoio', () => {
+    expect(keysOf(coordinator)).toContain('daily');
+    expect(keysOf(houseCoordinator)).toContain('daily');
+    expect(keysOf(servant)).not.toContain('daily');
+    expect(keysOf(resident)).not.toContain('daily');
+    expect(keysOf(supportGroupServant)).not.toContain('daily');
+    expect(menuItemRoute('daily')).toBe('/(app)/daily');
+    expect(QUICK_ACTION_KEYS).not.toContain('daily');
+  });
+
   it('coordenador da própria casa ganha as configurações da casa', () => {
     const keys = keysOf(houseCoordinator);
     expect(keys).toContain('census');

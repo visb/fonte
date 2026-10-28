@@ -2532,3 +2532,136 @@ export interface AuditChange {
   after: unknown;
   redacted: boolean;
 }
+
+// ─── Daily (story 225) ───────────────────────────────────────────────────────
+// Board compartilhado da reunião diária dos coordenadores: rascunho da casa em
+// tempo real; só o "Aplicar" grava nos ministérios reais.
+
+export enum DailySessionStatus {
+  OPEN = 'OPEN',
+  APPLIED = 'APPLIED',
+  DISCARDED = 'DISCARDED',
+}
+
+export enum DailyPersonType {
+  RESIDENT = 'RESIDENT',
+  STAFF = 'STAFF',
+}
+
+/** Rótulo do badge do staff sem nível (ADMIN/COORDINATOR) — nunca fica igual a um filho. */
+export const DAILY_STAFF_ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Administrador',
+  COORDINATOR: 'Coordenador',
+  SERVANT: 'Servo',
+};
+
+/** Pessoa no board: filho ou servo, nas mesmas listas. */
+export interface DailyPerson {
+  type: DailyPersonType;
+  id: string;
+  name: string;
+  photoThumbUrl: string | null;
+  /** Só STAFF: nível do servo. */
+  rank?: ServantRank | null;
+  /** Só STAFF sem `rank`: label do papel ("Coordenador"). */
+  roleLabel?: string | null;
+  /** Ministérios REAIS da pessoa agora (servo pode ter N; filho 0 ou 1). */
+  currentMinistryIds: string[];
+  /** Servo que hoje está em mais de um ministério (aviso no card). */
+  hadMultipleMinistries?: boolean;
+}
+
+export interface DailySessionView {
+  id: string;
+  houseId: string;
+  status: DailySessionStatus;
+  /** Dia da daily (YYYY-MM-DD, fuso da operação). */
+  sessionDate: string;
+  version: number;
+  appliedAt: string | null;
+  appliedByUserId: string | null;
+  appliedByName: string | null;
+}
+
+export interface DailyBoardMinistry {
+  id: string;
+  name: string;
+  members: DailyPerson[];
+}
+
+export interface DailyBoard {
+  session: DailySessionView;
+  ministries: DailyBoardMinistry[];
+  /** Caixa "Sem ministério". */
+  unassigned: DailyPerson[];
+}
+
+export interface MoveDailyPersonInput {
+  personType: DailyPersonType;
+  personId: string;
+  /** `null` = "Sem ministério". */
+  toMinistryId: string | null;
+}
+
+export interface MoveDailyPersonResult {
+  version: number;
+}
+
+export interface ApplyDailySkipped {
+  personType: DailyPersonType;
+  personId: string;
+  reason: string;
+}
+
+export interface ApplyDailyResult {
+  /** Pessoas cujo vínculo real mudou. */
+  applied: number;
+  /** Pessoas puladas por não serem mais elegíveis no momento do apply. */
+  skipped: ApplyDailySkipped[];
+}
+
+/** Motivos de pulo no apply. */
+export const DAILY_SKIP_REASONS = {
+  RESIDENT_NOT_ELIGIBLE: MINISTRY_RESIDENT_NOT_ELIGIBLE_MESSAGE,
+  STAFF_NOT_ACTIVE: 'Servo não está mais ativo nesta casa.',
+} as const;
+
+/** Namespace socket.io do board. */
+export const DAILY_SOCKET_NAMESPACE = '/daily';
+
+/** Eventos socket do board (cliente → servidor: JOIN; o resto servidor → cliente). */
+export const DAILY_SOCKET_EVENTS = {
+  JOIN: 'daily:join',
+  JOINED: 'daily:joined',
+  MOVED: 'daily:moved',
+  APPLIED: 'daily:applied',
+  RESET: 'daily:reset',
+  ERROR: 'daily:error',
+} as const;
+
+export interface DailyMovedEvent {
+  sessionId: string;
+  personType: DailyPersonType;
+  personId: string;
+  toMinistryId: string | null;
+  version: number;
+  movedByUserId: string;
+}
+
+export interface DailyAppliedEvent {
+  sessionId: string;
+  appliedAt: string;
+  appliedByUserId: string;
+  appliedByName: string | null;
+  result: ApplyDailyResult;
+}
+
+export interface DailyResetEvent {
+  previousSessionId: string;
+  sessionId: string;
+  houseId: string;
+}
+
+export interface DailyErrorEvent {
+  message: string;
+}

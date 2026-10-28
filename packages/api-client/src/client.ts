@@ -28,6 +28,7 @@ import { createAuditModule } from './modules/audit.js';
 import { createPreferencesModule } from './modules/preferences.js';
 import { createOfflineSyncModule } from './modules/offline-sync.js';
 import { createObservabilityModule } from './modules/observability.js';
+import { createDailyModule } from './modules/daily.js';
 
 /** Contexto do 401 entregue ao `onUnauthorized` (opcional: handlers sem parâmetro continuam válidos). */
 export interface UnauthorizedContext {
@@ -109,6 +110,7 @@ export function createApiClient(config: ApiClientConfig) {
     preferences: createPreferencesModule(http),
     offlineSync: createOfflineSyncModule(http),
     observability: createObservabilityModule(http),
+    daily: createDailyModule(http),
     photoUrl: (path: string | null | undefined): string | null => {
       if (!path) return null;
       if (path.startsWith('http://') || path.startsWith('https://')) return path;

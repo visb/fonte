@@ -1,0 +1,37 @@
+appId: org.fonte.ops
+# Story 225 — Daily: board de ministérios em tempo real.
+#
+# A Daily é ADMIN/COORDINATOR-only (`daily: isHouseStaff && a.isCoordinator` em
+# features/menu/constants.ts): o fluxo do board entra pelo login-coordinator.
+#
+# O arrasto em si NÃO é exercitado aqui (o Maestro não arrasta de forma
+# confiável): o caminho determinístico é o toque no card → "Mover para…".
+# O "Aplicar" também fica de fora deste fluxo: aplicar grava nos ministérios
+# REAIS da casa do seed (e tira os vínculos extras dos servos), e o seed é
+# somente leitura (story 182). Aplicar está coberto pelo e2e do backend
+# (services/api/test/daily.e2e-spec.ts, casa e ministérios próprios) e pelo unit
+# do DailyApplyBar. Aqui só se abre o sheet e fecha — o rascunho não muda.
+---
+- runFlow: helpers/login-coordinator.yaml
+- tapOn: "Menu"
+- waitForAnimationToEnd
+- tapOn: "Daily"
+- waitForAnimationToEnd
+- assertVisible: "Sem ministério"
+- assertVisible: "Cozinha"
+- assertVisible: "João Testador"
+
+# Toque no card abre o "Mover para…" com "Sem ministério" + ministérios.
+- tapOn: "João Testador"
+- waitForAnimationToEnd
+- assertVisible: "Mover para…"
+- tapOn: "Fechar sheet"
+- waitForAnimationToEnd
+- assertNotVisible: "Mover para…"
+
+# --- Servo: menu sem "Daily" (decisão 3) ---
+- runFlow: helpers/login-operator.yaml
+- tapOn: "Menu"
+- waitForAnimationToEnd
+- assertVisible: "Ministérios"
+- assertNotVisible: "Daily"

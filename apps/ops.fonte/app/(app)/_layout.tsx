@@ -132,6 +132,17 @@ export default function AppLayout() {
           }}
         />
         <Tabs.Screen
+          name="daily"
+          options={{
+            title: "Daily",
+            headerShown: false,
+            href: null,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="git-compare-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="staff"
           options={{
             title: "Servos",

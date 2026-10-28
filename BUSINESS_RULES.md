@@ -198,6 +198,19 @@ Saída de um servo (todo Staff). **Só ADMIN, só no `adm.fonte`** (`POST /staff
 - Alta, evasão (qualquer saída do acolhimento) ou transferência de casa tira o filho do ministério e da liderança automaticamente, com evento `MINISTRY_CHANGE` na linha do tempo; readmissão volta sem ministério
 - Ministério não pode ser removido fisicamente (soft delete)
 
+## 6.0. Daily — board de ministérios (story 225)
+
+- Reunião diária dos coordenadores no `ops.fonte`: board com todos os ministérios da casa + a caixa "Sem ministério", compartilhado em tempo real entre aparelhos
+- **Acesso:** só ADMIN e COORDINATOR. Coordenador só a daily da **própria casa** (outra casa → 403); ADMIN informa a casa. SERVANT não vê o item no menu e a API responde 403
+- **Rascunho vs aplicar:** arrastar mexe só no rascunho da sessão (não altera ministério real nem gera auditoria). Os ministérios reais só mudam quando um coordenador toca **"Aplicar"**: o backend grava tudo numa transação, com auditoria apenas do que mudou
+- **Uma sessão aberta por casa**, do dia: aberta pré-preenchida do estado real (filho no ministério atual; servo no vínculo mais antigo). Sessão aberta de dia anterior e não aplicada é descartada. Depois de aplicar, a sessão fica somente leitura e "Nova daily" abre outra
+- Quem entra no board: filho em acolhimento na casa (mesma regra de elegibilidade do ministério) e staff **ativo** da casa, de qualquer role. Pessoa nova entra em "Sem ministério"; quem deixou de ser elegível sai; membros de ministério excluído vão para "Sem ministério"
+- **Uma pessoa = um ministério:** no board cada pessoa ocupa uma caixa só. Ao aplicar, o servo fica **somente** no ministério do board e perde os outros vínculos; "Sem ministério" zera os vínculos dele (filho fica sem `ministry_id`)
+- **Pulados:** quem deixou de ser elegível até o momento do "Aplicar" é pulado (listado na resposta com o motivo) e o resto é aplicado
+- Conflito: última escrita vence, por pessoa. Aplicar sessão já aplicada/descartada → 409
+- Liderança não muda pelo board: o líder movido para outro ministério continua líder do original
+- Exige rede: fora da fila offline; sem sinal o board fica somente leitura
+
 ---
 
 ## 6.1. Atividades (stories 48, 220 e 224)
@@ -339,6 +352,7 @@ Regras:
 | Registrar ocorrência       |   ✓   |      ✓      |    ✓     |
 | Criar/remover ministério   |   ✓   |      ✓      |          |
 | Atribuir responsável/filho |   ✓   |      ✓      |          |
+| Daily (abrir, mover, aplicar) |   ✓   |      ✓      |          |
 | Movimentar storeroom       |   ✓   |      ✓      |    ✓     |
 | Conferência de storeroom   |   ✓   |      ✓      |    ✓     |
 | Ler o carnê (valores)      |   ✓   |      ✓      |          |

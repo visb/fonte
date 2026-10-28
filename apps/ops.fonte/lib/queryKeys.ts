@@ -35,6 +35,8 @@ export const queryKeys = {
   },
   ministries: {
     byHouse: (houseId: string) => ['ministries', houseId] as const,
+    /** Prefixo de todos os detalhes (invalidação em lote — "Aplicar" da Daily). */
+    details: ['ministry'] as const,
     detail: (id: string) => ['ministry', id] as const,
     tasks: (id: string) => ['ministry-tasks', id] as const,
   },
@@ -91,6 +93,13 @@ export const queryKeys = {
   streetSales: {
     all: ['street-sales'] as const,
     byHouse: (houseId: string) => ['street-sales', houseId] as const,
+  },
+  /**
+   * Daily (story 225). Fora da allowlist de persistência DE PROPÓSITO: a daily
+   * exige rede (decisão 11) — o board vive só em memória.
+   */
+  daily: {
+    board: (houseId: string) => ['daily-board', houseId] as const,
   },
   notifications: {
     all: ['notifications'] as const,

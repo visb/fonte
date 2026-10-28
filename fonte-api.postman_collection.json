@@ -41,6 +41,10 @@
       "value": "{{ministryId}}"
     },
     {
+      "key": "dailySessionId",
+      "value": "{{dailySessionId}}"
+    },
+    {
       "key": "supportGroupId",
       "value": "{{supportGroupId}}"
     },
@@ -3095,6 +3099,108 @@
                 "{{relativeId}}",
                 "access",
                 "reset-password"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Daily",
+      "description": "Story 225 — board de ministérios da daily (ops.fonte), compartilhado em tempo real. Só ADMIN e COORDINATOR (SERVANT → 403; coordenador de outra casa → 403). Arrastar mexe só no RASCUNHO da sessão; `apply` grava nos ministérios reais. Realtime: socket.io namespace `/daily` (JWT em `auth.token`); o cliente emite `daily:join { sessionId }` e recebe `daily:joined { sessionId, version }` ou `daily:error { message }`. Eventos do servidor para a room `daily:<sessionId>`: `daily:moved { sessionId, personType, personId, toMinistryId, version, movedByUserId }`, `daily:applied { sessionId, appliedAt, appliedByUserId, appliedByName, result }` e `daily:reset { previousSessionId, sessionId, houseId }` (nova sessão aberta).",
+      "item": [
+        {
+          "name": "Get Current Daily",
+          "request": {
+            "method": "GET",
+            "description": "Sessão OPEN do dia da casa, sincronizada com o estado real (filho/servo novo entra em \"Sem ministério\", quem deixou de ser elegível sai, membros de ministério excluído vão para \"Sem ministério\" — mudou algo, `version` sobe). Sem OPEN: devolve a APLICADA de hoje (somente leitura); sem nenhuma, cria e pré-preenche (filho no ministério atual; servo no vínculo mais antigo, com `hadMultipleMinistries`). OPEN de dia anterior vira DISCARDED. `houseId` só para ADMIN (sem ele, vale a lotação; sem lotação → 400). COORDINATOR com `houseId` de outra casa → 403; SERVANT → 403; casa inexistente → 404. Resposta 200: { \"session\": { \"id\": \"uuid\", \"houseId\": \"uuid\", \"status\": \"OPEN\", \"sessionDate\": \"2026-10-27\", \"version\": 0, \"appliedAt\": null, \"appliedByUserId\": null, \"appliedByName\": null }, \"ministries\": [ { \"id\": \"uuid\", \"name\": \"Cozinha\", \"members\": [ { \"type\": \"RESIDENT\", \"id\": \"uuid\", \"name\": \"Filho\", \"photoThumbUrl\": null, \"currentMinistryIds\": [\"uuid\"] }, { \"type\": \"STAFF\", \"id\": \"uuid\", \"name\": \"Servo\", \"photoThumbUrl\": null, \"rank\": \"CONSAGRADO\", \"roleLabel\": null, \"currentMinistryIds\": [\"uuid\", \"uuid\"], \"hadMultipleMinistries\": true } ] } ], \"unassigned\": [ { \"type\": \"STAFF\", \"id\": \"uuid\", \"name\": \"Coordenador\", \"photoThumbUrl\": null, \"rank\": null, \"roleLabel\": \"Coordenador\", \"currentMinistryIds\": [], \"hadMultipleMinistries\": false } ] }",
+            "url": {
+              "raw": "{{baseUrl}}/daily/current?houseId={{houseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "daily",
+                "current"
+              ],
+              "query": [
+                {
+                  "key": "houseId",
+                  "value": "{{houseId}}",
+                  "description": "Só ADMIN. COORDINATOR fica na própria casa."
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Start New Daily",
+          "request": {
+            "method": "POST",
+            "description": "\"Nova daily\" depois de aplicar: abre nova sessão OPEN pré-preenchida do estado real e emite `daily:reset` para a room da sessão anterior. Se já houver OPEN do dia, devolve a mesma. Body opcional `{ \"houseId\": \"uuid\" }` (só ADMIN). 201 com o mesmo formato do GET /daily/current. SERVANT → 403; coordenador de outra casa → 403; `houseId` não-UUID → 400.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"houseId\": \"{{houseId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/daily",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "daily"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Move Person on Daily Board",
+          "request": {
+            "method": "POST",
+            "description": "Move uma pessoa no RASCUNHO (não altera os ministérios reais). Última escrita vence, por pessoa; cada movimento incrementa `version` e é distribuído como `daily:moved`. `toMinistryId: null` = \"Sem ministério\". Resposta 200: { \"version\": 3 }. 400: ministério de outra casa ou excluído (\"Ministério inválido para esta casa.\"), pessoa fora do board (\"Pessoa fora do board desta daily.\"), `personType` fora de RESIDENT|STAFF, `personId`/`toMinistryId` não-UUID ou `toMinistryId` ausente. 403: SERVANT ou coordenador de outra casa. 404: sessão inexistente. 409: sessão já APPLIED/DISCARDED (\"Esta daily já foi encerrada.\").",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"personType\": \"RESIDENT\",\n  \"personId\": \"{{residentId}}\",\n  \"toMinistryId\": \"{{ministryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/daily-sessions/{{dailySessionId}}/moves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "daily-sessions",
+                "{{dailySessionId}}",
+                "moves"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Apply Daily",
+          "request": {
+            "method": "POST",
+            "description": "Grava o board nos ministérios reais numa transação: filho fica com `ministry_id` = destino (ou NULL); servo fica com vínculos exatamente {destino} (perde os outros — uma pessoa = um ministério); auditoria só do que mudou. Quem não é mais elegível é pulado e listado em `skipped`, sem abortar o resto. Sessão vira APPLIED e emite `daily:applied`. Liderança não muda. Resposta 200: { \"applied\": 3, \"skipped\": [ { \"personType\": \"RESIDENT\", \"personId\": \"uuid\", \"reason\": \"Só filho em acolhimento nesta casa pode participar do ministério.\" } ] }. 403: SERVANT ou coordenador de outra casa. 404: sessão inexistente. 409: sessão já APPLIED/DISCARDED.",
+            "url": {
+              "raw": "{{baseUrl}}/daily-sessions/{{dailySessionId}}/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "daily-sessions",
+                "{{dailySessionId}}",
+                "apply"
               ]
             }
           }

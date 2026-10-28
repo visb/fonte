@@ -5,7 +5,7 @@ import { Ministry } from './ministry.entity';
 import { MinistryStaff } from './ministry-staff.entity';
 import { MinistryTask } from './ministry-task.entity';
 import { Resident } from '../resident/resident.entity';
-import { createAuditHarness, repoMap } from '../audit/testing/audit-harness.testkit-spec';
+import { createAuditHarness, memoryRepo, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
 function makeRepo(overrides: Record<string, jest.Mock> = {}, queryImpl?: jest.Mock) {
   return {
@@ -449,5 +449,111 @@ describe('MinistryService.removeTask', () => {
     const service = makeService(makeRepo(), makeRepo(), taskRepo);
     await service.removeTask('m1', 't1');
     expect(taskRepo.softDelete).toHaveBeenCalledWith('t1');
+  });
+});
+
+// ─── Story 225 — atribuição em lote usada pelo "Aplicar" da Daily ────────────
+
+describe('MinistryService.setResidentMinistry (story 225)', () => {
+  function setup(ministryId: string | null, exists = true) {
+    const residents = memoryRepo(exists ? [{ id: 'r1', houseId: 'h1', ministryId }] : []);
+    const query = jest.fn(async (sql: string, params: unknown[] = []) => {
+      const row = residents.table.get('r1');
+      if (sql.startsWith('SELECT ministry_id FROM residents')) return row ? [{ ministry_id: row.ministryId }] : [];
+      if (sql.startsWith('UPDATE residents SET ministry_id = $1')) row!.ministryId = params[0];
+      if (sql.startsWith('UPDATE residents SET ministry_id = NULL')) row!.ministryId = null;
+      return [];
+    });
+    const service = makeService(makeRepo({}, query), makeRepo(), makeRepo(), residents as never);
+    return { service, residents, query, manager: lastAudit.manager as never };
+  }
+
+  it('404 quando o filho não existe', async () => {
+    const { service, manager } = setup(null, false);
+    await expect(service.setResidentMinistry(manager, 'r1', 'm1')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('mesmo ministério → false, sem escrita e sem auditoria', async () => {
+    const { service, manager, query } = setup('m1');
+    await expect(service.setResidentMinistry(manager, 'r1', 'm1')).resolves.toBe(false);
+    expect(query).not.toHaveBeenCalledWith(expect.stringContaining('UPDATE residents'), expect.anything());
+    expect(lastAudit.inserted).toHaveLength(0);
+  });
+
+  it('troca de ministério → ADD no destino, na transação do chamador', async () => {
+    const { service, manager, residents } = setup('m0');
+    await expect(service.setResidentMinistry(manager, 'r1', 'm1')).resolves.toBe(true);
+    expect(residents.table.get('r1')!.ministryId).toBe('m1');
+    expect(lastAudit.dataSource.transaction).not.toHaveBeenCalled();
+    expect(lastAudit.inserted).toHaveLength(1);
+    expect(lastAudit.inserted[0]).toMatchObject({
+      action: 'ministry.resident.add',
+      targetId: 'r1',
+      parentId: 'm1',
+      changes: [{ field: 'ministryId', before: 'm0', after: 'm1', redacted: false }],
+    });
+  });
+
+  it('"Sem ministério" → REMOVE com o ministério atual como pai', async () => {
+    const { service, manager, residents } = setup('m0');
+    await expect(service.setResidentMinistry(manager, 'r1', null)).resolves.toBe(true);
+    expect(residents.table.get('r1')!.ministryId).toBeNull();
+    expect(lastAudit.inserted[0]).toMatchObject({ action: 'ministry.resident.remove', parentId: 'm0' });
+  });
+
+  it('filho sem ministério continuando sem → false', async () => {
+    const { service, manager } = setup(null);
+    await expect(service.setResidentMinistry(manager, 'r1', null)).resolves.toBe(false);
+  });
+});
+
+describe('MinistryService.setStaffMinistry (story 225)', () => {
+  function setup(linked: string[]) {
+    const links = memoryRepo(linked.map((ministryId, i) => ({ id: `l${i}`, ministryId, staffId: 's1' })));
+    const query = jest.fn(async (sql: string) => {
+      if (sql.includes('FROM ministry_staff ms')) {
+        return [...links.table.values()].map((l) => ({ ministry_id: l.ministryId }));
+      }
+      return [];
+    });
+    const service = makeService(makeRepo({}, query), links as never);
+    return { service, links, manager: lastAudit.manager as never };
+  }
+  const linkedTo = (links: ReturnType<typeof memoryRepo>) =>
+    [...links.table.values()].map((l) => l.ministryId).sort();
+
+  it('servo em 3 ministérios fica só no destino (2 REMOVE)', async () => {
+    const { service, links, manager } = setup(['m1', 'm2', 'm3']);
+    await expect(service.setStaffMinistry(manager, 's1', 'm2')).resolves.toBe(true);
+    expect(linkedTo(links)).toEqual(['m2']);
+    expect(lastAudit.inserted.map((r) => [r.action, r.targetId])).toEqual([
+      ['ministry.staff.remove', 'm1'],
+      ['ministry.staff.remove', 'm3'],
+    ]);
+  });
+
+  it('destino novo → REMOVE dos antigos + ADD no destino', async () => {
+    const { service, links, manager } = setup(['m1']);
+    await expect(service.setStaffMinistry(manager, 's1', 'm9')).resolves.toBe(true);
+    expect(linkedTo(links)).toEqual(['m9']);
+    expect(lastAudit.inserted.map((r) => r.action)).toEqual(['ministry.staff.remove', 'ministry.staff.add']);
+    expect(lastAudit.inserted[1]).toMatchObject({ targetId: 'm9', parentId: 's1' });
+  });
+
+  it('"Sem ministério" zera os vínculos', async () => {
+    const { service, links, manager } = setup(['m1', 'm2']);
+    await expect(service.setStaffMinistry(manager, 's1', null)).resolves.toBe(true);
+    expect(linkedTo(links)).toEqual([]);
+  });
+
+  it('já exatamente no destino → false e nenhum evento', async () => {
+    const { service, manager } = setup(['m1']);
+    await expect(service.setStaffMinistry(manager, 's1', 'm1')).resolves.toBe(false);
+    expect(lastAudit.inserted).toHaveLength(0);
+  });
+
+  it('sem vínculo e sem destino → false', async () => {
+    const { service, manager } = setup([]);
+    await expect(service.setStaffMinistry(manager, 's1', null)).resolves.toBe(false);
   });
 });

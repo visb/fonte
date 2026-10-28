@@ -1,14 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import type { ListNotificationsParams } from '@fonte/api-client';
-import { api, apiOrigin } from '@/lib/api';
+import { api } from '@/lib/api';
+import { createRealtimeSocket, readSocketToken } from '@/lib/realtime';
 import { queryKeys } from '@/lib/queryKeys';
 import { useAuth } from '@/lib/auth';
 
@@ -67,14 +67,10 @@ export function useNotificationSocket() {
     let cancelled = false;
 
     async function connect() {
-      const authToken = (await AsyncStorage.getItem('token')) ?? token;
+      const authToken = await readSocketToken(token);
       if (cancelled) return;
 
-      const socket = io(`${apiOrigin}/notifications`, {
-        transports: ['websocket'],
-        auth: { token: authToken },
-        reconnection: true,
-      });
+      const socket = createRealtimeSocket('/notifications', authToken);
       socketRef.current = socket;
       socket.on('notification:new', () => invalidate());
     }

@@ -120,8 +120,10 @@ export class MinistryService {
     ministryId: string,
     residentId: string,
     write: (manager: EntityManager) => Promise<unknown>,
+    manager?: EntityManager,
   ): Promise<unknown> {
     return this.audit.track({
+      manager,
       action,
       targetType: AuditTargetType.RESIDENT,
       targetId: residentId,
@@ -144,8 +146,10 @@ export class MinistryService {
     ministryId: string,
     staffId: string,
     write: (manager: EntityManager) => Promise<unknown>,
+    manager?: EntityManager,
   ): Promise<unknown> {
     return this.audit.track({
+      manager,
       action,
       targetType: AuditTargetType.MINISTRY,
       targetId: ministryId,
@@ -325,6 +329,98 @@ export class MinistryService {
     await this.trackStaffLink(AuditAction.MINISTRY_STAFF_REMOVE, ministryId, staffId, (m) =>
       m.getRepository(MinistryStaff).delete({ ministryId, staffId }),
     );
+  }
+
+  // ─── Atribuição em lote (story 225 — "Aplicar" da Daily) ─────────────────────
+
+  /**
+   * Deixa o filho exatamente no `ministryId` (ou sem ministério), DENTRO da
+   * transação do chamador. Mesma auditoria dos endpoints de membro: ADD no
+   * destino quando entra/troca, REMOVE do atual quando sai. Sem mudança → sem
+   * escrita e sem evento. Elegibilidade é do chamador (o apply revalida antes).
+   * Devolve se houve mudança.
+   */
+  async setResidentMinistry(
+    manager: EntityManager,
+    residentId: string,
+    ministryId: string | null,
+  ): Promise<boolean> {
+    const [row] = await manager.query<[{ ministry_id: string | null } | undefined]>(
+      `SELECT ministry_id FROM residents WHERE id = $1 AND deleted_at IS NULL`,
+      [residentId],
+    );
+    if (!row) throw new NotFoundException(`Resident ${residentId} not found`);
+    const current = row.ministry_id ?? null;
+    if (current === ministryId) return false;
+
+    if (ministryId) {
+      await this.trackResidentLink(
+        AuditAction.MINISTRY_RESIDENT_ADD,
+        ministryId,
+        residentId,
+        (m) => m.query(`UPDATE residents SET ministry_id = $1 WHERE id = $2`, [ministryId, residentId]),
+        manager,
+      );
+    } else {
+      await this.trackResidentLink(
+        AuditAction.MINISTRY_RESIDENT_REMOVE,
+        current as string,
+        residentId,
+        (m) => m.query(`UPDATE residents SET ministry_id = NULL WHERE id = $1`, [residentId]),
+        manager,
+      );
+    }
+    return true;
+  }
+
+  /**
+   * Deixa o servo com vínculos `ministry_staff` exatamente `{ministryId}` (ou
+   * nenhum), DENTRO da transação do chamador — "uma pessoa = um ministério"
+   * (story 225, decisão 2). Considera só vínculos com ministério não excluído.
+   * Um evento de auditoria por vínculo removido/criado; nada muda → nenhum.
+   */
+  async setStaffMinistry(
+    manager: EntityManager,
+    staffId: string,
+    ministryId: string | null,
+  ): Promise<boolean> {
+    const links = await manager.query<Array<{ ministry_id: string }>>(
+      `SELECT ms.ministry_id
+         FROM ministry_staff ms
+         JOIN ministries m ON m.id = ms.ministry_id AND m.deleted_at IS NULL
+        WHERE ms.staff_id = $1
+        ORDER BY ms.created_at ASC`,
+      [staffId],
+    );
+    const current = (links ?? []).map((l) => l.ministry_id);
+    let changed = false;
+
+    for (const linked of current) {
+      if (linked === ministryId) continue;
+      await this.trackStaffLink(
+        AuditAction.MINISTRY_STAFF_REMOVE,
+        linked,
+        staffId,
+        (m) => m.getRepository(MinistryStaff).delete({ ministryId: linked, staffId }),
+        manager,
+      );
+      changed = true;
+    }
+
+    if (ministryId && !current.includes(ministryId)) {
+      await this.trackStaffLink(
+        AuditAction.MINISTRY_STAFF_ADD,
+        ministryId,
+        staffId,
+        (m) => {
+          const repo = m.getRepository(MinistryStaff);
+          return repo.save(repo.create({ ministryId, staffId }));
+        },
+        manager,
+      );
+      changed = true;
+    }
+    return changed;
   }
 
   // ─── Tasks ───────────────────────────────────────────────────────────────────

@@ -45,6 +45,7 @@ import { PreferenceModule } from './modules/preference/preference.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { OfflineSyncModule } from './modules/offline-sync/offline-sync.module';
 import { ReceiptModule } from './modules/receipt/receipt.module';
+import { DailyModule } from './modules/daily/daily.module';
 
 @Module({
   imports: [
@@ -102,6 +103,7 @@ import { ReceiptModule } from './modules/receipt/receipt.module';
     PreferenceModule,
     IdempotencyModule,
     OfflineSyncModule,
+    DailyModule,
   ],
   providers: [
     // Captura exceptions não tratadas para o Sentry preservando o tratamento do Nest.

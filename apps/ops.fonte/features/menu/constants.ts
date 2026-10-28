@@ -29,6 +29,7 @@ export const MENU_ITEM_KEYS = [
   'incidents',
   'activities',
   'ministries',
+  'daily',
   'events',
   'census',
   'houseSettings',
@@ -122,6 +123,16 @@ export const MENU_ITEMS: AppMenuItem[] = [
     section: 'casa',
     color: '#0369a1',
     bg: '#f0f9ff',
+  },
+  {
+    // Story 225: board da daily — só ADMIN/COORDINATOR (gate em canAccessMenuItem).
+    key: 'daily',
+    label: 'Daily',
+    icon: 'git-compare-outline',
+    route: '/(app)/daily',
+    section: 'casa',
+    color: '#0e7490',
+    bg: '#ecfeff',
   },
   // Escondido do menu por ora (vai voltar): as rotas continuam no app.
   // {
@@ -245,6 +256,8 @@ export function canAccessMenuItem(key: MenuItemKey, access: MenuAccess): boolean
 
   switch (key) {
     case 'census':
+    // Story 225 (decisão 3): Daily só para ADMIN/COORDINATOR da casa.
+    case 'daily':
       return isHouseStaff && access.isCoordinator;
     case 'houseSettings':
       return isHouseStaff && access.isHouseCoordinator;

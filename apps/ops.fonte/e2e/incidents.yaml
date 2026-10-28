@@ -20,7 +20,22 @@ appId: org.fonte.ops
 - inputText: "Ocorrencia de teste E2E"
 - tapOn: "Média"
 - hideKeyboard
+# Story 227: vários filhos na mesma ocorrência (checkbox + chips com "x").
+- assertVisible: "Filhos envolvidos (opcional)"
+- scrollUntilVisible:
+    element: "João Testador"
+- tapOn: "João Testador"
+- scrollUntilVisible:
+    element: "Marcelo Reacolhido"
+- tapOn: "Marcelo Reacolhido"
+- assertVisible: "Remover João Testador"
+- assertVisible: "Remover Marcelo Reacolhido"
+- scrollUntilVisible:
+    element: "Registrar ocorrência"
 - tapOn: "Registrar ocorrência"
 - assertVisible: "Ocorrência registrada."
 - tapOn: "OK"
 - assertVisible: "Ações rápidas"
+- tapOn: "Menu"
+- tapOn: "Ocorrências"
+- assertVisible: "Filhos: João Testador, Marcelo Reacolhido"

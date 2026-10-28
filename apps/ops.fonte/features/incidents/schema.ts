@@ -11,7 +11,8 @@ export const incidentFormSchema = z.object({
   date: pastOrTodayDateSchema,
   severity: z.nativeEnum(IncidentSeverity),
   description: z.string().min(1, 'Descreva a ocorrência'),
-  residentId: z.string().optional(),
+  // Story 227: N filhos envolvidos (vazio = ocorrência da casa).
+  residentIds: z.array(z.string()),
 });
 
 export type IncidentFormData = z.infer<typeof incidentFormSchema>;
@@ -22,6 +23,6 @@ export function incidentFormDefaults(): IncidentFormData {
     date: todayInSaoPaulo(),
     severity: IncidentSeverity.MEDIUM,
     description: '',
-    residentId: '',
+    residentIds: [],
   };
 }

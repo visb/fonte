@@ -105,6 +105,13 @@ export interface IncidentCreateVariables extends OutboxVariables {
   data: CreateIncidentInput;
   /** Só para o update otimista — não vai para o backend. */
   responsibleName?: string;
+  /** Story 227: nomes na ordem de `data.residentIds` (só otimista). */
+  residentNames?: string[];
+  /**
+   * @deprecated Formato anterior à story 227 (um filho, `data.residentId`). Itens
+   * já parados na fila ainda trazem este campo; o otimista e o replay seguem
+   * funcionando porque o backend aceita o `residentId` legado.
+   */
   residentName?: string;
 }
 
@@ -284,6 +291,23 @@ function rollbackSupplyMovement(queryClient: QueryClient, variables: SupplyMovem
   );
 }
 
+/**
+ * Filhos da ocorrência pendente (story 227): `residentIds` + nomes na mesma
+ * ordem; item legado da fila (só `residentId`/`residentName`) entra também, sem
+ * duplicar — mesma união que o backend faz no replay.
+ */
+function optimisticIncidentResidents(variables: IncidentCreateVariables): Incident['residents'] {
+  const { data, residentNames = [] } = variables;
+  const residents = (data.residentIds ?? []).map((id, index) => ({
+    id,
+    name: residentNames[index] ?? '',
+  }));
+  if (data.residentId && !residents.some((r) => r.id === data.residentId)) {
+    residents.push({ id: data.residentId, name: variables.residentName ?? '' });
+  }
+  return residents;
+}
+
 function applyIncident(queryClient: QueryClient, variables: IncidentCreateVariables): void {
   const { data } = variables;
   const optimistic: Incident = {
@@ -293,9 +317,7 @@ function applyIncident(queryClient: QueryClient, variables: IncidentCreateVariab
     description: data.description,
     houseId: data.houseId,
     responsible: { id: data.responsibleId, name: variables.responsibleName ?? '' },
-    resident: data.residentId
-      ? { id: data.residentId, name: variables.residentName ?? '' }
-      : null,
+    residents: optimisticIncidentResidents(variables),
   };
 
   queryClient.setQueriesData<Incident[]>({ queryKey: queryKeys.incidents.all }, (incidents) => [

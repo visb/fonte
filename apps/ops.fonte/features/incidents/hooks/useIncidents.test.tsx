@@ -47,11 +47,27 @@ describe('useIncidents', () => {
       description: 'Briga no refeitório',
       houseId: 'h1',
       responsibleId: 'staff-1',
-      residentId: 'r1',
+      residentIds: ['r1', 'r2'],
     };
     result.current.mutate(input);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(m.incidents.create).toHaveBeenCalledWith(input, expectIdempotencyKey);
+  });
+
+  it('useCreateIncident não manda os nomes do otimista ao backend (story 227)', async () => {
+    m.incidents.create.mockResolvedValue({ id: 'in1' });
+    const { result } = renderHookWithClient(() => useCreateIncident());
+    const payload = {
+      date: '2026-01-01',
+      severity: IncidentSeverity.LOW,
+      description: 'Briga',
+      houseId: 'h1',
+      responsibleId: 'staff-1',
+      residentIds: ['r1'],
+    };
+    result.current.mutate({ ...payload, responsibleName: 'Servo', residentNames: ['João'] });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(m.incidents.create).toHaveBeenCalledWith(payload, expectIdempotencyKey);
   });
 
   it('não expõe mutation de delete (incidente não pode ser deletado — BUSINESS_RULES)', () => {

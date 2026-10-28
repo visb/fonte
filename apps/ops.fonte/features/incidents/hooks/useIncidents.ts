@@ -11,10 +11,12 @@ interface CreateIncidentInput {
   description: string;
   houseId: string;
   responsibleId: string;
-  residentId: string | null;
+  /** Story 227: filhos envolvidos (vazio = ocorrência da casa). */
+  residentIds: string[];
   /** Só para o update otimista (nomes exibidos enquanto o item está pendente). */
   responsibleName?: string;
-  residentName?: string;
+  /** Nomes na mesma ordem de `residentIds` — só para o otimista. */
+  residentNames?: string[];
 }
 
 export function useIncidents(houseId: string | null | undefined) {
@@ -32,6 +34,6 @@ export function useIncidents(houseId: string | null | undefined) {
 export function useCreateIncident() {
   return useOutboxMutation<CreateIncidentInput, IncidentCreateVariables>(
     OUTBOX_MUTATION_KEYS.incidentCreate,
-    ({ responsibleName, residentName, ...data }) => ({ data, responsibleName, residentName }),
+    ({ responsibleName, residentNames, ...data }) => ({ data, responsibleName, residentNames }),
   );
 }

@@ -6,7 +6,7 @@ import { todayInSaoPaulo } from '@fonte/types';
 import { DateInput } from '@/components/shared/DateInput';
 import type { IncidentFormData as FormData } from '../schema';
 import { SeveritySelector } from './SeveritySelector';
-import { ResidentPicker } from './ResidentPicker';
+import { ResidentMultiPicker } from './ResidentMultiPicker';
 
 interface Props {
   control: Control<FormData>;
@@ -75,13 +75,13 @@ export function IncidentFormFields({ control, errors, residents, responsibleName
 
       <View>
         <Text className="text-sm font-medium text-gray-700 mb-1.5">
-          Filho envolvido (opcional)
+          Filhos envolvidos (opcional)
         </Text>
         <Controller
           control={control}
-          name="residentId"
+          name="residentIds"
           render={({ field: { onChange, value } }) => (
-            <ResidentPicker value={value ?? ''} residents={residents} onChange={onChange} />
+            <ResidentMultiPicker value={value ?? []} residents={residents} onChange={onChange} />
           )}
         />
       </View>

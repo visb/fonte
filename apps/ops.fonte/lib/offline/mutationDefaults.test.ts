@@ -386,12 +386,12 @@ describe('update otimista — despensa e ocorrência', () => {
         description: 'briga',
         houseId: 'h1',
         responsibleId: 'staff-1',
-        residentId: 'r1',
+        residentIds: ['r1', 'r2'],
       },
       responsibleName: 'Irmão João',
-      residentName: 'Carlos',
+      residentNames: ['Carlos', 'Pedro'],
     };
-    let pending: Array<{ id: string; resident: { name: string } }> | undefined;
+    let pending: Array<{ id: string; residents: { name: string }[] }> | undefined;
     m.incidents.create.mockImplementation(() => {
       pending = queryClient.getQueryData(queryKeys.incidents.byHouse('h1'));
       return Promise.reject({ response: { status: 400 } });
@@ -401,19 +401,25 @@ describe('update otimista — despensa e ocorrência', () => {
       run(queryClient, OUTBOX_MUTATION_KEYS.incidentCreate, { ...variables }),
     ).rejects.toBeDefined();
 
+    // Story 227: otimista com N filhos, nomes na ordem dos ids.
     expect(pending?.[0]).toMatchObject({
       description: 'briga',
-      resident: { id: 'r1', name: 'Carlos' },
+      residents: [
+        { id: 'r1', name: 'Carlos' },
+        { id: 'r2', name: 'Pedro' },
+      ],
       responsible: { name: 'Irmão João' },
     });
     expect(pending?.[0].id.startsWith(outboxEntityId(''))).toBe(true);
     expect(queryClient.getQueryData(queryKeys.incidents.byHouse('h1'))).toEqual([]);
+    // O payload enviado não carrega os nomes do otimista.
+    expect(m.incidents.create.mock.calls[0][0]).toEqual(variables.data);
   });
 
-  it('ocorrência sem filho envolvido fica com resident nulo', async () => {
+  it('ocorrência sem filho envolvido fica com residents vazio', async () => {
     const queryClient = createClient();
     queryClient.setQueryData(queryKeys.incidents.byHouse('h1'), []);
-    let pending: Array<{ resident: unknown }> | undefined;
+    let pending: Array<{ residents: unknown }> | undefined;
     m.incidents.create.mockImplementation(() => {
       pending = queryClient.getQueryData(queryKeys.incidents.byHouse('h1'));
       return Promise.resolve({ id: 'in1' });
@@ -426,11 +432,75 @@ describe('update otimista — despensa e ocorrência', () => {
         description: 'aviso',
         houseId: 'h1',
         responsibleId: 'staff-1',
-        residentId: null,
       },
     });
 
-    expect(pending?.[0].resident).toBeNull();
+    expect(pending?.[0].residents).toEqual([]);
+  });
+
+  // Item enfileirado por um APK anterior à story 227: só `residentId` +
+  // `residentName`. Tem que aparecer pendente e replayar com o payload intacto
+  // (o backend aceita o `residentId` legado).
+  it('replay de item legado da fila (residentId) mantém o payload e mostra o filho', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.incidents.byHouse('h1'), []);
+    const legacyData = {
+      date: '2026-08-10',
+      severity: IncidentSeverity.MEDIUM,
+      description: 'fuga',
+      houseId: 'h1',
+      responsibleId: 'staff-1',
+      residentId: 'r9',
+    };
+    let pending: Array<{ residents: { id: string; name: string }[] }> | undefined;
+    m.incidents.create.mockImplementation(() => {
+      pending = queryClient.getQueryData(queryKeys.incidents.byHouse('h1'));
+      return Promise.resolve({ id: 'in9' });
+    });
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.incidentCreate, {
+      data: legacyData,
+      responsibleName: 'Irmão João',
+      residentName: 'Tiago',
+    });
+
+    expect(pending?.[0].residents).toEqual([{ id: 'r9', name: 'Tiago' }]);
+    expect(m.incidents.create).toHaveBeenCalledWith(legacyData, idempotent);
+  });
+
+  it('legado sem nome e sobreposto a residentIds não duplica no otimista', async () => {
+    const queryClient = createClient();
+    queryClient.setQueryData(queryKeys.incidents.byHouse('h1'), []);
+    let pending: Array<{ residents: { id: string; name: string }[] }> | undefined;
+    m.incidents.create.mockImplementation(() => {
+      pending = queryClient.getQueryData(queryKeys.incidents.byHouse('h1'));
+      return Promise.resolve({ id: 'in1' });
+    });
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.incidentCreate, {
+      data: {
+        date: '2026-08-10',
+        severity: IncidentSeverity.LOW,
+        description: 'x',
+        houseId: 'h1',
+        responsibleId: 'staff-1',
+        residentIds: ['r1'],
+        residentId: 'r1',
+      },
+    });
+    expect(pending?.[0].residents).toEqual([{ id: 'r1', name: '' }]);
+
+    await run(queryClient, OUTBOX_MUTATION_KEYS.incidentCreate, {
+      data: {
+        date: '2026-08-10',
+        severity: IncidentSeverity.LOW,
+        description: 'y',
+        houseId: 'h1',
+        responsibleId: 'staff-1',
+        residentId: 'r2',
+      },
+    });
+    expect(pending?.[0].residents).toEqual([{ id: 'r2', name: '' }]);
   });
 });
 

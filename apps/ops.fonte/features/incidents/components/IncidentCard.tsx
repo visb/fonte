@@ -1,10 +1,10 @@
 import { View, Text } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { IncidentType } from "@fonte/types";
-import { INCIDENT_TYPE_CONFIG } from "@/lib/constants";
 import { isOutboxEntityId } from "@/lib/offline/outbox";
 import { PendingBadge } from "@/components/shared/PendingBadge";
-import { incidentCategoryLabel } from "../constants";
+import { IncidentClassificationBadge } from "./IncidentClassificationBadge";
+
+// Mantido aqui por compatibilidade: a configuração mora no badge compartilhado.
+export { incidentTypeConfig } from "./IncidentClassificationBadge";
 
 function fmt(iso: string) {
   const [y, m, d] = iso.split("-");
@@ -35,19 +35,7 @@ type Props = {
   };
 };
 
-/**
- * Configuração do badge. Cache persistido antes da story 229 (só `severity`,
- * sem `type`) vem de quando toda ocorrência era um problema — vira Negativa,
- * igual ao backfill do backend.
- */
-export function incidentTypeConfig(type: string | undefined) {
-  return (
-    INCIDENT_TYPE_CONFIG[type as IncidentType] ?? INCIDENT_TYPE_CONFIG[IncidentType.NEGATIVE]
-  );
-}
-
 export function IncidentCard({ item }: Props) {
-  const cfg = incidentTypeConfig(item.type);
   // Cache persistido antes da story 227 ainda pode trazer o formato antigo
   // (`resident`) até o próximo refetch — sem `residents`, o card não quebra.
   const residents = item.residents ?? [];
@@ -55,25 +43,8 @@ export function IncidentCard({ item }: Props) {
     <View className="bg-white rounded-xl border border-gray-100 px-4 py-3">
       <View className="flex-row items-center justify-between mb-1">
         <Text className="text-xs text-gray-500">{fmt(item.date)}</Text>
-        <View className="flex-row items-center flex-shrink ml-2">
-          {/* Story 230: categoria junto do badge de tipo; antigas = "Sem categoria". */}
-          <Text
-            testID="incident-category-label"
-            className="text-xs text-gray-600 mr-2 flex-shrink"
-            numberOfLines={1}
-          >
-            {incidentCategoryLabel(item.category)}
-          </Text>
-          <View
-            testID="incident-type-badge"
-            className="flex-row items-center rounded-full px-2 py-0.5"
-            style={{ backgroundColor: cfg.bg }}
-          >
-            <Ionicons name={cfg.iconSelected} size={12} color={cfg.color} />
-            <Text className="text-xs font-medium ml-1" style={{ color: cfg.color }}>
-              {cfg.label}
-            </Text>
-          </View>
+        <View className="ml-2 flex-shrink">
+          <IncidentClassificationBadge type={item.type} category={item.category} />
         </View>
       </View>
       <Text className="text-sm text-gray-800 mb-1.5" numberOfLines={3}>

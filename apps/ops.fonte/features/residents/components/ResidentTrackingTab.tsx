@@ -3,19 +3,29 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { useResidentIncidents } from '@/features/incidents/hooks/useIncidents';
 import { AddFollowUpModal } from './AddFollowUpModal';
-import { TrackingEventItem } from './TrackingEventItem';
+import { TrackingTimelineItem } from './TrackingTimelineItem';
 import { useResidentFollowUps } from '../hooks/useResidentFollowUps';
+import { mergeTrackingTimeline } from '../lib/trackingTimeline';
 
 interface Props {
   residentId: string;
 }
 
+export const INCIDENTS_LOAD_ERROR = 'Não foi possível carregar as ocorrências';
+
+/**
+ * Linha do tempo do filho: follow-ups + ocorrências em que ele está envolvido
+ * (story 228). Erro só das ocorrências não derruba a aba: mostra os follow-ups
+ * e um aviso. O "Registrar" continua criando follow-up.
+ */
 export function ResidentTrackingTab({ residentId }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
-  const { data: followUps, isLoading, isError } = useResidentFollowUps(residentId);
+  const followUps = useResidentFollowUps(residentId);
+  const incidents = useResidentIncidents(residentId);
 
-  if (isLoading) {
+  if (followUps.isLoading || incidents.isLoading) {
     return (
       <View className="flex-1 items-center justify-center py-16">
         <ActivityIndicator color="#2563eb" />
@@ -23,9 +33,11 @@ export function ResidentTrackingTab({ residentId }: Props) {
     );
   }
 
-  if (isError) {
+  if (followUps.isError) {
     return <ErrorState message="Erro ao carregar acompanhamento." />;
   }
+
+  const timeline = mergeTrackingTimeline(followUps.data, incidents.data);
 
   return (
     <View className="flex-1">
@@ -42,12 +54,18 @@ export function ResidentTrackingTab({ residentId }: Props) {
         </Pressable>
       </View>
 
-      {!followUps?.length ? (
+      {incidents.isError && (
+        <Text testID="incidents-load-error" className="px-4 pb-2 text-xs text-amber-700">
+          {INCIDENTS_LOAD_ERROR}
+        </Text>
+      )}
+
+      {!timeline.length ? (
         <EmptyState message="Nenhum evento registrado." />
       ) : (
         <ScrollView className="px-4" contentContainerClassName="pb-6">
-          {followUps.map((fu) => (
-            <TrackingEventItem key={fu.id} followUp={fu} />
+          {timeline.map((entry) => (
+            <TrackingTimelineItem key={entry.key} entry={entry} residentId={residentId} />
           ))}
         </ScrollView>
       )}

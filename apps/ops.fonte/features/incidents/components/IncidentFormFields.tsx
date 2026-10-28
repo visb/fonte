@@ -5,7 +5,7 @@ import type { Resident } from '@fonte/api-client';
 import { todayInSaoPaulo } from '@fonte/types';
 import { DateInput } from '@/components/shared/DateInput';
 import type { IncidentFormData as FormData } from '../schema';
-import { IncidentTypeSelector } from './IncidentTypeSelector';
+import { IncidentClassificationFields } from './IncidentClassificationFields';
 import { ResidentMultiPicker } from './ResidentMultiPicker';
 
 interface Props {
@@ -38,18 +38,7 @@ export function IncidentFormFields({ control, errors, residents, responsibleName
         />
       </View>
 
-      <View>
-        <Text className="text-sm font-medium text-gray-700 mb-2">
-          Tipo <Text className="text-red-500">*</Text>
-        </Text>
-        <Controller
-          control={control}
-          name="type"
-          render={({ field: { onChange, value } }) => (
-            <IncidentTypeSelector value={value} onChange={onChange} error={errors.type?.message} />
-          )}
-        />
-      </View>
+      <IncidentClassificationFields control={control} errors={errors} />
 
       <View>
         <Text className="text-sm font-medium text-gray-700 mb-1.5">

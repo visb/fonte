@@ -4,6 +4,7 @@ import { IncidentType } from "@fonte/types";
 import { INCIDENT_TYPE_CONFIG } from "@/lib/constants";
 import { isOutboxEntityId } from "@/lib/offline/outbox";
 import { PendingBadge } from "@/components/shared/PendingBadge";
+import { incidentCategoryLabel } from "../constants";
 
 function fmt(iso: string) {
   const [y, m, d] = iso.split("-");
@@ -26,6 +27,8 @@ type Props = {
     date: string;
     /** Story 229. Opcional só para tolerar cache persistido antes da 229. */
     type?: string;
+    /** Story 230. `null` em ocorrência antiga; ausente em cache anterior à 230. */
+    category?: string | null;
     description: string;
     responsible: { name: string };
     residents: { name: string }[];
@@ -52,15 +55,25 @@ export function IncidentCard({ item }: Props) {
     <View className="bg-white rounded-xl border border-gray-100 px-4 py-3">
       <View className="flex-row items-center justify-between mb-1">
         <Text className="text-xs text-gray-500">{fmt(item.date)}</Text>
-        <View
-          testID="incident-type-badge"
-          className="flex-row items-center rounded-full px-2 py-0.5"
-          style={{ backgroundColor: cfg.bg }}
-        >
-          <Ionicons name={cfg.iconSelected} size={12} color={cfg.color} />
-          <Text className="text-xs font-medium ml-1" style={{ color: cfg.color }}>
-            {cfg.label}
+        <View className="flex-row items-center flex-shrink ml-2">
+          {/* Story 230: categoria junto do badge de tipo; antigas = "Sem categoria". */}
+          <Text
+            testID="incident-category-label"
+            className="text-xs text-gray-600 mr-2 flex-shrink"
+            numberOfLines={1}
+          >
+            {incidentCategoryLabel(item.category)}
           </Text>
+          <View
+            testID="incident-type-badge"
+            className="flex-row items-center rounded-full px-2 py-0.5"
+            style={{ backgroundColor: cfg.bg }}
+          >
+            <Ionicons name={cfg.iconSelected} size={12} color={cfg.color} />
+            <Text className="text-xs font-medium ml-1" style={{ color: cfg.color }}>
+              {cfg.label}
+            </Text>
+          </View>
         </View>
       </View>
       <Text className="text-sm text-gray-800 mb-1.5" numberOfLines={3}>

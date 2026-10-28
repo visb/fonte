@@ -31,6 +31,7 @@ export function NewIncidentPage() {
       {
         date: data.date,
         type: data.type,
+        category: data.category,
         description: data.description,
         houseId: staff!.houseId!,
         responsibleId: staff!.id,

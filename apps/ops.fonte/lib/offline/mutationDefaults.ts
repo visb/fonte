@@ -106,8 +106,13 @@ export interface ResidentUpdateStatusVariables extends OutboxVariables {
  * (deprecated) e não traz `type`: replaya como está — o backend aceita o
  * payload legado e grava `NEGATIVE`.
  */
-export type IncidentCreateData = Omit<CreateIncidentInput, 'type'> & {
+export type IncidentCreateData = Omit<CreateIncidentInput, 'type' | 'category'> & {
   type?: CreateIncidentInput['type'];
+  /**
+   * Story 230. Item parado antes da 230 não traz categoria: replaya sem ela
+   * (o backend aceita o legado sem `type` e grava `null`).
+   */
+  category?: CreateIncidentInput['category'];
   /** @deprecated Story 229 — só em item legado da fila; o backend ignora. */
   severity?: string;
 };
@@ -326,6 +331,8 @@ function applyIncident(queryClient: QueryClient, variables: IncidentCreateVariab
     date: data.date,
     // Item legado (sem `type`) é resolvido como NEGATIVE — igual ao backend.
     type: data.type ?? IncidentType.NEGATIVE,
+    // Story 230: item legado da fila não tem categoria — "Sem categoria", como no backend.
+    category: data.category ?? null,
     description: data.description,
     houseId: data.houseId,
     responsible: { id: data.responsibleId, name: variables.responsibleName ?? '' },

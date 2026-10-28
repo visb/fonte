@@ -11,6 +11,7 @@ import type {
   Role,
   ServantRank,
   WishlistStatus,
+  IncidentCategory,
   IncidentType,
   MovementType,
   StaffPermissionType,
@@ -713,6 +714,8 @@ export interface Incident {
   date: string;
   /** Story 229: positiva ou negativa (substituiu `severity`). */
   type: IncidentType;
+  /** Story 230: categoria por tipo. `null` nas ocorrências anteriores à story. */
+  category: IncidentCategory | null;
   description: string;
   houseId: string;
   responsible: { id: string; name: string };
@@ -724,6 +727,8 @@ export interface CreateIncidentInput {
   date: string;
   /** Story 229: obrigatório — o operador escolhe positiva ou negativa. */
   type: IncidentType;
+  /** Story 230: obrigatória — tem de pertencer a `INCIDENT_CATEGORIES_BY_TYPE[type]`. */
+  category: IncidentCategory;
   description: string;
   houseId: string;
   responsibleId: string;

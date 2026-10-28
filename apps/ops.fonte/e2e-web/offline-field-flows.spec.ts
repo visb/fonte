@@ -229,6 +229,10 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
       .fill(INCIDENT_TEXT);
     // Story 229: tipo obrigatório e sem default.
     await page.getByRole('radio', { name: 'Positiva' }).filter({ visible: true }).click();
+    // Story 230: categoria obrigatória, lista filtrada pelo tipo.
+    await page.getByTestId('incident-category-trigger').filter({ visible: true }).click();
+    await page.getByTestId('incident-category-HELPING_OTHERS').filter({ visible: true }).click();
+    await expect(visible(page, 'Ajuda ao próximo')).toBeVisible();
     await visible(page, 'Registrar ocorrência').click();
 
     // A tela volta na hora (nada de botão girando à espera de rede) e nada saiu
@@ -245,13 +249,20 @@ test.describe('ops.fonte — fluxos de campo sem sinal', () => {
       headers: authHeaders,
       params: { houseId },
     });
-    const incidents = (await response.json()) as { description: string; date: string; type: string }[];
+    const incidents = (await response.json()) as {
+      description: string;
+      date: string;
+      type: string;
+      category: string | null;
+    }[];
     const created = incidents.filter((incident) => incident.description === INCIDENT_TEXT);
     expect(created).toHaveLength(1);
     // Payload segue ISO aaaa-mm-dd (contrato e fila offline inalterados).
     expect(String(created[0].date).slice(0, 10)).toBe(today);
     // Story 229: o tipo escolhido offline chega ao servidor.
     expect(created[0].type).toBe('POSITIVE');
+    // Story 230: … junto com a categoria.
+    expect(created[0].category).toBe('HELPING_OTHERS');
   });
 
   test('censo: evasão registrada sem sinal é confirmada pelo backend depois', async ({

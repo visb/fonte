@@ -398,6 +398,52 @@ export enum IncidentType {
   NEGATIVE = 'NEGATIVE',
 }
 
+/**
+ * Story 230: categoria padronizada da ocorrência. A lista válida depende do
+ * tipo (`INCIDENT_CATEGORIES_BY_TYPE`); `OTHER` existe nos dois. Ocorrências
+ * anteriores à story ficam sem categoria (`null`). Labels ficam nos apps.
+ */
+export enum IncidentCategory {
+  AGGRESSION = 'AGGRESSION',
+  DISRESPECT = 'DISRESPECT',
+  EVASION = 'EVASION',
+  SUBSTANCE_USE = 'SUBSTANCE_USE',
+  ACTIVITY_REFUSAL = 'ACTIVITY_REFUSAL',
+  PROPERTY_DAMAGE = 'PROPERTY_DAMAGE',
+  HEALTH = 'HEALTH',
+  GOOD_BEHAVIOR = 'GOOD_BEHAVIOR',
+  HELPING_OTHERS = 'HELPING_OTHERS',
+  ACTIVITY_HIGHLIGHT = 'ACTIVITY_HIGHLIGHT',
+  SPIRITUAL_LIFE = 'SPIRITUAL_LIFE',
+  TREATMENT_PROGRESS = 'TREATMENT_PROGRESS',
+  OTHER = 'OTHER',
+}
+
+/**
+ * Story 230: categorias permitidas por tipo, na ordem de exibição (`OTHER`
+ * sempre por último). Fonte única: validação no backend e opções no ops.
+ */
+export const INCIDENT_CATEGORIES_BY_TYPE: Record<IncidentType, IncidentCategory[]> = {
+  [IncidentType.NEGATIVE]: [
+    IncidentCategory.AGGRESSION,
+    IncidentCategory.DISRESPECT,
+    IncidentCategory.EVASION,
+    IncidentCategory.SUBSTANCE_USE,
+    IncidentCategory.ACTIVITY_REFUSAL,
+    IncidentCategory.PROPERTY_DAMAGE,
+    IncidentCategory.HEALTH,
+    IncidentCategory.OTHER,
+  ],
+  [IncidentType.POSITIVE]: [
+    IncidentCategory.GOOD_BEHAVIOR,
+    IncidentCategory.HELPING_OTHERS,
+    IncidentCategory.ACTIVITY_HIGHLIGHT,
+    IncidentCategory.SPIRITUAL_LIFE,
+    IncidentCategory.TREATMENT_PROGRESS,
+    IncidentCategory.OTHER,
+  ],
+};
+
 export enum MovementType {
   IN = 'IN',
   OUT = 'OUT',

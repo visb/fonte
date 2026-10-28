@@ -638,10 +638,11 @@ describe('incidents module', () => {
     await m.list({ residentId: 'r1' });
     expect(http.get).toHaveBeenCalledWith('/incidents', { params: { residentId: 'r1' } });
   });
-  it('create posta residentIds (story 227) e type (story 229)', async () => {
+  it('create posta residentIds (story 227), type (story 229) e category (story 230)', async () => {
     const body = {
       date: '2026-01-01',
       type: 'POSITIVE',
+      category: 'SPIRITUAL_LIFE',
       description: 'x',
       houseId: 'h1',
       responsibleId: 's1',

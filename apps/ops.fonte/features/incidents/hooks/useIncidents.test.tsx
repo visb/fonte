@@ -1,5 +1,5 @@
 import { waitFor } from '@testing-library/react-native';
-import { IncidentType } from '@fonte/types';
+import { IncidentCategory, IncidentType } from '@fonte/types';
 
 jest.mock('@/lib/api', () => ({
   api: {
@@ -44,6 +44,7 @@ describe('useIncidents', () => {
     const input = {
       date: '2026-01-01',
       type: IncidentType.POSITIVE,
+      category: IncidentCategory.HELPING_OTHERS,
       description: 'Briga no refeitório',
       houseId: 'h1',
       responsibleId: 'staff-1',
@@ -60,6 +61,7 @@ describe('useIncidents', () => {
     const payload = {
       date: '2026-01-01',
       type: IncidentType.NEGATIVE,
+      category: IncidentCategory.AGGRESSION,
       description: 'Briga',
       houseId: 'h1',
       responsibleId: 'staff-1',

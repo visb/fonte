@@ -10,7 +10,13 @@
 import React, { type ReactNode } from 'react';
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query';
-import { IncidentType, MovementType, StreetSaleType, SupplyRoomCategory } from '@fonte/types';
+import {
+  IncidentCategory,
+  IncidentType,
+  MovementType,
+  StreetSaleType,
+  SupplyRoomCategory,
+} from '@fonte/types';
 
 jest.mock('@/lib/api', () => ({
   api: {
@@ -87,6 +93,7 @@ const flows: FieldFlow[] = [
     input: {
       date: '2026-08-10',
       type: IncidentType.NEGATIVE,
+      category: IncidentCategory.AGGRESSION,
       description: 'briga',
       houseId: 'h1',
       responsibleId: 'staff-1',
@@ -97,6 +104,7 @@ const flows: FieldFlow[] = [
       {
         date: '2026-08-10',
         type: IncidentType.NEGATIVE,
+        category: IncidentCategory.AGGRESSION,
         description: 'briga',
         houseId: 'h1',
         responsibleId: 'staff-1',

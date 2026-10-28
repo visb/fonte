@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import {
   ActivityStatus,
-  IncidentSeverity,
+  IncidentType,
   MovementType,
   SupplyRoomCategory,
 } from '@fonte/types';
@@ -382,7 +382,7 @@ describe('update otimista — despensa e ocorrência', () => {
     const variables = {
       data: {
         date: '2026-08-10',
-        severity: IncidentSeverity.HIGH,
+        type: IncidentType.POSITIVE,
         description: 'briga',
         houseId: 'h1',
         responsibleId: 'staff-1',
@@ -404,6 +404,8 @@ describe('update otimista — despensa e ocorrência', () => {
     // Story 227: otimista com N filhos, nomes na ordem dos ids.
     expect(pending?.[0]).toMatchObject({
       description: 'briga',
+      // Story 229: o otimista carrega o tipo escolhido.
+      type: IncidentType.POSITIVE,
       residents: [
         { id: 'r1', name: 'Carlos' },
         { id: 'r2', name: 'Pedro' },
@@ -428,7 +430,7 @@ describe('update otimista — despensa e ocorrência', () => {
     await run(queryClient, OUTBOX_MUTATION_KEYS.incidentCreate, {
       data: {
         date: '2026-08-10',
-        severity: IncidentSeverity.LOW,
+        type: IncidentType.NEGATIVE,
         description: 'aviso',
         houseId: 'h1',
         responsibleId: 'staff-1',
@@ -438,21 +440,21 @@ describe('update otimista — despensa e ocorrência', () => {
     expect(pending?.[0].residents).toEqual([]);
   });
 
-  // Item enfileirado por um APK anterior à story 227: só `residentId` +
-  // `residentName`. Tem que aparecer pendente e replayar com o payload intacto
-  // (o backend aceita o `residentId` legado).
+  // Item enfileirado por um APK anterior à story 227 (e à 229): só `residentId` +
+  // `residentName`, com `severity` e sem `type`. Tem que aparecer pendente e
+  // replayar com o payload intacto (o backend aceita os dois campos legados).
   it('replay de item legado da fila (residentId) mantém o payload e mostra o filho', async () => {
     const queryClient = createClient();
     queryClient.setQueryData(queryKeys.incidents.byHouse('h1'), []);
     const legacyData = {
       date: '2026-08-10',
-      severity: IncidentSeverity.MEDIUM,
+      severity: 'MEDIUM',
       description: 'fuga',
       houseId: 'h1',
       responsibleId: 'staff-1',
       residentId: 'r9',
     };
-    let pending: Array<{ residents: { id: string; name: string }[] }> | undefined;
+    let pending: Array<{ type: string; residents: { id: string; name: string }[] }> | undefined;
     m.incidents.create.mockImplementation(() => {
       pending = queryClient.getQueryData(queryKeys.incidents.byHouse('h1'));
       return Promise.resolve({ id: 'in9' });
@@ -465,7 +467,11 @@ describe('update otimista — despensa e ocorrência', () => {
     });
 
     expect(pending?.[0].residents).toEqual([{ id: 'r9', name: 'Tiago' }]);
+    // Story 229: sem `type`, o otimista resolve como NEGATIVE (igual ao backend)…
+    expect(pending?.[0].type).toBe(IncidentType.NEGATIVE);
+    // …e o corpo sobe intacto, com a `severity` legada e sem `type`.
     expect(m.incidents.create).toHaveBeenCalledWith(legacyData, idempotent);
+    expect(m.incidents.create.mock.calls[0][0]).not.toHaveProperty('type');
   });
 
   it('legado sem nome e sobreposto a residentIds não duplica no otimista', async () => {
@@ -480,7 +486,7 @@ describe('update otimista — despensa e ocorrência', () => {
     await run(queryClient, OUTBOX_MUTATION_KEYS.incidentCreate, {
       data: {
         date: '2026-08-10',
-        severity: IncidentSeverity.LOW,
+        severity: 'LOW',
         description: 'x',
         houseId: 'h1',
         responsibleId: 'staff-1',
@@ -493,7 +499,7 @@ describe('update otimista — despensa e ocorrência', () => {
     await run(queryClient, OUTBOX_MUTATION_KEYS.incidentCreate, {
       data: {
         date: '2026-08-10',
-        severity: IncidentSeverity.LOW,
+        severity: 'LOW',
         description: 'y',
         houseId: 'h1',
         responsibleId: 'staff-1',

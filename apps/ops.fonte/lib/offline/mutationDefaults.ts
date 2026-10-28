@@ -8,7 +8,7 @@
  * `mutationKey`. Hook com `mutationFn` inline = lançamento perdido no restart.
  */
 import type { MutationOptions, QueryClient } from '@tanstack/react-query';
-import { ActivityStatus, MovementType } from '@fonte/types';
+import { ActivityStatus, IncidentType, MovementType } from '@fonte/types';
 import type { ProductContributionLineInput, ReceivableProductContribution } from '@fonte/types';
 import { applyProductContribution, settleProductContribution } from './productContributions';
 import { updateCatalogItem, snapshotCatalogNames, resolveContributionLines } from './catalogItems';
@@ -101,8 +101,19 @@ export interface ResidentUpdateStatusVariables extends OutboxVariables {
   data: UpdateResidentInput;
 }
 
+/**
+ * Corpo da ocorrência na fila. Item parado antes da story 229 traz `severity`
+ * (deprecated) e não traz `type`: replaya como está — o backend aceita o
+ * payload legado e grava `NEGATIVE`.
+ */
+export type IncidentCreateData = Omit<CreateIncidentInput, 'type'> & {
+  type?: CreateIncidentInput['type'];
+  /** @deprecated Story 229 — só em item legado da fila; o backend ignora. */
+  severity?: string;
+};
+
 export interface IncidentCreateVariables extends OutboxVariables {
-  data: CreateIncidentInput;
+  data: IncidentCreateData;
   /** Só para o update otimista — não vai para o backend. */
   responsibleName?: string;
   /** Story 227: nomes na ordem de `data.residentIds` (só otimista). */
@@ -313,7 +324,8 @@ function applyIncident(queryClient: QueryClient, variables: IncidentCreateVariab
   const optimistic: Incident = {
     id: outboxEntityId(variables.idempotencyKey ?? ''),
     date: data.date,
-    severity: data.severity,
+    // Item legado (sem `type`) é resolvido como NEGATIVE — igual ao backend.
+    type: data.type ?? IncidentType.NEGATIVE,
     description: data.description,
     houseId: data.houseId,
     responsible: { id: data.responsibleId, name: variables.responsibleName ?? '' },
@@ -698,8 +710,11 @@ export function registerMutationDefaults(
     queryClient,
     {
       key: OUTBOX_MUTATION_KEYS.incidentCreate,
+      // O corpo legado (com `severity`, sem `type`) sobe intacto: o DTO do backend o aceita.
       run: (variables) =>
-        api.incidents.create(variables.data, { idempotencyKey: variables.idempotencyKey }),
+        api.incidents.create(variables.data as CreateIncidentInput, {
+          idempotencyKey: variables.idempotencyKey,
+        }),
       optimistic: applyIncident,
       rollback: rollbackIncident,
       settled: (client) => {

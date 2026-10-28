@@ -1,10 +1,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { IncidentSeverity } from '@fonte/types';
+import { IncidentType } from '@fonte/types';
 import { DATE_FIELD_MESSAGES } from '@/lib/date';
-import { incidentFormSchema, type IncidentFormData } from '../schema';
+import {
+  INCIDENT_TYPE_REQUIRED_MESSAGE,
+  incidentFormSchema,
+  type IncidentFormDefaults,
+  type IncidentFormData,
+} from '../schema';
 
-import { IncidentCard } from './IncidentCard';
-import { SeveritySelector } from './SeveritySelector';
+import { IncidentCard, incidentTypeConfig } from './IncidentCard';
+import { IncidentTypeSelector } from './IncidentTypeSelector';
 import { ResidentMultiPicker } from './ResidentMultiPicker';
 import { IncidentFormFields } from './IncidentFormFields';
 
@@ -17,19 +22,31 @@ describe('IncidentCard', () => {
   const base = {
     id: 'in1',
     date: '2026-03-10',
-    severity: 'HIGH',
+    type: IncidentType.NEGATIVE as string,
     description: 'Briga no refeitório',
     responsible: { name: 'Servo X' },
     residents: [] as { name: string }[],
   };
   const named = (...names: string[]) => names.map((name) => ({ name }));
 
-  it('mostra data formatada, severidade, descrição e responsável', () => {
+  it('mostra data formatada, tipo, descrição e responsável', () => {
     render(<IncidentCard item={base} />);
     expect(screen.getByText('10/03/2026')).toBeTruthy();
-    expect(screen.getByText('Alta')).toBeTruthy();
+    expect(screen.getByText('Negativa')).toBeTruthy();
+    expect(screen.getByText('icon:thumbs-down')).toBeTruthy();
     expect(screen.getByText('Briga no refeitório')).toBeTruthy();
     expect(screen.getByText('por Servo X')).toBeTruthy();
+  });
+
+  // Story 229: badge com ícone + rótulo do tipo.
+  it('ocorrência positiva: badge 👍 verde "Positiva"', () => {
+    render(<IncidentCard item={{ ...base, type: IncidentType.POSITIVE }} />);
+    expect(screen.getByText('Positiva')).toBeTruthy();
+    expect(screen.getByText('icon:thumbs-up')).toBeTruthy();
+    expect(screen.getByTestId('incident-type-badge').props.style).toEqual(
+      expect.objectContaining({ backgroundColor: '#dcfce7' }),
+    );
+    expect(screen.queryByText('Negativa')).toBeNull();
   });
 
   it('sem filho (ocorrência da casa) não mostra a linha de filhos', () => {
@@ -62,20 +79,50 @@ describe('IncidentCard', () => {
     expect(screen.queryByText(/^Filhos?:/)).toBeNull();
   });
 
-  it('severidade desconhecida cai no fallback (mostra o código)', () => {
-    render(<IncidentCard item={{ ...base, severity: 'WEIRD' }} />);
-    expect(screen.getByText('WEIRD')).toBeTruthy();
+  it('cache antigo (só severity, sem type) aparece como Negativa', () => {
+    const { type: _type, ...legacy } = base;
+    render(<IncidentCard item={{ ...legacy, severity: 'HIGH' } as never} />);
+    expect(screen.getByText('Negativa')).toBeTruthy();
+  });
+
+  it('incidentTypeConfig: tipo desconhecido cai em Negativa', () => {
+    expect(incidentTypeConfig('WEIRD').label).toBe('Negativa');
+    expect(incidentTypeConfig(undefined).label).toBe('Negativa');
+    expect(incidentTypeConfig(IncidentType.POSITIVE).label).toBe('Positiva');
   });
 });
 
-describe('SeveritySelector', () => {
-  it('renderiza todas as severidades e dispara onChange', () => {
+describe('IncidentTypeSelector (story 229)', () => {
+  const radio = (name: string) => screen.getByRole('radio', { name });
+
+  it('sem valor: nenhum marcado, ícones vazados', () => {
+    render(<IncidentTypeSelector value={undefined} onChange={jest.fn()} />);
+    expect(radio('Positiva').props.accessibilityState).toEqual({ selected: false, checked: false });
+    expect(radio('Negativa').props.accessibilityState).toEqual({ selected: false, checked: false });
+    expect(screen.getByText('icon:thumbs-up-outline')).toBeTruthy();
+    expect(screen.getByText('icon:thumbs-down-outline')).toBeTruthy();
+  });
+
+  it('tocar dispara onChange com o tipo', () => {
     const onChange = jest.fn();
-    render(<SeveritySelector value={IncidentSeverity.LOW} onChange={onChange} />);
-    expect(screen.getByText('Baixa')).toBeTruthy();
-    expect(screen.getByText('Crítica')).toBeTruthy();
-    fireEvent.press(screen.getByText('Alta'));
-    expect(onChange).toHaveBeenCalledWith(IncidentSeverity.HIGH);
+    render(<IncidentTypeSelector value={undefined} onChange={onChange} />);
+    fireEvent.press(radio('Positiva'));
+    expect(onChange).toHaveBeenCalledWith(IncidentType.POSITIVE);
+    fireEvent.press(radio('Negativa'));
+    expect(onChange).toHaveBeenLastCalledWith(IncidentType.NEGATIVE);
+  });
+
+  it('selecionado fica preenchido e marcado acessivelmente', () => {
+    render(<IncidentTypeSelector value={IncidentType.NEGATIVE} onChange={jest.fn()} />);
+    expect(radio('Negativa').props.accessibilityState).toEqual({ selected: true, checked: true });
+    expect(radio('Positiva').props.accessibilityState).toEqual({ selected: false, checked: false });
+    expect(screen.getByText('icon:thumbs-down')).toBeTruthy();
+    expect(screen.getByText('icon:thumbs-up-outline')).toBeTruthy();
+  });
+
+  it('mostra o erro quando informado', () => {
+    render(<IncidentTypeSelector value={undefined} onChange={jest.fn()} error="Escolha" />);
+    expect(screen.getByText('Escolha')).toBeTruthy();
   });
 });
 
@@ -134,7 +181,7 @@ describe('IncidentFormFields', () => {
   }: {
     responsibleName?: string;
     onValid?: (data: IncidentFormData) => void;
-    defaults?: Partial<IncidentFormData>;
+    defaults?: Partial<IncidentFormDefaults>;
   }) {
     const { useForm } = require('react-hook-form');
     const { zodResolver } = require('@hookform/resolvers/zod');
@@ -143,7 +190,7 @@ describe('IncidentFormFields', () => {
       resolver: zodResolver(incidentFormSchema),
       defaultValues: {
         date: '2026-01-01',
-        severity: IncidentSeverity.MEDIUM,
+        type: IncidentType.NEGATIVE,
         description: 'x',
         residentIds: [],
         ...defaults,
@@ -166,12 +213,12 @@ describe('IncidentFormFields', () => {
 
   const dateInput = () => screen.getByLabelText('Data');
 
-  it('renderiza data/severidade/descrição/picker e o responsável', () => {
+  it('renderiza data/tipo/descrição/picker e o responsável', () => {
     render(<Harness responsibleName="Servo X" />);
     expect(dateInput().props.value).toBe('01/01/2026');
     expect(screen.getByPlaceholderText('dd/mm/aaaa')).toBeTruthy();
     expect(screen.getByLabelText('Abrir calendário: Data')).toBeTruthy();
-    expect(screen.getByText('Média')).toBeTruthy();
+    expect(screen.getByRole('radio', { name: 'Negativa' }).props.accessibilityState.selected).toBe(true);
     expect(screen.getByPlaceholderText('Descreva a ocorrência com detalhes...')).toBeTruthy();
     expect(screen.getByText('Servo X')).toBeTruthy();
   });
@@ -196,6 +243,20 @@ describe('IncidentFormFields', () => {
     fireEvent.press(screen.getByText('Enviar'));
     expect(await screen.findByText('Descreva a ocorrência')).toBeTruthy();
     expect(onValid).not.toHaveBeenCalled();
+  });
+
+  // Story 229: sem default — sem escolher o tipo, o form não envia.
+  it('sem tipo mostra o erro e não envia; escolhendo positiva, envia type', async () => {
+    const onValid = jest.fn();
+    render(<Harness onValid={onValid} defaults={{ type: undefined }} />);
+    fireEvent.press(screen.getByText('Enviar'));
+    expect(await screen.findByText(INCIDENT_TYPE_REQUIRED_MESSAGE)).toBeTruthy();
+    expect(onValid).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByRole('radio', { name: 'Positiva' }));
+    fireEvent.press(screen.getByText('Enviar'));
+    await waitFor(() => expect(onValid).toHaveBeenCalled());
+    expect(onValid.mock.calls[0][0].type).toBe(IncidentType.POSITIVE);
   });
 
   it('seleciona 2 filhos e envia residentIds (story 227)', async () => {

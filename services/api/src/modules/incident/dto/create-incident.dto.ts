@@ -7,15 +7,34 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  ValidateIf,
 } from 'class-validator';
-import { IncidentSeverity } from '@fonte/types';
+import { IncidentType } from '@fonte/types';
+
+export const INCIDENT_TYPE_REQUIRED_MESSAGE = 'Informe se a ocorrência é positiva ou negativa';
 
 export class CreateIncidentDto {
   @IsDateString()
   date: string;
 
-  @IsEnum(IncidentSeverity)
-  severity: IncidentSeverity;
+  /**
+   * Story 229: positiva ou negativa. Obrigatório — só pode faltar no payload
+   * legado (com `severity`, de APK antigo / fila offline), que vira `NEGATIVE`.
+   * Se vier, é sempre validado, mesmo junto com `severity`.
+   */
+  @ValidateIf((o: CreateIncidentDto) => o.type !== undefined || o.severity === undefined)
+  @IsEnum(IncidentType, { message: INCIDENT_TYPE_REQUIRED_MESSAGE })
+  type?: IncidentType;
+
+  /**
+   * @deprecated Story 229 — severidade removida do produto. APKs em campo e itens
+   * parados na fila offline ainda mandam este campo (sem `type`); ele é aceito
+   * (por causa do `forbidNonWhitelisted`) e ignorado. Remover quando nenhum APK
+   * antigo estiver em uso.
+   */
+  @IsOptional()
+  @IsString()
+  severity?: string;
 
   @IsString()
   @IsNotEmpty()

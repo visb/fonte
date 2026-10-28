@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { IncidentSeverity } from '@fonte/types';
+import { IncidentType } from '@fonte/types';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { OUTBOX_MUTATION_KEYS, useOutboxMutation } from '@/lib/offline/outbox';
@@ -7,7 +7,8 @@ import type { IncidentCreateVariables } from '@/lib/offline/mutationDefaults';
 
 interface CreateIncidentInput {
   date: string;
-  severity: IncidentSeverity;
+  /** Story 229: positiva ou negativa (substituiu a severidade). */
+  type: IncidentType;
   description: string;
   houseId: string;
   responsibleId: string;

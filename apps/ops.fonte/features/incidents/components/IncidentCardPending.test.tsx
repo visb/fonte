@@ -2,9 +2,15 @@ import { render, screen } from '@testing-library/react-native';
 import { outboxEntityId } from '@/lib/offline/outbox';
 import { IncidentCard } from './IncidentCard';
 
+// Story 229: o badge do tipo usa Ionicons (fonte nativa não carrega no jest).
+jest.mock('@expo/vector-icons', () => {
+  const { Text } = require('react-native');
+  return { Ionicons: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
+});
+
 const base = {
   date: '2026-08-10',
-  severity: 'HIGH',
+  type: 'NEGATIVE',
   description: 'briga no pátio',
   responsible: { name: 'Irmão João' },
   residents: [],

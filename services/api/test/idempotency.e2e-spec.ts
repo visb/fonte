@@ -7,7 +7,7 @@ import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
 import {
-  IncidentSeverity,
+  IncidentType,
   MovementType,
   StreetSaleType,
   SupplyRoomCategory,
@@ -268,7 +268,7 @@ describe('Idempotency (e2e)', () => {
       const key = randomUUID();
       const body = {
         date: today(),
-        severity: IncidentSeverity.LOW,
+        type: IncidentType.NEGATIVE,
         description: 'Ocorrência reenviada pela fila',
         houseId,
         responsibleId: staffId,

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository, SelectQueryBuilder } from 'typeorm';
-import { NotificationType, Role } from '@fonte/types';
+import { IncidentType, NotificationType, Role } from '@fonte/types';
 import { Incident } from './incident.entity';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { NotificationService } from '../notification/notification.service';
@@ -52,8 +52,12 @@ export class IncidentService {
 
   async create(dto: CreateIncidentDto): Promise<Incident> {
     const residents = await this.resolveResidents(normalizeResidentIds(dto), dto.houseId);
-    const { residentIds: _ids, residentId: _legacy, ...data } = dto;
-    const incident = await this.repo.save(this.repo.create({ ...data, residents }));
+    const { residentIds: _ids, residentId: _legacy, severity: _severity, type, ...data } = dto;
+    // Story 229: `type` só falta no payload legado (com `severity`) — toda
+    // ocorrência antiga era um problema, então vira NEGATIVE. `severity` nunca persiste.
+    const incident = await this.repo.save(
+      this.repo.create({ ...data, type: type ?? IncidentType.NEGATIVE, residents }),
+    );
     incident.residents = residents.map(({ id, name }) => ({ id, name }) as Resident);
     await this.notifyCreated(incident);
     return incident;
@@ -89,6 +93,8 @@ export class IncidentService {
   private async notifyCreated(incident: Incident): Promise<void> {
     try {
       const body = incident.description?.slice(0, 140) ?? null;
+      const title =
+        incident.type === IncidentType.POSITIVE ? 'Nova ocorrência positiva' : 'Nova ocorrência negativa';
       const metadata = {
         entityId: incident.id,
         residentIds: incident.residents.map((resident) => resident.id),
@@ -96,7 +102,7 @@ export class IncidentService {
       // ADMIN (consumed in adm) — central gestão, all houses.
       await this.notifications.create({
         type: NotificationType.INCIDENT_CREATED,
-        title: 'Nova ocorrência registrada',
+        title,
         body,
         link: `/houses/${incident.houseId}`,
         recipientRole: Role.ADMIN,
@@ -105,7 +111,7 @@ export class IncidentService {
       // House scope (consumed in ops by COORDINATOR/SERVANT of that house).
       await this.notifications.create({
         type: NotificationType.INCIDENT_CREATED,
-        title: 'Nova ocorrência registrada',
+        title,
         body,
         link: `/incidents`,
         houseId: incident.houseId,

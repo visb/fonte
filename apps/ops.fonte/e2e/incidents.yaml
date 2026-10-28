@@ -18,8 +18,9 @@ appId: org.fonte.ops
 # (mobile-dev-inc/maestro#146). Vale só para `inputText` — asserção de texto
 # acentuado funciona normalmente.
 - inputText: "Ocorrencia de teste E2E"
-- tapOn: "Média"
 - hideKeyboard
+# Story 229: tipo obrigatório e sem default — 👍 Positiva / 👎 Negativa.
+- tapOn: "Positiva"
 # Story 227: vários filhos na mesma ocorrência (checkbox + chips com "x").
 - assertVisible: "Filhos envolvidos (opcional)"
 - scrollUntilVisible:
@@ -39,3 +40,4 @@ appId: org.fonte.ops
 - tapOn: "Menu"
 - tapOn: "Ocorrências"
 - assertVisible: "Filhos: João Testador, Marcelo Reacolhido"
+- assertVisible: "Positiva"

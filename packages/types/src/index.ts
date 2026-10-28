@@ -392,11 +392,10 @@ export enum MaritalStatus {
   WIDOWED = 'WIDOWED',
 }
 
-export enum IncidentSeverity {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  CRITICAL = 'CRITICAL',
+/** Story 229: ocorrência positiva ou negativa (substituiu a severidade). */
+export enum IncidentType {
+  POSITIVE = 'POSITIVE',
+  NEGATIVE = 'NEGATIVE',
 }
 
 export enum MovementType {

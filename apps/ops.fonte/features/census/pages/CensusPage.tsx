@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { REMOVABLE_RESIDENT_STATUSES, ResidentStatus, Role } from '@fonte/types';
 import type { Resident } from '@fonte/api-client';
 import { useAuth } from '@/lib/auth';
@@ -68,19 +69,19 @@ export function CensusPage() {
       {
         onSent: () => {
           setConcludeOpen(false);
-          Alert.alert('Contagem concluída', 'O ADM foi notificado.');
+          notify('Contagem concluída', 'O ADM foi notificado.');
         },
         // A contagem acontece no pátio, onde quase nunca há sinal: offline ela
         // entra na fila e o ADM é notificado quando subir (story 171).
         onQueued: () => {
           setConcludeOpen(false);
-          Alert.alert(
+          notify(
             'Contagem salva',
             'Sem conexão agora: será enviada assim que a conexão voltar.',
           );
         },
         onFailed: (err) =>
-          Alert.alert('Erro', getErrorMessage(err, 'Não foi possível concluir a contagem.')),
+          notify('Erro', getErrorMessage(err, 'Não foi possível concluir a contagem.')),
       },
     );
   }

@@ -1,8 +1,9 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/lib/auth';
+import { notify } from '@/lib/dialogs';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { useCreateIncident } from '@/features/incidents/hooks/useIncidents';
 import { useResidentsByHouse } from '@/features/residents/hooks/useResidents';
@@ -41,18 +42,18 @@ export function NewIncidentPage() {
       },
       {
         onSent: () =>
-          Alert.alert('Sucesso', 'Ocorrência registrada.', [{ text: 'OK', onPress: () => router.back() }]),
+          notify('Sucesso', 'Ocorrência registrada.', () => router.back()),
         // Volta primeiro e avisa depois: preso no aviso, o operador ficaria
         // olhando um botão girando por um envio que só acontece com rede.
         onQueued: () => {
           router.back();
-          Alert.alert(
+          notify(
             'Salvo no aparelho',
             'Sem conexão agora: a ocorrência será enviada assim que a conexão voltar.',
           );
         },
         onFailed: () =>
-          Alert.alert('Erro', 'Não foi possível registrar a ocorrência.'),
+          notify('Erro', 'Não foi possível registrar a ocorrência.'),
       },
     );
   };

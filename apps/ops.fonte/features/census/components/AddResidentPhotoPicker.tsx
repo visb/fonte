@@ -1,4 +1,5 @@
-import { Alert, Image, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -17,7 +18,7 @@ export function AddResidentPhotoPicker({ photo, onChange }: Props) {
   async function handlePick() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para adicionar a foto.');
+      notify('Permissão necessária', 'Precisamos de acesso à galeria para adicionar a foto.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({

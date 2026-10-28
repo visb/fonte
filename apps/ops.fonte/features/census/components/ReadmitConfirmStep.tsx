@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { todayInSaoPaulo, type ResidentLookupItem as LookupCandidate } from '@fonte/types';
@@ -42,13 +43,13 @@ export function ReadmitConfirmStep({ houseId, candidate, onBack, onDone }: Props
         // Sinal caiu depois de entrar no fluxo: o reacolhimento vai para a fila.
         onQueued: () => {
           onDone();
-          Alert.alert(
+          notify(
             'Salvo no aparelho',
             'Sem conexão agora: o reacolhimento será enviado assim que a conexão voltar.',
           );
         },
         onFailed: (error) =>
-          Alert.alert('Erro', getErrorMessage(error, 'Não foi possível reacolher o filho.')),
+          notify('Erro', getErrorMessage(error, 'Não foi possível reacolher o filho.')),
       },
     );
   }

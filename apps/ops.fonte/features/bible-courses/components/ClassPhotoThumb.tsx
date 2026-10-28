@@ -1,6 +1,7 @@
-import { Alert, Image, TouchableOpacity, View } from 'react-native';
+import { Image, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { BibleCourseClassPhoto } from '@fonte/api-client';
+import { confirmAction } from '@/lib/dialogs';
 
 interface Props {
   photo: BibleCourseClassPhoto;
@@ -14,10 +15,13 @@ interface Props {
  */
 export function ClassPhotoThumb({ photo, onDelete, deleting }: Props) {
   const confirmDelete = () => {
-    Alert.alert('Remover foto', 'Remover esta foto da turma?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: () => onDelete(photo.id) },
-    ]);
+    confirmAction({
+      title: 'Remover foto',
+      message: 'Remover esta foto da turma?',
+      confirmText: 'Remover',
+      destructive: true,
+      onConfirm: () => onDelete(photo.id),
+    });
   };
 
   return (

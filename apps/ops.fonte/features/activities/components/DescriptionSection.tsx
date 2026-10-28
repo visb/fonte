@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -37,8 +38,8 @@ export function DescriptionSection({ activity, editable }: Props) {
     mutation.mutate(
       { id: activity.id, data: { description: data.description ? data.description : null } },
       {
-        onSuccess: () => Alert.alert('Sucesso', 'Descrição atualizada.'),
-        onError: (err) => Alert.alert('Erro', getErrorMessage(err, 'Erro ao salvar a descrição.')),
+        onSuccess: () => notify('Sucesso', 'Descrição atualizada.'),
+        onError: (err) => notify('Erro', getErrorMessage(err, 'Erro ao salvar a descrição.')),
       },
     );
   };

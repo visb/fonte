@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, Linking, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Linking } from 'react-native';
+import { notify } from '@/lib/dialogs';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import type { ActivityAttachment } from '@fonte/api-client';
@@ -43,13 +44,13 @@ export function ActivityAttachments({
   const handlePicked = (att: PickedAttachment, size?: number) => {
     const message = validateAttachment(att.mimeType, size);
     if (message) {
-      Alert.alert('Anexo inválido', message);
+      notify('Anexo inválido', message);
       return;
     }
     if (isAudioMimetype(att.mimeType)) {
       const durationError = validateAudioDuration(att.durationSeconds ?? undefined);
       if (durationError) {
-        Alert.alert('Anexo inválido', durationError);
+        notify('Anexo inválido', durationError);
         return;
       }
     }

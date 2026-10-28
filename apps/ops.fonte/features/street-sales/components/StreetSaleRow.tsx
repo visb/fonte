@@ -1,8 +1,9 @@
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StreetSaleType } from '@fonte/types';
 import type { StreetSale } from '@fonte/api-client';
+import { confirmAction, notify } from '@/lib/dialogs';
 import { isOutboxEntityId } from '@/lib/offline/outbox';
 import { PendingBadge } from '@/components/shared/PendingBadge';
 import { useDeleteStreetSale } from '../hooks/useStreetSales';
@@ -36,21 +37,16 @@ export function StreetSaleRow({ sale, houseId }: Props) {
   const isBread = sale.type === StreetSaleType.BREAD;
 
   const handleDelete = () => {
-    Alert.alert(
-      'Remover registro',
-      'Tem certeza que deseja remover este registro de faturamento?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Remover',
-          style: 'destructive',
-          onPress: () =>
-            deleteMutation.mutate(sale.id, {
-              onError: () => Alert.alert('Erro', 'Não foi possível remover o registro.'),
-            }),
-        },
-      ],
-    );
+    confirmAction({
+      title: 'Remover registro',
+      message: 'Tem certeza que deseja remover este registro de faturamento?',
+      confirmText: 'Remover',
+      destructive: true,
+      onConfirm: () =>
+        deleteMutation.mutate(sale.id, {
+          onError: () => notify('Erro', 'Não foi possível remover o registro.'),
+        }),
+    });
   };
 
   return (

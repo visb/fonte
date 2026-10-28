@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Alert, Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ResidentLookupItem as LookupCandidate } from '@fonte/types';
+import { confirmAction, notify } from '@/lib/dialogs';
 import { useFindReadmitCandidate } from '../hooks/useCensus';
 import { prefillFromTerm } from '../lib/readmitSchema';
 import { AddResidentForm } from './AddResidentForm';
@@ -57,11 +58,13 @@ export function AddResidentModal({ visible, houseId, onClose, onSuccess }: Props
       ? await findCandidate(cpf, conflict.conflictResidentId)
       : null;
     // Dono em acolhimento (outra casa) não é reacolhível pela contagem.
-    if (!candidate) return Alert.alert('Erro', conflict.message);
-    Alert.alert('CPF já cadastrado', `${conflict.message}\nJá existe um cadastro com este CPF — reacolher?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Reacolher', onPress: () => setStep({ kind: 'confirm', candidate }) },
-    ]);
+    if (!candidate) return notify('Erro', conflict.message);
+    confirmAction({
+      title: 'CPF já cadastrado',
+      message: `${conflict.message}\nJá existe um cadastro com este CPF — reacolher?`,
+      confirmText: 'Reacolher',
+      onConfirm: () => setStep({ kind: 'confirm', candidate }),
+    });
   }
 
   return (

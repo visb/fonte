@@ -1,5 +1,6 @@
-import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { DailySessionStatus, type DailySessionView } from '@fonte/types';
+import { confirmAction } from '@/lib/dialogs';
 import { DAILY_LABELS, appliedLabel, changesLabel } from '../constants';
 
 interface Props {
@@ -25,10 +26,12 @@ export function DailyApplyBar({
   const applied = session.status !== DailySessionStatus.OPEN;
 
   const confirm = () =>
-    Alert.alert(DAILY_LABELS.applyConfirmTitle, changesLabel(changes), [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: DAILY_LABELS.apply, onPress: onApply },
-    ]);
+    confirmAction({
+      title: DAILY_LABELS.applyConfirmTitle,
+      message: changesLabel(changes),
+      confirmText: DAILY_LABELS.apply,
+      onConfirm: onApply,
+    });
 
   const busy = applied ? isStarting : isApplying;
   const disabled = !isOnline || busy;

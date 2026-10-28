@@ -1,9 +1,10 @@
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import type { StreetSale } from '@fonte/api-client';
 import { useAuth } from '@/lib/auth';
+import { notify } from '@/lib/dialogs';
 import { useFieldSubmit } from '@/lib/offline/fieldSubmit';
 import { useUpdateStreetSale } from '../hooks/useStreetSales';
 import { StreetSaleFormFields } from '../components/StreetSaleFormFields';
@@ -63,20 +64,18 @@ export function EditStreetSalePage({ sale }: Props) {
       },
       {
         onSent: () =>
-          Alert.alert('Sucesso', 'Registro atualizado.', [
-            { text: 'OK', onPress: () => router.back() },
-          ]),
+          notify('Sucesso', 'Registro atualizado.', () => router.back()),
         // Sem sinal a edição fica na fila (story 171): a tela volta na hora em
         // vez de travar esperando um `onSuccess` que só chega com rede.
         onQueued: () => {
           router.back();
-          Alert.alert(
+          notify(
             'Salvo no aparelho',
             'Sem conexão agora: a alteração será enviada assim que a conexão voltar.',
           );
         },
         onFailed: () =>
-          Alert.alert('Erro', 'Não foi possível atualizar o registro.'),
+          notify('Erro', 'Não foi possível atualizar o registro.'),
       },
     );
   };

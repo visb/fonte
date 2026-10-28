@@ -1,7 +1,8 @@
-import { Alert, Image, TouchableOpacity, View } from 'react-native';
+import { Image, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { HousePhoto } from '@fonte/api-client';
 import { resolveAssetUrl } from '@/lib/api';
+import { confirmAction } from '@/lib/dialogs';
 
 interface Props {
   photo: HousePhoto;
@@ -11,10 +12,13 @@ interface Props {
 
 export function HousePhotoItem({ photo, onRemove, isRemoving }: Props) {
   function confirmRemove() {
-    Alert.alert('Remover foto', 'Deseja remover esta foto da casa?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: () => onRemove(photo.id) },
-    ]);
+    confirmAction({
+      title: 'Remover foto',
+      message: 'Deseja remover esta foto da casa?',
+      confirmText: 'Remover',
+      destructive: true,
+      onConfirm: () => onRemove(photo.id),
+    });
   }
 
   return (

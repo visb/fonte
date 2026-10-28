@@ -25,7 +25,7 @@ Rodada de autorun **225–230** — aberta em 2026-10-27.
 | 2 | 226 — ops, data da ocorrência com calendário | [OK] | ops 1868/1868, PW web 9/10 (pré-exist.) | 813086b | b634a54 |
 | 3 | 227 — ocorrência com múltiplos filhos | [OK] | api 2499/2499, e2e 780/782 (pré-exist.), ops 1879/1879 | be1f0fd | a32be67 |
 | 4 | 229 — ocorrência positiva/negativa (substitui severidade) | [OK] | api 2514/2514, e2e 786/786, ops 1887/1887, PW 10/10 | 104f367 | 79021ef |
-| 5 | 230 — categoria da ocorrência | [ ] | | | |
+| 5 | 230 — categoria da ocorrência | [OK] | api 2531/2531, e2e 791/791, ops 1903/1903, PW 9/10 (pré-exist.) | 9572914 | 2dc3870 |
 | 6 | 228 — ops, ocorrências na aba Acompanhamento | [ ] | | | |
 
 ## Log
@@ -34,6 +34,7 @@ Rodada de autorun **225–230** — aberta em 2026-10-27.
 [OK] 226 — testes: ops unit 1868/1868 (arquivos tocados 100%), PW offline-field-flows 9/10 (mensagens pré-existente) — commit: 813086b — merge: b634a54 — 2026-10-28 — PENDENTE-MANUAL: Maestro incidents.yaml. Nota: mensagens de erro reusam DATE_FIELD_MESSAGES.
 [OK] 227 — testes: api 2499/2499 (incident 100 stmts), e2e 780/782 (audit pré-exist.), api-client 330/330, ops 1879/1879, PW offline 9/10 (mensagens pré-exist.) — commit: be1f0fd — merge: a32be67 — 2026-10-28 — PENDENTE-MANUAL: Maestro incidents.yaml, APK novo. Nota: PERSIST_BUSTER não incrementado (preserva fila); IncidentCard tolera cache sem `residents`.
 [OK] 229 — testes: api 2514/2514 (incident 100 stmts), e2e 786/786, api-client 330/330, ops 1887/1887, PW offline 10/10 — commit: 104f367 — merge: 79021ef — 2026-10-28 — PENDENTE-MANUAL: Maestro incidents.yaml, APK novo. Nota p/ 228: reusar `incidentTypeConfig(type)` de IncidentCard.tsx.
+[OK] 230 — testes: api 2531/2531, e2e 791/791, api-client 330/330, ops 1903/1903, PW offline 9/10 (mensagens pré-exist.) — commit: 9572914 — merge: 2dc3870 — 2026-10-28 — PENDENTE-MANUAL: Maestro incidents.yaml, APK novo. Nota: payload com `type` sem `category` = 400 (só afetaria APK da era 229; 229/230 vão juntas, sem push entre elas). 228: reusar `incidentCategoryLabel()` de features/incidents/constants.ts.
 
 ## Resumo final
 

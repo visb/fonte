@@ -1,15 +1,22 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { IncidentType } from '@fonte/types';
+import { IncidentCategory, IncidentType } from '@fonte/types';
 import { DATE_FIELD_MESSAGES } from '@/lib/date';
 import {
+  INCIDENT_CATEGORY_REQUIRED_MESSAGE as FORM_CATEGORY_REQUIRED_MESSAGE,
   INCIDENT_TYPE_REQUIRED_MESSAGE,
   incidentFormSchema,
   type IncidentFormDefaults,
   type IncidentFormData,
 } from '../schema';
+import { incidentCategoryLabel, INCIDENT_CATEGORY_LABELS, INCIDENT_NO_CATEGORY_LABEL } from '../constants';
 
 import { IncidentCard, incidentTypeConfig } from './IncidentCard';
 import { IncidentTypeSelector } from './IncidentTypeSelector';
+import {
+  IncidentCategoryPicker,
+  INCIDENT_CATEGORY_NEEDS_TYPE_HINT,
+  INCIDENT_CATEGORY_PLACEHOLDER,
+} from './IncidentCategoryPicker';
 import { ResidentMultiPicker } from './ResidentMultiPicker';
 import { IncidentFormFields } from './IncidentFormFields';
 
@@ -89,6 +96,113 @@ describe('IncidentCard', () => {
     expect(incidentTypeConfig('WEIRD').label).toBe('Negativa');
     expect(incidentTypeConfig(undefined).label).toBe('Negativa');
     expect(incidentTypeConfig(IncidentType.POSITIVE).label).toBe('Positiva');
+  });
+
+  // Story 230: categoria junto do badge de tipo.
+  it('mostra a categoria junto do tipo', () => {
+    render(<IncidentCard item={{ ...base, category: IncidentCategory.EVASION }} />);
+    expect(screen.getByTestId('incident-category-label').props.children).toBe('Evasão ou tentativa');
+  });
+
+  it('ocorrência antiga (category null) e cache sem o campo mostram "Sem categoria"', () => {
+    const { unmount } = render(<IncidentCard item={{ ...base, category: null }} />);
+    expect(screen.getByText('Sem categoria')).toBeTruthy();
+    unmount();
+    render(<IncidentCard item={base} />);
+    expect(screen.getByText('Sem categoria')).toBeTruthy();
+  });
+});
+
+describe('incidentCategoryLabel (story 230)', () => {
+  it('tem label para toda categoria do enum', () => {
+    for (const category of Object.values(IncidentCategory)) {
+      expect(INCIDENT_CATEGORY_LABELS[category]).toEqual(expect.any(String));
+      expect(incidentCategoryLabel(category)).toBe(INCIDENT_CATEGORY_LABELS[category]);
+    }
+    expect(incidentCategoryLabel(IncidentCategory.OTHER)).toBe('Outros');
+  });
+
+  it('null, ausente ou desconhecida = "Sem categoria"', () => {
+    expect(incidentCategoryLabel(null)).toBe(INCIDENT_NO_CATEGORY_LABEL);
+    expect(incidentCategoryLabel(undefined)).toBe(INCIDENT_NO_CATEGORY_LABEL);
+    expect(incidentCategoryLabel('WEIRD')).toBe(INCIDENT_NO_CATEGORY_LABEL);
+  });
+});
+
+describe('IncidentCategoryPicker (story 230)', () => {
+  const optionIds = () =>
+    screen
+      .getAllByRole('radio')
+      .map((node) => String(node.props.testID).replace('incident-category-', ''));
+
+  it('sem tipo: desabilitado com a dica e não abre a lista', () => {
+    render(<IncidentCategoryPicker type={undefined} value={undefined} onChange={jest.fn()} />);
+    expect(screen.getByText(INCIDENT_CATEGORY_NEEDS_TYPE_HINT)).toBeTruthy();
+    fireEvent.press(screen.getByTestId('incident-category-trigger'));
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+  });
+
+  it('negativa: só categorias negativas, "Outros" por último', () => {
+    render(<IncidentCategoryPicker type={IncidentType.NEGATIVE} value={undefined} onChange={jest.fn()} />);
+    expect(screen.getByText(INCIDENT_CATEGORY_PLACEHOLDER)).toBeTruthy();
+    fireEvent.press(screen.getByTestId('incident-category-trigger'));
+    expect(optionIds()).toEqual([
+      'AGGRESSION',
+      'DISRESPECT',
+      'EVASION',
+      'SUBSTANCE_USE',
+      'ACTIVITY_REFUSAL',
+      'PROPERTY_DAMAGE',
+      'HEALTH',
+      'OTHER',
+    ]);
+    expect(screen.queryByText('Bom comportamento')).toBeNull();
+  });
+
+  it('positiva: só categorias positivas, "Outros" por último', () => {
+    render(<IncidentCategoryPicker type={IncidentType.POSITIVE} value={undefined} onChange={jest.fn()} />);
+    fireEvent.press(screen.getByTestId('incident-category-trigger'));
+    expect(optionIds()).toEqual([
+      'GOOD_BEHAVIOR',
+      'HELPING_OTHERS',
+      'ACTIVITY_HIGHLIGHT',
+      'SPIRITUAL_LIFE',
+      'TREATMENT_PROGRESS',
+      'OTHER',
+    ]);
+    expect(screen.queryByText('Agressão/briga')).toBeNull();
+  });
+
+  it('escolher dispara onChange e fecha a lista', () => {
+    const onChange = jest.fn();
+    render(<IncidentCategoryPicker type={IncidentType.POSITIVE} value={undefined} onChange={onChange} />);
+    fireEvent.press(screen.getByTestId('incident-category-trigger'));
+    fireEvent.press(screen.getByText('Vida espiritual'));
+    expect(onChange).toHaveBeenCalledWith(IncidentCategory.SPIRITUAL_LIFE);
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+  });
+
+  it('mostra o valor escolhido marcado na lista; fechar não muda nada', () => {
+    const onChange = jest.fn();
+    render(
+      <IncidentCategoryPicker type={IncidentType.NEGATIVE} value={IncidentCategory.HEALTH} onChange={onChange} />,
+    );
+    expect(screen.getByText('Saúde/mal-estar')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('incident-category-trigger'));
+    expect(screen.getByTestId('incident-category-HEALTH').props.accessibilityState).toEqual({
+      selected: true,
+      checked: true,
+    });
+    fireEvent.press(screen.getByLabelText('Fechar'));
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('mostra o erro quando informado', () => {
+    render(
+      <IncidentCategoryPicker type={IncidentType.NEGATIVE} value={undefined} onChange={jest.fn()} error="Escolha a categoria" />,
+    );
+    expect(screen.getByText('Escolha a categoria')).toBeTruthy();
   });
 });
 
@@ -191,6 +305,7 @@ describe('IncidentFormFields', () => {
       defaultValues: {
         date: '2026-01-01',
         type: IncidentType.NEGATIVE,
+        category: IncidentCategory.AGGRESSION,
         description: 'x',
         residentIds: [],
         ...defaults,
@@ -246,17 +361,57 @@ describe('IncidentFormFields', () => {
   });
 
   // Story 229: sem default — sem escolher o tipo, o form não envia.
-  it('sem tipo mostra o erro e não envia; escolhendo positiva, envia type', async () => {
+  it('sem tipo mostra o erro e não envia; escolhendo positiva + categoria, envia type', async () => {
     const onValid = jest.fn();
-    render(<Harness onValid={onValid} defaults={{ type: undefined }} />);
+    render(<Harness onValid={onValid} defaults={{ type: undefined, category: undefined }} />);
     fireEvent.press(screen.getByText('Enviar'));
     expect(await screen.findByText(INCIDENT_TYPE_REQUIRED_MESSAGE)).toBeTruthy();
     expect(onValid).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByRole('radio', { name: 'Positiva' }));
+    fireEvent.press(screen.getByTestId('incident-category-trigger'));
+    fireEvent.press(screen.getByTestId(`incident-category-${IncidentCategory.HELPING_OTHERS}`));
     fireEvent.press(screen.getByText('Enviar'));
     await waitFor(() => expect(onValid).toHaveBeenCalled());
-    expect(onValid.mock.calls[0][0].type).toBe(IncidentType.POSITIVE);
+    expect(onValid.mock.calls[0][0]).toMatchObject({
+      type: IncidentType.POSITIVE,
+      category: IncidentCategory.HELPING_OTHERS,
+    });
+  });
+
+  // Story 230: categoria obrigatória; trocar o tipo limpa a categoria.
+  it('sem categoria mostra o erro e não envia', async () => {
+    const onValid = jest.fn();
+    render(<Harness onValid={onValid} defaults={{ category: undefined }} />);
+    expect(screen.getByText(INCIDENT_CATEGORY_PLACEHOLDER)).toBeTruthy();
+    fireEvent.press(screen.getByText('Enviar'));
+    expect(await screen.findByText(FORM_CATEGORY_REQUIRED_MESSAGE)).toBeTruthy();
+    expect(onValid).not.toHaveBeenCalled();
+  });
+
+  it('sem tipo, o picker de categoria fica desabilitado com a dica', () => {
+    render(<Harness defaults={{ type: undefined, category: undefined }} />);
+    expect(screen.getByText(INCIDENT_CATEGORY_NEEDS_TYPE_HINT)).toBeTruthy();
+    expect(screen.getByTestId('incident-category-trigger').props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: true }),
+    );
+  });
+
+  it('trocar o tipo limpa a categoria escolhida', async () => {
+    const onValid = jest.fn();
+    render(<Harness onValid={onValid} />);
+    expect(screen.getByText('Agressão/briga')).toBeTruthy();
+
+    // Tocar no mesmo tipo não limpa.
+    fireEvent.press(screen.getByRole('radio', { name: 'Negativa' }));
+    expect(screen.getByText('Agressão/briga')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('radio', { name: 'Positiva' }));
+    expect(screen.queryByText('Agressão/briga')).toBeNull();
+    expect(screen.getByText(INCIDENT_CATEGORY_PLACEHOLDER)).toBeTruthy();
+    fireEvent.press(screen.getByText('Enviar'));
+    expect(await screen.findByText(FORM_CATEGORY_REQUIRED_MESSAGE)).toBeTruthy();
+    expect(onValid).not.toHaveBeenCalled();
   });
 
   it('seleciona 2 filhos e envia residentIds (story 227)', async () => {

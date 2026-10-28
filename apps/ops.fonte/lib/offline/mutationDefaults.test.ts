@@ -1,6 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import {
   ActivityStatus,
+  IncidentCategory,
   IncidentType,
   MovementType,
   SupplyRoomCategory,
@@ -383,6 +384,7 @@ describe('update otimista — despensa e ocorrência', () => {
       data: {
         date: '2026-08-10',
         type: IncidentType.POSITIVE,
+        category: IncidentCategory.HELPING_OTHERS,
         description: 'briga',
         houseId: 'h1',
         responsibleId: 'staff-1',
@@ -406,6 +408,8 @@ describe('update otimista — despensa e ocorrência', () => {
       description: 'briga',
       // Story 229: o otimista carrega o tipo escolhido.
       type: IncidentType.POSITIVE,
+      // Story 230: … e a categoria escolhida.
+      category: IncidentCategory.HELPING_OTHERS,
       residents: [
         { id: 'r1', name: 'Carlos' },
         { id: 'r2', name: 'Pedro' },
@@ -454,7 +458,9 @@ describe('update otimista — despensa e ocorrência', () => {
       responsibleId: 'staff-1',
       residentId: 'r9',
     };
-    let pending: Array<{ type: string; residents: { id: string; name: string }[] }> | undefined;
+    let pending:
+      | Array<{ type: string; category: string | null; residents: { id: string; name: string }[] }>
+      | undefined;
     m.incidents.create.mockImplementation(() => {
       pending = queryClient.getQueryData(queryKeys.incidents.byHouse('h1'));
       return Promise.resolve({ id: 'in9' });
@@ -469,9 +475,12 @@ describe('update otimista — despensa e ocorrência', () => {
     expect(pending?.[0].residents).toEqual([{ id: 'r9', name: 'Tiago' }]);
     // Story 229: sem `type`, o otimista resolve como NEGATIVE (igual ao backend)…
     expect(pending?.[0].type).toBe(IncidentType.NEGATIVE);
-    // …e o corpo sobe intacto, com a `severity` legada e sem `type`.
+    // Story 230: sem categoria no item legado → "Sem categoria" (null), como no backend.
+    expect(pending?.[0].category).toBeNull();
+    // …e o corpo sobe intacto, com a `severity` legada e sem `type`/`category`.
     expect(m.incidents.create).toHaveBeenCalledWith(legacyData, idempotent);
     expect(m.incidents.create.mock.calls[0][0]).not.toHaveProperty('type');
+    expect(m.incidents.create.mock.calls[0][0]).not.toHaveProperty('category');
   });
 
   it('legado sem nome e sobreposto a residentIds não duplica no otimista', async () => {

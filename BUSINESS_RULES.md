@@ -60,6 +60,10 @@ Regras:
   `NEGATIVE` (problema). Obrigatório e sem default: o operador escolhe conscientemente (story 229).
 - A severidade foi removida do produto (story 229); ocorrências antigas viraram `NEGATIVE`.
   Payload legado com `severity` e sem `type` (APK antigo / fila offline) é aceito e grava `NEGATIVE`.
+- Deve registrar a categoria (story 230), de uma lista fixa que depende do tipo
+  (`INCIDENT_CATEGORIES_BY_TYPE` em `@fonte/types`); `OTHER` ("Outros") existe nos dois tipos e não
+  abre texto livre — a descrição explica. Categoria de outro tipo é rejeitada. Ocorrências antigas
+  e o payload legado (sem `type`) ficam sem categoria (`null`, exibido como "Sem categoria").
 - Deve registrar responsável
 - Não pode ser deletada
 

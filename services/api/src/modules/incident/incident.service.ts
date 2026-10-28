@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository, SelectQueryBuilder } from 'typeorm';
-import { IncidentType, NotificationType, Role } from '@fonte/types';
+import { INCIDENT_CATEGORIES_BY_TYPE, IncidentType, NotificationType, Role } from '@fonte/types';
 import { Incident } from './incident.entity';
-import { CreateIncidentDto } from './dto/create-incident.dto';
+import { CreateIncidentDto, INCIDENT_CATEGORY_MISMATCH_MESSAGE } from './dto/create-incident.dto';
 import { NotificationService } from '../notification/notification.service';
 import { Resident } from '../resident/resident.entity';
 
@@ -51,12 +51,18 @@ export class IncidentService {
   }
 
   async create(dto: CreateIncidentDto): Promise<Incident> {
-    const residents = await this.resolveResidents(normalizeResidentIds(dto), dto.houseId);
-    const { residentIds: _ids, residentId: _legacy, severity: _severity, type, ...data } = dto;
+    const { residentIds: _ids, residentId: _legacy, severity: _severity, type: rawType, category, ...data } = dto;
     // Story 229: `type` só falta no payload legado (com `severity`) — toda
     // ocorrência antiga era um problema, então vira NEGATIVE. `severity` nunca persiste.
+    const type = rawType ?? IncidentType.NEGATIVE;
+    // Story 230: categoria só falta no payload legado (grava null); se vier,
+    // tem de pertencer à lista do tipo.
+    if (category && !INCIDENT_CATEGORIES_BY_TYPE[type].includes(category)) {
+      throw new BadRequestException(INCIDENT_CATEGORY_MISMATCH_MESSAGE);
+    }
+    const residents = await this.resolveResidents(normalizeResidentIds(dto), dto.houseId);
     const incident = await this.repo.save(
-      this.repo.create({ ...data, type: type ?? IncidentType.NEGATIVE, residents }),
+      this.repo.create({ ...data, type, category: category ?? null, residents }),
     );
     incident.residents = residents.map(({ id, name }) => ({ id, name }) as Resident);
     await this.notifyCreated(incident);

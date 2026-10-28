@@ -4,7 +4,7 @@ process.env.NODE_ENV = 'test';
 
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { IncidentType } from '@fonte/types';
+import { IncidentCategory, IncidentType } from '@fonte/types';
 import { DataSource } from 'typeorm';
 import { Test } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
@@ -65,7 +65,14 @@ describe('IncidentController (e2e)', () => {
       .post(`${BASE}/incidents`)
       .set('Authorization', `Bearer ${token}`)
       // `type: undefined` no body some do JSON — é assim que os casos legados omitem o tipo.
-      .send({ date: '2026-06-01', type: IncidentType.NEGATIVE, houseId, responsibleId, ...body });
+      .send({
+        date: '2026-06-01',
+        type: IncidentType.NEGATIVE,
+        category: IncidentCategory.AGGRESSION,
+        houseId,
+        responsibleId,
+        ...body,
+      });
 
   const track = (res: request.Response) => {
     if (res.body?.id) createdIncidentIds.push(res.body.id);
@@ -89,8 +96,27 @@ describe('IncidentController (e2e)', () => {
       post({ type: 'NONSENSE', description: 'x' }).expect(400));
 
     it('POST /incidents → 400 without type and without the legacy severity (story 229)', async () => {
-      const res = await post({ type: undefined, description: 'x' }).expect(400);
+      const res = await post({ type: undefined, category: undefined, description: 'x' }).expect(400);
       expect(res.body.message).toEqual(['Informe se a ocorrência é positiva ou negativa']);
+    });
+
+    it('POST /incidents → 400 with type but without category (story 230)', async () => {
+      const res = await post({ category: undefined, description: 'x' }).expect(400);
+      expect(res.body.message).toEqual(['Escolha a categoria da ocorrência']);
+    });
+
+    it('POST /incidents → 400 for an unknown category (story 230)', () =>
+      post({ category: 'FIGHT', description: 'x' }).expect(400));
+
+    it('POST /incidents → 400 for a category that does not match the type (story 230)', async () => {
+      const res = await post({
+        type: IncidentType.POSITIVE,
+        category: IncidentCategory.AGGRESSION,
+        description: description('incoerente'),
+      });
+      track(res);
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('Categoria não combina com o tipo da ocorrência');
     });
 
     it('POST /incidents → 400 for non-UUID or duplicated residentIds', async () => {
@@ -117,13 +143,18 @@ describe('IncidentController (e2e)', () => {
       expect(res.body.id).toBeDefined();
       expect(res.body.residents).toEqual([]);
       expect(res.body.type).toBe(IncidentType.NEGATIVE);
+      expect(res.body.category).toBe(IncidentCategory.AGGRESSION);
       expect(res.body).not.toHaveProperty('severity');
       incidentId = res.body.id;
     });
 
-    it('creates a POSITIVE incident (story 229)', async () => {
+    it('creates a POSITIVE incident (story 229) with its category (story 230)', async () => {
       const res = track(
-        await post({ type: IncidentType.POSITIVE, description: description('positiva') }).expect(201),
+        await post({
+          type: IncidentType.POSITIVE,
+          category: IncidentCategory.TREATMENT_PROGRESS,
+          description: description('positiva'),
+        }).expect(201),
       );
       expect(res.body.type).toBe(IncidentType.POSITIVE);
       const fetched = await request(app.getHttpServer())
@@ -131,23 +162,49 @@ describe('IncidentController (e2e)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
       expect(fetched.body.type).toBe(IncidentType.POSITIVE);
+      expect(fetched.body.category).toBe(IncidentCategory.TREATMENT_PROGRESS);
       expect(fetched.body).not.toHaveProperty('severity');
     });
 
-    // Payload antigo da fila offline / APK em campo (story 229): manda `severity`
-    // e não manda `type`. Tem que passar no forbidNonWhitelisted e virar NEGATIVE.
-    it('still accepts the legacy severity payload without type → NEGATIVE', async () => {
+    it.each([IncidentType.POSITIVE, IncidentType.NEGATIVE])(
+      'accepts OTHER for a %s incident (story 230)',
+      async (type) => {
+        const res = track(
+          await post({ type, category: IncidentCategory.OTHER, description: description(`outros ${type}`) }).expect(
+            201,
+          ),
+        );
+        expect(res.body.category).toBe(IncidentCategory.OTHER);
+      },
+    );
+
+    // Payload antigo da fila offline / APK em campo (story 229/230): manda `severity`
+    // e não manda `type` nem `category`. Tem que passar no forbidNonWhitelisted,
+    // virar NEGATIVE e ficar sem categoria.
+    it('still accepts the legacy severity payload without type/category → NEGATIVE, category null', async () => {
       const res = track(
-        await post({ type: undefined, severity: 'HIGH', description: description('legado severity') }).expect(201),
+        await post({
+          type: undefined,
+          category: undefined,
+          severity: 'HIGH',
+          description: description('legado severity'),
+        }).expect(201),
       );
       expect(res.body.type).toBe(IncidentType.NEGATIVE);
+      expect(res.body.category).toBeNull();
       expect(res.body).not.toHaveProperty('severity');
+      const fetched = await request(app.getHttpServer())
+        .get(`${BASE}/incidents/${res.body.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(fetched.body.category).toBeNull();
     });
 
     it('type + legacy severity → uses the type', async () => {
       const res = track(
         await post({
           type: IncidentType.POSITIVE,
+          category: IncidentCategory.GOOD_BEHAVIOR,
           severity: 'LOW',
           description: description('type+severity'),
         }).expect(201),

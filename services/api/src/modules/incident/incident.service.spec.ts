@@ -3,11 +3,16 @@ import { BadRequestException, NotFoundException, ValidationPipe } from '@nestjs/
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { Repository } from 'typeorm';
-import { IncidentType, NotificationType } from '@fonte/types';
+import { INCIDENT_CATEGORIES_BY_TYPE, IncidentCategory, IncidentType, NotificationType } from '@fonte/types';
 import { IncidentService, normalizeResidentIds } from './incident.service';
 import { Incident } from './incident.entity';
 import { Resident } from '../resident/resident.entity';
-import { CreateIncidentDto, INCIDENT_TYPE_REQUIRED_MESSAGE } from './dto/create-incident.dto';
+import {
+  CreateIncidentDto,
+  INCIDENT_CATEGORY_MISMATCH_MESSAGE,
+  INCIDENT_CATEGORY_REQUIRED_MESSAGE,
+  INCIDENT_TYPE_REQUIRED_MESSAGE,
+} from './dto/create-incident.dto';
 
 const R1 = '11111111-1111-4111-8111-111111111111';
 const R2 = '22222222-2222-4222-8222-222222222222';
@@ -77,6 +82,7 @@ function dto(extra: Partial<CreateIncidentDto> = {}): CreateIncidentDto {
   return {
     date: '2026-06-01',
     type: IncidentType.NEGATIVE,
+    category: IncidentCategory.AGGRESSION,
     description: 'briga no pátio',
     houseId: HOUSE,
     responsibleId: 'staff-1',
@@ -237,7 +243,7 @@ describe('IncidentService.create', () => {
   it('persiste o tipo informado e nunca a severidade', async () => {
     const repo = makeRepo();
     const created = await makeService(repo).create(
-      dto({ type: IncidentType.POSITIVE, severity: 'HIGH' }),
+      dto({ type: IncidentType.POSITIVE, category: IncidentCategory.SPIRITUAL_LIFE, severity: 'HIGH' }),
     );
 
     expect(repo.save.mock.calls[0][0].type).toBe(IncidentType.POSITIVE);
@@ -245,13 +251,52 @@ describe('IncidentService.create', () => {
     expect(created.type).toBe(IncidentType.POSITIVE);
   });
 
-  it('payload legado (severity sem type) grava NEGATIVE', async () => {
+  it('payload legado (severity sem type) grava NEGATIVE e categoria null', async () => {
     const repo = makeRepo();
-    const created = await makeService(repo).create(dto({ type: undefined, severity: 'LOW' }));
+    const created = await makeService(repo).create(
+      dto({ type: undefined, category: undefined, severity: 'LOW' }),
+    );
 
     expect(repo.save.mock.calls[0][0].type).toBe(IncidentType.NEGATIVE);
+    expect(repo.save.mock.calls[0][0].category).toBeNull();
     expect(repo.save.mock.calls[0][0]).not.toHaveProperty('severity');
     expect(created.type).toBe(IncidentType.NEGATIVE);
+    expect(created.category).toBeNull();
+  });
+
+  it('persiste a categoria informada (story 230)', async () => {
+    const repo = makeRepo();
+    const created = await makeService(repo).create(dto({ category: IncidentCategory.EVASION }));
+
+    expect(repo.save.mock.calls[0][0].category).toBe(IncidentCategory.EVASION);
+    expect(created.category).toBe(IncidentCategory.EVASION);
+  });
+
+  it.each([
+    [IncidentType.POSITIVE, IncidentCategory.AGGRESSION],
+    [IncidentType.NEGATIVE, IncidentCategory.GOOD_BEHAVIOR],
+  ])('categoria incoerente com o tipo %s → 400 sem gravar', async (type, category) => {
+    const repo = makeRepo();
+    const residentsRepo = makeResidentsRepo(houseResidents);
+
+    await expect(
+      makeService(repo, residentsRepo).create(dto({ type, category, residentIds: [R1] })),
+    ).rejects.toThrow(new BadRequestException(INCIDENT_CATEGORY_MISMATCH_MESSAGE));
+    expect(repo.save).not.toHaveBeenCalled();
+    expect(residentsRepo.find).not.toHaveBeenCalled();
+  });
+
+  it('legado sem type com categoria positiva → 400 (vale NEGATIVE)', async () => {
+    await expect(
+      makeService().create(dto({ type: undefined, severity: 'LOW', category: IncidentCategory.GOOD_BEHAVIOR })),
+    ).rejects.toThrow(new BadRequestException(INCIDENT_CATEGORY_MISMATCH_MESSAGE));
+  });
+
+  it.each([IncidentType.POSITIVE, IncidentType.NEGATIVE])('OTHER é aceito no tipo %s', async (type) => {
+    const repo = makeRepo();
+    await makeService(repo).create(dto({ type, category: IncidentCategory.OTHER }));
+
+    expect(repo.save.mock.calls[0][0]).toMatchObject({ type, category: IncidentCategory.OTHER });
   });
 
   it.each([
@@ -259,7 +304,9 @@ describe('IncidentService.create', () => {
     [IncidentType.NEGATIVE, 'Nova ocorrência negativa'],
   ])('título da notificação conforme o tipo %s', async (type, title) => {
     const notifications = makeNotifications();
-    await makeService(makeRepo(), makeResidentsRepo(), notifications).create(dto({ type }));
+    await makeService(makeRepo(), makeResidentsRepo(), notifications).create(
+      dto({ type, category: IncidentCategory.OTHER }),
+    );
 
     expect(notifications.create).toHaveBeenCalledTimes(2);
     for (const [input] of notifications.create.mock.calls) expect(input.title).toBe(title);
@@ -284,6 +331,7 @@ describe('CreateIncidentDto', () => {
   const base = {
     date: '2026-06-01',
     type: IncidentType.NEGATIVE,
+    category: IncidentCategory.HEALTH,
     description: 'x',
     houseId: R1,
     responsibleId: R2,
@@ -322,34 +370,88 @@ describe('CreateIncidentDto × ValidationPipe global (story 229)', () => {
     }
   };
 
+  const OTHER = IncidentCategory.OTHER;
+
   it.each([IncidentType.POSITIVE, IncidentType.NEGATIVE])('aceita type %s', async (type) => {
-    await expect(run({ ...base, type })).resolves.toMatchObject({ type });
+    await expect(run({ ...base, type, category: OTHER })).resolves.toMatchObject({ type });
   });
 
   it('sem type e sem severity → 400 com mensagem clara', async () => {
     expect(await messagesOf(base)).toEqual([INCIDENT_TYPE_REQUIRED_MESSAGE]);
   });
 
-  it('legado: severity sem type passa (o service grava NEGATIVE)', async () => {
+  it('legado: severity sem type (e sem category) passa (o service grava NEGATIVE/null)', async () => {
     const dto = await run({ ...base, severity: 'HIGH' });
     expect(dto.type).toBeUndefined();
+    expect(dto.category).toBeUndefined();
     expect(dto.severity).toBe('HIGH');
   });
 
   it('type + severity: valida e usa o type', async () => {
-    await expect(run({ ...base, type: IncidentType.POSITIVE, severity: 'LOW' })).resolves.toMatchObject({
-      type: IncidentType.POSITIVE,
-    });
+    await expect(
+      run({ ...base, type: IncidentType.POSITIVE, category: OTHER, severity: 'LOW' }),
+    ).resolves.toMatchObject({ type: IncidentType.POSITIVE });
   });
 
   it('type inválido → 400, mesmo acompanhado de severity', async () => {
-    expect(await messagesOf({ ...base, type: 'NEUTRAL' })).toEqual([INCIDENT_TYPE_REQUIRED_MESSAGE]);
-    expect(await messagesOf({ ...base, type: 'NEUTRAL', severity: 'LOW' })).toEqual([
+    expect(await messagesOf({ ...base, type: 'NEUTRAL', category: OTHER })).toEqual([
+      INCIDENT_TYPE_REQUIRED_MESSAGE,
+    ]);
+    expect(await messagesOf({ ...base, type: 'NEUTRAL', category: OTHER, severity: 'LOW' })).toEqual([
       INCIDENT_TYPE_REQUIRED_MESSAGE,
     ]);
   });
 
   it('campo desconhecido continua barrado', async () => {
-    expect((await messagesOf({ ...base, type: IncidentType.NEGATIVE, foo: 1 })).length).toBe(1);
+    expect((await messagesOf({ ...base, type: IncidentType.NEGATIVE, category: OTHER, foo: 1 })).length).toBe(1);
+  });
+
+  // Story 230
+  it('payload novo (com type) sem category → 400 com mensagem clara', async () => {
+    expect(await messagesOf({ ...base, type: IncidentType.NEGATIVE })).toEqual([
+      INCIDENT_CATEGORY_REQUIRED_MESSAGE,
+    ]);
+  });
+
+  it('category inválida → 400, inclusive no legado', async () => {
+    expect(await messagesOf({ ...base, type: IncidentType.NEGATIVE, category: 'FIGHT' })).toEqual([
+      INCIDENT_CATEGORY_REQUIRED_MESSAGE,
+    ]);
+    expect(await messagesOf({ ...base, severity: 'LOW', category: 'FIGHT' })).toEqual([
+      INCIDENT_CATEGORY_REQUIRED_MESSAGE,
+    ]);
+  });
+
+  it('aceita a categoria válida do contrato', async () => {
+    await expect(
+      run({ ...base, type: IncidentType.POSITIVE, category: IncidentCategory.HELPING_OTHERS }),
+    ).resolves.toMatchObject({ category: IncidentCategory.HELPING_OTHERS });
+  });
+});
+
+/** Story 230 — contrato `INCIDENT_CATEGORIES_BY_TYPE` (fonte única backend/ops). */
+describe('INCIDENT_CATEGORIES_BY_TYPE', () => {
+  const lists = Object.values(INCIDENT_CATEGORIES_BY_TYPE);
+
+  it('tem uma lista para cada tipo', () => {
+    expect(Object.keys(INCIDENT_CATEGORIES_BY_TYPE).sort()).toEqual(Object.values(IncidentType).sort());
+  });
+
+  it('cobre todo valor do enum', () => {
+    const covered = new Set(lists.flat());
+    expect([...covered].sort()).toEqual(Object.values(IncidentCategory).sort());
+  });
+
+  it('OTHER está nos dois tipos e é sempre o último', () => {
+    for (const list of lists) expect(list[list.length - 1]).toBe(IncidentCategory.OTHER);
+  });
+
+  it('nenhuma categoria além de OTHER aparece nos dois tipos, nem repete na lista', () => {
+    const [negative, positive] = [
+      INCIDENT_CATEGORIES_BY_TYPE[IncidentType.NEGATIVE],
+      INCIDENT_CATEGORIES_BY_TYPE[IncidentType.POSITIVE],
+    ];
+    expect(negative.filter((c) => positive.includes(c))).toEqual([IncidentCategory.OTHER]);
+    for (const list of lists) expect(new Set(list).size).toBe(list.length);
   });
 });

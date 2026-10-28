@@ -1,11 +1,54 @@
-import { IncidentType } from '@fonte/types';
+import { IncidentCategory, IncidentType } from '@fonte/types';
 import { DATE_FIELD_MESSAGES } from '@/lib/date';
-import { INCIDENT_TYPE_REQUIRED_MESSAGE, incidentFormDefaults, incidentFormSchema } from './schema';
+import {
+  INCIDENT_CATEGORY_MISMATCH_MESSAGE,
+  INCIDENT_CATEGORY_REQUIRED_MESSAGE,
+  INCIDENT_TYPE_REQUIRED_MESSAGE,
+  incidentFormDefaults,
+  incidentFormSchema,
+} from './schema';
 
 describe('incidentFormSchema (story 226, relógio mockado)', () => {
   afterEach(() => jest.useRealTimers());
 
-  const base = { type: IncidentType.NEGATIVE, description: 'Algo', residentIds: [] };
+  const base = {
+    type: IncidentType.NEGATIVE,
+    category: IncidentCategory.AGGRESSION,
+    description: 'Algo',
+    residentIds: [],
+  };
+
+  // Story 230: categoria obrigatória e coerente com o tipo.
+  describe('category', () => {
+    function categoryMessage(category: unknown, type: IncidentType = IncidentType.NEGATIVE) {
+      const result = incidentFormSchema.safeParse({ ...base, date: '2025-01-01', type, category });
+      if (result.success) return null;
+      return result.error.issues.find((issue) => issue.path[0] === 'category')?.message ?? null;
+    }
+
+    it('categoria da lista do tipo passa, OTHER nos dois', () => {
+      expect(categoryMessage(IncidentCategory.EVASION)).toBeNull();
+      expect(categoryMessage(IncidentCategory.SPIRITUAL_LIFE, IncidentType.POSITIVE)).toBeNull();
+      expect(categoryMessage(IncidentCategory.OTHER, IncidentType.POSITIVE)).toBeNull();
+      expect(categoryMessage(IncidentCategory.OTHER, IncidentType.NEGATIVE)).toBeNull();
+    });
+
+    it('ausente ou inválida pede a escolha', () => {
+      expect(categoryMessage(undefined)).toBe(INCIDENT_CATEGORY_REQUIRED_MESSAGE);
+      // O form limpa com `null` ao trocar o tipo.
+      expect(categoryMessage(null)).toBe(INCIDENT_CATEGORY_REQUIRED_MESSAGE);
+      expect(categoryMessage('FIGHT')).toBe(INCIDENT_CATEGORY_REQUIRED_MESSAGE);
+    });
+
+    it('categoria de outro tipo é rejeitada', () => {
+      expect(categoryMessage(IncidentCategory.GOOD_BEHAVIOR, IncidentType.NEGATIVE)).toBe(
+        INCIDENT_CATEGORY_MISMATCH_MESSAGE,
+      );
+      expect(categoryMessage(IncidentCategory.AGGRESSION, IncidentType.POSITIVE)).toBe(
+        INCIDENT_CATEGORY_MISMATCH_MESSAGE,
+      );
+    });
+  });
 
   // Story 229: tipo obrigatório, sem default.
   describe('type', () => {
@@ -65,6 +108,7 @@ describe('incidentFormSchema (story 226, relógio mockado)', () => {
       expect(incidentFormDefaults()).toEqual({
         date: '2026-10-28',
         type: undefined,
+        category: undefined,
         description: '',
         residentIds: [],
       });

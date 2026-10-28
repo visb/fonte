@@ -10,7 +10,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { IncidentType } from '@fonte/types';
+import { IncidentCategory, IncidentType } from '@fonte/types';
 import { House } from '../house/house.entity';
 import { Staff } from '../staff/staff.entity';
 import { Resident } from '../resident/resident.entity';
@@ -26,6 +26,11 @@ export class Incident {
   // Story 229: positiva/negativa — substituiu a severidade (coluna removida).
   @Column({ type: 'enum', enum: IncidentType, enumName: 'incident_type' })
   type: IncidentType;
+
+  // Story 230: categoria padronizada (lista por tipo). `null` nas ocorrências
+  // anteriores à story e no payload legado da fila offline.
+  @Column({ type: 'enum', enum: IncidentCategory, enumName: 'incident_category', nullable: true })
+  category: IncidentCategory | null;
 
   @Column({ type: 'text' })
   description: string;

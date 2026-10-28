@@ -1,41 +1,39 @@
 # PROGRESS — ledger ativo
 
-Rodada de autorun **225–230** — aberta em 2026-10-27.
+**Nenhuma rodada aberta.** Rodadas encerradas ficam em `stories/done/PROGRESS-NN-MM.md`.
+
+Ao abrir uma rodada de autorun (`$autorun <faixa/tema>`), preencher este arquivo com o modelo
+abaixo e commitar (`docs(stories): abre rodada autorun <tema>`). O protocolo do "como" é
+`stories/AUTORUN.md` — não duplicar aqui.
+
+---
+
+## Modelo de seção por rodada
+
+```markdown
+Rodada de autorun **NN–MM** — aberta em AAAA-MM-DD.
 
 ## Config da rodada
 
-- **Tema:** ops — módulo Daily (board de ministérios em tempo real); nova ocorrência: data com calendário, múltiplos filhos, tipo positivo/negativo (substitui severidade), categoria, e ocorrências na aba Acompanhamento do filho.
-- **Ordem:** 225 → 226 → 227 → 229 → 230 → 228 (228 por último: já nasce com tipo/categoria/N filhos, sem retrabalho no `IncidentTrackingItem`).
+- **Tema:** <uma frase>
+- **Ordem:** NN → ... → MM
 - **Branch base:** `main` (cada branch parte da `main` já com o merge da story anterior).
-- **Deps rígidas:** 227 → 228 (`Incident.residents[]` + filtro `?residentId=` via join); 229 → 230 (campo `type`). Se 227 bloquear, 228 bloqueia; se 229 bloquear, 230 bloqueia.
-- **Escopo técnico por story:**
-  - 225: backend `modules/daily` novo (migration `daily_sessions`/`daily_session_assignments`, gateway socket `/daily`), `MinistryService` (extrair `setResidentMinistry`/`setStaffMinistry`), `packages/types`, `api-client`, Postman, `BUSINESS_RULES.md`, `ops.fonte/features/daily` + menu.
-  - 226: só `ops.fonte` (`IncidentFormFields`, schema do `NewIncidentPage`, helper de hoje local). Sem backend.
-  - 227: migration `incident_residents` (backfill + drop `incidents.resident_id`), DTO `residentIds` + `residentId` legado, contratos, Postman, ops (`ResidentMultiPicker`, `IncidentCard`, fila offline).
-  - 229: migration `incidents.type` (backfill `NEGATIVE`, drop `severity`), DTO com legado `severity`, contratos, Postman, ops (`IncidentTypeSelector`, `INCIDENT_TYPE_CONFIG`).
-  - 230: migration `incidents.category` (null nas antigas), `INCIDENT_CATEGORIES_BY_TYPE` em `packages/types`, DTO, Postman, ops (`IncidentCategoryPicker`).
-  - 228: só `ops.fonte` (`useResidentIncidents`, `mergeTrackingTimeline`, `IncidentTrackingItem` já com tipo/categoria/outros filhos, query key persistida).
-- **Cuidados da rodada:** 4 migrations novas (225, 227, 229, 230) — timestamps crescentes, `migration:run:test` após cada, nunca editar migration aplicada; rebuild `pnpm build:types && pnpm build:api-client` após 225/227/229/230; Postman em 225/227/229/230; payload legado da fila offline (`residentId`, `severity` sem `type`/`category`) tem que continuar replayando (ValidationPipe `forbidNonWhitelisted`); ops offline-first (allowlist intacta; Daily exige rede, fora da outbox); e2e idempotentes (fixtures por id, story 182); Maestro exige emulador (PENDENTE-MANUAL se indisponível); teste manual de 2 celulares na Daily = PENDENTE-MANUAL; cobertura ≥90 no código novo, sem reduzir a dos módulos tocados.
+- **Deps rígidas:** <A → B, com o motivo; se A bloquear, B bloqueia junto>
+- **Escopo técnico por story:** <migration, contratos, Postman e apps tocados>
+- **Cuidados da rodada:** <contratos, migrations, dependências externas, invariantes e cobertura ≥90>
 
 ## Fila
 
 | Ordem | Story | Status | Testes | Commit | Merge |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 225 — ops, Daily: board de ministérios em tempo real | [OK] | api 2482/2482, ops 1857/1857, e2e daily 8/8 | b3f40de | d564960 |
-| 2 | 226 — ops, data da ocorrência com calendário | [OK] | ops 1868/1868, PW web 9/10 (pré-exist.) | 813086b | b634a54 |
-| 3 | 227 — ocorrência com múltiplos filhos | [OK] | api 2499/2499, e2e 780/782 (pré-exist.), ops 1879/1879 | be1f0fd | a32be67 |
-| 4 | 229 — ocorrência positiva/negativa (substitui severidade) | [OK] | api 2514/2514, e2e 786/786, ops 1887/1887, PW 10/10 | 104f367 | 79021ef |
-| 5 | 230 — categoria da ocorrência | [OK] | api 2531/2531, e2e 791/791, ops 1903/1903, PW 9/10 (pré-exist.) | 9572914 | 2dc3870 |
-| 6 | 228 — ops, ocorrências na aba Acompanhamento | [ ] | | | |
+| 1 | NN — <título> | [ ] | | | |
 
 ## Log
 
-[OK] 225 — testes: api 2482/2482 (daily 99.7 stmts), ops unit 1857/1857, e2e daily 8/8, PW web daily-offline verde — commit: b3f40de — merge: d564960 — 2026-10-28 — PENDENTE-MANUAL: Maestro daily.yaml (sem emulador), teste 2 celulares, APK novo (gesture-handler nativo). Pré-existentes fora da story: audit.e2e 2 falhas, PW offline-field-flows › mensagens (seed).
-[OK] 226 — testes: ops unit 1868/1868 (arquivos tocados 100%), PW offline-field-flows 9/10 (mensagens pré-existente) — commit: 813086b — merge: b634a54 — 2026-10-28 — PENDENTE-MANUAL: Maestro incidents.yaml. Nota: mensagens de erro reusam DATE_FIELD_MESSAGES.
-[OK] 227 — testes: api 2499/2499 (incident 100 stmts), e2e 780/782 (audit pré-exist.), api-client 330/330, ops 1879/1879, PW offline 9/10 (mensagens pré-exist.) — commit: be1f0fd — merge: a32be67 — 2026-10-28 — PENDENTE-MANUAL: Maestro incidents.yaml, APK novo. Nota: PERSIST_BUSTER não incrementado (preserva fila); IncidentCard tolera cache sem `residents`.
-[OK] 229 — testes: api 2514/2514 (incident 100 stmts), e2e 786/786, api-client 330/330, ops 1887/1887, PW offline 10/10 — commit: 104f367 — merge: 79021ef — 2026-10-28 — PENDENTE-MANUAL: Maestro incidents.yaml, APK novo. Nota p/ 228: reusar `incidentTypeConfig(type)` de IncidentCard.tsx.
-[OK] 230 — testes: api 2531/2531, e2e 791/791, api-client 330/330, ops 1903/1903, PW offline 9/10 (mensagens pré-exist.) — commit: 9572914 — merge: 2dc3870 — 2026-10-28 — PENDENTE-MANUAL: Maestro incidents.yaml, APK novo. Nota: payload com `type` sem `category` = 400 (só afetaria APK da era 229; 229/230 vão juntas, sem push entre elas). 228: reusar `incidentCategoryLabel()` de features/incidents/constants.ts.
+[OK|PARCIAL|BLOQUEADO] NN — testes: <resumo> — commit: <hash> — merge: <hash> — <data>
+<bloqueio/PENDENTE-MANUAL e no máximo uma nota crítica; até três linhas por entrada>
 
 ## Resumo final
 
 <vazio até o fim da rodada>
+```

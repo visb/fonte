@@ -24,7 +24,7 @@ export function ResidentCardBadges({ resident }: Props) {
         {RESIDENT_STATUS_LABELS[resident.status]}
       </Badge>
       {resident.familyInvestment === FamilyInvestment.SOCIAL && (
-        <Badge variant="destructive">Social</Badge>
+        <Badge variant="success">Social</Badge>
       )}
       {paymentBadge && (
         <Link

@@ -23,7 +23,7 @@ jest.mock('@fonte/types', () => ({
   Role: { ADMIN: 'ADMIN', COORDINATOR: 'COORDINATOR', SERVANT: 'SERVANT', RELATIVE: 'RELATIVE', RESIDENT: 'RESIDENT' },
 }));
 
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { ResidentReceivableService } from './resident-receivable.service';
 import { ResidentReceivable } from './resident-receivable.entity';
@@ -766,6 +766,80 @@ describe('ResidentReceivableService.getLastPaidDates', () => {
     expect(qb.addSelect).toHaveBeenCalledWith(
       "TO_CHAR(MAX(rcv.reference_month), 'YYYY-MM-DD')",
       'lastMonth',
+    );
+  });
+});
+
+describe('ResidentReceivableService.getNextDueDates', () => {
+  function makeQb(rows: unknown[]) {
+    const qb: Record<string, jest.Mock> = {};
+    ['select', 'addSelect', 'where', 'andWhere', 'groupBy'].forEach((m) => {
+      qb[m] = jest.fn(() => qb);
+    });
+    qb.getRawMany = jest.fn().mockResolvedValue(rows);
+    return qb;
+  }
+
+  it('lista vazia não consulta o banco', async () => {
+    const repo = makeRepo();
+    const service = makeService(repo, {});
+    await expect(service.getNextDueDates([])).resolves.toEqual(new Map());
+    expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it('devolve o menor vencimento PENDENTE por filho, ignorando voluntária vencida', async () => {
+    const qb = makeQb([{ residentId: 'res-1', nextDue: '2026-03-12' }]);
+    const service = makeService(makeRepo({ createQueryBuilder: jest.fn(() => qb) }), {});
+
+    const result = await service.getNextDueDates(['res-1']);
+
+    expect(result.get('res-1')).toBe('2026-03-12');
+    expect(qb.addSelect).toHaveBeenCalledWith("TO_CHAR(MIN(rcv.due_date), 'YYYY-MM-DD')", 'nextDue');
+    expect(qb.andWhere).toHaveBeenCalledWith('rcv.status = :pending', { pending: 'PENDING' });
+    expect(qb.andWhere).toHaveBeenCalledWith('(rcv.mandatory = true OR rcv.due_date >= CURRENT_DATE)');
+  });
+});
+
+describe('ResidentReceivableService.setStatus', () => {
+  function serviceWith(status: string) {
+    const repo = makeRepo({
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'rcv-1', residentId: 'res-1', status })
+        .mockResolvedValue({ id: 'rcv-1', status: 'X', createdBy: null }),
+    });
+    return { repo, service: makeFullService(repo, {}, {}) };
+  }
+
+  it('cancela parcela pendente com auditoria própria', async () => {
+    const { repo, service } = serviceWith('PENDING');
+    await service.setStatus('res-1', 'rcv-1', 'CANCELED' as never);
+    expect(repo.update).toHaveBeenCalledWith('rcv-1', { status: 'CANCELED' });
+  });
+
+  it('devolve parcela cancelada para pendente', async () => {
+    const { repo, service } = serviceWith('CANCELED');
+    await service.setStatus('res-1', 'rcv-1', 'PENDING' as never);
+    expect(repo.update).toHaveBeenCalledWith('rcv-1', { status: 'PENDING' });
+  });
+
+  it('recusa parcela paga ou já no status pedido', async () => {
+    const paid = serviceWith('PAID');
+    await expect(paid.service.setStatus('res-1', 'rcv-1', 'CANCELED' as never)).rejects.toThrow(
+      BadRequestException,
+    );
+    const pending = serviceWith('PENDING');
+    await expect(pending.service.setStatus('res-1', 'rcv-1', 'PENDING' as never)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(pending.repo.update).not.toHaveBeenCalled();
+  });
+
+  it('parcela de outro filho → NotFound', async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const service = makeFullService(repo, {}, {});
+    await expect(service.setStatus('res-1', 'rcv-x', 'CANCELED' as never)).rejects.toThrow(
+      NotFoundException,
     );
   });
 });

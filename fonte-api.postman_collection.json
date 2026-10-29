@@ -2515,6 +2515,36 @@
           }
         },
         {
+          "name": "Set Receivable Status (cancel / mark pending)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/residents/{{residentId}}/receivables/{{receivableId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "residents",
+                "{{residentId}}",
+                "receivables",
+                "{{receivableId}}",
+                "status"
+              ]
+            },
+            "description": "Troca manual PENDING ↔ CANCELED de uma parcela. status: CANCELED (só parcela PENDING) | PENDING (só parcela CANCELED). Parcela PAID responde 400 — desfazer pagamento é `/reopen`. Auditado como resident.receivable.cancel / resident.receivable.restore. Roles: ADMIN, COORDINATOR. 404 parcela de outro filho."
+          }
+        },
+        {
           "name": "Download Receivable Receipt (PDF, story 193)",
           "request": {
             "method": "GET",

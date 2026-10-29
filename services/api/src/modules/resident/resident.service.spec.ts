@@ -236,6 +236,7 @@ function makeService(
   },
   receivableService: Record<string, jest.Mock> = {
     getLastPaidDates: jest.fn().mockResolvedValue(new Map()),
+    getNextDueDates: jest.fn().mockResolvedValue(new Map()),
     generateSchedule: jest.fn().mockResolvedValue(undefined),
     recalcFuturePending: jest.fn().mockResolvedValue(undefined),
     cancelFuturePending: jest.fn().mockResolvedValue(undefined),
@@ -1153,6 +1154,7 @@ describe('ResidentService.readmit', () => {
       { createAuto, getLastContributionDates: jest.fn().mockResolvedValue(new Map()) },
       {
         getLastPaidDates: jest.fn().mockResolvedValue(new Map()),
+    getNextDueDates: jest.fn().mockResolvedValue(new Map()),
         generateSchedule,
         recalcFuturePending: jest.fn().mockResolvedValue(undefined),
         cancelFuturePending: jest.fn().mockResolvedValue(undefined),
@@ -1617,6 +1619,7 @@ describe('ResidentService — datas de entrada e saída (story 203)', () => {
       { createAuto, getLastContributionDates: jest.fn().mockResolvedValue(new Map()) },
       {
         getLastPaidDates: jest.fn().mockResolvedValue(new Map()),
+    getNextDueDates: jest.fn().mockResolvedValue(new Map()),
         generateSchedule: jest.fn().mockResolvedValue(undefined),
         recalcFuturePending: jest.fn().mockResolvedValue(undefined),
         cancelFuturePending: jest.fn().mockResolvedValue(undefined),
@@ -2116,6 +2119,7 @@ describe('ResidentService.update exit events', () => {
       { createAuto, getLastContributionDates: jest.fn().mockResolvedValue(new Map()) },
       {
         getLastPaidDates: jest.fn().mockResolvedValue(new Map()),
+    getNextDueDates: jest.fn().mockResolvedValue(new Map()),
         generateSchedule: jest.fn().mockResolvedValue(undefined),
         recalcFuturePending: jest.fn().mockResolvedValue(undefined),
         cancelFuturePending: jest.fn().mockResolvedValue(undefined),

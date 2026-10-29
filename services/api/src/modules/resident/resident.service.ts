@@ -207,8 +207,15 @@ export class ResidentService {
 
     const [data, total] = await qb.getManyAndCount();
     if (data.length > 0) {
-      const map = await this.receivableService.getLastPaidDates(data.map((r) => r.id));
-      for (const r of data) r.lastContributionDate = map.get(r.id) ?? null;
+      const ids = data.map((r) => r.id);
+      const [lastPaid, nextDue] = await Promise.all([
+        this.receivableService.getLastPaidDates(ids),
+        this.receivableService.getNextDueDates(ids),
+      ]);
+      for (const r of data) {
+        r.lastContributionDate = lastPaid.get(r.id) ?? null;
+        r.nextDueDate = nextDue.get(r.id) ?? null;
+      }
     }
     return { data, total, page, limit };
   }
@@ -815,6 +822,15 @@ export class ResidentService {
     await this.trackResident(id, AuditAction.RESIDENT_CONTRIBUTION_PLAN, (m) =>
       m.getRepository(Resident).update(id, update),
     );
+    // O plano é do acolhimento (story 164) e a aba Contribuição lê dele primeiro:
+    // sem espelhar aqui, como `update` faz, a aba seguia mostrando o plano antigo.
+    const currentAdmission = await this.findCurrentAdmission(id);
+    if (currentAdmission) {
+      await this.admissionRepository.update(currentAdmission.id, {
+        familyInvestment: update.familyInvestment,
+        familyInvestmentAmount: update.familyInvestmentAmount,
+      });
+    }
     await this.receivableService.recalcFuturePending(id);
     return this.findOne(id);
   }

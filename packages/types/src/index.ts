@@ -2295,6 +2295,8 @@ export const AuditAction = {
   RESIDENT_CONTRIBUTION_EXEMPT: 'resident.contribution_exempt.update',
   RESIDENT_RECEIVABLE_PAYMENT: 'resident.receivable.payment',
   RESIDENT_RECEIVABLE_REOPEN: 'resident.receivable.reopen',
+  RESIDENT_RECEIVABLE_CANCEL: 'resident.receivable.cancel',
+  RESIDENT_RECEIVABLE_RESTORE: 'resident.receivable.restore',
   RESIDENT_CONTRIBUTION_CREATE: 'resident.contribution.create',
   RESIDENT_CONTRIBUTION_BULK: 'resident.contribution.bulk',
 
@@ -2371,6 +2373,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'resident.contribution_exempt.update': 'Isenção de contribuição alterada',
   'resident.receivable.payment': 'Pagamento de parcela registrado',
   'resident.receivable.reopen': 'Parcela reaberta',
+  'resident.receivable.cancel': 'Parcela cancelada',
+  'resident.receivable.restore': 'Parcela marcada como pendente',
   'resident.contribution.create': 'Contribuição lançada',
   'resident.contribution.bulk': 'Contribuições lançadas em lote',
   'resident.attachment.add': 'Anexo do filho adicionado',

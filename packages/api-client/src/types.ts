@@ -526,6 +526,8 @@ export interface Resident {
   contributionDueDay: number | null;
   contributionExempt: boolean;
   lastContributionDate: string | null;
+  // Vencimento da parcela em aberto mais antiga; só vem na listagem.
+  nextDueDate?: string | null;
   photoUrl: string | null;
   photoThumbUrl: string | null;
   house: { id: string; name: string } | null;

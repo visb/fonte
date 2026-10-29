@@ -365,6 +365,7 @@ Regras:
 | Declarar contribuição em produtos |   ✓   |      ✓      |    ✓     |
 | Registrar pagamento em valor |   ✓   |      ✓      |          |
 | Reabrir parcela paga       |   ✓   |      ✓      |          |
+| Cancelar parcela / marcar cancelada como pendente |   ✓   |      ✓      |          |
 | Alterar plano de contribuição / isenção |   ✓   |      ✓      |          |
 
 ### Carnê do filho: valor é do coordenador, produto é da casa (story 186)
@@ -379,6 +380,11 @@ Regras:
   staff — nunca valor nem pagamento.
 - Escrita financeira segue ADMIN/COORDINATOR: registrar pagamento em valor, reabrir parcela, alterar
   plano de contribuição e marcar isenção.
+- Parcela troca à mão só entre **PENDENTE ↔ CANCELADA** (`PATCH /residents/:id/receivables/:rid/status`).
+  Parcela paga não é cancelada direto: reabre primeiro. Cancelada não cobra nem conta como atraso.
+- Alterar o plano grava também no **acolhimento atual** (a aba Contribuição lê o plano dele).
+- O selo "Vence/Atrasado" da lista de filhos sai da parcela **PENDENTE mais antiga do carnê**
+  (obrigatória, ou voluntária ainda a vencer) — nunca de uma dedução pelo último pagamento.
 
 ---
 

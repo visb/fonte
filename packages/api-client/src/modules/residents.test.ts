@@ -230,6 +230,13 @@ describe('residents module', () => {
     expect(http.post).toHaveBeenCalledWith('/residents/res-1/receivables/rc-1/reopen', {});
   });
 
+  it('setReceivableStatus envia o status no body', async () => {
+    await residents.setReceivableStatus('res-1', 'rc-1', 'CANCELED' as never);
+    expect(http.patch).toHaveBeenCalledWith('/residents/res-1/receivables/rc-1/status', {
+      status: 'CANCELED',
+    });
+  });
+
   // Story 193 — o recibo da parcela é um PDF: sem responseType blob o axios
   // devolveria a string corrompida e o download baixaria um arquivo ilegível.
   it('receivableReceipt pede responseType blob no path da parcela', async () => {

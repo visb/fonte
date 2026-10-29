@@ -18,7 +18,7 @@ function rec(over: Partial<ResidentReceivable> = {}): ResidentReceivable {
 }
 
 function renderRow(r: ResidentReceivable = rec(), canManage = true) {
-  const fns = { onPayClick: vi.fn(), onReopenClick: vi.fn() };
+  const fns = { onPayClick: vi.fn(), onReopenClick: vi.fn(), onStatusClick: vi.fn() };
   render(<ReceivableRow receivable={r} canManage={canManage} {...fns} />);
   return fns;
 }
@@ -49,6 +49,26 @@ describe('ReceivableRow', () => {
     expect(screen.getByText('R$ 480')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Reabrir' }));
     expect(onReopenClick).toHaveBeenCalled();
+  });
+
+  it('pendente tem botão de cancelar parcela', () => {
+    const { onStatusClick } = renderRow();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar parcela' }));
+    expect(onStatusClick).toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /Marcar como pendente/ })).not.toBeInTheDocument();
+  });
+
+  it('cancelada tem botão de marcar como pendente e nada de pagar', () => {
+    const { onStatusClick } = renderRow(rec({ status: ReceivableStatus.CANCELED }));
+    fireEvent.click(screen.getByRole('button', { name: /Marcar como pendente/ }));
+    expect(onStatusClick).toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Registrar pagamento' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancelar parcela' })).not.toBeInTheDocument();
+  });
+
+  it('sem canManage não troca status', () => {
+    renderRow(rec({ status: ReceivableStatus.CANCELED }), false);
+    expect(screen.queryByRole('button', { name: /Marcar como pendente/ })).not.toBeInTheDocument();
   });
 
   it('pago com modalidade divergente mostra badge da modalidade paga', () => {

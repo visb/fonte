@@ -16,13 +16,7 @@ interface Props {
  * coluna à direita do conteúdo, como antes (story 206).
  */
 export function ResidentCardBadges({ resident }: Props) {
-  const paymentBadge = getPaymentBadge(
-    resident.entryDate,
-    resident.familyInvestment,
-    resident.status,
-    resident.lastContributionDate,
-    resident.contributionDueDay,
-  );
+  const paymentBadge = getPaymentBadge(resident);
 
   return (
     <div data-testid="resident-card-badges" className="flex flex-wrap gap-1 sm:shrink-0">

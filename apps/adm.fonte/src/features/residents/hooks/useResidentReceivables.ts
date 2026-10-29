@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UpdateContributionPlanInput } from '@fonte/api-client';
+import type { ReceivableStatus } from '@fonte/types';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 
@@ -58,6 +59,20 @@ export function useReopenReceivable(residentId: string) {
   const invalidate = useReceivableInvalidation(residentId);
   return useMutation({
     mutationFn: (receivableId: string) => api.residents.reopenReceivable(residentId, receivableId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSetReceivableStatus(residentId: string) {
+  const invalidate = useReceivableInvalidation(residentId);
+  return useMutation({
+    mutationFn: ({
+      receivableId,
+      status,
+    }: {
+      receivableId: string;
+      status: ReceivableStatus.PENDING | ReceivableStatus.CANCELED;
+    }) => api.residents.setReceivableStatus(residentId, receivableId, status),
     onSuccess: invalidate,
   });
 }

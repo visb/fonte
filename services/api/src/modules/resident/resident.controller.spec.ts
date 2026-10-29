@@ -51,6 +51,7 @@ const receivable = {
   findSummaryByResident: jest.fn().mockResolvedValue([]),
   registerPayment: jest.fn().mockResolvedValue({ id: 'rcv1' }),
   reopenPayment: jest.fn().mockResolvedValue({ id: 'rcv1' }),
+  setStatus: jest.fn().mockResolvedValue({ id: 'rcv1' }),
 };
 const productContribution = {
   listByReceivable: jest.fn().mockResolvedValue([]),
@@ -176,6 +177,8 @@ describe('ResidentController', () => {
     await c.setContributionExempt('r1', { exempt: true } as never);
     await c.registerReceivablePayment('r1', 'rcv1', {} as never, user, file);
     await c.reopenReceivable('r1', 'rcv1');
+    await c.setReceivableStatus('r1', 'rcv1', { status: 'CANCELED' } as never);
+    expect(receivable.setStatus).toHaveBeenCalledWith('r1', 'rcv1', 'CANCELED');
     expect(receivable.findByResident).toHaveBeenCalledWith('r1');
     expect(rs.setContributionExempt).toHaveBeenCalledWith('r1', true);
     expect(receivable.registerPayment).toHaveBeenCalledWith('r1', 'rcv1', {}, 'u1', file);
@@ -263,6 +266,7 @@ describe('ResidentController', () => {
       for (const handler of [
         proto.registerReceivablePayment,
         proto.reopenReceivable,
+        proto.setReceivableStatus,
         proto.updateContributionPlan,
         proto.setContributionExempt,
       ]) {

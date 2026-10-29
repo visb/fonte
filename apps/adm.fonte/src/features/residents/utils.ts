@@ -10,78 +10,41 @@ const ACTIVE_STATUSES = new Set<ResidentStatus>([
   ResidentStatus.TEMP_LEAVE,
 ]);
 
-const MONTH_NAMES = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-];
-
 export interface PaymentBadgeInfo {
   label: string;
   variant: BadgeVariant;
-  defaultDate: string;
-  referenceMonth: string;
+}
+
+export interface PaymentBadgeInput {
+  familyInvestment: FamilyInvestment | null;
+  status: ResidentStatus;
+  contributionExempt: boolean;
+  /** Vencimento da parcela em aberto mais antiga do carnê (vem da listagem). */
+  nextDueDate?: string | null;
 }
 
 /**
- * Returns the next unpaid month's due info.
- * If lastContributionDate is in current month or future, next unpaid = one month after it.
- * Otherwise next unpaid = current month.
+ * Selo "Vence/Atrasado" do card. Lê o vencimento do carnê real — parcela
+ * cancelada ou isenção não geram selo. Antes o mês devido era deduzido do
+ * último pagamento, e um filho com o mês corrente cancelado aparecia atrasado.
  */
-export function getNextDueInfo(
-  entryDate: string,
-  lastContributionDate: string | null,
-  contributionDueDay: number | null,
-): { year: number; month: number; day: number; isoDate: string } {
-  const dueDay = contributionDueDay ?? new Date(entryDate + 'T00:00:00').getDate();
+export function getPaymentBadge(resident: PaymentBadgeInput): PaymentBadgeInfo | null {
+  const { familyInvestment, status, contributionExempt, nextDueDate } = resident;
+  if (!nextDueDate || !familyInvestment || familyInvestment === FamilyInvestment.SOCIAL) return null;
+  if (contributionExempt || !ACTIVE_STATUSES.has(status)) return null;
+
+  const [year, month, day] = nextDueDate.slice(0, 10).split('-').map(Number);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
-  let targetYear = today.getFullYear();
-  let targetMonth = today.getMonth(); // 0-indexed
-
-  if (lastContributionDate) {
-    const last = new Date(lastContributionDate.slice(0, 10) + 'T00:00:00');
-    const lastYM = last.getFullYear() * 12 + last.getMonth();
-    const todayYM = today.getFullYear() * 12 + today.getMonth();
-    if (lastYM >= todayYM) {
-      // Current month already covered — advance to next unpaid month
-      const nextYM = lastYM + 1;
-      targetYear = Math.floor(nextYM / 12);
-      targetMonth = nextYM % 12;
-    }
-  }
-
-  const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
-  const effectiveDay = Math.min(dueDay, lastDayOfMonth);
-  const isoDate = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(effectiveDay).padStart(2, '0')}`;
-  return { year: targetYear, month: targetMonth, day: effectiveDay, isoDate };
-}
-
-export function getPaymentBadge(
-  entryDate: string | null,
-  familyInvestment: FamilyInvestment | null,
-  status: ResidentStatus,
-  lastContributionDate: string | null,
-  contributionDueDay: number | null,
-): PaymentBadgeInfo | null {
-  if (!entryDate || !familyInvestment || familyInvestment === FamilyInvestment.SOCIAL) return null;
-  if (!ACTIVE_STATUSES.has(status)) return null;
-
-  const { year, month, day, isoDate } = getNextDueInfo(entryDate, lastContributionDate, contributionDueDay);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dueDate = new Date(year, month, day);
+  const dueDate = new Date(year, month - 1, day);
   const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-  const monthStr = String(month + 1).padStart(2, '0');
-  const label = `Vence ${day}/${monthStr}`;
-  const referenceMonth = `${MONTH_NAMES[month]}/${year}`;
+  const label = `Vence ${day}/${String(month).padStart(2, '0')}`;
 
-  if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)}d`, variant: 'destructive', defaultDate: isoDate, referenceMonth };
-  if (diffDays < 5) return { label, variant: 'warning', defaultDate: isoDate, referenceMonth };
-  if (diffDays < 15) return { label, variant: 'info', defaultDate: isoDate, referenceMonth };
-  return { label, variant: 'success', defaultDate: isoDate, referenceMonth };
+  if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)}d`, variant: 'destructive' };
+  if (diffDays < 5) return { label, variant: 'warning' };
+  if (diffDays < 15) return { label, variant: 'info' };
+  return { label, variant: 'success' };
 }
 
 export function formatLocalDate(iso: string): string {

@@ -1,4 +1,4 @@
-import { FileText, Loader2, Receipt, RotateCcw } from 'lucide-react';
+import { Ban, FileText, Loader2, Receipt, RotateCcw, Undo2 } from 'lucide-react';
 import { ReceivableStatus } from '@fonte/types';
 import type { ResidentReceivable } from '@fonte/api-client';
 import { api } from '@/lib/api';
@@ -15,6 +15,8 @@ interface Props {
   catalog?: InventoryCatalogItem[];
   onPayClick: (r: ResidentReceivable) => void;
   onReopenClick: (r: ResidentReceivable) => void;
+  /** Cancelar parcela pendente / devolver cancelada para pendente. */
+  onStatusClick?: (r: ResidentReceivable) => void;
   /** Story 193 — baixa o recibo da parcela paga. */
   onDownloadReceipt?: (receivableId: string) => void;
   isDownloadingReceipt?: boolean;
@@ -26,11 +28,13 @@ export function ReceivableRow({
   catalog = [],
   onPayClick,
   onReopenClick,
+  onStatusClick,
   onDownloadReceipt,
   isDownloadingReceipt = false,
 }: Props) {
   const badge = receivableBadge(receivable);
   const isPaid = receivable.status === ReceivableStatus.PAID;
+  const isPending = receivable.status === ReceivableStatus.PENDING;
   const attachment = receivable.attachmentUrl ? api.photoUrl(receivable.attachmentUrl) : null;
 
   // When paid, prefer the amount/modality actually collected over the plan snapshot.
@@ -82,9 +86,20 @@ export function ReceivableRow({
             </Button>
           </a>
         )}
-        {!isPaid && receivable.status === ReceivableStatus.PENDING && canManage && (
+        {isPending && canManage && (
           <Button variant="outline" size="sm" onClick={() => onPayClick(receivable)}>
             Registrar pagamento
+          </Button>
+        )}
+        {isPending && canManage && onStatusClick && (
+          <Button variant="ghost" size="icon" onClick={() => onStatusClick(receivable)} title="Cancelar parcela">
+            <Ban size={16} />
+          </Button>
+        )}
+        {receivable.status === ReceivableStatus.CANCELED && canManage && onStatusClick && (
+          <Button variant="ghost" size="sm" onClick={() => onStatusClick(receivable)}>
+            <Undo2 size={14} className="mr-1.5" />
+            Marcar como pendente
           </Button>
         )}
         {/* Story 193 — recibo da parcela paga. NÃO depende de `canManage`:

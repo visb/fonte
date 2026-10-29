@@ -26,6 +26,8 @@ function makeResident(overrides: Partial<Resident> = {}): Resident {
     familyInvestment: FamilyInvestment.PAYMENT_700,
     lastContributionDate: null,
     contributionDueDay: 10,
+    contributionExempt: false,
+    nextDueDate: '2026-01-10',
     ...overrides,
   } as Resident;
 }
@@ -80,8 +82,13 @@ describe('ResidentCard', () => {
     expect(badge.closest('a')).toHaveAttribute('href', '/residents/r1?tab=contributions');
   });
 
-  it('sem entryDate não calcula badge de pagamento', () => {
-    renderCard(makeResident({ entryDate: null }));
+  it('sem parcela em aberto (ex.: mês cancelado) não mostra badge de pagamento', () => {
+    renderCard(makeResident({ nextDueDate: null }));
+    expect(screen.queryByText(/Vence|Atrasado/)).not.toBeInTheDocument();
+  });
+
+  it('isento não mostra badge de pagamento', () => {
+    renderCard(makeResident({ contributionExempt: true }));
     expect(screen.queryByText(/Vence|Atrasado/)).not.toBeInTheDocument();
   });
 

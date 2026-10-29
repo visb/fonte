@@ -19,6 +19,7 @@ type Mocks = {
   storage: Record<string, jest.Mock>;
   followUp: Record<string, jest.Mock>;
   receivable: Record<string, jest.Mock>;
+  admission: Record<string, jest.Mock>;
   staff: Record<string, jest.Mock>;
 };
 
@@ -71,7 +72,20 @@ function build(over: Partial<Record<keyof Mocks, Record<string, jest.Mock>>> = {
       recalcFuturePending: jest.fn().mockResolvedValue(undefined),
       cancelFuturePending: jest.fn().mockResolvedValue(undefined),
       getLastPaidDates: jest.fn().mockResolvedValue(new Map()),
+      getNextDueDates: jest.fn().mockResolvedValue(new Map()),
       ...over.receivable,
+    },
+    admission: {
+      createQueryBuilder: jest.fn(() => {
+        const qb: Record<string, jest.Mock> = {};
+        ['where', 'andWhere', 'orderBy', 'addOrderBy', 'limit'].forEach((m) => {
+          qb[m] = jest.fn(() => qb);
+        });
+        qb.getOne = jest.fn().mockResolvedValue({ id: 'adm-1' });
+        return qb;
+      }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      ...over.admission,
     },
     staff: {
       existsForFormerResident: jest.fn().mockResolvedValue(false),
@@ -95,7 +109,7 @@ function build(over: Partial<Record<keyof Mocks, Record<string, jest.Mock>>> = {
     mocks.doc as unknown as Repository<ResidentDocument>,
     mocks.attachment as unknown as Repository<ResidentAttachment>,
     mocks.user as unknown as Repository<User>,
-    {} as Repository<Admission>,
+    mocks.admission as unknown as Repository<Admission>,
     mocks.storage as never,
     mocks.followUp as never,
     mocks.receivable as never,
@@ -201,6 +215,15 @@ describe('ResidentService.updateContributionPlan / setContributionExempt', () =>
     const { service, mocks } = build({ resident: { findOne: jest.fn().mockResolvedValue({ id: 'r1' }) } });
     await service.updateContributionPlan('r1', { familyInvestment: 'BASKET_500' } as never);
     expect(mocks.receivable.recalcFuturePending).toHaveBeenCalledWith('r1');
+  });
+
+  it('espelha o plano no acolhimento atual — a aba Contribuição lê dele', async () => {
+    const { service, mocks } = build({ resident: { findOne: jest.fn().mockResolvedValue({ id: 'r1' }) } });
+    await service.updateContributionPlan('r1', { familyInvestment: 'SOCIAL' } as never);
+    expect(mocks.admission.update).toHaveBeenCalledWith('adm-1', {
+      familyInvestment: 'SOCIAL',
+      familyInvestmentAmount: 0,
+    });
   });
 
   it('cancels future pending when exempting', async () => {

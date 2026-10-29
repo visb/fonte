@@ -11,6 +11,7 @@ vi.mock('@/lib/api', () => ({
       reopenReceivable: vi.fn(),
       updateContributionPlan: vi.fn(),
       setContributionExempt: vi.fn(),
+      setReceivableStatus: vi.fn(),
       anonymize: vi.fn(),
     },
     consents: { status: vi.fn(), grant: vi.fn(), revoke: vi.fn() },
@@ -31,6 +32,7 @@ import {
   useReopenReceivable,
   useUpdateContributionPlan,
   useSetContributionExempt,
+  useSetReceivableStatus,
 } from './useResidentReceivables';
 import {
   useResidentConsents,
@@ -124,6 +126,16 @@ describe('receivables', () => {
     e.current.mutate(true);
     await waitFor(() => expect(e.current.isSuccess).toBe(true));
     expect(api.residents.setContributionExempt).toHaveBeenCalledWith('r1', true);
+  });
+
+  it('setReceivableStatus envia o status e invalida a lista', async () => {
+    vi.mocked(api.residents.setReceivableStatus).mockResolvedValue({} as never);
+    const { result, queryClient } = renderHookWithClient(() => useSetReceivableStatus('r1'));
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    result.current.mutate({ receivableId: 'rec1', status: 'CANCELED' as never });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.residents.setReceivableStatus).toHaveBeenCalledWith('r1', 'rec1', 'CANCELED');
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.residents.all });
   });
 });
 

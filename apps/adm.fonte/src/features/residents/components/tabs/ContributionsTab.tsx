@@ -13,6 +13,7 @@ import { ContributionsEmptyState } from '../ContributionsEmptyState';
 import { ReceivableRow } from '../ReceivableRow';
 import { RegisterPaymentDialog } from '../RegisterPaymentDialog';
 import { ReopenReceivableDialog } from '../ReopenReceivableDialog';
+import { ChangeReceivableStatusDialog } from '../ChangeReceivableStatusDialog';
 import { ChangeContributionPlanDialog } from '../ChangeContributionPlanDialog';
 import { useResidentReceivables } from '../../hooks/useResidentReceivables';
 import { useReceivableReceipt } from '../../hooks/useReceivableReceipt';
@@ -42,6 +43,7 @@ export function ContributionsTab({ resident }: Props) {
   const [planOpen, setPlanOpen] = useState(false);
   const [payTarget, setPayTarget] = useState<ResidentReceivable | null>(null);
   const [reopenTarget, setReopenTarget] = useState<ResidentReceivable | null>(null);
+  const [statusTarget, setStatusTarget] = useState<ResidentReceivable | null>(null);
   const [pickedAdmissionId, setPickedAdmissionId] = useState<string | null>(null);
 
   // A ordem vem do backend (entrada DESC): índice 0 é o acolhimento atual, que é
@@ -134,6 +136,7 @@ export function ContributionsTab({ resident }: Props) {
               catalog={catalog}
               onPayClick={setPayTarget}
               onReopenClick={setReopenTarget}
+              onStatusClick={setStatusTarget}
               onDownloadReceipt={(receivableId) =>
                 void receipt.download(resident.id, receivableId, {
                   residentName: resident.name,
@@ -161,6 +164,12 @@ export function ContributionsTab({ resident }: Props) {
         residentId={resident.id}
         receivable={reopenTarget}
         onClose={() => setReopenTarget(null)}
+      />
+
+      <ChangeReceivableStatusDialog
+        residentId={resident.id}
+        receivable={statusTarget}
+        onClose={() => setStatusTarget(null)}
       />
     </div>
   );

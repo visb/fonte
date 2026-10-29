@@ -155,6 +155,9 @@ export class Resident {
   // Virtual — populated by service, not persisted
   lastContributionDate?: string | null;
 
+  // Virtual — vencimento da parcela em aberto mais antiga (só na listagem).
+  nextDueDate?: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

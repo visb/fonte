@@ -14,6 +14,7 @@ vi.mock('../../hooks/useResidentReceivables', () => ({
   useResidentReceivables: () => recState,
   useReopenReceivable: () => reopenMutation,
   useSetContributionExempt: () => ({ mutate: vi.fn(), isPending: false }),
+  useSetReceivableStatus: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 const admissionsState = { data: [] as unknown[] };
 const residentAdmissions = vi.fn((_id: string, _options?: { enabled?: boolean }) => admissionsState);

@@ -1,5 +1,9 @@
 import type { AxiosInstance } from 'axios';
-import type { CreateAdmissionPayload, UpdateAdmissionPayload } from '@fonte/types';
+import type {
+  CreateAdmissionPayload,
+  ReceivableStatus,
+  UpdateAdmissionPayload,
+} from '@fonte/types';
 import type {
   Admission,
   BulkCreateContributionsInput,
@@ -162,6 +166,16 @@ export function createResidentsModule(http: AxiosInstance) {
 
     reopenReceivable: (id: string, receivableId: string): Promise<ResidentReceivable> =>
       http.post<ResidentReceivable>(`/residents/${id}/receivables/${receivableId}/reopen`, {}).then((r) => r.data),
+
+    /** Cancela uma parcela pendente ou devolve uma cancelada para pendente. */
+    setReceivableStatus: (
+      id: string,
+      receivableId: string,
+      status: ReceivableStatus.PENDING | ReceivableStatus.CANCELED,
+    ): Promise<ResidentReceivable> =>
+      http
+        .patch<ResidentReceivable>(`/residents/${id}/receivables/${receivableId}/status`, { status })
+        .then((r) => r.data),
 
     /**
      * Story 193 — PDF do recibo de uma parcela PAGA do carnê do filho. O arquivo

@@ -60,6 +60,7 @@ import { DeclareProductContributionDto } from '../resident-receivable/dto/declar
 import { RegisterPaymentDto } from '../resident-receivable/dto/register-payment.dto';
 import { UpdateContributionPlanDto } from '../resident-receivable/dto/update-contribution-plan.dto';
 import { SetContributionExemptDto } from '../resident-receivable/dto/set-contribution-exempt.dto';
+import { SetReceivableStatusDto } from '../resident-receivable/dto/set-receivable-status.dto';
 import { GetContributionsReportDto } from './dto/get-contributions-report.dto';
 import { ContributionsReportResponse } from '@fonte/types';
 import { DocxParserService, ParseDocxResult } from './docx-parser.service';
@@ -499,6 +500,16 @@ export class ResidentController {
     @Param('receivableId', ParseUUIDPipe) receivableId: string,
   ): Promise<ResidentReceivableView> {
     return this.receivableService.reopenPayment(id, receivableId);
+  }
+
+  @Patch(':id/receivables/:receivableId/status')
+  @Roles(Role.ADMIN, Role.COORDINATOR)
+  setReceivableStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('receivableId', ParseUUIDPipe) receivableId: string,
+    @Body() dto: SetReceivableStatusDto,
+  ): Promise<ResidentReceivableView> {
+    return this.receivableService.setStatus(id, receivableId, dto.status);
   }
 
   /**

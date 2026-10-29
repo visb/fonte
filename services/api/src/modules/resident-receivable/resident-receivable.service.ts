@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, Repository } from 'typeorm';
 import {
@@ -305,6 +305,28 @@ export class ResidentReceivableService {
     return new Map(rows.map((r) => [r.residentId, String(r.lastMonth).slice(0, 10)]));
   }
 
+  /**
+   * Vencimento da parcela em aberto mais antiga por filho — alimenta o selo
+   * "Vence/Atrasado" da lista a partir do carnê real (parcela cancelada não
+   * cobra). Voluntária vencida fica de fora: o carnê também não a trata como
+   * atraso (`isOverdue` do adm.fonte só olha obrigatória).
+   */
+  async getNextDueDates(residentIds: string[]): Promise<Map<string, string>> {
+    if (residentIds.length === 0) return new Map();
+    const rows = await this.repo
+      .createQueryBuilder('rcv')
+      .select('rcv.resident_id', 'residentId')
+      // TO_CHAR pelo mesmo motivo de `getLastPaidDates`.
+      .addSelect("TO_CHAR(MIN(rcv.due_date), 'YYYY-MM-DD')", 'nextDue')
+      .where('rcv.resident_id IN (:...residentIds)', { residentIds })
+      .andWhere('rcv.status = :pending', { pending: ReceivableStatus.PENDING })
+      .andWhere('(rcv.mandatory = true OR rcv.due_date >= CURRENT_DATE)')
+      .andWhere('rcv.deleted_at IS NULL')
+      .groupBy('rcv.resident_id')
+      .getRawMany<{ residentId: string; nextDue: string }>();
+    return new Map(rows.map((r) => [r.residentId, String(r.nextDue).slice(0, 10)]));
+  }
+
   // ── vínculo parcela → acolhimento (story 164) ────────────────────────────
 
   /** Admissões vivas do filho; uma consulta só serve o lote inteiro de competências. */
@@ -599,6 +621,40 @@ export class ResidentReceivableService {
         attachmentUrl: null,
         createdById: null,
       }),
+    );
+
+    const updated = await this.repo.findOne({ where: { id: receivableId }, relations: ['createdBy'] });
+    return this.toView(updated!);
+  }
+
+  /**
+   * Cancela uma parcela pendente ou devolve uma cancelada para pendente. Só a
+   * troca PENDENTE ↔ CANCELADA: parcela paga se desfaz por `reopenPayment`.
+   */
+  async setStatus(
+    residentId: string,
+    receivableId: string,
+    status: ReceivableStatus.PENDING | ReceivableStatus.CANCELED,
+  ): Promise<ResidentReceivableView> {
+    const receivable = await this.repo.findOne({ where: { id: receivableId, residentId } });
+    if (!receivable) throw new NotFoundException(`Receivable ${receivableId} not found`);
+
+    const from =
+      status === ReceivableStatus.CANCELED ? ReceivableStatus.PENDING : ReceivableStatus.CANCELED;
+    if (receivable.status !== from) {
+      throw new BadRequestException(
+        status === ReceivableStatus.CANCELED
+          ? 'Só parcela pendente pode ser cancelada'
+          : 'Só parcela cancelada pode voltar a ficar pendente',
+      );
+    }
+
+    const action =
+      status === ReceivableStatus.CANCELED
+        ? AuditAction.RESIDENT_RECEIVABLE_CANCEL
+        : AuditAction.RESIDENT_RECEIVABLE_RESTORE;
+    await this.trackReceivable(residentId, receivableId, action, (m) =>
+      m.getRepository(ResidentReceivable).update(receivableId, { status }),
     );
 
     const updated = await this.repo.findOne({ where: { id: receivableId }, relations: ['createdBy'] });

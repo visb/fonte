@@ -9,6 +9,7 @@ import { useResidentAdmissions } from '../../hooks/useResidents';
 import { buildHistory } from '../../lib/history';
 import { AdmissionCard } from '../AdmissionCard';
 import { AdmissionFormDialog } from '../AdmissionFormDialog';
+import { DeleteAdmissionDialog } from '../DeleteAdmissionDialog';
 
 interface Props {
   residentId: string;
@@ -27,10 +28,13 @@ export function AdmissionsTab({ residentId }: Props) {
   const canEdit = role === Role.ADMIN;
   const { data: admissions = [], isLoading } = useResidentAdmissions(residentId);
   const [dialog, setDialog] = useState<DialogState>({ open: false, admission: null });
+  const [toDelete, setToDelete] = useState<Admission | null>(null);
 
   if (isLoading) return <LoadingState />;
 
   const items = buildHistory(admissions);
+  // Atual = índice 0 (maior entrada, story 164): a ficha o espelha, não se exclui.
+  const currentId = admissions[0]?.id;
 
   return (
     <div className="space-y-4">
@@ -56,18 +60,24 @@ export function AdmissionsTab({ residentId }: Props) {
                 title={item.title}
                 admission={item.admission}
                 onEdit={canEdit ? () => setDialog({ open: true, admission: item.admission }) : undefined}
+                onDelete={
+                  canEdit && item.admission.id !== currentId ? () => setToDelete(item.admission) : undefined
+                }
               />
             ),
         )
       )}
 
       {canEdit && (
-        <AdmissionFormDialog
-          open={dialog.open}
-          onClose={() => setDialog((state) => ({ ...state, open: false }))}
-          residentId={residentId}
-          admission={dialog.admission}
-        />
+        <>
+          <AdmissionFormDialog
+            open={dialog.open}
+            onClose={() => setDialog((state) => ({ ...state, open: false }))}
+            residentId={residentId}
+            admission={dialog.admission}
+          />
+          <DeleteAdmissionDialog residentId={residentId} admission={toDelete} onClose={() => setToDelete(null)} />
+        </>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { Pencil } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { ResidentStatus } from '@fonte/types';
 import type { Admission } from '@fonte/api-client';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,8 @@ interface Props {
   title: string;
   /** Presente = mostra o ícone de editar (o gate de role fica com quem renderiza). */
   onEdit?: () => void;
+  /** Presente = mostra o ícone de excluir (quem renderiza omite no acolhimento atual). */
+  onDelete?: () => void;
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -21,7 +23,7 @@ function formatDate(value: string | null | undefined): string {
  * Um acolhimento na linha do tempo do Histórico (story 215). Extraído da aba
  * para a 216 misturar acolhimentos e períodos de serviço na mesma lista.
  */
-export function AdmissionCard({ admission, title, onEdit }: Props) {
+export function AdmissionCard({ admission, title, onEdit, onDelete }: Props) {
   const statusKey = admission.status as ResidentStatus;
   const label = RESIDENT_STATUS_LABELS[statusKey] ?? admission.status;
   const variant = RESIDENT_STATUS_VARIANT[statusKey] ?? 'secondary';
@@ -35,6 +37,11 @@ export function AdmissionCard({ admission, title, onEdit }: Props) {
           {onEdit && (
             <Button variant="ghost" size="icon" title="Editar acolhimento" aria-label="Editar acolhimento" onClick={onEdit}>
               <Pencil size={15} />
+            </Button>
+          )}
+          {onDelete && (
+            <Button variant="ghost" size="icon" title="Excluir acolhimento" aria-label="Excluir acolhimento" onClick={onDelete}>
+              <Trash2 size={15} />
             </Button>
           )}
         </div>

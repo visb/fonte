@@ -187,6 +187,11 @@ describe('residents module', () => {
     expect(http.patch).toHaveBeenCalledWith('/residents/res-1/admissions/adm-1', body);
   });
 
+  it('deleteAdmission exclui passagem', async () => {
+    await residents.deleteAdmission('res-1', 'adm-1');
+    expect(http.delete).toHaveBeenCalledWith('/residents/res-1/admissions/adm-1');
+  });
+
   it('getFollowUps busca acompanhamentos', async () => {
     await residents.getFollowUps('res-1');
     expect(http.get).toHaveBeenCalledWith('/residents/res-1/follow-ups');

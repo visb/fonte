@@ -82,11 +82,13 @@ Para registrar alta:
 ## 5.0. Histórico de acolhimentos (story 215)
 
 A aba Histórico do `adm.fonte` lista as passagens (`admissions`) do filho. Só **ADMIN** cria e
-edita; COORDINATOR e SERVANT leem. Não há exclusão (histórico é fato).
+edita e exclui (regras abaixo); COORDINATOR e SERVANT leem.
 
 - **Acolhimento atual** = o de maior entrada (índice 0 da lista, story 164) — o que a ficha espelha.
-  Nele só a **data de entrada** é corrigível (atualiza também `resident.entry_date`; o carnê não é
-  recalculado). Casa, saída e status mudam só por transferência, alta ou readmissão.
+  Nele só as **datas** são corrigíveis (atualizam também `resident.entry_date`/`exit_date`; o carnê
+  não é recalculado). A **saída** só se ele já está encerrado (alta/evasão/arquivado) — encerrar um
+  acolhimento em aberto é transição da ficha. Casa e status mudam só por transferência, alta ou
+  readmissão.
 - **Passagem encerrada**: casa, entrada, saída e status editáveis.
 - **Criar** = só passagem antiga, já encerrada (entrada + saída). Acolhimento novo é a readmissão.
 - Status aceito numa passagem criada/editada: só status de saída (`DISCHARGED`, `EVADED`,
@@ -94,7 +96,10 @@ edita; COORDINATOR e SERVANT leem. Não há exclusão (histórico é fato).
 - Datas seguem a story 203 (não futuras, saída ≥ entrada). Passagens do mesmo filho **não se
   sobrepõem** (sair e reentrar no mesmo dia pode) e a passagem antiga tem de começar antes do
   acolhimento atual — senão ela viraria o "atual".
-- Auditoria: `admission.create` / `admission.update`, alvo `admission`, filho como principal.
+- **Excluir** (soft delete) = só passagem que **não** é a atual e **sem parcelas** no carnê (o
+  histórico financeiro não pode ficar preso a acolhimento apagado). Atual ou com parcelas → 400.
+- Auditoria: `admission.create` / `admission.update` / `admission.delete`, alvo `admission`, filho
+  como principal.
 
 ---
 

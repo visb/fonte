@@ -1909,6 +1909,10 @@ export const ADMISSION_HISTORY_MESSAGES = {
   currentOpenExitDate:
     'O acolhimento atual está em aberto — a saída é registrada pela alta, evasão ou arquivamento na ficha.',
   exitDateRequired: 'Informe a data de saída — a passagem antiga precisa estar encerrada.',
+  deleteCurrent:
+    'O acolhimento atual não pode ser excluído — a ficha do filho reflete esta passagem.',
+  deleteHasReceivables: (count: number) =>
+    `Este acolhimento tem ${count} ${count === 1 ? 'parcela' : 'parcelas'} no carnê e não pode ser excluído.`,
 } as const;
 
 /** Período de uma passagem (`YYYY-MM-DD`; `exitDate` nulo = em aberto). */
@@ -2292,6 +2296,7 @@ export const AuditAction = {
   // Story 215 — passagens da aba Histórico (alvo `admission`, filho como principal).
   ADMISSION_CREATE: 'admission.create',
   ADMISSION_UPDATE: 'admission.update',
+  ADMISSION_DELETE: 'admission.delete',
 
   RESIDENT_CONTRIBUTION_PLAN: 'resident.contribution_plan.update',
   RESIDENT_CONTRIBUTION_EXEMPT: 'resident.contribution_exempt.update',
@@ -2371,6 +2376,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'resident.relative.delete': 'Familiar removido',
   'admission.create': 'Passagem antiga registrada',
   'admission.update': 'Acolhimento corrigido',
+  'admission.delete': 'Acolhimento excluído',
   'resident.contribution_plan.update': 'Plano de contribuição alterado',
   'resident.contribution_exempt.update': 'Isenção de contribuição alterada',
   'resident.receivable.payment': 'Pagamento de parcela registrado',

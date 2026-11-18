@@ -12,6 +12,7 @@ import {
 import { Admission } from './admission.entity';
 import { Resident } from './resident.entity';
 import { House } from '../house/house.entity';
+import { ResidentReceivable } from '../resident-receivable/resident-receivable.entity';
 import { ResidentService } from './resident.service';
 import { assertAdmissionDates } from './admission-dates';
 import { CreateAdmissionDto } from './dto/create-admission.dto';
@@ -197,6 +198,54 @@ export class AdmissionService {
       );
     }
     return this.reload(target.id);
+  }
+
+  /**
+   * Exclusão (soft delete) de passagem encerrada. O atual não sai por aqui: a
+   * ficha o espelha (casa, status, datas) e apagá-lo deixaria a ficha
+   * apontando para uma passagem que não existe. Passagem com parcelas do carnê
+   * também não — o histórico financeiro ficaria preso a um acolhimento apagado.
+   */
+  async deleteAdmission(residentId: string, admissionId: string): Promise<void> {
+    await this.residentService.findOne(residentId);
+    const admissions = await this.residentService.findAdmissions(residentId);
+    const target = admissions.find((admission) => admission.id === admissionId);
+    if (!target) throw new NotFoundException(`Acolhimento ${admissionId} não encontrado`);
+    if (admissions[0].id === target.id) {
+      throw new BadRequestException(ADMISSION_HISTORY_MESSAGES.deleteCurrent);
+    }
+
+    await this.trackDelete(residentId, target.id, async (manager) => {
+      const receivables = await manager
+        .getRepository(ResidentReceivable)
+        .count({ where: { admissionId: target.id } });
+      if (receivables > 0) {
+        throw new BadRequestException(ADMISSION_HISTORY_MESSAGES.deleteHasReceivables(receivables));
+      }
+      await manager.getRepository(Admission).softDelete(target.id);
+    });
+  }
+
+  private trackDelete(
+    residentId: string,
+    admissionId: string,
+    write: (manager: EntityManager) => Promise<void>,
+  ): Promise<void> {
+    return this.audit.track<void>({
+      action: AuditAction.ADMISSION_DELETE,
+      targetType: AuditTargetType.ADMISSION,
+      targetId: admissionId,
+      fields: ADMISSION_AUDIT_FIELDS,
+      load: loadById(Admission),
+      lockTable: 'admissions',
+      // `after` é nulo (linha soft-deletada): a casa do evento é a da passagem.
+      scope: ({ before }) => ({
+        houseId: (before?.houseId as string | null | undefined) ?? null,
+        parentType: AuditTargetType.RESIDENT,
+        parentId: residentId,
+      }),
+      write,
+    });
   }
 
   private trackAdmission<R>(

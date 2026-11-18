@@ -149,6 +149,41 @@ describe('Acolhimentos do Histórico (e2e, story 215)', () => {
     expect(String(resident.body.entryDate).slice(0, 10)).toBe('2025-01-05');
   });
 
+  it('excluir: só ADMIN, passagem encerrada → 204 e auditada; atual → 400', async () => {
+    const created = await createAdmission(adminToken, {
+      houseId,
+      entryDate: '2019-01-01',
+      exitDate: '2019-03-01',
+      status: ResidentStatus.EVADED,
+    });
+    expect(created.status).toBe(201);
+    admissionIds.push(created.body.id);
+    const deleteAdmission = (token: string, admissionId: string) =>
+      request(server())
+        .delete(`${BASE}/residents/${residentId}/admissions/${admissionId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+    expect((await deleteAdmission(coordToken, created.body.id)).status).toBe(403);
+    expect((await deleteAdmission(servantToken, created.body.id)).status).toBe(403);
+
+    const current = await deleteAdmission(adminToken, currentAdmissionId);
+    expect(current.status).toBe(400);
+    expect(current.body.message).toBe(ADMISSION_HISTORY_MESSAGES.deleteCurrent);
+
+    expect((await deleteAdmission(adminToken, created.body.id)).status).toBe(204);
+    const list = await asAdmin(request(server()).get(`${BASE}/residents/${residentId}/admissions`)).expect(200);
+    expect(list.body.map((a: { id: string }) => a.id)).not.toContain(created.body.id);
+
+    const logs = await dataSource.query(
+      'SELECT action, parent_id FROM audit_logs WHERE target_id = $1 ORDER BY created_at',
+      [created.body.id],
+    );
+    expect(logs.map((row: { action: string }) => row.action)).toEqual([
+      AuditAction.ADMISSION_CREATE,
+      AuditAction.ADMISSION_DELETE,
+    ]);
+  });
+
   it('admission de outro filho → 404', async () => {
     const other = await asAdmin(request(server()).post(`${BASE}/residents`)).send({
       name: `Historico Outro ${stamp()}`,

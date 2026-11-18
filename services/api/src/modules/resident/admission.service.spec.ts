@@ -11,6 +11,7 @@ import {
 import { AdmissionService } from './admission.service';
 import { Admission } from './admission.entity';
 import { Resident } from './resident.entity';
+import { ResidentReceivable } from '../resident-receivable/resident-receivable.entity';
 import { createAuditHarness, memoryRepo, repoMap } from '../audit/testing/audit-harness.testkit-spec';
 
 const R1 = '11111111-1111-4111-8111-111111111111';
@@ -21,7 +22,9 @@ const OLD = 'adm-old';
 
 type Row = Record<string, unknown>;
 
-function setup(options: { admissions?: Row[]; resident?: Row; houses?: string[] } = {}) {
+function setup(
+  options: { admissions?: Row[]; resident?: Row; houses?: string[]; receivables?: Row[] } = {},
+) {
   const residentRow: Row = {
     id: R1,
     name: 'Ana',
@@ -47,7 +50,10 @@ function setup(options: { admissions?: Row[]; resident?: Row; houses?: string[] 
   };
   const houses = options.houses ?? [H1, H2];
   const houseRepo = { exists: jest.fn(async (opts: { where: { id: string } }) => houses.includes(opts.where.id)) };
-  const harness = createAuditHarness(repoMap([[Resident, residents], [Admission, admissions]]));
+  const receivables = memoryRepo(options.receivables ?? []);
+  const harness = createAuditHarness(
+    repoMap([[Resident, residents], [Admission, admissions], [ResidentReceivable, receivables]]),
+  );
 
   // Mesma ordem de `ResidentService.findAdmissions`: maior entrada primeiro.
   const residentService = {
@@ -354,6 +360,47 @@ describe('AdmissionService.updateAdmission — acolhimento atual', () => {
     const { service, inserted } = setup();
     await expect(service.updateAdmission(R1, CURRENT, {})).resolves.toMatchObject({ id: CURRENT });
     expect(inserted).toHaveLength(0);
+  });
+});
+
+describe('AdmissionService.deleteAdmission', () => {
+  it('passagem encerrada sem parcelas: soft delete auditado com o filho como principal', async () => {
+    const { service, admissions, inserted } = setup();
+    await service.deleteAdmission(R1, OLD);
+    expect(admissions.softDelete).toHaveBeenCalledWith(OLD);
+    expect(admissions.table.has(OLD)).toBe(false);
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0]).toMatchObject({
+      action: AuditAction.ADMISSION_DELETE,
+      targetType: AuditTargetType.ADMISSION,
+      targetId: OLD,
+      parentType: AuditTargetType.RESIDENT,
+      parentId: R1,
+      houseId: H1,
+    });
+  });
+
+  it('acolhimento atual → 400 e não apaga', async () => {
+    const { service, admissions } = setup();
+    await expect400(service.deleteAdmission(R1, CURRENT), ADMISSION_HISTORY_MESSAGES.deleteCurrent);
+    expect(admissions.softDelete).not.toHaveBeenCalled();
+  });
+
+  it('passagem com parcelas no carnê → 400 e não apaga', async () => {
+    const { service, admissions, inserted } = setup({
+      receivables: [
+        { id: 'rec-1', residentId: R1, admissionId: OLD },
+        { id: 'rec-2', residentId: R1, admissionId: OLD },
+      ],
+    });
+    await expect400(service.deleteAdmission(R1, OLD), ADMISSION_HISTORY_MESSAGES.deleteHasReceivables(2));
+    expect(admissions.softDelete).not.toHaveBeenCalled();
+    expect(inserted).toHaveLength(0);
+  });
+
+  it('passagem de outro filho → 404', async () => {
+    const { service } = setup();
+    await expect(service.deleteAdmission(R1, 'nope')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 

@@ -273,12 +273,21 @@ export function useCreateAdmission(residentId: string) {
   });
 }
 
-/** Story 215 — correção de passagem (no atual, só a entrada; espelha na ficha). */
+/** Story 215 — correção de passagem (no atual, só as datas; espelha na ficha). */
 export function useUpdateAdmission(residentId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ admissionId, payload }: { admissionId: string; payload: UpdateAdmissionPayload }) =>
       api.residents.updateAdmission(residentId, admissionId, payload),
+    onSuccess: () => invalidateAdmissionHistory(queryClient, residentId),
+  });
+}
+
+/** Exclusão de passagem encerrada (o atual e quem tem parcelas são recusados pela API). */
+export function useDeleteAdmission(residentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (admissionId: string) => api.residents.deleteAdmission(residentId, admissionId),
     onSuccess: () => invalidateAdmissionHistory(queryClient, residentId),
   });
 }

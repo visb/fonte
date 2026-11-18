@@ -1,4 +1,14 @@
-import { Body, Controller, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { Role } from '@fonte/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -36,5 +46,15 @@ export class AdmissionController {
     @Body() dto: UpdateAdmissionDto,
   ): Promise<Admission> {
     return this.admissionService.updateAdmission(id, admissionId, dto);
+  }
+
+  @Delete(':id/admissions/:admissionId')
+  @Roles(Role.ADMIN)
+  @HttpCode(204)
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('admissionId', ParseUUIDPipe) admissionId: string,
+  ): Promise<void> {
+    return this.admissionService.deleteAdmission(id, admissionId);
   }
 }

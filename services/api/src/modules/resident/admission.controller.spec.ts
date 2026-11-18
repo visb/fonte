@@ -16,20 +16,24 @@ describe('AdmissionController (story 215)', () => {
   const service = {
     createAdmission: jest.fn().mockResolvedValue({ id: 'a1' }),
     updateAdmission: jest.fn().mockResolvedValue({ id: 'a1' }),
+    deleteAdmission: jest.fn().mockResolvedValue(undefined),
   };
   const controller = new AdmissionController(service as never);
 
-  it('delega criação e edição ao service', async () => {
+  it('delega criação, edição e exclusão ao service', async () => {
     const body = { entryDate: '2020-01-01', exitDate: '2020-02-01', status: 'DISCHARGED' } as never;
     await controller.create('r1', body);
     await controller.update('r1', 'a1', { entryDate: '2020-01-02' });
+    await controller.remove('r1', 'a1');
     expect(service.createAdmission).toHaveBeenCalledWith('r1', body);
     expect(service.updateAdmission).toHaveBeenCalledWith('r1', 'a1', { entryDate: '2020-01-02' });
+    expect(service.deleteAdmission).toHaveBeenCalledWith('r1', 'a1');
   });
 
   it('só ADMIN escreve passagens', () => {
     expect(roles(AdmissionController.prototype.create)).toEqual([Role.ADMIN]);
     expect(roles(AdmissionController.prototype.update)).toEqual([Role.ADMIN]);
+    expect(roles(AdmissionController.prototype.remove)).toEqual([Role.ADMIN]);
   });
 
   describe('DTOs', () => {

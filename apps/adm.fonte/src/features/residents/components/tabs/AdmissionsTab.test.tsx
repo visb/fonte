@@ -14,6 +14,10 @@ vi.mock('../AdmissionFormDialog', () => ({
     return props.open ? <div data-testid="admission-dialog">{props.admission?.id ?? 'novo'}</div> : null;
   },
 }));
+vi.mock('../DeleteAdmissionDialog', () => ({
+  DeleteAdmissionDialog: (props: { admission: { id: string } | null }) =>
+    props.admission ? <div data-testid="delete-admission-dialog">{props.admission.id}</div> : null,
+}));
 
 import { AdmissionsTab } from './AdmissionsTab';
 
@@ -83,7 +87,17 @@ describe('AdmissionsTab', () => {
     render(<AdmissionsTab residentId="r1" />);
     expect(screen.queryByRole('button', { name: /Adicionar acolhimento/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Editar acolhimento' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Excluir acolhimento' })).toBeNull();
     expect(dialogProps).not.toHaveBeenCalled();
+  });
+
+  it('excluir só nas passagens que não são a atual e abre o dialog com a passagem', () => {
+    state.data = twoAdmissions();
+    render(<AdmissionsTab residentId="r1" />);
+    const deleteButtons = screen.getAllByRole('button', { name: 'Excluir acolhimento' });
+    expect(deleteButtons).toHaveLength(1);
+    fireEvent.click(deleteButtons[0]);
+    expect(screen.getByTestId('delete-admission-dialog')).toHaveTextContent('ad1');
   });
 
   it('ADMIN com histórico vazio ainda pode adicionar', () => {

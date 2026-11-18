@@ -119,7 +119,7 @@ export function createResidentsModule(http: AxiosInstance) {
     createAdmission: (residentId: string, payload: CreateAdmissionPayload): Promise<Admission> =>
       http.post<Admission>(`/residents/${residentId}/admissions`, payload).then((r) => r.data),
 
-    // Story 215 — correção de passagem. No acolhimento atual só `entryDate`.
+    // Story 215 — correção de passagem. No acolhimento atual só as datas.
     updateAdmission: (
       residentId: string,
       admissionId: string,
@@ -128,6 +128,10 @@ export function createResidentsModule(http: AxiosInstance) {
       http
         .patch<Admission>(`/residents/${residentId}/admissions/${admissionId}`, payload)
         .then((r) => r.data),
+
+    // Exclusão de passagem encerrada sem parcelas no carnê. ADMIN-only.
+    deleteAdmission: (residentId: string, admissionId: string): Promise<void> =>
+      http.delete(`/residents/${residentId}/admissions/${admissionId}`).then(() => undefined),
 
     getFollowUps: (id: string): Promise<ResidentFollowUp[]> =>
       http.get<ResidentFollowUp[]>(`/residents/${id}/follow-ups`).then((r) => r.data),

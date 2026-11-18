@@ -111,27 +111,41 @@ export class AdmissionService {
     return this.updateClosed(resident, target, admissions, dto);
   }
 
-  // Decisão 5: no atual só a entrada; espelha `resident.entry_date` na mesma
-  // transação. O carnê NÃO é recalculado aqui (fora de escopo, aviso na UI).
+  // Decisão 5: no atual só as datas; espelha `resident.entry_date`/`exit_date`
+  // na mesma transação. Saída só se o atual já está encerrado (alta/evasão/
+  // arquivado) — encerrar um acolhimento em aberto é transição da ficha. O
+  // carnê NÃO é recalculado aqui (fora de escopo, aviso na UI).
   private async updateCurrent(
     resident: Resident,
     target: Admission,
     admissions: Admission[],
     dto: UpdateAdmissionDto,
   ): Promise<Admission> {
-    if (dto.houseId !== undefined || dto.exitDate !== undefined || dto.status !== undefined) {
-      throw new BadRequestException(ADMISSION_HISTORY_MESSAGES.currentOnlyEntryDate);
-    }
-    if (dto.entryDate === undefined) return this.reload(target.id);
-
     const previous = toPeriod(target);
-    assertAdmissionDates({ entryDate: dto.entryDate }, { previous });
-    this.assertNoOverlap({ id: target.id, entryDate: isoDate(dto.entryDate), exitDate: previous.exitDate }, admissions);
+    if (dto.houseId !== undefined || dto.status !== undefined) {
+      throw new BadRequestException(ADMISSION_HISTORY_MESSAGES.currentOnlyDates);
+    }
+    if (dto.exitDate !== undefined && !previous.exitDate) {
+      throw new BadRequestException(ADMISSION_HISTORY_MESSAGES.currentOpenExitDate);
+    }
+    if (dto.entryDate === undefined && dto.exitDate === undefined) return this.reload(target.id);
+
+    assertAdmissionDates({ entryDate: dto.entryDate, exitDate: dto.exitDate }, { previous });
+    this.assertNoOverlap(
+      {
+        id: target.id,
+        entryDate: dto.entryDate !== undefined ? isoDate(dto.entryDate) : previous.entryDate,
+        exitDate: dto.exitDate !== undefined ? isoDate(dto.exitDate) : previous.exitDate,
+      },
+      admissions,
+    );
+
+    const update: Partial<Pick<Admission, 'entryDate' | 'exitDate'>> = {};
+    if (dto.entryDate !== undefined) update.entryDate = dto.entryDate as unknown as Date;
+    if (dto.exitDate !== undefined) update.exitDate = dto.exitDate as unknown as Date;
 
     await this.trackAdmission(resident.id, target.id, async (manager) => {
-      await manager.getRepository(Admission).update(target.id, {
-        entryDate: dto.entryDate as unknown as Date,
-      });
+      await manager.getRepository(Admission).update(target.id, update);
       await this.audit.track({
         action: AuditAction.ADMISSION_UPDATE,
         targetType: AuditTargetType.RESIDENT,
@@ -140,8 +154,7 @@ export class AdmissionService {
         load: loadById(Resident),
         lockTable: 'residents',
         manager,
-        write: (m) =>
-          m.getRepository(Resident).update(resident.id, { entryDate: dto.entryDate as unknown as Date }),
+        write: (m) => m.getRepository(Resident).update(resident.id, update),
       });
     });
     return this.reload(target.id);

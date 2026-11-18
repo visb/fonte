@@ -4,23 +4,27 @@ import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/shared/FormField';
 import { ControlledDateInput } from '@/components/shared/ControlledDateInput';
 import { RESIDENT_STATUS_LABELS } from '../constants';
-import type { AdmissionFormValues } from '../lib/admissionForm';
+import type { AdmissionFormValues, AdmissionEditableFields } from '../lib/admissionForm';
 
 interface Props {
   control: Control<AdmissionFormValues>;
   register: UseFormRegister<AdmissionFormValues>;
   errors: FieldErrors<AdmissionFormValues>;
   houses: ReadonlyArray<{ id: string; name: string }>;
-  /** Acolhimento atual: só a entrada (story 215, decisão 5). */
-  entryOnly: boolean;
+  /**
+   * `all` = casa, datas e status; `dates` = acolhimento atual já encerrado
+   * (entrada e saída); `entry` = acolhimento atual em aberto (só a entrada).
+   */
+  editable: AdmissionEditableFields;
 }
 
 /** Campos do `AdmissionFormDialog`: casa, entrada, saída e status de saída. */
-export function AdmissionFormFields({ control, register, errors, houses, entryOnly }: Props) {
+export function AdmissionFormFields({ control, register, errors, houses, editable }: Props) {
   const today = todayInSaoPaulo();
+  const all = editable === 'all';
   return (
     <>
-      {!entryOnly && (
+      {all && (
         <FormField label="Casa" error={errors.houseId?.message}>
           <Select aria-label="Casa" {...register('houseId')}>
             <option value="">Sem casa (só arquivado)</option>
@@ -37,23 +41,23 @@ export function AdmissionFormFields({ control, register, errors, houses, entryOn
         <ControlledDateInput control={control} name="entryDate" id="admission-entry-date" max={today} />
       </FormField>
 
-      {!entryOnly && (
-        <>
-          <FormField label="Saída *" error={errors.exitDate?.message}>
-            <ControlledDateInput control={control} name="exitDate" id="admission-exit-date" max={today} />
-          </FormField>
+      {editable !== 'entry' && (
+        <FormField label="Saída *" error={errors.exitDate?.message}>
+          <ControlledDateInput control={control} name="exitDate" id="admission-exit-date" max={today} />
+        </FormField>
+      )}
 
-          <FormField label="Status *" error={errors.status?.message}>
-            <Select aria-label="Status" {...register('status')}>
-              <option value="">Selecione</option>
-              {ADMISSION_EXIT_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {RESIDENT_STATUS_LABELS[status]}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-        </>
+      {all && (
+        <FormField label="Status *" error={errors.status?.message}>
+          <Select aria-label="Status" {...register('status')}>
+            <option value="">Selecione</option>
+            {ADMISSION_EXIT_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {RESIDENT_STATUS_LABELS[status]}
+              </option>
+            ))}
+          </Select>
+        </FormField>
       )}
     </>
   );

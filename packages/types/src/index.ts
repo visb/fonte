@@ -1904,8 +1904,10 @@ export const ADMISSION_HISTORY_MESSAGES = {
     `A passagem antiga precisa começar antes do acolhimento atual (${formatIsoDateBr(currentEntryDate)}).`,
   exitStatusRequired: 'Escolha um status de saída: Alta, Evasão ou Arquivado.',
   houseRequired: 'Informe a casa — só passagem arquivada pode ficar sem casa.',
-  currentOnlyEntryDate:
-    'No acolhimento atual só a data de entrada pode ser corrigida. Casa, saída e status mudam por transferência, alta ou readmissão.',
+  currentOnlyDates:
+    'No acolhimento atual só as datas de entrada e saída podem ser corrigidas. Casa e status mudam por transferência, alta ou readmissão.',
+  currentOpenExitDate:
+    'O acolhimento atual está em aberto — a saída é registrada pela alta, evasão ou arquivamento na ficha.',
   exitDateRequired: 'Informe a data de saída — a passagem antiga precisa estar encerrada.',
 } as const;
 

@@ -294,12 +294,48 @@ describe('AdmissionService.updateAdmission — acolhimento atual', () => {
 
   it.each([
     [{ houseId: H2 }],
-    [{ exitDate: '2024-05-01' }],
     [{ status: ResidentStatus.DISCHARGED }],
     [{ entryDate: '2024-01-05', status: ResidentStatus.EVADED }],
-  ])('outro campo (%j) → 400', async (dto) => {
+  ])('casa/status (%j) → 400', async (dto) => {
     const { service } = setup();
-    await expect400(service.updateAdmission(R1, CURRENT, dto), ADMISSION_HISTORY_MESSAGES.currentOnlyEntryDate);
+    await expect400(service.updateAdmission(R1, CURRENT, dto), ADMISSION_HISTORY_MESSAGES.currentOnlyDates);
+  });
+
+  it('saída no atual em aberto → 400', async () => {
+    const { service } = setup();
+    await expect400(
+      service.updateAdmission(R1, CURRENT, { exitDate: '2024-05-01' }),
+      ADMISSION_HISTORY_MESSAGES.currentOpenExitDate,
+    );
+  });
+
+  it('saída no atual encerrado: atualiza a passagem e resident.exit_date', async () => {
+    const { service, residents, inserted } = setup({
+      resident: { status: ResidentStatus.DISCHARGED, exitDate: '2024-05-01' },
+      admissions: [
+        { id: CURRENT, residentId: R1, houseId: H1, entryDate: '2024-01-10', exitDate: '2024-05-01', status: 'DISCHARGED' },
+        { id: OLD, residentId: R1, houseId: H1, entryDate: '2020-01-01', exitDate: '2020-06-30', status: 'DISCHARGED' },
+      ],
+    });
+    const updated = await service.updateAdmission(R1, CURRENT, { exitDate: '2024-04-20' });
+    expect(updated).toMatchObject({ exitDate: '2024-04-20' });
+    expect(residents.table.get(R1)).toMatchObject({ exitDate: '2024-04-20' });
+    expect(inserted.map((row) => row.targetType)).toEqual(
+      expect.arrayContaining([AuditTargetType.ADMISSION, AuditTargetType.RESIDENT]),
+    );
+  });
+
+  it('saída antes da entrada no atual encerrado → 400', async () => {
+    const { service } = setup({
+      resident: { status: ResidentStatus.DISCHARGED, exitDate: '2024-05-01' },
+      admissions: [
+        { id: CURRENT, residentId: R1, houseId: H1, entryDate: '2024-01-10', exitDate: '2024-05-01', status: 'DISCHARGED' },
+      ],
+    });
+    await expect400(
+      service.updateAdmission(R1, CURRENT, { exitDate: '2024-01-01' }),
+      ADMISSION_DATE_MESSAGES.exitBeforeEntry('2024-01-10'),
+    );
   });
 
   it('entrada futura → 400; sobreposição com passagem anterior → 400', async () => {

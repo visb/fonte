@@ -144,4 +144,19 @@ describe('AdmissionFormDialog — editar', () => {
     await waitFor(() => expect(updateMutate).toHaveBeenCalled());
     expect(updateMutate.mock.calls[0][0]).toEqual({ admissionId: 'cur', payload: { entryDate: '2024-01-05' } });
   });
+
+  it('acolhimento atual encerrado: edita também a saída, sem casa/status', async () => {
+    const closedCurrent = admission({ id: 'cur', entryDate: '2024-01-10', exitDate: '2024-05-01' });
+    admissionsData = [closedCurrent, old];
+    render(<AdmissionFormDialog open onClose={vi.fn()} residentId="r1" admission={closedCurrent} />);
+    expect(screen.getByText('Editar acolhimento atual')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Casa')).toBeNull();
+    expect(screen.queryByLabelText('Status')).toBeNull();
+    expect(exitInput().value).toBe('01/05/2024');
+
+    fireEvent.change(exitInput(), { target: { value: '20/04/2024' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(updateMutate).toHaveBeenCalled());
+    expect(updateMutate.mock.calls[0][0]).toEqual({ admissionId: 'cur', payload: { exitDate: '2024-04-20' } });
+  });
 });

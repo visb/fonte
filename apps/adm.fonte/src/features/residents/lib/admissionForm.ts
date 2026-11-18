@@ -16,12 +16,24 @@ import { refineAdmissionDates } from './admissionDates';
  *
  * - `create`: passagem antiga, já encerrada (entrada + saída + status de saída);
  * - `edit`: passagem encerrada — casa, datas e status;
- * - `current`: acolhimento atual — só a entrada (decisão 5).
+ * - `current`: acolhimento atual — só as datas (decisão 5); a saída só se ele
+ *   já está encerrado (alta/evasão/arquivado).
  *
  * Sobreposição e "começar antes do atual" são julgadas contra as outras
  * passagens do filho (a própria não conta).
  */
 export type AdmissionFormMode = 'create' | 'edit' | 'current';
+
+export type AdmissionEditableFields = 'all' | 'dates' | 'entry';
+
+/** Quais campos o formulário expõe para a passagem neste modo. */
+export function admissionEditableFields(
+  mode: AdmissionFormMode,
+  admission?: Admission | null,
+): AdmissionEditableFields {
+  if (mode !== 'current') return 'all';
+  return admission?.exitDate ? 'dates' : 'entry';
+}
 
 export interface AdmissionFormValues {
   houseId: string;
@@ -51,6 +63,7 @@ export function makeAdmissionFormSchema(options: {
   const admissions = options.admissions ?? [];
   const initial = admission ? admissionFormDefaults(admission) : undefined;
   const current = admissions[0];
+  const editable = admissionEditableFields(mode, admission);
 
   return z
     .object({
@@ -63,8 +76,10 @@ export function makeAdmissionFormSchema(options: {
       const issue = (path: keyof AdmissionFormValues, message: string) =>
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
 
-      if (mode !== 'current') {
-        if (!values.exitDate) issue('exitDate', ADMISSION_HISTORY_MESSAGES.exitDateRequired);
+      if (editable !== 'entry' && !values.exitDate) {
+        issue('exitDate', ADMISSION_HISTORY_MESSAGES.exitDateRequired);
+      }
+      if (editable === 'all') {
         if (!ADMISSION_EXIT_STATUSES.includes(values.status as ResidentStatus)) {
           issue('status', ADMISSION_HISTORY_MESSAGES.exitStatusRequired);
         } else if (!values.houseId && values.status !== ResidentStatus.ARCHIVED) {
@@ -72,7 +87,7 @@ export function makeAdmissionFormSchema(options: {
         }
       }
 
-      const exitDate = mode === 'current' ? iso(admission?.exitDate) : values.exitDate;
+      const exitDate = editable === 'entry' ? iso(admission?.exitDate) : values.exitDate;
       const dates = { entryDate: values.entryDate, exitDate };
       refineAdmissionDates(dates, ctx, { initial, today: options.today });
 
@@ -116,10 +131,11 @@ export function toUpdateAdmissionPayload(
 ): UpdateAdmissionPayload {
   const initial = admissionFormDefaults(admission);
   const payload: UpdateAdmissionPayload = {};
+  const editable = admissionEditableFields(mode, admission);
   if (values.entryDate !== initial.entryDate) payload.entryDate = values.entryDate;
-  if (mode === 'current') return payload;
+  if (editable !== 'entry' && values.exitDate !== initial.exitDate) payload.exitDate = values.exitDate;
+  if (editable !== 'all') return payload;
   if (values.houseId !== initial.houseId) payload.houseId = values.houseId || null;
-  if (values.exitDate !== initial.exitDate) payload.exitDate = values.exitDate;
   if (values.status !== admission.status) payload.status = values.status as ResidentStatus;
   return payload;
 }

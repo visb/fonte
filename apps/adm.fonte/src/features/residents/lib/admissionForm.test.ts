@@ -7,6 +7,7 @@ import {
 } from '@fonte/types';
 import type { Admission } from '@fonte/api-client';
 import {
+  admissionEditableFields,
   admissionFormDefaults,
   makeAdmissionFormSchema,
   toCreateAdmissionPayload,
@@ -123,6 +124,23 @@ describe('makeAdmissionFormSchema — acolhimento atual', () => {
   });
 });
 
+describe('makeAdmissionFormSchema — acolhimento atual encerrado', () => {
+  const closed = admission({ id: 'cur', entryDate: '2024-01-10', exitDate: '2024-05-01' });
+  const schema = makeAdmissionFormSchema({ mode: 'current', admission: closed, admissions: [closed, old], today: TODAY });
+
+  it('saída editável e julgada; status/casa não', () => {
+    expect(admissionEditableFields('current', closed)).toBe('dates');
+    expect(admissionEditableFields('current', current)).toBe('entry');
+    expect(schema.safeParse({ ...admissionFormDefaults(closed), exitDate: '2024-04-20', status: '' }).success).toBe(true);
+    expect(messages(schema.safeParse({ ...admissionFormDefaults(closed), exitDate: '' }))).toMatchObject({
+      exitDate: ADMISSION_HISTORY_MESSAGES.exitDateRequired,
+    });
+    expect(messages(schema.safeParse({ ...admissionFormDefaults(closed), exitDate: '2024-01-01' }))).toMatchObject({
+      exitDate: ADMISSION_DATE_MESSAGES.exitBeforeEntry('2024-01-10'),
+    });
+  });
+});
+
 describe('payloads', () => {
   it('criar converte casa vazia em null', () => {
     expect(toCreateAdmissionPayload(values({ houseId: '' }))).toEqual({
@@ -142,6 +160,17 @@ describe('payloads', () => {
     expect(
       toUpdateAdmissionPayload({ ...admissionFormDefaults(current), entryDate: '2024-01-05', houseId: 'h2' }, current, 'current'),
     ).toEqual({ entryDate: '2024-01-05' });
+  });
+
+  it('atual encerrado manda a saída, nunca casa/status', () => {
+    const closed = admission({ id: 'cur', entryDate: '2024-01-10', exitDate: '2024-05-01' });
+    expect(
+      toUpdateAdmissionPayload(
+        { ...admissionFormDefaults(closed), exitDate: '2024-04-20', houseId: 'h2', status: ResidentStatus.EVADED },
+        closed,
+        'current',
+      ),
+    ).toEqual({ exitDate: '2024-04-20' });
   });
 
   it('status legado não terminal começa vazio no form', () => {

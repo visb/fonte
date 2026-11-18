@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { useHouses } from '@/features/houses/hooks/useHouses';
 import { useCreateAdmission, useResidentAdmissions, useUpdateAdmission } from '../hooks/useResidents';
 import {
+  admissionEditableFields,
   admissionFormDefaults,
   makeAdmissionFormSchema,
   toCreateAdmissionPayload,
@@ -48,6 +49,7 @@ export function AdmissionFormDialog({ open, onClose, residentId, admission }: Pr
     : admissions[0]?.id === admission.id
       ? 'current'
       : 'edit';
+  const editable = admissionEditableFields(mode, admission);
   const schema = useMemo(
     () => makeAdmissionFormSchema({ mode, admission, admissions }),
     [mode, admission, admissions],
@@ -92,10 +94,16 @@ export function AdmissionFormDialog({ open, onClose, residentId, admission }: Pr
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-          {mode === 'current' && (
+          {editable === 'entry' && (
             <p className="text-xs text-muted-foreground">
-              No acolhimento atual só a data de entrada pode ser corrigida — casa, saída e status
-              mudam por transferência, alta ou readmissão. O carnê não é recalculado.
+              No acolhimento atual em aberto só a data de entrada pode ser corrigida — casa, saída e
+              status mudam por transferência, alta ou readmissão. O carnê não é recalculado.
+            </p>
+          )}
+          {editable === 'dates' && (
+            <p className="text-xs text-muted-foreground">
+              No acolhimento atual só as datas de entrada e saída podem ser corrigidas — casa e
+              status mudam pela ficha. O carnê não é recalculado.
             </p>
           )}
           {mode === 'create' && (
@@ -109,7 +117,7 @@ export function AdmissionFormDialog({ open, onClose, residentId, admission }: Pr
             register={register}
             errors={errors}
             houses={houses}
-            entryOnly={mode === 'current'}
+            editable={editable}
           />
 
           {mutation.isError && (

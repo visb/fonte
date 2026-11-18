@@ -135,7 +135,11 @@ describe('Acolhimentos do Histórico (e2e, story 215)', () => {
   it('atual: outro campo → 400; só entrada → 200 e espelha na ficha', async () => {
     const forbidden = await updateAdmission(adminToken, currentAdmissionId, { houseId });
     expect(forbidden.status).toBe(400);
-    expect(forbidden.body.message).toBe(ADMISSION_HISTORY_MESSAGES.currentOnlyEntryDate);
+    expect(forbidden.body.message).toBe(ADMISSION_HISTORY_MESSAGES.currentOnlyDates);
+
+    const openExit = await updateAdmission(adminToken, currentAdmissionId, { exitDate: '2025-06-01' });
+    expect(openExit.status).toBe(400);
+    expect(openExit.body.message).toBe(ADMISSION_HISTORY_MESSAGES.currentOpenExitDate);
 
     const ok = await updateAdmission(adminToken, currentAdmissionId, { entryDate: '2025-01-05' });
     expect(ok.status).toBe(200);

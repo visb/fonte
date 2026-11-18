@@ -2204,7 +2204,7 @@
                 "{{admissionId}}"
               ]
             },
-            "description": "Story 215 — corrige uma passagem pela aba Histórico. Roles: **ADMIN** (COORDINATOR/SERVANT → 403). Passagem de outro filho → 404.\n\nBody (tudo opcional; datas e status não aceitam `null`): `houseId` (UUID ou `null`), `entryDate`, `exitDate`, `status`.\n\n- **Passagem encerrada** (qualquer uma que não seja a atual): casa, entrada, saída e status editáveis. Só o que veio no payload é julgado (mesma linha da story 203). Mesmas regras do POST: status de saída, casa nula só com ARCHIVED, datas da 203, sem sobreposição com OUTRA passagem (a própria não conta), entrada antes do acolhimento atual.\n- **Acolhimento atual** (índice 0 de `GET /residents/:id/admissions`): só `entryDate`. Qualquer outro campo → 400 `\"No acolhimento atual só a data de entrada pode ser corrigida. Casa, saída e status mudam por transferência, alta ou readmissão.\"`. A nova entrada também atualiza `resident.entry_date` na mesma transação; o carnê **não** é recalculado.\n\nResposta 200: a `Admission` atualizada, com `house`. Auditoria: `admission.update` (alvo `admission`, filho como principal; no atual também grava o antes/depois da ficha)."
+            "description": "Story 215 — corrige uma passagem pela aba Histórico. Roles: **ADMIN** (COORDINATOR/SERVANT → 403). Passagem de outro filho → 404.\n\nBody (tudo opcional; datas e status não aceitam `null`): `houseId` (UUID ou `null`), `entryDate`, `exitDate`, `status`.\n\n- **Passagem encerrada** (qualquer uma que não seja a atual): casa, entrada, saída e status editáveis. Só o que veio no payload é julgado (mesma linha da story 203). Mesmas regras do POST: status de saída, casa nula só com ARCHIVED, datas da 203, sem sobreposição com OUTRA passagem (a própria não conta), entrada antes do acolhimento atual.\n- **Acolhimento atual** (índice 0 de `GET /residents/:id/admissions`): só `entryDate` e `exitDate`. `houseId`/`status` → 400 `\"No acolhimento atual só as datas de entrada e saída podem ser corrigidas. Casa e status mudam por transferência, alta ou readmissão.\"`. `exitDate` só se o atual já está encerrado (alta/evasão/arquivado); em aberto → 400 `\"O acolhimento atual está em aberto — a saída é registrada pela alta, evasão ou arquivamento na ficha.\"`. As novas datas também atualizam `resident.entry_date`/`resident.exit_date` na mesma transação; o carnê **não** é recalculado.\n\nResposta 200: a `Admission` atualizada, com `house`. Auditoria: `admission.update` (alvo `admission`, filho como principal; no atual também grava o antes/depois da ficha)."
           },
           "response": [
             {
@@ -2235,7 +2235,7 @@
               "status": "Bad Request",
               "code": 400,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"No acolhimento atual só a data de entrada pode ser corrigida. Casa, saída e status mudam por transferência, alta ou readmissão.\"\n}"
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"No acolhimento atual só as datas de entrada e saída podem ser corrigidas. Casa e status mudam por transferência, alta ou readmissão.\"\n}"
             },
             {
               "name": "400 — sobreposição com outra passagem",

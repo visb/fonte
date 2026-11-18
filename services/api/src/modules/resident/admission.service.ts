@@ -113,8 +113,9 @@ export class AdmissionService {
   }
 
   // Decisão 5: no atual só as datas; espelha `resident.entry_date`/`exit_date`
-  // na mesma transação. Saída só se o atual já está encerrado (alta/evasão/
-  // arquivado) — encerrar um acolhimento em aberto é transição da ficha. O
+  // na mesma transação. Saída só se o atual já está encerrado (tem saída ou o
+  // filho está em alta/evasão/arquivado) — tirar um filho do acolhimento é
+  // transição da ficha. O
   // carnê NÃO é recalculado aqui (fora de escopo, aviso na UI).
   private async updateCurrent(
     resident: Resident,
@@ -126,7 +127,11 @@ export class AdmissionService {
     if (dto.houseId !== undefined || dto.status !== undefined) {
       throw new BadRequestException(ADMISSION_HISTORY_MESSAGES.currentOnlyDates);
     }
-    if (dto.exitDate !== undefined && !previous.exitDate) {
+    // Encerrado = já tem saída OU o filho está num status de saída (ex.: ficha
+    // ARCHIVED do import, alta sem data). Em acolhimento, a saída é transição da ficha.
+    const closed =
+      !!previous.exitDate || ADMISSION_EXIT_STATUSES.includes(resident.status as ResidentStatus);
+    if (dto.exitDate !== undefined && !closed) {
       throw new BadRequestException(ADMISSION_HISTORY_MESSAGES.currentOpenExitDate);
     }
     if (dto.entryDate === undefined && dto.exitDate === undefined) return this.reload(target.id);

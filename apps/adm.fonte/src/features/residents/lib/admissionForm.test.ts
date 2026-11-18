@@ -141,6 +141,23 @@ describe('makeAdmissionFormSchema — acolhimento atual encerrado', () => {
   });
 });
 
+describe('makeAdmissionFormSchema — atual sem saída, filho fora do acolhimento', () => {
+  const archived = admission({ id: 'cur', entryDate: '2024-01-10', exitDate: null, status: ResidentStatus.ARCHIVED });
+  const schema = makeAdmissionFormSchema({ mode: 'current', admission: archived, admissions: [archived], today: TODAY });
+
+  it('libera a saída, opcional; quando informada é julgada', () => {
+    expect(admissionEditableFields('current', archived)).toBe('dates');
+    expect(schema.safeParse(admissionFormDefaults(archived)).success).toBe(true);
+    expect(schema.safeParse({ ...admissionFormDefaults(archived), exitDate: '2024-03-01' }).success).toBe(true);
+    expect(messages(schema.safeParse({ ...admissionFormDefaults(archived), exitDate: '2024-01-01' }))).toMatchObject({
+      exitDate: ADMISSION_DATE_MESSAGES.exitBeforeEntry('2024-01-10'),
+    });
+    expect(
+      toUpdateAdmissionPayload({ ...admissionFormDefaults(archived), exitDate: '2024-03-01' }, archived, 'current'),
+    ).toEqual({ exitDate: '2024-03-01' });
+  });
+});
+
 describe('payloads', () => {
   it('criar converte casa vazia em null', () => {
     expect(toCreateAdmissionPayload(values({ houseId: '' }))).toEqual({

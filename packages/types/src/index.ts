@@ -1907,7 +1907,7 @@ export const ADMISSION_HISTORY_MESSAGES = {
   currentOnlyDates:
     'No acolhimento atual só as datas de entrada e saída podem ser corrigidas. Casa e status mudam por transferência, alta ou readmissão.',
   currentOpenExitDate:
-    'O acolhimento atual está em aberto — a saída é registrada pela alta, evasão ou arquivamento na ficha.',
+    'O filho está em acolhimento — a saída é registrada pela alta, evasão ou arquivamento na ficha.',
   exitDateRequired: 'Informe a data de saída — a passagem antiga precisa estar encerrada.',
   deleteCurrent:
     'O acolhimento atual não pode ser excluído — a ficha do filho reflete esta passagem.',

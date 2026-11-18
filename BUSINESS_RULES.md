@@ -86,8 +86,9 @@ edita e exclui (regras abaixo); COORDINATOR e SERVANT leem.
 
 - **Acolhimento atual** = o de maior entrada (índice 0 da lista, story 164) — o que a ficha espelha.
   Nele só as **datas** são corrigíveis (atualizam também `resident.entry_date`/`exit_date`; o carnê
-  não é recalculado). A **saída** só se ele já está encerrado (alta/evasão/arquivado) — encerrar um
-  acolhimento em aberto é transição da ficha. Casa e status mudam só por transferência, alta ou
+  não é recalculado). A **saída** só se ele já está encerrado — tem saída gravada **ou** o filho está
+  em alta/evasão/arquivado (ex.: ficha `ARCHIVED` do import sem data de saída, que pode ganhar
+  uma). Com o filho em acolhimento, a saída é transição da ficha. Casa e status mudam só por transferência, alta ou
   readmissão.
 - **Passagem encerrada**: casa, entrada, saída e status editáveis.
 - **Criar** = só passagem antiga, já encerrada (entrada + saída). Acolhimento novo é a readmissão.

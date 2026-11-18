@@ -17,7 +17,7 @@ import { refineAdmissionDates } from './admissionDates';
  * - `create`: passagem antiga, já encerrada (entrada + saída + status de saída);
  * - `edit`: passagem encerrada — casa, datas e status;
  * - `current`: acolhimento atual — só as datas (decisão 5); a saída só se ele
- *   já está encerrado (alta/evasão/arquivado).
+ *   já está encerrado (tem saída ou status alta/evasão/arquivado).
  *
  * Sobreposição e "começar antes do atual" são julgadas contra as outras
  * passagens do filho (a própria não conta).
@@ -32,7 +32,11 @@ export function admissionEditableFields(
   admission?: Admission | null,
 ): AdmissionEditableFields {
   if (mode !== 'current') return 'all';
-  return admission?.exitDate ? 'dates' : 'entry';
+  // Encerrado = já tem saída OU status de saída sem data (ficha ARCHIVED do
+  // import, alta sem data) — aí a saída pode ser cadastrada. Mesma regra da API.
+  const closed =
+    !!admission?.exitDate || ADMISSION_EXIT_STATUSES.includes(admission?.status as ResidentStatus);
+  return closed ? 'dates' : 'entry';
 }
 
 export interface AdmissionFormValues {
@@ -76,7 +80,9 @@ export function makeAdmissionFormSchema(options: {
       const issue = (path: keyof AdmissionFormValues, message: string) =>
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
 
-      if (editable !== 'entry' && !values.exitDate) {
+      // No atual sem saída gravada, cadastrar a saída é opcional (pode corrigir só a entrada).
+      const exitOptional = editable === 'dates' && !initial?.exitDate;
+      if (editable !== 'entry' && !exitOptional && !values.exitDate) {
         issue('exitDate', ADMISSION_HISTORY_MESSAGES.exitDateRequired);
       }
       if (editable === 'all') {

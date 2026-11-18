@@ -331,6 +331,18 @@ describe('AdmissionService.updateAdmission — acolhimento atual', () => {
     );
   });
 
+  it('atual sem saída com filho em status de saída (ARCHIVED do import): cadastra a saída', async () => {
+    const { service, residents } = setup({
+      resident: { status: ResidentStatus.ARCHIVED, exitDate: null },
+      admissions: [
+        { id: CURRENT, residentId: R1, houseId: H1, entryDate: '2024-01-10', exitDate: null, status: 'ARCHIVED' },
+      ],
+    });
+    const updated = await service.updateAdmission(R1, CURRENT, { exitDate: '2024-03-01' });
+    expect(updated).toMatchObject({ exitDate: '2024-03-01' });
+    expect(residents.table.get(R1)).toMatchObject({ exitDate: '2024-03-01' });
+  });
+
   it('saída antes da entrada no atual encerrado → 400', async () => {
     const { service } = setup({
       resident: { status: ResidentStatus.DISCHARGED, exitDate: '2024-05-01' },

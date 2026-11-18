@@ -258,7 +258,11 @@ export class ImportService {
     if (!admissions || admissions.length <= 1) return;
 
     const sorted = [...admissions].sort((a, b) => a.entryDate.localeCompare(b.entryDate));
-    const previous = sorted.slice(0, -1); // todos menos o mais recente (topo já criado)
+    const top = sorted[sorted.length - 1];
+    // Todos menos o mais recente (topo já criado). Passagem com a MESMA entrada
+    // do topo é a própria ficha repetida no histórico: gravá-la duplicava o
+    // acolhimento atual (empate que deixava ficha e Histórico divergentes).
+    const previous = sorted.slice(0, -1).filter((adm) => adm.entryDate !== top.entryDate);
     const admissionRepo = manager.getRepository(Admission);
 
     for (const adm of previous) {

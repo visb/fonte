@@ -85,6 +85,8 @@ A aba Histórico do `adm.fonte` lista as passagens (`admissions`) do filho. Só 
 edita e exclui (regras abaixo); COORDINATOR e SERVANT leem.
 
 - **Acolhimento atual** = o de maior entrada (índice 0 da lista, story 164) — o que a ficha espelha.
+  Empate de entrada desempata por `created_at` e, por fim, `id` (mesma ordem na escrita da ficha,
+  na lista e no carnê).
   Nele só as **datas** são corrigíveis (atualizam também `resident.entry_date`/`exit_date`; o carnê
   não é recalculado). A **saída** só se ele já está encerrado — tem saída gravada **ou** o filho está
   em alta/evasão/arquivado (ex.: ficha `ARCHIVED` do import sem data de saída, que pode ganhar

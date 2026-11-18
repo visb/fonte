@@ -43,6 +43,19 @@ describe('sortAdmissionsByEntryDateDesc', () => {
     expect(sortAdmissionsByEntryDateDesc([antigo, recente]).map((a) => a.id)).toEqual(['b', 'a']);
   });
 
+  // Passagens da mesma transação (import) empatam em entrada E created_at: o
+  // id decide, igual ao `ORDER BY ... id DESC` do `orderedAdmissionsQuery`.
+  it('empate total desempata pelo id maior, independente da ordem de entrada', () => {
+    const x = adm('53038f23', '2026-03-30', null);
+    const y = adm('d7f4d261', '2026-03-30', '2026-09-10');
+    expect(sortAdmissionsByEntryDateDesc([x, y]).map((a) => a.id)).toEqual(['d7f4d261', '53038f23']);
+    expect(sortAdmissionsByEntryDateDesc([y, x]).map((a) => a.id)).toEqual(['d7f4d261', '53038f23']);
+    expect(sortAdmissionsByEntryDateAsc([y, x]).map((a) => a.id)).toEqual(['53038f23', 'd7f4d261']);
+    expect(resolveAdmissionIdForMonth([y, x], '2026-04-01')).toBe(
+      resolveAdmissionIdForMonth([x, y], '2026-04-01'),
+    );
+  });
+
   it('aceita Date e trata created_at ausente/inválido como o mais antigo', () => {
     const comDate = {
       id: 'date',

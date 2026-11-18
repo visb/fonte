@@ -678,7 +678,7 @@ export class ResidentService {
       .addSelect(
         `COALESCE((SELECT h.name FROM admissions a JOIN houses h ON h.id = a.house_id
            WHERE a.resident_id = resident.id AND a.deleted_at IS NULL
-           ORDER BY a.entry_date DESC NULLS LAST, a.created_at DESC LIMIT 1), house.name)`,
+           ORDER BY a.entry_date DESC NULLS LAST, a.created_at DESC, a.id DESC LIMIT 1), house.name)`,
         'lastHouseName',
       )
       // Mesma regra de `findLastExitDate`: a maior saída entre admissões e ficha.
@@ -897,7 +897,12 @@ export class ResidentService {
       .where('adm.resident_id = :residentId', { residentId })
       .andWhere('adm.deleted_at IS NULL')
       .orderBy('adm.entry_date', 'DESC', 'NULLS LAST')
-      .addOrderBy('adm.created_at', 'DESC');
+      .addOrderBy('adm.created_at', 'DESC')
+      // Desempate final: passagens gravadas na mesma transação (import) têm
+      // entrada e `created_at` iguais. Sem isto, `LIMIT 1` (escrita da ficha) e a
+      // lista (aba Histórico) escolhiam "atuais" diferentes. Mesma regra de
+      // `sortAdmissionsByEntryDateDesc`.
+      .addOrderBy('adm.id', 'DESC');
   }
 
   async remove(id: string): Promise<void> {

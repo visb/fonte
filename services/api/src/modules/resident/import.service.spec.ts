@@ -591,6 +591,22 @@ describe('ImportService', () => {
         );
       });
 
+      it('passagem com a mesma entrada do topo não vira Admission duplicada', async () => {
+        await service.commit(
+          withAdmissions(
+            [
+              { entryDate: '2022-01-10', exitDate: '2022-09-10' },
+              { entryDate: '2026-03-30', exitDate: null },
+              { entryDate: '2026-03-30', exitDate: '2026-09-10' },
+            ],
+            { entryDate: '2026-03-30', exitDate: '2026-09-10' },
+          ),
+          'user-1',
+        );
+        expect(admissionSave).toHaveBeenCalledTimes(1);
+        expect(admissionCreate).toHaveBeenCalledWith(expect.objectContaining({ entryDate: '2022-01-10' }));
+      });
+
       it('acolhimento anterior com permanência < 6 meses → EVADED', async () => {
         await service.commit(
           withAdmissions(

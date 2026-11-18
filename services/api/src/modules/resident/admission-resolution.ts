@@ -45,9 +45,16 @@ function createdAtTime(admission: AdmissionWindow): number {
   return Number.isNaN(time) ? 0 : time;
 }
 
+/** Desempate final por `id` (passagens da mesma transação empatam em tudo). */
+function compareId(a: AdmissionWindow, b: AdmissionWindow): number {
+  if (a.id === b.id) return 0;
+  return a.id < b.id ? -1 : 1;
+}
+
 /**
  * Ordena do acolhimento mais recente para o mais antigo:
- * `entry_date DESC NULLS LAST`, desempate `created_at DESC` (decisão 6).
+ * `entry_date DESC NULLS LAST`, desempate `created_at DESC`, depois `id DESC`
+ * (decisão 6) — a mesma ordem de `ResidentService.orderedAdmissionsQuery`.
  * O índice 0 é o **acolhimento atual** — inclusive em ficha importada, onde as
  * admissões antigas foram gravadas DEPOIS da atual e `created_at` mente.
  */
@@ -60,11 +67,11 @@ export function sortAdmissionsByEntryDateDesc<T extends AdmissionWindow>(admissi
       if (entryB == null) return -1;
       return entryA < entryB ? 1 : -1;
     }
-    return createdAtTime(b) - createdAtTime(a);
+    return createdAtTime(b) - createdAtTime(a) || compareId(b, a);
   });
 }
 
-/** Ordena do mais antigo para o mais recente: `entry_date ASC NULLS LAST`, `created_at ASC`. */
+/** Ordena do mais antigo para o mais recente: `entry_date ASC NULLS LAST`, `created_at ASC`, `id ASC`. */
 export function sortAdmissionsByEntryDateAsc<T extends AdmissionWindow>(admissions: T[]): T[] {
   return [...admissions].sort((a, b) => {
     const entryA = toDay(a.entryDate);
@@ -74,7 +81,7 @@ export function sortAdmissionsByEntryDateAsc<T extends AdmissionWindow>(admissio
       if (entryB == null) return -1;
       return entryA < entryB ? -1 : 1;
     }
-    return createdAtTime(a) - createdAtTime(b);
+    return createdAtTime(a) - createdAtTime(b) || compareId(a, b);
   });
 }
 
@@ -133,6 +140,8 @@ export function resolveAdmissionIdForMonth(
     const bestEntry = toDay(best.entryDate)!;
     const candidateEntry = toDay(candidate.entryDate)!;
     if (candidateEntry !== bestEntry) return candidateEntry > bestEntry ? candidate : best;
-    return createdAtTime(candidate) < createdAtTime(best) ? candidate : best;
+    const byCreated = createdAtTime(candidate) - createdAtTime(best);
+    if (byCreated !== 0) return byCreated < 0 ? candidate : best;
+    return compareId(candidate, best) < 0 ? candidate : best;
   }).id;
 }
